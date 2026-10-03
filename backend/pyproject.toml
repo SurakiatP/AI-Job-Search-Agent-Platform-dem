@@ -34,6 +34,7 @@ packages = ["src/job_search_platform"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = ["integration: requires the real local infrastructure or native runtime"]
 
 [tool.job-search-platform.upstream]
 hermes = "c8301ea6c9b797184df16a9c5dd462400b264ff4"

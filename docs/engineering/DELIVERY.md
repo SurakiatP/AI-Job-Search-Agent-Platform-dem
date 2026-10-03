@@ -1,7 +1,7 @@
 # Delivery requirements
 
 Date: 2026-10-03
-Status: Delivery constraints recorded; directory layout proposed for implementation-plan review. Product implementation has not started.
+Status: Owner-approved delivery constraints and implementation plan; delegated execution started on feat/platform-foundation. Acceptance remains evidence-based.
 
 The platform specification in `../superpowers/specs/2026-10-03-platform-design.md` defines behavior and contracts. `../../DESIGN.md` defines the UI. This document adds the owner's requirements for structure, security, CVE checks and delegated implementation; it does not replace either specification.
 
@@ -66,13 +66,13 @@ Block delivery for known exploitable Critical/High findings. For any unresolved 
 
 MinIO OSS must retain the owner's open-source choice and AGPLv3 license. Its researched upstream is archived and unmaintained. Prove a pinned source build, scan both build dependencies and the final image, retain license notices, and document maintenance/patch ownership. An unavailable safe build is a blocker, not permission to substitute a differently licensed product silently.
 
-Avoid installing scanners or product dependencies during this documentation phase. Scanner commands, versions, CI placement and evidence paths belong in the reviewed implementation plan.
+Use the approved implementation plan for scanner commands, versions, CI placement and evidence paths. Keep dependency installation scoped to the active implementation task.
 
 ## Delegated execution and Git
 
 Use branches from the latest fetched `origin/develop`, named by work type: `feat/...`, `fix/...` or `docs/...`. Current preparation branch: `feat/platform-foundation`. Preserve unrelated user files. Do not push or merge as part of preparation.
 
-The owner selected `delegate-build` for subsequent implementation. Prerequisites remain written-spec approval, a written implementation plan, and plan review. Use the skill's current Codex mapping: planner and independent reviewer `gpt-6.1-sol` at high effort; workers `gpt-6-luna` at high effort. Announce allocation before each role starts.
+The owner approved the written specification and reviewed implementation plans and selected `delegate-build` for execution. Use the skill's current Codex mapping: planner and independent reviewer `gpt-6.1-sol` at high effort; workers `gpt-6-luna` at high effort. Announce allocation before each role starts.
 
 Each task must have an identifier, exclusive file ownership, dependencies, contract references, security boundaries and a verifiable acceptance criterion. Parallel tasks must not edit the same files or shared mutable state. Review the combined diff and update local Hub status after every wave. An independent reviewer must run relevant checks and report PASS or FAIL before completion is claimed.
 
