@@ -54,10 +54,10 @@ The ellipses above define protocol signatures, not incomplete implementation ste
 
 **Depends on:** reviewed master plan. **Owns:** `backend/pyproject.toml`, `backend/uv.lock`, `backend/src/job_search_platform/__init__.py`, `backend/tests/conftest.py`, `backend/tests/test_dependency_checks.py`, `backend/.gitignore`, `frontend/package.json`, `frontend/package-lock.json`, `frontend/tsconfig.json`, `frontend/vite.config.ts`, `frontend/index.html`, `frontend/.gitignore`, `tests/package.json`, `tests/package-lock.json`, `tests/.gitignore`, `scripts/check_dependencies.py`, `scripts/security_scan.py`, `docs/engineering/dependencies.md`.
 
-- [ ] Create a Python src-layout package and pytest configuration. Use `uv lock --project backend` to resolve the master plan's candidate pins; add only required packages for ASGI serving, async tests, multipart upload, Keychain and lock/audit tooling. Record every accepted version and candidate rejection reason.
-- [ ] Create the minimal Vite configuration, exact dependency manifest and lock using `npm install --package-lock-only --prefix frontend`. Include Tailwind's Vite adapter, React integration, accessible shadcn component dependencies and locally packaged Thai/English fonts. Do not run a component generator that changes unrelated files. Pin Node 24 LTS and record the patch version.
-- [ ] Implement dependency checks: `check_dependencies.py` parses the lockfiles, rejects unresolved source branches/tags and ensures runtime versions meet manifests. For upstream checkouts, require the three exact commits in the master plan.
-- [ ] Write security tooling that runs pip-audit on the backend and Hermes environments, JavaScript audits on frontend/test locks, and Trivy on built infrastructure/worker images. Emit sanitized JSON plus an SBOM. Use named evidence directories outside Git for raw logs; write only non-sensitive summarized findings to documentation. Return nonzero on unresolved High/Critical findings or missing required scanner coverage.
+- [x] Create a Python src-layout package and pytest configuration. Use `uv lock --project backend` to resolve the master plan's candidate pins; add only required packages for ASGI serving, async tests, multipart upload, Keychain and lock/audit tooling. Record every accepted version and candidate rejection reason.
+- [x] Create the minimal Vite configuration, exact dependency manifest and lock using `npm install --package-lock-only --prefix frontend`. Include Tailwind's Vite adapter, React integration, accessible shadcn component dependencies and locally packaged Thai/English fonts. Do not run a component generator that changes unrelated files. Pin Node 24 LTS and record the patch version.
+- [x] Implement dependency checks: `check_dependencies.py` parses the lockfiles, rejects unresolved source branches/tags and ensures runtime versions meet manifests. For upstream checkouts, require the three exact commits in the master plan.
+- [x] Write security tooling that runs pip-audit on the backend and Hermes environments, JavaScript audits on frontend/test locks, and Trivy on built infrastructure/worker images. Emit sanitized JSON plus an SBOM. Use named evidence directories outside Git for raw logs; write only non-sensitive summarized findings to documentation. Return nonzero on unresolved High/Critical findings or missing required scanner coverage.
 
 ```python
 def test_required_scan_cannot_pass_when_image_is_missing(tmp_path):
@@ -66,7 +66,7 @@ def test_required_scan_cannot_pass_when_image_is_missing(tmp_path):
     assert "minio_image" in result.missing
 ```
 
-- [ ] Run `rtk proxy uv run --project backend pytest backend/tests/test_dependency_checks.py -q`; red must fail on missing coverage/lock drift before the evaluator is implemented. Run `rtk proxy python3 scripts/check_dependencies.py` and lock consistency checks; green must pass without a product runtime claim. Commit only the owned foundation files through the root integrator.
+- [x] Run `rtk proxy uv run --project backend pytest backend/tests/test_dependency_checks.py -q`; red must fail on missing coverage/lock drift before the evaluator is implemented. Run `rtk proxy python3 scripts/check_dependencies.py` and lock consistency checks; green must pass without a product runtime claim. Commit only the owned foundation files through the root integrator.
 
 **Acceptance:** Repeatable package resolution, documented exact pins and real scanner entrypoints; no secret-bearing file tracked. Initial CVE results are recorded honestly and block unsafe candidates before downstream runtime tests.
 
