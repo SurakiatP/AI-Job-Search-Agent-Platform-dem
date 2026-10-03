@@ -1,0 +1,672 @@
+openapi: 3.1.0
+info:
+  title: Job Search Platform Application API
+  version: 1.0.0
+  description: >-
+    Shared REST contract. Owner routes require the local owner session and CSRF token;
+    grant callers use project-bound bearer tokens and cannot read original CVs, uploads,
+    messages, or other raw inputs. Provider credentials and model selection are never
+    accepted by run submission.
+servers:
+  - url: /api/v1
+security:
+  - ownerSession: []
+tags:
+  - name: bootstrap
+  - name: projects
+  - name: sessions
+  - name: jobs
+  - name: files
+  - name: runs
+  - name: approvals
+  - name: sharing
+  - name: settings
+paths:
+  /owner/bootstrap:
+    post:
+      tags: [bootstrap]
+      security: []
+      summary: Exchange the one-time local launch nonce for an owner session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OwnerBootstrapRequest'}
+      responses:
+        '200':
+          description: Session established; cookie is HttpOnly and SameSite
+          headers:
+            Set-Cookie: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OwnerBootstrapView'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /projects:
+    get:
+      tags: [projects]
+      responses:
+        '200': {description: Owner projects, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/ProjectView'}}}}}
+    post:
+      tags: [projects]
+      requestBody: {$ref: '#/components/requestBodies/ProjectCreate'}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/ProjectView'}}}}
+  /projects/{project_id}:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [projects]
+      responses:
+        '200': {description: Project, content: {application/json: {schema: {$ref: '#/components/schemas/ProjectView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [projects]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ProjectUpdate'}}}
+      responses: {'200': {description: Updated}}
+    delete:
+      tags: [projects]
+      responses: {'204': {description: Deleted}}
+  /projects/{project_id}/preferences:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [projects]
+      responses: {'200': {description: Preferences, content: {application/json: {schema: {$ref: '#/components/schemas/PreferencesView'}}}}}
+    patch:
+      tags: [projects]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/PreferencesUpdate'}}}
+      responses: {'200': {description: Updated preferences}}
+  /projects/{project_id}/sessions:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [sessions]
+      responses: {'200': {description: Sessions, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SessionView'}}}}}}
+    post:
+      tags: [sessions]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SessionCreate'}}}
+      responses: {'201': {description: Created session}}
+  /projects/{project_id}/sessions/{session_id}/messages:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: session_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [sessions]
+      responses: {'200': {description: Owner-only message history}}
+    post:
+      tags: [sessions]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MessageCreate'}}}
+      responses: {'202': {description: Accepted conversation message}}
+  /projects/{project_id}/jobs:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      responses: {'200': {description: Job revision views}}
+    post:
+      tags: [jobs]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/JobCreate'}}}
+      responses: {'201': {description: Created immutable job revision}}
+  /projects/{project_id}/documents:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [files]
+      description: Owner-only generated document metadata and latest revision references.
+      responses: {'200': {description: Documents, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/DocumentView'}}}}}}
+  /projects/{project_id}/documents/{document_id}/revisions:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [files]
+      description: Owner-only immutable document revision metadata.
+      responses: {'200': {description: Revisions, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/DocumentRevisionView'}}}}}}
+  /projects/{project_id}/cv:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [files]
+      description: Owner-only CV revision metadata; raw content is never a grant resource.
+      responses: {'200': {description: CV revision views}}
+    post:
+      tags: [files]
+      description: Owner-only multipart upload; server validates bytes, type, and size.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties: {file: {type: string, format: binary}}
+      responses: {'201': {description: Published CV revision metadata}}
+  /projects/{project_id}/files/{file_id}/download:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: file_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [files]
+      security: [{ownerSession: []}, {projectGrant: []}]
+      description: >-
+        Authenticated binary stream. Owners may read project files. A current
+        results:read grant may stream generated artifacts only; raw CVs, uploads,
+        chat attachments and source inputs remain owner-only. Revalidate the grant
+        during streaming so revocation stops an in-flight transfer. No object key
+        or presigned URL is returned.
+      responses:
+        '200':
+          description: Authorized file bytes
+          headers:
+            Content-Disposition: {schema: {type: string}}
+            ETag: {schema: {type: string}}
+            Cache-Control: {schema: {type: string, const: 'private, no-store'}}
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '403': {description: Grant lacks results:read or file kind is owner-only}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/runs:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [runs]
+      description: Owner list, or grant-visible results filtered to permitted result views.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      responses: {'200': {description: Runs}}
+    post:
+      tags: [runs]
+      description: Submit a project-scoped evaluate_job or draft_documents request.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      parameters:
+        - {name: Idempotency-Key, in: header, required: false, schema: {type: string, minLength: 1, maxLength: 128}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/RunRequest'}}}
+      responses:
+        '202': {description: Queued or existing idempotent run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '409': {description: Idempotency key reused with different inputs}
+  /projects/{project_id}/runs/{run_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [runs]
+      security: [{ownerSession: []}, {projectGrant: []}]
+      responses:
+        '200': {description: Authorized run result view, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/runs/{run_id}/events:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: Last-Event-ID
+        in: header
+        schema: {type: integer, minimum: 0}
+    get:
+      tags: [runs]
+      description: Persisted SSE replay; grant authorization is rechecked before each event.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      responses: {'200': {description: text/event-stream, content: {text/event-stream: {schema: {type: string}}}}}
+  /projects/{project_id}/runs/{run_id}/cancel:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [runs]
+      description: Owner requests cancellation; public status changes only after execution stops.
+      responses: {'202': {description: Cancellation requested, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}}
+  /projects/{project_id}/approvals:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [approvals]
+      responses: {'200': {description: Owner-only pending revision-bound approvals}}
+    post:
+      tags: [approvals]
+      description: Owner-only request for a typed protected action; service snapshots the proposed change digest and expiry.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApprovalRequest'}}}
+      responses:
+        '201': {description: Created approval, content: {application/json: {schema: {$ref: '#/components/schemas/ApprovalView'}}}}
+  /projects/{project_id}/approvals/{approval_id}/decision:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: approval_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [approvals]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApprovalDecision'}}}
+      responses: {'200': {description: One-use approval decision applied}}
+  /projects/{project_id}/grants:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [sharing]
+      responses: {'200': {description: Owner-only grant metadata; token values are never retrievable}}
+    post:
+      tags: [sharing]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/GrantIssueRequest'}}}
+      responses: {'201': {description: Token disclosed once, content: {application/json: {schema: {$ref: '#/components/schemas/GrantIssuedView'}}}}}
+  /projects/{project_id}/grants/{grant_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: grant_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    delete:
+      tags: [sharing]
+      responses: {'204': {description: Revoked}}
+  /projects/{project_id}/settings/provider:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [settings]
+      responses: {'200': {description: Provider name, model and masked credential status}}
+    put:
+      tags: [settings]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ProviderSettingsUpdate'}}}
+      responses: {'200': {description: Credential stored by secret adapter; secret value is not returned}}
+  /projects/{project_id}/settings/provider/test:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [settings]
+      description: Bounded test of the saved provider configuration; never accepts or returns a key.
+      responses:
+        '200': {description: Sanitized connection result, content: {application/json: {schema: {$ref: '#/components/schemas/ProviderConnectionTestView'}}}}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /projects/{project_id}/settings/tools:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [settings]
+      responses:
+        '200': {description: Project tool connector status, content: {application/json: {schema: {$ref: '#/components/schemas/ToolConnectorSettingsView'}}}}
+  /projects/{project_id}/settings/tools/{adapter}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: adapter
+        in: path
+        required: true
+        schema: {type: string, enum: [career_ops]}
+    put:
+      tags: [settings]
+      description: Create a new immutable revision of an allowlisted built-in connector setting.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ToolConnectorUpdate'}}}
+      responses:
+        '200': {description: Updated connector status, content: {application/json: {schema: {$ref: '#/components/schemas/ToolConnectorView'}}}}
+  /tools:
+    get:
+      tags: [settings]
+      summary: Discover the fixed platform tool catalog
+      description: Returns platform operations only; no Project data or provider configuration.
+      responses:
+        '200': {description: Allowlisted platform tools, content: {application/json: {schema: {$ref: '#/components/schemas/ToolsView'}}}}
+components:
+  securitySchemes:
+    ownerSession:
+      type: apiKey
+      in: cookie
+      name: owner_session
+    projectGrant:
+      type: http
+      scheme: bearer
+  parameters:
+    project_id:
+      name: project_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  requestBodies:
+    ProjectCreate:
+      required: true
+      content: {application/json: {schema: {$ref: '#/components/schemas/ProjectCreate'}}}
+  responses:
+    Unauthorized:
+      description: Owner session or grant is missing, expired or revoked
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
+    Unavailable:
+      description: Provider or secret adapter is unavailable
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
+    NotFound:
+      description: Resource is absent or outside the authorized project scope
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
+  schemas:
+    RunRequest:
+      type: object
+      additionalProperties: false
+      required: [session_id, operation, job_revision_id, output_language, idempotency_key]
+      properties:
+        session_id: {type: string, format: uuid}
+        operation: {type: string, enum: [evaluate_job, draft_documents]}
+        cv_revision_id: {type: [string, 'null'], format: uuid}
+        job_revision_id: {type: string, format: uuid}
+        output_language: {type: string, enum: [th, en]}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+    ProjectCreate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties: {name: {type: string, minLength: 1, maxLength: 200}}
+    ProjectView:
+      type: object
+      additionalProperties: false
+      required: [id, name, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        created_at: {type: string, format: date-time}
+    ProjectUpdate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties: {name: {type: string, minLength: 1, maxLength: 200}}
+    PreferencesUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        locale: {type: string, enum: [th, en]}
+        output_language: {type: string, enum: [th, en]}
+        notifications_enabled: {type: boolean}
+    PreferencesView:
+      type: object
+      additionalProperties: false
+      required: [project_id, locale, output_language, notifications_enabled, updated_at]
+      properties:
+        project_id: {type: string, format: uuid}
+        locale: {type: string, enum: [th, en]}
+        output_language: {type: string, enum: [th, en]}
+        notifications_enabled: {type: boolean}
+        updated_at: {type: string, format: date-time}
+    SessionCreate:
+      type: object
+      additionalProperties: false
+      properties: {title: {type: string, maxLength: 200, default: New session}}
+    SessionView:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, title, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        title: {type: string}
+        created_at: {type: string, format: date-time}
+    RevisionView:
+      type: object
+      additionalProperties: false
+      required: [id, revision, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        revision: {type: integer, minimum: 1}
+        created_at: {type: string, format: date-time}
+    JobRevisionView:
+      allOf:
+        - {$ref: '#/components/schemas/RevisionView'}
+        - type: object
+          properties:
+            title: {type: string}
+            company: {type: [string, 'null']}
+            source_url: {type: [string, 'null']}
+    CVRevisionView:
+      allOf:
+        - {$ref: '#/components/schemas/RevisionView'}
+        - type: object
+          properties:
+            original_filename: {type: string}
+            mime_type: {type: string}
+            size_bytes: {type: integer, minimum: 0}
+    DocumentView:
+      type: object
+      additionalProperties: false
+      required: [id, document_type, title]
+      properties:
+        id: {type: string, format: uuid}
+        document_type: {type: string, enum: [cv, cover_letter, other]}
+        title: {type: string}
+        latest_revision: {oneOf: [{$ref: '#/components/schemas/RevisionView'}, {type: 'null'}]}
+    DocumentRevisionView:
+      allOf:
+        - {$ref: '#/components/schemas/RevisionView'}
+        - type: object
+          required: [document_id]
+          properties:
+            document_id: {type: string, format: uuid}
+            source_cv_revision_id: {type: [string, 'null'], format: uuid}
+            source_job_revision_id: {type: [string, 'null'], format: uuid}
+            file_id: {type: [string, 'null'], format: uuid}
+    FileView:
+      type: object
+      additionalProperties: false
+      required: [id, kind, publication_state, display_name, mime_type, size_bytes, checksum_sha256, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        kind: {type: string, enum: [cv_original, job_source, generated_document, chat_attachment]}
+        publication_state: {type: string, enum: [pending, published, unavailable]}
+        display_name: {type: string}
+        mime_type: {type: string}
+        size_bytes: {type: integer, minimum: 0}
+        checksum_sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+        created_at: {type: string, format: date-time}
+    MessageCreate:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties: {content: {type: string, minLength: 1, maxLength: 20000}}
+    JobCreate:
+      type: object
+      additionalProperties: false
+      required: [title, description]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 300}
+        company: {type: [string, 'null'], maxLength: 300}
+        source_url: {type: [string, 'null'], maxLength: 2048}
+        description: {type: string, minLength: 1, maxLength: 50000}
+    UploadRequest:
+      type: object
+      additionalProperties: false
+      required: [filename, mime_type, size_bytes]
+      properties:
+        filename: {type: string, minLength: 1, maxLength: 255}
+        mime_type: {type: string, minLength: 1, maxLength: 200}
+        size_bytes: {type: integer, minimum: 0, maximum: 20971520}
+    RunView:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, session_id, operation, status, output_language, result_file_ids, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        session_id: {type: string, format: uuid}
+        operation: {type: string, enum: [evaluate_job, draft_documents]}
+        status: {type: string, enum: [queued, running, waiting_approval, completed, failed, cancelled, interrupted]}
+        output_language: {type: string, enum: [th, en]}
+        result_file_ids: {type: array, items: {type: string, format: uuid}}
+        created_at: {type: string, format: date-time}
+        finished_at: {type: [string, 'null'], format: date-time}
+        retry_of_id: {type: [string, 'null'], format: uuid}
+    RunEventView:
+      type: object
+      additionalProperties: false
+      required: [sequence, event_type, data, created_at]
+      properties:
+        sequence: {type: integer, minimum: 1}
+        event_type: {type: string}
+        data: {$ref: '#/components/schemas/RunEventData'}
+        created_at: {type: string, format: date-time}
+    RunEventData:
+      type: object
+      additionalProperties: false
+      properties:
+        step: {type: [string, 'null'], maxLength: 80}
+        status: {type: [string, 'null'], enum: [queued, running, waiting_approval, completed, failed, cancelled, interrupted]}
+        artifact_ids: {type: array, items: {type: string, format: uuid}}
+        message_key: {type: [string, 'null'], maxLength: 120}
+        progress_percent: {type: [integer, 'null'], minimum: 0, maximum: 100}
+    ApprovalView:
+      type: object
+      additionalProperties: false
+      required: [id, run_id, action, change_digest, expires_at]
+      properties:
+        id: {type: string, format: uuid}
+        run_id: {type: string, format: uuid}
+        action: {type: string, enum: [promote_cv, delete_document_revision, delete_file]}
+        revision_id: {type: [string, 'null'], format: uuid}
+        expected_cv_revision_id: {type: [string, 'null'], format: uuid}
+        target_file_id: {type: [string, 'null'], format: uuid}
+        change_digest: {type: string, pattern: '^[a-f0-9]{64}$'}
+        expires_at: {type: string, format: date-time}
+        consumed_at: {type: [string, 'null'], format: date-time}
+    ApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: {type: string, enum: [promote_cv, delete_document_revision, delete_file]}
+        revision_id: {type: [string, 'null'], format: uuid}
+        expected_cv_revision_id: {type: [string, 'null'], format: uuid}
+        target_file_id: {type: [string, 'null'], format: uuid}
+    ApprovalDecision:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties: {decision: {type: string, enum: [approve, reject]}}
+    OwnerBootstrapRequest:
+      type: object
+      additionalProperties: false
+      required: [nonce]
+      properties: {nonce: {type: string, minLength: 32, maxLength: 256}}
+    OwnerBootstrapView:
+      type: object
+      additionalProperties: false
+      required: [authenticated, csrf_token, expires_at]
+      properties:
+        authenticated: {const: true}
+        csrf_token: {type: string}
+        expires_at: {type: string, format: date-time}
+    GrantIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [capabilities, expires_at]
+      properties:
+        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft']}}
+        expires_at: {type: string, format: date-time}
+    GrantIssuedView:
+      type: object
+      additionalProperties: false
+      required: [id, token, project_id, capabilities, expires_at]
+      properties:
+        id: {type: string, format: uuid}
+        token: {type: string}
+        project_id: {type: string, format: uuid}
+        capabilities: {type: array, items: {type: string}}
+        expires_at: {type: string, format: date-time}
+    GrantView:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, capabilities, expires_at]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft']}}
+        expires_at: {type: string, format: date-time}
+        revoked_at: {type: [string, 'null'], format: date-time}
+    ProviderSettingsUpdate:
+      type: object
+      additionalProperties: false
+      required: [provider, model, credential]
+      properties:
+        provider: {type: string, maxLength: 80}
+        model: {type: string, maxLength: 160}
+        credential: {type: string, writeOnly: true}
+    ProviderSettingsView:
+      type: object
+      additionalProperties: false
+      required: [configured]
+      properties:
+        provider: {type: [string, 'null']}
+        model: {type: [string, 'null']}
+        configured: {type: boolean}
+        revision: {type: [integer, 'null'], minimum: 1}
+        masked_secret: {type: [string, 'null']}
+    ProviderConnectionTestView:
+      type: object
+      additionalProperties: false
+      required: [status, message_key, checked_at, duration_ms]
+      properties:
+        status: {type: string, enum: [succeeded, failed, unavailable]}
+        message_key: {type: string}
+        checked_at: {type: string, format: date-time}
+        duration_ms: {type: integer, minimum: 0, maximum: 30000}
+    ToolConnectorUpdate:
+      type: object
+      additionalProperties: false
+      required: [enabled]
+      properties: {enabled: {type: boolean}}
+    ToolConnectorView:
+      type: object
+      additionalProperties: false
+      required: [adapter, enabled, revision, updated_at]
+      properties:
+        adapter: {type: string, enum: [career_ops]}
+        enabled: {type: boolean}
+        revision: {type: integer, minimum: 1}
+        updated_at: {type: string, format: date-time}
+    ToolConnectorSettingsView:
+      type: object
+      additionalProperties: false
+      required: [connectors]
+      properties:
+        connectors: {type: array, items: {$ref: '#/components/schemas/ToolConnectorView'}}
+    ToolDescriptor:
+      type: object
+      additionalProperties: false
+      required: [name, description, required_capability]
+      properties:
+        name: {type: string, enum: [evaluate_job, draft_documents, get_run, cancel_run, list_results]}
+        description: {type: string}
+        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft']}
+    ToolsView:
+      type: object
+      additionalProperties: false
+      required: [tools]
+      properties:
+        tools: {type: array, items: {$ref: '#/components/schemas/ToolDescriptor'}}
+    ErrorView:
+      type: object
+      additionalProperties: false
+      required: [code, message_key, retryable, correlation_id]
+      properties:
+        code: {type: string}
+        message_key: {type: string}
+        retryable: {type: boolean}
+        fields: {type: [object, 'null'], additionalProperties: {type: string}}
+        correlation_id: {type: string, format: uuid}
