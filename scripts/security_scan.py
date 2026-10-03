@@ -80,11 +80,10 @@ def pip_findings(report: dict[str, Any]) -> tuple[int, list[str]]:
     for dependency in dependencies:
         if not isinstance(dependency, dict) or not isinstance(dependency.get("vulns"), list):
             raise ValueError("pip-audit dependency record has an invalid vulns list")
-        identifiers.extend(
-            str(vuln.get("id", "unknown"))
-            for vuln in dependency["vulns"]
-            if isinstance(vuln, dict)
-        )
+        for vuln in dependency["vulns"]:
+            if not isinstance(vuln, dict) or not isinstance(vuln.get("id"), str) or not vuln["id"]:
+                raise ValueError("pip-audit dependency has an invalid vulnerability record")
+            identifiers.append(vuln["id"])
     return len(identifiers), identifiers
 
 
@@ -188,7 +187,8 @@ def _image_id(reference: str) -> str:
 
 
 def _valid_sbom(report: dict[str, Any]) -> bool:
-    return report.get("bomFormat") == "CycloneDX" and isinstance(report.get("components"), list)
+    components = report.get("components")
+    return report.get("bomFormat") == "CycloneDX" and isinstance(components, list) and bool(components)
 
 
 def parse_trivy_version(output: str) -> dict[str, str]:

@@ -6,6 +6,16 @@ ROOT = Path(__file__).parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import check_dependencies  # noqa: E402
 import security_scan  # noqa: E402
+import pytest
+
+
+def test_malformed_pip_vulnerability_cannot_appear_clean():
+    with pytest.raises(ValueError):
+        security_scan.pip_findings({"dependencies": [{"vulns": [None]}]})
+
+
+def test_empty_sbom_does_not_establish_dependency_coverage():
+    assert not security_scan._valid_sbom({"bomFormat": "CycloneDX", "components": []})
 
 
 def test_npm_lock_rejects_dependency_drift():
