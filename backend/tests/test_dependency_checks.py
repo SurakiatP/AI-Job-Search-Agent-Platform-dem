@@ -18,6 +18,22 @@ def test_empty_sbom_does_not_establish_dependency_coverage():
     assert not security_scan._valid_sbom({"bomFormat": "CycloneDX", "components": []})
 
 
+def test_hermes_audit_uses_its_runtime_marker_context(tmp_path, monkeypatch):
+    commands = []
+    monkeypatch.setattr(security_scan, "_export_requirements", lambda *args, **kwargs: (True, "locked.txt"))
+
+    def successful_scan(name, command, output):
+        commands.append(command)
+        output.write_text('{"dependencies": []}')
+        return 0, "complete"
+
+    monkeypatch.setattr(security_scan, "run_scan", successful_scan)
+    security_scan._scan_pip(tmp_path, tmp_path, "hermes", dev=False)
+    command = commands[0]
+    assert command[command.index("--project") + 1] == str(tmp_path)
+    assert command[command.index("--group") + 1] == "audit"
+
+
 def test_npm_lock_rejects_dependency_drift():
     manifest = {
         "name": "example",

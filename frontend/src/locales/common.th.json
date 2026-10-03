@@ -1,0 +1,18 @@
+{
+  "skipToContent": "ข้ามไปเนื้อหา",
+  "language": "ภาษาของหน้าจอ",
+  "appearance": "รูปแบบหน้าจอ",
+  "light": "สว่าง",
+  "dark": "มืด",
+  "system": "ตามระบบ",
+  "openMenu": "เปิดเมนู",
+  "closeMenu": "ปิดเมนู",
+  "mainMenu": "เมนูหลัก",
+  "navigation": "การนำทาง",
+  "projects": "โปรเจกต์",
+  "sessions": "บทสนทนา",
+  "settings": "การตั้งค่า",
+  "noProjects": "โปรเจกต์ของคุณจะอยู่ที่นี่",
+  "workspaceTitle": "พื้นที่หางานของคุณ",
+  "workspaceDescription": "รวมโปรเจกต์ บทสนทนา และเอกสารสำหรับการหางานไว้ในที่เดียว"
+}

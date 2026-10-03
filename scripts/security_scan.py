@@ -134,9 +134,12 @@ def _scan_pip(project: Path, evidence: Path, label: str, *, dev: bool) -> tuple[
     if not exported:
         return "failed", {}, f"{label} locked export failed"
     raw = evidence / f"{label}-pip-audit.json"
+    auditor = ["uv", "run", "--locked", "--project", str(project)]
+    if label == "hermes":
+        auditor.extend(["--group", "audit"])
     code, note = run_scan(
         f"{label} pip-audit",
-        ["uv", "run", "--locked", "--project", "backend", "pip-audit", "--strict", "--requirement", output_or_error, "--no-deps", "--disable-pip", "--format", "json"],
+        [*auditor, "pip-audit", "--strict", "--requirement", output_or_error, "--no-deps", "--disable-pip", "--format", "json"],
         raw,
     )
     try:
@@ -264,7 +267,10 @@ def scan(image_refs: dict[str, str]) -> tuple[dict[str, str], list[str], dict[st
 
     image_findings: list[tuple[str, str, str]] = []
     summary["source_trivy"] = {}
-    for scope, source in (("backend", ROOT / "backend"), ("frontend", ROOT / "frontend"), ("tests", ROOT / "tests")):
+    lock_sources = [("backend", ROOT / "backend"), ("frontend", ROOT / "frontend"), ("tests", ROOT / "tests")]
+    if (hermes_project / "uv.lock").is_file():
+        lock_sources.append(("hermes", hermes_project))
+    for scope, source in lock_sources:
         valid, findings, sbom = _scan_lock_source(scope, source, evidence)
         summary["source_trivy"][scope] = {**sbom, "high_critical_count": len(findings)}
         if not valid:

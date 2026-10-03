@@ -1,0 +1,18 @@
+{
+  "skipToContent": "Skip to content",
+  "language": "Interface language",
+  "appearance": "Appearance",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System",
+  "openMenu": "Open menu",
+  "closeMenu": "Close menu",
+  "mainMenu": "Main menu",
+  "navigation": "Navigation",
+  "projects": "Projects",
+  "sessions": "Sessions",
+  "settings": "Settings",
+  "noProjects": "Your projects will appear here",
+  "workspaceTitle": "Your job search workspace",
+  "workspaceDescription": "Keep your job search projects, conversations and documents together."
+}
