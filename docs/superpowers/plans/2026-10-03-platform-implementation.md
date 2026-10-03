@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.12, FastAPI/Pydantic, SQLAlchemy/Alembic/psycopg, boto3, official MCP/A2A SDKs; React/TypeScript/Vite, Tailwind/shadcn, React Router, react-i18next; Docker Compose, pytest, Playwright and dependency/image scanners.
 
-Date: 2026-10-03. Status: written plan awaiting owner review. The owner approved the written specification and selected delegate-build on this date; this plan did not exist at the time of that approval. No implementation wave has started.
+Date: 2026-10-03. Status: owner-approved for delegate-build execution. The owner approved the specification, reviewed this written plan and then explicitly instructed execution. Runtime and security acceptance gates remain unverified until their tasks pass.
 
 ## Global Constraints
 
@@ -94,4 +94,4 @@ Use at most three implementation workers concurrently, within the available four
 - [ ] The independent reviewer reports PASS for the approved release, with exact commands, scan scope, advisory timestamps and limitations.
 - [ ] Root updates Hub statuses and commits the verified changes on the feature branch. Merge into develop is a later completion step; no push or merge happens during planning.
 
-**Review request:** Verify the three linked plans and their acceptance gates. `delegate-build` is already selected; only review of this newly written implementation plan remains before execution.
+**Execution authorization:** The owner approved this written plan and instructed delegate-build execution on 2026-10-03. Preserve its acceptance gates and report actual evidence at every wave.
