@@ -50,6 +50,15 @@ def authorize(db: Session, actor: Actor, project_id: UUID, action: str,
         raise ServiceError("unauthorized")
     if actor.project_id != project_id or grant.project_id != project_id:
         raise ServiceError("not_found")
+    if resource_kind == "run" and action == "cancel":
+        # RunService additionally verifies this is the original creating grant.
+        return
+    if resource_kind == "approval" and action in {"request", "read"}:
+        persisted = frozenset(grant.capabilities) & GRANT_CAPABILITIES
+        needed = "documents:draft" if action == "request" else "results:read"
+        if needed not in persisted:
+            raise ServiceError("forbidden")
+        return
     if resource_kind in OWNER_ONLY_RESOURCES or resource_kind not in RESULT_RESOURCES | GRANT_WORK_RESOURCES:
         raise ServiceError("forbidden")
     persisted = frozenset(grant.capabilities) & GRANT_CAPABILITIES

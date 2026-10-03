@@ -1,0 +1,480 @@
+"""One-use owner approvals bound to exact project data and immutable revisions."""
+from __future__ import annotations
+
+import hashlib
+import json
+import secrets
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
+from uuid import UUID
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, sessionmaker
+
+from job_search_platform.db.models import Approval, CVRevision, DocumentRevision, Grant, Project, Run, StoredFile
+from job_search_platform.services.authorization import authorize
+from job_search_platform.services.contracts import Actor, ApprovalRequest, ApprovalView
+from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.runs import accrue_active_time, actor_scope, append_event, lock_current_grant
+from job_search_platform.workers.queue import PostgresRunQueue
+
+APPROVAL_TTL = timedelta(hours=24)
+
+
+class ApprovalService:
+    """Persist approval records and apply only their exact owner-approved change."""
+
+    def __init__(self, sessions: sessionmaker[Session]):
+        self.sessions = sessions
+
+    def request(
+        self,
+        actor: Actor,
+        project_id: UUID,
+        run_id: UUID,
+        request: ApprovalRequest,
+        *,
+        now: datetime | None = None,
+    ) -> ApprovalView:
+        now = _utc(now or datetime.now(timezone.utc))
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "request", "approval")
+            if db.scalar(select(Project).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            lock_current_grant(db, actor, project_id, now)
+            run = db.scalar(
+                select(Run)
+                .where(Run.project_id == project_id, Run.id == run_id)
+                .with_for_update()
+            )
+            if run is None:
+                raise ServiceError("not_found")
+            if actor.kind == "grant" and run.actor_scope != actor_scope(actor):
+                raise ServiceError("forbidden")
+            if run.status == "waiting_approval":
+                old = db.scalar(
+                    select(Approval).where(
+                        Approval.project_id == project_id,
+                        Approval.run_id == run_id,
+                        Approval.action == request.action,
+                        Approval.revision_id == request.revision_id,
+                        Approval.expected_cv_revision_id == request.expected_cv_revision_id,
+                        Approval.target_file_id == request.target_file_id,
+                    )
+                )
+                if old is not None and old.consumed_at is None:
+                    return _view(old)
+                raise ServiceError("approval_already_pending")
+            if run.status != "running" or run.cancellation_requested_at is not None:
+                raise ServiceError("run_not_approvable")
+            change, _ = self._resolve_change(db, project_id, request)
+            approval = Approval(
+                project_id=project_id,
+                run_id=run_id,
+                action=request.action,
+                revision_id=request.revision_id,
+                expected_cv_revision_id=request.expected_cv_revision_id,
+                target_file_id=request.target_file_id,
+                change_digest=_digest(change),
+                token_hash=hashlib.sha256(secrets.token_bytes(32)).digest(),
+                expires_at=now + APPROVAL_TTL,
+            )
+            db.add(approval)
+            db.flush()
+            accrue_active_time(run, now)
+            run.status = "waiting_approval"
+            run.active_started_at = None
+            append_event(
+                db,
+                run,
+                "approval_requested",
+                {
+                    "status": "waiting_approval",
+                    "message_key": "approvals.requested",
+                    "approval_id": approval.id,
+                },
+                now=now,
+            )
+            return _view(approval)
+
+    def resolve(
+        self,
+        actor: Actor,
+        project_id: UUID,
+        approval_id: UUID,
+        decision: str,
+        *,
+        now: datetime | None = None,
+    ) -> ApprovalView:
+        """Record a one-use decision. Approved deletions remain durable pending work."""
+        if decision not in {"approve", "reject"}:
+            raise ServiceError("invalid_approval_decision")
+        now = _utc(now or datetime.now(timezone.utc))
+        expired = False
+        result: ApprovalView | None = None
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "resolve", "approval")
+            if actor.kind != "owner":
+                raise ServiceError("forbidden")
+            if db.scalar(select(Project).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            approval = db.scalar(
+                select(Approval)
+                .where(Approval.project_id == project_id, Approval.id == approval_id)
+                .with_for_update()
+            )
+            if approval is None:
+                raise ServiceError("not_found")
+            if approval.consumed_at is not None:
+                if approval.decision == decision:
+                    return _view(approval)
+                raise ServiceError("approval_consumed")
+            if _utc(approval.expires_at) <= now:
+                approval.consumed_at = now
+                approval.decision = "reject"
+                approval.applied_at = now
+                self._fail_approval(db, approval, "approval_expired", "errors.approval_expired", now)
+                expired = True
+                result = _view(approval)
+            else:
+                run = db.scalar(
+                    select(Run)
+                    .where(Run.project_id == project_id, Run.id == approval.run_id)
+                    .with_for_update()
+                )
+                if run is None:
+                    raise ServiceError("not_found")
+                if run.status != "waiting_approval":
+                    raise ServiceError("approval_stale")
+                if not self._creator_is_current(db, run, now):
+                    raise ServiceError("approval_stale")
+                request = ApprovalRequest(
+                    action=approval.action,
+                    revision_id=approval.revision_id,
+                    expected_cv_revision_id=approval.expected_cv_revision_id,
+                    target_file_id=approval.target_file_id,
+                )
+                change, target_file_id = self._resolve_change(db, project_id, request)
+                if _digest(change) != approval.change_digest:
+                    raise ServiceError("approval_stale")
+                if decision == "approve" and approval.action == "promote_cv":
+                    current = db.scalar(
+                        select(CVRevision)
+                        .where(CVRevision.project_id == project_id)
+                        .order_by(CVRevision.revision.desc())
+                        .limit(1)
+                        .with_for_update()
+                    )
+                    if current is None or current.id != approval.expected_cv_revision_id:
+                        raise ServiceError("approval_stale")
+                    next_revision = db.scalar(
+                        select(func.coalesce(func.max(CVRevision.revision), 0) + 1)
+                        .where(CVRevision.project_id == project_id)
+                    ) or 1
+                    db.add(
+                        CVRevision(
+                            project_id=project_id,
+                            revision=next_revision,
+                            file_id=target_file_id,
+                        )
+                    )
+
+                approval.consumed_at = now
+                approval.decision = decision
+                if decision == "reject":
+                    approval.applied_at = now
+                    run.status = "failed"
+                    run.finished_at = now
+                    PostgresRunQueue._clear_lease(run)
+                    append_event(
+                        db,
+                        run,
+                        "approval_rejected",
+                        {"status": "failed", "message_key": "errors.approval_rejected", "approval_id": approval.id},
+                        now=now,
+                    )
+                else:
+                    if approval.action == "promote_cv":
+                        # The approved new revision and applied marker commit together.
+                        approval.applied_at = now
+                    elif approval.action == "delete_document_revision" and target_file_id is None:
+                        approval.applied_at = now
+                    # Deletion effects stay queued until CORE08/FILE01 coordinates
+                    # availability marking with the external object-store deletion.
+                    run.status = "queued"
+                    run.lease_owner = None
+                    run.lease_expires_at = None
+                    run.heartbeat_at = None
+                    run.active_started_at = None
+                    append_event(
+                        db,
+                        run,
+                        "approval_approved",
+                        {"status": "queued", "message_key": "approvals.approved", "approval_id": approval.id},
+                        now=now,
+                    )
+                db.flush()
+                result = _view(approval)
+        if expired:
+            raise ServiceError("approval_expired")
+        assert result is not None
+        return result
+
+    def apply_pending_deletion(
+        self,
+        project_id: UUID,
+        approval_id: UUID,
+        delete_object: Callable[[UUID, str], None],
+        *,
+        now: datetime | None = None,
+    ) -> ApprovalView:
+        """Make the target unavailable, delete outside DB locks, then mark applied.
+
+        The callback receives only a scoped file UUID and opaque storage key. It must
+        be idempotent so a process crash between deletion and `applied_at` can retry.
+        """
+        now = _utc(now or datetime.now(timezone.utc))
+        with self.sessions.begin() as db:
+            if db.scalar(select(Project).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            approval = db.scalar(
+                select(Approval)
+                .where(Approval.project_id == project_id, Approval.id == approval_id)
+                .with_for_update()
+            )
+            if approval is None:
+                raise ServiceError("not_found")
+            if approval.decision != "approve" or approval.action not in {
+                "delete_document_revision",
+                "delete_file",
+            }:
+                raise ServiceError("approval_not_applicable")
+            if approval.applied_at is not None:
+                return _view(approval)
+            request = ApprovalRequest(
+                action=approval.action,
+                revision_id=approval.revision_id,
+                expected_cv_revision_id=approval.expected_cv_revision_id,
+                target_file_id=approval.target_file_id,
+            )
+            change, file_id = self._resolve_change(db, project_id, request, allow_unavailable=True)
+            if _digest(change) != approval.change_digest or file_id is None:
+                raise ServiceError("approval_stale")
+            file = db.scalar(
+                select(StoredFile)
+                .where(StoredFile.project_id == project_id, StoredFile.id == file_id)
+                .with_for_update()
+            )
+            if file is None:
+                raise ServiceError("approval_stale")
+            file.publication_state = "unavailable"
+            storage_key = file.storage_key
+        # No network/object-store operation is performed while holding DB locks.
+        delete_object(file_id, storage_key)
+        with self.sessions.begin() as db:
+            approval = db.scalar(
+                select(Approval)
+                .where(Approval.project_id == project_id, Approval.id == approval_id)
+                .with_for_update()
+            )
+            if approval is None:
+                raise ServiceError("not_found")
+            if approval.applied_at is None:
+                approval.applied_at = now
+            return _view(approval)
+
+    def get(self, actor: Actor, project_id: UUID, approval_id: UUID) -> ApprovalView:
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "read", "approval")
+            approval = db.scalar(
+                select(Approval).where(
+                    Approval.project_id == project_id, Approval.id == approval_id
+                )
+            )
+            if approval is None:
+                raise ServiceError("not_found")
+            if actor.kind == "grant":
+                run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == approval.run_id))
+                if run is None or run.actor_scope != actor_scope(actor):
+                    raise ServiceError("forbidden")
+            return _view(approval)
+
+    def _resolve_change(
+        self,
+        db: Session,
+        project_id: UUID,
+        request: ApprovalRequest,
+        *,
+        allow_unavailable: bool = False,
+    ) -> tuple[dict[str, object], UUID | None]:
+        if request.action == "promote_cv":
+            revision = db.scalar(
+                select(DocumentRevision).where(
+                    DocumentRevision.project_id == project_id,
+                    DocumentRevision.id == request.revision_id,
+                )
+            )
+            if revision is None or revision.file_id is None:
+                raise ServiceError("not_found")
+            file = self._file(db, project_id, revision.file_id, allow_unavailable)
+            current = db.scalar(
+                select(CVRevision)
+                .where(CVRevision.project_id == project_id)
+                .order_by(CVRevision.revision.desc())
+                .limit(1)
+            )
+            if current is None or current.id != request.expected_cv_revision_id:
+                raise ServiceError("approval_stale")
+            return (
+                {
+                    "action": request.action,
+                    "revision_id": str(revision.id),
+                    "file_id": str(file.id),
+                    "checksum_sha256": file.checksum_sha256,
+                    "expected_cv_revision_id": str(request.expected_cv_revision_id),
+                },
+                file.id,
+            )
+        if request.action == "delete_document_revision":
+            revision = db.scalar(
+                select(DocumentRevision).where(
+                    DocumentRevision.project_id == project_id,
+                    DocumentRevision.id == request.revision_id,
+                )
+            )
+            if revision is None:
+                raise ServiceError("not_found")
+            file = self._file(db, project_id, revision.file_id, allow_unavailable) if revision.file_id else None
+            if file is not None:
+                self._ensure_unshared(db, project_id, file.id, except_revision_id=revision.id)
+            return (
+                {
+                    "action": request.action,
+                    "revision_id": str(revision.id),
+                    "document_id": str(revision.document_id),
+                    "revision_number": revision.revision,
+                    "file_id": str(file.id) if file else None,
+                    "checksum_sha256": file.checksum_sha256 if file else None,
+                },
+                file.id if file else None,
+            )
+        file = self._file(db, project_id, request.target_file_id, allow_unavailable)
+        self._ensure_unshared(db, project_id, file.id)
+        return (
+            {
+                "action": request.action,
+                "file_id": str(file.id),
+                "checksum_sha256": file.checksum_sha256,
+                "kind": file.kind,
+            },
+            file.id,
+        )
+
+    @staticmethod
+    def _file(db: Session, project_id: UUID, file_id: UUID, allow_unavailable: bool) -> StoredFile:
+        file = db.scalar(
+            select(StoredFile).where(
+                StoredFile.project_id == project_id,
+                StoredFile.id == file_id,
+                StoredFile.publication_state.in_(("published", "unavailable"))
+                if allow_unavailable
+                else StoredFile.publication_state == "published",
+            )
+        )
+        if file is None:
+            raise ServiceError("not_found")
+        return file
+
+    @staticmethod
+    def _ensure_unshared(
+        db: Session,
+        project_id: UUID,
+        file_id: UUID,
+        *,
+        except_revision_id: UUID | None = None,
+    ) -> None:
+        cv_ref = db.scalar(
+            select(CVRevision.id).where(CVRevision.project_id == project_id, CVRevision.file_id == file_id).limit(1)
+        )
+        doc_query = select(DocumentRevision.id).where(
+            DocumentRevision.project_id == project_id,
+            DocumentRevision.file_id == file_id,
+        )
+        if except_revision_id is not None:
+            doc_query = doc_query.where(DocumentRevision.id != except_revision_id)
+        if cv_ref is not None or db.scalar(doc_query.limit(1)) is not None:
+            raise ServiceError("file_in_use")
+
+    @staticmethod
+    def _fail_approval(
+        db: Session,
+        approval: Approval,
+        event_type: str,
+        message_key: str,
+        now: datetime,
+    ) -> None:
+        run = db.scalar(
+            select(Run)
+            .where(Run.project_id == approval.project_id, Run.id == approval.run_id)
+            .with_for_update()
+        )
+        if run is not None and run.status == "waiting_approval":
+            run.status = "failed"
+            run.finished_at = now
+            PostgresRunQueue._clear_lease(run)
+            append_event(
+                db,
+                run,
+                event_type,
+                {"status": "failed", "message_key": message_key, "approval_id": approval.id},
+                now=now,
+            )
+
+    @staticmethod
+    def _creator_is_current(db: Session, run: Run, now: datetime) -> bool:
+        if run.actor_scope == "owner":
+            return True
+        if not run.actor_scope.startswith("grant:"):
+            return False
+        try:
+            grant_id = UUID(run.actor_scope.removeprefix("grant:"))
+        except ValueError:
+            return False
+        return (
+            db.scalar(
+                select(Grant.id)
+                .where(
+                    Grant.id == grant_id,
+                    Grant.project_id == run.project_id,
+                    Grant.revoked_at.is_(None),
+                    Grant.expires_at > now,
+                )
+                .with_for_update()
+            )
+            is not None
+        )
+
+
+def _digest(value: dict[str, object]) -> str:
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _view(approval: Approval) -> ApprovalView:
+    return ApprovalView(
+        id=approval.id,
+        run_id=approval.run_id,
+        action=approval.action,
+        revision_id=approval.revision_id,
+        expected_cv_revision_id=approval.expected_cv_revision_id,
+        target_file_id=approval.target_file_id,
+        change_digest=approval.change_digest,
+        expires_at=approval.expires_at,
+        consumed_at=approval.consumed_at,
+        decision=approval.decision,
+        applied_at=approval.applied_at,
+    )
+
+
+def _utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)

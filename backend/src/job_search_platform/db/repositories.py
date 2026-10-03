@@ -88,6 +88,7 @@ class Repositories:
             "cv_revision_id": str(resolved_cv_revision_id),
             "job_revision_id": str(request.job_revision_id),
             "output_language": request.output_language,
+            "retry_of_id": str(request.retry_of_id) if request.retry_of_id else None,
         }
         payload = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(payload).hexdigest()

@@ -34,6 +34,7 @@ class RunRequest(DTO):
     job_revision_id: UUID
     output_language: Literal["th", "en"]
     idempotency_key: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+    retry_of_id: UUID | None = None
 
 
 class ProjectCreate(DTO):
@@ -143,6 +144,11 @@ class UploadRequest(DTO):
     size_bytes: Annotated[int, Field(ge=0, le=20 * 1024 * 1024)]
 
 
+class EvaluationResult(DTO):
+    report_markdown: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200000)]
+    score: Annotated[float, Field(ge=1, le=5, strict=True)] | None = None
+
+
 class RunView(DTO):
     id: UUID
     project_id: UUID
@@ -154,9 +160,11 @@ class RunView(DTO):
     created_at: datetime
     finished_at: datetime | None = None
     retry_of_id: UUID | None = None
+    evaluation_result: EvaluationResult | None = None
 
 
 class RunEventData(DTO):
+    approval_id: UUID | None = None
     step: Annotated[str, StringConstraints(max_length=80)] | None = None
     status: RunStatus | None = None
     artifact_ids: tuple[UUID, ...] = ()
@@ -184,6 +192,8 @@ class ApprovalView(DTO):
     change_digest: str
     expires_at: datetime
     consumed_at: datetime | None = None
+    decision: Literal["approve", "reject"] | None = None
+    applied_at: datetime | None = None
 
 
 class ApprovalRequest(DTO):
@@ -226,7 +236,7 @@ class GrantIssueRequest(DTO):
 
 class GrantIssuedView(DTO):
     id: UUID
-    token: str
+    token: str = Field(repr=False)
     project_id: UUID
     capabilities: frozenset[Capability]
     expires_at: datetime

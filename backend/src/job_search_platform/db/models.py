@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, DateTime, ForeignKey, ForeignKeyConstraint,
+    Boolean, CheckConstraint, DateTime, Float, ForeignKey, ForeignKeyConstraint,
     Index, Integer, JSON, LargeBinary, String, Text, UniqueConstraint,
     Uuid, func,
 )
@@ -214,6 +214,7 @@ class Run(Base):
     input_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     config_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     output_language: Mapped[str] = mapped_column(String(2), nullable=False)
+    evaluation_result: Mapped[dict | None] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="queued")
     lease_owner: Mapped[str | None] = mapped_column(String(200))
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -226,6 +227,9 @@ class Run(Base):
     adapter_instance_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    active_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    active_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default="0")
+    tool_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     __table_args__ = (
         ForeignKeyConstraint(["project_id", "session_id"], ["sessions.project_id", "sessions.id"]),
         ForeignKeyConstraint(["project_id", "cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"]),
@@ -239,6 +243,8 @@ class Run(Base):
         CheckConstraint("operation IN ('evaluate_job','draft_documents')", name="ck_runs_operation"),
         CheckConstraint("output_language IN ('th','en')", name="ck_runs_language"),
         CheckConstraint("length(request_digest) = 64", name="ck_runs_digest_length"),
+        CheckConstraint("active_seconds >= 0", name="ck_runs_active_seconds"),
+        CheckConstraint("tool_calls BETWEEN 0 AND 30", name="ck_runs_tool_calls"),
         Index("uq_runs_one_active_per_project", "project_id", unique=True, postgresql_where=(status.in_(["running", "waiting_approval"]))),
     )
 
@@ -268,6 +274,8 @@ class Approval(Base):
     token_hash: Mapped[bytes] = mapped_column(LargeBinary(32), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision: Mapped[str | None] = mapped_column(String(8))
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (
         ForeignKeyConstraint(["project_id", "run_id"], ["runs.project_id", "runs.id"], ondelete="CASCADE"),
         ForeignKeyConstraint(["project_id", "revision_id"], ["document_revisions.project_id", "document_revisions.id"]),
@@ -275,7 +283,23 @@ class Approval(Base):
         ForeignKeyConstraint(["project_id", "target_file_id"], ["files.project_id", "files.id"]),
         CheckConstraint("action IN ('promote_cv','delete_document_revision','delete_file')", name="ck_approval_action"),
         CheckConstraint("length(change_digest) = 64", name="ck_approval_change_digest_length"),
+        CheckConstraint("decision IS NULL OR decision IN ('approve','reject')", name="ck_approval_decision"),
         CheckConstraint("(action = 'promote_cv' AND revision_id IS NOT NULL AND expected_cv_revision_id IS NOT NULL AND target_file_id IS NULL) OR (action = 'delete_document_revision' AND revision_id IS NOT NULL AND expected_cv_revision_id IS NULL AND target_file_id IS NULL) OR (action = 'delete_file' AND revision_id IS NULL AND expected_cv_revision_id IS NULL AND target_file_id IS NOT NULL)", name="ck_approval_target_shape"),
         UniqueConstraint("run_id", "revision_id", name="uq_approval_run_revision"),
         UniqueConstraint("run_id", "target_file_id", name="uq_approval_run_file"),
+    )
+
+
+class RunArtifact(Base):
+    """Published output provenance; public views resolve scoped file metadata."""
+    __tablename__ = "run_artifacts"
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    file_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    document_revision_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    lease_owner: Mapped[str | None] = mapped_column(String(200))
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "run_id"], ["runs.project_id", "runs.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["project_id", "file_id"], ["files.project_id", "files.id"]),
+        ForeignKeyConstraint(["project_id", "document_revision_id"], ["document_revisions.project_id", "document_revisions.id"]),
     )

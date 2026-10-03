@@ -254,3 +254,27 @@ def test_revision_content_and_run_snapshots_are_immutable(db_session):
     run.lease_owner = "synthetic-worker"
     db_session.flush()
     assert run.status == "running"
+def test_durable_runtime_limits_and_output_provenance(db_session):
+    from sqlalchemy import update
+    from sqlalchemy.exc import IntegrityError
+    from job_search_platform.db.models import Run, RunArtifact
+    from helpers import project, session, revisions, provider_config
+
+    p = project(db_session)
+    s = session(db_session, p.id)
+    cv, job = revisions(db_session, p.id)
+    config = provider_config(db_session, p.id)
+    run = Run(project_id=p.id, session_id=s.id, operation="evaluate_job",
+              cv_revision_id=cv.id, job_revision_id=job.id,
+              provider_configuration_id=config.id, actor_scope="owner",
+              idempotency_key="runtime-accounting", request_digest="e" * 64,
+              input_snapshot={}, config_snapshot={}, output_language="en")
+    db_session.add(run)
+    db_session.flush()
+    assert run.active_seconds == 0 and run.tool_calls == 0
+    for changes in ({"active_seconds": -1}, {"tool_calls": 31}, {"tool_calls": -1}):
+        with pytest.raises(IntegrityError):
+            with db_session.begin_nested():
+                db_session.execute(update(Run).where(Run.id == run.id).values(**changes))
+                db_session.flush()
+    assert RunArtifact.__table__.primary_key.columns.keys() == ["run_id", "file_id"]

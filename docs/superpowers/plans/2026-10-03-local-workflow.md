@@ -134,9 +134,9 @@ CREATE UNIQUE INDEX run_event_sequence ON run_events(run_id, sequence);
 
 **Depends on:** CORE-04. **Owns:** `backend/src/job_search_platform/integrations/object_store.py`, `backend/src/job_search_platform/services/files.py`, `backend/src/job_search_platform/services/documents.py`, `backend/tests/integration/test_file_publication.py`, `backend/tests/test_upload_validation.py`.
 
-- [ ] Implement a boto3 adapter for a private bucket using server-selected opaque keys. File metadata states are pending/ready/failed; only ready objects become inputs/downloads. Accept at most 20 MiB while streaming; validate actual PDF/DOCX content/MIME and checksum, reject malformed/oversized/scanned-only input with specific stable errors. Parse inside the verified sandbox with size/time/zip-expansion bounds; never extract DOCX paths on the host.
-- [ ] Implement `Files.upload(actor, project_id, stream, declared_type, display_name)` and `Artifacts.publish(project_id, run_id, validated_manifest)`. Use pending metadata, object write/checksum, then ready transaction. On object success plus transaction failure, keep the object inaccessible and reconcile from persisted pending records. Never assume DB and S3 share a transaction.
-- [ ] Implement owner-only raw downloads and authorized generated-artifact downloads. Prefer authenticated streaming for strict revocation; never accept a caller's arbitrary object key. Validate artifact path remains under the run staging directory and filename/MIME/checksum match before publishing. Never follow symlinks out of staging.
+- [x] Implement a boto3 adapter for a private bucket using server-selected opaque keys. File metadata states are pending/ready/failed; only ready objects become inputs/downloads. Accept at most 20 MiB while streaming; validate actual PDF/DOCX content/MIME and checksum, reject malformed/oversized/scanned-only input with specific stable errors. Parse inside the verified sandbox with size/time/zip-expansion bounds; never extract DOCX paths on the host.
+- [x] Implement `Files.upload(actor, project_id, stream, declared_type, display_name)` and `Artifacts.publish(project_id, run_id, validated_manifest)`. Use pending metadata, object write/checksum, then ready transaction. On object success plus transaction failure, keep the object inaccessible and reconcile from persisted pending records. Never assume DB and S3 share a transaction.
+- [x] Implement owner-only raw downloads and authorized generated-artifact downloads. Prefer authenticated streaming for strict revocation; never accept a caller's arbitrary object key. Validate artifact path remains under the run staging directory and filename/MIME/checksum match before publishing. Never follow symlinks out of staging.
 
 ```python
 async def test_commit_failure_does_not_publish_uploaded_object(files, fail_ready_commit):
@@ -146,7 +146,7 @@ async def test_commit_failure_does_not_publish_uploaded_object(files, fail_ready
     assert await files.reconcile_pending() == 1
 ```
 
-- [ ] Run `rtk proxy uv run --project backend pytest backend/tests/test_upload_validation.py backend/tests/integration/test_file_publication.py -q` with actual S3 and injected DB failure. Include symlink/traversal, zip expansion, unsupported scanned PDF and missing object tests.
+- [x] Run `rtk proxy uv run --project backend pytest backend/tests/test_upload_validation.py backend/tests/integration/test_file_publication.py -q` with actual S3 and injected DB failure. Include symlink/traversal, zip expansion, unsupported scanned PDF and missing object tests.
 
 **Acceptance:** No partial/unsafe object is published; grants cannot read original uploads, and all downloads enforce current Project access.
 
@@ -154,10 +154,10 @@ async def test_commit_failure_does_not_publish_uploaded_object(files, fail_ready
 
 **Depends on:** CORE-04. **Owns:** `backend/src/job_search_platform/services/runs.py`, `backend/src/job_search_platform/services/approvals.py`, `backend/src/job_search_platform/workers/queue.py`, `backend/tests/integration/test_runs.py`, `backend/tests/integration/test_queue_races.py`, `backend/tests/integration/test_approvals.py`.
 
-- [ ] Implement the RunService signatures and snapshot revision IDs plus document language/provider configuration during submission. Canonicalize the request and bind idempotency to Project+actor. Same key/body returns the same run; changed body returns `idempotency_conflict`. Retry creates a new run with retry_of; no checkpoint-resume claim.
-- [ ] Claim work under a short transaction: serialize global capacity selection with a PostgreSQL advisory transaction lock, lock queue candidates with `FOR UPDATE SKIP LOCKED`, verify Project occupancy, apply the active unique index, then assign lease. Heartbeat must match lease owner. Default maximum is two active Projects, one active run per Project, ten queued runs per Project and twenty external submissions/hour/grant; apply DB-backed counters atomically.
-- [ ] Persist events with transaction-assigned sequence numbers. Implement limit checks before dispatch and during execution: fifteen minutes active execution, thirty tool calls; pause execution time while awaiting approval. Approval expires after twenty-four hours, binds target/revision/change digest and is consumed once. Expiry fails the run with `approval_expired`; only owner can resolve/promote/delete, with current revision checked in the same transaction.
-- [ ] A queued cancellation can finish immediately. Running cancellation stores intent; CORE-08 confirms execution stops before public cancelled state. Owner or the same still-valid creating grant can cancel. Other same-project grants cannot cancel that run. Terminal cancellation requests are idempotent and cannot rewrite completed outputs.
+- [x] Implement the RunService signatures and snapshot revision IDs plus document language/provider configuration during submission. Canonicalize the request and bind idempotency to Project+actor. Same key/body returns the same run; changed body returns `idempotency_conflict`. Retry creates a new run with retry_of; no checkpoint-resume claim.
+- [x] Claim work under a short transaction: serialize global capacity selection with a PostgreSQL advisory transaction lock, lock queue candidates with `FOR UPDATE SKIP LOCKED`, verify Project occupancy, apply the active unique index, then assign lease. Heartbeat must match lease owner. Default maximum is two active Projects, one active run per Project, ten queued runs per Project and twenty external submissions/hour/grant; apply DB-backed counters atomically.
+- [x] Persist events with transaction-assigned sequence numbers. Implement limit checks before dispatch and during execution: fifteen minutes active execution, thirty tool calls; pause execution time while awaiting approval. Approval expires after twenty-four hours, binds target/revision/change digest and is consumed once. Expiry fails the run with `approval_expired`; only owner can resolve/promote/delete, with current revision checked in the same transaction.
+- [x] A queued cancellation can finish immediately. Running cancellation stores intent; CORE-08 confirms execution stops before public cancelled state. Owner or the same still-valid creating grant can cancel. Other same-project grants cannot cancel that run. Terminal cancellation requests are idempotent and cannot rewrite completed outputs.
 
 ```python
 async def test_same_key_different_body_conflicts(run_service, actor, project_id, request):
@@ -167,7 +167,7 @@ async def test_same_key_different_body_conflicts(run_service, actor, project_id,
         await run_service.submit(actor, project_id, request.model_copy(update={"output_language": "en"}))
 ```
 
-- [ ] Run `rtk proxy uv run --project backend pytest backend/tests/integration/test_runs.py backend/tests/integration/test_queue_races.py backend/tests/integration/test_approvals.py -q`. Use two actual DB connections/workers with a barrier; assert one claim per Project and two globally, not merely sequential successful queries. Test approval replay, stale revision, expiry and unauthorized cancellation.
+- [x] Run `rtk proxy uv run --project backend pytest backend/tests/integration/test_runs.py backend/tests/integration/test_queue_races.py backend/tests/integration/test_approvals.py -q`. Use two actual DB connections/workers with a barrier; assert one claim per Project and two globally, not merely sequential successful queries. Test approval replay, stale revision, expiry and unauthorized cancellation.
 
 **Acceptance:** Queue/idempotency/limits survive concurrent clients and preserve snapshots. No lease theft or stale approval can change durable data.
 
@@ -175,10 +175,10 @@ async def test_same_key_different_body_conflicts(run_service, actor, project_id,
 
 **Depends on:** CORE-04. **Owns:** `backend/src/job_search_platform/services/owner_sessions.py`, `backend/src/job_search_platform/services/settings.py`, `backend/src/job_search_platform/services/grants.py`, `backend/src/job_search_platform/integrations/secrets.py`, `backend/tests/test_owner_sessions.py`, `backend/tests/test_secret_redaction.py`, `backend/tests/integration/test_grants.py`.
 
-- [ ] Implement one-time random launch nonce exchange, persisted hashed nonce/session records with expiry and atomic consume. Require exact configured loopback Origin/Host; issue HttpOnly/SameSite owner cookie. Reject untrusted Origin and missing/expired/replayed nonce. State-changing owner routes require CSRF token and Origin; no login/account page.
-- [ ] Implement macOS Keychain access through the Python adapter, not command-line arguments containing keys. Settings accept a key once, save the reference and return configured status/masked metadata only. Missing/unavailable Keychain yields `secret_store_unavailable`; never fall back to plaintext DB/localStorage. A synthetic in-memory adapter is test-only.
-- [ ] Implement owner provider/model configuration and tool connector configuration for supported allowlisted adapters. Show which provider receives CV data. Connection tests are bounded and redact credentials. Requests cannot override model/keys. Configuration changes create a new revision for future runs; existing run snapshots remain unchanged.
-- [ ] Issue random project tokens, store only keyed/secure hashes plus expiry/capabilities/audit fields. Return the full token once on creation, never on list/read. Revoke atomically. Warn in UI contract that `results:read` shares generated CV/Cover Letter contents; no cost-cap guarantee.
+- [x] Implement one-time random launch nonce exchange, persisted hashed nonce/session records with expiry and atomic consume. Require exact configured loopback Origin/Host; issue HttpOnly/SameSite owner cookie. Reject untrusted Origin and missing/expired/replayed nonce. State-changing owner routes require CSRF token and Origin; no login/account page.
+- [x] Implement macOS Keychain access through the Python adapter, not command-line arguments containing keys. Settings accept a key once, save the reference and return configured status/masked metadata only. Missing/unavailable Keychain yields `secret_store_unavailable`; never fall back to plaintext DB/localStorage. A synthetic in-memory adapter is test-only.
+- [x] Implement owner provider/model configuration and tool connector configuration for supported allowlisted adapters. Show which provider receives CV data. Connection tests are bounded and redact credentials. Requests cannot override model/keys. Configuration changes create a new revision for future runs; existing run snapshots remain unchanged.
+- [x] Issue random project tokens, store only keyed/secure hashes plus expiry/capabilities/audit fields. Return the full token once on creation, never on list/read. Revoke atomically. Warn in UI contract that `results:read` shares generated CV/Cover Letter contents; no cost-cap guarantee.
 
 ```python
 async def test_launch_nonce_is_single_use(owner_sessions, launch):
@@ -187,7 +187,7 @@ async def test_launch_nonce_is_single_use(owner_sessions, launch):
         await owner_sessions.exchange(launch.nonce, launch.origin)
 ```
 
-- [ ] Run `rtk proxy uv run --project backend pytest backend/tests/test_owner_sessions.py backend/tests/test_secret_redaction.py backend/tests/integration/test_grants.py -q`. Use recognizable synthetic key/token sentinels and assert absence from captured logs, public events/DTOs and DB fields. Verify native Keychain save/read/delete with a disposable synthetic test entry on macOS, without examining other entries.
+- [x] Run `rtk proxy uv run --project backend pytest backend/tests/test_owner_sessions.py backend/tests/test_secret_redaction.py backend/tests/integration/test_grants.py -q`. Use recognizable synthetic key/token sentinels and assert absence from captured logs, public events/DTOs and DB fields. Verify native Keychain save/read/delete with a disposable synthetic test entry on macOS, without examining other entries.
 
 **Acceptance:** Owner identity differs from grant identity; secrets have a real local backend and no round-trip disclosure; grant revocation and one-time display work.
 

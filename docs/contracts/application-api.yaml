@@ -22,6 +22,14 @@ tags:
   - name: sharing
   - name: settings
 paths:
+  /owner/session:
+    post:
+      tags: [bootstrap]
+      description: Restore a valid loopback owner session after page reload. Requires exact configured Origin and Host plus HttpOnly owner cookie; returns the same derived CSRF token without nonce reuse or token rotation.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Current owner session, content: {application/json: {schema: {$ref: '#/components/schemas/OwnerBootstrapView'}}}}
+        '401': {description: Missing, expired or revoked owner session}
   /owner/bootstrap:
     post:
       tags: [bootstrap]
@@ -372,6 +380,7 @@ components:
         job_revision_id: {type: string, format: uuid}
         output_language: {type: string, enum: [th, en]}
         idempotency_key: {type: string, minLength: 1, maxLength: 128}
+        retry_of_id: {type: [string, 'null'], format: uuid, description: New manual retry of a same-project terminal run; original execution never resumes.}
     ProjectCreate:
       type: object
       additionalProperties: false
@@ -498,11 +507,19 @@ components:
         filename: {type: string, minLength: 1, maxLength: 255}
         mime_type: {type: string, minLength: 1, maxLength: 200}
         size_bytes: {type: integer, minimum: 0, maximum: 20971520}
+    EvaluationResult:
+      type: object
+      additionalProperties: false
+      required: [report_markdown]
+      properties:
+        report_markdown: {type: string, minLength: 1, maxLength: 200000}
+        score: {type: [number, 'null'], minimum: 1, maximum: 5, description: Career Ops native 1–5 score; absent when not established.}
     RunView:
       type: object
       additionalProperties: false
       required: [id, project_id, session_id, operation, status, output_language, result_file_ids, created_at]
       properties:
+        evaluation_result: {anyOf: [{$ref: '#/components/schemas/EvaluationResult'}, {type: 'null'}]}
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
         session_id: {type: string, format: uuid}
@@ -526,6 +543,7 @@ components:
       type: object
       additionalProperties: false
       properties:
+        approval_id: {type: [string, 'null'], format: uuid}
         step: {type: [string, 'null'], maxLength: 80}
         status: {type: [string, 'null'], enum: [queued, running, waiting_approval, completed, failed, cancelled, interrupted]}
         artifact_ids: {type: array, items: {type: string, format: uuid}}
@@ -536,6 +554,8 @@ components:
       additionalProperties: false
       required: [id, run_id, action, change_digest, expires_at]
       properties:
+        decision: {type: [string, 'null'], enum: [approve, reject, null]}
+        applied_at: {type: [string, 'null'], format: date-time}
         id: {type: string, format: uuid}
         run_id: {type: string, format: uuid}
         action: {type: string, enum: [promote_cv, delete_document_revision, delete_file]}
