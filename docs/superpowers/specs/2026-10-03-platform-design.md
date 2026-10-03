@@ -39,6 +39,23 @@ Authorization/Approval service, Artifact service และ Hermes adapter อย
 Frontend ใช้ React + TypeScript + Vite มี routes และ internationalization
 Build frontend เป็น static assets ที่ backend ให้บริการได้ในรุ่น local
 
+### เครื่องมือเสริมที่เจ้าของรับคำแนะนำแล้ว
+
+- Frontend: Tailwind CSS สำหรับ styling, shadcn/ui สำหรับ UI primitives,
+  React Router สำหรับ navigation และ react-i18next สำหรับไทย/อังกฤษ
+- Backend: Pydantic ตรวจ request/response; SQLAlchemy เข้าถึง PostgreSQL,
+  Alembic จัดการ schema migrations และ psycopg เป็น PostgreSQL driver
+- Artifact service: boto3 เรียก S3 APIs ของ MinIO ผ่าน backend ที่ตรวจสิทธิ์
+- Local infrastructure: Docker Compose จัดการ PostgreSQL/MinIO และ health checks;
+  backend เป็นผู้ควบคุม Project sandboxes
+- Verification: pytest สำหรับ backend และ Playwright สำหรับ flows ของ frontend;
+  structured logs และ backup/restore เป็นส่วนของการส่งมอบ
+
+ตรึง package versions หลังตรวจ compatibility ใน implementation plan
+เริ่มพิสูจน์ CV → ประเมินประกาศ → สร้างเอกสาร → PostgreSQL/MinIO → เปิดกลับมาดูผล
+แล้วเชื่อม MCP/A2A กับ shared services เดียวกัน
+การเลือก document parsing/export libraries ต้องตรวจ reuse จาก Career Ops ก่อนเติม dependency
+
 | Component | หน้าที่ | ข้อมูลที่เป็นเจ้าของ |
 |---|---|---|
 | Web UI | Landing, chat, settings, review และ approvals | Preferences และ unsent drafts ใน browser |

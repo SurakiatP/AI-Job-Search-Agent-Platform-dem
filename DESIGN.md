@@ -35,6 +35,12 @@ Sidebar แสดง Projects และ Sessions ภายใน Project พร�
 รองรับแชตโปร่งและการเปิด panel เอกสารด้านขวา บนจอแคบเปิดเอกสารเป็นหน้าแยก
 ไม่เพิ่มระบบบัญชีผู้ใช้หรือ login สำหรับรุ่น local ที่เจ้าของใช้คนเดียว
 
+## Frontend stack
+
+Frontend stack: React + TypeScript + Vite, Tailwind CSS + shadcn/ui,
+React Router และ react-i18next โดย DESIGN.md เป็นหลักสำหรับปรับหน้าตาของ UI primitives
+การเปลี่ยน route หรือ UI locale ต้องรักษา Project/Session, appearance และ unsent draft
+
 ## Typography
 
 | ส่วน | ฟอนต์ | ขนาด / line-height / น้ำหนัก |
