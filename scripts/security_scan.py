@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -17,6 +18,7 @@ from check_dependencies import REQUIRED_SCANS, evaluate_scan_coverage
 
 ROOT = Path(__file__).resolve().parents[1]
 TIMEOUT_SECONDS = 900
+PARSER_CARGO_SHA256 = "7faf5b93ab3d496d848556be84eda6def764a18f50e4de39298847b612980d26"
 
 
 def evidence_directory() -> Path:
@@ -87,7 +89,8 @@ def pip_findings(report: dict[str, Any]) -> tuple[int, list[str]]:
     return len(identifiers), identifiers
 
 
-def trivy_findings(report: dict[str, Any]) -> list[tuple[str, str, str]]:
+def trivy_findings(report: dict[str, Any], *, severities: set[str] | None = None) -> list[tuple[str, str, str]]:
+    severities = {"HIGH", "CRITICAL"} if severities is None else severities
     results = report.get("Results")
     if not isinstance(results, list):
         raise ValueError("Trivy report is missing Results list")
@@ -102,7 +105,7 @@ def trivy_findings(report: dict[str, Any]) -> list[tuple[str, str, str]]:
             if not isinstance(vuln, dict):
                 raise ValueError("Trivy target has an invalid vulnerability record")
             severity = str(vuln.get("Severity", "UNKNOWN")).upper()
-            if severity in {"HIGH", "CRITICAL"}:
+            if severity in severities:
                 findings.append((str(target.get("Target", "unknown")), str(vuln.get("VulnerabilityID", "unknown")), severity))
     return findings
 
@@ -137,9 +140,10 @@ def _scan_pip(project: Path, evidence: Path, label: str, *, dev: bool) -> tuple[
     auditor = ["uv", "run", "--locked", "--project", str(project)]
     if label == "hermes":
         auditor.extend(["--group", "audit"])
+    audit_args = ["--local"] if label == "hermes" else ["--requirement", output_or_error, "--no-deps", "--disable-pip"]
     code, note = run_scan(
         f"{label} pip-audit",
-        [*auditor, "pip-audit", "--strict", "--requirement", output_or_error, "--no-deps", "--disable-pip", "--format", "json"],
+        [*auditor, "pip-audit", "--strict", *audit_args, "--format", "json"],
         raw,
     )
     try:
@@ -149,6 +153,15 @@ def _scan_pip(project: Path, evidence: Path, label: str, *, dev: bool) -> tuple[
         return "failed", {}, f"{note}; invalid report"
     # pip-audit does not include severity in JSON; fail closed on any advisory.
     return _status(code, True), {"findings": count, "ids": identifiers}, note
+
+
+def hermes_manifest_mirror_valid(environment: Path) -> bool:
+    committed = ROOT / "infra" / "hermes"
+    try:
+        return all((committed / name).read_bytes() == (environment / name).read_bytes()
+                   for name in ("pyproject.toml", "uv.lock", ".python-version"))
+    except OSError:
+        return False
 
 
 def _scanner_versions() -> dict[str, str]:
@@ -246,15 +259,47 @@ def _scan_lock_source(scope: str, source: Path, evidence: Path) -> tuple[bool, l
     return code == 0 and sbom_code == 0 and sbom_ok, findings, {"sbom_components": len(sbom.get("components", [])) if sbom_ok else None}
 
 
+def parser_source_inventory(source: Path) -> Path:
+    """Verify release-source inventory; this is not compiled-wheel attestation."""
+    try:
+        if hashlib.sha256((source / "Cargo.lock").read_bytes()).hexdigest() != PARSER_CARGO_SHA256:
+            raise ValueError("parser Cargo inventory drift")
+    except OSError as exc:
+        raise ValueError("parser source inventory missing") from exc
+    return source
+
+
+def minio_build_inventory(upstream_source: Path) -> Path:
+    """Use the hash-verified module inventory actually copied into the build."""
+    overlay = ROOT / "infra" / "minio"
+    if not overlay.exists():
+        return upstream_source
+    try:
+        metadata = json.loads((overlay / "provenance.json").read_text())
+        if metadata.get("schema_version") != 1 or metadata.get("source_commit") != "7aac2a2c5b7c882e68c1ce017d8256be2feea27f":
+            raise ValueError("MinIO overlay provenance mismatch")
+        for name, key in (("go.mod", "go_mod_sha256"), ("go.sum", "go_sum_sha256")):
+            if hashlib.sha256((overlay / name).read_bytes()).hexdigest() != metadata.get(key):
+                raise ValueError("MinIO overlay hash mismatch")
+    except (OSError, TypeError, AttributeError, json.JSONDecodeError) as exc:
+        raise ValueError("MinIO overlay inventory invalid") from exc
+    return overlay
+
+
 def scan(image_refs: dict[str, str]) -> tuple[dict[str, str], list[str], dict[str, Any]]:
     evidence = evidence_directory()
     statuses: dict[str, str] = {scope: "missing" for scope in REQUIRED_SCANS}
     notes: list[str] = []
     summary: dict[str, Any] = {"evidence_directory": str(evidence), "npm": {}, "images": {}, "high_critical": []}
 
-    hermes_project = Path(os.environ.get("HERMES_ENV_DIR", str(ROOT / "infra" / "hermes"))).resolve()
+    hermes_project = Path(os.environ.get("HERMES_ENV_DIR", str(Path.home() / ".cache/job-search-platform/hermes-environment"))).resolve()
+    hermes_node_project = ROOT / "infra" / "hermes"
     for scope, project, dev in (("backend", ROOT / "backend", True), ("hermes", hermes_project, False)):
         if scope == "hermes" and not (project / "uv.lock").exists():
+            continue
+        if scope == "hermes" and not hermes_manifest_mirror_valid(project):
+            statuses[scope] = "failed"
+            notes.append("Hermes runtime manifests differ from versioned build inputs")
             continue
         status, data, note = _scan_pip(project, evidence, scope, dev=dev)
         statuses[scope] = status
@@ -262,8 +307,8 @@ def scan(image_refs: dict[str, str]) -> tuple[dict[str, str], list[str], dict[st
         notes.append(note)
 
     npm_projects = [("frontend", ROOT / "frontend"), ("tests", ROOT / "tests")]
-    if (hermes_project / "package-lock.json").is_file():
-        npm_projects.append(("hermes_node", hermes_project))
+    if (hermes_node_project / "package-lock.json").is_file():
+        npm_projects.append(("hermes_node", hermes_node_project))
     for scope, project in npm_projects:
         statuses[scope], counts, note = _scan_npm(scope, evidence, project=project)
         summary["npm"][scope] = counts
@@ -274,6 +319,8 @@ def scan(image_refs: dict[str, str]) -> tuple[dict[str, str], list[str], dict[st
     lock_sources = [("backend", ROOT / "backend"), ("frontend", ROOT / "frontend"), ("tests", ROOT / "tests")]
     if (hermes_project / "uv.lock").is_file():
         lock_sources.append(("hermes", hermes_project))
+    if (hermes_node_project / "package-lock.json").is_file():
+        lock_sources.append(("hermes_node", hermes_node_project))
     for scope, source in lock_sources:
         valid, findings, sbom = _scan_lock_source(scope, source, evidence)
         summary["source_trivy"][scope] = {**sbom, "high_critical_count": len(findings)}
@@ -293,7 +340,18 @@ def scan(image_refs: dict[str, str]) -> tuple[dict[str, str], list[str], dict[st
 
     minio_source = os.environ.get("MINIO_SOURCE_DIR")
     if minio_source and (Path(minio_source) / "go.mod").is_file():
-        source = Path(minio_source)
+        try:
+            from local_infra import validate_minio_source
+            validate_minio_source(Path(minio_source))
+            source = minio_build_inventory(Path(minio_source))
+        except ValueError:
+            statuses["go_build_dependencies"] = "failed"
+            notes.append("MinIO source or overlay provenance invalid")
+            source = None
+    else:
+        source = None
+    if source is not None:
+        summary["minio_build_inventory"] = str(source)
         raw = evidence / "minio-go-trivy.json"
         code, note = run_scan("MinIO Go/build dependency Trivy", ["trivy", "fs", "--include-dev-deps", "--scanners", "vuln", "--format", "json", str(source)], raw)
         try:
@@ -307,7 +365,26 @@ def scan(image_refs: dict[str, str]) -> tuple[dict[str, str], list[str], dict[st
         image_findings.extend(findings)
         notes.extend((note, sbom_note))
 
+    parser_source = Path(os.environ.get("PARSER_SOURCE_DIR", str(Path.home() / ".cache/job-search-platform/parser-source/firecrawl_anydoc-0.2.4")))
+    if parser_source.is_dir():
+        try:
+            parser_source_inventory(parser_source)
+            valid, findings, sbom = _scan_lock_source("parser_source", parser_source, evidence)
+            statuses["parser_source"] = "complete" if valid else "failed"
+            summary["source_trivy"]["parser_source"] = {**sbom, "high_critical_count": len(findings), "coverage": "release-source inventory; compiled wheel unattested"}
+            image_findings.extend(findings)
+        except ValueError:
+            statuses["parser_source"] = "failed"
+            notes.append("parser source provenance invalid")
     summary["high_critical"] = image_findings
+    summary["unknown_findings"] = []
+    for raw in sorted(evidence.glob("*trivy*.json")):
+        try:
+            summary["unknown_findings"].extend(
+                (raw.name, *finding) for finding in trivy_findings(_json_report(raw), severities={"UNKNOWN"})
+            )
+        except ValueError:
+            notes.append(f"{raw.name}: UNKNOWN assessment unavailable; report invalid")
     coverage = evaluate_scan_coverage(statuses)
     summary["coverage"] = {"statuses": statuses, "missing": sorted(coverage.missing), "failed": sorted(coverage.failed)}
     summary["scanner_versions"] = _scanner_versions()
@@ -335,6 +412,9 @@ def main() -> int:
     except ValueError as exc:
         parser.error(str(exc))
     statuses, notes, summary = scan(images)
+    summary_file = Path(summary["evidence_directory"]) / "scan-summary.json"
+    summary_file.write_text(json.dumps(summary, sort_keys=True, indent=2) + "\n")
+    summary_file.chmod(0o600)
     print(json.dumps(summary, sort_keys=True))
     for note in notes:
         print(note)

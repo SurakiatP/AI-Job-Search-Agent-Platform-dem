@@ -11,6 +11,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +25,7 @@ REQUIRED_SCANS = {
     "minio_image",
     "hermes_image",
     "go_build_dependencies",
+    "parser_source",
 }
 
 
@@ -95,7 +97,16 @@ def validate_uv_lock(lock_text: str, pyproject_text: str) -> list[str]:
         if re.search(r"\b(branch|tag)\s*=", line):
             problems.append(f"uv.lock line {line_number} uses a moving Git branch or tag")
         revision = re.search(r'\brev\s*=\s*"([^"]+)"', line)
-        if not revision or not re.fullmatch(r"[0-9a-f]{40}", revision.group(1)):
+        pinned = bool(revision and re.fullmatch(r"[0-9a-f]{40}", revision.group(1)))
+        git_url = re.search(r'\bgit\s*=\s*"([^"]+)"', line)
+        if git_url:
+            parsed = urlsplit(git_url.group(1))
+            query = parse_qs(parsed.query)
+            if "branch" in query or "tag" in query:
+                problems.append(f"uv.lock line {line_number} uses a moving Git branch or tag")
+            rev = query.get("rev", [""])[0]
+            pinned = pinned or bool(re.fullmatch(r"[0-9a-f]{40}", rev) and parsed.fragment == rev)
+        if not pinned:
             problems.append(f"uv.lock line {line_number} Git source lacks a full commit pin")
     if re.search(r"(?m)^\s*(branch|tag)\s*=", pyproject_text):
         problems.append("pyproject.toml contains an unpinned branch or tag source")

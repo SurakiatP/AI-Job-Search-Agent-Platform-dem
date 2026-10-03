@@ -32,6 +32,8 @@ def test_hermes_audit_uses_its_runtime_marker_context(tmp_path, monkeypatch):
     command = commands[0]
     assert command[command.index("--project") + 1] == str(tmp_path)
     assert command[command.index("--group") + 1] == "audit"
+    assert "--local" in command
+    assert "--requirement" not in command
 
 
 def test_native_node_audit_has_independent_required_coverage(tmp_path, monkeypatch):
@@ -47,6 +49,54 @@ def test_native_node_audit_has_independent_required_coverage(tmp_path, monkeypat
     assert status == "complete"
     assert commands[0][commands[0].index("--prefix") + 1] == str(tmp_path)
     assert "hermes_node" in check_dependencies.REQUIRED_SCANS
+
+
+def test_native_runtime_lock_drift_blocks_audit_provenance(tmp_path, monkeypatch):
+    committed = tmp_path / "infra" / "hermes"
+    environment = tmp_path / "environment"
+    committed.mkdir(parents=True)
+    environment.mkdir()
+    for name in ("pyproject.toml", "uv.lock", ".python-version"):
+        (committed / name).write_text("locked-input")
+        (environment / name).write_text("locked-input")
+    monkeypatch.setattr(security_scan, "ROOT", tmp_path)
+    assert security_scan.hermes_manifest_mirror_valid(environment)
+    (environment / "uv.lock").write_text("drifted-input")
+    assert not security_scan.hermes_manifest_mirror_valid(environment)
+
+
+def test_parser_source_inventory_rejects_cargo_drift(tmp_path, monkeypatch):
+    import hashlib
+    (tmp_path / "Cargo.lock").write_bytes(b"locked")
+    monkeypatch.setattr(security_scan, "PARSER_CARGO_SHA256", hashlib.sha256(b"locked").hexdigest())
+    assert security_scan.parser_source_inventory(tmp_path) == tmp_path
+    (tmp_path / "Cargo.lock").write_text("drifted")
+    with pytest.raises(ValueError, match="parser"):
+        security_scan.parser_source_inventory(tmp_path)
+
+
+def test_unknown_trivy_advisories_remain_visible():
+    report = {"Results": [{"Target": "go.mod", "Vulnerabilities": [{"VulnerabilityID": "GO-2026-5932", "Severity": "UNKNOWN"}]}]}
+    assert security_scan.trivy_findings(report) == []
+    assert security_scan.trivy_findings(report, severities={"UNKNOWN"}) == [("go.mod", "GO-2026-5932", "UNKNOWN")]
+
+
+def test_minio_build_inventory_rejects_overlay_drift(tmp_path, monkeypatch):
+    import hashlib
+    import json
+
+    overlay = tmp_path / "infra" / "minio"
+    overlay.mkdir(parents=True)
+    metadata = {"schema_version": 1, "source_commit": "7aac2a2c5b7c882e68c1ce017d8256be2feea27f"}
+    for name, key in (("go.mod", "go_mod_sha256"), ("go.sum", "go_sum_sha256")):
+        (overlay / name).write_bytes(b"locked")
+        metadata[key] = hashlib.sha256(b"locked").hexdigest()
+    (overlay / "provenance.json").write_text(json.dumps(metadata))
+    monkeypatch.setattr(security_scan, "ROOT", tmp_path)
+    assert security_scan.minio_build_inventory(tmp_path / "source") == overlay
+    (overlay / "go.sum").write_text("drifted")
+    with pytest.raises(ValueError, match="overlay"):
+        security_scan.minio_build_inventory(tmp_path / "source")
 
 
 def test_npm_lock_rejects_dependency_drift():
@@ -85,6 +135,12 @@ def test_uv_lock_rejects_moving_git_branch_or_tag():
 
     assert any("moving Git branch or tag" in problem for problem in problems)
     assert any("lacks a full commit pin" in problem for problem in problems)
+
+
+def test_uv_lock_accepts_native_uv_pinned_git_url():
+    revision = "3" * 40
+    lock = f'source = {{ git = "https://example.invalid/repo?rev={revision}#{revision}" }}\n'
+    assert check_dependencies.validate_uv_lock(lock, "[project]\n") == []
 
 
 def test_scan_coverage_rejects_missing_required_scope():
