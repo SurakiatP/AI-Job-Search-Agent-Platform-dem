@@ -1,7 +1,7 @@
 # AI Job Search Agent Platform — สเปกระบบ
 
 วันที่: 2026-10-03
-สถานะ: แบบสถาปัตยกรรมฉบับแรกสำหรับเจ้าของตรวจ ก่อนทำ implementation plan
+สถานะ: เจ้าของอนุมัติสเปกวันที่ 2026-10-03; implementation plan เขียนแล้วและอยู่ระหว่างตรวจ ก่อนลงมือโค้ด
 ข้อกำหนด UI: [DESIGN.md](../../../DESIGN.md)
 
 ## เป้าหมายและเกณฑ์สำเร็จ
@@ -155,7 +155,7 @@ Owner management/approval routes ไม่เปิดให้ shared token แ
 
 Capabilities: results:read, jobs:evaluate, documents:draft
 Caller อ่าน run status, ผลประเมิน และ generated artifacts ที่ตนมี results:read ได้
-ข้อเสนอสำหรับ review: base CV, uploaded raw inputs และ private chat history อ่านโดย owner เท่านั้น
+นโยบายที่อนุมัติ: base CV, uploaded raw inputs และ private chat history อ่านโดย owner เท่านั้น
 Evaluation service ใช้ base CV ภายในได้ โดยไม่เปิดต้นฉบับเป็น public MCP resource
 Generated CV/Cover Letter อาจมีข้อมูลของเจ้าของ จึงต้องถือว่า grant อ่าน artifacts เป็นการแชร์เอกสารเหล่านั้น
 
@@ -166,7 +166,7 @@ External callers ขอ approval หรืออ่านสถานะได�
 Token ตั้งหมดอายุ เพิกถอนได้ และไม่ปรากฏใน logs หรือ chat; owner เห็นค่าเต็มเฉพาะตอนออก token
 
 จำกัดจำนวน runs, active runs, runtime และ tool steps ราย Project ตาม owner configuration
-ค่าเริ่มต้นที่เสนอ: external submissions 20 ครั้ง/ชั่วโมงต่อ grant, queued runs ไม่เกิน 10 ต่อ Project,
+ค่าเริ่มต้นที่อนุมัติ: external submissions 20 ครั้ง/ชั่วโมงต่อ grant, queued runs ไม่เกิน 10 ต่อ Project,
 active execution 15 นาทีและ tool calls 30 ครั้งต่อ run; รอ owner approval ไม่คิดเป็น execution time
 Approval หมดอายุใน 24 ชั่วโมง เมื่อหมดอายุจบงาน failed พร้อม approval_expired และกดลองใหม่ได้
 ตรวจ limits ก่อน dispatch และระหว่างทำงาน ป้องกัน unlimited loop/queue growth

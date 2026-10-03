@@ -1,6 +1,6 @@
 # AI Job Search Agent Platform — DESIGN.md
 
-สถานะ: แบบ frontend สำหรับตรวจร่วมกับสเปกระบบ ยังไม่มี product UI ที่เชื่อม backend
+สถานะ: เจ้าของอนุมัติ frontend และสเปกระบบวันที่ 2026-10-03; ยังไม่มี product UI ที่เชื่อม backend
 ปรับปรุง: 2026-10-03
 
 ## หน้าที่ของเอกสาร
