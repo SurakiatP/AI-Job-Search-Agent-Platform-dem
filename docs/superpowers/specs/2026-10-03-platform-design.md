@@ -243,9 +243,9 @@ Provider configuration ต้องแจ้งเส้นทางข้อม
 
 ## สถานะ review และแหล่งอ้างอิง
 
-ข้อตกลงผลิตภัณฑ์และ storage ยืนยันในบทสนทนาแล้ว รายละเอียดทางวิศวกรรมในสเปกนี้รอ owner review
-ยังไม่สร้าง product code, containers, credentials หรือ implementation plan
-เมื่อ owner ยืนยันสเปก ให้ใช้ writing-plans แล้วให้เจ้าของเลือกวิธีดำเนินการตาม brainstorming gate
+เจ้าของอนุมัติผลิตภัณฑ์ storage สเปก และ implementation plan แล้ววันที่ 2026-10-03
+เริ่มดำเนินงานบน feat/platform-foundation ด้วย delegate-build; สถานะ runtime และ security ต้องอ้างอิงผลทดสอบจริง
+แผนและลำดับ waves อยู่ใน docs/superpowers/plans/2026-10-03-platform-implementation.md
 Integration Hub เก็บ pointers, ADRs และผลตรวจเอกสาร ไม่สำเนา application logic
 
 - [MinIO README — license, source-only distribution, maintenance status](https://github.com/minio/minio/blob/7aac2a2c5b7c882e68c1ce017d8256be2feea27f/README.md)

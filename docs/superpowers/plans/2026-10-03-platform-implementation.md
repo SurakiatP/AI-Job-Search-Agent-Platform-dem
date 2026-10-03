@@ -71,6 +71,13 @@ The delegate-build planner receives these complete plans after review. It may su
 
 Use at most three implementation workers concurrently, within the available four-agent total. Finish, inspect and verify every wave before starting a dependent one.
 
+### Execution clarifications from planner review
+
+- CORE-01 verifies current locks, available environment audits and scanner behavior. Missing not-yet-built Hermes/MinIO image coverage remains explicitly incomplete until later tasks; it cannot be used to claim a full security pass.
+- CORE-04 receives exclusive ownership of schema, migrations and shared test fixtures for wave 2. Root resumes ownership after the wave. Root integrates UI locale keys/page hooks/entrypoints after their owning tasks; workers request those shared edits rather than race.
+- CORE-08 must pass native offline execution/isolation/export-stop prerequisites before CORE-09. Its live-provider smoke remains pending until the owner can configure the provider through the actual Settings surface (UI-04); run it then and require it for final release verification. This resolves provisioning order without removing the live acceptance criterion or requesting keys in chat.
+- The initial planner model was unavailable at capacity. The announced planner substitution is `gpt-6-astra` at high effort; workers retain `gpt-6-luna` at high effort. Record the actual model used for the independent final reviewer when dispatched.
+
 ## Delegation allocation
 
 - Planner: `gpt-6.1-sol`, effort `high`; review these plans into ordered scoped tasks.
