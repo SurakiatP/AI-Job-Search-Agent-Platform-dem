@@ -1,5 +1,14 @@
 # Hermes native runtime proof (CORE-03)
 
+Current canonical execution image, adopted on 2026-10-04 after root agreement:
+`sha256:f132adc318b2553808e33b32b830fc99be14f500206a88f47d5dcee97c00432a`.
+The Alpine image and unchanged native language/source dependency scopes have zero
+known findings in the recorded scans; actual full native proof passed both worker
+and root independently. The final section records current adoption. Earlier
+Debian FAIL results below are historical evidence, not the current image status.
+This scoped runtime result does not establish full product/release readiness or
+replace the still-required live provider smoke after owner Settings provisioning.
+
 This is a functional offline proof using the actual pinned Hermes implementation,
 its registry/file/terminal tools, the Career Ops router, and native PDF/DOCX
 exporters. It is not evidence of a live provider run or a clean release security
@@ -56,12 +65,12 @@ Each copied build input's bytes match the workspace hashes below.
 | `infra/hermes/export_pdf.mjs` | `b2d07c6f88bf613b76aa50b633cf0c90bc66329f566f976da085eba8437ca46e` |
 | `infra/hermes/parse_document.py` | `044f14c68d82249d1e594ceb9f108a8f6a233bd6ae7092023c8335b2904950c2` |
 
-Final execution image:
+Initial Debian execution image (historical):
 `sha256:1a60a423cfc2ca2b60ae2d2250f3be357cbf32714394c354e1df7b1a3836aae6`.
 The tag `job-search-platform-hermes:core-03` is a convenience only; the adapter
 requires an immutable image digest.
 
-Base images are pinned:
+Initial Debian base images were pinned:
 
 - Python 3.14.7 slim Trixie:
   `sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d`.
@@ -159,7 +168,7 @@ Thai rendering works offline. CORE-08 must still enforce validated publication:
 realpath/no-symlink checks, checksum, file type/size, and output policy. This proof
 does not authorize publishing arbitrary native output.
 
-## Verification and security status
+## Initial Debian verification and security status (historical)
 
 `rtk proxy python3 scripts/prove_hermes.py --offline` runs an actual native proof
 with synthetic fixtures only. A child host environment contains a synthetic key
@@ -306,3 +315,86 @@ Exact sanitized scan/provenance and vendor pages are retained outside Git under
 `candidate-summary.json`, both exact dpkg inventories, `candidate-compatibility.json`,
 `stable-policy-and-simulations.txt`, and saved Debian tracker HTML. The isolated
 build context is `~/.cache/job-search-platform/hermes-remediation-20261004`.
+
+## Current Alpine adoption, 2026-10-04
+
+Fedora 44 was first assessed as a supported stable release, pinned to official
+digest `43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80`.
+Its metadata supplied Python 3.14.7 and Chromium 154, but Trivy 0.75.0 reported
+`Unsupported os family=fedora`. OS coverage was UNKNOWN; no native image build,
+promotion, zero-CVE inference, or distro-identity rewrite followed. That bounded
+assessment is retained outside Git in `~/.cache/job-search-platform/hermes-fedora-evidence-20261004`.
+
+Root approved adoption of the tested Alpine candidate within the existing
+Docker/Python/Hermes architecture. No provider, application, transport, sandbox,
+parser, exporter, or language manifest contract changed. Current immutable inputs:
+
+| Input | Pin |
+| --- | --- |
+| Official Python 3.14.7 Alpine 3.24.2 | `sha256:9e9fde4d32eedce0b661d9ab91e826b62dddf28e928c230ec55f1866cac66b01` |
+| Official Node 24.18.0 Alpine build stage | `sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd` |
+| Bash | `5.3.9-r1` |
+| Chromium, chromium-common, chromium-angle | `152.0.7977.82-r0` |
+| ripgrep | `15.1.0-r0` |
+| libstdc++ | `15.2.0-r5` |
+| OpenSSL libraries after stable repository upgrades | `3.5.9-r0` |
+
+The exact direct APK versions are in the versioned Dockerfile. Full resolved
+205-package inventory is retained in the immutable image and SBOM. Repository
+sources are Alpine stable `v3.24/main` and `v3.24/community`; no edge/testing or
+foreign distro packages were mixed in. Runtime Chromium stays at `/usr/bin/chromium`
+through the unchanged native PDF launch hook. Full Career Ops/DOCX source and
+license files, packaged Noto Sans Thai font assets/notices, and vendor APK license
+metadata remain present. No upstream source or font replacement was introduced.
+
+The existing hash-locked parser requirements already include the official
+`firecrawl_anydoc-0.2.4-cp310-abi3-musllinux_1_2_aarch64.whl`, SHA256
+`dd162b5eb64478fcf02f53abe7765e26f4350ba657f36c25f055c4cc3dbade0a`.
+Pip selected that compatible musl wheel with `--require-hashes --only-binary=:all:
+--no-deps`; actual Python 3.14 parsing passed. A Rust source build was unnecessary.
+The verified release Cargo inventory remains scanned separately. This retains
+the documented release-source mapping limitation: it is not compiled-wheel
+source attestation or reproducible binary-build assurance.
+
+| Current evidence | Result |
+| --- | --- |
+| Worker full `prove_hermes.py --offline --image <canonical>` | PASS: all native tools, two Project boundaries, English/Thai PDF/DOCX, scanned-PDF refusal, native stop and real bridge-crash cleanup |
+| Root independent full proof of exact canonical image | PASS |
+| Trivy image OS/Node/Python, all severities | 0 findings, including 0 UNKNOWN; Alpine detector scanned 205 APK packages |
+| Native source manifests: npm lock and uv lock | 0 findings; both detectors recognized |
+| Hash-verified parser release Cargo.lock | 0 findings; Cargo detector recognized |
+| Own CycloneDX SBOM | 220 components; includes all three Chromium APK components and firecrawl-anydoc |
+
+Image scan timestamp: **2026-10-04 00:37:15 Asia/Bangkok**. Trivy is 0.75.0 with DB
+updated **2026-10-03 07:01:46 UTC**. Native image/security scope: PASS at that recorded
+time. The project aggregate and owner merge/release policy remain separate gates;
+no advisories were waived, suppressed, or hidden behind unsupported coverage.
+
+Current versioned Dockerfile SHA256:
+`bfed2f946e3355336dea507ed2430560fdcf18ae0343476837d9d2f2e3456791`.
+Canonical and tested contexts have identical 1809-file content inventories and
+canonical context SHA256 (sorted relative filename plus bytes, excluding image-id):
+`ac3046055441cc2e2bb50e897b20a66a4e35850dda56d1bc0b514fee65e42737`.
+Language manifests, parser requirements, exporter/parser helpers, and full source
+trees match the tested inputs byte for byte. The canonical image tag, private
+runtime JSON `image`, and external build-context `image-id` all identify the
+independently tested **f132adc** artifact. Native Python environment and its lock
+remain unchanged.
+
+A rebuild from identical content inputs produced a different layer/image identity
+`476e47129ad55035035dc7a07c4cb53d84ac75f649e4bab2dd99ebd2b7a13986`; it was not
+adopted in place of the verified artifact. Future rebuilt images require their own
+image identity, scan, and proof rather than assuming bit-for-bit reproducibility.
+The original Debian index `1a60a423...` was no longer resolvable after Docker's tag
+replacement; no delete command was invoked. Verified Debian rollback candidate
+`a8819446adb4003bef147e60f4a7826d3ab6379b2c8d98591574f75e4f0d8fcc` is explicitly
+retained as `job-search-platform-hermes:core-03-debian-retained`; its unresolved
+historical CVEs still apply. No rollback was performed.
+
+Exact current evidence lives outside Git in
+`~/.cache/job-search-platform/hermes-alpine-evidence-20261004`: image/source scan
+JSON, installed inventory, provenance, canonical-adoption record, and own SBOM.
+SBOM SHA256: `1cca40f2a902c4cd73b12759774ae9be98468fe78536913e814149a63a955bc6`.
+Canonical acquisition/configuration paths remain
+`~/.cache/job-search-platform/hermes-runtime.json`, `hermes-environment`, and
+`hermes-image-build`; setup rebuilds the now-versioned pinned Alpine recipe.

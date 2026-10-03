@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "source_repository": "https://github.com/minio/minio",
+  "source_commit": "7aac2a2c5b7c882e68c1ce017d8256be2feea27f",
+  "go_version": "1.26.0",
+  "overlay_reason": "Refresh dependencies with known Critical or High advisories in the 2026-10-03 Trivy database; residual fixed advisories are also patched where a compatible release was available. Updated module graph requires Go 1.26.0.",
+  "go_mod_sha256": "34955c16f33a8d452d4b275788c3fd479bcff24b195da2aaaf2d21e429d8e049",
+  "go_sum_sha256": "681ff94f027c822739befb5ef49b3482ebe0629bf9383a4f6085250700568b6e"
+}

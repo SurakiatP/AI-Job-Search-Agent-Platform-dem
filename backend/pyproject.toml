@@ -40,3 +40,4 @@ markers = ["integration: requires the real local infrastructure or native runtim
 hermes = "c8301ea6c9b797184df16a9c5dd462400b264ff4"
 career-ops = "c1d0d1f3229daad3f2f5a7a4e46c9b256db51ea7"
 minio = "7aac2a2c5b7c882e68c1ce017d8256be2feea27f"
+gosu = "6456aaa0f3c854d199d0f037f068eb97515b7513"

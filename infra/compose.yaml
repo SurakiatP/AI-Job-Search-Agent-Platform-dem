@@ -1,0 +1,97 @@
+name: jobsearch-core02
+
+services:
+  postgres:
+    image: job-search-platform/postgres:17.11-alpine-gosu-1.19-6456aaa0f3c8
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+      additional_contexts:
+        gosu_source: ${GOSU_SOURCE_DIR:?Set GOSU_SOURCE_DIR to the pinned external gosu checkout}
+      args:
+        GOSU_SOURCE_COMMIT: ${GOSU_SOURCE_COMMIT:?Set GOSU_SOURCE_COMMIT using scripts/local_infra.py}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jobsearch_platform_core02
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets:
+      - postgres_user
+      - postgres_password
+    ports:
+      - "127.0.0.1:${CORE02_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres17_alpine_data:/var/lib/postgresql/data
+    networks:
+      - storage_private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    labels:
+      com.job-search-platform.task: core02-storage
+
+  minio:
+    image: job-search-platform/minio-oss:7aac2a2c5b7c882e68c1ce017d8256be2feea27f
+    build:
+      context: ./minio
+      dockerfile: Dockerfile
+      additional_contexts:
+        minio_source: ${MINIO_SOURCE_DIR:?Set MINIO_SOURCE_DIR to the pinned external MinIO checkout}
+      args:
+        MINIO_SOURCE_COMMIT: ${MINIO_SOURCE_COMMIT:?Set MINIO_SOURCE_COMMIT using scripts/local_infra.py}
+    restart: unless-stopped
+    command: ["server", "/data", "--address", ":9000"]
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_access_key
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_secret_key
+    secrets:
+      - minio_access_key
+      - minio_secret_key
+    ports:
+      - "127.0.0.1:${CORE02_MINIO_PORT:-59000}:9000"
+    volumes:
+      - minio_data:/data
+    networks:
+      - storage_private
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "/bin/busybox", "wget", "-q", "-T", "2", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    labels:
+      com.job-search-platform.task: core02-storage
+
+networks:
+  storage_private:
+    driver: bridge
+
+volumes:
+  postgres17_alpine_data:
+    name: jobsearch-core02-postgres17-alpine-data
+    labels:
+      com.job-search-platform.task: core02-storage
+  minio_data:
+    labels:
+      com.job-search-platform.task: core02-storage
+
+secrets:
+  postgres_user:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/postgres-user
+  postgres_password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/postgres-password
+  minio_access_key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/minio-access-key
+  minio_secret_key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/minio-secret-key

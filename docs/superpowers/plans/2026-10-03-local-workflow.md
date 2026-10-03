@@ -74,9 +74,9 @@ def test_required_scan_cannot_pass_when_image_is_missing(tmp_path):
 
 **Depends on:** CORE-01. **Owns:** `infra/compose.yaml`, `infra/minio/Dockerfile`, `infra/.gitignore`, `scripts/local_infra.py`, `scripts/prove_storage.py`, `backend/tests/integration/test_storage_infrastructure.py`, `docs/engineering/storage-proof.md`.
 
-- [ ] Build MinIO from the pinned OSS commit with its verified Go toolchain and retained license notices. Pin build/base inputs and final image digest; scan build dependencies and final image, including Go coverage. Keep upstream AGPLv3 and maintenance status in evidence.
-- [ ] Configure PostgreSQL and MinIO on loopback only. Use separate internal infrastructure networking and health checks. Generate infrastructure credentials through a local setup command and store them in a private directory outside the repository; use Docker secret files or a verified supported file-based mechanism. The command reports paths/status only, never values. Do not use sample hard-coded credentials.
-- [ ] Implement `local_infra.py start/status/stop` using bounded subprocess calls. Validate private-directory permissions and refuse secrets beneath the Git root. Never destroy volumes on normal stop. A separate test-only reset can delete only resources carrying the test label.
+- [x] Build MinIO from the pinned OSS commit with its verified Go toolchain and retained license notices. Pin build/base inputs and final image digest; scan build dependencies and final image, including Go coverage. Keep upstream AGPLv3 and maintenance status in evidence.
+- [x] Configure PostgreSQL and MinIO on loopback only. Use separate internal infrastructure networking and health checks. Generate infrastructure credentials through a local setup command and store them in a private directory outside the repository; use Docker secret files or a verified supported file-based mechanism. The command reports paths/status only, never values. Do not use sample hard-coded credentials.
+- [x] Implement `local_infra.py start/status/stop` using bounded subprocess calls. Validate private-directory permissions and refuse secrets beneath the Git root. Never destroy volumes on normal stop. A separate test-only reset can delete only resources carrying the test label.
 
 ```python
 def test_infra_rejects_repository_secret_directory(repo_root):
@@ -84,8 +84,8 @@ def test_infra_rejects_repository_secret_directory(repo_root):
         validate_private_directory(repo_root / "infra" / "secrets", repo_root)
 ```
 
-- [ ] Implement `prove_storage.py`: connect to PostgreSQL, create/update/select a synthetic test row in a rollbackable test database; create a private S3 bucket, upload/read/check SHA-256, restart MinIO and verify persistence, then delete only the probe objects. Report image/source IDs and checksum results, never connection credentials.
-- [ ] Run red/green unit validation, then `rtk proxy python3 scripts/local_infra.py start` and `rtk proxy uv run --project backend pytest backend/tests/integration/test_storage_infrastructure.py -q`. Record actual source-build, health, restart, S3 and CVE evidence.
+- [x] Implement `prove_storage.py`: connect to PostgreSQL, create/update/select a synthetic test row in a rollbackable test database; create a private S3 bucket, upload/read/check SHA-256, restart MinIO and verify persistence, then delete only the probe objects. Report image/source IDs and checksum results, never connection credentials.
+- [x] Run red/green unit validation, then `rtk proxy python3 scripts/local_infra.py start` and `rtk proxy uv run --project backend pytest backend/tests/integration/test_storage_infrastructure.py -q`. Record actual source-build, health, restart, S3 and CVE evidence.
 
 **Acceptance:** Pinned source-built MinIO and PostgreSQL work with private persistence. Unbuildable or unsafe MinIO remains a blocker; no product substitution or unsupported security assurance.
 

@@ -365,6 +365,19 @@ def scan(image_refs: dict[str, str]) -> tuple[dict[str, str], list[str], dict[st
         image_findings.extend(findings)
         notes.extend((note, sbom_note))
 
+    gosu_source = Path(os.environ.get("GOSU_SOURCE_DIR", str(Path.home() / ".cache/job-search-platform/upstream/gosu")))
+    if gosu_source.is_dir():
+        try:
+            from local_infra import validate_gosu_source, validate_postgres_overlay
+            validate_gosu_source(gosu_source)
+            validate_postgres_overlay()
+            valid, findings, sbom = _scan_lock_source("postgres-go", ROOT / "infra/postgres", evidence)
+            statuses["postgres_go_build_dependencies"] = "complete" if valid else "failed"
+            summary["source_trivy"]["postgres-go"] = {**sbom, "high_critical_count": len(findings)}
+            image_findings.extend(findings)
+        except ValueError:
+            statuses["postgres_go_build_dependencies"] = "failed"
+            notes.append("Postgres gosu source or overlay provenance invalid")
     parser_source = Path(os.environ.get("PARSER_SOURCE_DIR", str(Path.home() / ".cache/job-search-platform/parser-source/firecrawl_anydoc-0.2.4")))
     if parser_source.is_dir():
         try:

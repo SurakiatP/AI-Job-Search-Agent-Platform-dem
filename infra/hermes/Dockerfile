@@ -1,14 +1,11 @@
-FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS node
-FROM python:3.14.7-slim-trixie@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
+FROM node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS node
+FROM python:3.14.7-alpine@sha256:9e9fde4d32eedce0b661d9ab91e826b62dddf28e928c230ec55f1866cac66b01
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
-    apt-get update && apt-get install -y --no-install-recommends \
-        ripgrep=14.1.1-1+b4 chromium=154.0.8037.92-1~deb13u1 \
-        libpcre2-8-0=10.46-1~deb13u3 libssl3t64=3.5.7-1~deb13u3 \
-        openssl=3.5.7-1~deb13u3 openssl-provider-legacy=3.5.7-1~deb13u3 && \
-    rm -rf /var/lib/apt/lists/*
+    apk upgrade --no-cache && apk add --no-cache \
+        bash=5.3.9-r1 chromium=152.0.7977.82-r0 ripgrep=15.1.0-r0 libstdc++=15.2.0-r5
 COPY career-ops/ /opt/career-ops/
 COPY career-ops-docx/ /opt/career-ops-docx/
 COPY package.json package-lock.json /opt/runtime/

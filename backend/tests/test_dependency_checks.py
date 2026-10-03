@@ -75,6 +75,10 @@ def test_parser_source_inventory_rejects_cargo_drift(tmp_path, monkeypatch):
         security_scan.parser_source_inventory(tmp_path)
 
 
+def test_source_built_postgres_helper_requires_independent_coverage():
+    assert "postgres_go_build_dependencies" in check_dependencies.REQUIRED_SCANS
+
+
 def test_unknown_trivy_advisories_remain_visible():
     report = {"Results": [{"Target": "go.mod", "Vulnerabilities": [{"VulnerabilityID": "GO-2026-5932", "Severity": "UNKNOWN"}]}]}
     assert security_scan.trivy_findings(report) == []
