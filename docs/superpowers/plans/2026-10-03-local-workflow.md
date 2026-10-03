@@ -93,10 +93,10 @@ def test_infra_rejects_repository_secret_directory(repo_root):
 
 **Depends on:** CORE-01. **Owns:** `scripts/prove_hermes.py`, `backend/src/job_search_platform/integrations/hermes_runtime.py`, `backend/tests/integration/test_hermes_runtime.py`, `backend/tests/fixtures/synthetic_cv.txt`, `backend/tests/fixtures/synthetic_job.txt`, `infra/hermes/`, `docs/engineering/hermes-proof.md`.
 
-- [ ] Acquire full pinned Hermes and Career Ops sources into an external immutable dependency cache, with no nested Git repository committed. Install Hermes into its own locked runtime environment so it cannot silently change the backend resolver result.
-- [ ] Inspect the pinned native startup/run/events/stop/approval/session interfaces and document exact native launch/configuration and API mappings. Implement a small typed `HermesRuntime` adapter with `start_project`, `submit`, `events`, `stop`, `health` and `close` methods. Validate native response schemas and sanitize errors; no browser or external client reaches this native service.
-- [ ] Load the Career Ops router and referenced modes/scripts from the full checkout. Reuse verified parsing/export code. Prove text PDF/DOCX/pasted input and Thai/English outputs using synthetic fixtures; identify scanned PDFs rather than silently returning an empty CV.
-- [ ] For two synthetic projects, configure separate Hermes homes and Docker tool workspaces. Test terminal, read/write/edit/search and every other enabled tool against traversal, another project's marker, host home and environment access. Disable unsupported tools before exposing them. Containers are non-privileged, have resource limits, no Docker socket and no provider credentials; supplied-input execution has no network.
+- [x] Acquire full pinned Hermes and Career Ops sources into an external immutable dependency cache, with no nested Git repository committed. Install Hermes into its own locked runtime environment so it cannot silently change the backend resolver result.
+- [x] Inspect the pinned native startup/run/events/stop/approval/session interfaces and document exact native launch/configuration and API mappings. Implement a small typed `HermesRuntime` adapter with `start_project`, `submit`, `events`, `stop`, `health` and `close` methods. Validate native response schemas and sanitize errors; no browser or external client reaches this native service.
+- [x] Load the Career Ops router and referenced modes/scripts from the full checkout. Reuse verified parsing/export code. Prove text PDF/DOCX/pasted input and Thai/English outputs using synthetic fixtures; identify scanned PDFs rather than silently returning an empty CV.
+- [x] For two synthetic projects, configure separate Hermes homes and Docker tool workspaces. Test terminal, read/write/edit/search and every other enabled tool against traversal, another project's marker, host home and environment access. Disable unsupported tools before exposing them. Containers are non-privileged, have resource limits, no Docker socket and no provider credentials; supplied-input execution has no network.
 
 ```python
 async def test_native_tool_cannot_read_another_project(native_runtime, project_pair):
@@ -106,7 +106,7 @@ async def test_native_tool_cannot_read_another_project(native_runtime, project_p
     assert second.marker_text not in result.public_text
 ```
 
-- [ ] Run `rtk proxy python3 scripts/prove_hermes.py --offline` for native startup/skill loading/tools/stop without a provider call, followed by integration tests. The offline proof must invoke actual native tool execution. Record an explicit blocked status for any native function that cannot be exercised offline. A live-provider synthetic smoke belongs to CORE-08.
+- [x] Run `rtk proxy python3 scripts/prove_hermes.py --offline` for native startup/skill loading/tools/stop without a provider call, followed by integration tests. The offline proof must invoke actual native tool execution. Record an explicit blocked status for any native function that cannot be exercised offline. A live-provider synthetic smoke belongs to CORE-08.
 
 **Acceptance:** Native interface compatibility, complete skill loading and tool isolation are evidence-backed. A mere profile/home difference is insufficient. Stop or unsupported isolation is a blocker for later worker integration.
 

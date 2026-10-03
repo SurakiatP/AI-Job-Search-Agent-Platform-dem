@@ -18,9 +18,11 @@ from job_search_platform.integrations.hermes_runtime import HermesRuntime, Runti
 CACHE = Path.home() / ".cache/job-search-platform"
 SYNTHETIC_KEY = "CORE03_SYNTHETIC_SECRET_NEVER_A_REAL_CREDENTIAL"
 
-async def prove():
+async def prove(image: str | None = None):
     assert os.environ.get("OPENAI_API_KEY") == SYNTHETIC_KEY
     config = json.loads((CACHE / "hermes-runtime.json").read_text())
+    if image is not None:
+        config["image"] = image
     proof_id = str(uuid4())
     runtime = HermesRuntime(config["image"], environment=Path(config["environment"]),
         hermes_source=Path(config["hermes"]["source"]),
@@ -178,15 +180,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--offline", action="store_true", required=True)
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
-    options = parser.parse_args()
+    parser.add_argument("--image", help="immutable candidate digest; leaves runtime configuration unchanged"); options = parser.parse_args()
     if not options.worker:
         environment = {"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
                        "HOME": str(Path.home()), "OPENAI_API_KEY": SYNTHETIC_KEY}
-        result = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--offline", "--worker"],
-                                env=environment, timeout=180)
+        result = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--offline", "--worker"] + (["--image", options.image] if options.image else []), env=environment, timeout=180)
         return result.returncode
     try:
-        result = asyncio.run(prove())
+        result = asyncio.run(prove(options.image))
     except Exception as exc:
         result = {"status": "blocked", "code": str(exc) if isinstance(exc, RuntimeErrorCode) else type(exc).__name__}
         print(json.dumps(result, sort_keys=True))
