@@ -19,6 +19,7 @@ REQUIRED_SCANS = {
     "frontend",
     "tests",
     "hermes",
+    "hermes_node",
     "postgres_image",
     "minio_image",
     "hermes_image",

@@ -34,6 +34,21 @@ def test_hermes_audit_uses_its_runtime_marker_context(tmp_path, monkeypatch):
     assert command[command.index("--group") + 1] == "audit"
 
 
+def test_native_node_audit_has_independent_required_coverage(tmp_path, monkeypatch):
+    commands = []
+
+    def successful_scan(name, command, output):
+        commands.append(command)
+        output.write_text('{"metadata":{"vulnerabilities":{"low":0,"moderate":0,"high":0,"critical":0}}}')
+        return 0, "complete"
+
+    monkeypatch.setattr(security_scan, "run_scan", successful_scan)
+    status, _, _ = security_scan._scan_npm("hermes_node", tmp_path, project=tmp_path)
+    assert status == "complete"
+    assert commands[0][commands[0].index("--prefix") + 1] == str(tmp_path)
+    assert "hermes_node" in check_dependencies.REQUIRED_SCANS
+
+
 def test_npm_lock_rejects_dependency_drift():
     manifest = {
         "name": "example",

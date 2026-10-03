@@ -171,9 +171,10 @@ def _scanner_versions() -> dict[str, str]:
     return versions
 
 
-def _scan_npm(scope: str, evidence: Path) -> tuple[str, dict[str, int], str]:
+def _scan_npm(scope: str, evidence: Path, *, project: Path | None = None) -> tuple[str, dict[str, int], str]:
     raw = evidence / f"{scope}-npm-audit.json"
-    code, note = run_scan(scope + " npm audit", ["npm", "audit", "--prefix", scope, "--json", "--audit-level=high"], raw)
+    prefix = str(project) if project is not None else scope
+    code, note = run_scan(scope + " npm audit", ["npm", "audit", "--prefix", prefix, "--json", "--audit-level=high"], raw)
     try:
         counts = npm_findings(_json_report(raw))
     except ValueError:
@@ -260,8 +261,11 @@ def scan(image_refs: dict[str, str]) -> tuple[dict[str, str], list[str], dict[st
         summary[scope] = data
         notes.append(note)
 
-    for scope in ("frontend", "tests"):
-        statuses[scope], counts, note = _scan_npm(scope, evidence)
+    npm_projects = [("frontend", ROOT / "frontend"), ("tests", ROOT / "tests")]
+    if (hermes_project / "package-lock.json").is_file():
+        npm_projects.append(("hermes_node", hermes_project))
+    for scope, project in npm_projects:
+        statuses[scope], counts, note = _scan_npm(scope, evidence, project=project)
         summary["npm"][scope] = counts
         notes.append(note)
 
