@@ -1,5 +1,16 @@
 export type Locale = 'th' | 'en';
 
+export type RunRequest = {
+  session_id: string;
+  operation: RunOperation;
+  cv_revision_id?: string | null;
+  job_revision_id: string;
+  output_language: Locale;
+  idempotency_key: string;
+  retry_of_id?: string | null;
+  owner_instructions?: string | null;
+};
+
 export type ApiErrorBody = {
   code: string;
   message_key: string;

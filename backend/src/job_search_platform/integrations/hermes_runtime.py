@@ -112,6 +112,7 @@ class HermesRuntime:
             "HOME": str(process_home), "HERMES_HOME": str(home),
             "PYTHONPATH": str(self.hermes_source), "PYTHONDONTWRITEBYTECODE": "1",
             "PLATFORM_PROJECT_ID": str(project_id),
+            "PLATFORM_CAREER_OPS_SOURCE": str(self.career_ops_source),
             "TERMINAL_ENV": "docker", "TERMINAL_CWD": "/workspace",
             "TERMINAL_DOCKER_IMAGE": self.image, "TERMINAL_DOCKER_IMAGE_PINNED": "1",
             "TERMINAL_CONTAINER_CPU": "1", "TERMINAL_CONTAINER_MEMORY": "512",
@@ -246,12 +247,15 @@ class HermesRuntime:
 
     async def submit(self, project_id: UUID, session_id: UUID, prompt: str,
                      instructions: str, provider: ProviderConfig | None, *,
+                     operation: Literal["evaluate_job", "draft_documents"],
                      tool_gate: Callable[[str, str], Awaitable[bool]] | None = None) -> None:
+        if operation not in ("evaluate_job", "draft_documents"):
+            raise RuntimeErrorCode("native_response_invalid")
         project = self.projects[project_id]
         project.tool_gate = tool_gate
         project.terminal_received = False
         response = await self._request(project, "submit", session_id=str(session_id),
-            prompt=prompt, instructions=instructions,
+            prompt=prompt, instructions=instructions, operation=operation,
             provider=None if provider is None else {"provider": provider.provider,
                 "model": provider.model, "base_url": provider.base_url, "api_key": provider.api_key})
         if response.get("accepted") is not True:

@@ -103,7 +103,10 @@
     "landingReviewNote": "คุณเป็นผู้ตัดสินใจ ไม่มีการส่งใบสมัครโดยอัตโนมัติ",
     "landingFlowTitle": "วิธีเริ่มต้น",
     "projectSections": "ส่วนต่าง ๆ ของโปรเจกต์",
-    "selectedFile": "ไฟล์ที่เลือก"
+    "selectedFile": "ไฟล์ที่เลือก",
+    "sourceCVRevision": "CV ฉบับแก้ไขที่ {{revision}}",
+    "sourceCVUnavailable": "ไม่พบ CV ต้นฉบับ",
+    "openCVProfile": "เปิดโปรไฟล์ CV"
   },
   "workflow": {
     "addJob": "เพิ่มประกาศงาน",

@@ -14,8 +14,8 @@ type Props = {
 
 export function Composer({ locale, jobs, message, onMessageChange, onSubmit, busy = false, initialJobId }: Props) {
   const text = locale === 'th'
-    ? { job: 'ประกาศงานที่บันทึกไว้', operation: 'งานที่ต้องการ', evaluate: 'ประเมินความเหมาะสม', draft: 'ร่างเอกสารสมัครงาน', language: 'ภาษาผลลัพธ์', message: 'ข้อความในประวัติแชต', send: 'เริ่มงาน', noJobs: 'เพิ่มประกาศงานก่อนเริ่ม', th: 'ไทย', en: 'English' }
-    : { job: 'Saved job posting', operation: 'Requested work', evaluate: 'Evaluate fit', draft: 'Draft application documents', language: 'Output language', message: 'Message in chat history', send: 'Start run', noJobs: 'Add a saved job before starting', th: 'ไทย', en: 'English' };
+    ? { job: 'ประกาศงานที่บันทึกไว้', operation: 'งานที่ต้องการ', evaluate: 'ประเมินความเหมาะสม', draft: 'ร่างเอกสารสมัครงาน', language: 'ภาษาผลลัพธ์', message: 'คำแนะนำสำหรับงานนี้ (ใช้ในการประเมินหรือร่างเอกสาร)', send: 'เริ่มงาน', noJobs: 'เพิ่มประกาศงานก่อนเริ่ม', th: 'ไทย', en: 'English' }
+    : { job: 'Saved job posting', operation: 'Requested work', evaluate: 'Evaluate fit', draft: 'Draft application documents', language: 'Output language', message: 'Instructions for this task (used for evaluation or drafting)', send: 'Start run', noJobs: 'Add a saved job before starting', th: 'ไทย', en: 'English' };
   const selectedJob = jobs.find(job => job.id === initialJobId) ?? jobs[0];
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,9 +46,8 @@ export function Composer({ locale, jobs, message, onMessageChange, onSubmit, bus
         <option value="en">{text.en}</option>
       </select>
       <label htmlFor="assistant-message">{text.message}</label>
-      <textarea id="assistant-message" className="chat-text" value={message} onChange={event => onMessageChange(event.target.value)} rows={4} disabled={busy} />
+      <textarea id="assistant-message" className="chat-text" value={message} onChange={event => onMessageChange(event.target.value)} rows={4} maxLength={4000} disabled={busy} />
       <Button type="submit" variant="primary" disabled={busy || !message.trim()}>{text.send}</Button>
     </> : <p className="muted">{text.noJobs}</p>}
   </form>;
 }
-

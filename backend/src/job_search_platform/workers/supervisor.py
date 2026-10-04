@@ -215,7 +215,7 @@ class WorkerSupervisor:
         """Stop only validated project/run containers and mark old runs interrupted."""
         with self.sessions() as db:
             stale_runs = list(
-                db.scalars(select(Run).where(Run.status.in_(("running", "failed")))).all()
+                db.scalars(select(Run).where(Run.status.in_(("queued", "running", "waiting_approval", "failed")))).all()
             )
         for stale in stale_runs:
             if stale.status == "failed" and not any(
@@ -260,14 +260,14 @@ class WorkerSupervisor:
                     await asyncio.sleep(0.05)
                 if _recorded_process_alive(native_pid, native_created_at):
                     raise ServiceError("native_stop_incomplete")
-            if stopped_container and stale.status == "running":
+            if stopped_container and stale.status in ("queued", "running", "waiting_approval"):
                 await asyncio.to_thread(self._mark_interrupted, stale.id)
         await asyncio.to_thread(self._reconcile_pending_artifacts)
 
     def _mark_interrupted(self, run_id: uuid.UUID) -> None:
         with self.sessions.begin() as db:
             run = db.scalar(select(Run).where(Run.id == run_id).with_for_update())
-            if run is None or run.status != "running":
+            if run is None or run.status not in ("queued", "running", "waiting_approval"):
                 return
             run.status = "interrupted"
             run.finished_at = datetime.now(timezone.utc)

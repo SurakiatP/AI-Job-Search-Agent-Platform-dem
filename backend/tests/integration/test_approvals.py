@@ -6,6 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from threading import Barrier
 from uuid import uuid4
+from pathlib import Path
+import json
 
 import pytest
 from sqlalchemy import func, select
@@ -18,6 +20,32 @@ from job_search_platform.services.contracts import ApprovalRequest, RunRequest
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import RunService
 from job_search_platform.workers.queue import PostgresRunQueue
+from job_search_platform.workers.supervisor import WorkerSupervisor
+from job_search_platform.integrations.hermes_runtime import HermesRuntime
+
+
+def test_restart_invalidates_pending_approval_without_requeue(db_session, tmp_path):
+    factory, p, creator, owner_actor, current_cv, run = _setup(db_session)
+    revision_id, _ = _document_revision(factory, p.id)
+    approvals = ApprovalService(factory)
+    approval = approvals.request(creator, p.id, run.id, ApprovalRequest(
+        action="promote_cv", revision_id=revision_id, expected_cv_revision_id=current_cv.id,
+    ))
+    config = json.loads((Path.home() / ".cache/job-search-platform/hermes-runtime.json").read_text())
+    runtime = HermesRuntime(
+        config["image"], environment=Path(config["environment"]),
+        hermes_source=Path(config["hermes"]["source"]),
+        career_ops_source=Path(config["career-ops"]["source"]), workspace_root=tmp_path,
+    )
+    queue = PostgresRunQueue(factory)
+    asyncio.run(WorkerSupervisor(factory, queue, object(), runtime).reconcile_startup())
+    with pytest.raises(ServiceError, match="approval_stale"):
+        approvals.resolve(owner_actor, p.id, approval.id, "approve")
+    with factory() as db:
+        assert db.get(Run, run.id).status == "interrupted"
+        latest_cv = db.scalar(select(CVRevision).where(CVRevision.project_id == p.id).order_by(CVRevision.revision.desc()))
+        assert latest_cv.id == current_cv.id
+    assert queue.claim_next("synthetic-stale-approval") is None
 
 
 def _factory(db_session):

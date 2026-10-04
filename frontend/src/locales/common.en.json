@@ -103,7 +103,10 @@
     "landingReviewNote": "You stay in control: no application is submitted automatically.",
     "landingFlowTitle": "How it works",
     "projectSections": "Project sections",
-    "selectedFile": "Selected file"
+    "selectedFile": "Selected file",
+    "sourceCVRevision": "Source CV revision {{revision}}",
+    "sourceCVUnavailable": "Source CV unavailable",
+    "openCVProfile": "Open CV profile"
   },
   "workflow": {
     "addJob": "Add a job posting",

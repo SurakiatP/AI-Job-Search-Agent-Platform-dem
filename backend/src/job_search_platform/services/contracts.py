@@ -35,6 +35,7 @@ class RunRequest(DTO):
     output_language: Literal["th", "en"]
     idempotency_key: Annotated[str, StringConstraints(min_length=1, max_length=128)]
     retry_of_id: UUID | None = None
+    owner_instructions: Annotated[str | None, StringConstraints(max_length=4000)] = None
 
 
 class ProjectCreate(DTO):

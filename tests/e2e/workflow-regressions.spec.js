@@ -160,3 +160,26 @@ test('cancellation uncertainty remains pending until terminal confirmation', asy
 test('late reconciliation cannot regress a terminal run', async ({ browser }) => { await staleResponse(browser); });
 test('approval fetch recovers without unhandled rejection', async ({ browser }) => { await approvalRecovery(browser); });
 test('submission ambiguity and reload retry preserve durable intent', async ({ browser }) => { await idempotencyAndReload(browser); });
+
+test('restart interruption hides an unconsumed stale approval', async ({ browser }) => {
+  const page = await browser.newPage();
+  let status = 'waiting_approval';
+  await setup(page, route => {
+    const path = new URL(route.request().url()).pathname;
+    let value = [];
+    if (path.endsWith('/owner/session')) value = owner;
+    else if (path.endsWith('/events')) return route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' });
+    else if (path.endsWith('/approvals')) value = [approval('synthetic-pending')];
+    else if (path.endsWith('/runs')) value = [{ ...baseRun, status }];
+    else if (path.includes('/runs/')) value = { ...baseRun, status };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) });
+  });
+  await mountHook(page);
+  await page.waitForFunction(() => window.hook.pendingApproval?.id === 'synthetic-pending');
+  status = 'interrupted';
+  await page.evaluate(() => window.hook.reload());
+  await page.waitForFunction(() => window.hook.run?.status === 'interrupted');
+  assert.equal(await page.evaluate(() => window.hook.approvals.length), 1);
+  assert.equal(await page.evaluate(() => window.hook.pendingApproval), null);
+  await page.close();
+});

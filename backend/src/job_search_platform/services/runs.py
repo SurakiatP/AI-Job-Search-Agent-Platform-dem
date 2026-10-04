@@ -164,6 +164,8 @@ class RunService:
         *, now: datetime, scope: str,
     ) -> RunView:
         authorize(db, actor, project_id, "write", request.operation)
+        if actor.kind != "owner" and request.owner_instructions:
+            raise ServiceError("unauthorized")
         project = db.scalar(select(Project).where(Project.id == project_id).with_for_update())
         if project is None:
             raise ServiceError("not_found")
@@ -227,6 +229,15 @@ class RunService:
 
         canonical_request = request
         if retry_source is not None:
+            source_owner_instructions = retry_source.input_snapshot.get("owner_instructions")
+            if actor.kind == "grant" and source_owner_instructions:
+                raise ServiceError("forbidden")
+            supplied_owner_instructions = request.owner_instructions or None
+            if (
+                "owner_instructions" in request.model_fields_set
+                and supplied_owner_instructions != source_owner_instructions
+            ):
+                raise ServiceError("retry_input_mismatch")
             if (
                 request.session_id != retry_source.session_id
                 or request.operation != retry_source.operation
@@ -242,6 +253,7 @@ class RunService:
                     "cv_revision_id": retry_source.cv_revision_id,
                     "job_revision_id": retry_source.job_revision_id,
                     "output_language": retry_source.output_language,
+                    "owner_instructions": source_owner_instructions,
                 }
             )
         from job_search_platform.db.repositories import Repositories
@@ -315,6 +327,11 @@ class RunService:
                 "cv_revision_id": str(cv_id),
                 "cv_file_id": str(cv.file_id) if cv.file_id else None,
                 "job_revision_id": str(job.id),
+                **(
+                    {"owner_instructions": canonical_request.owner_instructions}
+                    if canonical_request.owner_instructions
+                    else {}
+                ),
                 "job": {
                     "title": job.title,
                     "company": job.company,

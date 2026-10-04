@@ -37,4 +37,3 @@ export function ApprovalCard({ approval, locale, busy, onDecision, onRefresh }: 
     </>}
   </section>;
 }
-

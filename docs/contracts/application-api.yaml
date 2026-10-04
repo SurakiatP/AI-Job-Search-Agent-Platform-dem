@@ -406,6 +406,7 @@ components:
         output_language: {type: string, enum: [th, en]}
         idempotency_key: {type: string, minLength: 1, maxLength: 128}
         retry_of_id: {type: [string, 'null'], format: uuid, description: New manual retry of a same-project terminal run; original execution never resumes.}
+        owner_instructions: {type: [string, 'null'], maxLength: 4000, description: Owner-only instructions captured in immutable run inputs; manual retry retains the original instructions.}
     ProjectCreate:
       type: object
       additionalProperties: false

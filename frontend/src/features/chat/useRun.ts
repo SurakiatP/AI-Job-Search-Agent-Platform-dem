@@ -7,11 +7,13 @@ type Intent = {
   signature: string;
   idempotencyKey: string;
   message: string;
+  ownerInstructions: string | null;
   messageAttempted: boolean;
   operation: RunOperation;
   job: JobRevisionView;
   outputLanguage: Locale;
   retryOf?: string;
+  sourceRunId?: string;
 };
 
 type State = {
@@ -55,15 +57,17 @@ export function useRun(projectId: string, sessionId: string) {
     ]);
     if (scopeRef.current !== requestedScope) return;
     const latest = runs.find(run => run.session_id === sessionId) ?? null;
-    if (!intent.current) {
+    if (!intent.current && latest?.job_revision_id && lastIntent.current?.sourceRunId !== latest.id) {
       lastIntent.current = latest?.job_revision_id ? {
         signature: '',
         idempotencyKey: '',
         message: '',
+        ownerInstructions: null,
         messageAttempted: true,
         operation: latest.operation,
         job: { id: latest.job_revision_id, revision: 0, created_at: '', title: '', company: null, source_url: null },
         outputLanguage: latest.output_language,
+        sourceRunId: latest.id,
       } : null;
     }
     setState(current => ({
@@ -140,15 +144,16 @@ export function useRun(projectId: string, sessionId: string) {
   }, [projectId, activeRunId, activeRunStatus, scope]);
 
   const submit = useCallback(async (input: { message: string; operation: RunOperation; job: JobRevisionView; outputLanguage: Locale }) => {
-    const text = input.message.trim();
-    if (!text || state.submitting || operationInFlight.current) return;
+    const ownerInstructions = input.message;
+    if (!ownerInstructions.trim() || state.submitting || operationInFlight.current) return;
     operationInFlight.current = true;
-    const signature = JSON.stringify([text, input.operation, input.job.id, input.job.revision, input.outputLanguage]);
+    const signature = JSON.stringify([ownerInstructions, input.operation, input.job.id, input.job.revision, input.outputLanguage]);
     if (!intent.current || intent.current.signature !== signature) {
       intent.current = {
         signature,
         idempotencyKey: newIdempotencyKey(),
-        message: text,
+        message: ownerInstructions,
+        ownerInstructions,
         messageAttempted: false,
         operation: input.operation,
         job: input.job,
@@ -162,7 +167,7 @@ export function useRun(projectId: string, sessionId: string) {
       if (!currentIntent.messageAttempted) {
         currentIntent.messageAttempted = true;
         await apiRequest<MessageView>(`/projects/${encodeURIComponent(projectId)}/sessions/${encodeURIComponent(sessionId)}/messages`, {
-          method: 'POST', body: JSON.stringify({ content: text }),
+          method: 'POST', body: JSON.stringify({ content: ownerInstructions }),
         });
       }
       const run = await apiRequest<RunView>(`/projects/${encodeURIComponent(projectId)}/runs`, {
@@ -174,10 +179,12 @@ export function useRun(projectId: string, sessionId: string) {
           job_revision_id: currentIntent.job.id,
           output_language: currentIntent.outputLanguage,
           idempotency_key: currentIntent.idempotencyKey,
+          owner_instructions: currentIntent.ownerInstructions,
           ...(currentIntent.retryOf ? { retry_of_id: currentIntent.retryOf } : {}),
         }),
       });
       if (scopeRef.current !== scope) return;
+      currentIntent.sourceRunId = run.id;
       lastIntent.current = currentIntent;
       intent.current = null;
       lastEventSequence.current = 0;
@@ -233,9 +240,11 @@ export function useRun(projectId: string, sessionId: string) {
           output_language: next.outputLanguage,
           idempotency_key: next.idempotencyKey,
           retry_of_id: run.id,
+          ...(next.ownerInstructions !== null ? { owner_instructions: next.ownerInstructions } : {}),
         }),
       });
       if (scopeRef.current !== scope) return;
+      next.sourceRunId = retried.id;
       lastIntent.current = next;
       intent.current = null;
       lastEventSequence.current = 0;
@@ -268,7 +277,9 @@ export function useRun(projectId: string, sessionId: string) {
     }
   }, [projectId, reload, scope, state.submitting]);
 
-  const pendingApproval = state.approvals.find(item => item.run_id === state.run?.id && item.consumed_at === null && item.decision === null) ?? null;
+  const pendingApproval = state.run?.status === 'waiting_approval'
+    ? state.approvals.find(item => item.run_id === state.run?.id && item.consumed_at === null && item.decision === null) ?? null
+    : null;
   return { ...state, pendingApproval, submit, cancel, retry, decideApproval, reload };
 }
 

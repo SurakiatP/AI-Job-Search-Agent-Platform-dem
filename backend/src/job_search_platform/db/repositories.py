@@ -90,6 +90,8 @@ class Repositories:
             "output_language": request.output_language,
             "retry_of_id": str(request.retry_of_id) if request.retry_of_id else None,
         }
+        if request.owner_instructions:
+            canonical["owner_instructions"] = request.owner_instructions
         payload = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(payload).hexdigest()
 

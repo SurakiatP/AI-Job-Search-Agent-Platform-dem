@@ -91,13 +91,13 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await expect(page).toHaveURL(`/app/projects/${projectId}/jobs`);
 
   await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'First synthetic session', exact: true }).click();
-  const composer = page.getByRole('textbox', { name: 'Message in chat history' });
+  const composer = page.getByRole('textbox', { name: 'Instructions for this task (used for evaluation or drafting)' });
   await composer.fill('Please evaluate this supplied synthetic posting.');
   await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Saved jobs', exact: true }).click();
   await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'First synthetic session', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'Message in chat history' })).toHaveValue('Please evaluate this supplied synthetic posting.');
+  await expect(page.getByRole('textbox', { name: 'Instructions for this task (used for evaluation or drafting)' })).toHaveValue('Please evaluate this supplied synthetic posting.');
   await page.getByRole('button', { name: 'ไทย', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'ข้อความในประวัติแชต' })).toHaveValue('Please evaluate this supplied synthetic posting.');
+  await expect(page.getByRole('textbox', { name: 'คำแนะนำสำหรับงานนี้ (ใช้ในการประเมินหรือร่างเอกสาร)' })).toHaveValue('Please evaluate this supplied synthetic posting.');
   await page.getByLabel('ภาษาผลลัพธ์').selectOption('en');
   await page.getByRole('button', { name: 'EN', exact: true }).click();
   await page.getByRole('button', { name: 'Start run', exact: true }).click();
@@ -222,7 +222,7 @@ test('expired approval is visible but cannot be approved from a stale request', 
   await page.route(`**/api/v1/projects/${projectId}/runs/${runId}/events`, route => route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' }));
 
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
-  await page.getByRole('textbox', { name: 'Message in chat history' }).fill('Draft synthetic application materials.');
+  await page.getByRole('textbox', { name: 'Instructions for this task (used for evaluation or drafting)' }).fill('Draft synthetic application materials.');
   await page.getByLabel('Requested work').selectOption('draft_documents');
   await page.getByRole('button', { name: 'Start run', exact: true }).click();
   await expect(page.getByTestId('run-status')).toHaveText('Waiting for approval');
