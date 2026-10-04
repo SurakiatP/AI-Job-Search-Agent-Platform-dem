@@ -15,11 +15,13 @@ const preview = '**Synthetic Thai experience** <img src=x onerror=alert(1)> Draf
 export async function useSyntheticApplication(page: Page, options: { emptyProjects?: boolean; missingJob?: boolean; unsafeJobSource?: boolean; emptyDocuments?: boolean; sessionErrorOnce?: boolean; projectErrorOnce?: boolean; revisionErrorOnce?: boolean } = {}) {
   let sessionFailuresRemaining = options.sessionErrorOnce ? 1 : 0;
   // StrictMode mounts resources twice during development, so fail both mount requests.
-  let projectFailuresRemaining = options.projectErrorOnce ? 2 : 0;
-  let revisionFailuresRemaining = options.revisionErrorOnce ? 2 : 0;
+  let projectFailuresRemaining = options.projectErrorOnce ? 1 : 0;
+  let revisionFailuresRemaining = options.revisionErrorOnce ? 1 : 0;
   let currentPreferences = { project_id: projectId, locale: 'th', output_language: 'th', notifications_enabled: true, updated_at: '2026-10-01T00:00:00Z' };
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
+    if (path === '/owner/session') { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrf_token: 'synthetic-test-csrf', expires_at: '2030-01-01T00:00:00Z' }) }); return; }
+    if (path.endsWith('/runs') || path.endsWith('/approvals') || path.endsWith('/messages')) { await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }); return; }
     if (path === `/projects/${projectId}/sessions` && sessionFailuresRemaining > 0) {
       sessionFailuresRemaining -= 1;
       await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'unavailable', message_key: 'service.unavailable', retryable: true, correlation_id: '55555555-5555-4555-8555-555555555555' }) });

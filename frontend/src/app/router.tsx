@@ -13,6 +13,7 @@ import { NewProjectPage } from '../features/projects/NewProjectPage';
 import { MissingResource, ErrorState, LoadingState } from '../features/projects/PageStates';
 import { useResource } from '../features/projects/useResource';
 import { SettingsPage } from '../features/settings/SettingsPage';
+import { useOwnerSession } from '../lib/api';
 import './routes.css';
 
 type Project = { id: string; name: string };
@@ -63,13 +64,21 @@ function ProjectHome() {
 
 function NotFoundPage() { return <AppShell><MissingResource /></AppShell>; }
 
+function OwnerGate() {
+  const session = useOwnerSession();
+  const { i18n } = useTranslation();
+  if (session.status === 'loading') return <AppShell><LoadingState /></AppShell>;
+  if (session.status === 'error') return <AppShell><section className="surface-card"><h1>{i18n.language.startsWith('th') ? 'เปิดแอปจากตัวเริ่มใช้งาน' : 'Open the app from the local launcher'}</h1><p>{i18n.language.startsWith('th') ? 'เซสชันหมดอายุหรือยังไม่ได้เริ่ม กรุณาเปิดลิงก์ใหม่จาก terminal ที่รันแอป แล้วโหลดหน้านี้อีกครั้ง' : 'The owner session is missing or expired. Open a fresh link from the terminal running the app, then reload this page.'}</p></section></AppShell>;
+  return <Outlet />;
+}
+
 export function AppRoutes() {
   return <Routes>
     <Route path="/" element={<LandingPage />} />
-    <Route path="/app" element={<AppStart />} />
+    <Route element={<OwnerGate />}><Route path="/app" element={<AppStart />} />
     <Route path="/app/settings" element={<AppWorkspace />}><Route index element={<SettingsPage />} /></Route>
     <Route path="/app/projects" element={<AppWorkspace />}><Route index element={<ProjectsPage />} /><Route path="new" element={<NewProjectPage />} /></Route>
     <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions/:sessionId" element={<ChatPage />} /><Route path="jobs" element={<JobsPage />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /></Route>
-    <Route path="*" element={<NotFoundPage />} />
+    </Route><Route path="*" element={<NotFoundPage />} />
   </Routes>;
 }

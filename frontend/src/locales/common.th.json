@@ -97,5 +97,13 @@
     "landingFlowTitle": "วิธีเริ่มต้น",
     "projectSections": "ส่วนต่าง ๆ ของโปรเจกต์",
     "selectedFile": "ไฟล์ที่เลือก"
+  },
+  "workflow": {
+    "addJob": "เพิ่มประกาศงาน",
+    "jobTitle": "ชื่อตำแหน่ง",
+    "company": "บริษัท (ไม่บังคับ)",
+    "posting": "รายละเอียดประกาศงาน",
+    "newSession": "สร้างบทสนทนา",
+    "sessionTitle": "ชื่อบทสนทนา"
   }
 }

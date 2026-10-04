@@ -132,6 +132,35 @@ def test_project_queue_limit_and_retry_create_a_new_run(db_session):
     assert retry.retry_of_id == runs[0].id
 
 
+def test_reload_retry_uses_durable_job_reference_and_original_cv(db_session):
+    from job_search_platform.services.contracts import RunRequest
+
+    p = project(db_session)
+    actor = owner(db_session)
+    chat = session(db_session, p.id)
+    cv, job = revisions(db_session, p.id)
+    provider_config(db_session, p.id)
+    db_session.commit()
+    service = _service(db_session)
+    original = _submit(service, actor, p.id, run_request(chat.id, job.id, key="reload-original"))
+    with service.sessions.begin() as db:
+        db.get(Run, original.id).status = "failed"
+        db.add(CVRevision(project_id=p.id, revision=2, file_id=cv.file_id))
+        db.add(JobRevision(project_id=p.id, revision=2, title="Newer synthetic job", description="Changed input"))
+    # Recreate the client/service, retaining only public persisted RunView metadata.
+    reopened = _service(db_session)
+    view = asyncio.run(reopened.get(actor, p.id, original.id))
+    assert view.job_revision_id == job.id
+    request = RunRequest(session_id=view.session_id, operation=view.operation,
+                         job_revision_id=view.job_revision_id, output_language=view.output_language,
+                         idempotency_key="reload-manual-retry", retry_of_id=view.id)
+    retry = _submit(reopened, actor, p.id, request)
+    assert retry.id != original.id and retry.retry_of_id == original.id
+    with reopened.sessions() as db:
+        row = db.get(Run, retry.id)
+        assert row.job_revision_id == job.id and row.cv_revision_id == cv.id
+
+
 def test_grant_hourly_quota_counts_new_runs_but_not_idempotent_replay(db_session):
     p = project(db_session, "Grant quota")
     actor, _ = grant(db_session, p.id, capabilities=("jobs:evaluate", "results:read"))

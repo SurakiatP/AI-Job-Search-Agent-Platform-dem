@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/Button';
 import { useDraft, useFileDraft } from '../../app/drafts';
 import { ErrorState, LoadingState } from '../projects/PageStates';
+import { apiRequest } from '../../lib/api';
 import { sendJson, useResource } from '../projects/useResource';
 
 type Revision = { id: string; revision: number; original_filename?: string; mime_type?: string; size_bytes?: number };
@@ -14,6 +15,10 @@ export function ProfilePage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [sessionTitle, setSessionTitle] = useDraft(projectId, 'new-session', 'title');
+  const [sessionBusy, setSessionBusy] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
   const state = location.state as { initialSessionId?: string; initialGoal?: string } | null;
   const [goalDraft, setGoalDraft] = useDraft(projectId, state?.initialSessionId ?? '');
   const cv = useResource<Revision[]>(`/projects/${projectId}/cv`);
@@ -44,8 +49,7 @@ export function ProfilePage() {
     setBusy(true); setUploadError(false);
     try {
       const body = new FormData(); body.set('file', selected);
-      const response = await fetch(`/api/v1/projects/${projectId}/cv`, { method: 'POST', credentials: 'same-origin', body });
-      if (!response.ok) throw new Error('upload_failed');
+      await apiRequest(`/projects/${projectId}/cv`, { method: 'POST', body });
       setText(''); setFile(undefined); cv.reload();
     } catch { setUploadError(true); }
     finally { setBusy(false); }
@@ -57,6 +61,7 @@ export function ProfilePage() {
   }
   return <section className="page-wrap"><div className="page-heading"><div><h1>{t('pages.profileTitle', { defaultValue: 'Profile and CV' })}</h1><p className="muted">{t('pages.preferencesHeading', { defaultValue: 'Preferences' })}</p></div>{currentSession && <Link className="button button-secondary" to={`/app/projects/${projectId}/sessions/${currentSession.id}`}>{t('pages.sessions', { defaultValue: 'Sessions' })}: {currentSession.title}</Link>}</div>
     {state?.initialGoal && <p className="notice">{t('pages.goal', { defaultValue: 'Goal' })}: {state.initialGoal}</p>}
+    <form className="surface-card" onSubmit={event => { event.preventDefault(); if (sessionBusy || !sessionTitle.trim()) return; setSessionBusy(true); setSessionError(false); void sendJson<Session>(`/projects/${projectId}/sessions`, 'POST', { title: sessionTitle.trim() }).then(session => { setSessionTitle(''); navigate(`/app/projects/${projectId}/sessions/${session.id}`); }).catch(() => setSessionError(true)).finally(() => setSessionBusy(false)); }}><h2>{t('workflow.newSession')}</h2><label htmlFor="session-title">{t('workflow.sessionTitle')}</label><input id="session-title" maxLength={200} value={sessionTitle} onChange={event => setSessionTitle(event.target.value)} required />{sessionError && <p role="alert">{t('pages.loadError')}</p>}<Button variant="primary" type="submit" disabled={sessionBusy || !sessionTitle.trim()}>{t('workflow.newSession')}</Button></form>
     <section className="surface-card"><h2>{t('pages.cvHeading', { defaultValue: 'Your CV' })}</h2>{cv.data?.length ? <ul className="revision-list">{cv.data.map(revision => <li key={revision.id}>{revision.original_filename ?? `${t('pages.revision', { defaultValue: 'Revision' })} ${revision.revision}`}</li>)}</ul> : <><h3>{t('pages.noCVTitle', { defaultValue: 'No CV added yet' })}</h3><p className="muted">{t('pages.noCVDescription', { defaultValue: 'Paste CV text or select a PDF, DOCX or text file to add a revision.' })}</p></>}
       <label htmlFor="cv-text">{t('pages.pasteCV', { defaultValue: 'Paste CV text' })}</label><textarea id="cv-text" rows={8} value={text} onChange={event => setText(event.target.value)} />
       <label htmlFor="cv-file">{t('pages.uploadCV', { defaultValue: 'Upload a CV file' })}</label><input id="cv-file" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={event => setFile(event.target.files?.[0])} />{file && <p className="muted" role="status">{t('pages.selectedFile', { defaultValue: 'Selected file' })}: {file.name}</p>}

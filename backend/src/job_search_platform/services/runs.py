@@ -74,6 +74,7 @@ def run_view(run: Run, *, result_file_ids: tuple[UUID, ...] = ()) -> RunView:
         id=run.id,
         project_id=run.project_id,
         session_id=run.session_id,
+        job_revision_id=run.job_revision_id,
         operation=run.operation,
         status=run.status,
         output_language=run.output_language,

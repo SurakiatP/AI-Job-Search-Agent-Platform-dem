@@ -95,6 +95,7 @@ class RevisionView(DTO):
 
 
 class JobRevisionView(RevisionView):
+    description: Annotated[str, StringConstraints(max_length=50000)] | None = None
     title: str
     company: str | None = None
     source_url: str | None = None
@@ -158,6 +159,7 @@ class RunView(DTO):
     id: UUID
     project_id: UUID
     session_id: UUID
+    job_revision_id: UUID | None = None
     operation: Operation
     status: RunStatus
     output_language: Literal["th", "en"]

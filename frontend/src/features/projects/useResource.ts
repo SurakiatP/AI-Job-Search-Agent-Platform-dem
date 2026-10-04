@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { apiRequest } from '../../lib/api';
+import { ApiError } from '../../lib/api-types';
 
 type ResourceState<T> = { key: string; status: 'loading' | 'ready' | 'error'; data?: T; errorStatus?: number };
 
@@ -10,19 +12,11 @@ export function useResource<T>(path: string | null): { status: 'loading' | 'read
     if (!path) return;
     const controller = new AbortController();
     setState({ key, status: 'loading' });
-    let errorStatus: number | undefined;
-    fetch(`/api/v1${path}`, { credentials: 'same-origin', signal: controller.signal })
-      .then(response => {
-        if (!response.ok) {
-          errorStatus = response.status;
-          throw new Error('request_failed');
-        }
-        return response.json() as Promise<T>;
-      })
-      .then(data => setState({ key, status: 'ready', data }))
+    apiRequest<T>(path, { signal: controller.signal })
+      .then(data => { if (!controller.signal.aborted) setState({ key, status: 'ready', data }); })
       .catch(error => {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        setState({ key, status: 'error', errorStatus });
+        if (controller.signal.aborted) return;
+        setState({ key, status: 'error', errorStatus: error instanceof ApiError ? error.status : undefined });
       });
     return () => controller.abort();
   }, [key, path, version]);
@@ -33,11 +27,7 @@ export function useResource<T>(path: string | null): { status: 'loading' | 'read
 }
 
 export async function sendJson<T>(path: string, method: 'POST' | 'PATCH', body: unknown): Promise<T> {
-  const response = await fetch(`/api/v1${path}`, {
-    method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  });
-  if (!response.ok) throw new Error('request_failed');
-  return response.status === 204 ? undefined as T : response.json() as Promise<T>;
+  return apiRequest<T>(path, { method, body: JSON.stringify(body) });
 }
 
 export function safeHttpUrl(value: string | null | undefined): string | null {

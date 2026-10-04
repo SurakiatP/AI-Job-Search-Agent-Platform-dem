@@ -77,7 +77,7 @@ def _session_view(row: ConversationSession) -> dict[str, Any]:
 
 def _job_view(row: JobRevision) -> dict[str, Any]:
     return {"id": row.id, "revision": row.revision, "created_at": row.created_at,
-            "title": row.title, "company": row.company, "source_url": row.source_url}
+            "title": row.title, "company": row.company, "source_url": row.source_url, "description": row.description}
 
 
 @router.post("/owner/bootstrap", response_model=OwnerBootstrapView)

@@ -442,6 +442,7 @@ components:
         - {$ref: '#/components/schemas/RevisionView'}
         - type: object
           properties:
+            description: {type: [string, "null"], maxLength: 50000}
             title: {type: string}
             company: {type: [string, 'null']}
             source_url: {type: [string, 'null']}
@@ -524,6 +525,7 @@ components:
       additionalProperties: false
       required: [id, project_id, session_id, operation, status, output_language, result_file_ids, created_at]
       properties:
+        job_revision_id: {type: [string, 'null'], format: uuid}
         evaluation_result: {anyOf: [{$ref: '#/components/schemas/EvaluationResult'}, {type: 'null'}]}
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}

@@ -82,7 +82,7 @@ test('every page supports direct links, back/forward, locale changes and respons
   await expect(page.getByRole('heading', { name: 'Profile and CV' })).toBeVisible();
   await expect(page.getByText('Goal: Data analyst roles')).toBeVisible();
   await page.getByRole('link', { name: /Sessions: First synthetic session/ }).click();
-  await expect(page.getByRole('textbox', { name: 'Message the assistant' })).toHaveValue('Data analyst roles');
+  await expect(page.getByRole('textbox', { name: 'Message in chat history' })).toHaveValue('Data analyst roles');
   let uploaded = false;
   let savedLanguage = '';
   page.on('request', request => {
@@ -104,7 +104,7 @@ test('every page supports direct links, back/forward, locale changes and respons
   await page.getByRole('button', { name: 'Save preferences' }).click();
   await expect.poll(() => savedLanguage).toBe('en');
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
-  await expect(page.getByRole('textbox', { name: 'Message the assistant' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Message in chat history' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Provider not configured' })).toBeVisible();
   await page.screenshot({ path: '/tmp/ui02-chat-desktop.png', fullPage: true });
   await page.goto(`/app/projects/${projectId}/jobs`);

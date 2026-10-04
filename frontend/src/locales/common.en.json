@@ -97,5 +97,13 @@
     "landingFlowTitle": "How it works",
     "projectSections": "Project sections",
     "selectedFile": "Selected file"
+  },
+  "workflow": {
+    "addJob": "Add a job posting",
+    "jobTitle": "Job title",
+    "company": "Company (optional)",
+    "posting": "Job description",
+    "newSession": "New conversation",
+    "sessionTitle": "Conversation title"
   }
 }

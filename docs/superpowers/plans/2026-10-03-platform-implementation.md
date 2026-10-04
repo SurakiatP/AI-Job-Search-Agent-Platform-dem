@@ -64,7 +64,7 @@ The delegate-build planner receives these complete plans after review. It may su
 | 3 | CORE-05 + CORE-06 + CORE-07 | Separate storage, run-lifecycle and owner/secret modules and test files. Import CORE-04 types; shared wiring remains root-owned. |
 | 4 | CORE-08 + UI-02 | Native lifecycle integration and independent contract-fixture UI pages; exclusive backend/frontend ownership. |
 | 5 | CORE-09 | REST/SSE adapter after CORE-08 native offline acceptance. |
-| 6 | UI-03 + CORE-10 + PROTO-01 | All depend on accepted CORE-09; independent UI client, recovery/scripts and MCP adapter scopes. Root integrates page bindings, maintenance guards and shared listener lifecycle before acceptance. |
+| 6 | UI-03 + CORE-10 + PROTO-01; ready UI-04/PROTO-02 after their own prerequisite scoped acceptance | All depend on accepted CORE-09; independent UI client, recovery/scripts and MCP adapter scopes. Root integrates page bindings, maintenance guards and shared listener lifecycle before acceptance. |
 | 7 | UI-04 + PROTO-02 | Settings waits on UI-03 typed helpers; A2A uses accepted shared services. Root assembles protocol entrypoints and Settings routes. |
 | 8 | UI-05 | Full Playwright journeys and accessibility after UI-03/UI-04; use isolated synthetic backend targets. |
 | 9 | PROTO-03 then PROTO-04 | Integrate security verification and docs, then independent reviewer of the full diff. Never run the final reviewer concurrently with edits. |
@@ -107,3 +107,5 @@ Use at most three implementation workers concurrently, within the available four
 **Execution authorization:** The owner approved this written plan and instructed delegate-build execution on 2026-10-03. Preserve its acceptance gates and report actual evidence at every wave.
 
 - Scheduling refinement reviewed 2026-10-04 by independent gpt-6.1-sol high: CORE-10 and PROTO-01 depend only on accepted CORE-09, so join UI-03 in Wave6. Three exclusive workers use separate synthetic databases/buckets/ports; no global infrastructure restarts overlap. Live-provider UI checks remain pending actual UI-04 configuration. Downstream UI-04/UI-05/PROTO-03/PROTO-04 gates and all acceptance requirements remain unchanged.
+
+- 2026-10-04 bounded ready-task refinement: independent gpt-6.1-sol graph review approved UI-04 after UI-03 helper/client scoped PASS; real built frontend production REST/upload/reload proof passed and cleanup verified before acceptance. Corrected PROTO-01 official-client transport/privacy scope independently PASS, permitting PROTO-02 beside UI-04/CORE-10; neither task depends on recovery, and their exclusive Settings/A2A files do not overlap. Root continues shared entrypoint integration. Recovery FAIL remains visible until corrected real-Run restore proof; dependent UI-05/PROTO-03/final review gates remain unchanged.
