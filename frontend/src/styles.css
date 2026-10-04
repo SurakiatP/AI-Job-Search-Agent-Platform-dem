@@ -93,3 +93,12 @@ textarea { resize: vertical; min-height: 130px; }
   .main-content { padding: 28px 20px; }
   .empty-state { margin: 24px auto; }
 }
+
+.header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+@media (max-width: 640px) {
+  .app-header.has-actions { flex-wrap: wrap; row-gap: 12px; }
+  .has-actions .header-identity { flex-basis: 100%; }
+  .has-actions .header-actions { margin-inline-start: auto; max-width: 100%; gap: 8px; }
+}
+
+.project-name[data-active="true"] { background: var(--surface); color: var(--primary); }
