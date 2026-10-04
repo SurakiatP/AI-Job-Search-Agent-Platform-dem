@@ -90,7 +90,7 @@ def build_services() -> Services:
     password = _private_text("postgres-password")
     db_url = URL.create("postgresql+psycopg", username=user, password=password,
                         host="127.0.0.1", port=int(os.environ.get("CORE02_POSTGRES_PORT", "55432")),
-                        database="jobsearch_platform_core02")
+                        database=os.environ.get("JSP_DATABASE", "jobsearch_platform_core02"))
     engine = make_engine(db_url)
     sessions = sessionmaker(engine, expire_on_commit=False)
 

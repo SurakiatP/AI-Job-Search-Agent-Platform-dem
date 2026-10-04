@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from conftest import PRIVATE_DIR, _private_secret
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from job_search_platform.db.models import (
-    CVRevision, Document, DocumentRevision, Grant, JobRevision, OwnerLaunchNonce, OwnerSession,
+    CVRevision, Document, DocumentRevision, Grant, JobRevision, JobApplicationStatus, OwnerLaunchNonce, OwnerSession,
     ConversationSession, Project, ProviderConfiguration, Run, RunArtifact, StoredFile,
 )
 from job_search_platform.services.errors import ServiceError
@@ -119,6 +119,7 @@ def _seed_snapshot(engine, client, bucket: str):
         document = Document(project_id=project.id, document_type="cover_letter", title="Synthetic cover letter")
         session.add_all([cv, job, document])
         session.flush()
+        session.add(JobApplicationStatus(project_id=project.id, job_revision_id=job.id, status="applied"))
         document_revision = DocumentRevision(
             project_id=project.id, document_id=document.id, revision=1,
             file_id=file_ids["generated_document"], source_cv_revision_id=cv.id,
@@ -191,7 +192,7 @@ def _restore_args(archive: Path, target):
 
 @pytest.mark.integration
 def test_pg_minio_backup_restores_content_auth_reset_and_keychain_invalidation(
-    migrated_engine, source_bucket, empty_restore_target, tmp_path
+    migrated_engine, source_bucket, empty_restore_target, tmp_path, monkeypatch
 ):
     source_client, source_name = source_bucket
     target_database, target_bucket, target_client = empty_restore_target
@@ -221,6 +222,26 @@ def test_pg_minio_backup_restores_content_auth_reset_and_keychain_invalidation(
 
     restored = restore_script.restore(_restore_args(archive, empty_restore_target))
     assert restored["status"] == "restored"
+
+    # The actual application factory must reconnect to the restored target, not
+    # its source/default database. Never read credentials or start native work.
+    from job_search_platform.main import build_services, acquire_service_maintenance
+    monkeypatch.setenv("CORE02_PRIVATE_DIR", str(PRIVATE_DIR))
+    monkeypatch.setenv("JSP_DATABASE", empty_restore_target[0])
+    monkeypatch.setenv("JSP_PRIVATE_BUCKET", empty_restore_target[1])
+    restored_services = build_services()
+    try:
+        assert restored_services.engine.url.database == empty_restore_target[0]
+        assert restored_services.files.object_store.bucket == empty_restore_target[1]
+        guard = acquire_service_maintenance(restored_services)
+        try:
+            with restored_services.sessions() as application_db:
+                assert application_db.scalar(select(Run.id).where(Run.id == snapshot["runs"]["completed"])) is not None
+        finally:
+            guard.close()
+            restored_services.maintenance_lock = None
+    finally:
+        restored_services.engine.dispose()
     target_engine = create_engine(URL.create(
         "postgresql+psycopg", username=_private_secret("postgres-user"),
         password=_private_secret("postgres-password"), host="127.0.0.1",
@@ -239,6 +260,8 @@ def test_pg_minio_backup_restores_content_auth_reset_and_keychain_invalidation(
             completed = session.get(Run, snapshot["runs"]["completed"])
             interrupted = session.get(Run, snapshot["runs"]["interrupted"])
             assert completed is not None and completed.status == "completed"
+            application_status = session.get(JobApplicationStatus, (completed.project_id, completed.job_revision_id))
+            assert application_status is not None and application_status.status == "applied"
             assert interrupted is not None and interrupted.status == "interrupted"
             assert completed.config_snapshot["secret_reference"] == f"restored-unconfigured:{provider.id}"
             assert interrupted.config_snapshot["secret_reference"] == f"restored-unconfigured:{provider.id}"

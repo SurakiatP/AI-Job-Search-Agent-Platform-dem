@@ -1,0 +1,73 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12.13'
+      - name: Install locked backend tools
+        run: python -m pip install uv==0.12.2
+      - name: Sync locked backend environment
+        run: uv sync --locked --project backend --all-groups
+      - name: Run isolated dependency verification tests
+        run: uv run --locked --project backend pytest backend/tests/test_dependency_checks.py -q
+      - name: Audit locked backend dependencies
+        run: uv run --locked --project backend pip-audit --strict --format=json
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked frontend dependencies
+        run: npm ci --prefix frontend
+      - name: Build frontend
+        run: npm run build --prefix frontend
+      - name: Audit frontend dependencies
+        run: npm audit --prefix frontend --audit-level=high
+      - name: Install locked browser-test dependencies
+        run: npm ci --prefix tests
+      - name: Audit browser-test dependencies
+        run: npm audit --prefix tests --audit-level=high
+      - name: Install Chromium for Playwright
+        run: npm exec --prefix tests -- playwright install --with-deps chromium
+      - name: Run synthetic browser suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev --prefix frontend -- --host 127.0.0.1 --port 4175 --strictPort > "$RUNNER_TEMP/vite.log" 2>&1 &
+          server_pid=$!
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4175/tests/shell.html >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat "$RUNNER_TEMP/vite.log"
+            exit 1
+          fi
+          JSP_E2E_BASE_URL=http://127.0.0.1:4175 npm test --prefix tests
