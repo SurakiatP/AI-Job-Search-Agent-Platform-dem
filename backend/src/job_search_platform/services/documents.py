@@ -98,6 +98,7 @@ class Artifacts:
                     file_id=file_id,
                     source_cv_revision_id=source_cv_id,
                     source_job_revision_id=source_job_id,
+                    content_markdown=output["content_markdown"],
                 )
                 association = RunArtifact(
                     project_id=project_id,
@@ -279,6 +280,11 @@ class Artifacts:
             ):
                 raise ServiceError("artifact_validation_failed")
             seen.add(path_key)
+            preview = item.get("content_markdown")
+            if preview is not None:
+                if not isinstance(preview, str) or not preview.strip() or len(preview) > 200000:
+                    raise ServiceError("artifact_manifest_invalid")
+                preview = preview.strip()
             outputs.append(
                 {
                     "path": relative,
@@ -288,6 +294,7 @@ class Artifacts:
                     "sha256": digest,
                     "display_name": display_name,
                     "body": body,
+                    "content_markdown": preview,
                 }
             )
         return outputs, source_cv_id, source_job_id, lease_owner
@@ -326,7 +333,7 @@ class Documents:
                 )
                 if latest is None:
                     continue
-                result.append(_document_view(doc, latest))
+                result.append(_document_view(doc, latest, db, include_content=False))
             return result
 
     async def get(self, actor: Actor, project_id: UUID, document_id: UUID) -> DocumentView:
@@ -353,7 +360,7 @@ class Documents:
             )
             if latest is None:
                 raise ServiceError("not_found")
-            return _document_view(doc, latest)
+            return _document_view(doc, latest, db)
 
     async def revisions(
         self, actor: Actor, project_id: UUID, document_id: UUID
@@ -388,16 +395,26 @@ class Documents:
                     source_cv_revision_id=row.source_cv_revision_id,
                     source_job_revision_id=row.source_job_revision_id,
                     file_id=row.file_id,
+                    content_markdown=row.content_markdown,
                 )
                 for row in rows
             ]
 
 
-def _document_view(document: Document, revision: DocumentRevision) -> DocumentView:
+def _document_view(document: Document, revision: DocumentRevision, db: Session, *, include_content: bool = True) -> DocumentView:
+    source = db.scalar(select(Run).join(RunArtifact, RunArtifact.run_id == Run.id).where(
+        RunArtifact.project_id == document.project_id,
+        RunArtifact.document_revision_id == revision.id,
+        Run.project_id == document.project_id,
+    ))
     return DocumentView(
         id=document.id,
         document_type=document.document_type,
         title=document.title,
+        content_markdown=revision.content_markdown if include_content else None,
+        output_language=source.output_language if source is not None else None,
+        source_run_id=source.id if source is not None else None,
+        partial=source is None or source.status != "completed",
         latest_revision=RevisionView(
             id=revision.id,
             revision=revision.revision,

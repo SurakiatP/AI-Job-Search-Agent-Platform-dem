@@ -119,8 +119,18 @@ async def test_pinned_native_sandbox_rejects_docx_zip_expansion():
     )
     started = False
     try:
-        await runtime.start_project(test_id, workspace)
+        native_project = await runtime.start_project(test_id, workspace)
         started = True
+        parser_calls = 0
+
+        async def authorize_parser_once(_call_id, tool_name):
+            nonlocal parser_calls
+            if tool_name != "terminal" or parser_calls:
+                return False
+            parser_calls += 1
+            return True
+
+        native_project.tool_gate = authorize_parser_once
         bomb = workspace / "inputs" / "expansion.docx"
         with zipfile.ZipFile(bomb, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
             archive.writestr("word/document.xml", b"x" * (101 * 1024 * 1024))
@@ -129,6 +139,9 @@ async def test_pinned_native_sandbox_rejects_docx_zip_expansion():
         assert str(error.value) == "document_expansion_limit"
     finally:
         if started:
-            await runtime.stop(test_id)
+            try:
+                await runtime.stop(test_id)
+            finally:
+                await runtime.close(test_id)
         shutil.rmtree(runtime.state_root / str(test_id), ignore_errors=True)
         shutil.rmtree(workspace_root, ignore_errors=True)

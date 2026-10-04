@@ -195,10 +195,10 @@ async def test_launch_nonce_is_single_use(owner_sessions, launch):
 
 **Depends on:** CORE-05, CORE-06, CORE-07. **Owns:** `backend/src/job_search_platform/workers/executor.py`, `backend/src/job_search_platform/workers/sandbox.py`, `backend/src/job_search_platform/workers/supervisor.py`, `backend/tests/integration/test_worker_lifecycle.py`, `backend/tests/integration/test_document_exports.py`, `scripts/smoke_workflow.py`.
 
-- [ ] Wire the proven HermesRuntime into claimed runs. Materialize immutable input snapshots read-only, assign the Project home/workspace, dispatch Career Ops evaluate/draft operations and map validated native results to shared DTOs. Reject unsupported native response shapes. Tool arguments/results remain private; persist only sanitized public progress and generated artifact IDs.
-- [ ] Trusted worker receives provider credentials through controlled configuration and minimal environment. Its tool subprocess/container environment is separately built from an allowlist and cannot inherit keys. Label containers/process groups with project/run IDs; mount only own inputs/staging/workspace, with quotas/timeouts and no privileged mode/network for the initial supplied-input operation.
-- [ ] Validate both evaluation evidence and draft content, then reuse verified Career Ops exporters. Render Thai PDFs with appropriate embedded font and inspect glyphs/pages; verify DOCX text and document language. If an exporter fails, fail with `export_failed` and retain explicitly marked partial results; never label a partial file completed.
-- [ ] Implement stop escalation: request native stop, verify worker/tool process and container cessation, then persist cancelled. On backend shutdown stop dispatch, terminate owned execution and persist interrupted. Startup reconciles stale lease owners and labeled containers before dispatch; it stops unfinished old work rather than re-enqueueing it automatically.
+- [x] Wire the proven HermesRuntime into claimed runs. Materialize immutable input snapshots read-only, assign the Project home/workspace, dispatch Career Ops evaluate/draft operations and map validated native results to shared DTOs. Reject unsupported native response shapes. Tool arguments/results remain private; persist only sanitized public progress and generated artifact IDs.
+- [x] Trusted worker receives provider credentials through controlled configuration and minimal environment. Its tool subprocess/container environment is separately built from an allowlist and cannot inherit keys. Label containers/process groups with project/run IDs; mount only own inputs/staging/workspace, with quotas/timeouts and no privileged mode/network for the initial supplied-input operation.
+- [x] Validate both evaluation evidence and draft content, then reuse verified Career Ops exporters. Render Thai PDFs with appropriate embedded font and inspect glyphs/pages; verify DOCX text and document language. If an exporter fails, fail with `export_failed` and retain explicitly marked partial results; never label a partial file completed.
+- [x] Implement stop escalation: request native stop, verify worker/tool process and container cessation, then persist cancelled. On backend shutdown stop dispatch, terminate owned execution and persist interrupted. Startup reconciles stale lease owners and labeled containers before dispatch; it stops unfinished old work rather than re-enqueueing it automatically.
 
 ```python
 async def test_cancel_means_execution_has_stopped(supervisor, long_running_native_run):
@@ -210,6 +210,8 @@ async def test_cancel_means_execution_has_stopped(supervisor, long_running_nativ
 ```
 
 - [ ] Run native lifecycle/export tests and `rtk proxy python3 scripts/smoke_workflow.py --synthetic`. A real provider run requires owner-configured credentials through Settings; no key is passed in flags. Verify CV/job evaluation, Thai and English draft exports, published checksums and persisted reopen. If provider configuration is absent, report the live test blocked and preserve completed offline evidence.
+
+Offline gate accepted 2026-10-04: root backend144 PASS; independent native18 and focused3 PASS, real shutdown probe PASS. Live-provider checkbox remains pending owner Settings (UI-04).
 
 **Acceptance:** Real agent workflow and real sandbox stop, with proper revisions and readable Thai/English artifacts. No fake-success fallback when provider or native runtime fails.
 

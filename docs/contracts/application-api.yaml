@@ -461,6 +461,10 @@ components:
         id: {type: string, format: uuid}
         document_type: {type: string, enum: [cv, cover_letter, other]}
         title: {type: string}
+        content_markdown: {type: [string, 'null'], minLength: 1, maxLength: 200000}
+        output_language: {type: [string, 'null'], enum: [th, en, null]}
+        source_run_id: {type: [string, 'null'], format: uuid}
+        partial: {type: boolean, default: false}
         latest_revision: {oneOf: [{$ref: '#/components/schemas/RevisionView'}, {type: 'null'}]}
     DocumentRevisionView:
       allOf:
@@ -472,6 +476,7 @@ components:
             source_cv_revision_id: {type: [string, 'null'], format: uuid}
             source_job_revision_id: {type: [string, 'null'], format: uuid}
             file_id: {type: [string, 'null'], format: uuid}
+            content_markdown: {type: [string, 'null'], minLength: 1, maxLength: 200000}
     FileView:
       type: object
       additionalProperties: false

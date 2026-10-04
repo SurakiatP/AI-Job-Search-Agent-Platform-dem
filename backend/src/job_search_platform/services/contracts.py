@@ -118,6 +118,10 @@ class DocumentView(DTO):
     document_type: Literal["cv", "cover_letter", "other"]
     title: str
     latest_revision: RevisionView | None = None
+    content_markdown: Annotated[str, StringConstraints(min_length=1, max_length=200000)] | None = None
+    output_language: Literal["th", "en"] | None = None
+    source_run_id: UUID | None = None
+    partial: bool = False
 
 
 class DocumentRevisionView(RevisionView):
@@ -125,6 +129,7 @@ class DocumentRevisionView(RevisionView):
     source_cv_revision_id: UUID | None = None
     source_job_revision_id: UUID | None = None
     file_id: UUID | None = None
+    content_markdown: Annotated[str, StringConstraints(min_length=1, max_length=200000)] | None = None
 
 
 class FileView(DTO):

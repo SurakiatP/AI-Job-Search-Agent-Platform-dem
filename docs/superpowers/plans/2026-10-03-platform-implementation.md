@@ -62,8 +62,8 @@ The delegate-build planner receives these complete plans after review. It may su
 | 1 | CORE-02 + CORE-03 + UI-01 | Independent infrastructure proof, Hermes compatibility proof and UI shell. No shared manifests may be edited concurrently. |
 | 2 | CORE-04 | One owner: schema, transactional repositories and authorization contracts. Native Hermes/MinIO proofs must have passed. |
 | 3 | CORE-05 + CORE-06 + CORE-07 | Separate storage, run-lifecycle and owner/secret modules and test files. Import CORE-04 types; shared wiring remains root-owned. |
-| 4 | CORE-08 | Integrate real Hermes execution into the durable lifecycle; prove isolation, export, stop and interruption. |
-| 5 | CORE-09 + UI-02 | REST/SSE adapter and UI route/screens against fixed schemas. UI-02 uses synthetic contract fixtures until the adapter is ready. |
+| 4 | CORE-08 + UI-02 | Native lifecycle integration and independent contract-fixture UI pages; exclusive backend/frontend ownership. |
+| 5 | CORE-09 | REST/SSE adapter after CORE-08 native offline acceptance. |
 | 6 | UI-03 | Complete the typed API client and real workflow binding before Settings consumes them. |
 | 7 | UI-04 + PROTO-01 + PROTO-02 | Independent Settings, MCP and A2A scopes; root assembles shared entrypoints after the wave. |
 | 8 | CORE-10 + UI-05 | Separate backend restore/lifecycle proof and Playwright journeys. Each uses its own test database/bucket/server ports. |
@@ -72,6 +72,9 @@ The delegate-build planner receives these complete plans after review. It may su
 Use at most three implementation workers concurrently, within the available four-agent total. Finish, inspect and verify every wave before starting a dependent one.
 
 ### Execution clarifications from planner review
+
+- Scheduling refinement reviewed 2026-10-04: UI-02 depends only on accepted UI-01 and CORE-04, so it runs independently beside CORE-08 in Wave4. Root owns main.tsx/shared locale wiring; fixtures stay test-only and its server uses a separate port. CORE-09 remains gated on CORE-08 native offline acceptance, and UI-03 still requires CORE-09 plus UI-02. Product scope, ownership and acceptance are unchanged.
+
 
 - CORE-01 verifies current locks, available environment audits and scanner behavior. Missing not-yet-built Hermes/MinIO image coverage remains explicitly incomplete until later tasks; it cannot be used to claim a full security pass.
 - CORE-04 receives exclusive ownership of schema, migrations and shared test fixtures for wave 2. Root resumes ownership after the wave. Root integrates UI locale keys/page hooks/entrypoints after their owning tasks; workers request those shared edits rather than race.

@@ -114,7 +114,7 @@ def publication_context(db_session, private_bucket, tmp_path):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_upload_uses_a_dedicated_real_native_parse_runtime(publication_context):
+async def test_upload_uses_a_dedicated_real_native_parse_runtime(publication_context, monkeypatch):
     _db, _sessions, actor, project_id, files, _store, _client, _bucket, _tmp = publication_context
     metadata = Path.home() / ".cache" / "job-search-platform" / "hermes-runtime.json"
     if metadata.is_symlink() or not metadata.is_file():
@@ -126,6 +126,15 @@ async def test_upload_uses_a_dedicated_real_native_parse_runtime(publication_con
         hermes_source=Path(config["hermes"]["source"]),
         career_ops_source=Path(config["career-ops"]["source"]),
     )
+    started_projects = []
+    original_start = parser.start_project
+
+    async def capture_native_project(*args, **kwargs):
+        project = await original_start(*args, **kwargs)
+        started_projects.append(project)
+        return project
+
+    monkeypatch.setattr(parser, "start_project", capture_native_project)
     files.parser = parser
     body = Path(__file__).resolve().parents[1] / "fixtures" / "synthetic_cv.txt"
 
@@ -140,6 +149,9 @@ async def test_upload_uses_a_dedicated_real_native_parse_runtime(publication_con
     assert uploaded.publication_state == "published"
     assert uploaded.kind == "cv_original"
     assert parser.projects == {}
+    assert len(started_projects) == 1
+    assert started_projects[0].process.returncode is not None
+    assert started_projects[0].reader.done()
 
 
 @pytest.mark.integration
@@ -701,3 +713,47 @@ def _manifest(
     if lease_owner is not None:
         manifest["lease_owner"] = lease_owner
     return manifest
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_generated_document_preview_preserves_language_and_partial_provenance(publication_context):
+    db, sessions, actor, project_id, _files, store, _client, _bucket, tmp_path = publication_context
+    run, cv = _draft_run(db, project_id)
+    staging = tmp_path / "preview-staging"
+    staging.mkdir()
+    output = staging / "cv.pdf"
+    output.write_bytes(b"%PDF-1.7\nsynthetic output\n%%EOF\n")
+    manifest = _manifest(staging, output, cv.id, run.job_revision_id)
+    manifest["files"][0]["content_markdown"] = "# Synthetic CV\nGenerated analysis skills."
+    published = await Artifacts(sessions, store, lambda _p, _r: staging).publish(project_id, run.id, manifest)
+    revision = db.scalar(select(DocumentRevision).where(DocumentRevision.file_id == published[0].id))
+    documents = Documents(sessions, store)
+    view = await documents.get(actor, project_id, revision.document_id)
+    assert view.content_markdown == "# Synthetic CV\nGenerated analysis skills."
+    assert view.output_language == "en"
+    assert view.source_run_id == run.id
+    assert view.partial is True
+    reader, _ = grant(db, project_id, capabilities=("results:read",))
+    db.commit()
+    assert (await documents.get(reader, project_id, revision.document_id)).content_markdown == view.content_markdown
+    run.status = "completed"
+    db.commit()
+    assert (await documents.get(actor, project_id, revision.document_id)).partial is False
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_oversized_generated_preview_is_rejected_before_publication(publication_context):
+    db, sessions, _actor, project_id, _files, store, client, bucket, tmp_path = publication_context
+    run, cv = _draft_run(db, project_id)
+    staging = tmp_path / "preview-invalid"
+    staging.mkdir()
+    output = staging / "cv.pdf"
+    output.write_bytes(b"%PDF-1.7\nsynthetic output\n%%EOF\n")
+    manifest = _manifest(staging, output, cv.id, run.job_revision_id)
+    manifest["files"][0]["content_markdown"] = "x" * 200001
+    with pytest.raises(ServiceError) as error:
+        await Artifacts(sessions, store, lambda _p, _r: staging).publish(project_id, run.id, manifest)
+    assert error.value.code == "artifact_manifest_invalid"
+    assert client.list_objects_v2(Bucket=bucket).get("KeyCount", 0) == 0

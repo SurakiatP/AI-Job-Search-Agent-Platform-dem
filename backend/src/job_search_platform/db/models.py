@@ -130,6 +130,7 @@ class DocumentRevision(Base):
     file_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     source_cv_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     source_job_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    content_markdown: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     __table_args__ = (
         ForeignKeyConstraint(["project_id", "document_id"], ["documents.project_id", "documents.id"], ondelete="CASCADE"),
@@ -137,6 +138,7 @@ class DocumentRevision(Base):
         ForeignKeyConstraint(["project_id", "source_job_revision_id"], ["job_revisions.project_id", "job_revisions.id"]),
         ForeignKeyConstraint(["project_id", "file_id"], ["files.project_id", "files.id"]),
         UniqueConstraint("project_id", "id", name="uq_document_revisions_project_id"), UniqueConstraint("document_id", "revision", name="uq_document_revision_number"), CheckConstraint("revision > 0", name="ck_document_revision_positive"),
+        CheckConstraint("content_markdown IS NULL OR char_length(content_markdown) BETWEEN 1 AND 200000", name="ck_document_preview_length"),
     )
 
 

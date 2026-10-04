@@ -3,14 +3,21 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import queue
 import shlex
 import sys
 import threading
+from tool_gate import ToolCallGate, ToolCallDenied
 
 WIRE = sys.stdout
 sys.stdout = sys.stderr
 ALLOWED = {"terminal", "read_file", "write_file", "patch", "search_files"}
 LOCK = threading.Lock()
+GATE = ToolCallGate(lambda message: emit(message))
+REQUESTS: queue.Queue[dict] = queue.Queue()
+INPUT_CLOSED = threading.Event()
+INPUT_CLOSED_MESSAGE = object()
+AUTHORIZED_DISPATCH = threading.local()
 agent = None
 thread = None
 task_id = os.environ["PLATFORM_PROJECT_ID"]
@@ -28,6 +35,31 @@ def main():
     from tools.terminal_tool_lifecycle import cleanup_vm
     from tools.registry import registry
     from tools.skills_tool import skill_view
+
+    def stop_owned_execution():
+        failure = None
+        if agent is not None:
+            try:
+                agent.interrupt(hard_cancel=True)
+                agent.close()
+            except Exception as exc:
+                failure = exc
+        environments = list(terminal._active_environments.values())
+        try:
+            cleanup_vm(task_id, force_remove=True)
+        except Exception as exc:
+            failure = failure or exc
+        for environment in environments:
+            try:
+                environment.wait_for_cleanup(timeout=20)
+            except Exception as exc:
+                failure = failure or exc
+        if thread:
+            thread.join(timeout=10)
+            if thread.is_alive():
+                failure = failure or RuntimeError("native_stop_incomplete")
+        if failure is not None:
+            raise RuntimeError("native_stop_incomplete") from failure
     # Native convenience mounts include composer/attachment caches; the platform
     # deliberately supplies only selected input snapshots and its workspace.
     docker_backend._readonly_skill_mount_args = lambda: []
@@ -50,11 +82,42 @@ def main():
             return json.dumps({"error": "unsupported_tool"})
         if name == "terminal" and any(key in args for key in ("force", "persist_on_release", "pty")):
             return json.dumps({"error": "unsupported_tool_argument"})
-        return dispatch(name, args, **kwargs)
-    registry.dispatch = restricted
+        try:
+            GATE.authorize(name)
+        except ToolCallDenied:
+            return json.dumps({"error": "tool_call_denied"})
+        previous = getattr(AUTHORIZED_DISPATCH, "active", False)
+        AUTHORIZED_DISPATCH.active = True
+        try:
+            return dispatch(name, args, **kwargs)
+        finally:
+            AUTHORIZED_DISPATCH.active = previous
 
-    for line in sys.stdin:
-        request = json.loads(line)
+    def read_requests():
+        try:
+            for line in sys.stdin:
+                try:
+                    message = json.loads(line)
+                except (TypeError, ValueError):
+                    continue
+                if message.get("method") == "tool_gate_result":
+                    accepted = GATE.resolve(message.get("call_id"), message.get("allowed"))
+                    emit({"id": message.get("id"), "result": {"accepted": accepted}})
+                else:
+                    REQUESTS.put(message)
+        finally:
+            INPUT_CLOSED.set()
+            REQUESTS.put(INPUT_CLOSED_MESSAGE)
+
+    threading.Thread(target=read_requests, daemon=True).start()
+    while True:
+        if INPUT_CLOSED.is_set():
+            stop_owned_execution()
+            return
+        request = REQUESTS.get()
+        if request is INPUT_CLOSED_MESSAGE or INPUT_CLOSED.is_set():
+            stop_owned_execution()
+            return
         try:
             op = request["method"]
             if op == "start":
@@ -65,9 +128,20 @@ def main():
                     raise RuntimeError("native_interface_invalid")
                 if not all(callable(getattr(AIAgent, method, None)) for method in ("run_conversation", "interrupt", "close")):
                     raise RuntimeError("native_interface_invalid")
+                # The fixed setup probe uses Hermes' original trusted
+                # dispatcher before model tools are wrapped by the run gate.
                 startup = json.loads(terminal.terminal_tool("true", task_id=task_id, timeout=30))
                 if startup.get("exit_code") != 0:
                     raise RuntimeError("native_start_failed")
+                trusted_terminal_tool = terminal.terminal_tool
+
+                def gated_terminal_tool(*args, **kwargs):
+                    if not getattr(AUTHORIZED_DISPATCH, "active", False):
+                        GATE.authorize("terminal")
+                    return trusted_terminal_tool(*args, **kwargs)
+
+                terminal.terminal_tool = gated_terminal_tool
+                registry.dispatch = restricted
                 skill = json.loads(skill_view("career-ops", task_id=task_id, preprocess=False))
                 if skill.get("error"):
                     raise RuntimeError("native_skill_loading_failed")
@@ -76,11 +150,21 @@ def main():
                           "allowed_tools": sorted(ALLOWED)}
             elif op == "tool":
                 # Internal diagnostic only; no HTTP/MCP/A2A route may expose it.
-                result = restricted(request["name"], request["arguments"], task_id=task_id)
-                if isinstance(result, str):
-                    result = json.loads(result)
-                if not isinstance(result, dict):
-                    raise RuntimeError("native_response_invalid")
+                request_id = request["id"]
+
+                def diagnostic_tool():
+                    try:
+                        value = restricted(request["name"], request["arguments"], task_id=task_id)
+                        if isinstance(value, str):
+                            value = json.loads(value)
+                        if not isinstance(value, dict):
+                            raise RuntimeError("native_response_invalid")
+                    except Exception:
+                        value = {"error": "native_execution_failed"}
+                    emit({"id": request_id, "result": value})
+
+                threading.Thread(target=diagnostic_tool, daemon=True).start()
+                continue
             elif op == "submit":
                 if thread and thread.is_alive():
                     raise RuntimeError("project_busy")
@@ -129,30 +213,45 @@ def main():
                            "docx": "/opt/career-ops-docx/bin/generate-docx.mjs"}
                 if format not in scripts or output.suffix != "." + format:
                     raise RuntimeError("unsupported_export")
-                command = "node " + scripts[format] + " " + shlex.quote("/workspace/" + str(source)) + " " + shlex.quote("/workspace/" + str(output))
+                rendered = None
+                source_path = "/workspace/" + str(source)
+                if format == "pdf" and source.suffix.lower() == ".md":
+                    rendered = output.with_name(output.stem + ".render.html")
+                    source_path = "/workspace/" + str(rendered)
+                    render_script = (
+                        "from pathlib import Path; import base64,html; "
+                        f"src=Path({('/workspace/' + str(source))!r}); dst=Path({source_path!r}); "
+                        "text=src.read_text(encoding='utf-8'); "
+                        "font=next(Path('/opt/runtime/node_modules/@fontsource/noto-sans-thai/files').glob('*thai-400-normal.woff2')); "
+                        "data=base64.b64encode(font.read_bytes()).decode('ascii'); "
+                        "blocks=[]; "
+                        "[(blocks.append('<h'+str(min(len(line)-len(line.lstrip('#')),6))+'>'+html.escape(line.lstrip('# ').strip())+'</h'+str(min(len(line)-len(line.lstrip('#')),6))+'>') if line.lstrip().startswith('#') else blocks.append('<p>'+html.escape(line.strip())+'</p>')) for line in text.splitlines() if line.strip()]; "
+                        "lang='th' if any('\\u0e00' <= ch <= '\\u0e7f' for ch in text) else 'en'; "
+                        "dst.write_text('<!doctype html><html lang=\"'+lang+'\"><meta charset=\"utf-8\"><style>@font-face{font-family:Noto;src:url(data:font/woff2;base64,'+data+')}body{font-family:Noto,sans-serif}</style><body>'+''.join(blocks)+'</body></html>',encoding='utf-8')"
+                    )
+                    prepared = json.loads(terminal.terminal_tool(
+                        "python -c " + shlex.quote(render_script), task_id=task_id, timeout=30
+                    ))
+                    if prepared.get("exit_code") != 0:
+                        raise RuntimeError("export_failed")
+                command = "node " + scripts[format] + " " + shlex.quote(source_path) + " " + shlex.quote("/workspace/" + str(output))
                 execution = json.loads(terminal.terminal_tool(command, task_id=task_id, timeout=60))
+                if rendered is not None:
+                    terminal.terminal_tool(
+                        "rm -f " + shlex.quote("/workspace/" + str(rendered)), task_id=task_id, timeout=10
+                    )
                 if execution.get("exit_code") != 0:
                     raise RuntimeError("export_failed")
                 result = {"output": str(output), "format": format}
             elif op == "stop":
-                if agent is not None:
-                    agent.interrupt(hard_cancel=True)
-                environments = list(terminal._active_environments.values())
-                cleanup_vm(task_id, force_remove=True)
-                for env in environments:
-                    env.wait_for_cleanup(timeout=20)
-                if thread:
-                    thread.join(timeout=10)
-                    if thread.is_alive():
-                        raise RuntimeError("native_stop_incomplete")
+                stop_owned_execution()
                 result = {"stopped": True}
             elif op == "health":
                 result = {"alive": True, "running": bool(thread and thread.is_alive())}
+            elif op == "tool_gate_result":
+                result = {"accepted": GATE.resolve(request.get("call_id"), request.get("allowed"))}
             elif op == "close":
-                environments = list(terminal._active_environments.values())
-                cleanup_vm(task_id, force_remove=True)
-                for env in environments:
-                    env.wait_for_cleanup(timeout=20)
+                stop_owned_execution()
                 emit({"id": request["id"], "result": {"closed": True}})
                 return
             else:

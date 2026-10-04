@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
-from typing import AsyncIterator, Literal
+from typing import AsyncIterator, Awaitable, Callable, Literal
 from uuid import UUID, uuid4
 
 HERMES_REV = "c8301ea6c9b797184df16a9c5dd462400b264ff4"
@@ -64,6 +64,7 @@ class ProjectRuntime:
     reader: asyncio.Task | None = field(default=None, repr=False)
     sequence: int = 0
     terminal_received: bool = False
+    tool_gate: Callable[[str, str], Awaitable[bool]] | None = field(default=None, repr=False)
 
 class HermesRuntime:
     def __init__(self, image: str, *, hermes_source: Path | None = None,
@@ -121,7 +122,8 @@ class HermesRuntime:
             "TERMINAL_CONTAINER_PERSISTENT": "false", "TERMINAL_DOCKER_PERSIST_ACROSS_PROCESSES": "false",
             "TERMINAL_DOCKER_MOUNT_CWD_TO_WORKSPACE": "false", "TERMINAL_DOCKER_ORPHAN_REAPER": "false",
             "TERMINAL_DOCKER_EXTRA_ARGS": json.dumps(["--label", f"platform.project={project_id}",
-                "--label", "platform.task=CORE-03", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+                "--label", f"platform.run={workspace.name}", "--label", "platform.task=CORE-03",
+                "--cap-drop=ALL", "--security-opt=no-new-privileges",
                 "--pids-limit=256", "--read-only", "--shm-size=128m"]),
         }
         extra_args = json.loads(environment["TERMINAL_DOCKER_EXTRA_ARGS"])
@@ -167,6 +169,18 @@ class HermesRuntime:
                 value = json.loads(line)
                 if not isinstance(value, dict):
                     raise ValueError()
+                if "tool_request" in value:
+                    call_id = value.get("tool_request")
+                    name = value.get("name")
+                    if (
+                        set(value) != {"tool_request", "name"}
+                        or not isinstance(call_id, str)
+                        or not re.fullmatch(r"[0-9a-f]{32}", call_id)
+                        or name not in project.allowed_tools
+                    ):
+                        raise ValueError()
+                    asyncio.create_task(self._handle_tool_request(project, call_id, name))
+                    continue
                 if "event" in value:
                     kind = value["event"]
                     if kind not in ("progress", "result", "failed"):
@@ -204,6 +218,19 @@ class HermesRuntime:
                 if not future.done():
                     future.set_exception(RuntimeErrorCode("native_connection_closed"))
 
+    async def _handle_tool_request(self, project: ProjectRuntime, call_id: str, name: str) -> None:
+        allowed = False
+        if project.tool_gate is not None:
+            try:
+                allowed = await project.tool_gate(call_id, name)
+            except Exception:
+                allowed = False
+        try:
+            await self._request(project, "tool_gate_result", call_id=call_id, allowed=allowed)
+        except RuntimeErrorCode:
+            # Do not block the reader that must receive the bridge reply.
+            return
+
     async def _request(self, project: ProjectRuntime, method: str, **payload) -> dict:
         request_id = str(uuid4())
         future = asyncio.get_running_loop().create_future()
@@ -218,9 +245,12 @@ class HermesRuntime:
             project.pending.pop(request_id, None)
 
     async def submit(self, project_id: UUID, session_id: UUID, prompt: str,
-                     instructions: str, provider: ProviderConfig | None) -> None:
-        self.projects[project_id].terminal_received = False
-        response = await self._request(self.projects[project_id], "submit", session_id=str(session_id),
+                     instructions: str, provider: ProviderConfig | None, *,
+                     tool_gate: Callable[[str, str], Awaitable[bool]] | None = None) -> None:
+        project = self.projects[project_id]
+        project.tool_gate = tool_gate
+        project.terminal_received = False
+        response = await self._request(project, "submit", session_id=str(session_id),
             prompt=prompt, instructions=instructions,
             provider=None if provider is None else {"provider": provider.provider,
                 "model": provider.model, "base_url": provider.base_url, "api_key": provider.api_key})
@@ -291,6 +321,7 @@ class HermesRuntime:
 
     async def _cleanup_container(self, project: ProjectRuntime) -> None:
         filters = ["--filter", f"label=platform.project={project.project_id}",
+                   "--filter", f"label=platform.run={project.workspace.name}",
                    "--filter", f"label=platform.instance={self.instance_id}",
                    "--filter", "label=platform.task=CORE-03"]
         identities = (await self._docker("ps", "-aq", "--no-trunc", *filters)).splitlines()
@@ -301,10 +332,55 @@ class HermesRuntime:
         if await self._docker("ps", "-aq", "--no-trunc", *filters):
             raise RuntimeErrorCode("native_stop_incomplete")
 
+    async def stop_recorded_container(
+        self,
+        project_id: UUID,
+        run_id: UUID,
+        instance_id: str | None,
+        expected_container_id: str | None,
+    ) -> bool:
+        """Stop only a container whose durable labels match this exact run."""
+        if instance_id is not None and not re.fullmatch(r"[0-9a-f-]{36}", instance_id):
+            raise RuntimeErrorCode("native_stop_incomplete")
+        if expected_container_id is not None and not re.fullmatch(r"[0-9a-f]{64}", expected_container_id):
+            raise RuntimeErrorCode("native_stop_incomplete")
+        filters = [
+            "--filter", f"label=platform.project={project_id}",
+            "--filter", f"label=platform.run={run_id}",
+            "--filter", "label=platform.task=CORE-03",
+        ]
+        if instance_id is not None:
+            filters.extend(["--filter", f"label=platform.instance={instance_id}"])
+        identities = (await self._docker("ps", "-aq", "--no-trunc", *filters)).splitlines()
+        if expected_container_id is not None and identities and identities != [expected_container_id]:
+            raise RuntimeErrorCode("native_stop_incomplete")
+        for identity in identities:
+            if not re.fullmatch(r"[0-9a-f]{64}", identity):
+                raise RuntimeErrorCode("native_stop_incomplete")
+            details = json.loads(await self._docker("inspect", identity))
+            if not isinstance(details, list) or len(details) != 1:
+                raise RuntimeErrorCode("native_stop_incomplete")
+            item = details[0]
+            labels = item.get("Config", {}).get("Labels", {})
+            if (
+                item.get("Id") != identity
+                or labels.get("platform.project") != str(project_id)
+                or labels.get("platform.run") != str(run_id)
+                or labels.get("platform.task") != "CORE-03"
+                or (instance_id is not None and labels.get("platform.instance") != instance_id)
+            ):
+                raise RuntimeErrorCode("native_stop_incomplete")
+            await self._docker("rm", "--force", identity)
+        if await self._docker("ps", "-aq", "--no-trunc", *filters):
+            raise RuntimeErrorCode("native_stop_incomplete")
+        return True
+
     async def close(self, project_id: UUID | None = None) -> None:
         incomplete = False
         for identity in ([project_id] if project_id else list(self.projects)):
-            project = self.projects.pop(identity)
+            project = self.projects.get(identity)
+            if project is None:
+                continue
             try:
                 await self._request(project, "close")
                 await asyncio.wait_for(project.process.wait(), timeout=30)
@@ -318,5 +394,9 @@ class HermesRuntime:
                 incomplete = True
             if project.reader:
                 await project.reader
-        if incomplete:
-            raise RuntimeErrorCode("native_stop_incomplete")
+            if incomplete:
+                raise RuntimeErrorCode("native_stop_incomplete")
+            if project.process.returncode is None:
+                raise RuntimeErrorCode("native_stop_incomplete")
+            if self.projects.get(identity) is project:
+                self.projects.pop(identity)

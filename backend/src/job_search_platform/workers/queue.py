@@ -4,10 +4,12 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+from pydantic import ValidationError
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import Approval, Grant, OwnerSession, Project, Run
+from job_search_platform.services.contracts import EvaluationResult
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import MAX_ACTIVE_SECONDS, MAX_TOOL_CALLS, accrue_active_time, append_event
 
@@ -41,12 +43,12 @@ class PostgresRunQueue:
                 ).all()
             )
             candidates = db.execute(
-                select(Run.id, Run.project_id, Run.actor_scope)
+                select(Run.id, Run.project_id, Run.actor_scope, Run.operation)
                 .where(Run.status == "queued")
                 .order_by(Run.created_at, Run.id)
                 .limit(100)
             ).all()
-            for run_id, project_id, scope in candidates:
+            for run_id, project_id, scope, operation in candidates:
                 if project_id in active_projects:
                     continue
                 if len(active_projects) >= MAX_ACTIVE_PROJECTS:
@@ -56,7 +58,7 @@ class PostgresRunQueue:
                 )
                 if project is None:
                     continue
-                creator_is_current = self._scope_is_current(db, scope, project_id, now)
+                creator_is_current = self._scope_is_current(db, scope, project_id, now, operation)
                 # Project-first matches submission admission lock order; skip rows
                 # another transaction changed while this dispatcher was selecting.
                 run = db.scalar(
@@ -89,12 +91,19 @@ class PostgresRunQueue:
             return None
 
     def heartbeat(self, run_id: UUID, lease_owner: str, *, now: datetime | None = None) -> Run:
-        """Renew a still-live lease and accrue precise elapsed execution seconds."""
+        """Renew a live authorized claim; failed rows tell the supervisor to stop."""
         now = _utc(now or datetime.now(timezone.utc))
         with self.sessions.begin() as db:
-            run = self._leased_run(db, run_id, lease_owner, now)
-            accrued = self._elapsed(run, now)
-            if run.active_seconds + accrued >= MAX_ACTIVE_SECONDS:
+            run, creator_current = self._execution_run(db, run_id, lease_owner, now)
+            if not creator_current:
+                self._fail(db, run, "errors.creator_unavailable", now)
+            elif run.cancellation_requested_at is not None:
+                # Retain the live claim while the executor proves cessation.
+                # Cancellation still denies every subsequent native tool call.
+                accrue_active_time(run, now)
+                run.heartbeat_at = now
+                run.lease_expires_at = now + timedelta(seconds=self.lease_seconds)
+            elif run.active_seconds + self._elapsed(run, now) >= MAX_ACTIVE_SECONDS:
                 self._fail(db, run, "errors.active_time_limit", now)
             else:
                 accrue_active_time(run, now)
@@ -102,15 +111,19 @@ class PostgresRunQueue:
                 run.lease_expires_at = now + timedelta(seconds=self.lease_seconds)
             db.flush()
             return run
-
     def reserve_tool_call(self, run_id: UUID, lease_owner: str, *, now: datetime | None = None) -> int:
-        """Atomically reserve a tool call before its external side effect begins."""
+        """Reserve before a side effect under project, creator and run locks."""
         now = _utc(now or datetime.now(timezone.utc))
         limited: str | None = None
         reserved = 0
         with self.sessions.begin() as db:
-            run = self._leased_run(db, run_id, lease_owner, now)
-            if run.active_seconds + self._elapsed(run, now) >= MAX_ACTIVE_SECONDS:
+            run, creator_current = self._execution_run(db, run_id, lease_owner, now)
+            if run.cancellation_requested_at is not None:
+                limited = "cancellation_requested"
+            elif not creator_current:
+                self._fail(db, run, "errors.creator_unavailable", now)
+                limited = "creator_unavailable"
+            elif run.active_seconds + self._elapsed(run, now) >= MAX_ACTIVE_SECONDS:
                 self._fail(db, run, "errors.active_time_limit", now)
                 limited = "active_time_limit"
             elif run.tool_calls >= MAX_TOOL_CALLS:
@@ -124,35 +137,62 @@ class PostgresRunQueue:
         if limited:
             raise ServiceError(limited)
         return reserved
-
     def finish(
-        self,
-        run_id: UUID,
-        lease_owner: str,
-        status: str,
-        *,
-        message_key: str | None = None,
-        artifact_ids: tuple[UUID, ...] = (),
+        self, run_id: UUID, lease_owner: str, status: str, *,
+        message_key: str | None = None, artifact_ids: tuple[UUID, ...] = (),
+        evaluation_result: EvaluationResult | dict | None = None,
         now: datetime | None = None,
     ) -> Run:
-        """Persist one terminal outcome after the executor has stopped."""
+        """Atomically publish a validated report and terminal event after real stop."""
         if status not in {"completed", "failed", "cancelled", "interrupted"}:
             raise ValueError("invalid_terminal_status")
+        report = None
+        if evaluation_result is not None:
+            if status != "completed":
+                raise ServiceError("native_response_invalid")
+            try:
+                report = EvaluationResult.model_validate(evaluation_result).model_dump(mode="json")
+            except (ValidationError, TypeError, ValueError):
+                raise ServiceError("native_response_invalid") from None
         now = _utc(now or datetime.now(timezone.utc))
+        denied: str | None = None
         with self.sessions.begin() as db:
-            run = self._leased_run(db, run_id, lease_owner, now)
-            if run.status in {"completed", "failed", "cancelled", "interrupted"}:
-                raise ServiceError("terminal_run")
-            accrue_active_time(run, now)
-            run.status = status
-            run.finished_at = now
-            self._clear_lease(run)
-            event_type = f"run_{status}"
-            data: dict[str, object] = {"status": status, "artifact_ids": artifact_ids}
-            if message_key:
-                data["message_key"] = message_key
-            append_event(db, run, event_type, data, now=now)
-            return run
+            if status == "completed":
+                run, creator_current = self._execution_run(db, run_id, lease_owner, now)
+                if run.cancellation_requested_at is not None:
+                    denied = "cancellation_requested"
+                elif not creator_current:
+                    self._fail(db, run, "errors.creator_unavailable", now)
+                    denied = "creator_unavailable"
+                if report is not None and run.operation != "evaluate_job":
+                    raise ServiceError("native_response_invalid")
+            else:
+                run = self._leased_run(db, run_id, lease_owner, now)
+            if denied is None:
+                accrue_active_time(run, now)
+                if report is not None:
+                    run.evaluation_result = report
+                run.status = status
+                run.finished_at = now
+                self._clear_lease(run)
+                data: dict[str, object] = {"status": status, "artifact_ids": artifact_ids}
+                if message_key:
+                    data["message_key"] = message_key
+                append_event(db, run, f"run_{status}", data, now=now)
+        if denied:
+            raise ServiceError(denied)
+        return run
+    def _execution_run(self, db: Session, run_id: UUID, lease_owner: str,
+                       now: datetime) -> tuple[Run, bool]:
+        identity = db.execute(select(Run.project_id, Run.actor_scope, Run.operation)
+                              .where(Run.id == run_id)).one_or_none()
+        if identity is None:
+            raise ServiceError("not_found")
+        project_id, scope, operation = identity
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        creator_current = self._scope_is_current(db, scope, project_id, now, operation)
+        return self._leased_run(db, run_id, lease_owner, now), creator_current
 
     def _leased_run(self, db: Session, run_id: UUID, lease_owner: str, now: datetime) -> Run:
         run = db.scalar(select(Run).where(Run.id == run_id).with_for_update())
@@ -168,41 +208,28 @@ class PostgresRunQueue:
         return run
 
     @staticmethod
-    def _scope_is_current(db: Session, scope: str, project_id: UUID, now: datetime) -> bool:
+    def _scope_is_current(db: Session, scope: str, project_id: UUID, now: datetime,
+                          operation: str | None = None) -> bool:
         if scope == "owner":
-            return (
-                db.scalar(
-                    select(OwnerSession.id)
-                    .where(
-                        OwnerSession.revoked_at.is_(None),
-                        OwnerSession.expires_at > now,
-                    )
-                    .limit(1)
-                    .with_for_update()
-                )
-                is not None
-            )
+            return db.scalar(select(OwnerSession.id).where(
+                OwnerSession.revoked_at.is_(None), OwnerSession.expires_at > now,
+            ).limit(1).with_for_update()) is not None
         if not scope.startswith("grant:"):
             return False
         try:
             grant_id = UUID(scope.removeprefix("grant:"))
         except ValueError:
             return False
-        return (
-            db.scalar(
-                select(Grant.id)
-                .where(
-                    Grant.id == grant_id,
-                    Grant.project_id == project_id,
-                    Grant.revoked_at.is_(None),
-                    Grant.expires_at > now,
-                )
-                .limit(1)
-                .with_for_update()
-            )
-            is not None
-        )
-
+        creator = db.scalar(select(Grant).where(
+            Grant.id == grant_id, Grant.project_id == project_id,
+            Grant.revoked_at.is_(None), Grant.expires_at > now,
+        ).execution_options(populate_existing=True).with_for_update())
+        if creator is None:
+            return False
+        if operation is None:
+            return True
+        capability = {"evaluate_job": "jobs:evaluate", "draft_documents": "documents:draft"}.get(operation)
+        return capability is not None and capability in creator.capabilities
     @staticmethod
     def _elapsed(run: Run, now: datetime) -> float:
         if run.active_started_at is None:

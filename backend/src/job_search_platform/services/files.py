@@ -299,7 +299,6 @@ class Files:
         workspace = workspace_root / f"upload-parse-{runtime_id.hex}"
         state_root = Path(self.parser.state_root)
         state_path = state_root / str(runtime_id)
-        started = False
         staged: Path | None = None
         try:
             workspace.mkdir(mode=0o700)
@@ -308,7 +307,18 @@ class Files:
             await asyncio.wait_for(
                 self.parser.start_project(runtime_id, workspace), timeout=120
             )
-            started = True
+            # This private runtime has no model session. Authorize exactly the
+            # fixed parser subprocess for this already-authorized upload.
+            parser_calls = 0
+
+            async def authorize_upload_parser(_call_id: str, tool_name: str) -> bool:
+                nonlocal parser_calls
+                if tool_name != "terminal" or parser_calls != 0:
+                    return False
+                parser_calls += 1
+                return True
+
+            self.parser.projects[runtime_id].tool_gate = authorize_upload_parser
             staged = inputs / f"upload-{uuid4().hex}{_MIME_EXTENSIONS[mime]}"
             with staged.open("xb") as target:
                 target.write(body)
@@ -329,15 +339,20 @@ class Files:
         finally:
             if staged is not None:
                 staged.unlink(missing_ok=True)
-            if started:
+            if runtime_id in self.parser.projects:
+                runtime_project = self.parser.projects[runtime_id]
                 try:
-                    await self.parser.stop(runtime_id)
+                    await asyncio.wait_for(self.parser.stop(runtime_id), timeout=30)
                 except Exception:
-                    # HermesRuntime.stop performs a forced container cleanup even when
-                    # its graceful stop acknowledgement fails; keep the error generic.
+                    # Still close/escalate after a missing graceful acknowledgement.
+                    pass
+                try:
+                    await asyncio.wait_for(self.parser.close(runtime_id), timeout=75)
+                except Exception:
+                    # Preserve runtime and staged state when cessation is uncertain.
                     raise ServiceError("parser_stop_failed", retryable=True) from None
-                finally:
-                    self.parser.projects.pop(runtime_id, None)
+                if runtime_project.process.returncode is None or runtime_id in self.parser.projects:
+                    raise ServiceError("parser_stop_failed", retryable=True)
             for candidate, trusted_root in ((workspace, workspace_root), (state_path, state_root)):
                 if candidate.exists() or candidate.is_symlink():
                     try:

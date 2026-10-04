@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import hashlib
 from pathlib import Path
 import subprocess
 import sys
@@ -42,6 +43,11 @@ async def prove(image: str | None = None):
             projects.append(project)
         expected = {"terminal", "read_file", "write_file", "patch", "search_files"}
         assert set(projects[0].allowed_tools) == expected
+        async def allow_probe_tool(_call_id, _name):
+            return True
+
+        for project in projects:
+            project.tool_gate = allow_probe_tool
         for first, second in (projects, projects[::-1]):
             async def tool(tool_name, **arguments):
                 return await runtime._request(first, "tool", name=tool_name, arguments=arguments)
@@ -81,28 +87,31 @@ async def prove(image: str | None = None):
             assert protected.get("error"), protected
             staging = first.workspace / "staging"
             staging.mkdir(exist_ok=True)
+            export_artifacts = []
             for locale, heading in (("en", "Research Scientist"), ("th", "นักวิทยาศาสตร์")):
                 markdown = "# SYNTHETIC Example\n\n## " + heading + "\n\nPython, statistics and reproducible research.\n"
                 (staging / f"cv-{locale}.md").write_text(markdown)
-                # Package-local font bytes are embedded; rendering needs no external URL.
-                prepare = ("from pathlib import Path; import base64; "
-                    "fonts=list(Path('/opt/runtime/node_modules/@fontsource/noto-sans-thai/files').glob('*thai-400-normal.woff2')); "
-                    "font=base64.b64encode(fonts[0].read_bytes()).decode(); "
-                    f"html='<html lang=\"{locale}\"><style>@font-face{{font-family:Noto;src:url(data:font/woff2;base64,'+font+')}}body{{font-family:Noto,sans-serif}}</style><h1>{heading}</h1><p>SYNTHETIC Example. Python statistics.</p></html>'; "
-                    f"Path('/workspace/staging/cv-{locale}.html').write_text(html)")
-                prepared = await tool("terminal", command="python -c " + shlex.quote(prepare), timeout=15)
-                assert prepared.get("exit_code") == 0, prepared
-                for format, source_extension in (("docx", "md"), ("pdf", "html")):
+                for format in ("docx", "pdf"):
                     output = f"staging/cv-{locale}.{format}"
                     await runtime.export_document(first.project_id, format,
-                                                  f"staging/cv-{locale}.{source_extension}", output)
+                                                  f"staging/cv-{locale}.md", output)
                     artifact = first.workspace / output
                     assert artifact.is_file() and artifact.stat().st_size > 100
                     shutil.copyfile(artifact, first.workspace / "inputs" / artifact.name)
                     parsed = await runtime.parse_input(first.project_id, f"inputs/{artifact.name}")
                     assert parsed.kind == format and heading.casefold() in parsed.text.casefold(), (format, locale, parsed.text)
+                    thai_font_embedded = False
                     if format == "pdf" and locale == "th":
                         assert b"/FontFile2" in artifact.read_bytes() and b"/ToUnicode" in artifact.read_bytes()
+                        thai_font_embedded = True
+                    export_artifacts.append({
+                        "language": locale,
+                        "format": format,
+                        "size_bytes": artifact.stat().st_size,
+                        "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
+                        "text_round_trip": True,
+                        "thai_font_embedded": thai_font_embedded,
+                    })
             # A real image-only PDF must not be accepted as an empty CV.
             objects = [b"<< /Type /Catalog /Pages 2 0 R >>",
                 b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -149,6 +158,30 @@ async def prove(image: str | None = None):
                 else:
                     assert Path(mount["Source"]).resolve() == first.workspace / "inputs"
             assert (second.workspace / "marker.txt").read_text().startswith("SYNTHETIC_PROJECT_")
+            used = 0
+
+            async def one_tool_only(_call_id, _name):
+                nonlocal used
+                used += 1
+                return used <= 1
+
+            first.tool_gate = one_tool_only
+            accepted = await runtime._request(
+                first, "tool", name="write_file",
+                arguments={"path": "/workspace/gate.txt", "content": "SYNTHETIC_GATE"},
+            )
+            assert not accepted.get("error"), "first native tool reservation was denied"
+            denied = await runtime._request(
+                first, "tool", name="write_file",
+                arguments={"path": "/workspace/gate.txt", "content": "MUST_NOT_WRITE"},
+            )
+            assert denied.get("error") == "tool_call_denied", denied
+            first.tool_gate = allow_probe_tool
+            gate_file = await runtime._request(
+                first, "tool", name="read_file", arguments={"path": "/workspace/gate.txt"}
+            )
+            assert "SYNTHETIC_GATE" in json.dumps(gate_file)
+            assert "MUST_NOT_WRITE" not in json.dumps(gate_file)
             await tool("terminal", command="sleep 60; touch /workspace/SHOULD_NOT_EXIST", background=True)
             await runtime.stop(first.project_id)
             stopped = subprocess.run(["docker", "inspect", first.container_id], capture_output=True)
@@ -172,6 +205,7 @@ async def prove(image: str | None = None):
         return {"status": "complete", "native_tool_isolation": "complete", "native_stop": "complete",
                 "skill_loading": "complete", "projects": 2, "tools": sorted(expected),
                 "image": config["image"], "live_provider": "not_run", "document_exports": "complete",
+                "export_artifacts": export_artifacts,
                 "input_parsing": "complete", "languages": ["en", "th"], "bridge_crash_cleanup": "complete"}
     finally:
         await runtime.close()
