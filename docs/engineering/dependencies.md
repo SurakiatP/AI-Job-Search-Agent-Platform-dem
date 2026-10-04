@@ -42,3 +42,11 @@ Root scanner integration (2026-10-04): native Hermes audits the actual locked lo
 PostgreSQL remediation adds the independently required `postgres_go_build_dependencies` scope: validate clean gosu source and hash-verified overlay, audit effective Go module inventory, and scan the final binary/OS image. Its new Alpine cluster uses a fresh explicitly named volume; existing Bookworm PGDATA is preserved and cannot be mounted under Alpine without a tested logical restore/collation validation.
 
 Installed protocol SDK inspection (2026-10-04): MCP2.3.0 uses `mcp.server.mcpserver.MCPServer` (FastMCP moved in v2) and exposes `streamable_http_app`. A2A SDK1.2.1 assembles through `a2a.server.routes` public route factories; the previous `a2a.server.apps` path is absent. Use current official SDK types/routes/clients and record actual negotiated protocol versions during PROTO-01/02. These imports are not protocol/security verification.
+
+## Release-candidate scan, 2026-10-04
+
+The corrected invocation supplied the verified MinIO source checkout through `MINIO_SOURCE_DIR` (upstream `7aac2a2c5b7c882e68c1ce017d8256be2feea27f`). Private evidence: `20261004T072955.943096Z/scan-summary.json` under the operator security cache. Exit 0; all eleven named coverage scopes complete, no missing/failed scopes, zero known High/Critical findings. Backend/Hermes Python audits and frontend/tests/Hermes Node audits reported zero findings. Trivy 0.75.0 used advisory DB timestamp `2026-10-04 01:47:20.093525258 UTC`.
+
+Actual image IDs: PostgreSQL `sha256:b65a00df9778bc6f6e8c7f0208555da8f13fb391f92a69c160f853e21aaf8e2c`; MinIO `sha256:ed336a7464e2eeecf94c70ff5778c6c0dd6ed84cefdb2e6fd67822b8334e5b20`; Hermes `sha256:f132adc318b2553808e33b32b830fc99be14f500206a88f47d5dcee97c00432a`. Each has a recorded SBOM. These local image IDs identify the tested builds and are not registry pull references.
+
+MinIO `GO-2026-5932` remains UNKNOWN in both Go inventory and image reports. Parser coverage is release-source inventory; the compiled wheel is unattested. No findings were suppressed. The preceding `20261004T072345.071208Z` attempt exited 1 because the invocation omitted `MINIO_SOURCE_DIR`; its missing Go-build scope remains historical evidence, and is not a passing scan. Live-provider and independent final acceptance remain separate gates.
