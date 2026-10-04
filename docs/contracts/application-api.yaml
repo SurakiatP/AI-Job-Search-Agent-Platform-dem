@@ -124,6 +124,31 @@ paths:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/JobCreate'}}}
       responses: {'201': {description: Created immutable job revision}}
+  /projects/{project_id}/jobs/{job_id}/application-status:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: job_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [jobs]
+      description: Owner-only status recorded for one immutable job revision; defaults to saved.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Owner application status, content: {application/json: {schema: {$ref: '#/components/schemas/JobApplicationStatusView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [jobs]
+      description: Owner-only saved/applied status update. This records owner history and does not submit an application.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/JobApplicationStatusUpdate'}}}
+      responses:
+        '200': {description: Updated application status, content: {application/json: {schema: {$ref: '#/components/schemas/JobApplicationStatusView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/documents:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -446,6 +471,20 @@ components:
             title: {type: string}
             company: {type: [string, 'null']}
             source_url: {type: [string, 'null']}
+            application_status: {type: string, enum: [saved, applied], default: saved}
+    JobApplicationStatusUpdate:
+      type: object
+      additionalProperties: false
+      required: [application_status]
+      properties:
+        application_status: {type: string, enum: [saved, applied]}
+    JobApplicationStatusView:
+      type: object
+      additionalProperties: false
+      required: [job_revision_id, application_status]
+      properties:
+        job_revision_id: {type: string, format: uuid}
+        application_status: {type: string, enum: [saved, applied]}
     CVRevisionView:
       allOf:
         - {$ref: '#/components/schemas/RevisionView'}

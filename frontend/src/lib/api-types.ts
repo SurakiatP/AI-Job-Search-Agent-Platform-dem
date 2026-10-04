@@ -56,7 +56,9 @@ export type JobRevisionView = {
   title: string;
   company: string | null;
   source_url: string | null;
+  application_status?: 'saved' | 'applied';
 };
+export type JobApplicationStatusView = { job_revision_id: string; application_status: 'saved' | 'applied' };
 export type RunOperation = 'evaluate_job' | 'draft_documents';
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 export type EvaluationResult = { report_markdown: string; score: number | null };

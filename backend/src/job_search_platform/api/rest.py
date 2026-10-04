@@ -12,17 +12,19 @@ from fastapi import APIRouter, Depends, File, Header, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import StringConstraints
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
 from job_search_platform.db.models import (
-    CVRevision, ConversationSession, Document, JobRevision, Message, Project,
+    CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
     ProjectPreference, StoredFile, Run, Grant, ProviderConfiguration,
     ToolConnectorConfiguration,
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
     ApprovalDecision, ApprovalRequest, ApprovalView, CVRevisionView, DocumentRevisionView, DocumentView,
-    GrantIssueRequest, GrantIssuedView, GrantView, JobCreate, JobRevisionView, MessageCreate,
+    GrantIssueRequest, GrantIssuedView, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
+    JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
     PreferencesView, ProjectUpdate, ProjectView, ProviderConnectionTestView, ProviderSettingsUpdate,
     ProviderSettingsView, RunRequest, RunView, SessionCreate, SessionView, ToolConnectorSettingsView,
@@ -75,9 +77,10 @@ def _session_view(row: ConversationSession) -> dict[str, Any]:
     return {"id": row.id, "project_id": row.project_id, "title": row.title, "created_at": row.created_at}
 
 
-def _job_view(row: JobRevision) -> dict[str, Any]:
+def _job_view(row: JobRevision, application_status: str = "saved") -> dict[str, Any]:
     return {"id": row.id, "revision": row.revision, "created_at": row.created_at,
-            "title": row.title, "company": row.company, "source_url": row.source_url, "description": row.description}
+            "title": row.title, "company": row.company, "source_url": row.source_url, "description": row.description,
+            "application_status": application_status}
 
 
 @router.post("/owner/bootstrap", response_model=OwnerBootstrapView)
@@ -237,9 +240,63 @@ async def create_message(project_id: UUID, session_id: UUID, body: MessageCreate
 async def list_jobs(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "job")
-        rows = db.scalars(select(JobRevision).where(JobRevision.project_id == project_id)
-                          .order_by(JobRevision.created_at, JobRevision.revision)).all()
-        return [_job_view(row) for row in rows]
+        rows = db.execute(
+            select(JobRevision, JobApplicationStatus.status)
+            .outerjoin(
+                JobApplicationStatus,
+                (JobApplicationStatus.project_id == JobRevision.project_id)
+                & (JobApplicationStatus.job_revision_id == JobRevision.id),
+            )
+            .where(JobRevision.project_id == project_id)
+            .order_by(JobRevision.created_at, JobRevision.revision)
+        ).all()
+        return [_job_view(row, status or "saved") for row, status in rows]
+
+
+@router.get(
+    "/projects/{project_id}/jobs/{job_id}/application-status",
+    response_model=JobApplicationStatusView,
+)
+async def get_job_application_status(
+    project_id: UUID,
+    job_id: UUID,
+    actor=Depends(owner_actor),
+    services: Services = Depends(get_services),
+):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+        require_scoped_id(db, JobRevision, project_id, job_id)
+        row = db.get(JobApplicationStatus, (project_id, job_id))
+        return {"job_revision_id": job_id, "application_status": row.status if row else "saved"}
+
+
+@router.patch(
+    "/projects/{project_id}/jobs/{job_id}/application-status",
+    response_model=JobApplicationStatusView,
+)
+async def update_job_application_status(
+    project_id: UUID,
+    job_id: UUID,
+    body: JobApplicationStatusUpdate,
+    actor=Depends(write_actor),
+    services: Services = Depends(get_services),
+):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "job")
+        require_scoped_id(db, JobRevision, project_id, job_id)
+        statement = pg_insert(JobApplicationStatus).values(
+            project_id=project_id,
+            job_revision_id=job_id,
+            status=body.application_status,
+        )
+        db.execute(
+            statement.on_conflict_do_update(
+                index_elements=["project_id", "job_revision_id"],
+                set_={"status": body.application_status, "updated_at": func.now()},
+            )
+        )
+        return {"job_revision_id": job_id, "application_status": body.application_status}
 
 
 @router.post("/projects/{project_id}/jobs", status_code=201, response_model=JobRevisionView)

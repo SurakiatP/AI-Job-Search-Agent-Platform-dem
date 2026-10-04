@@ -78,6 +78,18 @@ class JobRevision(Base):
     __table_args__ = (ForeignKeyConstraint(["project_id", "content_file_id"], ["files.project_id", "files.id"]), UniqueConstraint("project_id", "id", name="uq_job_revisions_project_id"), UniqueConstraint("project_id", "revision", name="uq_job_revisions_number"), CheckConstraint("revision > 0", name="ck_job_revision_positive"))
 
 
+class JobApplicationStatus(Base):
+    """Mutable owner status kept separate from immutable job and run revisions."""
+    __tablename__ = "job_application_statuses"
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    job_revision_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "job_revision_id"], ["job_revisions.project_id", "job_revisions.id"], ondelete="CASCADE"),
+        CheckConstraint("status IN ('saved','applied')", name="ck_job_application_status_value"),
+    )
+
 class JobSubmission(Base):
     """Idempotency reservation for callers that submit job text inline."""
     __tablename__ = "job_submissions"

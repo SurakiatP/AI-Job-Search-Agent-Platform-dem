@@ -101,6 +101,15 @@ class JobRevisionView(RevisionView):
     source_url: str | None = None
 
 
+    application_status: Literal["saved", "applied"] = "saved"
+
+class JobApplicationStatusUpdate(DTO):
+    application_status: Literal["saved", "applied"]
+
+class JobApplicationStatusView(DTO):
+    job_revision_id: UUID
+    application_status: Literal["saved", "applied"]
+
 class JobCreate(DTO):
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
     company: Annotated[str, StringConstraints(max_length=300)] | None = None
