@@ -32,6 +32,7 @@ from job_search_platform.integrations.secrets import MacOSKeychain
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.documents import Artifacts, Documents
 from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.maintenance import acquire_maintenance_lock, assert_restore_ready
 from job_search_platform.services.files import Files
 from job_search_platform.services.grants import Grants
 from job_search_platform.services.owner_sessions import OwnerSessions
@@ -44,7 +45,7 @@ from job_search_platform.workers.supervisor import WorkerSupervisor
 
 ROOT = Path(__file__).resolve().parents[3]
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
-PRIVATE_DIR = Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003"
+PRIVATE_DIR = Path(os.environ.get("CORE02_PRIVATE_DIR", str(Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003")))
 RUNTIME_METADATA = Path.home() / ".cache" / "job-search-platform" / "hermes-runtime.json"
 
 
@@ -157,6 +158,24 @@ def _safe_field_names(exc: RequestValidationError) -> dict[str, str] | None:
     return fields or None
 
 
+def acquire_service_maintenance(services: Services):
+    """Hold the target lock and refuse an incomplete restore before any startup writes."""
+    if services.engine is None:
+        return None  # controlled transport fixtures only
+    guard = services.maintenance_lock
+    owns_guard = guard is None or not guard.held
+    if owns_guard:
+        guard = acquire_maintenance_lock(PRIVATE_DIR, str(services.engine.url), services.files.object_store.bucket)
+    try:
+        assert_restore_ready(PRIVATE_DIR, str(services.engine.url), services.files.object_store.bucket)
+    except BaseException:
+        if owns_guard:
+            guard.close()
+        raise
+    services.maintenance_lock = guard
+    return guard
+
+
 def create_app(
     services: Services | None = None,
     *,
@@ -166,18 +185,35 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         current = services or service_factory()
-        if services is None:
-            await __import__("asyncio").to_thread(_migrate, current.engine)
-        app.state.services = current
+        owns_guard = current.maintenance_lock is None or not current.maintenance_lock.held
+        guard = acquire_service_maintenance(current)
         try:
-            await current.files.reconcile_pending()
-            await current.supervisor.start()
-            yield
+            if services is None:
+                await __import__("asyncio").to_thread(_migrate, current.engine)
+            app.state.services = current
+            current.shutdown_confirmed = False
+            try:
+                await current.files.reconcile_pending()
+                await current.supervisor.start()
+                yield
+            finally:
+                supervisor_stopped = False
+                runtime_stopped = False
+                try:
+                    await current.supervisor.close()
+                    supervisor_stopped = True
+                finally:
+                    try:
+                        await current.runtime.close()
+                        runtime_stopped = True
+                    finally:
+                        current.shutdown_confirmed = supervisor_stopped and runtime_stopped
+                        if current.engine is not None:
+                            current.engine.dispose()
         finally:
-            await current.supervisor.close()
-            await current.runtime.close()
-            if current.engine is not None:
-                current.engine.dispose()
+            if owns_guard and guard is not None and current.shutdown_confirmed:
+                guard.close()
+                current.maintenance_lock = None
 
     app = FastAPI(title="Job Search Platform Application API", version="1.0.0",
                   servers=[{"url": "/api/v1"}], lifespan=lifespan)

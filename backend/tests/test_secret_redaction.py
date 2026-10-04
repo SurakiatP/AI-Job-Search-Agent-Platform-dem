@@ -127,3 +127,25 @@ async def test_failed_config_commit_removes_only_new_secret(migrated_engine):
         event.remove(svc.sessions, "before_commit", fail_commit)
     with sessionmaker(migrated_engine)() as db:
         assert db.scalar(select(ProviderConfiguration)) is None
+
+
+async def test_restored_provider_identity_is_unconfigured_until_new_key_is_saved(migrated_engine):
+    store = MemorySecrets()
+    svc, actor, pid = settings(migrated_engine, store)
+    with svc.sessions.begin() as db:
+        restored = ProviderConfiguration(project_id=pid, provider="openai", model="synthetic", revision=1,
+                                         secret_reference="restored-unconfigured:" + str(uuid4()))
+        db.add(restored)
+        db.flush()
+        old_id = restored.id
+    public = await svc.get_provider(actor, pid)
+    assert public.configured is False
+    assert public.masked_secret is None
+    with pytest.raises(ServiceError, match="provider_not_configured"):
+        await svc.trusted_provider(pid, configuration_id=old_id)
+    saved = await svc.save_provider(actor, pid, ProviderSettingsUpdate(
+        provider="openai", model="synthetic-new", credential="SYNTHETIC-RECONFIGURED-KEY"))
+    assert saved.configured is True and saved.revision == 2
+    assert (await svc.trusted_provider(pid)).model == "synthetic-new"
+    with pytest.raises(ServiceError, match="provider_not_configured"):
+        await svc.trusted_provider(pid, configuration_id=old_id)

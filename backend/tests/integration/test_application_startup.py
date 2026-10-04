@@ -14,6 +14,8 @@ from botocore.exceptions import ClientError
 
 from job_search_platform import main
 from job_search_platform.services.owner_sessions import CSRF_HEADER
+from job_search_platform.services.maintenance import acquire_maintenance_lock
+from job_search_platform.services.errors import ServiceError
 
 
 @pytest.fixture
@@ -52,12 +54,43 @@ def production_factory(migrated_engine, monkeypatch):
     # Also clean up if factory construction failed after creating its bucket.
     for client in clients:
         try:
-            if client.list_objects_v2(Bucket=bucket).get("Contents"):
-                raise AssertionError("startup_test_bucket_not_empty")
+            # This fixture owns a UUID-named synthetic bucket, including browser upload objects.
+            contents = client.list_objects_v2(Bucket=bucket).get("Contents", [])
+            if contents:
+                client.delete_objects(Bucket=bucket, Delete={"Objects": [{"Key": row["Key"]} for row in contents]})
             client.delete_bucket(Bucket=bucket)
         except ClientError as exc:
             if exc.response["Error"]["Code"] != "NoSuchBucket":
                 raise
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_maintenance_excludes_app_before_migration_and_entire_lifespan(production_factory, monkeypatch):
+    factory, _ = production_factory
+    services = factory()
+    target = (main.PRIVATE_DIR, str(services.engine.url), services.files.object_store.bucket)
+    migration_calls = []
+    native_migrate = main._migrate
+
+    def recorded_migrate(engine):
+        migration_calls.append(True)
+        native_migrate(engine)
+
+    monkeypatch.setattr(main, "_migrate", recorded_migrate)
+    with acquire_maintenance_lock(*target):
+        blocked = main.create_app(service_factory=lambda: services)
+        with pytest.raises(ServiceError, match="maintenance_active"):
+            async with blocked.router.lifespan_context(blocked):
+                raise AssertionError("maintenance_did_not_exclude_app")
+        assert not migration_calls
+    app = main.create_app(service_factory=lambda: services)
+    async with app.router.lifespan_context(app):
+        assert migration_calls == [True]
+        with pytest.raises(ServiceError, match="maintenance_active"):
+            acquire_maintenance_lock(*target)
+    with acquire_maintenance_lock(*target) as guard:
+        assert guard.held
 
 
 @pytest.mark.integration
@@ -91,7 +124,8 @@ async def test_production_factory_migrates_serves_owner_and_stops_dispatch(produ
 @pytest.mark.integration
 @pytest.mark.asyncio
 @pytest.mark.parametrize("host", ["127.0.0.1", "::1"])
-async def test_actual_launcher_serves_inside_running_loop_without_exposing_nonce(production_factory, tmp_path, monkeypatch, unused_tcp_port, host):
+@pytest.mark.parametrize("open_browser", [False, True])
+async def test_actual_launcher_serves_inside_running_loop_without_exposing_nonce(production_factory, tmp_path, monkeypatch, unused_tcp_port, host, open_browser):
     factory, created = production_factory
     script = Path(__file__).resolve().parents[3] / "scripts" / "run_local.py"
     spec = importlib.util.spec_from_file_location("production_launcher_probe", script)
@@ -99,6 +133,9 @@ async def test_actual_launcher_serves_inside_running_loop_without_exposing_nonce
     spec.loader.exec_module(launcher)
     monkeypatch.setattr(launcher, "build_services", factory)
     monkeypatch.setenv("JSP_ALLOWED_ORIGINS", "")
+    import webbrowser
+    opened = []
+    monkeypatch.setattr(webbrowser, "open", lambda _: opened.append(True) or True)
     printed_launch_link = []
 
     def private_output(*values, **_kwargs):
@@ -119,7 +156,7 @@ async def test_actual_launcher_serves_inside_running_loop_without_exposing_nonce
     dist = tmp_path / "dist"
     (dist / "assets").mkdir(parents=True)
     (dist / "index.html").write_text("<html><body>Synthetic launcher page</body></html>")
-    args = SimpleNamespace(frontend_dist=dist, build_frontend=False, host=host, port=unused_tcp_port)
+    args = SimpleNamespace(frontend_dist=dist, build_frontend=False, host=host, port=unused_tcp_port, open_browser=open_browser)
     task = asyncio.create_task(launcher._launch(args))
     try:
         async with asyncio.timeout(20):
@@ -134,7 +171,11 @@ async def test_actual_launcher_serves_inside_running_loop_without_exposing_nonce
             assert response.status_code == 200
             assert "Synthetic launcher page" in response.text
             assert (await client.get("/api/v1/projects")).status_code == 401
-        assert printed_launch_link == [True]
+        if open_browser:
+            async with asyncio.timeout(5):
+                while not opened:
+                    await asyncio.sleep(0.01)
+        assert printed_launch_link == ([] if open_browser else [True])
     finally:
         if servers:
             servers[0].should_exit = True
@@ -142,3 +183,71 @@ async def test_actual_launcher_serves_inside_running_loop_without_exposing_nonce
             task.cancel()
         await asyncio.wait_for(task, timeout=15)
     assert created[0].supervisor._dispatcher is None
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_failed_native_shutdown_attempts_runtime_cleanup_and_keeps_target_locked(production_factory):
+    factory, _ = production_factory
+    services = factory()
+    attempted = []
+    real_close = services.supervisor.close
+
+    async def failed_close():
+        await real_close()
+        raise ServiceError("native_stop_incomplete")
+
+    async def recorded_runtime_close():
+        attempted.append(True)
+
+    services.supervisor.close = failed_close
+    services.runtime.close = recorded_runtime_close
+    app = main.create_app(services)
+    try:
+        with pytest.raises(ServiceError, match="native_stop_incomplete"):
+            async with app.router.lifespan_context(app):
+                pass
+        assert attempted == [True]
+        assert services.shutdown_confirmed is False
+        with pytest.raises(ServiceError, match="maintenance_active"):
+            acquire_maintenance_lock(main.PRIVATE_DIR, str(services.engine.url), services.files.object_store.bucket)
+    finally:
+        # This synthetic test started no native processes; release its guard explicitly.
+        services.maintenance_lock.close()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_actual_built_frontend_with_production_rest_upload_and_session_restore(production_factory, monkeypatch, tmp_path, unused_tcp_port):
+    import os
+    factory, _ = production_factory
+    origin = f"http://127.0.0.1:{unused_tcp_port}"
+    monkeypatch.setenv("JSP_ALLOWED_ORIGINS", origin)
+    app = main.create_app(service_factory=factory, frontend_dist=main.ROOT / "frontend" / "dist")
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=unused_tcp_port, access_log=False, log_config=None))
+    task = asyncio.create_task(server.serve())
+    try:
+        for _ in range(200):
+            if task.done():
+                await task
+                raise AssertionError("actual_frontend_server_failed")
+            if server.started:
+                break
+            await asyncio.sleep(0.05)
+        assert server.started
+        launch = await app.state.services.owner_sessions.create_launch_nonce(origin)
+        import json
+        config = tmp_path / "synthetic-owner-session.json"
+        config.write_text(json.dumps({"nonce": launch.nonce}))
+        config.chmod(0o600)
+        environment = dict(os.environ, JSP_E2E_BASE_URL=origin, JSP_E2E_SESSION_FILE=str(config),
+                           PLAYWRIGHT_OUTPUT_DIR=str(tmp_path / "playwright-output"))
+        process = await asyncio.create_subprocess_exec(
+            "rtk", "proxy", "npm", "test", "--prefix", "tests", "--", "actual-backend.spec.ts", "--workers=1",
+            cwd=main.ROOT, env=environment, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+        )
+        output, _ = await asyncio.wait_for(process.communicate(), 180)
+        assert process.returncode == 0, output.decode()
+    finally:
+        server.should_exit = True
+        await task

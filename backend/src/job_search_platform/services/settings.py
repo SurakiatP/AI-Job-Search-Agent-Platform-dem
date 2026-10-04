@@ -58,8 +58,8 @@ class Settings:
                 Repositories.project(db, project_id)
                 row = self._current(db, project_id)
                 return ProviderSettingsView(configured=False) if row is None else ProviderSettingsView(
-                    provider=row.provider, model=row.model, configured=True,
-                    revision=row.revision, masked_secret="••••••••")
+                    provider=row.provider, model=row.model, configured=not row.secret_reference.startswith("restored-unconfigured:"),
+                    revision=row.revision, masked_secret=None if row.secret_reference.startswith("restored-unconfigured:") else "••••••••")
         return await asyncio.to_thread(view)
 
     async def save_provider(self, actor, project_id, request):
@@ -102,7 +102,7 @@ class Settings:
                 row = self._current(db, project_id) if configuration_id is None else db.scalar(
                     select(ProviderConfiguration).where(ProviderConfiguration.project_id == project_id,
                                                          ProviderConfiguration.id == configuration_id))
-                if row is None:
+                if row is None or row.secret_reference.startswith("restored-unconfigured:"):
                     raise ServiceError("provider_not_configured")
                 if row.provider not in PROVIDERS:
                     raise ServiceError("unsupported_provider")

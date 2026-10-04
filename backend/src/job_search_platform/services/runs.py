@@ -279,7 +279,7 @@ class RunService:
             .order_by(ProviderConfiguration.revision.desc())
             .limit(1)
         )
-        if provider_config is None:
+        if provider_config is None or provider_config.secret_reference.startswith("restored-unconfigured:"):
             raise ServiceError("provider_configuration_required")
         connector = db.scalar(
             select(ToolConnectorConfiguration)

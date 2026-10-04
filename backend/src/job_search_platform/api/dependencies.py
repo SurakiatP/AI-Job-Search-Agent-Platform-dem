@@ -30,6 +30,8 @@ class Services:
     artifacts: Any = None
     secret_store: Any = None
     engine: Any = None
+    maintenance_lock: Any = None
+    shutdown_confirmed: bool = True
 
 
 def get_services(request: Request) -> Services:
