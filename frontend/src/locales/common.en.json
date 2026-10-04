@@ -105,5 +105,13 @@
     "posting": "Job description",
     "newSession": "New conversation",
     "sessionTitle": "Conversation title"
+  },
+  "errors": {
+    "scanned_pdf_unsupported": "This PDF contains scanned images. OCR is not supported yet. Upload a text-based PDF, DOCX or text file instead.",
+    "document_encrypted": "This document is password-protected. Remove the password and upload it again.",
+    "document_invalid": "We could not read this document. Export a new PDF, DOCX or text file and try again.",
+    "empty_input": "This document has no readable text. Add CV text or upload a document containing text.",
+    "document_limits": "This document exceeds the processing limits. Try a smaller or simpler document.",
+    "document_parse_timeout": "Reading the document took too long. Try a smaller document or upload it again."
   }
 }

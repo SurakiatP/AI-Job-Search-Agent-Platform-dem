@@ -1,0 +1,65 @@
+{
+  "appearance": "Appearance",
+  "appearanceDescription": "Choose how the application looks on this device.",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System",
+  "provider": {
+    "description": "Choose an available AI provider for this project. The selected provider receives CV content needed to complete your requests.",
+    "configured": "Configured: {{provider}} · {{model}} · key {{secret}}",
+    "notConfigured": "No provider is configured for this project."
+  },
+  "sharing": {
+    "description": "Create a time-limited access token for this project. Shared callers can see generated personal documents when results:read is allowed; they cannot access raw CV uploads or private conversation history.",
+    "defaultOff": "Sharing stays off until you create a token.",
+    "resultsPrivacy": "Generated results may contain personal information. Grant only the capabilities needed."
+  },
+  "loading": "Loading…",
+  "loadError": "We could not load settings.",
+  "retry": "Try again",
+  "providerLabel": "Provider",
+  "modelLabel": "Model",
+  "apiKey": "API key",
+  "keyHint": "The key is sent only to the local backend, saved in the operating system credential store, and cleared from this form after saving. It is never shown again.",
+  "saveProvider": "Save provider and key",
+  "testConnection": "Test saved connection",
+  "configured": "Configured: {{provider}} · {{model}} · key {{secret}}",
+  "notConfigured": "No provider is configured for this project.",
+  "saveFailed": "We could not save this setting. Check the values and try again.",
+  "connection": {
+    "succeeded": "The saved provider connection succeeded.",
+    "failed": "The saved provider connection failed. Check the configuration and try again.",
+    "unavailable": "The provider connection is unavailable right now."
+  },
+  "tools": {
+    "description": "Enable only the supported Career Ops connector for this project. Connector availability depends on the local installation."
+  },
+  "careerOps": "Career Ops connector",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "toolsUnavailable": "No supported connector is available.",
+  "sharingDefaultOff": "Sharing stays off until you create a token.",
+  "sharingResultsPrivacy": "Generated results may contain personal information. Grant only the capabilities needed.",
+  "capabilities": "Allowed capabilities",
+  "capability": {
+    "resultsRead": "Read generated results (may contain personal information)",
+    "jobsEvaluate": "Evaluate supplied job postings",
+    "documentsDraft": "Draft application documents"
+  },
+  "expiresAfter": "Token expires after",
+  "createGrant": "Create project token",
+  "activeGrants": "Project tokens",
+  "tokenShownOnce": "Copy this token now",
+  "tokenWarning": "This value is shown once. Closing this view discards it; it cannot be recovered.",
+  "accessToken": "Project access token",
+  "copyToken": "Copy token",
+  "copied": "Token copied.",
+  "dismissToken": "Done and hide token",
+  "projectLabel": "Project {{projectId}}",
+  "expires": "Expires {{date}}",
+  "expired": "Expired",
+  "revoked": "Revoked",
+  "revoke": "Revoke",
+  "hours_one": "{{count}} hour",
+  "hours_other": "{{count}} hours"
+}

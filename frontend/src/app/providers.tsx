@@ -4,6 +4,8 @@ import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import th from '../locales/common.th.json';
 import en from '../locales/common.en.json';
+import settingsTh from '../locales/settings.th.json';
+import settingsEn from '../locales/settings.en.json';
 import { DraftProvider } from './drafts';
 import { readPreference, savePreference, ThemeProvider } from './theme';
 
@@ -16,7 +18,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     const instance = i18next.createInstance();
     void instance.init({
       lng: locale, fallbackLng: 'th', initAsync: false,
-      resources: { th: { common: th }, en: { common: en } },
+      resources: { th: { common: th, settings: settingsTh }, en: { common: en, settings: settingsEn } },
       defaultNS: 'common', interpolation: { escapeValue: false },
     });
     return instance;

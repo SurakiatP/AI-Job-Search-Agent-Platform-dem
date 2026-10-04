@@ -5,6 +5,7 @@ import { Button } from '../../components/Button';
 import { useDraft, useFileDraft } from '../../app/drafts';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { apiRequest } from '../../lib/api';
+import { ApiError } from '../../lib/api-types';
 import { sendJson, useResource } from '../projects/useResource';
 
 type Revision = { id: string; revision: number; original_filename?: string; mime_type?: string; size_bytes?: number };
@@ -27,7 +28,7 @@ export function ProfilePage() {
   const [text, setText] = useDraft(projectId, 'profile', 'cv-text');
   const [file, setFile] = useFileDraft(projectId, 'profile', 'cv-file');
   const [busy, setBusy] = useState(false);
-  const [uploadError, setUploadError] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [languageDraft, setLanguageDraft] = useDraft(projectId, 'profile', 'output-language');
   const [notificationsDraft, setNotificationsDraft] = useDraft(projectId, 'profile', 'notifications');
   const language: 'th' | 'en' = languageDraft === 'th' || languageDraft === 'en' ? languageDraft : preferences.data?.output_language ?? 'th';
@@ -43,15 +44,31 @@ export function ProfilePage() {
   async function upload() {
     const selected = file ?? (text.trim() ? new File([text], 'pasted-cv.txt', { type: 'text/plain' }) : null);
     if (!selected) return;
-    if (selected.size > 20 * 1024 * 1024) { setUploadError(true); return; }
+    if (selected.size > 20 * 1024 * 1024) { setUploadError('pages.uploadTooLarge'); return; }
     const extension = selected.name.split('.').pop()?.toLowerCase();
-    if (!extension || !['pdf', 'docx', 'txt'].includes(extension)) { setUploadError(true); return; }
-    setBusy(true); setUploadError(false);
+    if (!extension || !['pdf', 'docx', 'txt'].includes(extension)) { setUploadError('pages.uploadInvalidType'); return; }
+    setBusy(true); setUploadError(null);
     try {
       const body = new FormData(); body.set('file', selected);
       await apiRequest(`/projects/${projectId}/cv`, { method: 'POST', body });
       setText(''); setFile(undefined); cv.reload();
-    } catch { setUploadError(true); }
+    } catch (error) {
+      const messages: Record<string, string> = {
+        scanned_pdf_unsupported: 'errors.scanned_pdf_unsupported',
+        document_encrypted: 'errors.document_encrypted',
+        document_invalid: 'errors.document_invalid',
+        empty_input: 'errors.empty_input',
+        document_expansion_limit: 'errors.document_limits',
+        extracted_text_limit: 'errors.document_limits',
+        input_size_invalid: 'pages.uploadTooLarge',
+        upload_too_large: 'pages.uploadTooLarge',
+        unsupported_input: 'pages.uploadInvalidType',
+        unsupported_media_type: 'pages.uploadInvalidType',
+        document_parse_timeout: 'errors.document_parse_timeout',
+        network_error: 'errors.network_error',
+      };
+      setUploadError(error instanceof ApiError ? messages[error.code] ?? 'pages.loadError' : 'pages.loadError');
+    }
     finally { setBusy(false); }
   }
   async function savePreferences() {
@@ -65,7 +82,7 @@ export function ProfilePage() {
     <section className="surface-card"><h2>{t('pages.cvHeading', { defaultValue: 'Your CV' })}</h2>{cv.data?.length ? <ul className="revision-list">{cv.data.map(revision => <li key={revision.id}>{revision.original_filename ?? `${t('pages.revision', { defaultValue: 'Revision' })} ${revision.revision}`}</li>)}</ul> : <><h3>{t('pages.noCVTitle', { defaultValue: 'No CV added yet' })}</h3><p className="muted">{t('pages.noCVDescription', { defaultValue: 'Paste CV text or select a PDF, DOCX or text file to add a revision.' })}</p></>}
       <label htmlFor="cv-text">{t('pages.pasteCV', { defaultValue: 'Paste CV text' })}</label><textarea id="cv-text" rows={8} value={text} onChange={event => setText(event.target.value)} />
       <label htmlFor="cv-file">{t('pages.uploadCV', { defaultValue: 'Upload a CV file' })}</label><input id="cv-file" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={event => setFile(event.target.files?.[0])} />{file && <p className="muted" role="status">{t('pages.selectedFile', { defaultValue: 'Selected file' })}: {file.name}</p>}
-      {uploadError && <p className="field-error" role="alert">{file && file.size > 20 * 1024 * 1024 ? t('pages.uploadTooLarge', { defaultValue: 'Files must be 20 MB or smaller.' }) : file && !['pdf', 'docx', 'txt'].includes(file.name.split('.').pop()?.toLowerCase() ?? '') ? t('pages.uploadInvalidType', { defaultValue: 'Choose a PDF, DOCX or text file.' }) : t('pages.loadError', { defaultValue: 'We could not load this information.' })}</p>}<Button variant="primary" disabled={busy || (!file && !text.trim())} onClick={() => void upload()}>{t('pages.save', { defaultValue: 'Save' })}</Button>
+      {uploadError && <p className="field-error" role="alert">{t(uploadError)}</p>}<Button variant="primary" disabled={busy || (!file && !text.trim())} onClick={() => void upload()}>{t('pages.save', { defaultValue: 'Save' })}</Button>
     </section>
     <section className="surface-card"><h2>{t('pages.preferencesHeading', { defaultValue: 'Preferences' })}</h2><label htmlFor="output-language">{t('pages.outputLanguage', { defaultValue: 'Document language' })}</label><select id="output-language" value={language} onChange={event => setLanguageDraft(event.target.value)}><option value="th">ไทย</option><option value="en">English</option></select><label className="check-row"><input type="checkbox" checked={notifications} onChange={event => setNotificationsDraft(String(event.target.checked))} />{t('pages.notifications', { defaultValue: 'Notifications' })}</label>{saveError && <p className="field-error" role="alert">{t('pages.loadError', { defaultValue: 'We could not load this information.' })}</p>}<Button variant="primary" onClick={() => void savePreferences()}>{t('pages.savePreferences', { defaultValue: 'Save preferences' })}</Button></section>
   </section>;
