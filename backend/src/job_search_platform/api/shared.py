@@ -6,6 +6,7 @@ from starlette.routing import Mount
 
 from job_search_platform.api.dependencies import Services
 from job_search_platform.api.mcp import create_mcp_app, mcp_lifespan_context
+from job_search_platform.api.a2a import create_a2a_app
 
 
 def create_shared_app(services: Services, *, host: str, port: int) -> Starlette:
@@ -17,4 +18,5 @@ def create_shared_app(services: Services, *, host: str, port: int) -> Starlette:
         async with mcp_lifespan_context(mcp):
             yield
 
-    return Starlette(routes=[Mount("/mcp", app=mcp)], lifespan=lifespan)
+    a2a = create_a2a_app(services, base_url=f"http://{authority}", allowed_hosts=[authority])
+    return Starlette(routes=[Mount("/mcp", app=mcp), Mount("/", app=a2a)], lifespan=lifespan)
