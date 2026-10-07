@@ -364,6 +364,12 @@ paths:
     delete:
       tags: [sharing]
       responses: {'204': {description: Revoked}}
+  /providers:
+    get:
+      tags: [settings]
+      description: Owner-only catalog of supported LLM providers (API-key providers, LM Studio and a custom OpenAI-compatible endpoint).
+      responses:
+        '200': {description: Provider catalog, content: {application/json: {schema: {$ref: '#/components/schemas/ProviderCatalogView'}}}}
   /projects/{project_id}/settings/provider:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -375,6 +381,22 @@ paths:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/ProviderSettingsUpdate'}}}
       responses: {'200': {description: Credential stored by secret adapter; secret value is not returned}}
+  /projects/{project_id}/settings/provider/models:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [settings]
+      description: >-
+        List models from the provider endpoint. A null credential reuses the stored key only when the stored
+        provider and effective base URL match the request, otherwise 409 credential_required. Upstream failure
+        is a retryable 502 provider_models_unavailable; invalid base URL is 422 invalid_base_url. Keys are never returned.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ProviderModelsRequest'}}}
+      responses:
+        '200': {description: Sorted model list (at most 500), content: {application/json: {schema: {$ref: '#/components/schemas/ProviderModelsView'}}}}
+        '409': {$ref: '#/components/responses/Unavailable'}
+        '422': {$ref: '#/components/responses/Unavailable'}
+        '502': {$ref: '#/components/responses/Unavailable'}
   /projects/{project_id}/settings/provider/test:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     post:
@@ -721,17 +743,58 @@ components:
     ProviderSettingsUpdate:
       type: object
       additionalProperties: false
-      required: [provider, model, credential]
+      required: [provider, model]
       properties:
         provider: {type: string, maxLength: 80}
         model: {type: string, maxLength: 160}
-        credential: {type: string, writeOnly: true}
+        credential: {type: [string, 'null'], writeOnly: true, description: Required unless the provider is key_optional}
+        base_url: {type: [string, 'null'], maxLength: 512, description: Required for custom; https, or http only for loopback hosts}
+    ProviderCatalogEntry:
+      type: object
+      additionalProperties: false
+      required: [id, label, default_base_url, requires_base_url, local, key_optional]
+      properties:
+        id: {type: string}
+        label: {type: string}
+        default_base_url: {type: string}
+        requires_base_url: {type: boolean}
+        local: {type: boolean}
+        key_optional: {type: boolean}
+    ProviderCatalogView:
+      type: object
+      additionalProperties: false
+      required: [providers]
+      properties:
+        providers: {type: array, items: {$ref: '#/components/schemas/ProviderCatalogEntry'}}
+    ProviderModelsRequest:
+      type: object
+      additionalProperties: false
+      required: [provider]
+      properties:
+        provider: {type: string, maxLength: 80}
+        base_url: {type: [string, 'null'], maxLength: 512}
+        credential: {type: [string, 'null'], writeOnly: true}
+    ProviderModelView:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id: {type: string}
+        name: {type: [string, 'null']}
+    ProviderModelsView:
+      type: object
+      additionalProperties: false
+      required: [models]
+      properties:
+        models: {type: array, items: {$ref: '#/components/schemas/ProviderModelView'}}
     ProviderSettingsView:
       type: object
       additionalProperties: false
       required: [configured]
       properties:
         provider: {type: [string, 'null']}
+        provider_label: {type: [string, 'null']}
+        base_url: {type: [string, 'null']}
         model: {type: [string, 'null']}
         configured: {type: boolean}
         revision: {type: [integer, 'null'], minimum: 1}

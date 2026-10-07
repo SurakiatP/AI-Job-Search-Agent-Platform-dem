@@ -161,6 +161,7 @@ class ProviderConfiguration(Base):
     provider: Mapped[str] = mapped_column(String(80), nullable=False)
     model: Mapped[str] = mapped_column(String(160), nullable=False)
     secret_reference: Mapped[str] = mapped_column(String(512), nullable=False)
+    base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     revision: Mapped[int] = mapped_column(Integer, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     __table_args__ = (UniqueConstraint("project_id", "id", name="uq_provider_config_project_id"), UniqueConstraint("project_id", "revision", name="uq_provider_config_revision"), CheckConstraint("revision > 0", name="ck_provider_config_revision_positive"))

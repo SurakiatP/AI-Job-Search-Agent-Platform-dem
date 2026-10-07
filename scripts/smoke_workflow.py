@@ -78,7 +78,7 @@ async def _run(project_id: uuid.UUID) -> int:
             if owner_session is None:
                 _emit({"status": "blocked", "reason": "owner_session_unavailable"})
                 return 2
-            provider_values = (provider.provider, provider.model, provider.secret_reference)
+            provider_values = (provider.provider, provider.model, provider.secret_reference, provider.base_url)
             actor = Actor("owner", owner_session.id, None, None, frozenset())
 
         settings = Settings(sessions, MacOSKeychain())
@@ -103,6 +103,7 @@ async def _run(project_id: uuid.UUID) -> int:
                 provider=provider_values[0],
                 model=provider_values[1],
                 secret_reference=provider_values[2],
+                base_url=provider_values[3],
                 revision=1,
             )
             db.add(config)

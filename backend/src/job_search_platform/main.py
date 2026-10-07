@@ -152,7 +152,7 @@ def _safe_field_names(exc: RequestValidationError) -> dict[str, str] | None:
                 "source_url", "description", "content", "filename", "file", "mime_type", "session_id",
                 "operation", "cv_revision_id", "job_revision_id", "idempotency_key", "retry_of_id",
                 "action", "revision_id", "expected_cv_revision_id", "target_file_id", "decision",
-                "capabilities", "expires_at", "provider", "model", "credential", "enabled",
+                "capabilities", "expires_at", "provider", "model", "credential", "enabled", "base_url",
             }:
                 fields[field_name] = "invalid"
     return fields or None

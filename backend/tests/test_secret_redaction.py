@@ -149,3 +149,26 @@ async def test_restored_provider_identity_is_unconfigured_until_new_key_is_saved
     assert (await svc.trusted_provider(pid)).model == "synthetic-new"
     with pytest.raises(ServiceError, match="provider_not_configured"):
         await svc.trusted_provider(pid, configuration_id=old_id)
+
+
+async def test_probe_uses_transport_endpoint_and_oversized_models_are_rejected(migrated_engine, monkeypatch):
+    from job_search_platform.services import settings as settings_module
+    calls = []
+    def fake_get(url, headers, max_bytes):
+        calls.append((url, headers, max_bytes))
+        return 200, b"x" * (max_bytes + 1)
+    monkeypatch.setattr(settings_module, "_get", fake_get)
+    svc, actor, pid = settings(migrated_engine, MemorySecrets())
+    await svc.save_provider(actor, pid, ProviderSettingsUpdate(
+        provider="custom", model="m", credential="k", base_url="https://llm.example.com/v1"))
+    assert (await svc.test_provider(actor, pid)).status == "succeeded"
+    assert calls[-1][0] == "https://llm.example.com/v1/models" and calls[-1][1] == {"Authorization": "Bearer k"}
+    await svc.save_provider(actor, pid, ProviderSettingsUpdate(provider="anthropic", model="m", credential="k"))
+    assert (await svc.test_provider(actor, pid)).status == "succeeded"
+    assert calls[-1][0] == "https://api.anthropic.com/v1/models?limit=1" and calls[-1][1]["x-api-key"] == "k"
+    await svc.save_provider(actor, pid, ProviderSettingsUpdate(provider="openrouter", model="m", credential="k"))
+    await svc.test_provider(actor, pid)
+    assert calls[-1][0] == "https://openrouter.ai/api/v1/key"
+    with pytest.raises(ServiceError, match="provider_models_unavailable"):
+        from job_search_platform.services.contracts import ProviderModelsRequest
+        await svc.list_models(actor, pid, ProviderModelsRequest(provider="openai", credential="k"))

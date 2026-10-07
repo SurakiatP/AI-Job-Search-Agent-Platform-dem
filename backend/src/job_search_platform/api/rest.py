@@ -27,13 +27,15 @@ from job_search_platform.services.contracts import (
     GrantIssueRequest, GrantIssuedView, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
-    PreferencesView, ProjectUpdate, ProjectView, ProviderConnectionTestView, ProviderSettingsUpdate,
+    PreferencesView, ProjectUpdate, ProjectView, ProviderCatalogView, ProviderConnectionTestView,
+    ProviderModelsRequest, ProviderModelsView, ProviderSettingsUpdate,
     ProviderSettingsView, RunRequest, RunView, SessionCreate, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
 from job_search_platform.services import job_sources
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
+from job_search_platform.services.settings import provider_catalog as settings_catalog
 
 router = APIRouter()
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -42,7 +44,7 @@ SAFE_FIELDS = frozenset({
     "source_url", "description", "content", "filename", "file", "mime_type", "kind",
     "session_id", "operation", "cv_revision_id", "job_revision_id", "idempotency_key",
     "retry_of_id", "action", "revision_id", "expected_cv_revision_id", "target_file_id",
-    "decision", "capabilities", "expires_at", "provider", "model", "credential", "enabled",
+    "decision", "capabilities", "expires_at", "provider", "model", "credential", "enabled", "base_url",
 })
 
 
@@ -57,7 +59,8 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
         "object_store_unavailable": 503, "service_unavailable": 503,
-        "secret_store_unavailable": 503,
+        "secret_store_unavailable": 503, "invalid_base_url": 422, "credential_required": 409,
+        "provider_models_unavailable": 502,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
     body = {
@@ -497,6 +500,11 @@ async def revoke_grant(project_id: UUID, grant_id: UUID, actor=Depends(write_act
     await services.grants.revoke(actor, project_id, grant_id)
 
 
+@router.get("/providers", response_model=ProviderCatalogView)
+async def provider_catalog(actor=Depends(owner_actor)):
+    return {"providers": settings_catalog()}
+
+
 @router.get("/projects/{project_id}/settings/provider", response_model=ProviderSettingsView)
 async def get_provider(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
     return await services.settings.get_provider(actor, project_id)
@@ -505,6 +513,11 @@ async def get_provider(project_id: UUID, actor=Depends(owner_actor), services: S
 @router.put("/projects/{project_id}/settings/provider", response_model=ProviderSettingsView)
 async def set_provider(project_id: UUID, body: ProviderSettingsUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
     return await services.settings.save_provider(actor, project_id, body)
+
+
+@router.post("/projects/{project_id}/settings/provider/models", response_model=ProviderModelsView)
+async def provider_models(project_id: UUID, body: ProviderModelsRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return {"models": await services.settings.list_models(actor, project_id, body)}
 
 
 @router.post("/projects/{project_id}/settings/provider/test", response_model=ProviderConnectionTestView)

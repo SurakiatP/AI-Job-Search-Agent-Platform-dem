@@ -274,15 +274,46 @@ class GrantView(DTO):
 class ProviderSettingsUpdate(DTO):
     provider: Annotated[str, StringConstraints(min_length=1, max_length=80)]
     model: Annotated[str, StringConstraints(min_length=1, max_length=160)]
-    credential: Annotated[SecretStr, Field(min_length=1, max_length=4096)]
+    credential: Annotated[SecretStr, Field(min_length=1, max_length=4096)] | None = None
+    base_url: Annotated[str, StringConstraints(max_length=512)] | None = None
 
 
 class ProviderSettingsView(DTO):
     provider: str | None = None
+    provider_label: str | None = None
+    base_url: str | None = None
     model: str | None = None
     configured: bool
     revision: int | None = None
     masked_secret: str | None = None
+
+
+class ProviderCatalogEntry(DTO):
+    id: str
+    label: str
+    default_base_url: str
+    requires_base_url: bool
+    local: bool
+    key_optional: bool
+
+
+class ProviderCatalogView(DTO):
+    providers: list[ProviderCatalogEntry]
+
+
+class ProviderModelsRequest(DTO):
+    provider: Annotated[str, StringConstraints(min_length=1, max_length=80)]
+    base_url: Annotated[str, StringConstraints(max_length=512)] | None = None
+    credential: Annotated[SecretStr, Field(min_length=1, max_length=4096)] | None = None
+
+
+class ProviderModelView(DTO):
+    id: str
+    name: str | None = None
+
+
+class ProviderModelsView(DTO):
+    models: list[ProviderModelView]
 
 
 class ProviderConnectionTestView(DTO):
