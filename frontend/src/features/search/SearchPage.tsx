@@ -162,7 +162,6 @@ export function SearchPage() {
   const buildPath = useCallback((offset: number) => {
     const search = new URLSearchParams();
     if (q) search.set('q', q);
-    if (city) search.set('cities', city);
     if (mode) search.set('work_mode', mode);
     if (posted) search.set('posted_within_days', posted);
     if (category) search.set('category', category);
@@ -297,13 +296,13 @@ export function SearchPage() {
           {[7, 14, 30].map(d => <option key={d} value={String(d)}>{c.days(d)}</option>)}
         </select>
       </div>
-      <div className="grid min-w-0 gap-2">
+      {sample && <div className="grid min-w-0 gap-2">
         <Label htmlFor="job-city">{c.city}</Label>
         <select id="job-city" className={selectClass} value={city} onChange={e => setFilter('cities', e.target.value)}>
           <option value="">{c.anyCity}</option>
           {cities.map(f => <option key={f.value} value={f.value}>{f.count ? `${f.value} (${number.format(f.count)})` : f.value}</option>)}
         </select>
-      </div>
+      </div>}
     </div>
 
     {categories.length > 0 && <div role="group" aria-label={c.categories} className="flex flex-wrap gap-2">
