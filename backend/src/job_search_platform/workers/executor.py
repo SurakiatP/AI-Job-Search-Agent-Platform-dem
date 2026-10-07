@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import asyncio
 import hashlib
 import mimetypes
@@ -24,10 +25,16 @@ from job_search_platform.workers.supervisor import process_birth
 CLAIM_HEARTBEAT_INTERVAL_SECONDS = 1
 
 
+def _native_json(value: str):
+    """Parse native JSON, accepting one surrounding markdown fence that some models add."""
+    fenced = re.fullmatch(r"\s*```(?:json)?\s*\n(.*)\n\s*```\s*", value, re.DOTALL)
+    return json.loads(fenced.group(1) if fenced else value)
+
+
 def parse_evaluation_result(value: str) -> EvaluationResult:
     """Validate the sole public evaluation shape; never retain native traces."""
     try:
-        payload = json.loads(value)
+        payload = _native_json(value)
         if not isinstance(payload, dict) or set(payload) - {"report_markdown", "score"}:
             raise ValueError
         return EvaluationResult.model_validate(payload)
@@ -38,7 +45,7 @@ def parse_evaluation_result(value: str) -> EvaluationResult:
 def parse_draft_manifest(value: str) -> tuple[dict[str, str], ...]:
     """Validate private native output paths before sending them to exporters."""
     try:
-        payload = json.loads(value)
+        payload = _native_json(value)
         if not isinstance(payload, dict) or set(payload) != {"drafts"}:
             raise ValueError
         drafts = payload["drafts"]

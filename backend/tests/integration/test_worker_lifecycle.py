@@ -156,6 +156,18 @@ def test_evaluation_result_accepts_only_the_public_report_contract() -> None:
         parse('{"report_markdown":"Synthetic evidence","score":4,"raw_trace":"private"}')
 
 
+def test_native_json_wrapped_in_one_markdown_fence_is_accepted() -> None:
+    executor = import_module("job_search_platform.workers.executor")
+
+    result = executor.parse_evaluation_result('```json\n{"report_markdown":"Synthetic","score":3.5}\n```')
+    assert result.score == 3.5
+    drafts = executor.parse_draft_manifest(
+        '```\n{"drafts":[{"path":"cv.md","document_type":"cv","title":"Synthetic","format":"pdf"}]}\n```')
+    assert drafts[0]["path"] == "cv.md"
+    with pytest.raises(ValueError, match="native_response_invalid"):
+        executor.parse_evaluation_result('Here you go:\n```json\n{"report_markdown":"Synthetic","score":3.5}\n```')
+
+
 def test_draft_manifest_requires_safe_staging_relative_paths() -> None:
     spec = util.find_spec("job_search_platform.workers.executor")
     assert spec is not None, "run executor implementation is missing"
