@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useDraft } from '../../app/drafts';
 import { Bot, FileText, Briefcase, TriangleAlert } from 'lucide-react';
@@ -28,6 +28,7 @@ export function ChatPage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith('th') ? 'th' : 'en';
   const { projectId = '', sessionId = '' } = useParams();
+  const initialJobId = (useLocation().state as { jobId?: string } | null)?.jobId;
   const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
   const provider = useResource<Provider>(`/projects/${projectId}/settings/provider`);
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
@@ -63,7 +64,7 @@ export function ChatPage() {
     {workflow.run && !active && <Button type="button" variant="outline" className="self-start" disabled={workflow.submitting} onClick={() => void workflow.retry()}>{copy.retry}</Button>}
     <ApprovalCard approval={workflow.pendingApproval} locale={locale} busy={workflow.submitting} onDecision={(id, decision) => void workflow.decideApproval(id, decision)} onRefresh={() => void workflow.reload().catch(() => undefined)} />
     <RunResults projectId={projectId} locale={locale} run={workflow.run} documents={documents.data ?? []} />
-    <Composer locale={locale} jobs={jobs.data ?? []} message={message} onMessageChange={setMessage} busy={!available || Boolean(active) || workflow.submitting} onSubmit={input => { void workflow.submit(input).then(run => { if (run) setMessage(''); }); }} />
+    <Composer locale={locale} jobs={jobs.data ?? []} initialJobId={initialJobId} message={message} onMessageChange={setMessage} busy={!available || Boolean(active) || workflow.submitting} onSubmit={input => { void workflow.submit(input).then(run => { if (run) setMessage(''); }); }} />
   </div>{documentPanel && <Card className="self-start" role="complementary" aria-labelledby="chat-documents-heading"><CardHeader><CardTitle id="chat-documents-heading" className="text-lg">{t('pages.documentsTitle')}</CardTitle></CardHeader><CardContent className="grid gap-3">
     {documents.data?.length ? <ul className="grid gap-2">{documents.data.map(document => <li key={document.id}><Link className="break-words text-sm font-medium hover:underline" to={`${base}/documents/${document.id}`}>{document.title}</Link></li>)}</ul> : <p className="text-sm text-muted-foreground">{copy.noDocs}</p>}
     <Link className="text-sm text-primary hover:underline" to={`${base}/documents`}>{t('pages.viewDocuments')}</Link>

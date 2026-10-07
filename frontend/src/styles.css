@@ -10,6 +10,7 @@
 
 :root {
   --radius: 0.75rem;
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.04);
   --background: oklch(0.985 0.003 275);
   --foreground: oklch(0.22 0.02 275);
   --card: oklch(1 0 0);
@@ -24,9 +25,9 @@
   --muted-foreground: oklch(0.48 0.02 275);
   --accent: oklch(0.95 0.03 277);
   --accent-foreground: oklch(0.38 0.17 277);
-  --destructive: oklch(0.55 0.21 27);
-  --success: oklch(0.55 0.14 155);
-  --warning: oklch(0.62 0.14 70);
+  --destructive: oklch(0.5 0.2 27);
+  --success: oklch(0.47 0.13 155);
+  --warning: oklch(0.52 0.13 65);
   --border: oklch(0.91 0.008 275);
   --input: oklch(0.88 0.01 275);
   --ring: oklch(0.51 0.23 277);

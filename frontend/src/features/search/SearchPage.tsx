@@ -72,12 +72,12 @@ export function SearchPage() {
     if (savingId) return;
     setSavingId(job.id); setErrorId(null);
     try {
-      await sendJson(`/projects/${projectId}/jobs`, 'POST', {
+      const created = await sendJson<{ id: string }>(`/projects/${projectId}/jobs`, 'POST', {
         title: job.title, description: job.description, company: job.company, source_url: null,
       });
       const base = `/app/projects/${projectId}`;
       const first = sessions.data?.[0];
-      void navigate(first ? `${base}/sessions/${first.id}` : `${base}/profile`);
+      void navigate(first ? `${base}/sessions/${first.id}` : `${base}/profile`, { state: { jobId: created.id } });
     } catch {
       setErrorId(job.id); setSavingId(null);
     }
