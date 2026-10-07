@@ -12,10 +12,12 @@ export function AppShell({ children, projects, projectId, sessionId }: {
   const sidebarProps = { projects, projectId, sessionId };
   return <>
     <a href="#main-content" className="skip-link">{t('skipToContent')}</a>
-    <Header menu={<MobileDrawer>{close => <ProjectSidebar {...sidebarProps} onNavigate={close} />}</MobileDrawer>} />
-    <div className="app-layout">
-      <aside className="desktop-sidebar"><ProjectSidebar {...sidebarProps} /></aside>
-      <main id="main-content" className="main-content" tabIndex={-1}>{children}</main>
+    <div className="min-h-dvh lg:grid lg:grid-cols-[264px_minmax(0,1fr)]">
+      <aside className="sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r bg-sidebar lg:flex"><ProjectSidebar {...sidebarProps} /></aside>
+      <div className="min-w-0">
+        <div className="lg:hidden"><Header menu={<MobileDrawer>{close => <ProjectSidebar {...sidebarProps} onNavigate={close} />}</MobileDrawer>} /></div>
+        <main id="main-content" className="page-enter mx-auto w-full min-w-0 max-w-6xl px-6 py-8 lg:px-10" tabIndex={-1}>{children}</main>
+      </div>
     </div>
   </>;
 }

@@ -12,6 +12,17 @@
   "projects": "โปรเจกต์",
   "sessions": "บทสนทนา",
   "settings": "การตั้งค่า",
+  "nav": {
+    "overview": "ภาพรวม",
+    "evaluate": "ประเมินงาน",
+    "savedJobs": "งานที่บันทึก",
+    "search": "ค้นหางาน",
+    "preview": "Preview",
+    "documents": "เอกสาร",
+    "cv": "CV และเงื่อนไข",
+    "allProjects": "ทุก Project",
+    "newProject": "สร้าง Project ใหม่"
+  },
   "noProjects": "โปรเจกต์ของคุณจะอยู่ที่นี่",
   "workspaceTitle": "พื้นที่หางานของคุณ",
   "workspaceDescription": "รวมโปรเจกต์ บทสนทนา และเอกสารสำหรับการหางานไว้ในที่เดียว",

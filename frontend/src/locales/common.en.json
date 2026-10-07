@@ -12,6 +12,17 @@
   "projects": "Projects",
   "sessions": "Sessions",
   "settings": "Settings",
+  "nav": {
+    "overview": "Overview",
+    "evaluate": "Evaluate",
+    "savedJobs": "Saved jobs",
+    "search": "Job search",
+    "preview": "Preview",
+    "documents": "Documents",
+    "cv": "CV & preferences",
+    "allProjects": "All projects",
+    "newProject": "New project"
+  },
   "noProjects": "Your projects will appear here",
   "workspaceTitle": "Your job search workspace",
   "workspaceDescription": "Keep your job search projects, conversations and documents together.",
