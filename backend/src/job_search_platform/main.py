@@ -266,7 +266,7 @@ def create_app(
         "PreferencesView", "ProjectCreate", "ProjectUpdate", "ProjectView",
         "ProviderConnectionTestView", "ProviderSettingsUpdate", "ProviderSettingsView",
         "RevisionView", "RunEventData", "RunEventView", "RunRequest", "RunView",
-        "SessionCreate", "SessionView", "ToolConnectorSettingsView", "ToolConnectorUpdate",
+        "SessionCreate", "SessionView", "SkillCoverage", "ToolConnectorSettingsView", "ToolConnectorUpdate",
         "ToolConnectorView", "ToolDescriptor", "ToolsView", "UploadRequest",
     )
 

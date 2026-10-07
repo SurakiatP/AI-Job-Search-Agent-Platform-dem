@@ -72,7 +72,8 @@ export type JobRevisionView = {
 export type JobApplicationStatusView = { job_revision_id: string; application_status: 'saved' | 'applied' };
 export type RunOperation = 'evaluate_job' | 'draft_documents';
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
-export type EvaluationResult = { report_markdown: string; score: number | null };
+export type SkillCoverage = { required: string[]; matched: string[]; missing: string[]; ratio: number; method: string };
+export type EvaluationResult = { report_markdown: string; score: number | null; skill_coverage?: SkillCoverage | null };
 export type RunView = {
   id: string;
   project_id: string;

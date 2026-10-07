@@ -164,9 +164,22 @@ class UploadRequest(DTO):
     size_bytes: Annotated[int, Field(ge=0, le=20 * 1024 * 1024)]
 
 
+SkillName = Annotated[str, StringConstraints(min_length=1, max_length=80)]
+
+
+class SkillCoverage(DTO):
+    """Deterministic keyword coverage; never produced by the model."""
+    required: Annotated[tuple[SkillName, ...], Field(max_length=60)]
+    matched: Annotated[tuple[SkillName, ...], Field(max_length=60)]
+    missing: Annotated[tuple[SkillName, ...], Field(max_length=60)]
+    ratio: Annotated[float, Field(ge=0, le=1)]
+    method: Annotated[str, StringConstraints(max_length=40)]
+
+
 class EvaluationResult(DTO):
     report_markdown: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200000)]
     score: Annotated[float, Field(ge=1, le=5, strict=True)] | None = None
+    skill_coverage: SkillCoverage | None = None
 
 
 class RunView(DTO):

@@ -156,6 +156,13 @@ def test_evaluation_result_accepts_only_the_public_report_contract() -> None:
         parse('{"report_markdown":"Synthetic evidence","score":4,"raw_trace":"private"}')
 
 
+def test_native_output_cannot_supply_skill_coverage() -> None:
+    parse = import_module("job_search_platform.workers.executor").parse_evaluation_result
+    coverage = '{"required":["A","B"],"matched":["A"],"missing":["B"],"ratio":0.5,"method":"x"}'
+    with pytest.raises(ValueError, match="native_response_invalid"):
+        parse('{"report_markdown":"Synthetic","skill_coverage":' + coverage + "}")
+
+
 def test_native_json_wrapped_in_one_markdown_fence_is_accepted() -> None:
     executor = import_module("job_search_platform.workers.executor")
 
@@ -469,6 +476,89 @@ async def test_executor_parses_supplied_cv_before_offline_provider_failure(db_se
     finally:
         await runtime.close(db_project.id)
         shutil.rmtree(runtime_root, ignore_errors=True)
+
+
+@pytest.mark.asyncio
+async def test_completed_evaluation_stores_deterministic_skill_coverage(db_session, tmp_path: Path) -> None:
+    db_project = project(db_session, "Synthetic coverage")
+    actor = owner(db_session)
+    conversation = session(db_session, db_project.id)
+    body = b"Synthetic CV: ReactJS, Python and postgres."
+    stored = StoredFile(
+        project_id=db_project.id, kind="cv_original", publication_state="published",
+        storage_key="synthetic/coverage-cv.txt", checksum_sha256=hashlib.sha256(body).hexdigest(),
+        size_bytes=len(body), mime_type="text/plain", display_name="synthetic-cv.txt",
+    )
+    db_session.add(stored)
+    db_session.flush()
+    job = JobRevision(
+        project_id=db_project.id, revision=1, title="Product Engineer",
+        description="React, TypeScript and PostgreSQL.", company="Example Co",
+        source_url="https://jobs.example.test/coverage",
+    )
+    db_session.add_all([CVRevision(project_id=db_project.id, revision=1, file_id=stored.id), job])
+    provider_config(db_session, db_project.id)
+    db_session.commit()
+
+    sessions = sessionmaker(bind=db_session.get_bind(), expire_on_commit=False)
+    view = await RunService(sessions).submit(actor, db_project.id, run_request(conversation.id, job.id))
+    queue = PostgresRunQueue(sessions)
+    lease_owner = f"executor-{uuid.uuid4()}"
+    claimed = queue.claim_next(lease_owner)
+    assert claimed is not None and claimed.id == view.id
+
+    class FakeRuntime:
+        instance_id = uuid.uuid4()
+
+        def __init__(self) -> None:
+            self.projects: dict = {}
+
+        async def start_project(self, project_id, workspace):
+            self.projects[project_id] = SimpleNamespace(
+                process=SimpleNamespace(pid=os.getpid(), returncode=0), workspace=workspace
+            )
+            return self.projects[project_id]
+
+        async def parse_input(self, _project_id, _path):
+            return SimpleNamespace(text=body.decode())
+
+        async def submit(self, *_args, **_kwargs) -> None:
+            return None
+
+        async def events(self, _project_id):
+            yield SimpleNamespace(kind="result", result='{"report_markdown":"Synthetic report","score":4.0}')
+
+        async def stop(self, project_id) -> None:
+            return None
+
+        async def close(self, project_id) -> None:
+            self.projects.pop(project_id, None)
+
+    class SyntheticObjectStore:
+        async def get(self, _key: str) -> bytes:
+            return body
+
+    class FakeSettings:
+        async def trusted_provider(self, *_args, **_kwargs):
+            return None
+
+    executor = RunExecutor(
+        sessions, queue, FakeRuntime(), FakeSettings(), object(), SyntheticObjectStore(),
+        workspace_root=tmp_path,
+    )
+    await executor.execute(claimed, lease_owner)
+    with sessions() as db:
+        finished = db.get(Run, view.id)
+        assert finished.status == "completed"
+        assert finished.evaluation_result["score"] == 4.0
+        assert finished.evaluation_result["skill_coverage"] == {
+            "required": ["React", "TypeScript", "PostgreSQL"],
+            "matched": ["React", "PostgreSQL"],
+            "missing": ["TypeScript"],
+            "ratio": 0.67,
+            "method": "keyword_dictionary_v1",
+        }
+    assert (await RunService(sessions).get(actor, db_project.id, view.id)).evaluation_result.skill_coverage.ratio == 0.67
 
 
 @pytest.mark.asyncio

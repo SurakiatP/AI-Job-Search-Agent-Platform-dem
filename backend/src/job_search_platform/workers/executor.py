@@ -15,7 +15,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import Approval, Run, RunArtifact, StoredFile
-from job_search_platform.services.contracts import EvaluationResult
+from job_search_platform.services.contracts import EvaluationResult, SkillCoverage
+from job_search_platform.services.skill_coverage import compute_skill_coverage
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.runs import append_event
@@ -217,6 +218,10 @@ class RunExecutor:
             native_result = await self._await_result(run, lease_owner, gate_failure)
             if run.operation == "evaluate_job":
                 evaluation = parse_evaluation_result(native_result)
+                job = run.input_snapshot["job"]
+                coverage = compute_skill_coverage(parsed.text, f"{job['title']}\n{job['description']}")
+                if coverage is not None:
+                    evaluation = evaluation.model_copy(update={"skill_coverage": SkillCoverage(**coverage)})
                 await self._stop(run.project_id, project_started)
                 project_started = False
                 await asyncio.to_thread(

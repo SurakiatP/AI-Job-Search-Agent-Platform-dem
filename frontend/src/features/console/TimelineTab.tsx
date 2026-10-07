@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { FitScore } from '@/components/FitScore';
+import { SkillCount } from '@/components/SkillCoverage';
 import { StatusBadge } from '@/components/StatusBadge';
 import type { JobRevisionView, RunStatus, RunView } from '@/lib/api-types';
 import { ErrorState, LoadingState } from '../projects/PageStates';
@@ -70,7 +71,7 @@ export function TimelineTab({ projectId, locale, c }: { projectId: string; local
           <td className="px-3 py-3"><StatusBadge status={run.status} locale={locale} /></td>
           <td className="px-3 py-3 whitespace-nowrap"><time dateTime={run.created_at} title={medium.format(new Date(run.created_at))}>{relativeTime(run.created_at, now, locale)}</time></td>
           <td className="px-3 py-3 whitespace-nowrap tabular-nums">{duration(run, c)}</td>
-          <td className="px-3 py-3">{run.evaluation_result ? <FitScore score={run.evaluation_result.score} locale={locale} /> : '—'}</td>
+          <td className="px-3 py-3">{run.evaluation_result ? <div className="flex flex-col items-start gap-1"><FitScore score={run.evaluation_result.score} locale={locale} /><SkillCount coverage={run.evaluation_result.skill_coverage} locale={locale} /></div> : '—'}</td>
           <td className="px-3 py-3 whitespace-nowrap"><Link className="text-primary hover:underline" to={`${base}/sessions/${encodeURIComponent(run.session_id)}`}>{c.openSession}</Link></td>
         </tr>)}</tbody>
       </table>

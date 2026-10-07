@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FitScore } from '@/components/FitScore';
+import { SkillCoverage } from '@/components/SkillCoverage';
 import { Markdown } from '@/components/Markdown';
 import type { DocumentView, Locale, RunView } from '../../lib/api-types';
 
@@ -22,6 +23,7 @@ export function RunResults({ projectId, locale, run, documents }: { projectId: s
       {run.status !== 'completed' && <p role="status" className="text-sm text-muted-foreground">{locale === 'th' ? 'ผลลัพธ์ที่บันทึกไว้ · งานยังไม่เสร็จสมบูรณ์' : 'Preserved results · run is not complete'}</p>}
       {evaluation && <div className="grid gap-3">
         <div className="flex flex-wrap items-center gap-4"><FitScore score={evaluation.score} size="lg" locale={locale} /><h3 className="min-w-0 break-words text-base font-semibold">{report}</h3></div>
+        <SkillCoverage coverage={evaluation.skill_coverage} locale={locale} className="rounded-lg border p-4" />
         <details open className="group rounded-lg border">
           <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
             <span>{report}</span><ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />

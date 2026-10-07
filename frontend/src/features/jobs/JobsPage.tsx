@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FitScore } from '@/components/FitScore';
+import { SkillCoverage } from '@/components/SkillCoverage';
 import { PageBack } from '@/components/PageBack';
 import { Markdown } from '@/components/Markdown';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -210,6 +211,7 @@ export function JobDetailPage() {
           <CardContent className="grid gap-3"><FitScore size="lg" score={evaluation?.evaluation_result?.score ?? null} locale={locale} />
             {evaluation && <Link className="text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{c.evalSession}</Link>}</CardContent>
         </Card>
+        {evaluation?.evaluation_result?.skill_coverage && <Card><CardContent className="p-6"><SkillCoverage coverage={evaluation.evaluation_result.skill_coverage} locale={locale} /></CardContent></Card>}
         <Card>
           <CardHeader><CardTitle>{c.status}</CardTitle></CardHeader>
           <CardContent><ApplicationStatusControl projectId={projectId} job={job} reload={result.reload} /></CardContent>

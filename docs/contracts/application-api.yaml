@@ -634,6 +634,17 @@ components:
       properties:
         report_markdown: {type: string, minLength: 1, maxLength: 200000}
         score: {type: [number, 'null'], minimum: 1, maximum: 5, description: Career Ops native 1–5 score; absent when not established.}
+        skill_coverage: {anyOf: [{$ref: '#/components/schemas/SkillCoverage'}, {type: 'null'}], description: Deterministic keyword coverage computed by the platform, separate from the AI score.}
+    SkillCoverage:
+      type: object
+      additionalProperties: false
+      required: [required, matched, missing, ratio, method]
+      properties:
+        required: {type: array, maxItems: 60, items: {type: string, minLength: 1, maxLength: 80}}
+        matched: {type: array, maxItems: 60, items: {type: string, minLength: 1, maxLength: 80}}
+        missing: {type: array, maxItems: 60, items: {type: string, minLength: 1, maxLength: 80}}
+        ratio: {type: number, minimum: 0, maximum: 1}
+        method: {type: string, maxLength: 40}
     RunView:
       type: object
       additionalProperties: false
