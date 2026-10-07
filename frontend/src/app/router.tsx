@@ -7,6 +7,7 @@ import { DocumentDetailPage, DocumentsPage } from '../features/documents/Documen
 import { ChatPage } from '../features/chat/ChatPage';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { JobDetailPage, JobsPage } from '../features/jobs/JobsPage';
+import { ConsolePage } from '../features/console/ConsolePage';
 import { LandingPage } from '../features/landing/LandingPage';
 import { OverviewPage } from '../features/overview/OverviewPage';
 import { ProfilePage } from '../features/profile/ProfilePage';
@@ -77,7 +78,7 @@ export function AppRoutes() {
     <Route element={<OwnerGate />}><Route path="/app" element={<AppStart />} />
     <Route path="/app/settings" element={<AppWorkspace />}><Route index element={<SettingsPage />} /></Route>
     <Route path="/app/projects" element={<AppWorkspace />}><Route index element={<ProjectsPage />} /><Route path="new" element={<NewProjectPage />} /></Route>
-    <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="overview" element={<OverviewPage />} /><Route path="search" element={<SearchPage />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions/:sessionId" element={<ChatPage />} /><Route path="jobs" element={<JobsPage />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /></Route>
+    <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="overview" element={<OverviewPage />} /><Route path="console" element={<ConsolePage />} /><Route path="search" element={<SearchPage />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions/:sessionId" element={<ChatPage />} /><Route path="jobs" element={<JobsPage />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /></Route>
     </Route><Route path="*" element={<NotFoundPage />} />
   </Routes>;
 }

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { Bookmark, ChevronsUpDown, FileText, FolderKanban, LayoutDashboard, MessagesSquare, Search, Settings, UserRound, type LucideIcon } from 'lucide-react';
+import { Bookmark, Bot, ChevronsUpDown, FileText, FolderKanban, LayoutDashboard, MessagesSquare, Search, Settings, UserRound, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { cn } from '@/lib/utils';
@@ -36,6 +36,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
   const onSessions = inside(`${base}/sessions`);
   const sections = [
     ['overview', LayoutDashboard, t('nav.overview')],
+    ['console', Bot, t('nav.console')],
     ['jobs', Bookmark, t('nav.savedJobs')],
     ['search', Search, t('nav.search')],
     ['documents', FileText, t('nav.documents')],
