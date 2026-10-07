@@ -19,7 +19,7 @@ export const copy = {
     grants: 'สิทธิ์ที่ออกไว้', noGrants: 'ยังไม่มีเอเจนต์ภายนอกเชื่อมต่อ', noGrantsNext: 'ออก access token เพื่อให้ MCP client หรือเอเจนต์อื่นเข้าถึงโปรเจกต์นี้',
     active: 'ใช้งานอยู่', expiredS: 'หมดอายุ', revoked: 'เพิกถอนแล้ว', expiresAt: 'หมดอายุ', revoke: 'เพิกถอน', token: 'Access token', issue: 'ออก access token', issueIntro: 'เลือกสิทธิ์และอายุของ token สำหรับเอเจนต์ภายนอก',
     capabilities: 'สิทธิ์', expiry: 'อายุ', h1: '1 ชั่วโมง', h24: '24 ชั่วโมง', d7: '7 วัน', create: 'ออก token', shownOnce: 'Token ของคุณ',
-    warning: 'คัดลอกเก็บไว้ตอนนี้ ระบบจะไม่แสดงอีก', dismiss: 'ปิดและลบออกจากหน้านี้', needCap: 'เลือกอย่างน้อยหนึ่งสิทธิ์', id: 'รหัส',
+    warning: 'คัดลอกเก็บไว้ตอนนี้ ระบบจะไม่แสดงอีก', dismiss: 'ปิดและลบออกจากหน้านี้', needCap: 'เลือกอย่างน้อยหนึ่งสิทธิ์', id: 'สิทธิ์',
     // connect
     connectTitle: 'เชื่อมต่อ MCP / A2A', connectIntro: 'โปรเจกต์นี้เปิดให้ MCP client และเอเจนต์ A2A ภายนอกเรียกใช้ได้ผ่าน protocol listener ซึ่งปิดอยู่เป็นค่าเริ่มต้น เปิดเมื่อต้องการเท่านั้น',
     startTitle: 'เริ่ม listener', startNote: 'ต้องเริ่มแอปด้วย --enable-sharing จึงจะเปิดพอร์ตนี้',
@@ -44,7 +44,7 @@ export const copy = {
     grants: 'Issued access', noGrants: 'No external agents connected', noGrantsNext: 'Issue an access token so an MCP client or another agent can reach this project.',
     active: 'Active', expiredS: 'Expired', revoked: 'Revoked', expiresAt: 'Expires', revoke: 'Revoke', token: 'Access token', issue: 'Issue access token', issueIntro: 'Choose the permissions and lifetime of a token for an external agent.',
     capabilities: 'Permissions', expiry: 'Lifetime', h1: '1 hour', h24: '24 hours', d7: '7 days', create: 'Issue token', shownOnce: 'Your token',
-    warning: 'Copy it now. It will not be shown again.', dismiss: 'Dismiss and clear from this page', needCap: 'Select at least one permission', id: 'ID',
+    warning: 'Copy it now. It will not be shown again.', dismiss: 'Dismiss and clear from this page', needCap: 'Select at least one permission', id: 'Grant',
     connectTitle: 'Connect MCP / A2A', connectIntro: 'External MCP clients and A2A agents can use this project through the protocol listener. It is off by default; start it only when you need it.',
     startTitle: 'Start the listener', startNote: 'The app must be started with --enable-sharing for this port to open.',
     endpoints: 'Endpoints', mcp: 'MCP (streamable HTTP)', card: 'Agent card', a2a: 'A2A base URL',

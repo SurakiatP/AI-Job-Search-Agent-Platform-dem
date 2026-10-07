@@ -16,11 +16,11 @@ export function ApprovalCard({ approval, locale, busy, onDecision, onRefresh }: 
   const confirmation = identity !== '' && confirmedIdentity === identity;
   if (!approval) return null;
   const expired = Date.parse(approval.expires_at) <= Date.now();
-  const target = approval.revision_id ?? approval.target_file_id ?? '—';
+  const target = approval.revision_id ? (locale === 'th' ? 'ฉบับเอกสาร' : 'Document revision') : approval.target_file_id ? (locale === 'th' ? 'ไฟล์' : 'File') : '—';
   const action = ({ promote_cv: locale === 'th' ? 'ใช้เอกสารเป็น CV' : 'Promote document to CV', delete_document_revision: locale === 'th' ? 'ลบเอกสารฉบับนี้' : 'Delete this document revision', delete_file: locale === 'th' ? 'ลบไฟล์นี้' : 'Delete this file' })[approval.action];
   const t = locale === 'th'
-    ? { heading: 'โปรดยืนยันการเปลี่ยนแปลง', target: 'เป้าหมายและฉบับ', digest: 'ลายนิ้วมือการเปลี่ยนแปลง', expires: 'หมดอายุ', approve: 'อนุมัติ', reject: 'ปฏิเสธ', confirm: 'ฉันตรวจสอบเป้าหมายและการเปลี่ยนแปลงแล้ว', expired: 'คำขอนี้หมดอายุแล้ว', refresh: 'โหลดสถานะใหม่' }
-    : { heading: 'Review the requested change', target: 'Target and revision', digest: 'Change digest', expires: 'Expires', approve: 'Approve', reject: 'Reject', confirm: 'I reviewed the target and proposed change', expired: 'This request has expired', refresh: 'Refresh status' };
+    ? { heading: 'โปรดยืนยันการเปลี่ยนแปลง', target: 'เป้าหมาย', expires: 'หมดอายุ', approve: 'อนุมัติ', reject: 'ปฏิเสธ', confirm: 'ฉันตรวจสอบเป้าหมายและการเปลี่ยนแปลงแล้ว', expired: 'คำขอนี้หมดอายุแล้ว', refresh: 'โหลดสถานะใหม่' }
+    : { heading: 'Review the requested change', target: 'Target', expires: 'Expires', approve: 'Approve', reject: 'Reject', confirm: 'I reviewed the target and proposed change', expired: 'This request has expired', refresh: 'Refresh status' };
   return <Card role="region" aria-labelledby="approval-heading" className="border-warning">
     <CardHeader className="flex-row items-start gap-3 pb-3">
       <ShieldAlert className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden="true" />
@@ -28,9 +28,7 @@ export function ApprovalCard({ approval, locale, busy, onDecision, onRefresh }: 
     </CardHeader>
     <CardContent className="grid gap-4">
       <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_minmax(0,1fr)]">
-        <dt className="text-muted-foreground">{t.target}</dt><dd className="break-all">{target}</dd>
-        {approval.expected_cv_revision_id && <><dt className="text-muted-foreground">CV revision</dt><dd className="break-all">{approval.expected_cv_revision_id}</dd></>}
-        <dt className="text-muted-foreground">{t.digest}</dt><dd className="break-all">{approval.change_digest}</dd>
+        <dt className="text-muted-foreground">{t.target}</dt><dd>{target}</dd>
         <dt className="text-muted-foreground">{t.expires}</dt><dd><time dateTime={approval.expires_at}>{new Date(approval.expires_at).toLocaleString(locale)}</time></dd>
       </dl>
       {expired ? <div className="grid justify-items-start gap-3"><p role="status" className="text-sm">{t.expired}</p><Button type="button" variant="outline" onClick={onRefresh}>{t.refresh}</Button></div> : <>

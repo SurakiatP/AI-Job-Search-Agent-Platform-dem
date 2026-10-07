@@ -13,7 +13,7 @@ export function RunResults({ projectId, locale, run, documents }: { projectId: s
   const evaluation = run.evaluation_result;
   const label = locale === 'th' ? 'ผลลัพธ์' : 'Results';
   const report = locale === 'th' ? 'รายงานประเมิน' : 'Evaluation report';
-  const downloads = locale === 'th' ? 'ดาวน์โหลดเอกสาร' : 'Download documents';
+  const downloads = locale === 'th' ? 'ดาวน์โหลดไฟล์' : 'Download file';
   const noResult = locale === 'th' ? 'งานนี้ไม่มีผลลัพธ์ที่เผยแพร่' : 'This run has no published result yet.';
   const openDocument = locale === 'th' ? 'เปิดเอกสาร' : 'Open document';
   return <Card role="region" aria-labelledby="run-results-heading">
@@ -37,8 +37,8 @@ export function RunResults({ projectId, locale, run, documents }: { projectId: s
         {document.content_markdown && <Markdown className="max-h-96 overflow-auto">{document.content_markdown}</Markdown>}
         <Button asChild variant="outline" size="sm" className="justify-self-start"><Link to={`/app/projects/${projectId}/documents/${document.id}`}>{openDocument}</Link></Button>
       </article>)}
-      {run.result_file_ids.map(fileId => <Button key={fileId} asChild variant="outline" className="h-auto justify-start whitespace-normal break-all py-2 text-left">
-        <a href={`/api/v1/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileId)}/download`}><Download className="size-4" aria-hidden="true" />{downloads} · {fileId}</a>
+      {run.result_file_ids.map((fileId, index) => <Button key={fileId} asChild variant="outline" className="h-auto justify-start whitespace-normal py-2 text-left">
+        <a href={`/api/v1/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileId)}/download`}><Download className="size-4" aria-hidden="true" />{downloads}{run.result_file_ids.length > 1 ? ` ${index + 1}` : ''}</a>
       </Button>)}
       {!evaluation && resultDocuments.length === 0 && run.result_file_ids.length === 0 && <p className="text-sm text-muted-foreground">{noResult}</p>}
     </CardContent>

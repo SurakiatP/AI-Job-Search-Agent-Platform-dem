@@ -47,7 +47,6 @@ export function ApprovalsTab({ projectId, locale, c }: { projectId: string; loca
             <p className="min-w-0 font-medium [overflow-wrap:anywhere]">{c.actions[a.action]}</p>
             <span className="text-sm text-muted-foreground">{c.expiresIn} <time dateTime={a.expires_at}>{relativeTime(a.expires_at, now, locale)}</time></span>
           </div>
-          <p className="break-all text-xs text-muted-foreground">{c.digest}: {a.change_digest}</p>
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" disabled={busyId !== null} onClick={() => void decide(a.id, 'approve')}>{c.approve}</Button>
             <Button type="button" variant="outline" disabled={busyId !== null} onClick={() => void decide(a.id, 'reject')}>{c.reject}</Button>

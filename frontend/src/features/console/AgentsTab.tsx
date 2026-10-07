@@ -81,12 +81,12 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
       <h2 id="grants-heading" className="text-lg font-semibold">{c.grants}</h2>
       {grants.status === 'error' ? <ErrorState onRetry={grants.reload} /> : grants.status === 'loading' && !grants.data ? <LoadingState /> :
         (grants.data ?? []).length === 0 ? <Empty title={c.noGrants} next={c.noGrantsNext} /> :
-        <ul className="divide-y rounded-xl border bg-card">{[...(grants.data ?? [])].sort((a, b) => Date.parse(b.expires_at) - Date.parse(a.expires_at)).map(g => {
+        <ul className="divide-y rounded-xl border bg-card">{[...(grants.data ?? [])].sort((a, b) => Date.parse(b.expires_at) - Date.parse(a.expires_at)).map((g, index) => {
           const s = state(g);
           return <li key={g.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${s === 'active' ? '' : 'text-muted-foreground'}`}>
             <div className="grid min-w-0 gap-1.5">
               <div className="flex flex-wrap gap-1.5">{g.capabilities.map(cap => <Badge key={cap} variant="outline">{c.caps[cap]}</Badge>)}</div>
-              <p className="text-sm">{c.expiresAt} <time dateTime={g.expires_at}>{fmt.format(new Date(g.expires_at))}</time> · <span className="break-all text-xs">{c.id} {g.id.slice(0, 8)}</span></p>
+              <p className="text-sm">{c.expiresAt} <time dateTime={g.expires_at}>{fmt.format(new Date(g.expires_at))}</time> · <span className="text-xs">{c.id} #{index + 1}</span></p>
             </div>
             <div className="flex items-center gap-3">
               <Badge variant={s === 'active' ? 'success' : 'secondary'}>{s === 'active' ? c.active : s === 'expired' ? c.expiredS : c.revoked}</Badge>

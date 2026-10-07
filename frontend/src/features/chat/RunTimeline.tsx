@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { StatusBadge } from '@/components/StatusBadge';
 import { cn } from '@/lib/utils';
+import { relativeTime } from '../console/shared';
 import type { Locale, RunEvent, RunStatus, RunView } from '../../lib/api-types';
 
 const statuses: Record<Locale, Record<RunStatus, string>> = {
@@ -25,7 +26,7 @@ export function RunTimeline({ locale, run, events, cancellationPending }: { loca
         <span aria-hidden="true"><StatusBadge status={run.status} locale={locale} /></span>
       </div>
       <p className="text-sm" data-testid="run-status" role="status">{t[run.status]}{cancellationPending ? ` · ${cancelText}` : ''}</p>
-      <p className="break-all text-xs text-muted-foreground" data-testid="run-id">{run.id}</p>
+      <p className="text-xs text-muted-foreground"><time dateTime={run.created_at}>{relativeTime(run.created_at, Date.now(), locale)}</time></p>
     </CardHeader>
     <CardContent className="grid gap-4">
       {progress !== null && progress !== undefined && <div className="flex items-center gap-3"><Progress value={progress} className="flex-1" /><span className="w-10 text-right text-sm tabular-nums text-muted-foreground">{progress}%</span></div>}
