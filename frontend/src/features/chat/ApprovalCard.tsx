@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { ShieldAlert } from 'lucide-react';
 import type { ApprovalView, Locale } from '../../lib/api-types';
-import { Button } from '../../components/Button';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function ApprovalCard({ approval, locale, busy, onDecision, onRefresh }: {
   approval: ApprovalView | null;
@@ -19,21 +21,25 @@ export function ApprovalCard({ approval, locale, busy, onDecision, onRefresh }: 
   const t = locale === 'th'
     ? { heading: 'โปรดยืนยันการเปลี่ยนแปลง', target: 'เป้าหมายและฉบับ', digest: 'ลายนิ้วมือการเปลี่ยนแปลง', expires: 'หมดอายุ', approve: 'อนุมัติ', reject: 'ปฏิเสธ', confirm: 'ฉันตรวจสอบเป้าหมายและการเปลี่ยนแปลงแล้ว', expired: 'คำขอนี้หมดอายุแล้ว', refresh: 'โหลดสถานะใหม่' }
     : { heading: 'Review the requested change', target: 'Target and revision', digest: 'Change digest', expires: 'Expires', approve: 'Approve', reject: 'Reject', confirm: 'I reviewed the target and proposed change', expired: 'This request has expired', refresh: 'Refresh status' };
-  return <section className="surface-card" aria-labelledby="approval-heading">
-    <h2 id="approval-heading">{t.heading}</h2>
-    <p>{action}</p>
-    <dl>
-      <dt>{t.target}</dt><dd>{target}</dd>
-      {approval.expected_cv_revision_id && <><dt>CV revision</dt><dd>{approval.expected_cv_revision_id}</dd></>}
-      <dt>{t.digest}</dt><dd>{approval.change_digest}</dd>
-      <dt>{t.expires}</dt><dd><time dateTime={approval.expires_at}>{new Date(approval.expires_at).toLocaleString(locale)}</time></dd>
-    </dl>
-    {expired ? <><p role="status">{t.expired}</p><Button onClick={onRefresh}>{t.refresh}</Button></> : <>
-      <label><input type="checkbox" checked={confirmation} onChange={event => setConfirmedIdentity(event.target.checked ? identity : '')} /> {t.confirm}</label>
-      <div>
-        <Button variant="primary" disabled={busy || !confirmation} onClick={() => onDecision(approval.id, 'approve')}>{t.approve}</Button>
-        <Button disabled={busy} onClick={() => onDecision(approval.id, 'reject')}>{t.reject}</Button>
-      </div>
-    </>}
-  </section>;
+  return <Card role="region" aria-labelledby="approval-heading" className="border-warning">
+    <CardHeader className="flex-row items-start gap-3 pb-3">
+      <ShieldAlert className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden="true" />
+      <div className="min-w-0"><CardTitle id="approval-heading" className="text-lg">{t.heading}</CardTitle><p className="mt-1 break-words text-sm">{action}</p></div>
+    </CardHeader>
+    <CardContent className="grid gap-4">
+      <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_minmax(0,1fr)]">
+        <dt className="text-muted-foreground">{t.target}</dt><dd className="break-all">{target}</dd>
+        {approval.expected_cv_revision_id && <><dt className="text-muted-foreground">CV revision</dt><dd className="break-all">{approval.expected_cv_revision_id}</dd></>}
+        <dt className="text-muted-foreground">{t.digest}</dt><dd className="break-all">{approval.change_digest}</dd>
+        <dt className="text-muted-foreground">{t.expires}</dt><dd><time dateTime={approval.expires_at}>{new Date(approval.expires_at).toLocaleString(locale)}</time></dd>
+      </dl>
+      {expired ? <div className="grid justify-items-start gap-3"><p role="status" className="text-sm">{t.expired}</p><Button type="button" variant="outline" onClick={onRefresh}>{t.refresh}</Button></div> : <>
+        <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" checked={confirmation} onChange={event => setConfirmedIdentity(event.target.checked ? identity : '')} /> <span className="min-w-0 break-words">{t.confirm}</span></label>
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" disabled={busy || !confirmation} onClick={() => onDecision(approval.id, 'approve')}>{t.approve}</Button>
+          <Button type="button" variant="outline" disabled={busy} onClick={() => onDecision(approval.id, 'reject')}>{t.reject}</Button>
+        </div>
+      </>}
+    </CardContent>
+  </Card>;
 }

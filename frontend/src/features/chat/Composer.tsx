@@ -1,6 +1,12 @@
 import type { FormEvent } from 'react';
 import type { JobRevisionView, Locale, RunOperation } from '../../lib/api-types';
-import { Button } from '../../components/Button';
+import { Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+
+const selectClass = 'flex min-h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 
 type Props = {
   locale: Locale;
@@ -29,25 +35,35 @@ export function Composer({ locale, jobs, message, onMessageChange, onSubmit, bus
     });
   }
 
-  return <form className="chat-composer" onSubmit={submit}>
+  return <Card className="sticky bottom-2 z-10 shadow-md"><form className="grid gap-3 p-4" onSubmit={submit}>
     {jobs.length > 0 ? <>
-      <label htmlFor="workflow-job">{text.job}</label>
-      <select id="workflow-job" name="job" defaultValue={selectedJob?.id} disabled={busy}>
-        {jobs.map(job => <option key={job.id} value={job.id}>{job.title} · {job.company ?? `#${job.revision}`}</option>)}
-      </select>
-      <label htmlFor="workflow-operation">{text.operation}</label>
-      <select id="workflow-operation" name="operation" defaultValue="evaluate_job" disabled={busy}>
-        <option value="evaluate_job">{text.evaluate}</option>
-        <option value="draft_documents">{text.draft}</option>
-      </select>
-      <label htmlFor="workflow-output-language">{text.language}</label>
-      <select id="workflow-output-language" name="output_language" defaultValue={locale} disabled={busy}>
-        <option value="th">{text.th}</option>
-        <option value="en">{text.en}</option>
-      </select>
-      <label htmlFor="assistant-message">{text.message}</label>
-      <textarea id="assistant-message" className="chat-text" value={message} onChange={event => onMessageChange(event.target.value)} rows={4} maxLength={4000} disabled={busy} />
-      <Button type="submit" variant="primary" disabled={busy || !message.trim()}>{text.send}</Button>
-    </> : <p className="muted">{text.noJobs}</p>}
-  </form>;
+      <div className="grid gap-1.5">
+        <Label htmlFor="workflow-job">{text.job}</Label>
+        <select id="workflow-job" name="job" className={selectClass} defaultValue={selectedJob?.id} disabled={busy}>
+          {jobs.map(job => <option key={job.id} value={job.id}>{job.title} · {job.company ?? `#${job.revision}`}</option>)}
+        </select>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-1.5">
+          <Label htmlFor="workflow-operation">{text.operation}</Label>
+          <select id="workflow-operation" name="operation" className={selectClass} defaultValue="evaluate_job" disabled={busy}>
+            <option value="evaluate_job">{text.evaluate}</option>
+            <option value="draft_documents">{text.draft}</option>
+          </select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="workflow-output-language">{text.language}</Label>
+          <select id="workflow-output-language" name="output_language" className={selectClass} defaultValue={locale} disabled={busy}>
+            <option value="th">{text.th}</option>
+            <option value="en">{text.en}</option>
+          </select>
+        </div>
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="assistant-message">{text.message}</Label>
+        <Textarea id="assistant-message" className="chat-text max-h-64 [field-sizing:content]" value={message} onChange={event => onMessageChange(event.target.value)} rows={3} maxLength={4000} disabled={busy} />
+      </div>
+      <Button type="submit" className="justify-self-end" disabled={busy || !message.trim()}><Send className="size-4" aria-hidden="true" />{text.send}</Button>
+    </> : <p className="text-sm text-muted-foreground">{text.noJobs}</p>}
+  </form></Card>;
 }

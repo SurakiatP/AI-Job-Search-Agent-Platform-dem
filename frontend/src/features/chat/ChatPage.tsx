@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useDraft } from '../../app/drafts';
-import { Button } from '../../components/Button';
+import { Bot, FileText, Briefcase, TriangleAlert } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { ReactNode } from 'react';
 import { ErrorState, LoadingState, MissingResource } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import type { DocumentView, JobRevisionView, SessionView } from '../../lib/api-types';
@@ -11,6 +14,14 @@ import { Composer } from './Composer';
 import { RunTimeline } from './RunTimeline';
 import { ApprovalCard } from './ApprovalCard';
 import { RunResults } from './RunResults';
+
+function Notice({ icon, title, description, to, action }: { icon: ReactNode; title: string; description?: string; to: string; action: string }) {
+  return <Card role="status" className="border-warning/50"><CardContent className="flex flex-wrap items-center gap-3 p-4">
+    <span className="text-warning" aria-hidden="true">{icon}</span>
+    <div className="min-w-0 flex-1"><p className="break-words font-medium">{title}</p>{description && <p className="break-words text-sm text-muted-foreground">{description}</p>}</div>
+    <Button asChild size="sm"><Link to={to}>{action}</Link></Button>
+  </CardContent></Card>;
+}
 
 type Provider = { provider?: string | null; configured?: boolean };
 export function ChatPage() {
@@ -35,20 +46,26 @@ export function ChatPage() {
   const available = Boolean(provider.data?.configured && cv.data?.length);
   const active = workflow.run && ['queued', 'running', 'waiting_approval'].includes(workflow.run.status);
   const copy = locale === 'th'
-    ? { cancel: 'หยุดงาน', retry: 'ลองใหม่เป็นงานใหม่', cv: 'เพิ่ม CV ก่อนเริ่มงาน', job: 'เพิ่มประกาศงาน', refresh: 'โหลดสถานะใหม่' }
-    : { cancel: 'Stop run', retry: 'Retry as a new run', cv: 'Add a CV before starting', job: 'Add a job posting', refresh: 'Refresh status' };
-  return <section className="chat-layout"><div className="chat-main">
-    <div className="page-heading"><div><h1>{session.title}</h1><p className="muted">{t('pages.chatTitle')}</p></div><Button aria-pressed={documentPanel} onClick={() => setDocumentPanel(value => !value)}>{t('pages.documentsTitle')}</Button></div>
-    {!provider.data?.configured && <aside className="notice"><h2>{t('pages.noProviderTitle')}</h2><p>{t('pages.noProviderDescription')}</p><Link to="/app/settings">{t('pages.settingsTitle')}</Link></aside>}
-    {!cv.data?.length && <p className="notice"><Link to={`/app/projects/${projectId}/profile`}>{copy.cv}</Link></p>}
-    {!jobs.data?.length && <p className="notice"><Link to={`/app/projects/${projectId}/jobs`}>{copy.job}</Link></p>}
-    <div className="chat-transcript">{workflow.messages.map(item => <article className="surface-card" key={item.id}><p className="eyebrow">{item.role === 'user' ? (locale === 'th' ? 'คุณ' : 'You') : 'AI Job Search Agent Platform'}</p><p className="plain-content">{item.content}</p></article>)}</div>
-    {workflow.error && <p className="field-error" role="alert">{t(workflow.error, { defaultValue: t('pages.loadError') })} <Button onClick={() => void workflow.reload().catch(() => undefined)}>{copy.refresh}</Button></p>}
+    ? { cancel: 'หยุดงาน', retry: 'ลองใหม่เป็นงานใหม่', cv: 'เพิ่ม CV ก่อนเริ่มงาน', job: 'เพิ่มประกาศงาน', refresh: 'โหลดสถานะใหม่', you: 'คุณ', noDocs: 'ยังไม่มีเอกสาร เมื่อเอเจนต์ร่างเอกสารแล้วจะแสดงที่นี่' }
+    : { cancel: 'Stop run', retry: 'Retry as a new run', cv: 'Add a CV before starting', job: 'Add a job posting', refresh: 'Refresh status', you: 'You', noDocs: 'No documents yet. Drafts from the agent will appear here.' };
+  const base = `/app/projects/${projectId}`;
+  return <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]"><div className="flex min-w-0 flex-col gap-4">
+    <div className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{session.title}</h1><p className="text-sm text-muted-foreground">{t('pages.chatTitle')}</p></div><Button type="button" variant="outline" aria-pressed={documentPanel} onClick={() => setDocumentPanel(value => !value)}><FileText className="size-4" aria-hidden="true" />{t('pages.documentsTitle')}</Button></div>
+    {!provider.data?.configured && <Notice icon={<TriangleAlert className="size-5" />} title={t('pages.noProviderTitle')} description={t('pages.noProviderDescription')} to="/app/settings" action={t('pages.settingsTitle')} />}
+    {!cv.data?.length && <Notice icon={<FileText className="size-5" />} title={copy.cv} to={`${base}/profile`} action={copy.cv} />}
+    {!jobs.data?.length && <Notice icon={<Briefcase className="size-5" />} title={copy.job} to={`${base}/jobs`} action={copy.job} />}
+    {workflow.messages.length > 0 && <div className="grid gap-4">{workflow.messages.map(item => item.role === 'user'
+      ? <article key={item.id} className="flex flex-col items-end gap-1"><p className="text-xs text-muted-foreground">{copy.you}</p><p className="plain-content chat-text m-0 max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-primary-foreground">{item.content}</p></article>
+      : <article key={item.id} className="flex items-start gap-3"><span className="mt-1 grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground" aria-hidden="true"><Bot className="size-4" /></span><div className="min-w-0 max-w-[85%]"><p className="text-xs text-muted-foreground">AI Job Search Agent Platform</p><p className="plain-content chat-text m-0 rounded-2xl rounded-tl-sm border bg-card px-4 py-2">{item.content}</p></div></article>)}</div>}
+    {workflow.error && <p className="flex flex-wrap items-center gap-3 text-sm text-destructive" role="alert"><span className="min-w-0 break-words">{t(workflow.error, { defaultValue: t('pages.loadError') })}</span> <Button type="button" variant="outline" size="sm" onClick={() => void workflow.reload().catch(() => undefined)}>{copy.refresh}</Button></p>}
     <RunTimeline locale={locale} run={workflow.run} events={workflow.events} cancellationPending={workflow.cancellationPending} />
-    {active && <Button disabled={workflow.submitting || workflow.cancellationPending} onClick={() => void workflow.cancel()}>{copy.cancel}</Button>}
-    {workflow.run && !active && <Button disabled={workflow.submitting} onClick={() => void workflow.retry()}>{copy.retry}</Button>}
+    {active && <Button type="button" variant="outline" className="self-start" disabled={workflow.submitting || workflow.cancellationPending} onClick={() => void workflow.cancel()}>{copy.cancel}</Button>}
+    {workflow.run && !active && <Button type="button" variant="outline" className="self-start" disabled={workflow.submitting} onClick={() => void workflow.retry()}>{copy.retry}</Button>}
     <ApprovalCard approval={workflow.pendingApproval} locale={locale} busy={workflow.submitting} onDecision={(id, decision) => void workflow.decideApproval(id, decision)} onRefresh={() => void workflow.reload().catch(() => undefined)} />
     <RunResults projectId={projectId} locale={locale} run={workflow.run} documents={documents.data ?? []} />
     <Composer locale={locale} jobs={jobs.data ?? []} message={message} onMessageChange={setMessage} busy={!available || Boolean(active) || workflow.submitting} onSubmit={input => { void workflow.submit(input).then(run => { if (run) setMessage(''); }); }} />
-  </div>{documentPanel && <aside className="chat-document-panel"><h2>{t('pages.documentsTitle')}</h2>{documents.data?.map(document => <p key={document.id}><Link to={`/app/projects/${projectId}/documents/${document.id}`}>{document.title}</Link></p>)}<Link to={`/app/projects/${projectId}/documents`}>{t('pages.viewDocuments')}</Link></aside>}</section>;
+  </div>{documentPanel && <Card className="self-start" role="complementary" aria-labelledby="chat-documents-heading"><CardHeader><CardTitle id="chat-documents-heading" className="text-lg">{t('pages.documentsTitle')}</CardTitle></CardHeader><CardContent className="grid gap-3">
+    {documents.data?.length ? <ul className="grid gap-2">{documents.data.map(document => <li key={document.id}><Link className="break-words text-sm font-medium hover:underline" to={`${base}/documents/${document.id}`}>{document.title}</Link></li>)}</ul> : <p className="text-sm text-muted-foreground">{copy.noDocs}</p>}
+    <Link className="text-sm text-primary hover:underline" to={`${base}/documents`}>{t('pages.viewDocuments')}</Link>
+  </CardContent></Card>}</section>;
 }
