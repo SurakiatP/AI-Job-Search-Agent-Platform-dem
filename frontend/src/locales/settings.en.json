@@ -1,16 +1,16 @@
 {
   "appearance": "Appearance",
-  "appearanceDescription": "Choose how the application looks on this device.",
+  "appearanceDescription": "Choose the theme and language used on this device.",
   "light": "Light",
   "dark": "Dark",
   "system": "System",
   "provider": {
-    "description": "Choose an available AI provider for this project. The selected provider receives CV content needed to complete your requests.",
+    "description": "Choose the AI provider and model this project uses.",
     "configured": "Configured: {{provider}} · {{model}} · key {{secret}}",
     "notConfigured": "No provider is configured for this project."
   },
   "sharing": {
-    "description": "Create a time-limited access token for this project. Shared callers can see generated personal documents when results:read is allowed; they cannot access raw CV uploads or private conversation history.",
+    "description": "Create a time-limited access token for this project. Callers with the token can read generated documents when results:read is allowed; they cannot access raw CV uploads or private conversation history.",
     "defaultOff": "Sharing stays off until you create a token.",
     "resultsPrivacy": "Generated results may contain personal information. Grant only the capabilities needed."
   },
@@ -20,7 +20,7 @@
   "providerLabel": "Provider",
   "modelLabel": "Model",
   "apiKey": "API key",
-  "keyHint": "The key is sent only to the local backend, saved in the operating system credential store, and cleared from this form after saving. It is never shown again.",
+  "keyHint": "Enter the key again whenever you save. It is stored in the operating system credential store, cleared from this form after saving, and never shown again.",
   "saveProvider": "Save provider and key",
   "testConnection": "Test saved connection",
   "configured": "Configured: {{provider}} · {{model}} · key {{secret}}",
@@ -32,7 +32,7 @@
     "unavailable": "The provider connection is unavailable right now."
   },
   "tools": {
-    "description": "Enable only the supported Career Ops connector for this project. Connector availability depends on the local installation."
+    "description": "Enable only the supported Career Ops connector for this project. Availability depends on the local installation."
   },
   "careerOps": "Career Ops connector",
   "enabled": "Enabled",
@@ -61,5 +61,53 @@
   "revoked": "Revoked",
   "revoke": "Revoke",
   "hours_one": "{{count}} hour",
-  "hours_other": "{{count}} hours"
+  "hours_other": "{{count}} hours",
+  "navLabel": "Settings sections",
+  "nav": {
+    "appearance": "Appearance",
+    "provider": "AI provider",
+    "tools": "Tools",
+    "sharing": "Project sharing"
+  },
+  "themeHeading": "Theme",
+  "languageHeading": "Language",
+  "themeTile": "{{name}} theme",
+  "appliesNow": "Changes apply immediately and are stored on this device only.",
+  "group": {
+    "popular": "Popular",
+    "other": "Other providers",
+    "local": "Local",
+    "custom": "Custom"
+  },
+  "baseUrl": "Base URL",
+  "advancedBaseUrl": "Advanced: change Base URL",
+  "baseUrlHint": "Must use https, except for localhost.",
+  "baseUrlHttps": "Use an https URL (http is allowed only for localhost).",
+  "baseUrlInvalid": "Enter a valid URL, for example https://api.example.com/v1.",
+  "keyNotNeeded": "No API key is needed for {{provider}}.",
+  "modelHint": "Pick a model from the list or type any model name.",
+  "loadModels": "Load models",
+  "modelsFound_one": "{{count}} model found",
+  "modelsFound_other": "{{count}} models found",
+  "needKeyForModels": "Enter the API key first to load the model list.",
+  "curlSummary": "Paste a curl command",
+  "curlLabel": "curl command",
+  "curlHint": "Read in your browser only. The text is never sent or stored, and is cleared after extracting.",
+  "curlPlaceholder": "curl https://api.example.com/v1/chat/completions -H \"Authorization: Bearer …\" -d '{\"model\":\"…\"}'",
+  "curlExtract": "Extract values",
+  "curlFilled": "Filled: {{fields}}",
+  "curlNothing": "No URL, key or model found in this text.",
+  "fieldUrl": "Base URL",
+  "privacyNote": "The CV content needed for your requests is sent to the selected provider.",
+  "customKeyNote": "The key is sent to the Base URL you set.",
+  "saved": "Saved.",
+  "error": {
+    "invalid_base_url": "The Base URL is not valid or not allowed. Use https, or http only for localhost.",
+    "credential_required": "An API key is required.",
+    "provider_models_unavailable": "The provider did not return a model list. Type the model name instead.",
+    "secret_store_unavailable": "The system credential store is unavailable, so the key could not be saved.",
+    "unsupported_provider": "This provider is not supported."
+  },
+  "activeGrantsHint": "Tokens issued for this project and their status.",
+  "noGrants": "No tokens yet."
 }

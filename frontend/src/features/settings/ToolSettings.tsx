@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '../../components/Button';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { apiRequest } from '../../lib/api';
 import { useResource } from '../projects/useResource';
+import { LoadingBlock, Notice, SectionCard } from './Field';
 
 type Connector = { adapter: 'career_ops'; enabled: boolean; revision: number; updated_at: string };
 type ToolView = { connectors: Connector[] };
@@ -16,21 +18,26 @@ export function ToolSettings({ projectId }: { projectId: string }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const connector = state.data?.connectors.find(item => item.adapter === 'career_ops');
   useEffect(() => { if (connector) setEnabled(connector.enabled); }, [connector?.enabled]);
-  if (state.status === 'loading') return <p role="status">{t('loading')}</p>;
-  if (state.status === 'error') return <div><p role="alert">{t('loadError')}</p><Button onClick={state.reload}>{t('retry')}</Button></div>;
-  async function update(enabled: boolean) {
+  const title = t('nav.tools'), description = t('tools.description');
+  if (state.status === 'loading') return <SectionCard title={title} description={description}><LoadingBlock label={t('loading')} /></SectionCard>;
+  if (state.status === 'error') return <SectionCard title={title} description={description} footer={<Button variant="outline" onClick={state.reload}>{t('retry')}</Button>}><Notice>{t('loadError')}</Notice></SectionCard>;
+  async function update(next: boolean) {
     if (!connector || busy) return;
     setBusy(true); setError(false);
-    setEnabled(enabled);
+    setEnabled(next);
     try {
-      await apiRequest<Connector>(`/projects/${project}/settings/tools/career_ops`, { method: 'PUT', body: JSON.stringify({ enabled }) });
+      await apiRequest<Connector>(`/projects/${project}/settings/tools/career_ops`, { method: 'PUT', body: JSON.stringify({ enabled: next }) });
       state.reload();
-    } catch { setEnabled(!enabled); setError(true); }
+    } catch { setEnabled(!next); setError(true); }
     finally { setBusy(false); }
   }
-  return <div className="settings-form">
-    <p>{t('tools.description')}</p>
-    {connector ? <div className="check-row"><input id="career-ops" type="checkbox" checked={enabled ?? connector.enabled} disabled={busy} onChange={event => void update(event.target.checked)} /><label htmlFor="career-ops">{t('careerOps')}</label><span>{t((enabled ?? connector.enabled) ? 'enabled' : 'disabled')}</span></div> : <p role="status">{t('toolsUnavailable')}</p>}
-    {error && <p role="alert">{t('saveFailed')}</p>}
-  </div>;
+  const on = enabled ?? connector?.enabled ?? false;
+  return <SectionCard title={title} description={description}>
+    {connector ? <div className="flex min-h-11 items-center gap-3 rounded-lg border p-3">
+      <input id="career-ops" type="checkbox" className="size-5 accent-primary" checked={on} disabled={busy} onChange={event => void update(event.target.checked)} />
+      <label htmlFor="career-ops" className="min-w-0 flex-1 text-sm font-medium">{t('careerOps')}</label>
+      <Badge variant={on ? 'success' : 'secondary'}>{t(on ? 'enabled' : 'disabled')}</Badge>
+    </div> : <p role="status" className="text-sm text-muted-foreground">{t('toolsUnavailable')}</p>}
+    {error && <Notice>{t('saveFailed')}</Notice>}
+  </SectionCard>;
 }
