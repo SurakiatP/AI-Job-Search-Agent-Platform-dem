@@ -28,14 +28,14 @@ Integration Hub เก็บสถานะและลิงก์อ้าง�
 | New project | ตั้งชื่อและเป้าหมาย ไปเพิ่ม CV หรือเริ่ม chat |
 | CV & preferences | CV ต้นฉบับ เงื่อนไขงาน และภาษาของเอกสารใหม่ |
 | Chat | Sessions ภายใน Project ผลประเมิน สถานะ agent และคำขออนุมัติ |
-| Job search `Preview` | ตัวกรองซ้าย การ์ดงานตัวอย่าง ป้าย "Sample data — preview" และปุ่ม "Evaluate this job" ที่บันทึกงานแล้วไปหน้า Chat |
+| Job search | งานไทยจริงจาก freehire.me ผ่าน backend proxy: ค้นหา, ตัวกรองใน URL, chip หมวดพร้อมจำนวน, master–detail, อายุประกาศและป้ายประกาศเก่า, ปุ่ม "Evaluate this job" ที่บันทึกงานแล้วไปหน้า Evaluate; ถ้าแหล่งข้อมูลล่มให้ดูข้อมูลตัวอย่างพร้อมป้ายชัดเจน |
 | Saved jobs | งานที่บันทึก สถานะการสมัคร และขั้นตอนถัดไป |
 | Job detail | เหตุผลที่เหมาะสม สิ่งที่ควรถาม แหล่งข้อมูล และเอกสารของงาน |
 | Documents | ฉบับร่างและเวอร์ชันที่แยกจาก CV ต้นฉบับ |
 | Document detail | อ่าน ตรวจ ขอแก้ไข และดาวน์โหลดเอกสาร |
 | Settings | LLM provider/model, เครื่องมือ, การแชร์ Project, และ appearance |
 
-Sidebar กว้าง 264px: ชื่อแอปพร้อมเครื่องหมาย, ตัวสลับ Project (dropdown), เมนู Overview, Evaluate (พร้อม Sessions), Saved jobs, Job search (`Preview`), Documents, CV & preferences
+Sidebar กว้าง 264px: ชื่อแอปพร้อมเครื่องหมาย, ตัวสลับ Project (dropdown), เมนู Overview, Evaluate (พร้อม Sessions), Saved jobs, Job search, Documents, CV & preferences
 ส่วนล่างมี Settings, ปุ่มสลับธีม Light / Dark / System และ ไทย / EN
 รองรับแชตโปร่งและการเปิด panel เอกสารด้านขวา บนจอแคบเปิดเอกสารเป็นหน้าแยก
 ไม่เพิ่มระบบบัญชีผู้ใช้หรือ login สำหรับรุ่น local ที่เจ้าของใช้คนเดียว

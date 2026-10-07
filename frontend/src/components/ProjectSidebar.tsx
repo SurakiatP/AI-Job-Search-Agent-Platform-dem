@@ -6,7 +6,6 @@ import { Link, useLocation } from 'react-router';
 import { cn } from '@/lib/utils';
 import { AppearanceControl } from './AppearanceControl';
 import { LanguageSwitch, Wordmark } from './Header';
-import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 
 export type SidebarProject = {
@@ -69,7 +68,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
       </li>
       {sections.slice(1).map(([section, icon, label]) => <li key={section}>
         <NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate}>
-          {label}{section === 'search' && <Badge variant="outline" className="ms-auto">{t('nav.preview')}</Badge>}
+          {label}
         </NavItem>
       </li>)}
     </ul>}
