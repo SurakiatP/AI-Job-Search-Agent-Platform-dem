@@ -408,7 +408,7 @@ async def list_approvals(project_id: UUID, actor=Depends(owner_actor), services:
     from job_search_platform.db.models import Approval
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "approval")
-        ids = db.scalars(select(Approval.id).where(Approval.project_id == project_id).order_by(Approval.created_at)).all()
+        ids = db.scalars(select(Approval.id).where(Approval.project_id == project_id).order_by(Approval.expires_at)).all()
     return [await services.approvals.get(actor, project_id, approval_id) for approval_id in ids]
 
 

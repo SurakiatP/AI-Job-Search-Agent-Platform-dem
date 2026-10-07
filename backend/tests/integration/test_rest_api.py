@@ -177,6 +177,15 @@ def test_owner_bootstrap_csrf_crud_and_empty_project_delete_only(api_context):
 
 
 @pytest.mark.integration
+def test_owner_lists_approvals_for_project_without_approvals(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    project_id = client.post("/api/v1/projects", json={"name": "Approvals"}, headers=_write_headers(csrf)).json()["id"]
+    response = client.get(f"/api/v1/projects/{project_id}/approvals")
+    assert response.status_code == 200 and response.json() == []
+
+
+@pytest.mark.integration
 def test_concurrent_job_revisions_are_serialized_by_project(api_context):
     client = api_context.client
     csrf = _owner(api_context)
