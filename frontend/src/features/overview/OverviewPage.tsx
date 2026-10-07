@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Skeleton } from '@/components/ui/skeleton';
 import { FitScore } from '@/components/FitScore';
 import { StatusBadge } from '@/components/StatusBadge';
-import type { ApprovalView, DocumentView, JobRevisionView, ProjectView, RunView, SessionView } from '@/lib/api-types';
+import type { DocumentView, JobRevisionView, ProjectView, RunView, SessionView } from '@/lib/api-types';
 import { ErrorState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import { latestEvaluations } from './latestEvaluations';
@@ -62,9 +62,8 @@ export function OverviewPage() {
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const documents = useResource<DocumentView[]>(`/projects/${projectId}/documents`);
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
-  const approvals = useResource<ApprovalView[]>(`/projects/${projectId}/approvals`);
   const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
-  const all = [project, cv, jobs, documents, runs, approvals, sessions];
+  const all = [project, cv, jobs, documents, runs, sessions];
 
   if (all.some(r => r.status === 'error')) return <ErrorState onRetry={() => all.forEach(r => r.status === 'error' && r.reload())} />;
   if (all.some(r => r.status !== 'ready')) return <OverviewSkeleton />;
@@ -75,9 +74,8 @@ export function OverviewPage() {
   const evaluations = latestEvaluations(runList);
   const latestCv = (cv.data ?? []).reduce<CvRevision | null>((best, item) => (!best || item.revision > best.revision ? item : best), null);
   const activeRuns = runList.filter(run => ACTIVE.includes(run.status)).slice(0, 5);
-  const sessionOfRun = new Map(runList.map(run => [run.id, run.session_id]));
-  const pending = (approvals.data ?? []).filter(a => a.decision === null && a.consumed_at === null);
-  const pendingSession = pending.map(a => sessionOfRun.get(a.run_id)).find(Boolean);
+  const pending = runList.filter(run => run.status === 'waiting_approval');
+  const pendingSession = pending[0]?.session_id;
   const evaluateHref = sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : `${base}/profile`;
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   const stats = [
