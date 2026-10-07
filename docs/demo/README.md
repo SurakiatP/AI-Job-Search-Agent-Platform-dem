@@ -29,14 +29,17 @@ rtk uv run --locked --project backend python scripts/local_infra.py status \
 
 rtk npm ci --prefix frontend
 rtk uv sync --locked --project backend --all-groups
-rtk uv run --locked --project backend python scripts/run_local.py --build-frontend --open-browser
+rtk uv run --locked --project backend python scripts/run_local.py --build-frontend --open-browser \
+  --enable-sharing --share-host 127.0.0.1 --share-port 8001
 ```
+
+`--enable-sharing` เปิดประตู MCP/A2A ที่ `127.0.0.1:8001` สำหรับขั้น Three Doors
 
 แอปรันที่ `http://127.0.0.1:8000` ตัวเปิดแอปพิมพ์ URL สำหรับ bootstrap แบบใช้ครั้งเดียว ถือเป็นข้อมูลล็อกอิน อย่าแชร์ log
 
 ## 2. ตั้งค่า OpenRouter (เจ้าของเครื่องเท่านั้น)
 
-เจ้าของเครื่องใส่ OpenRouter key เองที่ Settings (เลือก OpenRouter, เลือกโมเดล, ใส่ key, บันทึก, กด connection check) key ถูกเก็บใน Keychain ของเครื่อง ห้ามใส่ key ในเอกสาร, สคริปต์ หรือ commit
+เจ้าของเครื่องใส่ OpenRouter key เองที่ Settings (เลือก OpenRouter, เลือกโมเดล, ใส่ key, บันทึก, กด connection check) ต้องเป็น key ที่สร้างในบัญชี Personal ซึ่งมีเครดิต: key ที่สร้างใน Workspace อื่นผ่าน connection check ได้แต่เรียกโมเดลไม่ได้ (401 User not found) key ถูกเก็บใน Keychain ของเครื่อง ห้ามใส่ key ในเอกสาร, สคริปต์ หรือ commit
 
 ## 3. เตรียมข้อมูลก่อนสาธิต
 
@@ -49,11 +52,16 @@ rtk uv run --locked --project backend python scripts/run_local.py --build-fronte
 ## 4. ลำดับการสาธิต
 
 1. Landing
-2. Overview
-3. Evaluate (รันสด)
-4. Job detail (คะแนนความเหมาะสม)
-5. Document (เอกสารที่สร้างขึ้น)
-6. Job search preview
+2. Overview (ภาพรวม)
+3. ค้นหางาน: งานจริงในไทยจาก freehire.me (ต้องต่ออินเทอร์เน็ต; ถ้าล่มมีปุ่มดูข้อมูลตัวอย่าง)
+4. กด "ประเมินงานนี้" → หน้า Evaluate เลือกงานไว้ให้ → พิมพ์คำแนะนำ → เริ่มงาน (Hermes ใช้เวลาประมาณ 40 วินาที)
+5. Job detail: คะแนนความเหมาะสมและรายงานจุดแข็ง/ช่องว่าง
+6. เลือก "ร่างเอกสารสมัครงาน" → Documents: Cover letter ที่ร่างให้ (ประมาณ 1 นาที)
+7. Agent Console → Three Doors:
+   1. แท็บ "เอเจนต์ที่เชื่อมต่อ" → ออก token อายุ 1 ชั่วโมง (อ่านผลลัพธ์ + ประเมินงาน) → กดคัดลอก
+   2. ใน terminal: `sh docs/demo/three-doors.sh <job_revision_id>` (เอา id จาก URL หน้า Job detail) สคริปต์อ่าน token จาก clipboard ไม่พิมพ์ออกจอ และล้าง clipboard ให้
+   3. แท็บ "งานของเอเจนต์": งานจาก agent ภายนอกโผล่ขึ้นและอัปเดตเองจนได้คะแนน (session ชื่อ "External agent")
+   4. เพิกถอน token หลังสาธิต
 
 การสมัครงานยังเป็นขั้นตอนที่เจ้าของทำเอง ระบบไม่ส่งใบสมัครให้
 
