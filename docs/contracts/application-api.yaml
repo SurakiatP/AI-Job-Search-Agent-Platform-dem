@@ -124,6 +124,30 @@ paths:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/JobCreate'}}}
       responses: {'201': {description: Created immutable job revision}}
+  /projects/{project_id}/job-search:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: >-
+        Owner-only server-side proxy of Freehire's public job API, Thailand listings only (countries=TH).
+        Query: q (max 200), cities (comma list, max 5 x 60), work_mode (remote|hybrid|onsite),
+        posted_within_days (1-90), category (slug, max 60), limit (1-20, default 20), offset (0-1000).
+        Items carry slug, title, company, location, cities, work_mode, skills (max 8), category, posted_at,
+        age_days, stale (upstream reality.class other than fresh), source_url (http/https, utm_* stripped)
+        and description_markdown (max 50000). Upstream failure returns 502 job_source_unavailable (retryable).
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: 'Job search page {items, total, limit, offset}'}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/job-search/facets:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: Owner-only Thailand facets {total, categories (top 12), cities (top 10)} as [{value, count}].
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Job search facets}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/jobs/{job_id}/application-status:
     parameters:
       - {$ref: '#/components/parameters/project_id'}

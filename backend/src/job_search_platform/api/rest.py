@@ -8,7 +8,8 @@ from datetime import datetime, timezone
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Header, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Header, Query, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import StringConstraints
 from sqlalchemy import func, select
@@ -30,6 +31,7 @@ from job_search_platform.services.contracts import (
     ProviderSettingsView, RunRequest, RunView, SessionCreate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
+from job_search_platform.services import job_sources
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
 
@@ -52,6 +54,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "project_not_empty": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "approval_conflict": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
+        "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
         "object_store_unavailable": 503, "service_unavailable": 503,
         "secret_store_unavailable": 503,
@@ -251,6 +254,36 @@ async def list_jobs(project_id: UUID, actor=Depends(owner_actor), services: Serv
             .order_by(JobRevision.created_at, JobRevision.revision)
         ).all()
         return [_job_view(row, status or "saved") for row, status in rows]
+
+
+@router.get("/projects/{project_id}/job-search")
+async def search_job_sources(
+    project_id: UUID,
+    q: Annotated[str, Query(max_length=200)] = "",
+    cities: Annotated[str, Query(max_length=400)] = "",
+    work_mode: Annotated[str | None, Query(pattern="^(remote|hybrid|onsite)$")] = None,
+    posted_within_days: Annotated[int | None, Query(ge=1, le=90)] = None,
+    category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
+    limit: Annotated[int, Query(ge=1, le=20)] = 20,
+    offset: Annotated[int, Query(ge=0, le=1000)] = 0,
+    actor=Depends(owner_actor),
+    services: Services = Depends(get_services),
+):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+    city_list = job_sources.parse_cities(cities)
+    if city_list is None:
+        raise RequestValidationError([{"loc": ("query", "cities"), "msg": "invalid", "type": "value_error"}])
+    return await asyncio.to_thread(
+        job_sources.search_jobs, q=q, cities=city_list, work_mode=work_mode,
+        posted_within_days=posted_within_days, category=category, limit=limit, offset=offset)
+
+
+@router.get("/projects/{project_id}/job-search/facets")
+async def job_search_facets(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+    return await asyncio.to_thread(job_sources.job_facets)
 
 
 @router.get(
