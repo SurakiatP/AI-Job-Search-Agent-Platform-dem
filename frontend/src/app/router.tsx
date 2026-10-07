@@ -28,7 +28,8 @@ function AppWorkspace() {
   const projects = useResource<Project[]>('/projects');
   const project = useResource<Project>(projectId ? `/projects/${projectId}` : null);
   const sessions = useResource<Session[]>(projectId ? `/projects/${projectId}/sessions` : null);
-  if (projects.status === 'loading' || (projectId && (project.status === 'loading' || sessions.status === 'loading'))) return <AppShell><LoadingState /></AppShell>;
+  // Keep the page mounted during background reloads (rename/delete): only block on the first load.
+  if ((projects.status === 'loading' && !projects.data) || (projectId && ((project.status === 'loading' && !project.data) || (sessions.status === 'loading' && !sessions.data)))) return <AppShell><LoadingState /></AppShell>;
   if (projects.status === 'error') return <AppShell><ErrorState onRetry={projects.reload} /></AppShell>;
   if (projectId && project.status === 'error') {
     if (project.errorStatus === 404) return <AppShell><MissingResource /></AppShell>;
@@ -39,7 +40,7 @@ function AppWorkspace() {
     id: item.id, name: item.name, href: `/app/projects/${item.id}/overview`,
     sessions: item.id === projectId ? (sessions.data ?? []).map(session => ({ id: session.id, name: session.title, href: `/app/projects/${item.id}/sessions/${session.id}` })) : [],
   }));
-  return <AppShell projects={navigation} projectId={projectId} sessionId={sessionId}><Outlet /></AppShell>;
+  return <AppShell projects={navigation} projectId={projectId} sessionId={sessionId} onReload={() => { projects.reload(); sessions.reload(); }}><Outlet /></AppShell>;
 }
 
 function AppStart() {

@@ -5,11 +5,11 @@ import { MobileDrawer } from './MobileDrawer';
 import { ProjectSidebar } from './ProjectSidebar';
 import type { SidebarProject } from './ProjectSidebar';
 
-export function AppShell({ children, projects, projectId, sessionId }: {
-  children: ReactNode; projects?: SidebarProject[]; projectId?: string; sessionId?: string;
+export function AppShell({ children, projects, projectId, sessionId, onReload }: {
+  children: ReactNode; projects?: SidebarProject[]; projectId?: string; sessionId?: string; onReload?: () => void;
 }) {
   const { t } = useTranslation();
-  const sidebarProps = { projects, projectId, sessionId };
+  const sidebarProps = { projects, projectId, sessionId, onReload };
   return <>
     <a href="#main-content" className="skip-link">{t('skipToContent')}</a>
     <div className="min-h-dvh lg:grid lg:grid-cols-[264px_minmax(0,1fr)]">

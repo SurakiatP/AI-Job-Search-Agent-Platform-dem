@@ -12,6 +12,7 @@
   "projects": "โปรเจกต์",
   "sessions": "บทสนทนา",
   "settings": "การตั้งค่า",
+  "back": "กลับ",
   "nav": {
     "overview": "ภาพรวม",
     "console": "Agent Console",

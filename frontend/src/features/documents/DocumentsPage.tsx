@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Download, File, FileUser, Mail, type LucideIcon } from 'lucide-react';
+import { Download, File, FileUser, Mail, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageBack } from '@/components/PageBack';
 import { Markdown } from '@/components/Markdown';
 import { cn } from '@/lib/utils';
+import type { RunView } from '@/lib/api-types';
 import { ErrorState, LoadingState, MissingResource } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 
@@ -17,8 +19,8 @@ type SessionItem = { id: string };
 type DocType = DocumentItem['document_type'];
 
 const copy = {
-  th: { all: 'ทั้งหมด', filter: 'กรองตามประเภท', empty: 'ไม่มีเอกสารในประเภทนี้', evaluate: 'ไปที่หน้าประเมิน', back: 'กลับไปหน้าเอกสาร', type: 'ประเภท', created: 'สร้างเมื่อ', revisions: 'ประวัติฉบับ', current: 'ฉบับปัจจุบัน', metadata: 'รายละเอียด', downloadLatest: 'ดาวน์โหลดฉบับล่าสุด', requestChanges: 'ขอแก้ไข' },
-  en: { all: 'All', filter: 'Filter by type', empty: 'No documents of this type', evaluate: 'Go to Evaluate', back: 'Back to documents', type: 'Type', created: 'Created', revisions: 'Revisions', current: 'Current', metadata: 'Details', downloadLatest: 'Download latest', requestChanges: 'Request changes' },
+  th: { all: 'ทั้งหมด', filter: 'กรองตามประเภท', empty: 'ไม่มีเอกสารในประเภทนี้', evaluate: 'ไปที่หน้าประเมิน', back: 'กลับไปหน้าเอกสาร', type: 'ประเภท', created: 'สร้างเมื่อ', revisions: 'ประวัติฉบับ', current: 'ฉบับปัจจุบัน', metadata: 'รายละเอียด', downloadLatest: 'ดาวน์โหลดฉบับล่าสุด', requestChanges: 'ขอแก้ไข', sourceJob: 'งานต้นทาง', sourceSession: 'เซสชันต้นทาง' },
+  en: { all: 'All', filter: 'Filter by type', empty: 'No documents of this type', evaluate: 'Go to Evaluate', back: 'Back to documents', type: 'Type', created: 'Created', revisions: 'Revisions', current: 'Current', metadata: 'Details', downloadLatest: 'Download latest', requestChanges: 'Request changes', sourceJob: 'Source job', sourceSession: 'Source session' },
 };
 
 const typeIcon: Record<DocType, LucideIcon> = { cv: FileUser, cover_letter: Mail, other: File };
@@ -51,6 +53,7 @@ export function DocumentsPage() {
   const chips: [DocType | 'all', string][] = [['all', c.all], ['cv', documentTypeLabel('cv', t)], ['cover_letter', documentTypeLabel('cover_letter', t)], ['other', documentTypeLabel('other', t)]];
   const visible = filter === 'all' ? documents : documents.filter(document => document.document_type === filter);
   return <section className="grid gap-6">
+    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
     <h1 className="text-2xl font-semibold">{title}</h1>
     <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <button key={value} type="button" aria-pressed={filter === value}
       className={cn('rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring', filter === value && 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90')}
@@ -66,7 +69,7 @@ export function DocumentsPage() {
           <div className="flex flex-wrap gap-2">
             {document.output_language && <Badge variant="outline">{document.output_language === 'th' ? 'ไทย' : 'English'}</Badge>}
             {document.latest_revision && <Badge variant="secondary">{t('pages.revision', { defaultValue: 'Revision' })} {document.latest_revision.revision}</Badge>}
-            {document.partial && <Badge variant="warning">{t('pages.partial', { defaultValue: 'Partial document' })}</Badge>}
+          {document.partial && <Badge variant="warning">{t('pages.partial', { defaultValue: 'Partial document' })}</Badge>}
           </div>
         </CardContent></Card>;
       })}</div>}
@@ -83,6 +86,7 @@ export function DocumentDetailPage() {
   const revisions = useResource<DocumentRevision[]>(`/projects/${projectId}/documents/${documentId}/revisions`);
   const cvRevisions = useResource<CVRevision[]>(`/projects/${projectId}/cv`);
   const sessions = useResource<SessionItem[]>(`/projects/${projectId}/sessions`);
+  const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
   if (docs.status === 'loading') return <LoadingState />;
   if (docs.status === 'error') {
     if (docs.errorStatus === 404) return <MissingResource />;
@@ -102,10 +106,12 @@ export function DocumentDetailPage() {
   const Icon = typeIcon[document.document_type];
   const numbered = versions.map((revision, index) => ({ revision, number: revision.revision ?? index + 1, index }));
   const newestFirst = [...numbered].sort((a, b) => b.number - a.number);
+  const sourceJobId = latestRevision?.source_job_revision_id;
+  const sourceSessionId = runs.data?.find(run => run.id === document.source_run_id)?.session_id;
   const requestHref = sessions.status === 'ready' && sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : null;
 
   return <article className="grid gap-6">
-    <Link className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:underline" to={`${base}/documents`}><ArrowLeft className="size-4" aria-hidden="true" />{c.back}</Link>
+    <PageBack to={`${base}/documents`}>{t('nav.documents')}</PageBack>
     <div className="flex items-start gap-3"><Icon className="mt-1.5 size-5 shrink-0 text-primary" aria-hidden="true" />
       <div className="min-w-0"><p className="text-sm text-muted-foreground">{t('pages.documentsTitle', { defaultValue: 'Documents' })}</p><h1 className="break-words text-2xl font-semibold">{document.title}</h1></div></div>
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
@@ -120,6 +126,8 @@ export function DocumentDetailPage() {
           {document.output_language && <p data-testid="document-language">{t('pages.documentLanguage', { defaultValue: 'Document language' })}: {document.output_language === 'th' ? 'ไทย' : 'English'}</p>}
           {latestRevision && <p><span className="text-muted-foreground">{t('pages.revision', { defaultValue: 'Revision' })}: </span>{latestRevision.revision ?? versions.indexOf(latestRevision) + 1}</p>}
           {latestRevision?.created_at && <p><span className="text-muted-foreground">{c.created}: </span><time dateTime={latestRevision.created_at}>{date.format(new Date(latestRevision.created_at))}</time></p>}
+            {sourceJobId && <p><Link className="text-primary hover:underline" to={`${base}/jobs/${sourceJobId}`}>{c.sourceJob}</Link></p>}
+          {sourceSessionId && <p><Link className="text-primary hover:underline" to={`${base}/sessions/${sourceSessionId}`}>{c.sourceSession}</Link></p>}
           {document.partial && <div><Badge variant="warning" role="status">{t('pages.partial', { defaultValue: 'Partial document' })}</Badge></div>}
           <div className="flex flex-wrap gap-2 pt-1">
             {latestRevision?.file_id && <Button asChild size="sm"><a href={downloadUrl(projectId, latestRevision.file_id)}><Download aria-hidden="true" />{c.downloadLatest}</a></Button>}

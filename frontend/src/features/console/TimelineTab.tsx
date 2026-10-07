@@ -66,7 +66,7 @@ export function TimelineTab({ projectId, locale, c }: { projectId: string; local
           <td className="px-3 py-3 font-medium">{c.ops[run.operation]}
             {run.retry_of_id && <span className="ms-2 inline-block rounded-md border px-1.5 py-0.5 text-xs font-normal text-muted-foreground" title={c.retryOf}>{c.retry}</span>}
           </td>
-          <td className="max-w-56 px-3 py-3 [overflow-wrap:anywhere]">{run.job_revision_id ? titles.get(run.job_revision_id) ?? c.untitled : '—'}</td>
+          <td className="max-w-56 px-3 py-3 [overflow-wrap:anywhere]">{run.job_revision_id ? <Link className="hover:underline" to={`${base}/jobs/${encodeURIComponent(run.job_revision_id)}`}>{titles.get(run.job_revision_id) ?? c.untitled}</Link> : '—'}</td>
           <td className="px-3 py-3"><StatusBadge status={run.status} locale={locale} /></td>
           <td className="px-3 py-3 whitespace-nowrap"><time dateTime={run.created_at} title={medium.format(new Date(run.created_at))}>{relativeTime(run.created_at, now, locale)}</time></td>
           <td className="px-3 py-3 whitespace-nowrap tabular-nums">{duration(run, c)}</td>

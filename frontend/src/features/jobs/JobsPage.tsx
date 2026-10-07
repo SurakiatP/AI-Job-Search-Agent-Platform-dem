@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FitScore } from '@/components/FitScore';
+import { PageBack } from '@/components/PageBack';
 import { Markdown } from '@/components/Markdown';
 import { StatusBadge } from '@/components/StatusBadge';
 import type { DocumentView, JobApplicationStatusView, JobRevisionView, RunView, SessionView } from '../../lib/api-types';
@@ -19,13 +20,13 @@ import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 const copy = {
   th: {
     addJob: 'เพิ่มงาน', close: 'ปิดฟอร์ม', noJobs: 'ยังไม่มีงานที่บันทึก', noJobsNext: 'กด "เพิ่มงาน" เพื่อวางประกาศงานแรกของคุณ',
-    back: '← งานที่บันทึก', report: 'รายงานการประเมินล่าสุด', notEvaluated: 'ยังไม่ได้ประเมินงานนี้', notEvaluatedNext: 'เปิดเซสชันเพื่อให้เอเจนต์ประเมินความเหมาะสมของงานนี้',
+    back: 'งานที่บันทึก', evalSession: 'เปิดเซสชันที่ประเมินงานนี้', report: 'รายงานการประเมินล่าสุด', notEvaluated: 'ยังไม่ได้ประเมินงานนี้', notEvaluatedNext: 'เปิดเซสชันเพื่อให้เอเจนต์ประเมินความเหมาะสมของงานนี้',
     evaluate: 'ประเมินงานนี้', description: 'รายละเอียดงาน', fit: 'ความเหมาะสม', status: 'สถานะการสมัคร', documents: 'เอกสารที่เกี่ยวข้อง',
     noDocs: 'ยังไม่มีเอกสารที่เชื่อมกับงานนี้', allDocs: 'ดูเอกสารทั้งหมด', draft: 'ร่างเอกสารสำหรับงานนี้', revision: 'ฉบับที่', untitled: 'งานไม่มีชื่อ',
   },
   en: {
     addJob: 'Add job', close: 'Close form', noJobs: 'No saved jobs yet', noJobsNext: 'Press "Add job" to paste your first posting.',
-    back: '← Saved jobs', report: 'Latest evaluation report', notEvaluated: 'Not evaluated yet', notEvaluatedNext: 'Open a session so the agent can assess how well this job fits you.',
+    back: 'Saved jobs', evalSession: 'Open the evaluation session', report: 'Latest evaluation report', notEvaluated: 'Not evaluated yet', notEvaluatedNext: 'Open a session so the agent can assess how well this job fits you.',
     evaluate: 'Evaluate this job', description: 'Job description', fit: 'Fit score', status: 'Application status', documents: 'Related documents',
     noDocs: 'No documents are linked to this job yet', allDocs: 'View all documents', draft: 'Draft documents for this job', revision: 'Revision', untitled: 'Untitled job',
   },
@@ -117,6 +118,7 @@ export function JobsPage() {
     } catch { setError('save'); } finally { setBusy(false); }
   }
   return <section className="grid gap-6">
+    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
     <div className="flex flex-wrap items-center justify-between gap-4">
       <h1 className="min-w-0 break-words text-2xl font-semibold">{t('pages.jobsTitle')}</h1>
       <Button aria-expanded={showForm} aria-controls="add-job-form" onClick={() => setOpen(value => !value)}>{showForm ? c.close : <><Plus className="size-4" aria-hidden="true" />{c.addJob}</>}</Button>
@@ -173,7 +175,7 @@ export function JobDetailPage() {
   const evaluateHref = sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : `${base}/profile`;
   return <article className="grid gap-6">
     <div className="grid gap-3">
-      <Link className="text-sm text-primary hover:underline" to={`${base}/jobs`}>{c.back}</Link>
+      <PageBack to={`${base}/jobs`}>{t('nav.savedJobs')}</PageBack>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="break-words text-2xl font-semibold">{job.title}</h1>
@@ -205,7 +207,8 @@ export function JobDetailPage() {
       <div className="grid min-w-0 gap-6 lg:content-start">
         <Card>
           <CardHeader><CardTitle>{c.fit}</CardTitle></CardHeader>
-          <CardContent><FitScore size="lg" score={evaluation?.evaluation_result?.score ?? null} locale={locale} /></CardContent>
+          <CardContent className="grid gap-3"><FitScore size="lg" score={evaluation?.evaluation_result?.score ?? null} locale={locale} />
+            {evaluation && <Link className="text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{c.evalSession}</Link>}</CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>{c.status}</CardTitle></CardHeader>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/Button';
+import { PageBack } from '../../components/PageBack';
 import { useDraft, useFileDraft } from '../../app/drafts';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { apiRequest } from '../../lib/api';
@@ -76,7 +77,7 @@ export function ProfilePage() {
     try { await sendJson(`/projects/${projectId}/preferences`, 'PATCH', { output_language: language, notifications_enabled: notifications }); setLanguageDraft(''); setNotificationsDraft(''); preferences.reload(); }
     catch { setSaveError(true); }
   }
-  return <section className="page-wrap"><div className="page-heading"><div><h1>{t('pages.profileTitle', { defaultValue: 'Profile and CV' })}</h1><p className="muted">{t('pages.preferencesHeading', { defaultValue: 'Preferences' })}</p></div>{currentSession && <Link className="button button-secondary" to={`/app/projects/${projectId}/sessions/${currentSession.id}`}>{t('pages.sessions', { defaultValue: 'Sessions' })}: {currentSession.title}</Link>}</div>
+  return <section className="page-wrap"><PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack><div className="page-heading"><div><h1>{t('pages.profileTitle', { defaultValue: 'Profile and CV' })}</h1><p className="muted">{t('pages.preferencesHeading', { defaultValue: 'Preferences' })}</p></div>{currentSession && <Link className="button button-secondary" to={`/app/projects/${projectId}/sessions/${currentSession.id}`}>{t('pages.sessions', { defaultValue: 'Sessions' })}: {currentSession.title}</Link>}</div>
     {state?.initialGoal && <p className="notice">{t('pages.goal', { defaultValue: 'Goal' })}: {state.initialGoal}</p>}
     <form className="surface-card" onSubmit={event => { event.preventDefault(); if (sessionBusy || !sessionTitle.trim()) return; setSessionBusy(true); setSessionError(false); void sendJson<Session>(`/projects/${projectId}/sessions`, 'POST', { title: sessionTitle.trim() }).then(session => { setSessionTitle(''); navigate(`/app/projects/${projectId}/sessions/${session.id}`); }).catch(() => setSessionError(true)).finally(() => setSessionBusy(false)); }}><h2>{t('workflow.newSession')}</h2><label htmlFor="session-title">{t('workflow.sessionTitle')}</label><input id="session-title" maxLength={200} value={sessionTitle} onChange={event => setSessionTitle(event.target.value)} required />{sessionError && <p role="alert">{t('pages.loadError')}</p>}<Button variant="primary" type="submit" disabled={sessionBusy || !sessionTitle.trim()}>{t('workflow.newSession')}</Button></form>
     <section className="surface-card"><h2>{t('pages.cvHeading', { defaultValue: 'Your CV' })}</h2>{cv.data?.length ? <ul className="revision-list">{cv.data.map(revision => <li key={revision.id}>{revision.original_filename ?? `${t('pages.revision', { defaultValue: 'Revision' })} ${revision.revision}`}</li>)}</ul> : <><h3>{t('pages.noCVTitle', { defaultValue: 'No CV added yet' })}</h3><p className="muted">{t('pages.noCVDescription', { defaultValue: 'Paste CV text or select a PDF, DOCX or text file to add a revision.' })}</p></>}

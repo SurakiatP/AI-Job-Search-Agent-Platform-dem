@@ -79,7 +79,7 @@ export function OverviewPage() {
   const evaluateHref = sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : `${base}/profile`;
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   const stats = [
-    { label: c.saved, value: jobList.length }, { label: c.applied, value: jobList.filter(j => j.application_status === 'applied').length }, { label: c.documents, value: docList.length },
+    { label: c.saved, value: jobList.length, to: `${base}/jobs` }, { label: c.applied, value: jobList.filter(j => j.application_status === 'applied').length, to: `${base}/jobs` }, { label: c.documents, value: docList.length, to: `${base}/documents` },
   ];
 
   return <div className="grid gap-6">
@@ -88,12 +88,12 @@ export function OverviewPage() {
       <Button asChild><Link to={evaluateHref}>{c.evaluate}</Link></Button>
     </div>
 
-    <div className="grid gap-4 sm:grid-cols-3">{stats.map(s => <Card key={s.label}><CardContent className="p-5"><p className="text-sm text-muted-foreground">{s.label}</p><p className="text-3xl font-semibold tabular-nums">{s.value}</p></CardContent></Card>)}</div>
+    <div className="grid gap-4 sm:grid-cols-3">{stats.map(s => <Link key={s.label} to={s.to} className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"><Card className="transition-shadow hover:shadow-md"><CardContent className="p-5"><p className="text-sm text-muted-foreground">{s.label}</p><p className="text-3xl font-semibold tabular-nums">{s.value}</p></CardContent></Card></Link>)}</div>
 
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="grid gap-6 lg:col-span-2 lg:content-start">
         <Card>
-          <CardHeader><CardTitle>{c.jobsTitle}</CardTitle></CardHeader>
+          <CardHeader><CardTitle><Link className="hover:underline" to={`${base}/jobs`}>{c.jobsTitle}</Link></CardTitle></CardHeader>
           <CardContent>
             {jobList.length === 0 ? <Empty title={c.noJobs} next={c.noJobsNext}><Button asChild size="sm"><Link to={`${base}/jobs`}>{c.addJob}</Link></Button></Empty> :
               <ul className="divide-y">{jobList.slice(0, 6).map(job => <li key={job.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
@@ -105,7 +105,7 @@ export function OverviewPage() {
           {jobList.length > 0 && <CardFooter><Link className="text-sm text-primary hover:underline" to={`${base}/jobs`}>{c.viewAll}</Link></CardFooter>}
         </Card>
         <Card>
-          <CardHeader><CardTitle>{c.docsTitle}</CardTitle></CardHeader>
+          <CardHeader><CardTitle><Link className="hover:underline" to={`${base}/documents`}>{c.docsTitle}</Link></CardTitle></CardHeader>
           <CardContent>
             {docList.length === 0 ? <Empty title={c.noDocs} next={c.noDocsNext} /> :
               <ul className="divide-y">{docList.slice(0, 4).map(doc => <li key={doc.id} className="py-3 first:pt-0 last:pb-0">
@@ -119,7 +119,7 @@ export function OverviewPage() {
 
       <div className="grid gap-6 lg:content-start">
         <Card>
-          <CardHeader><CardTitle>{c.cvTitle}</CardTitle></CardHeader>
+          <CardHeader><CardTitle><Link className="hover:underline" to={`${base}/profile`}>{c.cvTitle}</Link></CardTitle></CardHeader>
           <CardContent>
             {latestCv ? <div className="grid gap-3">
               <div><p className="break-words font-medium">{latestCv.original_filename ?? `${c.revision} ${latestCv.revision}`}</p>
@@ -129,7 +129,7 @@ export function OverviewPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>{c.activity}</CardTitle></CardHeader>
+          <CardHeader><CardTitle><Link className="hover:underline" to={`${base}/console`}>{c.activity}</Link></CardTitle></CardHeader>
           <CardContent className="grid gap-3">
             {activeRuns.length === 0 && pending.length === 0 && <p className="text-sm text-muted-foreground">{c.idle}</p>}
             {activeRuns.map(run => <Link key={run.id} to={`${base}/sessions/${run.session_id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 hover:bg-accent">

@@ -1,0 +1,194 @@
+import { useEffect, useState } from 'react';
+import { ChevronDown, Folder, FolderOpen, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Link, useLocation, useNavigate } from 'react-router';
+import { cn } from '@/lib/utils';
+import { apiRequest } from '../lib/api';
+import { ApiError } from '../lib/api-types';
+import { sendJson, useResource } from '../features/projects/useResource';
+import { Button } from './ui/button';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { Input } from './ui/input';
+
+export type SidebarProject = {
+  id: string; name: string; href: string;
+  sessions: { id: string; name: string; href: string }[];
+};
+type Target = { kind: 'project' | 'session'; projectId: string; id: string; name: string };
+type DialogState = { mode: 'rename' | 'delete'; target: Target } | null;
+type SessionLite = { id: string; title: string };
+
+const copy = {
+  th: {
+    projects: 'โปรเจกต์', toggleList: 'ย่อ/ขยายรายการโปรเจกต์', newProject: 'โปรเจกต์ใหม่', newSession: 'เซสชันใหม่', newSessionFailed: 'สร้างเซสชันไม่สำเร็จ ลองอีกครั้ง',
+    expand: (n: string) => `แสดงเซสชันของ ${n}`, collapse: (n: string) => `ซ่อนเซสชันของ ${n}`, options: (n: string) => `ตัวเลือกสำหรับ ${n}`,
+    rename: 'เปลี่ยนชื่อ', delete: 'ลบ', cancel: 'ยกเลิก', save: 'บันทึก', confirmDelete: 'ลบ', saving: 'กำลังบันทึก…',
+    renameProject: 'เปลี่ยนชื่อโปรเจกต์', renameSession: 'เปลี่ยนชื่อเซสชัน', name: 'ชื่อ', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง',
+    deleteProject: (n: string) => `ลบโปรเจกต์ “${n}”?`, deleteSession: (n: string) => `ลบเซสชัน “${n}”?`,
+    deleteProjectBody: 'โปรเจกต์นี้จะถูกลบถาวร ลบได้เฉพาะโปรเจกต์ที่ไม่มี CV งาน หรือประวัติการทำงานของเอเจนต์ และย้อนกลับไม่ได้',
+    deleteSessionBody: 'เซสชันและข้อความในเซสชันนี้จะถูกลบถาวร ลบได้เฉพาะเซสชันที่ไม่มีประวัติงานของเอเจนต์ และย้อนกลับไม่ได้',
+    project_not_empty: 'ลบไม่ได้: โปรเจกต์นี้ยังมี CV งาน หรือประวัติการทำงานอยู่', session_has_runs: 'ลบไม่ได้: เซสชันนี้มีประวัติงานของเอเจนต์',
+  },
+  en: {
+    projects: 'Projects', toggleList: 'Collapse or expand the project list', newProject: 'New project', newSession: 'New session', newSessionFailed: 'Could not create the session. Try again.',
+    expand: (n: string) => `Show sessions of ${n}`, collapse: (n: string) => `Hide sessions of ${n}`, options: (n: string) => `Options for ${n}`,
+    rename: 'Rename', delete: 'Delete', cancel: 'Cancel', save: 'Save', confirmDelete: 'Delete', saving: 'Saving…',
+    renameProject: 'Rename project', renameSession: 'Rename session', name: 'Name', failed: 'That did not work. Try again.',
+    deleteProject: (n: string) => `Delete project “${n}”?`, deleteSession: (n: string) => `Delete session “${n}”?`,
+    deleteProjectBody: 'This permanently deletes the project. It can only be deleted when it has no CV, jobs or agent run history, and this cannot be undone.',
+    deleteSessionBody: 'This permanently deletes the session and its messages. It can only be deleted when it has no agent run history, and this cannot be undone.',
+    project_not_empty: 'Cannot delete: this project still has a CV, jobs or run history.', session_has_runs: 'Cannot delete: this session has agent run history.',
+  },
+};
+type Copy = typeof copy.en;
+function useCopy(): Copy { return copy[useTranslation().i18n.language.startsWith('th') ? 'th' : 'en']; }
+
+const rowClass = 'group flex items-center gap-0.5 rounded-md text-sm transition-colors hover:bg-accent/60 has-[a[aria-current=page]]:bg-accent has-[a[aria-current=page]]:text-accent-foreground';
+
+function RowMenu({ name, onRename, onDelete }: { name: string; onRename: () => void; onDelete: () => void }) {
+  const c = useCopy();
+  return <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <button type="button" aria-label={c.options(name)} className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground opacity-0 outline-none hover:bg-accent hover:text-accent-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100">
+        <MoreHorizontal className="size-4" aria-hidden="true" />
+      </button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="start" className="w-44">
+      <DropdownMenuItem onSelect={onRename}><Pencil className="size-4" aria-hidden="true" />{c.rename}</DropdownMenuItem>
+      <DropdownMenuItem className="text-destructive data-[highlighted]:text-destructive" onSelect={onDelete}><Trash2 className="size-4" aria-hidden="true" />{c.delete}</DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>;
+}
+
+function ItemDialog({ state, onClose, onDone }: { state: NonNullable<DialogState>; onClose: () => void; onDone: (state: NonNullable<DialogState>, newName?: string) => void }) {
+  const c = useCopy();
+  const { mode, target } = state;
+  const [value, setValue] = useState(target.name);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const isProject = target.kind === 'project';
+  const base = isProject ? `/projects/${target.id}` : `/projects/${target.projectId}/sessions/${target.id}`;
+  async function submit() {
+    const next = value.trim();
+    if (busy || (mode === 'rename' && !next)) return;
+    if (mode === 'rename' && next === target.name) { onClose(); return; }
+    setBusy(true); setError('');
+    try {
+      if (mode === 'rename') await sendJson(base, 'PATCH', isProject ? { name: next } : { title: next });
+      else await apiRequest(base, { method: 'DELETE' });
+      onDone(state, next);
+    } catch (caught) {
+      const code = caught instanceof ApiError && caught.status === 409 ? caught.code : '';
+      setError(code === 'project_not_empty' || code === 'session_has_runs' ? c[code] : c.failed);
+      setBusy(false);
+    }
+  }
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
+    <DialogContent {...(mode === 'rename' ? { 'aria-describedby': undefined } : {})}>
+      <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
+        <DialogTitle>{mode === 'rename' ? (isProject ? c.renameProject : c.renameSession) : (isProject ? c.deleteProject(target.name) : c.deleteSession(target.name))}</DialogTitle>
+        {mode === 'rename'
+          ? <label className="grid gap-1.5 text-sm font-medium">{c.name}<Input autoFocus maxLength={200} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
+          : <DialogDescription>{isProject ? c.deleteProjectBody : c.deleteSessionBody}</DialogDescription>}
+        {error && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{error}</p>}
+        <div className="flex flex-wrap justify-end gap-2">
+          <DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{c.cancel}</Button></DialogClose>
+          {mode === 'rename'
+            ? <Button type="submit" disabled={busy || !value.trim()}>{busy ? c.saving : c.save}</Button>
+            : <Button type="submit" variant="destructive" disabled={busy}>{c.confirmDelete}</Button>}
+        </div>
+      </form>
+    </DialogContent>
+  </Dialog>;
+}
+
+function ProjectRow({ project, current, sessionId, expanded, version, onToggle, onNavigate, onDialog, onCreated }: {
+  project: SidebarProject; current: boolean; sessionId?: string; expanded: boolean; version: number;
+  onToggle: () => void; onNavigate?: () => void; onDialog: (state: NonNullable<DialogState>) => void; onCreated: () => void;
+}) {
+  const c = useCopy();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const lazy = useResource<SessionLite[]>(expanded && !current ? `/projects/${project.id}/sessions` : null);
+  const { reload } = lazy;
+  useEffect(() => { if (version) reload(); }, [version, reload]);
+  const sessions = current ? project.sessions : (lazy.data ?? []).map(item => ({ id: item.id, name: item.title, href: `/app/projects/${project.id}/sessions/${item.id}` }));
+  async function createSession() {
+    if (busy) return;
+    setBusy(true); setFailed(false);
+    try {
+      const session = await sendJson<SessionLite>(`/projects/${project.id}/sessions`, 'POST', { title: 'New session' });
+      onCreated(); onNavigate?.();
+      navigate(`/app/projects/${project.id}/sessions/${session.id}`);
+    } catch { setFailed(true); } finally { setBusy(false); }
+  }
+  const projectTarget: Target = { kind: 'project', projectId: project.id, id: project.id, name: project.name };
+  return <li>
+    <div className={rowClass}>
+      <button type="button" aria-expanded={expanded} aria-label={expanded ? c.collapse(project.name) : c.expand(project.name)} onClick={onToggle}
+        className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+        {expanded ? <FolderOpen className="size-4" aria-hidden="true" /> : <Folder className="size-4" aria-hidden="true" />}
+      </button>
+      <Link to={project.href} title={project.name} aria-current={pathname === project.href ? 'page' : undefined}
+        className={cn('min-w-0 flex-1 truncate rounded-md py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring', current && 'font-medium')}
+        onClick={() => { if (!expanded) onToggle(); onNavigate?.(); }}>{project.name}</Link>
+      <RowMenu name={project.name} onRename={() => onDialog({ mode: 'rename', target: projectTarget })} onDelete={() => onDialog({ mode: 'delete', target: projectTarget })} />
+    </div>
+    {expanded && <ul className="ms-4 mt-0.5 grid gap-0.5 border-s ps-1.5">
+      {sessions.map(session => {
+        const target: Target = { kind: 'session', projectId: project.id, id: session.id, name: session.name };
+        return <li key={session.id} className={rowClass}>
+          <Link to={session.href} title={session.name} aria-current={current && session.id === sessionId ? 'page' : undefined}
+            className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onNavigate}>{session.name}</Link>
+          <RowMenu name={session.name} onRename={() => onDialog({ mode: 'rename', target })} onDelete={() => onDialog({ mode: 'delete', target })} />
+        </li>;
+      })}
+      <li>
+        <button type="button" disabled={busy} onClick={() => void createSession()} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm text-muted-foreground outline-none transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+          <Plus className="size-4 shrink-0" aria-hidden="true" />{c.newSession}
+        </button>
+        {failed && <p role="alert" className="px-2 text-xs text-destructive">{c.newSessionFailed}</p>}
+      </li>
+    </ul>}
+  </li>;
+}
+
+export function ProjectTree({ projects, projectId, sessionId, onNavigate, onReload }: {
+  projects: SidebarProject[]; projectId?: string; sessionId?: string; onNavigate?: () => void; onReload?: () => void;
+}) {
+  const c = useCopy();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [listOpen, setListOpen] = useState(true);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(projectId ? [projectId] : []));
+  const [dialog, setDialog] = useState<DialogState>(null);
+  const [version, setVersion] = useState(0);
+  useEffect(() => { if (projectId) setExpanded(set => set.has(projectId) ? set : new Set(set).add(projectId)); }, [projectId]);
+  const refresh = () => { setVersion(value => value + 1); onReload?.(); };
+  function done(state: NonNullable<DialogState>) {
+    setDialog(null); refresh();
+    const { kind, id, projectId: owner } = state.target;
+    if (state.mode !== 'delete') return;
+    if (kind === 'session' && id === sessionId) { onNavigate?.(); navigate(`/app/projects/${owner}/overview`); }
+    if (kind === 'project' && id === projectId) { onNavigate?.(); navigate('/app/projects'); }
+  }
+  return <section aria-labelledby="sidebar-projects-heading" className="grid gap-1">
+    <div className="flex items-center justify-between gap-1">
+      <h2 id="sidebar-projects-heading" className="min-w-0 text-sm font-medium">
+        <button type="button" aria-expanded={listOpen} aria-label={`${c.projects}: ${c.toggleList}`} onClick={() => setListOpen(value => !value)} className="flex items-center gap-1 rounded-md px-2 py-1.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+          {c.projects}<ChevronDown className={cn('size-4 transition-transform', !listOpen && '-rotate-90')} aria-hidden="true" />
+        </button>
+      </h2>
+      <Button asChild variant="ghost" size="icon" className="size-8"><Link to="/app/projects/new" aria-label={c.newProject} title={c.newProject} onClick={onNavigate}><Plus className="size-4" aria-hidden="true" /></Link></Button>
+    </div>
+    {listOpen && (projects.length === 0 ? <p className="px-2 text-sm text-muted-foreground">{t('noProjects')}</p> : <ul className="grid gap-0.5">
+      {projects.map(project => <ProjectRow key={project.id} project={project} current={project.id === projectId} sessionId={sessionId} expanded={expanded.has(project.id)} version={version}
+        onToggle={() => setExpanded(set => { const next = new Set(set); if (!next.delete(project.id)) next.add(project.id); return next; })}
+        onNavigate={onNavigate} onDialog={setDialog} onCreated={refresh} />)}
+    </ul>)}
+    {dialog && <ItemDialog key={`${dialog.mode}:${dialog.target.id}`} state={dialog} onClose={() => setDialog(null)} onDone={done} />}
+  </section>;
+}

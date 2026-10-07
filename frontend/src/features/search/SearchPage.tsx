@@ -12,6 +12,7 @@ import { apiRequest } from '../../lib/api';
 import type { SessionView } from '../../lib/api-types';
 import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 import { Markdown } from '@/components/Markdown';
+import { PageBack } from '@/components/PageBack';
 import { sampleJobs } from './sampleJobs';
 
 type JobSearchItem = {
@@ -115,7 +116,7 @@ function JobDetail({ job, c, busy, error, onEvaluate }: { job: JobSearchItem; c:
 }
 
 export function SearchPage() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const locale: 'th' | 'en' = i18n.language.startsWith('th') ? 'th' : 'en';
   const c = copy[locale];
   const number = useMemo(() => new Intl.NumberFormat(locale === 'th' ? 'th-TH' : 'en-US'), [locale]);
@@ -262,6 +263,7 @@ export function SearchPage() {
   const failed = !sample && status === 'error';
 
   return <section className="grid gap-6">
+    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
     <div className="grid gap-1">
       <h1 className="min-w-0 break-words text-2xl font-semibold">{c.title}</h1>
       {grandTotal != null && <p className="text-sm text-muted-foreground">{c.subtitle(number.format(grandTotal))}</p>}

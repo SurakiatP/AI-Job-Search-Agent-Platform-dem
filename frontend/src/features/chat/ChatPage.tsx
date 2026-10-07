@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useDraft } from '../../app/drafts';
 import { Bot, FileText, Briefcase, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Breadcrumb } from '@/components/PageBack';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ReactNode } from 'react';
 import { ErrorState, LoadingState, MissingResource } from '../projects/PageStates';
@@ -31,6 +32,7 @@ export function ChatPage() {
   const initialJobId = (useLocation().state as { jobId?: string } | null)?.jobId;
   const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
   const provider = useResource<Provider>(`/projects/${projectId}/settings/provider`);
+  const project = useResource<{ name: string }>(`/projects/${projectId}`);
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const cv = useResource<unknown[]>(`/projects/${projectId}/cv`);
   const documents = useResource<DocumentView[]>(`/projects/${projectId}/documents`);
@@ -47,10 +49,13 @@ export function ChatPage() {
   const available = Boolean(provider.data?.configured && cv.data?.length);
   const active = workflow.run && ['queued', 'running', 'waiting_approval'].includes(workflow.run.status);
   const copy = locale === 'th'
-    ? { cancel: 'หยุดงาน', retry: 'ลองใหม่เป็นงานใหม่', cv: 'เพิ่ม CV ก่อนเริ่มงาน', job: 'เพิ่มประกาศงาน', refresh: 'โหลดสถานะใหม่', you: 'คุณ', noDocs: 'ยังไม่มีเอกสาร เมื่อเอเจนต์ร่างเอกสารแล้วจะแสดงที่นี่' }
-    : { cancel: 'Stop run', retry: 'Retry as a new run', cv: 'Add a CV before starting', job: 'Add a job posting', refresh: 'Refresh status', you: 'You', noDocs: 'No documents yet. Drafts from the agent will appear here.' };
+    ? { cancel: 'หยุดงาน', retry: 'ลองใหม่เป็นงานใหม่', cv: 'เพิ่ม CV ก่อนเริ่มงาน', job: 'เพิ่มประกาศงาน', refresh: 'โหลดสถานะใหม่', you: 'คุณ', noDocs: 'ยังไม่มีเอกสาร เมื่อเอเจนต์ร่างเอกสารแล้วจะแสดงที่นี่', viewJob: 'ดูรายละเอียดงานนี้' }
+    : { cancel: 'Stop run', retry: 'Retry as a new run', cv: 'Add a CV before starting', job: 'Add a job posting', refresh: 'Refresh status', you: 'You', noDocs: 'No documents yet. Drafts from the agent will appear here.', viewJob: 'View this job' };
   const base = `/app/projects/${projectId}`;
+  const runJobId = workflow.run?.job_revision_id;
+  const runJob = runJobId ? jobs.data?.find(item => item.id === runJobId) : undefined;
   return <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]"><div className="flex min-w-0 flex-col gap-4">
+    <Breadcrumb label={t('pages.chatTitle')} items={[{ label: project.data?.name ?? t('pages.project'), to: `${base}/overview` }, { label: session.title }]} />
     <div className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{session.title}</h1><p className="text-sm text-muted-foreground">{t('pages.chatTitle')}</p></div><Button type="button" variant="outline" aria-pressed={documentPanel} onClick={() => setDocumentPanel(value => !value)}><FileText className="size-4" aria-hidden="true" />{t('pages.documentsTitle')}</Button></div>
     {!provider.data?.configured && <Notice icon={<TriangleAlert className="size-5" />} title={t('pages.noProviderTitle')} description={t('pages.noProviderDescription')} to="/app/settings" action={t('pages.settingsTitle')} />}
     {!cv.data?.length && <Notice icon={<FileText className="size-5" />} title={copy.cv} to={`${base}/profile`} action={copy.cv} />}
@@ -63,6 +68,7 @@ export function ChatPage() {
     {active && <Button type="button" variant="outline" className="self-start" disabled={workflow.submitting || workflow.cancellationPending} onClick={() => void workflow.cancel()}>{copy.cancel}</Button>}
     {workflow.run && !active && <Button type="button" variant="outline" className="self-start" disabled={workflow.submitting} onClick={() => void workflow.retry()}>{copy.retry}</Button>}
     <ApprovalCard approval={workflow.pendingApproval} locale={locale} busy={workflow.submitting} onDecision={(id, decision) => void workflow.decideApproval(id, decision)} onRefresh={() => void workflow.reload().catch(() => undefined)} />
+    {runJob && <Link className="w-fit break-words text-sm text-primary hover:underline" to={`${base}/jobs/${runJob.id}`}>{copy.viewJob}: {runJob.title}</Link>}
     <RunResults projectId={projectId} locale={locale} run={workflow.run} documents={documents.data ?? []} />
     <Composer locale={locale} jobs={jobs.data ?? []} initialJobId={initialJobId} message={message} onMessageChange={setMessage} busy={!available || Boolean(active) || workflow.submitting} onSubmit={input => { void workflow.submit(input).then(run => { if (run) setMessage(''); }); }} />
   </div>{documentPanel && <Card className="self-start" role="complementary" aria-labelledby="chat-documents-heading"><CardHeader><CardTitle id="chat-documents-heading" className="text-lg">{t('pages.documentsTitle')}</CardTitle></CardHeader><CardContent className="grid gap-3">

@@ -12,6 +12,7 @@
   "projects": "Projects",
   "sessions": "Sessions",
   "settings": "Settings",
+  "back": "Back",
   "nav": {
     "overview": "Overview",
     "console": "Agent Console",

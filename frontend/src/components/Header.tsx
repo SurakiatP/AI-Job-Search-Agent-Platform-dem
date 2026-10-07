@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { useLocale } from '../app/providers';
 import { AppearanceControl } from './AppearanceControl';
 import { Button } from './ui/button';
@@ -10,6 +11,11 @@ export function Wordmark() {
     <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"><Sparkles aria-hidden="true" size={16} /></span>
     <span className="min-w-0 [overflow-wrap:anywhere]">AI Job Search Agent Platform</span>
   </span>;
+}
+
+export function HomeLink({ onClick }: { onClick?: () => void }) {
+  const { i18n } = useTranslation();
+  return <Link to="/" onClick={onClick} aria-label={i18n.language.startsWith('th') ? 'หน้าแรก' : 'Home'} className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Wordmark /></Link>;
 }
 
 export function LanguageSwitch() {
@@ -24,7 +30,7 @@ export function LanguageSwitch() {
 
 export function Header({ menu, actions }: { menu?: ReactNode; actions?: ReactNode }) {
   return <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-background/90 px-4 py-2 backdrop-blur sm:px-6">
-    <div className="flex min-w-0 items-center gap-2">{menu}<Wordmark /></div>
+    <div className="flex min-w-0 items-center gap-2">{menu}<HomeLink /></div>
     <div className="flex shrink-0 items-center gap-1 sm:gap-2">
       {actions}
       <AppearanceControl compact />
