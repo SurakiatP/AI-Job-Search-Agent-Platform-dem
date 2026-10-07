@@ -39,3 +39,9 @@ def test_fewer_than_two_job_skills_returns_none():
 def test_no_cv_overlap_is_zero():
     result = compute_skill_coverage("nothing relevant", "Docker and Kubernetes")
     assert result["ratio"] == 0.0 and result["matched"] == []
+
+
+def test_thai_cv_phrasing_counts_as_evidence():
+    cv = "รองรับโหมดมืดและภาษาไทย/อังกฤษ ใส่ใจประสิทธิภาพ และ lazy loading"
+    result = compute_skill_coverage(cv, "Fluent English and performance optimization required")
+    assert result["matched"] == ["English", "Performance Optimization"]
