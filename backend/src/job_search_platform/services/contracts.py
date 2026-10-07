@@ -70,6 +70,10 @@ class SessionCreate(DTO):
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)] = "New session"
 
 
+class SessionUpdate(DTO):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+
+
 class SessionView(DTO):
     id: UUID
     project_id: UUID

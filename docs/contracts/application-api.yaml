@@ -97,6 +97,29 @@ paths:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/SessionCreate'}}}
       responses: {'201': {description: Created session}}
+  /projects/{project_id}/sessions/{session_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: session_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      tags: [sessions]
+      description: Owner-only rename. Title is trimmed, 1-200 characters.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SessionUpdate'}}}
+      responses:
+        '200': {description: Renamed session, content: {application/json: {schema: {$ref: '#/components/schemas/SessionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags: [sessions]
+      description: Owner-only delete of a session and its messages. Refused with 409 session_has_runs when any run references the session.
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Session has runs (code session_has_runs)}
   /projects/{project_id}/sessions/{session_id}/messages:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -470,6 +493,11 @@ components:
       type: object
       additionalProperties: false
       properties: {title: {type: string, maxLength: 200, default: New session}}
+    SessionUpdate:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties: {title: {type: string, minLength: 1, maxLength: 200}}
     SessionView:
       type: object
       additionalProperties: false

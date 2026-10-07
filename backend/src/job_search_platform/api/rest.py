@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, File, Header, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import StringConstraints
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
@@ -28,7 +28,7 @@ from job_search_platform.services.contracts import (
     JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
     PreferencesView, ProjectUpdate, ProjectView, ProviderConnectionTestView, ProviderSettingsUpdate,
-    ProviderSettingsView, RunRequest, RunView, SessionCreate, SessionView, ToolConnectorSettingsView,
+    ProviderSettingsView, RunRequest, RunView, SessionCreate, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
 from job_search_platform.services import job_sources
@@ -51,7 +51,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
     status_code = {
         "unauthorized": 401, "invalid_launch": 401, "invalid_origin": 403,
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
-        "project_not_empty": 409, "idempotency_conflict": 409,
+        "project_not_empty": 409, "session_has_runs": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "approval_conflict": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
         "job_source_unavailable": 502,
@@ -216,6 +216,33 @@ async def create_session(project_id: UUID, body: SessionCreate, actor=Depends(wr
         db.add(row)
         db.flush()
         return _session_view(row)
+
+
+@router.patch("/projects/{project_id}/sessions/{session_id}", response_model=SessionView)
+async def update_session(project_id: UUID, session_id: UUID, body: SessionUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        row = db.scalar(select(ConversationSession).where(
+            ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
+        if row is None:
+            raise ServiceError("not_found")
+        row.title = body.title
+        db.flush()
+        return _session_view(row)
+
+
+@router.delete("/projects/{project_id}/sessions/{session_id}", status_code=204)
+async def delete_session(project_id: UUID, session_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        row = db.scalar(select(ConversationSession).where(
+            ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
+        if row is None:
+            raise ServiceError("not_found")
+        if db.scalar(select(func.count()).select_from(Run).where(Run.project_id == project_id, Run.session_id == session_id)):
+            raise ServiceError("session_has_runs")
+        db.execute(delete(Message).where(Message.project_id == project_id, Message.session_id == session_id))
+        db.delete(row)
 
 
 @router.get("/projects/{project_id}/sessions/{session_id}/messages")

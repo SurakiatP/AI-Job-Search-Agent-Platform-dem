@@ -18,7 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import sessionmaker
 
 from job_search_platform.api.dependencies import Services
-from job_search_platform.db.models import CVRevision, Project
+from job_search_platform.db.models import CVRevision, Message, Project, Run
 from job_search_platform.integrations.hermes_runtime import ParsedInput
 from job_search_platform.integrations.object_store import S3ObjectStore
 from job_search_platform.main import create_app
@@ -30,6 +30,7 @@ from job_search_platform.services.owner_sessions import OwnerSessions
 from job_search_platform.services.runs import RunService
 from job_search_platform.services.settings import Settings
 from job_search_platform.workers.queue import PostgresRunQueue
+from helpers import provider_config, revisions
 
 
 def _private_secret(name: str) -> str:
@@ -174,6 +175,49 @@ def test_owner_bootstrap_csrf_crud_and_empty_project_delete_only(api_context):
     deletion = client.delete(f"/api/v1/projects/{project_id}", headers=_write_headers(csrf))
     assert deletion.status_code == 409
     assert deletion.json()["code"] == "project_not_empty"
+
+
+@pytest.mark.integration
+def test_owner_renames_and_deletes_sessions_unless_runs_exist(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    headers = _write_headers(csrf)
+    project_id = client.post("/api/v1/projects", json={"name": "Sessions"}, headers=headers).json()["id"]
+    base = f"/api/v1/projects/{project_id}/sessions"
+    empty = client.post(base, json={"title": "Empty"}, headers=headers).json()["id"]
+    busy = client.post(base, json={"title": "Busy"}, headers=headers).json()["id"]
+    client.post(f"{base}/{empty}/messages", json={"content": "hello"}, headers=headers)
+
+    renamed = client.patch(f"{base}/{empty}", json={"title": "  Renamed  "}, headers=headers)
+    assert renamed.status_code == 200
+    assert renamed.json()["title"] == "Renamed" and renamed.json()["id"] == empty
+    assert set(renamed.json()) == {"id", "project_id", "title", "created_at"}
+    assert client.patch(f"{base}/{empty}", json={"title": "   "}, headers=headers).status_code == 422
+    assert client.patch(f"{base}/{empty}", json={"title": ""}, headers=headers).status_code == 422
+    assert client.patch(f"{base}/{empty}", json={"title": "x" * 201}, headers=headers).status_code == 422
+    assert client.patch(f"{base}/{empty}", json={"title": "No csrf"},
+                        headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403
+    assert client.delete(f"{base}/{empty}", headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403
+    missing = "00000000-0000-4000-8000-000000000000"
+    assert client.patch(f"{base}/{missing}", json={"title": "Nope"}, headers=headers).status_code == 404
+    assert client.delete(f"{base}/{missing}", headers=headers).status_code == 404
+
+    with api_context.sessions.begin() as db:
+        cv, job = revisions(db, UUID(project_id))
+        provider = provider_config(db, UUID(project_id))
+        db.add(Run(project_id=UUID(project_id), actor_scope="owner", idempotency_key="session-run",
+                   request_digest="a" * 64, session_id=UUID(busy), operation="evaluate_job",
+                   cv_revision_id=cv.id, job_revision_id=job.id, provider_configuration_id=provider.id,
+                   input_snapshot={}, config_snapshot={}, output_language="en", status="completed"))
+    blocked = client.delete(f"{base}/{busy}", headers=headers)
+    assert blocked.status_code == 409
+    assert blocked.json()["code"] == "session_has_runs" and blocked.json()["retryable"] is False
+
+    assert client.delete(f"{base}/{empty}", headers=headers).status_code == 204
+    assert [item["id"] for item in client.get(base).json()] == [busy]
+    with api_context.sessions() as db:
+        assert db.scalar(select(func.count()).select_from(Message)
+                         .where(Message.session_id == UUID(empty))) == 0
 
 
 @pytest.mark.integration
