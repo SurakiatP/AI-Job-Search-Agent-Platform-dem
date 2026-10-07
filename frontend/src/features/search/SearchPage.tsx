@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '../../lib/api';
 import type { SessionView } from '../../lib/api-types';
 import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
+import { Markdown } from '@/components/Markdown';
 import { sampleJobs } from './sampleJobs';
 
 type JobSearchItem = {
@@ -62,7 +63,6 @@ const copy = {
 type Copy = typeof copy.th;
 
 const humanize = (slug: string) => { const s = slug.replace(/[_-]+/g, ' ').trim(); return s.charAt(0).toUpperCase() + s.slice(1); };
-const plain = (markdown: string) => markdown.replace(/\*\*/g, '');
 
 const sampleItems: JobSearchItem[] = sampleJobs.map(j => ({
   slug: j.id, title: j.title, company: j.company, location: j.province, cities: [j.province], work_mode: j.remote,
@@ -109,7 +109,7 @@ function JobDetail({ job, c, busy, error, onEvaluate }: { job: JobSearchItem; c:
     {error && <p role="alert" className="text-sm text-destructive">{c.saveError}</p>}
     <div className="grid gap-2 border-t pt-4">
       <h3 className="text-sm font-semibold">{c.description}</h3>
-      <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{plain(job.description_markdown)}</div>
+      <Markdown className="text-sm">{job.description_markdown}</Markdown>
     </div>
   </div>;
 }

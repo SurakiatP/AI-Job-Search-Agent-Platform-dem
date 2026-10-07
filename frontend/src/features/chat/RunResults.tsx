@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FitScore } from '@/components/FitScore';
+import { Markdown } from '@/components/Markdown';
 import type { DocumentView, Locale, RunView } from '../../lib/api-types';
 
 export function RunResults({ projectId, locale, run, documents }: { projectId: string; locale: Locale; run: RunView | null; documents: DocumentView[] }) {
@@ -25,7 +26,7 @@ export function RunResults({ projectId, locale, run, documents }: { projectId: s
           <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
             <span>{report}</span><ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
           </summary>
-          <pre className="plain-content m-0 border-t px-4 py-4 font-[inherit]" data-testid="evaluation-report">{evaluation.report_markdown}</pre>
+          <Markdown className="border-t px-4 py-4" data-testid="evaluation-report">{evaluation.report_markdown}</Markdown>
         </details>
       </div>}
       {resultDocuments.map(document => <article key={document.id} className="grid gap-3 rounded-lg border p-4">
@@ -33,7 +34,7 @@ export function RunResults({ projectId, locale, run, documents }: { projectId: s
           <h3 className="min-w-0 break-words font-semibold">{document.title}</h3>
           {document.partial && <Badge variant="warning" role="status">{locale === 'th' ? 'เอกสารยังไม่สมบูรณ์' : 'Partial document'}</Badge>}
         </div>
-        {document.content_markdown && <pre className="plain-content m-0 max-h-96 overflow-auto font-[inherit]">{document.content_markdown}</pre>}
+        {document.content_markdown && <Markdown className="max-h-96 overflow-auto">{document.content_markdown}</Markdown>}
         <Button asChild variant="outline" size="sm" className="justify-self-start"><Link to={`/app/projects/${projectId}/documents/${document.id}`}>{openDocument}</Link></Button>
       </article>)}
       {run.result_file_ids.map(fileId => <Button key={fileId} asChild variant="outline" className="h-auto justify-start whitespace-normal break-all py-2 text-left">

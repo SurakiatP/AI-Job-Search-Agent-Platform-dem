@@ -5,6 +5,7 @@ import { ArrowLeft, Download, File, FileUser, Mail, type LucideIcon } from 'luci
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Markdown } from '@/components/Markdown';
 import { cn } from '@/lib/utils';
 import { ErrorState, LoadingState, MissingResource } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
@@ -110,7 +111,7 @@ export function DocumentDetailPage() {
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <Card className="min-w-0"><CardContent className="p-5 sm:p-8">
         <h2 className="mb-4 font-semibold">{t('pages.documentContent', { defaultValue: 'Document content' })}</h2>
-        <div className={cn('max-w-[68ch] whitespace-pre-wrap break-words', document.output_language === 'en' && 'document-english')} data-testid="document-content">{preview ?? t('pages.docPreviewUnavailable', { defaultValue: 'A text preview is unavailable. Download the authorized file to review this revision.' })}</div>
+        <Markdown className={cn('max-w-[68ch]', document.output_language === 'en' && 'document-english')} data-testid="document-content">{preview ?? t('pages.docPreviewUnavailable', { defaultValue: 'A text preview is unavailable. Download the authorized file to review this revision.' })}</Markdown>
       </CardContent></Card>
 
       <div className="grid min-w-0 gap-6">

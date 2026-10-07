@@ -40,7 +40,7 @@ export function ChatPage() {
   const finished = workflow.run?.finished_at;
   useEffect(() => { if (finished) documents.reload(); }, [finished, documents.reload]);
   const resources = [sessions, provider, jobs, cv, documents];
-  if (resources.some(item => item.status === 'loading') || workflow.loading) return <LoadingState />;
+  if (resources.some(item => item.status === 'loading' && item.data === undefined) || workflow.loading) return <LoadingState />;
   if (resources.some(item => item.status === 'error')) return <ErrorState onRetry={() => resources.forEach(item => item.reload())} />;
   const session = sessions.data?.find(item => item.id === sessionId);
   if (!session) return <MissingResource />;

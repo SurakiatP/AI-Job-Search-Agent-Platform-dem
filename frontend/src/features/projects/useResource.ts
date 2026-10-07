@@ -11,7 +11,7 @@ export function useResource<T>(path: string | null): { status: 'loading' | 'read
   useEffect(() => {
     if (!path) return;
     const controller = new AbortController();
-    setState({ key, status: 'loading' });
+    setState(current => ({ key, status: 'loading', data: current.key === key ? current.data : undefined }));
     apiRequest<T>(path, { signal: controller.signal })
       .then(data => { if (!controller.signal.aborted) setState({ key, status: 'ready', data }); })
       .catch(error => {

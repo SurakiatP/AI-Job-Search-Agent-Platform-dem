@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FitScore } from '@/components/FitScore';
+import { Markdown } from '@/components/Markdown';
 import { StatusBadge } from '@/components/StatusBadge';
 import type { DocumentView, JobApplicationStatusView, JobRevisionView, RunView, SessionView } from '../../lib/api-types';
 import { latestEvaluations } from '../overview/latestEvaluations';
@@ -189,7 +190,7 @@ export function JobDetailPage() {
           <CardContent className="p-6">
             <details open>
               <summary className="cursor-pointer font-semibold">{c.report}</summary>
-              <div className="plain-content" data-testid="evaluation-report">{evaluation.evaluation_result.report_markdown}</div>
+              <Markdown className="mt-3" data-testid="evaluation-report">{evaluation.evaluation_result.report_markdown}</Markdown>
             </details>
           </CardContent>
         </Card> : <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
@@ -198,7 +199,7 @@ export function JobDetailPage() {
         </div>}
         <Card>
           <CardHeader><CardTitle>{c.description}</CardTitle></CardHeader>
-          <CardContent><div className="plain-content !my-0" data-testid="job-description">{job.description}</div></CardContent>
+          <CardContent><Markdown data-testid="job-description">{job.description ?? ''}</Markdown></CardContent>
         </Card>
       </div>
       <div className="grid min-w-0 gap-6 lg:content-start">

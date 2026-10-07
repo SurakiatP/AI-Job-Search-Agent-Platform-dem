@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { JobRevisionView, Locale, RunOperation } from '../../lib/api-types';
 import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,38 +22,35 @@ export function Composer({ locale, jobs, message, onMessageChange, onSubmit, bus
   const text = locale === 'th'
     ? { job: 'ประกาศงานที่บันทึกไว้', operation: 'งานที่ต้องการ', evaluate: 'ประเมินความเหมาะสม', draft: 'ร่างเอกสารสมัครงาน', language: 'ภาษาผลลัพธ์', message: 'คำแนะนำสำหรับงานนี้ (ใช้ในการประเมินหรือร่างเอกสาร)', send: 'เริ่มงาน', noJobs: 'เพิ่มประกาศงานก่อนเริ่ม', th: 'ไทย', en: 'English' }
     : { job: 'Saved job posting', operation: 'Requested work', evaluate: 'Evaluate fit', draft: 'Draft application documents', language: 'Output language', message: 'Instructions for this task (used for evaluation or drafting)', send: 'Start run', noJobs: 'Add a saved job before starting', th: 'ไทย', en: 'English' };
-  const selectedJob = jobs.find(job => job.id === initialJobId) ?? jobs[0];
+  const [jobId, setJobId] = useState(initialJobId ?? jobs[0]?.id ?? '');
+  const [operation, setOperation] = useState<RunOperation>('evaluate_job');
+  const [outputLanguage, setOutputLanguage] = useState<Locale>(locale);
+  const selectedJob = jobs.find(job => job.id === jobId) ?? jobs.find(job => job.id === initialJobId) ?? jobs[0];
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedJob || busy || !message.trim()) return;
-    const form = new FormData(event.currentTarget);
-    onSubmit({
-      message,
-      operation: form.get('operation') === 'draft_documents' ? 'draft_documents' : 'evaluate_job',
-      job: jobs.find(job => job.id === form.get('job')) ?? selectedJob,
-      outputLanguage: form.get('output_language') === 'en' ? 'en' : 'th',
-    });
+    onSubmit({ message, operation, job: selectedJob, outputLanguage });
   }
 
-  return <Card className="sticky bottom-2 z-10 shadow-md"><form className="grid gap-3 p-4" onSubmit={submit}>
+  return <Card><form className="grid gap-3 p-4" onSubmit={submit}>
     {jobs.length > 0 ? <>
       <div className="grid gap-1.5">
         <Label htmlFor="workflow-job">{text.job}</Label>
-        <select id="workflow-job" name="job" className={selectClass} defaultValue={selectedJob?.id} disabled={busy}>
+        <select id="workflow-job" name="job" className={selectClass} value={selectedJob?.id ?? ''} onChange={event => setJobId(event.target.value)} disabled={busy}>
           {jobs.map(job => <option key={job.id} value={job.id}>{job.title} · {job.company ?? `#${job.revision}`}</option>)}
         </select>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="workflow-operation">{text.operation}</Label>
-          <select id="workflow-operation" name="operation" className={selectClass} defaultValue="evaluate_job" disabled={busy}>
+          <select id="workflow-operation" name="operation" className={selectClass} value={operation} onChange={event => setOperation(event.target.value === 'draft_documents' ? 'draft_documents' : 'evaluate_job')} disabled={busy}>
             <option value="evaluate_job">{text.evaluate}</option>
             <option value="draft_documents">{text.draft}</option>
           </select>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="workflow-output-language">{text.language}</Label>
-          <select id="workflow-output-language" name="output_language" className={selectClass} defaultValue={locale} disabled={busy}>
+          <select id="workflow-output-language" name="output_language" className={selectClass} value={outputLanguage} onChange={event => setOutputLanguage(event.target.value === 'en' ? 'en' : 'th')} disabled={busy}>
             <option value="th">{text.th}</option>
             <option value="en">{text.en}</option>
           </select>
