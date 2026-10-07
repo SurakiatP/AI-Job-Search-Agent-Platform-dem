@@ -1,7 +1,7 @@
 # AI Job Search Agent Platform — DESIGN.md
 
-สถานะ: เจ้าของอนุมัติแนวทาง frontend และสเปกระบบวันที่ 2026-10-03; หลักฐานการสร้างและการตรวจรับอยู่ในเอกสาร engineering และ Integration Hub
-ปรับปรุง: 2026-10-03
+สถานะ: เจ้าของอนุมัติ redesign spec 2026-10-07
+ปรับปรุง: 2026-10-07
 
 ## หน้าที่ของเอกสาร
 
@@ -14,24 +14,29 @@ Integration Hub เก็บสถานะและลิงก์อ้าง�
 ชื่อแอปทุกภาษา: **AI Job Search Agent Platform**
 ผู้ใช้เริ่มจาก landing page แล้วเข้าสู่พื้นที่หางานตาม Project
 ให้เห็นงานที่สนใจ บทสนทนา และเอกสารที่ต้องตรวจโดยไม่เริ่มกรอกข้อมูลใหม่
-ใช้สีขาวอุ่นกับสี teal หลักเดียวกันทุกหน้า มี Light / Dark / System และไม่มี animation
+ใช้พื้นสว่างเย็นกับสี indigo หลักเดียวกันทุกหน้า มี Light / Dark / System และใช้ motion เบา ๆ ตามกฎด้านล่าง
+สีเขียว เหลือง แดง ใช้เฉพาะคะแนนความเหมาะสมและสถานะ ไม่ใช้เป็นสีตกแต่ง
+ข้อความตัวอย่างต้องระบุว่าเป็นข้อมูลตัวอย่าง ไม่แต่งตัวเลข คำรับรอง หรือโลโก้นายจ้าง
 
 ## หน้าที่มีในรุ่นแรก
 
 | หน้า | หน้าที่และเส้นทางหลัก |
 |---|---|
-| Landing | อธิบายประโยชน์ ปุ่มเริ่มต้นใช้งานด้านขวาบนไปหน้า chat |
+| Landing | โครง Workbench: nav (ชื่อแอป ไทย/EN ธีม เริ่มต้นใช้งาน), headline สั้น, ปุ่มหลัก และตัวอย่างแท็บ Evaluate / Documents / Job search จากข้อมูลตัวอย่าง ตามด้วยสามขั้นตอน |
+| Overview | ภาพรวมของ Project: CV ล่าสุด งานที่บันทึกพร้อมคะแนน เอกสารล่าสุด run ที่กำลังทำงาน และปุ่ม "ประเมินงานใหม่" |
 | Projects | เปิด Project เดิมหรือสร้าง Project ใหม่ |
 | New project | ตั้งชื่อและเป้าหมาย ไปเพิ่ม CV หรือเริ่ม chat |
 | CV & preferences | CV ต้นฉบับ เงื่อนไขงาน และภาษาของเอกสารใหม่ |
 | Chat | Sessions ภายใน Project ผลประเมิน สถานะ agent และคำขออนุมัติ |
+| Job search `Preview` | ตัวกรองซ้าย การ์ดงานตัวอย่าง ป้าย "Sample data — preview" และปุ่ม "Evaluate this job" ที่บันทึกงานแล้วไปหน้า Chat |
 | Saved jobs | งานที่บันทึก สถานะการสมัคร และขั้นตอนถัดไป |
 | Job detail | เหตุผลที่เหมาะสม สิ่งที่ควรถาม แหล่งข้อมูล และเอกสารของงาน |
 | Documents | ฉบับร่างและเวอร์ชันที่แยกจาก CV ต้นฉบับ |
 | Document detail | อ่าน ตรวจ ขอแก้ไข และดาวน์โหลดเอกสาร |
 | Settings | LLM provider/model, เครื่องมือ, การแชร์ Project, และ appearance |
 
-Sidebar แสดง Projects และ Sessions ภายใน Project พร้อมทางไป CV, งาน, เอกสาร และ Settings
+Sidebar กว้าง 264px: ชื่อแอปพร้อมเครื่องหมาย, ตัวสลับ Project (dropdown), เมนู Overview, Evaluate (พร้อม Sessions), Saved jobs, Job search (`Preview`), Documents, CV & preferences
+ส่วนล่างมี Settings, ปุ่มสลับธีม Light / Dark / System และ ไทย / EN
 รองรับแชตโปร่งและการเปิด panel เอกสารด้านขวา บนจอแคบเปิดเอกสารเป็นหน้าแยก
 ไม่เพิ่มระบบบัญชีผู้ใช้หรือ login สำหรับรุ่น local ที่เจ้าของใช้คนเดียว
 
@@ -62,15 +67,36 @@ React Router และ react-i18next โดย DESIGN.md เป็นหลั�
 
 | Token | Light | Dark |
 |---|---|---|
-| background | #FAF9F6 | #181C19 |
-| surface | #FFFFFF | #222823 |
-| surface-subtle | #F1EEE8 | #1E241F |
-| foreground | #24211E | #F0F0E8 |
-| muted-foreground | #696158 | #B6BCB1 |
-| primary | #0F766E | #70CDB6 |
-| primary-foreground | #FFFFFF | #132A20 |
+| background | oklch(0.985 0.003 275) | oklch(0.17 0.012 275) |
+| foreground | oklch(0.22 0.02 275) | oklch(0.96 0.005 275) |
+| card (popover) | oklch(1 0 0) | oklch(0.21 0.014 275) |
+| primary (ring) | oklch(0.51 0.23 277) | oklch(0.72 0.15 277) |
+| primary-foreground | oklch(0.99 0 0) | oklch(0.18 0.04 277) |
+| secondary | oklch(0.955 0.012 275) | oklch(0.26 0.016 275) |
+| secondary-foreground | oklch(0.28 0.03 275) | oklch(0.94 0.005 275) |
+| muted | oklch(0.965 0.006 275) | oklch(0.24 0.014 275) |
+| muted-foreground | oklch(0.48 0.02 275) | oklch(0.74 0.015 275) |
+| accent | oklch(0.95 0.03 277) | oklch(0.29 0.06 277) |
+| accent-foreground | oklch(0.38 0.17 277) | oklch(0.88 0.06 277) |
+| destructive | oklch(0.55 0.21 27) | oklch(0.7 0.17 25) |
+| success | oklch(0.55 0.14 155) | oklch(0.74 0.14 155) |
+| warning | oklch(0.62 0.14 70) | oklch(0.8 0.13 75) |
+| border | oklch(0.91 0.008 275) | oklch(0.3 0.014 275) |
+| input | oklch(0.88 0.01 275) | oklch(0.34 0.016 275) |
+| sidebar | oklch(0.975 0.004 275) | oklch(0.19 0.013 275) |
 
-ใช้เส้นแบ่งและพื้นผิวอย่างพอดี ให้สี teal เน้นปุ่มหลัก การเลือก และลิงก์
+ทุกสีและฟอนต์ผ่านตัวแปร CSS ใน `frontend/src/styles.css` ห้ามใช้ hex/oklch ตรง ๆ ที่อื่น
+Accent เป็น indigo เท่านั้น; success / warning / destructive ใช้เฉพาะคะแนนความเหมาะสมและสถานะ
+คะแนนความเหมาะสมเป็นช่วง 0–5 (≥4 success, ≥2.5 warning, ต่ำกว่านั้น destructive) และอาจไม่มีค่า ให้แสดง "—" พร้อมข้อความ "ยังไม่มีคะแนน"
+ใช้เส้นแบ่งและพื้นผิวอย่างพอดี ให้สี indigo เน้นปุ่มหลัก การเลือก และลิงก์
+
+### Motion
+
+- ใช้ CSS เท่านั้น ไม่ใช้ไลบรารี motion
+- animate เฉพาะ `transform` และ `opacity` (ยกเว้นวงแหวนคะแนนที่ animate `stroke-dashoffset` ซึ่งเป็น SVG paint)
+- ปิดทั้งหมดเมื่อ `prefers-reduced-motion: reduce`
+- ตัวแปรเวลา: fast 150ms, base 240ms, slow 900ms; easing `cubic-bezier(0.22, 1, 0.36, 1)`
+- ฟอนต์: Noto Sans Thai สำหรับ UI, Noto Serif Thai เฉพาะ headline ของ landing, Manrope สำหรับเอกสารอังกฤษ; หัวข้อไม่เอียง
 ตรวจ contrast กับพื้นจริงทั้งสองธีมก่อนส่งงาน โดยข้อความปกติอย่างน้อย 4.5:1
 System ตาม appearance ของเครื่องและเปลี่ยนตามเมื่อเครื่องเปลี่ยนธีม
 การเลือกธีมใช้ร่วมกันทุกหน้า เก็บเป็น preference ในเครื่อง ไม่ส่งค่า credential ไปเก็บใน browser

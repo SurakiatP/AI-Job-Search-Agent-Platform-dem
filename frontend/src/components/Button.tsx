@@ -1,5 +1,8 @@
 import type { ButtonHTMLAttributes } from 'react';
+import { Button as UiButton } from './ui/button';
 
-export function Button({ className = '', variant = 'secondary', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'plain' }) {
-  return <button type="button" className={`button button-${variant} ${className}`} {...props} />;
+const variants = { primary: 'default', secondary: 'outline', plain: 'ghost' } as const;
+
+export function Button({ variant = 'secondary', type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'plain' }) {
+  return <UiButton type={type} variant={variants[variant]} {...props} />;
 }
