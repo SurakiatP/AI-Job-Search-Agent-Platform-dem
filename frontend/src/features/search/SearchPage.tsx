@@ -310,6 +310,7 @@ export function SearchPage() {
     if (mode) search.set('work_mode', mode);
     if (posted) search.set('posted_within_days', posted);
     if (category) search.set('category', category);
+    if (smartActive && city) search.set('cities', city);
     if (!smartActive) search.set('limit', String(PAGE_SIZE));
     search.set('offset', String(offset));
     return `/projects/${projectId}/job-search${smartActive ? '/match' : ''}?${search.toString()}`;
@@ -334,12 +335,19 @@ export function SearchPage() {
     try {
       const run = await apiRequest<{ id: string }>(`/projects/${projectId}/job-search/match/runs`, { method: 'POST', signal, body: JSON.stringify({
         cv_revision_id: revisionId, q, cities: city ? [city] : [], work_mode: mode || null, posted_within_days: posted ? Number(posted) : null, category: category || null, pool: POOL_SIZE, offset: 0 }) });
-      for (let attempt = 0; attempt < 90; attempt += 1) {
+      let finished = false;
+      for (let attempt = 0; attempt < 90 && !finished; attempt += 1) {
         await sleep(2000, signal);
         const [page, state] = await Promise.all([apiRequest<Page>(buildPath(0), { signal }), apiRequest<{ status: string }>(`/projects/${projectId}/runs/${run.id}`, { signal })]);
         setItems(page.items); setTotal(page.total); setAi(page.ai ?? null); setHiddenCount(page.hidden_count ?? 0);
-        if (RUN_DONE.includes(state.status)) { if (state.status !== 'completed') setRankFailed(true); break; }
+        if (RUN_DONE.includes(state.status)) {
+          finished = true;
+          if (state.status !== 'completed') setRankFailed(true);
+          const last = await apiRequest<Page>(buildPath(0), { signal }); // the run may have ended after the page fetch above
+          setItems(last.items); setTotal(last.total); setAi(last.ai ?? null); setHiddenCount(last.hidden_count ?? 0);
+        }
       }
+      if (!finished) setRankFailed(true);
       setRanking(false);
     } catch (error) {
       if (signal.aborted) return;
@@ -384,7 +392,7 @@ export function SearchPage() {
     const value = kind === 'job' ? job.slug : job.company;
     if (!value) return;
     try {
-      const row = await sendJson<HiddenItem>(`/projects/${projectId}/job-search/hidden`, 'POST', { kind, value, label: kind === 'job' ? job.title : value });
+      const row = await sendJson<HiddenItem>(`/projects/${projectId}/job-search/hidden`, 'POST', { kind, value: value.slice(0, 300), label: (kind === 'job' ? job.title : value).slice(0, 300) });
       setItems(prev => prev.filter(i => (kind === 'job' ? i.slug !== job.slug : i.company !== job.company)));
       setHiddenCount(n => n + 1); setUndo({ id: row.id, message: c.hiddenDone, retry: true });
     } catch { setUndo({ id: '', message: c.hideFailed, retry: false }); }
