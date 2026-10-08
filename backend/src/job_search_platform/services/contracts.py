@@ -42,6 +42,12 @@ class MatchRunRequest(DTO):
     offset: Annotated[int, Field(ge=0, le=1000)] = 0
 
 
+class HiddenCreate(DTO):
+    kind: Literal["job", "company"]
+    value: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+
+
 class RunRequest(DTO):
     session_id: UUID
     operation: Operation
