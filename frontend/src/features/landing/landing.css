@@ -78,8 +78,9 @@
 .landing-rise[data-seen='true'] { opacity: 1; transform: none; }
 
 /* Tour steps crossfade. */
-.landing-tstep { opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
-.landing-tstep[data-active='true'] { opacity: 1; transform: none; pointer-events: auto; }
+/* Outgoing step hides instantly; only the incoming step animates, so text never overlaps mid-switch. */
+.landing-tstep { opacity: 0; transform: translateY(10px); pointer-events: none; visibility: hidden; }
+.landing-tstep[data-active='true'] { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
 
 @media (prefers-reduced-motion: reduce) {
   .landing-fade, .landing-rise, .landing-tstep { transition: none; }

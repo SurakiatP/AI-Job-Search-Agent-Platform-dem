@@ -39,13 +39,13 @@ export function Tour() {
   };
 
   return <section id="how" aria-labelledby="how-title" className="scroll-mt-16">
-    <div className="mx-auto max-w-6xl px-4 pb-10 text-center sm:px-6"><h2 id="how-title" className="text-3xl font-semibold not-italic">{c.tourTitle}</h2></div>
+    <div className="mx-auto max-w-6xl px-4 pb-10 text-center sm:px-6 lg:pb-0"><h2 id="how-title" className="text-3xl font-semibold not-italic">{c.tourTitle}</h2></div>
 
     <div className="relative mx-auto hidden h-[400vh] max-w-6xl px-6 lg:block">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex flex-col">
         {c.steps.map((s, i) => <div key={s.tab} ref={el => { anchors.current[i] = el; }} data-i={i} className="flex-1" />)}
       </div>
-      <div className="sticky top-16 grid h-[calc(100svh-4rem)] grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-center gap-12">
+      <div className="sticky top-16 grid h-[calc(100svh-4rem)] grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-center gap-12 lg:-mt-24">
         <div className="grid gap-8">
           <div role="tablist" aria-label={c.tourLabel} onKeyDown={onKey} className="grid grid-cols-5 gap-2">
             {c.steps.map((s, i) => <button key={s.tab} ref={el => { tabs.current[i] = el; }} role="tab" id={`tour-tab-${i}`} type="button" aria-selected={active === i} aria-controls={`tour-panel-${i}`} tabIndex={active === i ? 0 : -1} onClick={() => go(i)}
