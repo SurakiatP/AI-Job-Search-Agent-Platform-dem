@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from job_search_platform.db.models import (
-    CVRevision, ConversationSession, Grant, JobRevision, OwnerSession,
+    CV, CVRevision, ConversationSession, Grant, JobRevision, OwnerSession,
     Project, ProviderConfiguration,
 )
 from job_search_platform.services.contracts import Actor, RunRequest
@@ -47,8 +47,19 @@ def session(db, project_id, title: str = "Synthetic session") -> ConversationSes
     return value
 
 
+def primary_cv(db, project_id) -> CV:
+    """The project's primary CV, created on first use."""
+    from sqlalchemy import select
+    found = db.scalar(select(CV).where(CV.project_id == project_id, CV.is_primary, CV.removed_at.is_(None)))
+    if found is None:
+        found = CV(project_id=project_id, name="CV หลัก", is_primary=True)
+        db.add(found)
+        db.flush()
+    return found
+
+
 def revisions(db, project_id):
-    cv = CVRevision(project_id=project_id, revision=1)
+    cv = CVRevision(project_id=project_id, cv_id=primary_cv(db, project_id).id, revision=1)
     job = JobRevision(project_id=project_id, revision=1, title="Synthetic Engineer",
                       description="Synthetic job description",
                       company="Example Co", source_url="https://jobs.example.test/1")

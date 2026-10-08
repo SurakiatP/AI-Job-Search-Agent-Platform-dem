@@ -259,7 +259,7 @@ def create_app(
         }, status_code=500)
 
     contract_schema_names = (
-        "ApprovalDecision", "ApprovalRequest", "ApprovalView", "CVRevisionView",
+        "ApprovalDecision", "ApprovalRequest", "ApprovalView", "CVRevisionView", "CVUpdate", "CVView", "InlineJob",
         "DocumentRevisionView", "DocumentView", "ErrorView", "EvaluationResult", "FileView",
         "GrantIssueRequest", "GrantIssuedView", "GrantView", "JobCreate", "JobRevisionView",
         "MessageCreate", "OwnerBootstrapRequest", "OwnerBootstrapView", "PreferencesUpdate",
@@ -291,15 +291,20 @@ def create_app(
             for operation in operations.values():
                 if isinstance(operation, dict):
                     operation.get("responses", {}).pop("422", None)
-        cv_upload = schema["paths"].get("/projects/{project_id}/cv", {}).get("post", {})
-        if cv_upload:
-            cv_upload["requestBody"] = {
-                "required": True,
-                "content": {"multipart/form-data": {"schema": {
-                    "type": "object", "required": ["file"],
-                    "properties": {"file": {"type": "string", "format": "binary"}},
-                }}},
-            }
+        for upload_path, extra in (
+            ("/projects/{project_id}/cv", {}),
+            ("/projects/{project_id}/cvs", {"name": {"type": "string", "maxLength": 120}}),
+            ("/projects/{project_id}/cvs/{cv_id}/revisions", {}),
+        ):
+            cv_upload = schema["paths"].get(upload_path, {}).get("post", {})
+            if cv_upload:
+                cv_upload["requestBody"] = {
+                    "required": True,
+                    "content": {"multipart/form-data": {"schema": {
+                        "type": "object", "required": ["file"],
+                        "properties": {"file": {"type": "string", "format": "binary"}, **extra},
+                    }}},
+                }
         grant_routes = {
             "/projects/{project_id}/files/{file_id}/download": {"get"},
             "/projects/{project_id}/runs": {"get", "post"},
@@ -322,7 +327,8 @@ def create_app(
             "ownerSession": {"type": "apiKey", "in": "cookie", "name": "jsp_owner_session"},
             "projectGrant": {"type": "http", "scheme": "bearer"},
         })
-        components.pop("Body_upload_cv_api_v1_projects__project_id__cv_post", None)
+        for name in [key for key in components if key.startswith("Body_")]:
+            components.pop(name)
         components.pop("HTTPValidationError", None)
         components.pop("ValidationError", None)
         app.openapi_schema = schema

@@ -158,22 +158,17 @@ class ApprovalService:
                 if _digest(change) != approval.change_digest:
                     raise ServiceError("approval_stale")
                 if decision == "approve" and approval.action == "promote_cv":
-                    current = db.scalar(
-                        select(CVRevision)
-                        .where(CVRevision.project_id == project_id)
-                        .order_by(CVRevision.revision.desc())
-                        .limit(1)
-                        .with_for_update()
-                    )
+                    current = _latest_in_cv_of(db, project_id, approval.expected_cv_revision_id, lock=True)
                     if current is None or current.id != approval.expected_cv_revision_id:
                         raise ServiceError("approval_stale")
                     next_revision = db.scalar(
                         select(func.coalesce(func.max(CVRevision.revision), 0) + 1)
-                        .where(CVRevision.project_id == project_id)
+                        .where(CVRevision.cv_id == current.cv_id)
                     ) or 1
                     db.add(
                         CVRevision(
                             project_id=project_id,
+                            cv_id=current.cv_id,
                             revision=next_revision,
                             file_id=target_file_id,
                         )
@@ -317,12 +312,7 @@ class ApprovalService:
             if revision is None or revision.file_id is None:
                 raise ServiceError("not_found")
             file = self._file(db, project_id, revision.file_id, allow_unavailable)
-            current = db.scalar(
-                select(CVRevision)
-                .where(CVRevision.project_id == project_id)
-                .order_by(CVRevision.revision.desc())
-                .limit(1)
-            )
+            current = _latest_in_cv_of(db, project_id, request.expected_cv_revision_id)
             if current is None or current.id != request.expected_cv_revision_id:
                 raise ServiceError("approval_stale")
             return (
@@ -478,3 +468,12 @@ def _view(approval: Approval) -> ApprovalView:
 
 def _utc(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
+def _latest_in_cv_of(db: Session, project_id: UUID, revision_id: UUID | None, *, lock: bool = False):
+    """Newest revision of the CV that owns revision_id (None when that revision is unknown)."""
+    cv_id = db.scalar(select(CVRevision.cv_id).where(CVRevision.project_id == project_id, CVRevision.id == revision_id))
+    if cv_id is None:
+        return None
+    query = select(CVRevision).where(CVRevision.cv_id == cv_id).order_by(CVRevision.revision.desc()).limit(1)
+    return db.scalar(query.with_for_update() if lock else query)

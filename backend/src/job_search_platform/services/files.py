@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import CVRevision, Document, DocumentRevision, Project, Run, RunArtifact, StoredFile
+from job_search_platform.db.models import CV, CVRevision, Document, DocumentRevision, Project, Run, RunArtifact, StoredFile
 from job_search_platform.integrations.hermes_runtime import PARSE_ERRORS, RuntimeErrorCode
 from job_search_platform.integrations.object_store import ObjectMissing, ObjectTooLarge
 from job_search_platform.services.authorization import authorize
@@ -55,6 +55,8 @@ class Files:
         display_name: str,
         *,
         kind: str = "cv_original",
+        cv_id: UUID | None = None,
+        new_cv_name: str | None = None,
     ) -> FileView:
         if kind not in {"cv_original", "job_source", "chat_attachment"}:
             raise ServiceError("upload_kind_invalid")
@@ -63,6 +65,8 @@ class Files:
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "upload", "upload")
             _require_project(db, project_id)
+            if cv_id is not None and kind == "cv_original":
+                _live_cv(db, project_id, cv_id)
 
         body = await _read_limited(stream)
         actual_mime = _sniff_mime(body)
@@ -116,7 +120,7 @@ class Files:
                     raise ServiceError("file_unavailable")
                 persisted.publication_state = "published"
                 if kind == "cv_original":
-                    _add_cv_revision(db, project_id, file_id)
+                    _add_cv_revision(db, project_id, file_id, cv_id=cv_id, new_cv_name=new_cv_name)
         except Exception:
             # The pending row is durable from the earlier transaction. Reconciliation
             # verifies the object bytes before it can make that row visible.
@@ -494,7 +498,20 @@ def _require_project(db: Session, project_id: UUID) -> None:
         raise ServiceError("not_found")
 
 
-def _add_cv_revision(db: Session, project_id: UUID, file_id: UUID) -> None:
+def _live_cv(db: Session, project_id: UUID, cv_id: UUID) -> CV:
+    cv = db.scalar(select(CV).where(CV.project_id == project_id, CV.id == cv_id, CV.removed_at.is_(None)))
+    if cv is None:
+        raise ServiceError("not_found")
+    return cv
+
+
+def _add_cv_revision(
+    db: Session, project_id: UUID, file_id: UUID, *, cv_id: UUID | None = None, new_cv_name: str | None = None
+) -> None:
+    """Append a revision to cv_id, to a new CV named new_cv_name, or to the primary CV.
+
+    Crash recovery (reconcile_pending) has no target and so lands on the primary CV.
+    """
     # Serialize revision numbering for concurrent uploads in the same Project.
     db.scalar(select(Project.id).where(Project.id == project_id).with_for_update())
     existing = db.scalar(
@@ -504,12 +521,20 @@ def _add_cv_revision(db: Session, project_id: UUID, file_id: UUID) -> None:
     )
     if existing is not None:
         return
+    if cv_id is not None:
+        cv = _live_cv(db, project_id, cv_id)
+    else:
+        primary = db.scalar(select(CV).where(CV.project_id == project_id, CV.is_primary, CV.removed_at.is_(None)))
+        if new_cv_name is not None or primary is None:
+            cv = CV(project_id=project_id, name=new_cv_name or "CV หลัก", is_primary=primary is None)
+            db.add(cv)
+            db.flush()
+        else:
+            cv = primary
     revision = db.scalar(
-        select(func.coalesce(func.max(CVRevision.revision), 0) + 1).where(
-            CVRevision.project_id == project_id
-        )
+        select(func.coalesce(func.max(CVRevision.revision), 0) + 1).where(CVRevision.cv_id == cv.id)
     )
-    db.add(CVRevision(project_id=project_id, revision=revision, file_id=file_id))
+    db.add(CVRevision(project_id=project_id, cv_id=cv.id, revision=revision, file_id=file_id))
 
 
 def _authorize_file(db: Session, actor: Actor, project_id: UUID, row: StoredFile) -> None:

@@ -27,7 +27,7 @@ from job_search_platform.integrations.hermes_runtime import HermesRuntime
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.maintenance import acquire_maintenance_lock
 from scripts import backup
-from helpers import owner, project, provider_config, revisions, run_request, session as conversation_session
+from helpers import owner, project, provider_config, revisions, run_request, session as conversation_session, primary_cv
 
 
 def _client():
@@ -109,7 +109,8 @@ def test_running_native_execution_prevents_capture(migrated_engine, recovery_buc
         session.add(project)
         session.flush()
         conversation = ConversationSession(project_id=project.id)
-        cv = CVRevision(project_id=project.id, revision=1)
+        session.flush()
+        cv = CVRevision(project_id=project.id, cv_id=primary_cv(session, project.id).id, revision=1)
         job = JobRevision(project_id=project.id, revision=1, title="Synthetic role", description="Synthetic description")
         provider = ProviderConfiguration(
             project_id=project.id, provider="openai", model="synthetic-model",

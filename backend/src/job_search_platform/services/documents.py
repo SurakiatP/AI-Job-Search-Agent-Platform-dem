@@ -78,10 +78,22 @@ class Artifacts:
             )
             if not _run_publishable(run, lease_owner):
                 raise ServiceError("run_not_publishable")
-            for output in outputs:
+            revise_id = run.input_snapshot.get("document_id")
+            for index, output in enumerate(outputs):
                 file_id = uuid4()
                 document_id = uuid4()
                 revision_id = uuid4()
+                revision_number = 1
+                append_to = None
+                if revise_id and index == 0:
+                    # Revise: the first draft becomes a new revision of the requested document.
+                    append_to = db.scalar(select(Document).where(
+                        Document.project_id == project_id, Document.id == UUID(revise_id)).with_for_update())
+                    if append_to is None or append_to.trashed_at is not None:
+                        raise ServiceError("run_not_publishable")
+                    document_id = append_to.id
+                    revision_number = db.scalar(select(func.max(DocumentRevision.revision)).where(
+                        DocumentRevision.project_id == project_id, DocumentRevision.document_id == document_id)) + 1
                 file_row = StoredFile(
                     id=file_id,
                     project_id=project_id,
@@ -93,7 +105,7 @@ class Artifacts:
                     mime_type=output["mime_type"],
                     display_name=output["display_name"],
                 )
-                document = Document(
+                document = append_to or Document(
                     id=document_id,
                     project_id=project_id,
                     document_type=output["document_type"],
@@ -103,7 +115,7 @@ class Artifacts:
                     id=revision_id,
                     project_id=project_id,
                     document_id=document_id,
-                    revision=1,
+                    revision=revision_number,
                     file_id=file_id,
                     source_cv_revision_id=source_cv_id,
                     source_job_revision_id=source_job_id,
@@ -116,7 +128,7 @@ class Artifacts:
                     document_revision_id=revision_id,
                     lease_owner=lease_owner,
                 )
-                db.add_all([file_row, document])
+                db.add_all([file_row] if append_to else [file_row, document])
                 db.flush()
                 db.add(revision)
                 db.flush()

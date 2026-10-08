@@ -17,7 +17,7 @@ from types import ModuleType, SimpleNamespace
 import pytest
 from sqlalchemy.orm import sessionmaker
 
-from helpers import owner, project, provider_config, revisions, run_request, session
+from helpers import owner, project, provider_config, revisions, run_request, session, primary_cv
 from job_search_platform.db.models import CVRevision, JobRevision, Run, StoredFile
 from job_search_platform.integrations.hermes_runtime import HermesRuntime, RuntimeErrorCode
 from job_search_platform.services.runs import RunService
@@ -414,7 +414,7 @@ async def test_executor_parses_supplied_cv_before_offline_provider_failure(db_se
     )
     db_session.add(stored)
     db_session.flush()
-    cv = CVRevision(project_id=db_project.id, revision=1, file_id=stored.id)
+    cv = CVRevision(project_id=db_project.id, cv_id=primary_cv(db_session, db_project.id).id, revision=1, file_id=stored.id)
     job = JobRevision(
         project_id=db_project.id,
         revision=1,
@@ -496,7 +496,7 @@ async def test_completed_evaluation_stores_deterministic_skill_coverage(db_sessi
         description="React, TypeScript and PostgreSQL.", company="Example Co",
         source_url="https://jobs.example.test/coverage",
     )
-    db_session.add_all([CVRevision(project_id=db_project.id, revision=1, file_id=stored.id), job])
+    db_session.add_all([CVRevision(project_id=db_project.id, cv_id=primary_cv(db_session, db_project.id).id, revision=1, file_id=stored.id), job])
     provider_config(db_session, db_project.id)
     db_session.commit()
 

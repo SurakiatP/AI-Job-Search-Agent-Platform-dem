@@ -185,35 +185,48 @@ class RunService:
         )
         retry_source = self._retry_source(db, project_id, request.retry_of_id) if request.retry_of_id else None
 
+        session_id = retry_source.session_id if retry_source is not None else request.session_id
+        session = db.scalar(
+            select(ConversationSession).where(
+                ConversationSession.project_id == project_id,
+                ConversationSession.id == session_id,
+            )
+        )
+        if session is None:
+            raise ServiceError("not_found")
+
         # Resolve an omitted CV against the durable idempotency row on replay, so
         # a later current-CV change cannot turn a valid replay into a conflict.
-        cv_id = (
-            retry_source.cv_revision_id
-            if retry_source is not None
-            else previous.cv_revision_id
-            if previous is not None and request.cv_revision_id is None
-            else request.cv_revision_id
-        )
-        if cv_id is None:
-            cv = db.scalar(
-                select(CVRevision)
-                .where(CVRevision.project_id == project_id)
-                .order_by(CVRevision.revision.desc())
-                .limit(1)
-                .with_for_update()
+        job_id = retry_source.job_revision_id if retry_source is not None else request.job_revision_id
+        if session.cv_revision_id is not None:
+            # A paired session fixes the pair; a request may only repeat it.
+            if (
+                request.cv_revision_id not in {None, session.cv_revision_id}
+                or request.job_revision_id not in {None, session.job_revision_id}
+                or (request.cv_id is not None and request.cv_id != db.scalar(
+                    select(CVRevision.cv_id).where(CVRevision.id == session.cv_revision_id)))
+            ):
+                raise ServiceError("session_pair_mismatch")
+            cv_id, job_id = session.cv_revision_id, session.job_revision_id
+        else:
+            cv_id = (
+                retry_source.cv_revision_id
+                if retry_source is not None
+                else previous.cv_revision_id
+                if previous is not None and request.cv_revision_id is None and request.cv_id is None
+                else request.cv_revision_id
             )
-            if cv is None:
-                raise ServiceError("cv_required")
-            cv_id = cv.id
+            if cv_id is None:
+                from job_search_platform.db.repositories import Repositories as _Repos
+
+                cv_id = _Repos.latest_cv_revision(db, project_id, request.cv_id).id
         cv = db.scalar(
             select(CVRevision).where(
                 CVRevision.project_id == project_id, CVRevision.id == cv_id
             )
         )
-        if cv is None:
-            raise ServiceError("not_found")
-
-        job_id = retry_source.job_revision_id if retry_source is not None else request.job_revision_id
+        if cv is None or job_id is None:
+            raise ServiceError("not_found" if cv is None else "job_required")
         job = db.scalar(
             select(JobRevision).where(
                 JobRevision.project_id == project_id, JobRevision.id == job_id
@@ -221,15 +234,6 @@ class RunService:
         )
         if job is None:
             raise ServiceError("not_found")
-        session_id = retry_source.session_id if retry_source is not None else request.session_id
-        if db.scalar(
-            select(ConversationSession.id).where(
-                ConversationSession.project_id == project_id,
-                ConversationSession.id == session_id,
-            )
-        ) is None:
-            raise ServiceError("not_found")
-
         canonical_request = request
         if retry_source is not None:
             source_owner_instructions = retry_source.input_snapshot.get("owner_instructions")
@@ -244,7 +248,7 @@ class RunService:
             if (
                 request.session_id != retry_source.session_id
                 or request.operation != retry_source.operation
-                or request.job_revision_id != retry_source.job_revision_id
+                or request.job_revision_id not in {None, retry_source.job_revision_id}
                 or request.output_language != retry_source.output_language
                 or request.cv_revision_id not in {None, retry_source.cv_revision_id}
             ):
@@ -257,11 +261,28 @@ class RunService:
                     "job_revision_id": retry_source.job_revision_id,
                     "output_language": retry_source.output_language,
                     "owner_instructions": source_owner_instructions,
+                    "document_id": UUID(retry_source.input_snapshot["document_id"])
+                    if retry_source.input_snapshot.get("document_id") else None,
                 }
             )
+        previous_draft = None
+        if canonical_request.document_id is not None:
+            if canonical_request.operation != "draft_documents" or actor.kind != "owner" or (
+                retry_source is None and request.document_id is None
+            ):
+                raise ServiceError("forbidden")
+            document = db.scalar(select(Document).where(
+                Document.project_id == project_id, Document.id == canonical_request.document_id))
+            if document is None or document.trashed_at is not None:
+                raise ServiceError("not_found")
+            previous_draft = db.scalar(
+                select(DocumentRevision.content_markdown)
+                .where(DocumentRevision.project_id == project_id, DocumentRevision.document_id == document.id)
+                .order_by(DocumentRevision.revision.desc()).limit(1))
         from job_search_platform.db.repositories import Repositories
 
-        digest = Repositories.request_digest(canonical_request, resolved_cv_revision_id=cv_id)
+        digest = Repositories.request_digest(
+            canonical_request, resolved_cv_revision_id=cv_id, resolved_job_revision_id=job.id)
         if previous is not None:
             if previous.request_digest != digest:
                 raise ServiceError("idempotency_conflict")
@@ -336,6 +357,12 @@ class RunService:
                 **(
                     {"owner_instructions": canonical_request.owner_instructions}
                     if canonical_request.owner_instructions
+                    else {}
+                ),
+                **(
+                    {"document_id": str(canonical_request.document_id),
+                     "previous_draft": (previous_draft or "")[:20000]}
+                    if canonical_request.document_id
                     else {}
                 ),
                 "job": {

@@ -31,11 +31,15 @@ class RunRequest(DTO):
     session_id: UUID
     operation: Operation
     cv_revision_id: UUID | None = None
-    job_revision_id: UUID
+    cv_id: UUID | None = None
+    # Optional only because a paired session supplies its own job.
+    job_revision_id: UUID | None = None
     output_language: Literal["th", "en"]
     idempotency_key: Annotated[str, StringConstraints(min_length=1, max_length=128)]
     retry_of_id: UUID | None = None
     owner_instructions: Annotated[str | None, StringConstraints(max_length=4000)] = None
+    # Draft runs only: append the result as a new revision of this document.
+    document_id: UUID | None = None
 
 
 class ProjectCreate(DTO):
@@ -66,8 +70,24 @@ class PreferencesView(DTO):
     updated_at: datetime
 
 
+class InlineJob(DTO):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    company: Annotated[str, StringConstraints(max_length=300)] | None = None
+    source_url: Annotated[str, StringConstraints(max_length=2048)] | None = None
+    description: Annotated[str, StringConstraints(min_length=1, max_length=50000)]
+
+
 class SessionCreate(DTO):
-    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)] = "New session"
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)] | None = None
+    cv_revision_id: UUID
+    job_revision_id: UUID | None = None
+    job: InlineJob | None = None
+
+    @model_validator(mode="after")
+    def exactly_one_job_source(self):
+        if (self.job is None) == (self.job_revision_id is None):
+            raise ValueError("exactly_one_job_source_required")
+        return self
 
 
 class SessionUpdate(DTO):
@@ -79,6 +99,16 @@ class SessionView(DTO):
     project_id: UUID
     title: str
     created_at: datetime
+    # All null for legacy unpaired sessions.
+    cv_revision_id: UUID | None = None
+    job_revision_id: UUID | None = None
+    cv_name: str | None = None
+    cv_revision: int | None = None
+    job_title: str | None = None
+    job_company: str | None = None
+    cv_outdated: bool = False
+    # Only set on the create response.
+    evaluation_run_id: UUID | None = None
 
 
 class MessageCreate(DTO):
@@ -126,6 +156,21 @@ class CVRevisionView(RevisionView):
     original_filename: str
     mime_type: str
     size_bytes: int
+
+
+class CVUpdate(DTO):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)] | None = None
+    is_primary: Literal[True] | None = None
+
+
+class CVView(DTO):
+    id: UUID
+    name: str
+    is_primary: bool
+    created_at: datetime
+    latest_revision: CVRevisionView | None = None
+    revision_count: int
+    in_use: bool
 
 
 class DocumentView(DTO):

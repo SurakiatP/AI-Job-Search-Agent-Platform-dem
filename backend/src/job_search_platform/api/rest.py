@@ -3,27 +3,28 @@ from __future__ import annotations
 
 import asyncio
 import re
+from pathlib import PurePath
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Header, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import StringConstraints
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, exists, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
 from job_search_platform.db.models import (
-    CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
+    CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
     ProjectPreference, StoredFile, Run, Grant, ProviderConfiguration,
     ToolConnectorConfiguration,
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
-    ApprovalDecision, ApprovalRequest, ApprovalView, CVRevisionView, DocumentRevisionView, DocumentView,
+    ApprovalDecision, ApprovalRequest, ApprovalView, CVRevisionView, CVUpdate, CVView, DocumentRevisionView, DocumentView,
     GrantIssueRequest, GrantIssuedView, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
@@ -35,6 +36,7 @@ from job_search_platform.services.contracts import (
 from job_search_platform.services import job_sources
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
+from job_search_platform.services.runs import actor_scope
 from job_search_platform.services.settings import provider_catalog as settings_catalog
 
 router = APIRouter()
@@ -43,7 +45,7 @@ SAFE_FIELDS = frozenset({
     "name", "locale", "output_language", "notifications_enabled", "title", "company",
     "source_url", "description", "content", "filename", "file", "mime_type", "kind",
     "session_id", "operation", "cv_revision_id", "job_revision_id", "idempotency_key",
-    "retry_of_id", "action", "revision_id", "expected_cv_revision_id", "target_file_id",
+    "retry_of_id", "cv_id", "document_id", "action", "revision_id", "expected_cv_revision_id", "target_file_id",
     "decision", "capabilities", "expires_at", "provider", "model", "credential", "enabled", "base_url",
 })
 
@@ -55,7 +57,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
         "project_not_empty": 409, "session_has_runs": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "approval_conflict": 409,
-        "job_removed": 409, "document_in_use": 409, "document_not_trashed": 409,
+        "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
@@ -88,8 +90,57 @@ def _require_live_job(db, project_id: UUID, job_id: UUID) -> JobRevision:
     return row
 
 
-def _session_view(row: ConversationSession) -> dict[str, Any]:
-    return {"id": row.id, "project_id": row.project_id, "title": row.title, "created_at": row.created_at}
+def _session_view(db, row: ConversationSession, evaluation_run_id: UUID | None = None) -> dict[str, Any]:
+    view: dict[str, Any] = {"id": row.id, "project_id": row.project_id, "title": row.title,
+                            "created_at": row.created_at, "evaluation_run_id": evaluation_run_id}
+    if row.cv_revision_id is None:
+        return view
+    cv_revision = db.get(CVRevision, row.cv_revision_id)
+    job = db.get(JobRevision, row.job_revision_id)
+    cv = db.scalar(select(CV).where(CV.project_id == row.project_id, CV.id == cv_revision.cv_id))
+    outdated = db.scalar(select(exists().where(CVRevision.cv_id == cv_revision.cv_id,
+                                               CVRevision.revision > cv_revision.revision)))
+    view.update(cv_revision_id=row.cv_revision_id, job_revision_id=row.job_revision_id,
+                cv_name=cv.name, cv_revision=cv_revision.revision, job_title=job.title,
+                job_company=job.company, cv_outdated=bool(outdated))
+    return view
+
+
+def _cv_revision_view(revision: CVRevision, file: StoredFile) -> dict[str, Any]:
+    return {"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
+            "original_filename": file.display_name, "mime_type": file.mime_type, "size_bytes": file.size_bytes}
+
+
+def _cv_view(db, cv: CV) -> dict[str, Any]:
+    rows = db.execute(select(CVRevision, StoredFile).join(
+        StoredFile, (StoredFile.project_id == CVRevision.project_id) & (StoredFile.id == CVRevision.file_id)
+    ).where(CVRevision.cv_id == cv.id, StoredFile.publication_state == "published")
+      .order_by(CVRevision.revision.desc())).all()
+    in_use = db.scalar(select(exists().where(
+        ConversationSession.project_id == cv.project_id,
+        ConversationSession.cv_revision_id.in_(select(CVRevision.id).where(CVRevision.cv_id == cv.id)))))
+    return {"id": cv.id, "name": cv.name, "is_primary": cv.is_primary, "created_at": cv.created_at,
+            "latest_revision": _cv_revision_view(*rows[0]) if rows else None,
+            "revision_count": len(rows), "in_use": bool(in_use)}
+
+
+def _live_cv(db, project_id: UUID, cv_id: UUID, *, lock: bool = False) -> CV:
+    query = select(CV).where(CV.project_id == project_id, CV.id == cv_id, CV.removed_at.is_(None))
+    cv = db.scalar(query.with_for_update() if lock else query)
+    if cv is None:
+        raise ServiceError("not_found")
+    return cv
+
+
+def _new_job_revision(db, project_id: UUID, *, title: str, company: str | None, source_url: str | None,
+                      description: str) -> JobRevision:
+    """Caller holds the project row lock, which serializes revision numbering."""
+    revision = db.scalar(select(func.coalesce(func.max(JobRevision.revision), 0)).where(JobRevision.project_id == project_id)) + 1
+    row = JobRevision(project_id=project_id, revision=revision, title=title, company=company,
+                      source_url=source_url, description=description)
+    db.add(row)
+    db.flush()
+    return row
 
 
 def _job_view(row: JobRevision, application_status: str = "saved") -> dict[str, Any]:
@@ -217,17 +268,57 @@ async def list_sessions(project_id: UUID, actor=Depends(owner_actor), services: 
         authorize(db, actor, project_id, "read", "session")
         rows = db.scalars(select(ConversationSession).where(ConversationSession.project_id == project_id)
                           .order_by(ConversationSession.created_at, ConversationSession.id)).all()
-        return [_session_view(row) for row in rows]
+        return [_session_view(db, row) for row in rows]
+
+
+@router.get("/projects/{project_id}/sessions/{session_id}", response_model=SessionView)
+async def get_session(project_id: UUID, session_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "session")
+        return _session_view(db, require_scoped_id(db, ConversationSession, project_id, session_id))
 
 
 @router.post("/projects/{project_id}/sessions", status_code=201, response_model=SessionView)
 async def create_session(project_id: UUID, body: SessionCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Create a CV + job session and start its evaluation run in the same transaction."""
+    _owner_only(actor)
     with services.sessions.begin() as db:
         authorize(db, actor, project_id, "write", "session")
-        row = ConversationSession(project_id=project_id, title=body.title)
+        # Project-first lock order, as in job creation and run submission.
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        cv_revision = require_scoped_id(db, CVRevision, project_id, body.cv_revision_id)
+        _live_cv(db, project_id, cv_revision.cv_id)
+        if body.job_revision_id is not None:
+            job = _require_live_job(db, project_id, body.job_revision_id)
+        else:
+            inline = body.job
+            job = db.scalar(select(JobRevision).where(
+                JobRevision.project_id == project_id, JobRevision.removed_at.is_(None),
+                JobRevision.description == inline.description,
+            ).order_by(JobRevision.revision).limit(1))
+            if job is None:
+                job = _new_job_revision(db, project_id, title=inline.title, company=inline.company,
+                                        source_url=inline.source_url, description=inline.description)
+        existing = db.scalar(select(ConversationSession.id).where(
+            ConversationSession.project_id == project_id,
+            ConversationSession.cv_revision_id == cv_revision.id,
+            ConversationSession.job_revision_id == job.id))
+        if existing is not None:
+            raise ServiceError("session_pair_exists", fields={"session_id": str(existing)})
+        title = body.title or (f"{job.title} · {job.company}" if job.company else job.title)[:200]
+        row = ConversationSession(project_id=project_id, title=title,
+                                  cv_revision_id=cv_revision.id, job_revision_id=job.id)
         db.add(row)
         db.flush()
-        return _session_view(row)
+        preferences = db.get(ProjectPreference, project_id)
+        run = services.runs._submit_in_transaction(
+            db, actor, project_id,
+            RunRequest(session_id=row.id, operation="evaluate_job",
+                       output_language=(preferences.values if preferences else {}).get("output_language", "th"),
+                       idempotency_key=f"session-{row.id}-evaluation"),
+            now=datetime.now(timezone.utc), scope=actor_scope(actor))
+        return _session_view(db, row, run.id)
 
 
 @router.patch("/projects/{project_id}/sessions/{session_id}", response_model=SessionView)
@@ -240,7 +331,7 @@ async def update_session(project_id: UUID, session_id: UUID, body: SessionUpdate
             raise ServiceError("not_found")
         row.title = body.title
         db.flush()
-        return _session_view(row)
+        return _session_view(db, row)
 
 
 @router.delete("/projects/{project_id}/sessions/{session_id}", status_code=204)
@@ -378,11 +469,8 @@ async def create_job(project_id: UUID, body: JobCreate, actor=Depends(write_acto
         project = db.scalar(select(Project).where(Project.id == project_id).with_for_update())
         if project is None:
             raise ServiceError("not_found")
-        revision = db.scalar(select(func.coalesce(func.max(JobRevision.revision), 0)).where(JobRevision.project_id == project_id)) + 1
-        row = JobRevision(project_id=project_id, revision=revision, title=body.title, company=body.company,
-                          source_url=body.source_url, description=body.description)
-        db.add(row)
-        db.flush()
+        row = _new_job_revision(db, project_id, title=body.title, company=body.company,
+                                source_url=body.source_url, description=body.description)
         return _job_view(row)
 
 
@@ -440,22 +528,23 @@ async def document_revisions(project_id: UUID, document_id: UUID, actor=Depends(
 
 @router.get("/projects/{project_id}/cv", response_model=list[CVRevisionView])
 async def get_cv(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    """Legacy: revisions of the primary CV, newest first."""
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "cv")
         rows = db.execute(select(CVRevision, StoredFile).join(
             StoredFile, (StoredFile.project_id == CVRevision.project_id) & (StoredFile.id == CVRevision.file_id)
-        ).where(CVRevision.project_id == project_id, StoredFile.publication_state == "published")
+        ).join(CV, CV.id == CVRevision.cv_id)
+          .where(CVRevision.project_id == project_id, StoredFile.publication_state == "published",
+                 CV.is_primary, CV.removed_at.is_(None))
           .order_by(CVRevision.revision.desc())).all()
-        return [{"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
-                 "original_filename": file.display_name, "mime_type": file.mime_type, "size_bytes": file.size_bytes}
-                for revision, file in rows]
+        return [_cv_revision_view(*row) for row in rows]
 
 
-@router.post("/projects/{project_id}/cv", status_code=201, response_model=CVRevisionView)
-async def upload_cv(project_id: UUID, file: UploadFile = File(...), actor=Depends(write_actor), services: Services = Depends(get_services)):
+async def _upload_cv(services, actor, project_id: UUID, file: UploadFile, **target) -> tuple[dict[str, Any], UUID]:
     if file.size is not None and file.size > MAX_UPLOAD_BYTES:
         raise ServiceError("upload_too_large")
-    view = await services.files.upload(actor, project_id, file, file.content_type or "application/octet-stream", file.filename or "upload")
+    view = await services.files.upload(actor, project_id, file, file.content_type or "application/octet-stream",
+                                       file.filename or "upload", **target)
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "cv")
         revision = db.scalar(select(CVRevision).where(
@@ -463,8 +552,81 @@ async def upload_cv(project_id: UUID, file: UploadFile = File(...), actor=Depend
         ))
         if revision is None:
             raise ServiceError("file_unavailable")
-        return {"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
-                "original_filename": view.display_name, "mime_type": view.mime_type, "size_bytes": view.size_bytes}
+        return ({"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
+                 "original_filename": view.display_name, "mime_type": view.mime_type, "size_bytes": view.size_bytes},
+                revision.cv_id)
+
+
+@router.post("/projects/{project_id}/cv", status_code=201, response_model=CVRevisionView)
+async def upload_cv(project_id: UUID, file: UploadFile = File(...), actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Legacy: add a revision to the primary CV, creating it if the project has none."""
+    return (await _upload_cv(services, actor, project_id, file))[0]
+
+
+@router.get("/projects/{project_id}/cvs", response_model=list[CVView])
+async def list_cvs(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        rows = db.scalars(select(CV).where(CV.project_id == project_id, CV.removed_at.is_(None))
+                          .order_by(CV.is_primary.desc(), CV.created_at, CV.id)).all()
+        return [_cv_view(db, cv) for cv in rows]
+
+
+@router.post("/projects/{project_id}/cvs", status_code=201, response_model=CVView)
+async def create_cv(project_id: UUID, file: UploadFile = File(...),
+                    name: Annotated[str | None, Form(max_length=120)] = None,
+                    actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """New CV from its first upload; named after the file unless a name is given."""
+    cv_name = (name or "").strip() or PurePath(file.filename or "").stem.strip()[:120] or "CV"
+    _, new_cv_id = await _upload_cv(services, actor, project_id, file, new_cv_name=cv_name)
+    with services.sessions() as db:
+        return _cv_view(db, _live_cv(db, project_id, new_cv_id))
+
+
+@router.post("/projects/{project_id}/cvs/{cv_id}/revisions", status_code=201, response_model=CVRevisionView)
+async def add_cv_revision(project_id: UUID, cv_id: UUID, file: UploadFile = File(...),
+                          actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return (await _upload_cv(services, actor, project_id, file, cv_id=cv_id))[0]
+
+
+@router.patch("/projects/{project_id}/cvs/{cv_id}", response_model=CVView)
+async def update_cv(project_id: UUID, cv_id: UUID, body: CVUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        cv = _live_cv(db, project_id, cv_id, lock=True)
+        if body.name is not None:
+            cv.name = body.name
+        if body.is_primary:
+            db.execute(CV.__table__.update().where(CV.project_id == project_id, CV.id != cv.id, CV.is_primary)
+                       .values(is_primary=False))
+            cv.is_primary = True
+        db.flush()
+        return _cv_view(db, cv)
+
+
+@router.delete("/projects/{project_id}/cvs/{cv_id}", status_code=204)
+async def delete_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Soft-delete a CV no session uses; deleting the primary promotes the newest remaining CV."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        cv = _live_cv(db, project_id, cv_id, lock=True)
+        if _cv_view(db, cv)["in_use"]:
+            raise ServiceError("cv_in_use")
+        was_primary = cv.is_primary
+        cv.is_primary = False
+        cv.removed_at = datetime.now(timezone.utc)
+        db.flush()
+        if was_primary:
+            newest = db.scalar(select(CV).where(CV.project_id == project_id, CV.removed_at.is_(None))
+                               .order_by(CV.created_at.desc(), CV.id).limit(1))
+            if newest is not None:
+                newest.is_primary = True
 
 
 @router.get("/projects/{project_id}/files/{file_id}/download", response_class=StreamingResponse,

@@ -7,6 +7,7 @@ from threading import Barrier
 
 import pytest
 from helpers import (
+    primary_cv,
     grant,
     owner,
     project,
@@ -53,7 +54,7 @@ def test_idempotent_replay_keeps_original_implicit_cv_and_config_snapshot(db_ses
 
     first = _submit(service, actor, p.id, request)
     with service.sessions.begin() as db:
-        db.add(CVRevision(project_id=p.id, revision=2))
+        db.add(CVRevision(project_id=p.id, cv_id=primary_cv(db, p.id).id, revision=2))
         db.add(
             ProviderConfiguration(
                 project_id=p.id,
@@ -145,7 +146,7 @@ def test_reload_retry_uses_durable_job_reference_and_original_cv(db_session):
     original = _submit(service, actor, p.id, run_request(chat.id, job.id, key="reload-original"))
     with service.sessions.begin() as db:
         db.get(Run, original.id).status = "failed"
-        db.add(CVRevision(project_id=p.id, revision=2, file_id=cv.file_id))
+        db.add(CVRevision(project_id=p.id, cv_id=cv.cv_id, revision=2, file_id=cv.file_id))
         db.add(JobRevision(project_id=p.id, revision=2, title="Newer synthetic job", description="Changed input"))
     # Recreate the client/service, retaining only public persisted RunView metadata.
     reopened = _service(db_session)

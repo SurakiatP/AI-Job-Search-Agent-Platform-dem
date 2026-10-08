@@ -21,7 +21,7 @@ from sqlalchemy.orm import sessionmaker
 
 from job_search_platform.api.dependencies import Services
 from job_search_platform.db.models import (
-    Approval, CVRevision, Document, DocumentRevision, Grant, JobRevision, Message, Project, Run, RunArtifact, StoredFile,
+    Approval, CVRevision, ConversationSession, Document, DocumentRevision, Grant, JobRevision, Message, Project, Run, RunArtifact, StoredFile,
 )
 from job_search_platform.integrations.hermes_runtime import ParsedInput
 from job_search_platform.services.contracts import Actor
@@ -36,7 +36,10 @@ from job_search_platform.services.owner_sessions import OwnerSessions
 from job_search_platform.services.runs import RunService
 from job_search_platform.services.settings import Settings
 from job_search_platform.workers.queue import PostgresRunQueue
-from helpers import provider_config, revisions
+from helpers import provider_config, revisions, primary_cv
+
+
+ROOT_FOR_MIGRATIONS = Path(__file__).resolve().parents[2] / "migrations"
 
 
 def _private_secret(name: str) -> str:
@@ -141,6 +144,15 @@ def _owner(context) -> str:
     return csrf
 
 
+def _legacy_session(context, project_id: str, title: str) -> str:
+    """Unpaired sessions can no longer be created through the API; seed one as old data."""
+    with context.sessions.begin() as db:
+        row = ConversationSession(project_id=UUID(project_id), title=title)
+        db.add(row)
+        db.flush()
+        return str(row.id)
+
+
 def _write_headers(csrf: str) -> dict[str, str]:
     return {"Origin": "http://127.0.0.1:8765", "X-CSRF-Token": csrf}
 
@@ -168,10 +180,8 @@ def test_owner_bootstrap_csrf_crud_and_empty_project_delete_only(api_context):
     pref = client.patch(f"/api/v1/projects/{project_id}/preferences",
                         json={"locale": "en", "output_language": "th"}, headers=_write_headers(csrf))
     assert pref.status_code == 200 and pref.json()["locale"] == "en"
-    session = client.post(f"/api/v1/projects/{project_id}/sessions", json={"title": "First"},
-                          headers=_write_headers(csrf))
-    assert session.status_code == 201
-    message = client.post(f"/api/v1/projects/{project_id}/sessions/{session.json()['id']}/messages",
+    session_id = _legacy_session(api_context, project_id, "First")
+    message = client.post(f"/api/v1/projects/{project_id}/sessions/{session_id}/messages",
                           json={"content": "Synthetic message"}, headers=_write_headers(csrf))
     assert message.status_code == 202 and message.json()["role"] == "user"
     job = client.post(f"/api/v1/projects/{project_id}/jobs",
@@ -190,14 +200,14 @@ def test_owner_renames_and_deletes_sessions_unless_runs_exist(api_context):
     headers = _write_headers(csrf)
     project_id = client.post("/api/v1/projects", json={"name": "Sessions"}, headers=headers).json()["id"]
     base = f"/api/v1/projects/{project_id}/sessions"
-    empty = client.post(base, json={"title": "Empty"}, headers=headers).json()["id"]
-    busy = client.post(base, json={"title": "Busy"}, headers=headers).json()["id"]
+    empty = _legacy_session(api_context, project_id, "Empty")
+    busy = _legacy_session(api_context, project_id, "Busy")
     client.post(f"{base}/{empty}/messages", json={"content": "hello"}, headers=headers)
 
     renamed = client.patch(f"{base}/{empty}", json={"title": "  Renamed  "}, headers=headers)
     assert renamed.status_code == 200
     assert renamed.json()["title"] == "Renamed" and renamed.json()["id"] == empty
-    assert set(renamed.json()) == {"id", "project_id", "title", "created_at"}
+    assert renamed.json()["cv_revision_id"] is None and renamed.json()["cv_outdated"] is False
     assert client.patch(f"{base}/{empty}", json={"title": "   "}, headers=headers).status_code == 422
     assert client.patch(f"{base}/{empty}", json={"title": ""}, headers=headers).status_code == 422
     assert client.patch(f"{base}/{empty}", json={"title": "x" * 201}, headers=headers).status_code == 422
@@ -316,9 +326,9 @@ def _removal_project(api_context, csrf: str):
     """Project with a session, current CV and provider so owner runs can be admitted."""
     client = api_context.client
     pid = client.post("/api/v1/projects", json={"name": "Removal"}, headers=_write_headers(csrf)).json()["id"]
-    sid = client.post(f"/api/v1/projects/{pid}/sessions", json={"title": "S"}, headers=_write_headers(csrf)).json()["id"]
+    sid = _legacy_session(api_context, pid, "S")
     with api_context.sessions.begin() as db:
-        db.add(CVRevision(project_id=UUID(pid), revision=1))
+        db.add(CVRevision(project_id=UUID(pid), cv_id=primary_cv(db, UUID(pid)).id, revision=1))
         provider_config(db, UUID(pid))
     return pid, sid
 
@@ -540,7 +550,7 @@ def test_document_delete_keeps_file_still_referenced_and_survives_object_store_f
     pid, sid = _removal_project(api_context, csrf)
     promoted = _seed_document(api_context, pid, "promoted.pdf")
     with api_context.sessions.begin() as db:  # a CV promoted from this draft keeps pointing at its file
-        db.add(CVRevision(project_id=UUID(pid), revision=2, file_id=promoted.file))
+        db.add(CVRevision(project_id=UUID(pid), cv_id=primary_cv(db, UUID(pid)).id, revision=2, file_id=promoted.file))
     base = f"/api/v1/projects/{pid}/documents"
     assert client.delete(f"{base}/{promoted.document}", headers=headers).status_code == 204
     assert client.delete(f"{base}/{promoted.document}/permanent", headers=headers).status_code == 204

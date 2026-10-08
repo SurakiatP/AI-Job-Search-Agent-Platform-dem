@@ -22,6 +22,7 @@ from job_search_platform.services.runs import RunService, actor_scope, lock_curr
 class ProtocolJobInput(DTO):
     job: JobCreate | None = None
     job_revision_id: UUID | None = None
+    cv_id: UUID | None = None
     output_language: Literal["th", "en"]
     idempotency_key: Annotated[str, StringConstraints(min_length=1, max_length=128)]
 
@@ -83,7 +84,7 @@ class ProtocolRuns:
                 job = Repositories.job_revision(db, project_id, request.job_revision_id)
             run_request = RunRequest(
                 session_id=grant_session_id, operation=operation,
-                job_revision_id=job.id, output_language=request.output_language,
+                job_revision_id=job.id, cv_id=request.cv_id, output_language=request.output_language,
                 idempotency_key=request.idempotency_key,
             )
             # Failure rolls back every newly created row, including reservations.

@@ -16,6 +16,7 @@ import sys
 import boto3
 import psycopg
 import pytest
+from helpers import primary_cv
 from botocore.config import Config
 from psycopg import sql
 from sqlalchemy import create_engine, select
@@ -25,7 +26,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from conftest import PRIVATE_DIR, _private_secret
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from job_search_platform.db.models import (
-    CVRevision, Document, DocumentRevision, Grant, JobRevision, JobApplicationStatus, OwnerLaunchNonce, OwnerSession,
+    CV, CVRevision, Document, DocumentRevision, Grant, JobRevision, JobApplicationStatus, OwnerLaunchNonce, OwnerSession,
     ConversationSession, Project, ProviderConfiguration, Run, RunArtifact, StoredFile,
 )
 from job_search_platform.services.errors import ServiceError
@@ -111,7 +112,9 @@ def _seed_snapshot(engine, client, bucket: str):
             file_rows.append((key, body, file_id))
             file_ids[kind] = file_id
         session.flush()
-        cv = CVRevision(project_id=project.id, revision=1, file_id=file_ids["cv_original"])
+        session.add(CV(project_id=project.id, name="CV", is_primary=True))
+        session.flush()
+        cv = CVRevision(project_id=project.id, cv_id=primary_cv(session, project.id).id, revision=1, file_id=file_ids["cv_original"])
         job = JobRevision(
             project_id=project.id, revision=1, title="Synthetic role",
             description="Synthetic job description", content_file_id=file_ids["job_source"],

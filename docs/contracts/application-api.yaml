@@ -93,10 +93,18 @@ paths:
       responses: {'200': {description: Sessions, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SessionView'}}}}}}
     post:
       tags: [sessions]
+      description: >-
+        Owner-only. Creates a session pinned to one CV revision and one job (saved
+        revision or inline job, deduplicated by identical description) and starts its
+        evaluation run; the response carries evaluation_run_id. 409 session_pair_exists
+        carries fields.session_id of the existing session for the same pair.
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/SessionCreate'}}}
-      responses: {'201': {description: Created session}}
+      responses:
+        '201': {description: Created session, content: {application/json: {schema: {$ref: '#/components/schemas/SessionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Duplicate pair (code session_pair_exists)}
   /projects/{project_id}/sessions/{session_id}:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -104,6 +112,12 @@ paths:
         in: path
         required: true
         schema: {type: string, format: uuid}
+    get:
+      tags: [sessions]
+      description: Owner-only session with its CV/job pair details (null fields for legacy unpaired sessions).
+      responses:
+        '200': {description: Session, content: {application/json: {schema: {$ref: '#/components/schemas/SessionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
     patch:
       tags: [sessions]
       description: Owner-only rename. Title is trimmed, 1-200 characters.
@@ -309,6 +323,68 @@ paths:
               required: [file]
               properties: {file: {type: string, format: binary}}
       responses: {'201': {description: Published CV revision metadata}}
+  /projects/{project_id}/cvs:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [files]
+      description: Owner-only list of named CVs (primary first) with latest revision, revision_count and in_use.
+      responses: {'200': {description: CVs, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/CVView'}}}}}}
+    post:
+      tags: [files]
+      description: Owner-only multipart upload creating a CV. Name defaults to the filename stem; the project's first CV becomes primary.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties: {file: {type: string, format: binary}, name: {type: string, maxLength: 120}}
+      responses: {'201': {description: Created CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}}
+  /projects/{project_id}/cvs/{cv_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      tags: [files]
+      description: Owner-only rename and/or make primary (other CVs are demoted).
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CVUpdate'}}}
+      responses:
+        '200': {description: Updated CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags: [files]
+      description: Owner-only soft delete. Refused 409 cv_in_use when a session references any revision; deleting the primary promotes the newest remaining CV.
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: CV in use (code cv_in_use)}
+  /projects/{project_id}/cvs/{cv_id}/revisions:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: Owner-only multipart upload of a new revision of this CV.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties: {file: {type: string, format: binary}}
+      responses:
+        '201': {description: Published CV revision metadata, content: {application/json: {schema: {$ref: '#/components/schemas/CVRevisionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/files/{file_id}/download:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -544,16 +620,18 @@ components:
     RunRequest:
       type: object
       additionalProperties: false
-      required: [session_id, operation, job_revision_id, output_language, idempotency_key]
+      required: [session_id, operation, output_language, idempotency_key]
       properties:
         session_id: {type: string, format: uuid}
         operation: {type: string, enum: [evaluate_job, draft_documents]}
         cv_revision_id: {type: [string, 'null'], format: uuid}
-        job_revision_id: {type: string, format: uuid}
+        cv_id: {type: [string, 'null'], format: uuid, description: Latest revision of this CV; omitted means the primary CV. Ignored for paired sessions except that a conflicting value gives 422 session_pair_mismatch.}
+        job_revision_id: {type: [string, 'null'], format: uuid, description: Required unless the session is paired; a paired session fixes the pair and a conflicting id gives 422 session_pair_mismatch.}
         output_language: {type: string, enum: [th, en]}
         idempotency_key: {type: string, minLength: 1, maxLength: 128}
         retry_of_id: {type: [string, 'null'], format: uuid, description: New manual retry of a same-project terminal run; original execution never resumes.}
         owner_instructions: {type: [string, 'null'], maxLength: 4000, description: Owner-only instructions captured in immutable run inputs; manual retry retains the original instructions.}
+        document_id: {type: [string, 'null'], format: uuid, description: Owner-only draft_documents revise; the first draft is appended as a new revision of this live document.}
     ProjectCreate:
       type: object
       additionalProperties: false
@@ -589,10 +667,25 @@ components:
         output_language: {type: string, enum: [th, en]}
         notifications_enabled: {type: boolean}
         updated_at: {type: string, format: date-time}
+    InlineJob:
+      type: object
+      additionalProperties: false
+      required: [title, description]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 300}
+        company: {type: [string, 'null'], maxLength: 300}
+        source_url: {type: [string, 'null'], maxLength: 2048}
+        description: {type: string, minLength: 1, maxLength: 50000}
     SessionCreate:
       type: object
       additionalProperties: false
-      properties: {title: {type: string, maxLength: 200, default: New session}}
+      required: [cv_revision_id]
+      description: Exactly one of job_revision_id or job. Title defaults to "job title · company".
+      properties:
+        title: {type: [string, 'null'], minLength: 1, maxLength: 200}
+        cv_revision_id: {type: string, format: uuid}
+        job_revision_id: {type: [string, 'null'], format: uuid}
+        job: {oneOf: [{$ref: '#/components/schemas/InlineJob'}, {type: 'null'}]}
     SessionUpdate:
       type: object
       additionalProperties: false
@@ -607,6 +700,14 @@ components:
         project_id: {type: string, format: uuid}
         title: {type: string}
         created_at: {type: string, format: date-time}
+        cv_revision_id: {type: [string, 'null'], format: uuid}
+        job_revision_id: {type: [string, 'null'], format: uuid}
+        cv_name: {type: [string, 'null']}
+        cv_revision: {type: [integer, 'null']}
+        job_title: {type: [string, 'null']}
+        job_company: {type: [string, 'null']}
+        cv_outdated: {type: boolean, default: false}
+        evaluation_run_id: {type: [string, 'null'], format: uuid, description: Set only on the create response.}
     RevisionView:
       type: object
       additionalProperties: false
@@ -646,6 +747,24 @@ components:
             original_filename: {type: string}
             mime_type: {type: string}
             size_bytes: {type: integer, minimum: 0}
+    CVUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        name: {type: [string, 'null'], minLength: 1, maxLength: 120}
+        is_primary: {type: [boolean, 'null'], enum: [true, null]}
+    CVView:
+      type: object
+      additionalProperties: false
+      required: [id, name, is_primary, created_at, revision_count, in_use]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        is_primary: {type: boolean}
+        created_at: {type: string, format: date-time}
+        latest_revision: {oneOf: [{$ref: '#/components/schemas/CVRevisionView'}, {type: 'null'}]}
+        revision_count: {type: integer, minimum: 0}
+        in_use: {type: boolean}
     DocumentView:
       type: object
       additionalProperties: false

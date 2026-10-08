@@ -156,7 +156,7 @@ def test_stale_cv_approval_cannot_promote_and_expiry_fails_run_durably(db_sessio
     )
     stale = service.request(creator, p.id, run.id, request)
     with factory.begin() as db:
-        db.add(CVRevision(project_id=p.id, revision=2))
+        db.add(CVRevision(project_id=p.id, cv_id=current_cv.cv_id, revision=2))
     with pytest.raises(ServiceError, match="approval_stale"):
         service.resolve(owner_actor, p.id, stale.id, "approve")
     with factory.begin() as db:

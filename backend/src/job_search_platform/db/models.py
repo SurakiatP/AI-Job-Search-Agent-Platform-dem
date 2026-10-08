@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import (
     Boolean, CheckConstraint, DateTime, Float, ForeignKey, ForeignKeyConstraint,
     Index, Integer, JSON, LargeBinary, String, Text, UniqueConstraint,
-    Uuid, func,
+    Uuid, func, text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -36,7 +36,16 @@ class ConversationSession(Base):
     project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False, default="New session")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    __table_args__ = (UniqueConstraint("project_id", "id", name="uq_sessions_project_id"),)
+    # Paired sessions pin one CV revision and one job revision; legacy sessions have neither.
+    cv_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    job_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    __table_args__ = (
+        UniqueConstraint("project_id", "id", name="uq_sessions_project_id"),
+        ForeignKeyConstraint(["project_id", "cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"]),
+        ForeignKeyConstraint(["project_id", "job_revision_id"], ["job_revisions.project_id", "job_revisions.id"]),
+        UniqueConstraint("project_id", "cv_revision_id", "job_revision_id", name="uq_sessions_pair"),
+        CheckConstraint("(cv_revision_id IS NULL) = (job_revision_id IS NULL)", name="ck_sessions_pair_complete"),
+    )
 
 
 class Message(Base):
@@ -54,14 +63,31 @@ class Message(Base):
     )
 
 
+class CV(Base):
+    """A named CV; its uploads are CVRevision rows. Removal is soft."""
+    __tablename__ = "cvs"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        UniqueConstraint("project_id", "id", name="uq_cvs_project_id"),
+        Index("uq_cvs_one_primary_per_project", "project_id", unique=True,
+              postgresql_where=text("is_primary AND removed_at IS NULL")),
+    )
+
+
 class CVRevision(Base):
     __tablename__ = "cv_revisions"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    cv_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
     revision: Mapped[int] = mapped_column(Integer, nullable=False)
     file_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    __table_args__ = (ForeignKeyConstraint(["project_id", "file_id"], ["files.project_id", "files.id"]), UniqueConstraint("project_id", "id", name="uq_cv_revisions_project_id"), UniqueConstraint("project_id", "revision", name="uq_cv_revisions_number"), CheckConstraint("revision > 0", name="ck_cv_revision_positive"))
+    __table_args__ = (ForeignKeyConstraint(["project_id", "file_id"], ["files.project_id", "files.id"]), ForeignKeyConstraint(["project_id", "cv_id"], ["cvs.project_id", "cvs.id"]), UniqueConstraint("project_id", "id", name="uq_cv_revisions_project_id"), UniqueConstraint("cv_id", "revision", name="uq_cv_revisions_number"), CheckConstraint("revision > 0", name="ck_cv_revision_positive"))
 
 
 class JobRevision(Base):

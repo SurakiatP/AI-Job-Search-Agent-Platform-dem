@@ -15,7 +15,7 @@ from job_search_platform.db.models import (
 )
 from job_search_platform.db.repositories import Repositories
 from job_search_platform.services.errors import ServiceError
-from helpers import provider_config, project, revisions, session
+from helpers import provider_config, project, revisions, session, primary_cv
 
 
 @pytest.fixture
@@ -127,7 +127,7 @@ def test_project_bound_file_event_and_approval_references_reject_foreign_ids(db_
 
     with pytest.raises(IntegrityError):
         with db_session.begin_nested():
-            cv_file_ref = CVRevision(project_id=p1.id, revision=99, file_id=file2.id)
+            cv_file_ref = CVRevision(project_id=p1.id, cv_id=primary_cv(db_session, p1.id).id, revision=99, file_id=file2.id)
             db_session.add(cv_file_ref)
             db_session.flush()
     db_session.expire_all()

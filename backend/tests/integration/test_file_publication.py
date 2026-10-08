@@ -11,7 +11,7 @@ from uuid import UUID
 import boto3
 import pytest
 from botocore.config import Config
-from sqlalchemy import event, select
+from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from helpers import grant, owner, project, provider_config, revisions, session
@@ -657,7 +657,7 @@ def _bytes(body: bytes):
     return io.BytesIO(body)
 
 
-def _draft_run(db: Session, project_id: UUID):
+def _draft_run(db: Session, project_id: UUID, extra_snapshot: dict | None = None):
     cv, job = revisions(db, project_id)
     owner_actor = owner(db)
     session_row = session(db, project_id)
@@ -672,7 +672,7 @@ def _draft_run(db: Session, project_id: UUID):
         cv_revision_id=cv.id,
         job_revision_id=job.id,
         provider_configuration_id=config.id,
-        input_snapshot={"cv_revision_id": str(cv.id), "job_revision_id": str(job.id)},
+        input_snapshot={"cv_revision_id": str(cv.id), "job_revision_id": str(job.id), **(extra_snapshot or {})},
         config_snapshot={"provider": "synthetic", "model": "test-model"},
         output_language="en",
         status="running",
@@ -757,3 +757,30 @@ async def test_oversized_generated_preview_is_rejected_before_publication(public
         await Artifacts(sessions, store, lambda _p, _r: staging).publish(project_id, run.id, manifest)
     assert error.value.code == "artifact_manifest_invalid"
     assert client.list_objects_v2(Bucket=bucket).get("KeyCount", 0) == 0
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_revise_run_appends_a_revision_to_the_requested_document(publication_context):
+    db, sessions, owner_actor, project_id, files, store, _client, _bucket, tmp_path = publication_context
+    document = Document(project_id=project_id, document_type="cover_letter", title="Letter")
+    db.add(document)
+    db.flush()
+    db.add(DocumentRevision(project_id=project_id, document_id=document.id, revision=1, content_markdown="v1"))
+    run, cv = _draft_run(db, project_id, {"document_id": str(document.id)})
+    staging = tmp_path / "staging" / str(project_id) / str(run.id)
+    staging.mkdir(parents=True)
+    output = staging / "letter-v2.pdf"
+    output.write_bytes(b"%PDF-1.7\nSynthetic revised letter\n%%EOF\n")
+    manifest = _manifest(staging, output, cv.id, run.job_revision_id, document_type="cover_letter", title="Ignored")
+
+    published = await Artifacts(sessions, store, lambda _p, _r: staging).publish(project_id, run.id, manifest)
+
+    assert len(published) == 1
+    db.expire_all()
+    assert db.scalar(select(func.count()).select_from(Document).where(Document.project_id == project_id)) == 1
+    revisions_ = list(db.scalars(select(DocumentRevision).where(DocumentRevision.document_id == document.id)
+                                 .order_by(DocumentRevision.revision)))
+    assert [r.revision for r in revisions_] == [1, 2] and revisions_[1].file_id == published[0].id
+    assert db.scalar(select(RunArtifact).where(RunArtifact.run_id == run.id)).document_revision_id == revisions_[1].id
+    assert db.get(Document, document.id).title == "Letter"

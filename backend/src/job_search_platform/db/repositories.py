@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import (
-    CVRevision, ConversationSession, JobRevision, JobSubmission, Project,
+    CV, CVRevision, ConversationSession, JobRevision, JobSubmission, Project,
     ProjectPreference, Run,
 )
 from job_search_platform.services.contracts import RunRequest
@@ -48,11 +48,14 @@ class Repositories:
         return value
 
     @staticmethod
-    def current_cv_revision(db: Session, project_id: UUID) -> CVRevision:
-        value = db.scalar(select(CVRevision).where(CVRevision.project_id == project_id)
-                          .order_by(CVRevision.revision.desc()).limit(1).with_for_update())
+    def latest_cv_revision(db: Session, project_id: UUID, cv_id: UUID | None = None) -> CVRevision:
+        """Newest revision of cv_id, or of the primary CV when cv_id is omitted."""
+        query = select(CVRevision).join(CV, (CV.project_id == CVRevision.project_id) & (CV.id == CVRevision.cv_id)).where(
+            CVRevision.project_id == project_id, CV.removed_at.is_(None))
+        query = query.where(CV.id == cv_id) if cv_id is not None else query.where(CV.is_primary)
+        value = db.scalar(query.order_by(CVRevision.revision.desc()).limit(1).with_for_update())
         if value is None:
-            raise ServiceError("cv_required")
+            raise ServiceError("not_found" if cv_id is not None else "cv_required")
         return value
 
     @staticmethod
@@ -81,17 +84,19 @@ class Repositories:
         return value
 
     @staticmethod
-    def request_digest(request: RunRequest, *, resolved_cv_revision_id: UUID) -> str:
+    def request_digest(request: RunRequest, *, resolved_cv_revision_id: UUID, resolved_job_revision_id: UUID) -> str:
         canonical = {
             "session_id": str(request.session_id),
             "operation": request.operation,
             "cv_revision_id": str(resolved_cv_revision_id),
-            "job_revision_id": str(request.job_revision_id),
+            "job_revision_id": str(resolved_job_revision_id),
             "output_language": request.output_language,
             "retry_of_id": str(request.retry_of_id) if request.retry_of_id else None,
         }
         if request.owner_instructions:
             canonical["owner_instructions"] = request.owner_instructions
+        if request.document_id:
+            canonical["document_id"] = str(request.document_id)
         payload = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(payload).hexdigest()
 
