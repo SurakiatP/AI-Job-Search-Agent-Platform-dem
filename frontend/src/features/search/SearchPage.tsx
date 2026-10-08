@@ -299,7 +299,7 @@ export function SearchPage() {
   const [rankFailed, setRankFailed] = useState(false);
   const [undo, setUndo] = useState<{ id: string; message: string; retry: boolean } | null>(null);
   const [hiddenOpen, setHiddenOpen] = useState(false);
-  const hiddenRes = useResource<HiddenItem[]>(hiddenOpen ? `/projects/${projectId}/job-search/hidden` : null);
+  const hiddenRes = useResource<{ items: HiddenItem[] }>(hiddenOpen ? `/projects/${projectId}/job-search/hidden` : null);
   const keyRef = useRef(filterKey);
   keyRef.current = filterKey;
 
@@ -599,8 +599,8 @@ export function SearchPage() {
       <DialogContent>
         <DialogTitle>{c.hiddenTitle}</DialogTitle>
         <DialogDescription className="sr-only">{c.hiddenTitle}</DialogDescription>
-        {hiddenRes.status === 'loading' ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : (hiddenRes.data ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.hiddenEmpty}</p>
-          : <ul className="grid max-h-[60vh] gap-2 overflow-y-auto">{(hiddenRes.data ?? []).map(h => <li key={h.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 text-sm">
+        {hiddenRes.status === 'loading' ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : (hiddenRes.data?.items ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.hiddenEmpty}</p>
+          : <ul className="grid max-h-[60vh] gap-2 overflow-y-auto">{(hiddenRes.data?.items ?? []).map(h => <li key={h.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 text-sm">
             <span className="min-w-0 [overflow-wrap:anywhere]"><Badge variant="secondary" className="mr-2">{c.kindWord[h.kind]}</Badge>{h.label}</span>
             <Button type="button" size="sm" variant="outline" className="shrink-0 whitespace-nowrap" onClick={() => void unhide(h.id, true)}>{c.unhide}</Button>
           </li>)}</ul>}
