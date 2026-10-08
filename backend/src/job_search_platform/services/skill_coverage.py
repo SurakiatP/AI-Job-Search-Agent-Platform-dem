@@ -220,13 +220,25 @@ _ENTRIES = _build()
 DICTIONARY_SIZE = len(_ENTRIES)
 
 
-def _first_position(entry: tuple[str, re.Pattern[str] | None, tuple[str, ...]], text: str) -> int | None:
+def _first_span(entry: tuple[str, re.Pattern[str] | None, tuple[str, ...]], text: str) -> tuple[int, int] | None:
     _, pattern, thai = entry
     found = []
     if pattern is not None and (match := pattern.search(text)):
-        found.append(match.start())
-    found.extend(pos for alias in thai if (pos := text.find(alias)) >= 0)
+        found.append((match.start(), match.end()))
+    found.extend((pos, pos + len(alias)) for alias in thai if (pos := text.find(alias)) >= 0)
     return min(found) if found else None
+
+
+def _first_position(entry: tuple[str, re.Pattern[str] | None, tuple[str, ...]], text: str) -> int | None:
+    span = _first_span(entry, text)
+    return None if span is None else span[0]
+
+
+def skill_mentions(text: str) -> list[tuple[int, str, str]]:
+    """(position, canonical name, surface as written) for each dictionary skill in the text, in text order."""
+    low = text.lower()
+    source = text if len(low) == len(text) else low  # surfaces come from the original casing when lengths agree
+    return sorted((span[0], entry[0], source[span[0]:span[1]]) for entry in _ENTRIES if (span := _first_span(entry, low)))
 
 
 def extract_skills(text: str) -> list[str]:
