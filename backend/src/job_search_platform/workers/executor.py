@@ -5,8 +5,10 @@ import json
 import re
 import asyncio
 import hashlib
+import io
 import mimetypes
 import uuid
+import zipfile
 from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any
@@ -72,7 +74,7 @@ def parse_draft_manifest(value: str) -> tuple[dict[str, str], ...]:
                 or any(part in {"", ".", ".."} for part in relative.parts)
                 or "\\" in path
                 or relative.suffix.lower() != ".md"
-                or document_type not in {"cv", "cover_letter"}
+                or document_type not in {"cv", "cover_letter", "application_message"}
                 or output_format not in {"pdf", "docx"}
                 or not isinstance(title, str)
                 or not title.strip()
@@ -179,6 +181,9 @@ class RunExecutor:
         project_started = False
         try:
             sandbox.prepare()
+            if run.operation == "export_document":
+                await self._execute_export(run, lease_owner, sandbox)
+                return
             cv_path = await self._materialize(run, sandbox)
             connector = run.config_snapshot.get("connector", {})
             if connector.get("enabled") is not True or connector.get("adapter_key") != "career_ops":
@@ -260,6 +265,48 @@ class RunExecutor:
             await self._stop(run.project_id, project_started)
             await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
 
+    async def _execute_export(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
+        """Manual edit: export the owner's Markdown through the sandbox exporter; no LLM, no provider."""
+        snapshot = run.input_snapshot
+        started = False
+        try:
+            sandbox.staging_path("draft.md").write_text(snapshot["export_content_markdown"], encoding="utf-8")
+
+            async def reserve_tool(_call_id: str, _tool_name: str) -> bool:
+                try:
+                    await asyncio.to_thread(self.queue.reserve_tool_call, run.id, lease_owner)
+                    return True
+                except ServiceError:
+                    return False
+
+            project = await self.runtime.start_project(run.project_id, sandbox.workspace)
+            started = True
+            self.runtime.projects[run.project_id].tool_gate = reserve_tool
+            self._record_process(run.id, lease_owner, project)
+            manifest = json.dumps({"drafts": [{
+                "path": "draft.md", "document_type": snapshot["export_document_type"],
+                "title": snapshot["export_title"], "format": snapshot["export_format"]}]})
+            files = await self._export_drafts(run, sandbox, manifest)
+            published = await self.artifacts.publish(
+                run.project_id, run.id,
+                {"staging_dir": str(sandbox.staging), "lease_owner": lease_owner, "files": files},
+            )
+            await self._stop(run.project_id, started)
+            started = False
+            await asyncio.to_thread(
+                self.queue.finish, run.id, lease_owner, "completed",
+                artifact_ids=tuple(item.id for item in published),
+            )
+        except ServiceError as exc:
+            await self._stop(run.project_id, started)
+            if exc.code == "cancellation_requested":
+                await self._finish_after_stop(run, lease_owner, "cancelled", None)
+            else:
+                await self._finish_after_stop(run, lease_owner, "failed", _safe_message(exc.code))
+        except Exception:
+            await self._stop(run.project_id, started)
+            await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
+
     async def _materialize(self, run: Run, sandbox: RunSandbox) -> str:
         file_id = run.input_snapshot.get("cv_file_id")
         if not file_id:
@@ -294,10 +341,19 @@ class RunExecutor:
         if run.operation == "evaluate_job":
             task = "Evaluate this candidate for the job. Return only JSON with report_markdown and an optional score from 1 to 5."
         else:
+            kind = run.input_snapshot.get("draft_kind")
+            what = {
+                "cover_letter": "Write exactly one formal cover letter (document_type cover_letter). ",
+                "application_message": (
+                    "Write exactly one short application message, such as an email or chat message to the "
+                    "recruiter, not a formal letter (document_type application_message). "
+                ),
+            }.get(kind, "")
             task = (
-                "Prepare application documents. Write each draft as Markdown under staging/ and return only JSON "
+                "Prepare application documents. " + what +
+                "Write each draft as Markdown under staging/ and return only JSON "
                 "with paths relative to staging/, shaped as "
-                '{"drafts":[{"path":"draft.md","document_type":"cover_letter",'
+                f'{{"drafts":[{{"path":"draft.md","document_type":"{kind or "cover_letter"}",'
                 '"title":"...","format":"pdf"}]}. Use only pdf or docx formats.'
             )
         prompt = (
@@ -365,6 +421,10 @@ class RunExecutor:
         self, run: Run, sandbox: RunSandbox, result: str
     ) -> list[dict[str, str]]:
         drafts = parse_draft_manifest(result)
+        kind = run.input_snapshot.get("draft_kind")
+        if kind in {"cover_letter", "application_message"}:
+            # The requested kind wins over whatever the model declared for the first output.
+            drafts = ({**drafts[0], "document_type": kind}, *drafts[1:])
         files: list[dict[str, str]] = []
         for index, draft in enumerate(drafts, start=1):
             source = sandbox.staging_path(draft["path"])

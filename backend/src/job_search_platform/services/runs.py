@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
+from uuid import uuid4
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -30,6 +33,7 @@ from job_search_platform.db.models import (
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
     Actor,
+    DocumentEdit,
     RunEvent,
     RunEventData,
     RunEventView,
@@ -263,16 +267,45 @@ class RunService:
                     "owner_instructions": source_owner_instructions,
                     "document_id": UUID(retry_source.input_snapshot["document_id"])
                     if retry_source.input_snapshot.get("document_id") else None,
+                    "draft_kind": retry_source.input_snapshot.get("draft_kind"),
                 }
             )
+        if canonical_request.draft_kind is not None and actor.kind != "owner":
+            raise ServiceError("forbidden")
         previous_draft = None
-        if canonical_request.document_id is not None:
+        revise_id = canonical_request.document_id
+        if (
+            revise_id is None and canonical_request.draft_kind is not None and previous is None
+            and session.job_revision_id is not None
+        ):
+            # One live document per draft kind and paired job: append a revision to it.
+            revise_id = db.scalar(
+                select(Document.id)
+                .where(
+                    Document.project_id == project_id,
+                    Document.document_type == canonical_request.draft_kind,
+                    Document.trashed_at.is_(None),
+                    Document.id.in_(
+                        select(DocumentRevision.document_id).where(
+                            DocumentRevision.project_id == project_id,
+                            DocumentRevision.source_job_revision_id == session.job_revision_id,
+                        )
+                    ),
+                )
+                .order_by(
+                    select(func.max(DocumentRevision.created_at))
+                    .where(DocumentRevision.project_id == project_id, DocumentRevision.document_id == Document.id)
+                    .correlate(Document).scalar_subquery().desc()
+                )
+                .limit(1)
+            )
+        if revise_id is not None:
             if canonical_request.operation != "draft_documents" or actor.kind != "owner" or (
-                retry_source is None and request.document_id is None
+                retry_source is None and request.document_id is None and canonical_request.draft_kind is None
             ):
                 raise ServiceError("forbidden")
             document = db.scalar(select(Document).where(
-                Document.project_id == project_id, Document.id == canonical_request.document_id))
+                Document.project_id == project_id, Document.id == revise_id))
             if document is None or document.trashed_at is not None:
                 raise ServiceError("not_found")
             # A paired session may only revise documents drafted for its own job.
@@ -365,11 +398,12 @@ class RunService:
                     else {}
                 ),
                 **(
-                    {"document_id": str(canonical_request.document_id),
+                    {"document_id": str(revise_id),
                      "previous_draft": (previous_draft or "")[:20000]}
-                    if canonical_request.document_id
+                    if revise_id
                     else {}
                 ),
+                **({"draft_kind": canonical_request.draft_kind} if canonical_request.draft_kind else {}),
                 "job": {
                     "title": job.title,
                     "company": job.company,
@@ -399,6 +433,87 @@ class RunService:
         append_event(db, run, "run_queued", {"status": "queued"}, now=now)
         return self._authorized_view(db, actor, run)
 
+    async def submit_export(
+        self, actor: Actor, project_id: UUID, document_id: UUID, edit: DocumentEdit
+    ) -> RunView:
+        """Owner-only manual edit: queue a non-LLM run that exports the text and appends a revision."""
+        return await asyncio.to_thread(self._submit_export_sync, actor, project_id, document_id, edit)
+
+    def _submit_export_sync(
+        self, actor: Actor, project_id: UUID, document_id: UUID, edit: DocumentEdit
+    ) -> RunView:
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "document")
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            document = db.scalar(select(Document).where(
+                Document.project_id == project_id, Document.id == document_id).with_for_update())
+            if document is None or document.trashed_at is not None:
+                raise ServiceError("not_found")
+            latest = db.scalar(
+                select(DocumentRevision)
+                .join(StoredFile, (StoredFile.project_id == DocumentRevision.project_id) & (StoredFile.id == DocumentRevision.file_id))
+                .where(DocumentRevision.project_id == project_id, DocumentRevision.document_id == document_id,
+                       StoredFile.publication_state == "published")
+                .order_by(DocumentRevision.revision.desc()).limit(1))
+            # The producing run supplies the session / CV / job / provider the new run row must reference.
+            source = db.scalar(
+                select(Run).join(RunArtifact, (RunArtifact.project_id == Run.project_id) & (RunArtifact.run_id == Run.id))
+                .where(RunArtifact.project_id == project_id,
+                       RunArtifact.document_revision_id == (latest.id if latest else None)))
+            if latest is None or source is None:
+                raise ServiceError("document_source_unavailable")
+            busy = db.scalar(
+                select(func.count()).select_from(Run).where(
+                    Run.project_id == project_id,
+                    Run.operation.in_(("draft_documents", "export_document")),
+                    Run.status.in_(("queued", "running", "waiting_approval")),
+                    Run.input_snapshot["document_id"].as_string() == str(document_id),
+                )
+            ) or 0
+            if busy:
+                raise ServiceError("document_busy")
+            queued = db.scalar(select(func.count()).select_from(Run).where(
+                Run.project_id == project_id, Run.status == "queued")) or 0
+            if queued >= MAX_QUEUED_PER_PROJECT:
+                raise ServiceError("queue_full", retryable=True)
+            output_format = edit.format
+            if output_format is None:
+                mime = db.scalar(select(StoredFile.mime_type).where(
+                    StoredFile.project_id == project_id, StoredFile.id == latest.file_id)) or ""
+                output_format = "docx" if mime.endswith("wordprocessingml.document") else "pdf"
+            key = uuid4().hex
+            run = Run(
+                project_id=project_id,
+                actor_scope="owner",
+                idempotency_key=key,
+                request_digest=hashlib.sha256(json.dumps(
+                    {"export_document": str(document_id), "key": key}).encode()).hexdigest(),
+                session_id=source.session_id,
+                operation="export_document",
+                cv_revision_id=source.cv_revision_id,
+                job_revision_id=source.job_revision_id,
+                provider_configuration_id=source.provider_configuration_id,
+                input_snapshot={
+                    "document_id": str(document_id),
+                    "export_format": output_format,
+                    "export_title": document.title,
+                    "export_document_type": document.document_type,
+                    "export_content_markdown": edit.content_markdown,
+                },
+                config_snapshot={},
+                output_language=source.output_language,
+                status="queued",
+                created_at=now,
+            )
+            db.add(run)
+            db.flush()
+            append_event(db, run, "run_queued", {"status": "queued"}, now=now)
+            return self._authorized_view(db, actor, run)
+
     @staticmethod
     def _retry_source(db: Session, project_id: UUID, retry_of_id: UUID) -> Run:
         source = db.scalar(
@@ -413,7 +528,7 @@ class RunService:
     async def get(self, actor: Actor, project_id: UUID, run_id: UUID) -> RunView:
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "results:read", "run")
-            run = self._visible_run(db, project_id, run_id)
+            run = self._visible_run(db, project_id, run_id, actor)
             return self._authorized_view(db, actor, run)
 
     async def cancel(self, actor: Actor, project_id: UUID, run_id: UUID) -> RunView:
@@ -449,7 +564,7 @@ class RunService:
     ) -> AsyncIterator[RunEvent]:
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "results:read", "event")
-            run = self._visible_run(db, project_id, run_id)
+            run = self._visible_run(db, project_id, run_id, actor)
             rows = db.scalars(
                 select(RunEventRow)
                 .where(RunEventRow.project_id == project_id, RunEventRow.run_id == run.id, RunEventRow.sequence > after)
@@ -467,7 +582,7 @@ class RunService:
         for event in result:
             with self.sessions.begin() as db:
                 authorize(db, actor, project_id, "results:read", "event")
-                self._visible_run(db, project_id, run_id)
+                self._visible_run(db, project_id, run_id, actor)
             yield event
 
     def _authorized_view(self, db: Session, actor: Actor, run: Run) -> RunView:
@@ -487,11 +602,12 @@ class RunService:
         return run_view(run, result_file_ids=self._result_file_ids(db, run), job_removed=job_removed)
 
     @staticmethod
-    def _visible_run(db: Session, project_id: UUID, run_id: UUID) -> Run:
+    def _visible_run(db: Session, project_id: UUID, run_id: UUID, actor: Actor | None = None) -> Run:
         run = db.scalar(
             select(Run).where(Run.project_id == project_id, Run.id == run_id)
         )
-        if run is None:
+        # Manual-edit export runs are owner-only; grants (REST, MCP, A2A) never see them.
+        if run is None or (actor is not None and actor.kind != "owner" and run.operation == "export_document"):
             raise ServiceError("not_found")
         return run
 

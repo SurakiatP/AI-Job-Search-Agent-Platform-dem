@@ -263,7 +263,7 @@ class Artifacts:
                 or not relative.parts
                 or any(part in {"", ".", ".."} for part in relative.parts)
                 or "\\" in str(item.get("path", ""))
-                or document_type not in {"cv", "cover_letter"}
+                or document_type not in {"cv", "cover_letter", "application_message"}
                 or not isinstance(title, str)
                 or not title.strip()
                 or len(title) > 300
@@ -505,6 +505,11 @@ class Documents:
                     .order_by(DocumentRevision.revision)
                 )
             )
+            manual = set(db.scalars(
+                select(RunArtifact.document_revision_id).join(
+                    Run, (Run.project_id == RunArtifact.project_id) & (Run.id == RunArtifact.run_id))
+                .where(RunArtifact.project_id == project_id, Run.operation == "export_document",
+                       RunArtifact.document_revision_id.in_([row.id for row in rows]))))
             return [
                 DocumentRevisionView(
                     id=row.id,
@@ -515,6 +520,7 @@ class Documents:
                     source_job_revision_id=row.source_job_revision_id,
                     file_id=row.file_id,
                     content_markdown=row.content_markdown,
+                    origin="manual" if row.id in manual else "agent",
                 )
                 for row in rows
             ]
@@ -547,7 +553,7 @@ def _run_publishable(run: Run | None, manifest_lease_owner: str | None) -> bool:
     now = datetime.now(timezone.utc)
     return (
         run is not None
-        and run.operation == "draft_documents"
+        and run.operation in {"draft_documents", "export_document"}
         and run.status == "running"
         and run.cancellation_requested_at is None
         and _lease_matches(run, manifest_lease_owner, now, require_unexpired=True)

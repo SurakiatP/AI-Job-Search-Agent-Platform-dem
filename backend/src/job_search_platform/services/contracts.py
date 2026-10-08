@@ -12,6 +12,9 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, StringConstraints,
 Capability = Literal["results:read", "jobs:evaluate", "documents:draft"]
 RunStatus = Literal["queued", "running", "waiting_approval", "completed", "failed", "cancelled", "interrupted"]
 Operation = Literal["evaluate_job", "draft_documents"]
+# export_document is an owner-only, non-LLM run created by the manual-edit endpoint; never a request operation.
+ViewOperation = Literal["evaluate_job", "draft_documents", "export_document"]
+DraftKind = Literal["cover_letter", "application_message"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +43,15 @@ class RunRequest(DTO):
     owner_instructions: Annotated[str | None, StringConstraints(max_length=4000)] = None
     # Draft runs only: append the result as a new revision of this document.
     document_id: UUID | None = None
+    # Draft runs only (owner-only): the document kind to produce; an existing live document
+    # of this kind for the paired job gets a new revision instead of a new document.
+    draft_kind: DraftKind | None = None
+
+    @model_validator(mode="after")
+    def draft_kind_needs_draft(self):
+        if self.draft_kind is not None and self.operation != "draft_documents":
+            raise ValueError("draft_kind_requires_draft_documents")
+        return self
 
 
 class ProjectCreate(DTO):
@@ -175,7 +187,7 @@ class CVView(DTO):
 
 class DocumentView(DTO):
     id: UUID
-    document_type: Literal["cv", "cover_letter", "other"]
+    document_type: Literal["cv", "cover_letter", "application_message", "other"]
     title: str
     latest_revision: RevisionView | None = None
     content_markdown: Annotated[str, StringConstraints(min_length=1, max_length=200000)] | None = None
@@ -191,6 +203,13 @@ class DocumentRevisionView(RevisionView):
     source_job_revision_id: UUID | None = None
     file_id: UUID | None = None
     content_markdown: Annotated[str, StringConstraints(min_length=1, max_length=200000)] | None = None
+    # "manual" when produced by an owner edit (export_document run), else "agent".
+    origin: Literal["agent", "manual"] = "agent"
+
+
+class DocumentEdit(DTO):
+    content_markdown: Annotated[str, StringConstraints(min_length=1, max_length=200000)]
+    format: Literal["pdf", "docx"] | None = None
 
 
 class FileView(DTO):
@@ -233,7 +252,7 @@ class RunView(DTO):
     project_id: UUID
     session_id: UUID
     job_revision_id: UUID | None = None
-    operation: Operation
+    operation: ViewOperation
     status: RunStatus
     output_language: Literal["th", "en"]
     result_file_ids: tuple[UUID, ...] = ()

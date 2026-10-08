@@ -557,7 +557,7 @@ def _authorize_file(db: Session, actor: Actor, project_id: UUID, row: StoredFile
 
 def _pending_artifact_publishable(run: Run, artifact_lease_owner: str | None) -> bool:
     if (
-        run.operation != "draft_documents"
+        run.operation not in {"draft_documents", "export_document"}
         or run.status != "running"
         or run.cancellation_requested_at is not None
         or run.lease_owner is None

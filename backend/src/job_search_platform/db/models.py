@@ -283,7 +283,7 @@ class Run(Base):
         UniqueConstraint("project_id", "id", name="uq_runs_project_id"),
         CheckConstraint("status IN ('queued','running','waiting_approval','completed','failed','cancelled','interrupted')", name="ck_runs_status"),
         CheckConstraint("length(idempotency_key) BETWEEN 1 AND 128", name="ck_runs_idempotency_key_length"),
-        CheckConstraint("operation IN ('evaluate_job','draft_documents')", name="ck_runs_operation"),
+        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document')", name="ck_runs_operation"),
         CheckConstraint("output_language IN ('th','en')", name="ck_runs_language"),
         CheckConstraint("length(request_digest) = 64", name="ck_runs_digest_length"),
         CheckConstraint("active_seconds >= 0", name="ck_runs_active_seconds"),

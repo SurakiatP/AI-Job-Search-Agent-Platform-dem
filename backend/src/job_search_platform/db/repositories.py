@@ -97,6 +97,8 @@ class Repositories:
             canonical["owner_instructions"] = request.owner_instructions
         if request.document_id:
             canonical["document_id"] = str(request.document_id)
+        if request.draft_kind:
+            canonical["draft_kind"] = request.draft_kind
         payload = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(payload).hexdigest()
 

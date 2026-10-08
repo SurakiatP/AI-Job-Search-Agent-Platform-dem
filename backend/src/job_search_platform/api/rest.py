@@ -24,7 +24,7 @@ from job_search_platform.db.models import (
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
-    ApprovalDecision, ApprovalRequest, ApprovalView, CVRevisionView, CVUpdate, CVView, DocumentRevisionView, DocumentView,
+    ApprovalDecision, ApprovalRequest, ApprovalView, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
     GrantIssueRequest, GrantIssuedView, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
@@ -58,6 +58,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "project_not_empty": 409, "session_has_runs": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "approval_conflict": 409,
         "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409,
+        "document_busy": 409, "document_source_unavailable": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
@@ -526,6 +527,13 @@ async def document_revisions(project_id: UUID, document_id: UUID, actor=Depends(
     return await services.documents.revisions(actor, project_id, document_id)
 
 
+@router.post("/projects/{project_id}/documents/{document_id}/revisions", status_code=202, response_model=RunView)
+async def edit_document(project_id: UUID, document_id: UUID, body: DocumentEdit, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Owner manual edit: queue a non-LLM export run that appends a revision."""
+    _owner_only(actor)
+    return await services.runs.submit_export(actor, project_id, document_id, body)
+
+
 @router.get("/projects/{project_id}/cv", response_model=list[CVRevisionView])
 async def get_cv(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
     """Legacy: revisions of the primary CV, newest first."""
@@ -649,7 +657,10 @@ async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Servic
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "run")
         from job_search_platform.db.models import Run
-        rows = db.scalars(select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())).all()
+        query = select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())
+        if actor.kind != "owner":
+            query = query.where(Run.operation != "export_document")
+        rows = db.scalars(query).all()
     result = []
     for row in rows:
         result.append(await services.runs.get(actor, project_id, row.id))
