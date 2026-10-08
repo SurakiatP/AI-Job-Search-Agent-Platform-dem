@@ -10,6 +10,7 @@ import { NewSessionDialog } from '../features/sessions/NewSessionDialog';
 import { Button } from './ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import { ItemMenu } from './ItemMenu';
+import { ScrollingName } from './ScrollingName';
 import { Input } from './ui/input';
 
 export type SidebarProject = {
@@ -119,8 +120,8 @@ function ProjectRow({ project, current, sessionId, expanded, version, onToggle, 
         {expanded ? <FolderOpen className="size-4" aria-hidden="true" /> : <Folder className="size-4" aria-hidden="true" />}
       </button>
       <Link to={project.href} title={project.name} aria-current={pathname === project.href ? 'page' : undefined}
-        className={cn('min-w-0 flex-1 truncate rounded-md py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring', current && 'font-semibold')}
-        onClick={() => { if (!expanded) onToggle(); onNavigate?.(); }}>{project.name}</Link>
+        className={cn('min-w-0 flex-1 rounded-md py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring', current && 'font-semibold')}
+        onClick={() => { if (!expanded) onToggle(); onNavigate?.(); }}><ScrollingName>{project.name}</ScrollingName></Link>
       <RowMenu name={project.name} onRename={() => onDialog({ mode: 'rename', target: projectTarget })} onDelete={() => onDialog({ mode: 'delete', target: projectTarget })} />
     </div>
     {expanded && <ul className="ms-4 mt-0.5 grid grid-cols-1 gap-0.5 border-s ps-1.5">
@@ -128,7 +129,7 @@ function ProjectRow({ project, current, sessionId, expanded, version, onToggle, 
         const target: Target = { kind: 'session', projectId: project.id, id: session.id, name: session.name };
         return <li key={session.id} className={cn(rowClass, activeSessionClass)}>
           <Link to={session.href} title={session.name} aria-current={current && session.id === sessionId ? 'page' : undefined}
-            className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onNavigate}>{session.name}</Link>
+            className="min-w-0 flex-1 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onNavigate}><ScrollingName>{session.name}</ScrollingName></Link>
           <RowMenu name={session.name} onRename={() => onDialog({ mode: 'rename', target })} onDelete={() => onDialog({ mode: 'delete', target })} />
         </li>;
       })}

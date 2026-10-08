@@ -117,8 +117,15 @@
 .page-enter { animation: page-enter var(--dur-base) var(--ease-out) both; }
 @keyframes ring-fill { from { stroke-dashoffset: var(--ring-circumference, 400); } }
 .fit-ring { animation: ring-fill var(--dur-slow) var(--ease-out) both; }
+/* Sidebar names: fade instead of ellipsis, slide on row hover/focus (ChatGPT-style). */
+.scrolling-name { display: block; overflow: hidden; white-space: nowrap; }
+.scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.scrolling-name-text { display: inline-block; transition: transform 0.2s var(--ease-out); }
+.group:hover .scrolling-name[data-overflow='true'], .group:focus-within .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, transparent, #000 28px); }
+.group:hover .scrolling-name-text, .group:focus-within .scrolling-name-text { transform: translateX(var(--name-shift)); transition: transform var(--name-duration, 2s) linear 0.4s; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+  .group:hover .scrolling-name-text, .group:focus-within .scrolling-name-text { transform: none; }
 }
 
 @layer components {

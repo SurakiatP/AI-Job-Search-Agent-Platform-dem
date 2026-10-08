@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router';
 import { AppearanceControl } from './AppearanceControl';
 import { HomeLink, LanguageSwitch } from './Header';
 import { ProjectTree } from './ProjectTree';
+import { ScrollingName } from './ScrollingName';
 import type { SidebarProject } from './ProjectTree';
 import { NewSessionDialog } from '../features/sessions/NewSessionDialog';
 
@@ -43,9 +44,9 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
     <div className="hidden items-start justify-between gap-2 px-1 pt-1 lg:flex"><HomeLink onClick={onNavigate} />{toggle}</div>
     <ProjectTree projects={projects} projectId={projectId} sessionId={sessionId} onNavigate={onNavigate} onReload={onReload} />
     {project && <div className="grid gap-2 border-t pt-3">
-    <div className="flex items-center gap-2.5 px-3">
+    <div className="group flex items-center gap-2.5 px-3">
       <FolderOpen className="size-4 shrink-0 text-primary" aria-hidden="true" />
-      <div className="min-w-0"><p className="truncate text-sm font-semibold" title={project.name}>{project.name}</p>
+      <div className="min-w-0"><p className="text-sm font-semibold" title={project.name}><ScrollingName>{project.name}</ScrollingName></p>
         <p className="text-xs text-muted-foreground">{i18n.language.startsWith('th') ? 'เมนูของโปรเจกต์นี้' : 'This project'}</p></div>
     </div>
     <ul className="grid gap-0.5" aria-label={t('pages.projectSections')}>
