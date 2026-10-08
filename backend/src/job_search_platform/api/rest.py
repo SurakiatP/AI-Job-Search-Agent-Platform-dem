@@ -7,14 +7,13 @@ from pathlib import PurePath
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import Annotated, Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import StringConstraints
 from sqlalchemy import delete, exists, func, select
-from uuid import uuid4
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
@@ -522,7 +521,7 @@ async def match_job_sources(
                                   i["age_days"] if i["age_days"] is not None else 10**6))
         items.sort(key=lambda i: (i["ai_match"] is None, -(i["ai_match"] or {}).get("fit_percent", 0)))  # stable: keyword order inside ties
         scored = sum(1 for i in items if i["ai_match"])
-        status = "unavailable" if not ai_on else "ready" if items and scored == len(items) else "partial" if scored else "missing"
+        status = "unavailable" if not ai_on else "ready" if scored == len(items) else "partial" if scored else "missing"
         return {"items": items, "total": page["total"], "offset": offset, "pool": pool,
                 "hidden_count": len(page["items"]) - len(items),
                 "ai": {"status": status, "categories": stored if ai_on and auto else None, "scored": scored}}

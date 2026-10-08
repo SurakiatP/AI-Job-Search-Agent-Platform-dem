@@ -590,9 +590,16 @@ class RunService:
                 raise ServiceError("jev_unavailable")
             for active in db.scalars(select(Run).where(
                     Run.project_id == project_id, Run.operation == "match_jobs", Run.cv_revision_id == revision.id,
-                    Run.status.in_(("queued", "running")))):
+                    Run.status.in_(("queued", "running")))).all():
                 if active.input_snapshot == snapshot:
                     return self._authorized_view(db, actor, active)
+            for stale in db.scalars(select(Run).where(  # superseded filters: running ones are left to the claim watchdog
+                    Run.project_id == project_id, Run.operation == "match_jobs", Run.cv_revision_id == revision.id,
+                    Run.status == "queued").with_for_update()):
+                stale.status = "cancelled"
+                stale.finished_at = now
+                append_event(db, stale, "run_cancelled", {"status": "cancelled"}, now=now)
+            db.flush()
             queued = db.scalar(select(func.count()).select_from(Run).where(
                 Run.project_id == project_id, Run.status == "queued")) or 0
             if queued >= MAX_QUEUED_PER_PROJECT:

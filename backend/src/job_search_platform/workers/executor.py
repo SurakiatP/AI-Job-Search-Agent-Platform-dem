@@ -342,7 +342,7 @@ class RunExecutor:
                 return
             if (revision.skill_profile or {}).get("method") != SKILL_METHOD:
                 revision.skill_profile = {"skills": extract_skills(cv_text), "method": SKILL_METHOD}
-            text = cv_text[:MAX_CV_TEXT]
+            text = cv_text.replace("\x00", "")[:MAX_CV_TEXT]
             if text.strip() and db.get(CVRevisionText, cv_revision_id) is None:
                 db.add(CVRevisionText(cv_revision_id=cv_revision_id, project_id=revision.project_id, text=text))
 
@@ -388,7 +388,7 @@ class RunExecutor:
                 raise ServiceError("jev_unavailable")
             text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
             if text is None:
-                text = await self._parse_cv_text(run, lease_owner, sandbox)
+                text = (await self._parse_cv_text(run, lease_owner, sandbox)).replace("\x00", "")
                 await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
             if not text.strip():
                 raise ServiceError("cv_text_empty")
@@ -402,6 +402,7 @@ class RunExecutor:
                 work_mode=snap.get("work_mode"), posted_within_days=snap.get("posted_within_days"),
                 category=snap.get("category"), pool=snap["pool"], offset=snap.get("offset", 0), cv_categories=categories))
             jobs = [job for job in page["items"] if not smart_match.is_hidden(job, hidden)]
+            jobs = [job for job in jobs if len(job["slug"]) <= 200]  # longer slugs do not fit the score column
             todo = (await asyncio.to_thread(self._unscored, run.cv_revision_id, jobs))[: MAX_JEV_CALLS - 1]
             limit = asyncio.Semaphore(JEV_CONCURRENCY)
 
@@ -411,7 +412,7 @@ class RunExecutor:
                     try:
                         answers = await asyncio.to_thread(client.decide, smart_match.job_state(text, job), smart_match.job_questions(skills))
                         result = smart_match.combine(answers, skills)
-                    except (ServiceError, KeyError, TypeError, ValueError):
+                    except Exception:  # malformed answer or provider error: skip this job, keep the run alive
                         return False
                     await asyncio.to_thread(self._store_score, run, job, result)
                     return True
@@ -446,7 +447,7 @@ class RunExecutor:
     def _store_score(self, run: Run, job: dict, result: dict) -> None:
         details = {k: v for k, v in result.items() if k not in ("fit_percent", "uncertain")}
         statement = pg_insert(JobMatchScore).values(
-            id=uuid.uuid4(), project_id=run.project_id, cv_revision_id=run.cv_revision_id, job_slug=job["slug"][:200],
+            id=uuid.uuid4(), project_id=run.project_id, cv_revision_id=run.cv_revision_id, job_slug=job["slug"],
             content_hash=smart_match.content_hash(job), model=JEV_MODEL, fit_percent=result["fit_percent"],
             uncertain=result["uncertain"], details=details,
         ).on_conflict_do_nothing(constraint="uq_job_match_scores_key")
@@ -461,7 +462,10 @@ class RunExecutor:
         options = [facet["value"] for facet in job_sources.job_facets()["categories"]]
         if not options:
             return None
-        chosen = smart_match.pick_categories(client.decide({"cv": text}, smart_match.category_question(options))["category"])
+        try:
+            chosen = smart_match.pick_categories(client.decide({"cv": text}, smart_match.category_question(options))["category"])
+        except (KeyError, IndexError, TypeError, ValueError, AttributeError):
+            raise ServiceError("jev_failed") from None
         with self.sessions.begin() as db:
             revision = db.scalar(select(CVRevision).where(CVRevision.id == cv_revision_id).with_for_update())
             revision.skill_profile = {**(revision.skill_profile or {}), "categories": chosen, "categories_model": JEV_MODEL}

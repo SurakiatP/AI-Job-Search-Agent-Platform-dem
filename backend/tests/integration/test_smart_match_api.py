@@ -192,3 +192,17 @@ def test_highlight_surfaces_are_plain_posting_strings(api_context, monkeypatch):
     assert item["highlight"]["matched"]["Python"] == "Python"
     text = smart_match.job_text(item)
     assert all(s in text for s in surfaces)
+
+
+@pytest.mark.integration
+def test_empty_pool_is_ready_and_different_filters_leave_one_queued_run(api_context, monkeypatch):
+    _serve(monkeypatch, [])
+    csrf, pid, rev = _setup(api_context)
+    _provider(api_context)
+    client, headers = api_context.client, _write_headers(csrf)
+    assert client.get(_url(pid, rev, "&q=nothing")).json()["ai"] == {"status": "ready", "categories": None, "scored": 0}
+    for q in ("one", "two", "three"):
+        assert client.post(f"{PREFIX}/{pid}/job-search/match/runs", json={"cv_revision_id": rev, "q": q}, headers=headers).status_code == 202
+    with api_context.sessions() as db:
+        statuses = sorted(db.scalars(select(Run.status).where(Run.operation == "match_jobs")))
+    assert statuses == ["cancelled", "cancelled", "queued"]

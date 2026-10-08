@@ -5,6 +5,10 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
+
+from helpers import primary_cv, project
+from job_search_platform.db.models import CVRevision, Run
 
 from test_rest_api import ROOT_FOR_MIGRATIONS
 
@@ -34,3 +38,17 @@ def test_migration_0014_up_down(postgres_engine):
         assert "match_jobs" not in c.execute(text(
             "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname='ck_runs_operation'")).scalar()
     _migrate(postgres_engine, command.upgrade, "head")
+
+
+def test_migration_0014_downgrade_blocked_by_match_jobs_runs(migrated_engine):
+    with sessionmaker(bind=migrated_engine)() as db:
+        project_row = project(db)
+        revision = CVRevision(project_id=project_row.id, cv_id=primary_cv(db, project_row.id).id, revision=1)
+        db.add(revision)
+        db.flush()
+        db.add(Run(project_id=project_row.id, actor_scope="owner", idempotency_key="k", request_digest="d" * 64,
+                   operation="match_jobs", cv_revision_id=revision.id, input_snapshot={}, config_snapshot={},
+                   output_language="en", status="queued"))
+        db.commit()
+    with pytest.raises(RuntimeError, match="downgrade_blocked"):
+        _migrate(migrated_engine, command.downgrade, "0013_cv_skill_profile")
