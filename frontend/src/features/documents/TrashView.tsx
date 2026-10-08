@@ -8,7 +8,7 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { apiRequest } from '../../lib/api';
 import { ApiError } from '../../lib/api-types';
 
-export type TrashedDocument = { id: string; document_type: 'cv' | 'cover_letter' | 'other'; title: string; trashed_at?: string | null };
+export type TrashedDocument = { id: string; document_type: 'cv' | 'cover_letter' | 'application_message' | 'other'; title: string; trashed_at?: string | null };
 
 export function relativeTime(iso: string | null | undefined, locale: string): string {
   if (!iso) return '';

@@ -23,7 +23,7 @@ const copy = {
     docsTitle: 'เอกสารล่าสุด', noDocs: 'ยังไม่มีเอกสาร', noDocsNext: 'ประเมินงานแล้วให้เอเจนต์ร่างเอกสารให้', revision: 'ฉบับที่',
     cvTitle: 'CV ของคุณ', noCv: 'ยังไม่มี CV', noCvNext: 'เพิ่ม CV เพื่อให้เอเจนต์ประเมินงานได้', addCv: 'เพิ่ม CV', updateCv: 'อัปเดต CV',
     activity: 'งานของเอเจนต์', idle: 'ไม่มีงานที่กำลังทำ', approvals: 'รออนุมัติ', openSession: 'เปิดเซสชัน', untitled: 'งานไม่มีชื่อ', evaluating: 'ประเมินงาน', drafting: 'ร่างเอกสาร',
-    cv: 'CV', cover_letter: 'จดหมายสมัครงาน', other: 'เอกสารอื่น',
+    cv: 'CV', cover_letter: 'จดหมายสมัครงาน', application_message: 'ข้อความสมัครงาน', other: 'เอกสารอื่น',
   },
   en: {
     subtitle: 'Project overview: saved jobs, documents and agent activity', evaluate: 'Evaluate a new job',
@@ -32,7 +32,7 @@ const copy = {
     docsTitle: 'Latest documents', noDocs: 'No documents yet', noDocsNext: 'Evaluate a job, then ask the agent to draft documents.', revision: 'Revision',
     cvTitle: 'Your CV', noCv: 'No CV yet', noCvNext: 'Add a CV so the agent can evaluate jobs.', addCv: 'Add CV', updateCv: 'Update CV',
     activity: 'Agent activity', idle: 'Nothing running', approvals: 'Pending approvals', openSession: 'Open session', untitled: 'Untitled job', evaluating: 'Evaluating job', drafting: 'Drafting documents',
-    cv: 'CV', cover_letter: 'Cover letter', other: 'Other',
+    cv: 'CV', cover_letter: 'Cover letter', application_message: 'Application message', other: 'Other',
   },
 };
 

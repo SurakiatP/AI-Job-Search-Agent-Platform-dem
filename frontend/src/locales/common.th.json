@@ -105,6 +105,7 @@
     "uploadInvalidType": "เลือกไฟล์ PDF ที่มีข้อความ, DOCX หรือไฟล์ข้อความ",
     "docTypeCv": "CV",
     "docTypeCoverLetter": "จดหมายสมัครงาน",
+    "docTypeApplicationMessage": "ข้อความสมัครงาน",
     "docTypeOther": "เอกสารอื่น",
     "landingEyebrow": "จาก CV ไปถึงเอกสารร่างที่ตรวจทานได้",
     "landingStepCv": "เพิ่ม CV",

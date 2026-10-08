@@ -79,7 +79,7 @@ export type JobRevisionView = {
   application_status?: 'saved' | 'applied';
 };
 export type JobApplicationStatusView = { job_revision_id: string; application_status: 'saved' | 'applied' };
-export type RunOperation = 'evaluate_job' | 'draft_documents';
+export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document';
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 export type SkillCoverage = { required: string[]; matched: string[]; missing: string[]; ratio: number; method: string };
 export type EvaluationResult = { report_markdown: string; score: number | null; skill_coverage?: SkillCoverage | null };
@@ -115,7 +115,7 @@ export type RunEventView = {
 export type RunEvent = RunEventView & { run_id: string };
 export type DocumentView = {
   id: string;
-  document_type: 'cv' | 'cover_letter' | 'other';
+  document_type: 'cv' | 'cover_letter' | 'application_message' | 'other';
   title: string;
   latest_revision: { id: string; revision: number; created_at: string } | null;
   content_markdown: string | null;

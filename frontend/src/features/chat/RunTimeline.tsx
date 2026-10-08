@@ -16,7 +16,7 @@ export function RunTimeline({ locale, run, events, cancellationPending }: { loca
   if (!run) return null;
   const t = statuses[locale];
   const title = locale === 'th' ? 'สถานะงาน' : 'Run status';
-  const operation = run.operation === 'evaluate_job' ? (locale === 'th' ? 'ประเมินงาน' : 'Evaluating job') : (locale === 'th' ? 'ร่างเอกสาร' : 'Drafting documents');
+  const operation = run.operation === 'evaluate_job' ? (locale === 'th' ? 'ประเมินงาน' : 'Evaluating job') : run.operation === 'export_document' ? (locale === 'th' ? 'สร้างไฟล์เอกสาร' : 'Generating file') : (locale === 'th' ? 'ร่างเอกสาร' : 'Drafting documents');
   const cancelText = locale === 'th' ? 'กำลังรอผลยืนยันการหยุด' : 'Waiting for cancellation confirmation';
   const progress = events.length ? events[events.length - 1].data.progress_percent : null;
   return <Card aria-labelledby="run-status-heading" role="region">

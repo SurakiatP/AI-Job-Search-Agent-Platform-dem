@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { ChevronDown, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FitScore } from '@/components/FitScore';
 import { SkillCoverage } from '@/components/SkillCoverage';
 import { Markdown } from '@/components/Markdown';
+import { CopyButton } from '@/components/CopyButton';
 import type { DocumentView, Locale, RunView } from '../../lib/api-types';
 
 // Probe the download once (headers only, then abort) so a deleted document's file shows muted text instead of a broken link.
@@ -21,6 +22,11 @@ function ResultFile({ href, label, deleted }: { href: string; label: string; del
   }, [href]);
   if (gone) return <p className="text-sm text-muted-foreground" data-testid="document-deleted">{deleted}</p>;
   return <Button asChild variant="outline" className="h-auto justify-start whitespace-normal py-2 text-left"><a href={href}><Download className="size-4" aria-hidden="true" />{label}</a></Button>;
+}
+
+function ReportBody({ markdown }: { markdown: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  return <div className="border-t px-4 py-4"><div ref={ref}><Markdown data-testid="evaluation-report">{markdown}</Markdown></div><CopyButton className="mt-3" source={ref} markdown={markdown} /></div>;
 }
 
 export function RunResults({ projectId, locale, run, documents, trashedDocuments = [] }: { projectId: string; locale: Locale; run: RunView | null; documents: DocumentView[]; trashedDocuments?: DocumentView[] }) {
@@ -47,7 +53,7 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
           <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
             <span>{report}</span><ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
           </summary>
-          <Markdown className="border-t px-4 py-4" data-testid="evaluation-report">{evaluation.report_markdown}</Markdown>
+          <ReportBody markdown={evaluation.report_markdown} />
         </details>
       </div>}
       {resultDocuments.map(document => <article key={document.id} className="grid gap-3 rounded-lg border p-4">

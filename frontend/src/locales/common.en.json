@@ -105,6 +105,7 @@
     "uploadInvalidType": "Choose a text PDF, DOCX or text file.",
     "docTypeCv": "CV",
     "docTypeCoverLetter": "Cover letter",
+    "docTypeApplicationMessage": "Application message",
     "docTypeOther": "Other document",
     "landingEyebrow": "A clear flow, from CV to reviewed draft.",
     "landingStepCv": "Add your CV",

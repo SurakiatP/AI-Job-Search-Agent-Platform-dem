@@ -1,12 +1,15 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeftRight, Bot, FileText, TriangleAlert } from 'lucide-react';
+import { ArrowLeftRight, Bot, ChevronDown, Pencil, TriangleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Breadcrumb } from '@/components/PageBack';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Markdown } from '@/components/Markdown';
+import { CopyButton } from '@/components/CopyButton';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { useDraft } from '../../app/drafts';
 import { Textarea } from '@/components/ui/textarea';
 import { ErrorState, LoadingState, MissingResource } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
@@ -20,19 +23,38 @@ import { RunResults } from './RunResults';
 
 const selectClass = 'flex min-h-9 rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50';
 const copy = {
-  th: { title: 'เซสชัน', unpaired: 'ยังไม่ได้จับคู่', unpairedBody: 'เซสชันเก่านี้ไม่ได้จับคู่ CV กับงาน จึงดูได้อย่างเดียว เริ่มเซสชันใหม่เพื่อประเมินและร่างเอกสาร', startPaired: 'เริ่มเซสชันที่จับคู่', outdated: 'มี CV เวอร์ชันใหม่', outdatedBody: 'เซสชันนี้ใช้ CV เวอร์ชันเก่า เริ่มเซสชันใหม่ด้วย CV ล่าสุดกับงานเดิม', outdatedBtn: 'เริ่มด้วย CV ล่าสุด', eval: 'การประเมิน', evalNone: 'ยังไม่มีผลประเมิน', draft: 'ร่างเอกสาร', draftBody: 'เลือกประเภทเอกสารที่ต้องการ เอเจนต์จะร่างจาก CV และงานคู่นี้', letter: 'จดหมายสมัครงาน', message: 'ข้อความสมัครงาน', lang: 'ภาษาเอกสาร', docs: 'เอกสารที่ร่างในเซสชันนี้', noDocs: 'ยังไม่มีเอกสาร', open: 'เปิดเอกสาร', revise: 'สั่งแก้', reviseHint: 'บอกสิ่งที่ต้องการแก้ ระบบจะสร้างเวอร์ชันใหม่ของเอกสารนี้', send: 'ส่งคำสั่งแก้', cancel: 'หยุดงาน', retry: 'ลองใหม่เป็นงานใหม่', refresh: 'โหลดสถานะใหม่', noProvider: 'ยังไม่ได้ตั้งค่าผู้ให้บริการ AI', settings: 'ไปที่การตั้งค่า', version: 'เวอร์ชัน', you: 'คุณ', cvPage: 'เปิดหน้า CV', jobPage: 'ดูรายละเอียดงาน', letterAsk: 'ร่างจดหมายสมัครงาน (cover letter) สำหรับงานนี้', messageAsk: 'ร่างข้อความสมัครงานสั้น ๆ สำหรับส่งผู้รับสมัครงานนี้', th: 'ไทย', en: 'English', readOnly: 'ข้อความในเซสชันเก่า (ดูอย่างเดียว)' },
-  en: { title: 'Session', unpaired: 'Not paired', unpairedBody: 'This older session has no CV and job pair, so it is read-only. Start a new session to evaluate and draft.', startPaired: 'Start a paired session', outdated: 'A newer CV version exists', outdatedBody: 'This session uses an older CV version. Start a new session with the latest CV and the same job.', outdatedBtn: 'Start with latest CV', eval: 'Evaluation', evalNone: 'No evaluation yet', draft: 'Draft documents', draftBody: 'Pick a document type. The agent drafts it from this CV and job pair.', letter: 'Cover letter', message: 'Application message', lang: 'Document language', docs: 'Documents drafted in this session', noDocs: 'No documents yet', open: 'Open document', revise: 'Revise', reviseHint: 'Say what to change. A new version of this document is created.', send: 'Send revision request', cancel: 'Stop run', retry: 'Retry as a new run', refresh: 'Refresh status', noProvider: 'The AI provider is not configured yet.', settings: 'Open settings', version: 'Version', you: 'You', cvPage: 'Open CV page', jobPage: 'View job details', letterAsk: 'Draft a cover letter for this job.', messageAsk: 'Draft a short application message to send to the recruiter for this job.', th: 'ไทย', en: 'English', readOnly: 'Messages from the older session (read-only)' },
+  th: { title: 'เซสชัน', unpaired: 'ยังไม่ได้จับคู่', unpairedBody: 'เซสชันเก่านี้ไม่ได้จับคู่ CV กับงาน จึงดูได้อย่างเดียว เริ่มเซสชันใหม่เพื่อประเมินและร่างเอกสาร', startPaired: 'เริ่มเซสชันที่จับคู่', outdated: 'มี CV เวอร์ชันใหม่', outdatedBody: 'เซสชันนี้ใช้ CV เวอร์ชันเก่า เริ่มเซสชันใหม่ด้วย CV ล่าสุดกับงานเดิม', outdatedBtn: 'เริ่มด้วย CV ล่าสุด', eval: 'การประเมิน', evalNone: 'ยังไม่มีผลประเมิน', draft: 'ร่างเอกสาร', draftBody: 'เลือกประเภทเอกสารที่ต้องการ เอเจนต์จะร่างจาก CV และงานคู่นี้', letter: 'จดหมายสมัครงาน', message: 'ข้อความสมัครงาน', lang: 'ภาษาเอกสาร', docs: 'เอกสารที่ร่างในเซสชันนี้', noDocs: 'ยังไม่มีเอกสาร', open: 'เปิดเอกสาร', revise: 'สั่งแก้', reviseHint: 'บอกสิ่งที่ต้องการแก้ ระบบจะสร้างเวอร์ชันใหม่ของเอกสารนี้', send: 'ส่งคำสั่งแก้', cancel: 'หยุดงาน', retry: 'ลองใหม่เป็นงานใหม่', refresh: 'โหลดสถานะใหม่', noProvider: 'ยังไม่ได้ตั้งค่าผู้ให้บริการ AI', settings: 'ไปที่การตั้งค่า', version: 'เวอร์ชัน', you: 'คุณ', cvPage: 'เปิดหน้า CV', jobPage: 'ดูรายละเอียดงาน', letterAsk: 'ร่างจดหมายสมัครงาน (cover letter) สำหรับงานนี้', messageAsk: 'ร่างข้อความสมัครงานสั้น ๆ สำหรับส่งผู้รับสมัครงานนี้', th: 'ไทย', en: 'English', readOnly: 'ข้อความในเซสชันเก่า (ดูอย่างเดียว)', redraft: 'ร่างใหม่ทั้งฉบับ', redraftConfirm: 'จะสร้างเวอร์ชันใหม่ของเอกสารเดิม', redraftBody: 'เอเจนต์จะร่างใหม่ทั้งฉบับและเพิ่มเป็นเวอร์ชันใหม่ของเอกสารนี้ เวอร์ชันเดิมยังอยู่ในประวัติ', confirm: 'ร่างใหม่', dismiss: 'ยกเลิก', edit: 'แก้ไข', reviseAi: 'สั่งแก้ด้วย AI', draftStatus: 'สถานะการร่างเอกสาร' },
+  en: { title: 'Session', unpaired: 'Not paired', unpairedBody: 'This older session has no CV and job pair, so it is read-only. Start a new session to evaluate and draft.', startPaired: 'Start a paired session', outdated: 'A newer CV version exists', outdatedBody: 'This session uses an older CV version. Start a new session with the latest CV and the same job.', outdatedBtn: 'Start with latest CV', eval: 'Evaluation', evalNone: 'No evaluation yet', draft: 'Draft documents', draftBody: 'Pick a document type. The agent drafts it from this CV and job pair.', letter: 'Cover letter', message: 'Application message', lang: 'Document language', docs: 'Documents drafted in this session', noDocs: 'No documents yet', open: 'Open document', revise: 'Revise', reviseHint: 'Say what to change. A new version of this document is created.', send: 'Send revision request', cancel: 'Stop run', retry: 'Retry as a new run', refresh: 'Refresh status', noProvider: 'The AI provider is not configured yet.', settings: 'Open settings', version: 'Version', you: 'You', cvPage: 'Open CV page', jobPage: 'View job details', letterAsk: 'Draft a cover letter for this job.', messageAsk: 'Draft a short application message to send to the recruiter for this job.', th: 'ไทย', en: 'English', readOnly: 'Messages from the older session (read-only)', redraft: 'Redraft from scratch', redraftConfirm: 'This creates a new version of the existing document', redraftBody: 'The agent drafts the whole document again and adds it as a new version of this document. Earlier versions stay in the history.', confirm: 'Redraft', dismiss: 'Cancel', edit: 'Edit', reviseAi: 'Revise with AI', draftStatus: 'Draft status' },
 };
+type DraftKind = 'cover_letter' | 'application_message';
 const ACTIVE = ['queued', 'running', 'waiting_approval'];
 
-function ReviseBox({ c, busy, onSubmit }: { c: typeof copy.en; busy: boolean; onSubmit: (text: string) => Promise<boolean> }) {
-  const [text, setText] = useState('');
+function ReviseBox({ c, projectId, docId, busy, onSubmit }: { c: typeof copy.en; projectId: string; docId: string; busy: boolean; onSubmit: (text: string) => Promise<boolean> }) {
+  const [text, setText] = useDraft(projectId, docId, 'revise');
+  const [open, setOpen] = useState(text !== '');
   const id = useId();
-  return <form className="grid gap-2" onSubmit={event => { event.preventDefault(); if (text.trim() && !busy) void onSubmit(text.trim()).then(ok => { if (ok) setText(''); }); }}>
-    <label className="text-sm font-medium" htmlFor={id}>{c.revise}</label>
-    <Textarea id={id} rows={2} maxLength={500} value={text} placeholder={c.reviseHint} onChange={event => setText(event.target.value)} disabled={busy} />
-    <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{text.length}/500</span><Button type="submit" size="sm" disabled={busy || !text.trim()}>{c.send}</Button></div>
-  </form>;
+  return <div className="grid gap-2">
+    <Button type="button" variant="ghost" size="sm" className="min-h-11 justify-self-start" aria-expanded={open} onClick={() => setOpen(value => !value)}><ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />{c.reviseAi}</Button>
+    {open && <form className="grid gap-2" onSubmit={event => { event.preventDefault(); if (text.trim() && !busy) void onSubmit(text.trim()).then(ok => { if (ok) setText(''); }); }}>
+      <label className="text-sm font-medium" htmlFor={id}>{c.revise}</label>
+      <Textarea id={id} rows={2} maxLength={500} value={text} placeholder={c.reviseHint} onChange={event => setText(event.target.value)} disabled={busy} />
+      <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{text.length}/500</span><Button type="submit" size="sm" className="min-h-11" disabled={busy || !text.trim()}>{c.send}</Button></div>
+    </form>}
+  </div>;
+}
+
+function DocCard({ c, base, projectId, doc, busy, onRevise }: { c: typeof copy.en; base: string; projectId: string; doc: DocumentView; busy: boolean; onRevise: (text: string) => Promise<boolean> }) {
+  const ref = useRef<HTMLDivElement>(null);
+  return <Card><CardContent className="grid gap-3 p-4">
+    <h3 className="min-w-0 break-words font-semibold">{doc.title}{doc.latest_revision ? <span className="ms-2 text-sm font-normal text-muted-foreground">{c.version} {doc.latest_revision.revision}</span> : null}</h3>
+    {doc.content_markdown && <Link to={`${base}/documents/${doc.id}`} className="relative block max-h-28 overflow-hidden rounded-md text-foreground no-underline" title={c.open}>
+      <div ref={ref}><Markdown>{doc.content_markdown}</Markdown></div><div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" aria-hidden="true" /></Link>}
+    <div className="flex flex-wrap items-center gap-2">
+      <Button asChild size="sm" className="min-h-11"><Link to={`${base}/documents/${doc.id}?edit=1`}><Pencil className="size-4" aria-hidden="true" />{c.edit}</Link></Button>
+      {doc.content_markdown && <CopyButton source={ref} markdown={doc.content_markdown} />}
+    </div>
+    <ReviseBox c={c} projectId={projectId} docId={doc.id} busy={busy} onSubmit={onRevise} />
+  </CardContent></Card>;
 }
 
 export function SessionPage() {
@@ -50,7 +72,8 @@ export function SessionPage() {
   const [outputLanguage, setOutputLanguage] = useState<Locale>(locale);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const last = useRef<{ operation: RunOperation; instructions: string; documentId?: string } | null>(null);
+  const last = useRef<{ operation: RunOperation; instructions: string; documentId?: string; draftKind?: DraftKind } | null>(null);
+  const [confirmKind, setConfirmKind] = useState<DraftKind | null>(null);
   const status = workflow.run?.status;
   const runId = workflow.run?.id;
   const { reload: reloadRuns } = runs; const { reload: reloadDocs } = documents; const { reload: reloadTrash } = trashed;
@@ -69,15 +92,15 @@ export function SessionPage() {
   const drafted = (documents.data ?? []).filter(doc => doc.source_run_id && draftRunIds.has(doc.source_run_id));
   const busy = active || submitting || workflow.submitting;
 
-  async function startRun(operation: RunOperation, instructions: string, documentId?: string, retryOf?: string): Promise<boolean> {
+  async function startRun(operation: RunOperation, instructions: string, documentId?: string, retryOf?: string, draftKind?: DraftKind): Promise<boolean> {
     setSubmitting(true); setError('');
     const key = crypto.randomUUID();
     try {
       await apiRequest<RunView>(`/projects/${projectId}/runs`, {
         method: 'POST', headers: { 'Idempotency-Key': key },
-        body: JSON.stringify({ session_id: sessionId, operation, output_language: outputLanguage, idempotency_key: key, ...(instructions ? { owner_instructions: instructions } : {}), ...(documentId ? { document_id: documentId } : {}), ...(retryOf ? { retry_of_id: retryOf } : {}) }),
+        body: JSON.stringify({ session_id: sessionId, operation, output_language: outputLanguage, idempotency_key: key, ...(instructions ? { owner_instructions: instructions } : {}), ...(documentId ? { document_id: documentId } : {}), ...(draftKind ? { draft_kind: draftKind } : {}), ...(retryOf ? { retry_of_id: retryOf } : {}) }),
       });
-      last.current = { operation, instructions, documentId };
+      last.current = { operation, instructions, documentId, draftKind };
       await workflow.reload().catch(() => undefined); reloadRuns();
       return true;
     } catch (caught) {
@@ -87,9 +110,22 @@ export function SessionPage() {
   }
   const retry = () => {
     const previous = last.current ?? (workflow.run?.operation === 'evaluate_job' ? { operation: 'evaluate_job' as const, instructions: '' } : null);
-    if (previous && workflow.run) void startRun(previous.operation, previous.instructions, previous.documentId, workflow.run.id);
+    if (previous && workflow.run) void startRun(previous.operation, previous.instructions, previous.documentId, workflow.run.id, previous.draftKind);
   };
-  const failed = status && !ACTIVE.includes(status) && status !== 'completed';
+  const failed = status && !ACTIVE.includes(status) && status !== 'completed' && workflow.run?.operation !== 'export_document';
+  const evalIsLatest = workflow.run?.operation === 'evaluate_job';
+  const liveDoc = (kind: DraftKind) => drafted.find(doc => doc.document_type === kind);
+  const draftNow = (kind: DraftKind) => { setConfirmKind(null); void startRun('draft_documents', kind === 'cover_letter' ? c.letterAsk : c.messageAsk, undefined, undefined, kind); };
+  const askDraft = (kind: DraftKind) => liveDoc(kind) ? setConfirmKind(kind) : draftNow(kind);
+  const kindLabel = (kind: DraftKind) => kind === 'cover_letter' ? c.letter : c.message;
+  const draftLabel = (kind: DraftKind) => liveDoc(kind) ? `${c.redraft}: ${kindLabel(kind)}` : kindLabel(kind);
+  const runPanel = <>
+    {workflow.error && <p className="flex flex-wrap items-center gap-3 text-sm text-destructive" role="alert"><span className="min-w-0 break-words">{t(workflow.error, { defaultValue: t('pages.loadError') })}</span> <Button type="button" variant="outline" size="sm" onClick={() => void workflow.reload().catch(() => undefined)}>{c.refresh}</Button></p>}
+    <RunTimeline locale={locale} run={workflow.run} events={workflow.events} cancellationPending={workflow.cancellationPending} />
+    {active && <Button type="button" variant="outline" className="self-start" disabled={workflow.submitting || workflow.cancellationPending} onClick={() => void workflow.cancel()}>{c.cancel}</Button>}
+    {failed && (last.current || workflow.run?.operation === 'evaluate_job') && <Button type="button" variant="outline" className="self-start" disabled={busy} onClick={retry}>{c.retry}</Button>}
+    <ApprovalCard approval={workflow.pendingApproval} locale={locale} busy={workflow.submitting} onDecision={(id, decision) => void workflow.decideApproval(id, decision)} onRefresh={() => void workflow.reload().catch(() => undefined)} />
+  </>;
   return <section className="flex min-w-0 flex-col gap-4">
     <Breadcrumb label={c.title} items={[{ label: project.data?.name ?? t('pages.project'), to: `${base}/overview` }, { label: current.title }]} />
     <div className="grid gap-2"><h1 className="break-words text-2xl font-semibold">{current.title}</h1>
@@ -112,28 +148,23 @@ export function SessionPage() {
 
     {paired && <>
       <h2 className="text-lg font-semibold">{c.eval}</h2>
-      {workflow.error && <p className="flex flex-wrap items-center gap-3 text-sm text-destructive" role="alert"><span className="min-w-0 break-words">{t(workflow.error, { defaultValue: t('pages.loadError') })}</span> <Button type="button" variant="outline" size="sm" onClick={() => void workflow.reload().catch(() => undefined)}>{c.refresh}</Button></p>}
-      <RunTimeline locale={locale} run={workflow.run} events={workflow.events} cancellationPending={workflow.cancellationPending} />
-      {active && <Button type="button" variant="outline" className="self-start" disabled={workflow.submitting || workflow.cancellationPending} onClick={() => void workflow.cancel()}>{c.cancel}</Button>}
-      {failed && (last.current || workflow.run?.operation === 'evaluate_job') && <Button type="button" variant="outline" className="self-start" disabled={busy} onClick={retry}>{c.retry}</Button>}
-      <ApprovalCard approval={workflow.pendingApproval} locale={locale} busy={workflow.submitting} onDecision={(id, decision) => void workflow.decideApproval(id, decision)} onRefresh={() => void workflow.reload().catch(() => undefined)} />
+      {evalIsLatest ? runPanel : <RunTimeline locale={locale} run={evalRun} events={[]} />}
       {evalRun ? <RunResults projectId={projectId} locale={locale} run={evalRun} documents={[]} trashedDocuments={[]} /> : !active && <p className="text-sm text-muted-foreground">{c.evalNone}</p>}
 
       <Card><CardHeader><CardTitle className="text-lg">{c.draft}</CardTitle></CardHeader><CardContent className="grid gap-3">
         <p className="text-sm text-muted-foreground">{c.draftBody}</p>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" disabled={busy} onClick={() => void startRun('draft_documents', c.letterAsk)}>{c.letter}</Button>
-          <Button type="button" variant="outline" disabled={busy} onClick={() => void startRun('draft_documents', c.messageAsk)}>{c.message}</Button>
+          <Button type="button" className="min-h-11" variant={liveDoc('cover_letter') ? 'outline' : 'default'} disabled={busy} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button>
+          <Button type="button" className="min-h-11" variant="outline" disabled={busy} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button>
           <label className="ms-auto flex items-center gap-2 text-sm">{c.lang}<select className={selectClass} value={outputLanguage} onChange={event => setOutputLanguage(event.target.value === 'en' ? 'en' : 'th')} disabled={busy}><option value="th">{c.th}</option><option value="en">{c.en}</option></select></label>
-        </div></CardContent></Card>
+        </div>{!evalIsLatest && runPanel}</CardContent></Card>
+    {confirmKind && <Dialog open onOpenChange={open => { if (!open) setConfirmKind(null); }}><DialogContent>
+      <DialogTitle>{c.redraftConfirm}</DialogTitle><DialogDescription>{kindLabel(confirmKind)}: {c.redraftBody}</DialogDescription>
+      <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" className="min-h-11">{c.dismiss}</Button></DialogClose><Button type="button" className="min-h-11" onClick={() => draftNow(confirmKind)}>{c.confirm}</Button></div>
+    </DialogContent></Dialog>}
 
       <h2 className="text-lg font-semibold">{c.docs}</h2>
-      {drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <Card key={doc.id}><CardContent className="grid gap-3 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="min-w-0 break-words font-semibold">{doc.title}{doc.latest_revision ? <span className="ms-2 text-sm font-normal text-muted-foreground">{c.version} {doc.latest_revision.revision}</span> : null}</h3>
-          <Button asChild variant="outline" size="sm"><Link to={`${base}/documents/${doc.id}`}><FileText className="size-4" aria-hidden="true" />{c.open}</Link></Button></div>
-        {doc.content_markdown && <Markdown className="max-h-96 overflow-auto">{doc.content_markdown}</Markdown>}
-        <ReviseBox c={c} busy={busy} onSubmit={text => startRun('draft_documents', text, doc.id)} />
-      </CardContent></Card>)}
+      {drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <DocCard key={doc.id} c={c} base={base} projectId={projectId} doc={doc} busy={busy} onRevise={text => startRun('draft_documents', text, doc.id)} />)}
     </>}
   </section>;
 }
