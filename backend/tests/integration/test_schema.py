@@ -61,7 +61,7 @@ def test_project_bound_run_references_reject_cross_project_ids(db_session):
     s1, s2 = session(db_session, p1.id), session(db_session, p2.id)
     cv1, job1 = revisions(db_session, p1.id)
     cv2, job2 = revisions(db_session, p2.id)
-    provider1, provider2 = provider_config(db_session, p1.id), provider_config(db_session, p2.id)
+    provider1 = provider_config(db_session)  # system-wide: shared by every project
     db_session.commit()
 
     common = dict(project_id=p1.id, actor_scope="owner", idempotency_key="schema-check",
@@ -70,8 +70,7 @@ def test_project_bound_run_references_reject_cross_project_ids(db_session):
                   provider_configuration_id=provider1.id, input_snapshot={}, config_snapshot={},
                   output_language="en", status="queued")
     for field, foreign_value in (("session_id", s2.id), ("cv_revision_id", cv2.id),
-                                 ("job_revision_id", job2.id),
-                                 ("provider_configuration_id", provider2.id)):
+                                 ("job_revision_id", job2.id)):
         with pytest.raises(IntegrityError):
             with db_session.begin_nested():
                 db_session.add(Run(**{**common, field: foreign_value, "idempotency_key": f"bad-{field}"}))
@@ -278,3 +277,29 @@ def test_durable_runtime_limits_and_output_provenance(db_session):
                 db_session.execute(update(Run).where(Run.id == run.id).values(**changes))
                 db_session.flush()
     assert RunArtifact.__table__.primary_key.columns.keys() == ["run_id", "file_id"]
+
+
+def test_migration_0012_copies_newest_config_to_global_and_keeps_run_history(postgres_engine):
+    from sqlalchemy import text
+    config = Config()
+    config.set_main_option("script_location", str(__import__("pathlib").Path(__file__).resolve().parents[2] / "migrations"))
+    pid, old_id, newest = uuid4(), uuid4(), uuid4()
+    def migrate(fn, target):
+        with postgres_engine.begin() as connection:
+            config.attributes["connection"] = connection
+            fn(config, target)
+    migrate(command.upgrade, "0011_session_removed_at")
+    with postgres_engine.begin() as c:
+        c.execute(text("INSERT INTO projects (id, name) VALUES (:p, 'Legacy')"), {"p": pid})
+        for cid, model, rev, ts in ((old_id, "old", 1, "2026-01-01"), (newest, "newest", 2, "2026-02-01")):
+            c.execute(text("INSERT INTO provider_configurations (id, project_id, provider, model, secret_reference, revision, updated_at)"
+                           " VALUES (:i, :p, 'openai', :m, 'secret-ref://x', :r, :t)"), {"i": cid, "p": pid, "m": model, "r": rev, "t": ts})
+    migrate(command.upgrade, "head")
+    with postgres_engine.begin() as c:
+        rows = c.execute(text("SELECT model, revision, secret_reference FROM provider_configurations WHERE project_id IS NULL")).all()
+        assert [tuple(r) for r in rows] == [("newest", 1, "secret-ref://x")]
+        assert c.execute(text("SELECT count(*) FROM provider_configurations WHERE project_id = :p"), {"p": pid}).scalar() == 2
+    migrate(command.downgrade, "0011_session_removed_at")
+    with postgres_engine.begin() as c:
+        assert c.execute(text("SELECT count(*) FROM provider_configurations WHERE project_id IS NULL")).scalar() == 0
+        assert c.execute(text("SELECT count(*) FROM provider_configurations")).scalar() == 2

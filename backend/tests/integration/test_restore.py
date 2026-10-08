@@ -136,7 +136,7 @@ def _seed_snapshot(engine, client, bucket: str):
             expires_at=backup.datetime.now(backup.timezone.utc),
         ))
         provider = ProviderConfiguration(
-            project_id=project.id, provider="openai", model="synthetic-model",
+            project_id=None, provider="openai", model="synthetic-model",
             secret_reference="source-keychain-reference", revision=1,
         )
         chat = ConversationSession(project_id=project.id, title="Synthetic recovery run")
@@ -284,7 +284,7 @@ def test_pg_minio_backup_restores_content_auth_reset_and_keychain_invalidation(
                 expires_at=backup.datetime.now(backup.timezone.utc) + timedelta(hours=1),
             )
             fresh_provider = ProviderConfiguration(
-                project_id=old_run.project_id, provider="openai", model="synthetic-model-v2",
+                project_id=None, provider="openai", model="synthetic-model-v2",
                 secret_reference="fresh-destination-keychain-reference", revision=2,
             )
             session.add_all([owner_session, fresh_provider])

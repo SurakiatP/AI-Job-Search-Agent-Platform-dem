@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+
+from sqlalchemy import select
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -68,8 +70,13 @@ def revisions(db, project_id):
     return cv, job
 
 
-def provider_config(db, project_id):
-    value = ProviderConfiguration(project_id=project_id, provider="synthetic", model="test-model",
+def provider_config(db, project_id=None):
+    """Ensure the system-wide provider configuration exists (project_id kept for old callers)."""
+    existing = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
+                         .order_by(ProviderConfiguration.revision.desc()).limit(1))
+    if existing is not None:
+        return existing
+    value = ProviderConfiguration(project_id=None, provider="synthetic", model="test-model",
                                   secret_reference="secret-ref://synthetic/test", revision=1)
     db.add(value)
     db.flush()

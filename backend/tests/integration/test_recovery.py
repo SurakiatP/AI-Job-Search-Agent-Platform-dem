@@ -113,7 +113,7 @@ def test_running_native_execution_prevents_capture(migrated_engine, recovery_buc
         cv = CVRevision(project_id=project.id, cv_id=primary_cv(session, project.id).id, revision=1)
         job = JobRevision(project_id=project.id, revision=1, title="Synthetic role", description="Synthetic description")
         provider = ProviderConfiguration(
-            project_id=project.id, provider="openai", model="synthetic-model",
+            project_id=None, provider="openai", model="synthetic-model",
             secret_reference="synthetic-keychain-ref", revision=1,
         )
         session.add_all([conversation, cv, job, provider])

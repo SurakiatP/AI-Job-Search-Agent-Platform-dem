@@ -353,7 +353,7 @@ class RunService:
 
         provider_config = db.scalar(
             select(ProviderConfiguration)
-            .where(ProviderConfiguration.project_id == project_id)
+            .where(ProviderConfiguration.project_id.is_(None))
             .order_by(ProviderConfiguration.revision.desc())
             .limit(1)
         )

@@ -33,11 +33,10 @@ function baseUrlProblem(value: string): 'https' | 'invalid' | null {
   } catch { return 'invalid'; }
 }
 
-export function ProviderSettings({ projectId }: { projectId: string }) {
+export function ProviderSettings() {
   const { t } = useTranslation('settings');
-  const project = encodeURIComponent(projectId);
   const catalogState = useResource<{ providers: Entry[] }>('/providers');
-  const providerState = useResource<ProviderView>(`/projects/${project}/settings/provider`);
+  const providerState = useResource<ProviderView>(`/settings/provider`);
   const catalog = catalogState.data?.providers ?? (catalogState.status === 'error' ? FALLBACK : []);
   const [provider, setProvider] = useState('openai');
   const [baseUrl, setBaseUrl] = useState('');
@@ -85,7 +84,7 @@ export function ProviderSettings({ projectId }: { projectId: string }) {
     if (busy || !canSave) return;
     setBusy('save'); setMessage(null);
     try {
-      await apiRequest<ProviderView>(`/projects/${project}/settings/provider`, { method: 'PUT', body: JSON.stringify({ provider, model: model.trim(), ...(credential ? { credential } : {}), ...(sentBase ? { base_url: sentBase } : {}) }) });
+      await apiRequest<ProviderView>(`/settings/provider`, { method: 'PUT', body: JSON.stringify({ provider, model: model.trim(), ...(credential ? { credential } : {}), ...(sentBase ? { base_url: sentBase } : {}) }) });
       setCredential('');
       providerState.reload();
       setMessage({ ok: true, text: t('saved') });
@@ -96,7 +95,7 @@ export function ProviderSettings({ projectId }: { projectId: string }) {
   async function testConnection() {
     setBusy('test'); setMessage(null);
     try {
-      const result = await apiRequest<TestView>(`/projects/${project}/settings/provider/test`, { method: 'POST' });
+      const result = await apiRequest<TestView>(`/settings/provider/test`, { method: 'POST' });
       setMessage({ ok: result.status === 'succeeded', text: t(result.status === 'succeeded' ? 'connection.succeeded' : result.status === 'unavailable' ? 'connection.unavailable' : 'connection.failed') });
     } catch (error) { setMessage({ ok: false, text: errorText(error) }); }
     finally { setBusy(null); }
@@ -105,7 +104,7 @@ export function ProviderSettings({ projectId }: { projectId: string }) {
   async function loadModels() {
     setBusy('models'); setMessage(null);
     try {
-      const result = await apiRequest<{ models: ModelItem[] }>(`/projects/${project}/settings/provider/models`, { method: 'POST', body: JSON.stringify({ provider, base_url: sentBase || null, credential: credential || null }) });
+      const result = await apiRequest<{ models: ModelItem[] }>(`/settings/provider/models`, { method: 'POST', body: JSON.stringify({ provider, base_url: sentBase || null, credential: credential || null }) });
       setModels(result.models);
     } catch (error) {
       setModels([]);

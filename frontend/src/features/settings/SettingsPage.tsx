@@ -43,15 +43,16 @@ export function SettingsPage() {
         </ul>
       </nav>
       <div className="grid min-w-0 gap-4">
-        {section !== 'appearance' && <div className="grid gap-1.5 sm:max-w-xs">
-          <Label htmlFor="settings-project">{t('pages.project', { defaultValue: 'Project' })}</Label>
+        {(section === 'tools' || section === 'sharing') && <div className="grid gap-1.5 sm:max-w-xs">
+          <Label htmlFor="settings-project">{ts('projectScope')}</Label>
           <select id="settings-project" className={selectClass} value={projectId} onChange={event => setSelectedProject(event.target.value)}>
             {projects.data?.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
           </select>
           {!projectId && <Link className="text-sm text-primary hover:underline" to="/app/projects/new">{t('pages.createProject', { defaultValue: 'Create a project' })}</Link>}
         </div>}
         {section === 'appearance' && <AppearanceSettings />}
-        {section !== 'appearance' && projectId && (section === 'provider' ? <ProviderSettings key={`provider:${projectId}`} projectId={projectId} /> : section === 'tools' ? <ToolSettings key={`tools:${projectId}`} projectId={projectId} /> : <ProjectSharing key={`sharing:${projectId}`} projectId={projectId} />)}
+        {section === 'provider' && <ProviderSettings />}
+        {(section === 'tools' || section === 'sharing') && projectId && (section === 'tools' ? <ToolSettings key={`tools:${projectId}`} projectId={projectId} /> : <ProjectSharing key={`sharing:${projectId}`} projectId={projectId} />)}
       </div>
     </div>
   </section>;

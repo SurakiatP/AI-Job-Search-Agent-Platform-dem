@@ -12,11 +12,11 @@ test.beforeEach(async ({ page }) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname.replace('/api/v1', '');
-    if (path === `/projects/${projectId}/settings/provider` && request.method() === 'GET') {
+    if (path === `/settings/provider` && request.method() === 'GET') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(provider ?? { configured: false, provider: null, model: null, revision: null, masked_secret: null }) });
       return;
     }
-    if (path === `/projects/${projectId}/settings/provider` && request.method() === 'PUT') {
+    if (path === `/settings/provider` && request.method() === 'PUT') {
       const body = request.postDataJSON() as { provider: string; model: string; credential: string };
       expect(request.headers()['x-csrf-token']).toBe('synthetic-test-csrf');
       expect(body.credential).toBe('synthetic-secret-sentinel');
@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(provider) });
       return;
     }
-    if (path === `/projects/${projectId}/settings/provider/test` && request.method() === 'POST') {
+    if (path === `/settings/provider/test` && request.method() === 'POST') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'succeeded', message_key: 'settings.connection_succeeded', checked_at: '2026-10-04T00:00:00Z', duration_ms: 20 }) });
       return;
     }
@@ -124,7 +124,7 @@ test('appearance and provider draft survive language changes; only supported too
 
 
 test('current supported OpenRouter provider remains selected when editing configuration', async ({ page }) => {
-  await page.route(`**/api/v1/projects/${projectId}/settings/provider`, async route => {
+  await page.route(`**/api/v1/settings/provider`, async route => {
     const value = { provider: 'openrouter', model: 'synthetic/model', configured: true, revision: 1, masked_secret: '••••••••' };
     if (route.request().method() === 'PUT') {
       expect(route.request().postDataJSON().provider).toBe('openrouter');

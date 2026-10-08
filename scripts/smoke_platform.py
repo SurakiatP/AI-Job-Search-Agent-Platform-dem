@@ -56,10 +56,9 @@ async def smoke(origin: str, source_project: UUID | None) -> dict:
     try:
         with services.sessions() as db:
             query = select(ProviderConfiguration).where(
+                ProviderConfiguration.project_id.is_(None),
                 ~ProviderConfiguration.secret_reference.startswith("restored-unconfigured:")
             ).order_by(ProviderConfiguration.updated_at.desc())
-            if source_project:
-                query = query.where(ProviderConfiguration.project_id == source_project)
             source = db.scalar(query.limit(1))
             if source is None:
                 return {"status": "blocked", "reason": "configure_provider_in_settings"}
@@ -80,10 +79,6 @@ async def smoke(origin: str, source_project: UUID | None) -> dict:
             project = (await request("POST", "/projects", json={"name": "Synthetic platform smoke"})).json()
             pid = UUID(project["id"])
             smoke_project_id = pid
-            with services.sessions.begin() as db:
-                # Reuse only the owner's Keychain reference; no raw key enters HTTP or output.
-                db.add(ProviderConfiguration(project_id=pid, provider=provider[0], model=provider[1],
-                                             secret_reference=provider[2], base_url=provider[3], revision=1))
             session = (await request("POST", f"/projects/{pid}/sessions", json={"title": "Synthetic acceptance"})).json()
             await request("POST", f"/projects/{pid}/cv", files={"file": (
                 "synthetic-cv.txt", "Synthetic Candidate\nData analyst, SQL and Python. Three years. Bangkok.", "text/plain")})

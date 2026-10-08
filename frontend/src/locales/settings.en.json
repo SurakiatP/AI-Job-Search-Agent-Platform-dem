@@ -1,13 +1,13 @@
 {
-  "appearance": "Appearance",
+  "projectScope": "Project settings for", "appearance": "Appearance",
   "appearanceDescription": "Choose the theme and language used on this device.",
   "light": "Light",
   "dark": "Dark",
   "system": "System",
   "provider": {
-    "description": "Choose the AI provider and model this project uses.",
+    "description": "Choose the AI provider and model. Used by all projects.",
     "configured": "Configured: {{provider}} · {{model}} · key {{secret}}",
-    "notConfigured": "No provider is configured for this project."
+    "notConfigured": "No AI provider is configured."
   },
   "sharing": {
     "description": "Create a time-limited access token for this project. Callers with the token can read generated documents when results:read is allowed; they cannot access raw CV uploads or private conversation history.",

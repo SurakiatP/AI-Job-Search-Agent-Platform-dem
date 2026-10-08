@@ -10,7 +10,7 @@ import time
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from job_search_platform.db.models import Project, ProviderConfiguration, ToolConnectorConfiguration
 from job_search_platform.db.repositories import Repositories
@@ -151,9 +151,16 @@ class Settings:
         self.connection_tester = connection_tester or probe_provider
 
     @staticmethod
-    def _current(db, project_id):
+    def _current(db):
         return db.scalar(select(ProviderConfiguration).where(
-            ProviderConfiguration.project_id == project_id).order_by(ProviderConfiguration.revision.desc()).limit(1))
+            ProviderConfiguration.project_id.is_(None)).order_by(ProviderConfiguration.revision.desc()).limit(1))
+
+    @staticmethod
+    def _owner(db, actor):
+        """Provider settings are system-wide: owner sessions only, never grants."""
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        authorize(db, actor, None, "manage", "provider_settings")
 
     @staticmethod
     def _view(row):
@@ -164,23 +171,21 @@ class Settings:
             masked_secret=None if restored else "••••••••", provider_label=spec.label if spec else None,
             base_url=row.base_url or (spec.default_base_url if spec else None) or None)
 
-    async def get_provider(self, actor, project_id):
+    async def get_provider(self, actor):
         def view():
             with self.sessions() as db:
-                authorize(db, actor, project_id, "manage", "provider_settings")
-                Repositories.project(db, project_id)
-                row = self._current(db, project_id)
+                self._owner(db, actor)
+                row = self._current(db)
                 return ProviderSettingsView(configured=False) if row is None else self._view(row)
         return await asyncio.to_thread(view)
 
-    async def save_provider(self, actor, project_id, request):
+    async def save_provider(self, actor, request):
         spec = PROVIDERS.get(request.provider)
         if spec is None:
             raise ServiceError("unsupported_provider")
         def authorize_first():
             with self.sessions() as db:
-                authorize(db, actor, project_id, "manage", "provider_settings")
-                Repositories.project(db, project_id)
+                self._owner(db, actor)
         await asyncio.to_thread(authorize_first)
         base_url = effective_base_url(spec, request.base_url)
         stored_base_url = base_url if request.base_url and request.base_url.strip() else None
@@ -195,12 +200,12 @@ class Settings:
             raise ServiceError("secret_store_unavailable") from None
         def save():
             with self.sessions.begin() as db:
-                authorize(db, actor, project_id, "manage", "provider_settings")
-                if db.scalar(select(Project).where(Project.id == project_id).with_for_update()) is None:
-                    raise ServiceError("not_found")
+                self._owner(db, actor)
+                # Serialize concurrent saves on the global revision counter.
+                db.execute(text("SELECT pg_advisory_xact_lock(hashtext('provider_configuration_global'))"))
                 revision = db.scalar(select(func.coalesce(func.max(ProviderConfiguration.revision), 0)).where(
-                    ProviderConfiguration.project_id == project_id)) + 1
-                db.add(ProviderConfiguration(project_id=project_id, revision=revision, provider=request.provider,
+                    ProviderConfiguration.project_id.is_(None))) + 1
+                db.add(ProviderConfiguration(project_id=None, revision=revision, provider=request.provider,
                                             model=request.model, base_url=stored_base_url, secret_reference=reference))
             return ProviderSettingsView(provider=request.provider, model=request.model, configured=True,
                                         revision=revision, masked_secret="••••••••", provider_label=spec.label,
@@ -216,12 +221,10 @@ class Settings:
                 raise error
             raise ServiceError("settings_save_failed", retryable=True) from None
 
-    async def trusted_provider(self, project_id, *, configuration_id=None):
+    async def trusted_provider(self, *, configuration_id=None):
         def read():
             with self.sessions() as db:
-                row = self._current(db, project_id) if configuration_id is None else db.scalar(
-                    select(ProviderConfiguration).where(ProviderConfiguration.project_id == project_id,
-                                                         ProviderConfiguration.id == configuration_id))
+                row = self._current(db) if configuration_id is None else db.get(ProviderConfiguration, configuration_id)
                 if row is None or row.secret_reference.startswith("restored-unconfigured:"):
                     raise ServiceError("provider_not_configured")
                 if row.provider not in PROVIDERS:
@@ -236,15 +239,14 @@ class Settings:
             raise ServiceError("secret_store_unavailable") from None
         return ProviderConfig(spec.hermes_id, model, base_url or spec.default_base_url, key)
 
-    async def list_models(self, actor, project_id, request):
+    async def list_models(self, actor, request):
         spec = PROVIDERS.get(request.provider)
         if spec is None:
             raise ServiceError("unsupported_provider")
         def read():
             with self.sessions() as db:
-                authorize(db, actor, project_id, "manage", "provider_settings")
-                Repositories.project(db, project_id)
-                row = self._current(db, project_id)
+                self._owner(db, actor)
+                row = self._current(db)
                 return None if row is None else (row.provider, row.base_url, row.secret_reference)
         stored = await asyncio.to_thread(read)
         base_url = effective_base_url(spec, request.base_url)
@@ -265,12 +267,12 @@ class Settings:
         except Exception:
             raise ServiceError("provider_models_unavailable", retryable=True) from None
 
-    async def test_provider(self, actor, project_id):
-        await self.get_provider(actor, project_id)
+    async def test_provider(self, actor):
+        await self.get_provider(actor)
         started = time.monotonic()
         status, message = "failed", "settings.connection_failed"
         try:
-            config = await self.trusted_provider(project_id)
+            config = await self.trusted_provider()
             passed = await asyncio.wait_for(asyncio.to_thread(self.connection_tester, config), timeout=12)
             if passed is True:
                 status, message = "succeeded", "settings.connection_succeeded"

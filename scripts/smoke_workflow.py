@@ -62,7 +62,7 @@ async def _run(project_id: uuid.UUID) -> int:
                 return 2
             provider = db.scalar(
                 select(ProviderConfiguration)
-                .where(ProviderConfiguration.project_id == project_id)
+                .where(ProviderConfiguration.project_id.is_(None))
                 .order_by(ProviderConfiguration.revision.desc())
                 .limit(1)
             )
@@ -78,11 +78,11 @@ async def _run(project_id: uuid.UUID) -> int:
             if owner_session is None:
                 _emit({"status": "blocked", "reason": "owner_session_unavailable"})
                 return 2
-            provider_values = (provider.provider, provider.model, provider.secret_reference, provider.base_url)
+            provider_id = provider.id
             actor = Actor("owner", owner_session.id, None, None, frozenset())
 
         settings = Settings(sessions, MacOSKeychain())
-        trusted = await settings.trusted_provider(project_id, configuration_id=provider.id)
+        trusted = await settings.trusted_provider(configuration_id=provider_id)
         client = _s3_client()
         object_store = S3ObjectStore(client, os.environ["OBJECT_STORE_BUCKET"])
 
@@ -97,16 +97,6 @@ async def _run(project_id: uuid.UUID) -> int:
         with sessions.begin() as db:
             smoke_project = Project(id=smoke_project_id, name=f"CORE-08 synthetic smoke {smoke_project_id}")
             db.add(smoke_project)
-            db.flush()
-            config = ProviderConfiguration(
-                project_id=smoke_project_id,
-                provider=provider_values[0],
-                model=provider_values[1],
-                secret_reference=provider_values[2],
-                base_url=provider_values[3],
-                revision=1,
-            )
-            db.add(config)
             db.flush()
             db.add(ToolConnectorConfiguration(
                 project_id=smoke_project_id, adapter_key="career_ops", enabled=True, revision=1
@@ -134,9 +124,9 @@ async def _run(project_id: uuid.UUID) -> int:
             conversation = ConversationSession(project_id=smoke_project_id, title="Synthetic smoke")
             db.add_all([stored, cv, job, conversation])
             db.flush()
-            config_id, cv_id, job_id, session_id = config.id, cv.id, job.id, conversation.id
+            config_id, cv_id, job_id, session_id = provider_id, cv.id, job.id, conversation.id
 
-        smoke_provider = await settings.trusted_provider(smoke_project_id, configuration_id=config_id)
+        smoke_provider = await settings.trusted_provider(configuration_id=config_id)
         if smoke_provider.provider != trusted.provider or smoke_provider.model != trusted.model:
             raise ServiceError("provider_configuration_changed")
         cache = Path.home() / ".cache" / "job-search-platform"

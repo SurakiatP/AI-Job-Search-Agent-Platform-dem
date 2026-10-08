@@ -57,7 +57,7 @@ def test_idempotent_replay_keeps_original_implicit_cv_and_config_snapshot(db_ses
         db.add(CVRevision(project_id=p.id, cv_id=primary_cv(db, p.id).id, revision=2))
         db.add(
             ProviderConfiguration(
-                project_id=p.id,
+                project_id=None,
                 provider="synthetic-next",
                 model="new-model",
                 secret_reference="secret-ref://synthetic/next",
@@ -427,3 +427,27 @@ async def test_events_reauthorize_between_yields_after_capability_removal(db_ses
 
     with pytest.raises(ServiceError, match="forbidden"):
         await anext(events)
+
+
+def test_admission_uses_global_provider_for_every_project_and_requires_one(db_session):
+    actor = owner(db_session)
+    a, b = project(db_session, "A"), project(db_session, "B")
+    sa, sb = session(db_session, a.id), session(db_session, b.id)
+    (_, ja), (_, jb) = revisions(db_session, a.id), revisions(db_session, b.id)
+    db_session.commit()
+    service = _service(db_session)
+    with pytest.raises(ServiceError, match="provider_configuration_required"):
+        _submit(service, actor, a.id, run_request(sa.id, ja.id, key="none"))
+    # A legacy per-project row must not satisfy admission.
+    db_session.add(ProviderConfiguration(project_id=a.id, provider="synthetic", model="legacy",
+                                         secret_reference="secret-ref://legacy", revision=1))
+    db_session.commit()
+    with pytest.raises(ServiceError, match="provider_configuration_required"):
+        _submit(service, actor, a.id, run_request(sa.id, ja.id, key="legacy"))
+    global_cfg = provider_config(db_session)
+    db_session.commit()
+    ra = _submit(service, actor, a.id, run_request(sa.id, ja.id, key="a"))
+    rb = _submit(service, actor, b.id, run_request(sb.id, jb.id, key="b"))
+    db_session.expire_all()
+    used = {db_session.get(Run, r.id).provider_configuration_id for r in (ra, rb)}
+    assert used == {global_cfg.id}

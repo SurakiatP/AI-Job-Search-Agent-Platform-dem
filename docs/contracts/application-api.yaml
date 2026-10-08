@@ -558,10 +558,10 @@ paths:
       description: Owner-only catalog of supported LLM providers (API-key providers, LM Studio and a custom OpenAI-compatible endpoint).
       responses:
         '200': {description: Provider catalog, content: {application/json: {schema: {$ref: '#/components/schemas/ProviderCatalogView'}}}}
-  /projects/{project_id}/settings/provider:
-    parameters: [{$ref: '#/components/parameters/project_id'}]
+  /settings/provider:
     get:
       tags: [settings]
+      description: Owner-only system-wide AI provider configuration (applies to all projects; grants are rejected).
       responses: {'200': {description: Provider name, model and masked credential status}}
     put:
       tags: [settings]
@@ -569,8 +569,7 @@ paths:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/ProviderSettingsUpdate'}}}
       responses: {'200': {description: Credential stored by secret adapter; secret value is not returned}}
-  /projects/{project_id}/settings/provider/models:
-    parameters: [{$ref: '#/components/parameters/project_id'}]
+  /settings/provider/models:
     post:
       tags: [settings]
       description: >-
@@ -585,8 +584,7 @@ paths:
         '409': {$ref: '#/components/responses/Unavailable'}
         '422': {$ref: '#/components/responses/Unavailable'}
         '502': {$ref: '#/components/responses/Unavailable'}
-  /projects/{project_id}/settings/provider/test:
-    parameters: [{$ref: '#/components/parameters/project_id'}]
+  /settings/provider/test:
     post:
       tags: [settings]
       description: Bounded test of the saved provider configuration; never accepts or returns a key.

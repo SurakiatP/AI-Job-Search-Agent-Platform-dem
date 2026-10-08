@@ -439,8 +439,7 @@ def _seed_completed_run(api_context, pid: str, sid: str, *, status="completed", 
 
 
 def provider_config_id(db, project_id):
-    from job_search_platform.db.models import ProviderConfiguration
-    return db.scalar(select(ProviderConfiguration.id).where(ProviderConfiguration.project_id == project_id))
+    return provider_config(db, project_id).id
 
 
 @pytest.mark.integration
@@ -710,8 +709,7 @@ def test_runtime_openapi_matches_application_contract_paths_methods_and_schemas(
 
 def _provider_project(api_context):
     csrf = _owner(api_context)
-    created = api_context.client.post("/api/v1/projects", json={"name": "Provider project"}, headers=_write_headers(csrf))
-    return csrf, f"/api/v1/projects/{created.json()['id']}/settings/provider"
+    return csrf, "/api/v1/settings/provider"
 
 
 def test_provider_catalog_and_custom_base_url_validation(api_context):
@@ -753,12 +751,11 @@ def test_trusted_provider_maps_hermes_id_and_base_url(api_context):
     csrf, url = _provider_project(api_context)
     api_context.client.put(url, json={"provider": "openai", "model": "m", "credential": "k"}, headers=_write_headers(csrf))
     settings = api_context.client.app.state.services.settings
-    pid = UUID(url.split("/")[4])
-    config = asyncio.run(settings.trusted_provider(pid))
+    config = asyncio.run(settings.trusted_provider())
     assert (config.provider, config.base_url) == ("openai-api", "https://api.openai.com/v1")
     api_context.client.put(url, json={"provider": "custom", "model": "m", "credential": "k",
                                       "base_url": "https://llm.example.com/v1"}, headers=_write_headers(csrf))
-    config = asyncio.run(settings.trusted_provider(pid))
+    config = asyncio.run(settings.trusted_provider())
     assert (config.provider, config.base_url) == ("custom", "https://llm.example.com/v1")
 
 
@@ -820,3 +817,26 @@ def test_provider_models_listing(api_context, monkeypatch):
     failed = client.post(url + "/models", json={"provider": "openai", "credential": sentinel}, headers=headers)
     assert failed.status_code == 502 and failed.json()["retryable"] is True
     assert failed.json()["code"] == "provider_models_unavailable" and sentinel not in failed.text
+
+
+@pytest.mark.integration
+def test_global_provider_settings_are_owner_only(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    headers = _write_headers(csrf)
+    url = "/api/v1/settings/provider"
+    assert client.get(url).json()["configured"] is False
+    assert client.put(url, json={"provider": "openai", "model": "m", "credential": "k"}, headers=headers).status_code == 200
+    assert client.get(url).json()["revision"] == 1
+    assert client.put(url, json={"provider": "openai", "model": "m2", "credential": "k"}, headers=headers).json()["revision"] == 2
+    assert client.get("/api/v1/projects/00000000-0000-4000-8000-000000000000/settings/provider").status_code in (404, 405)
+    pid, _ = _removal_project(api_context, csrf)
+    token = client.post(f"/api/v1/projects/{pid}/grants", headers=headers, json={
+        "capabilities": ["results:read", "jobs:evaluate"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+    client.cookies.clear()
+    bearer = {"Authorization": f"Bearer {token}"}
+    for call in (lambda: client.get(url, headers=bearer),
+                 lambda: client.put(url, json={"provider": "openai", "model": "x", "credential": "k"}, headers=bearer),
+                 lambda: client.post(url + "/models", json={"provider": "openai"}, headers=bearer),
+                 lambda: client.post(url + "/test", headers=bearer)):
+        assert call().status_code in (401, 403)

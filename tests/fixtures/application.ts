@@ -73,7 +73,7 @@ export async function useSyntheticApplication(page: Page, options: { emptyProjec
       [`/projects/${projectId}/jobs`]: options.missingJob ? [] : [options.unsafeJobSource ? { ...job, source_url: 'javascript:alert(1)' } : job],
       [`/projects/${projectId}/documents`]: options.emptyDocuments ? [] : [{ id: documentId, document_type: 'cover_letter', title: 'Synthetic cover letter', output_language: 'th', partial: true, content_markdown: preview, latest_revision: { id: '77777777-7777-4777-8777-777777777777', revision: 2, created_at: '2026-10-01T00:00:00Z' } }],
       [`/projects/${projectId}/documents/${documentId}/revisions`]: [{ id: '77777777-7777-4777-8777-777777777777', revision: 2, document_id: documentId, created_at: '2026-10-01T00:00:00Z', file_id: '88888888-8888-4888-8888-888888888888', content_markdown: preview }],
-      [`/projects/${projectId}/settings/provider`]: { provider: null, model: null, configured: false, revision: null, masked_secret: null },
+      [`/settings/provider`]: { provider: null, model: null, configured: false, revision: null, masked_secret: null },
       '/tools': { tools: [] },
     };
     const body = data[path];

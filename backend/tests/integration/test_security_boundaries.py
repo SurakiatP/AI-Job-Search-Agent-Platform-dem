@@ -107,7 +107,7 @@ async def test_untrusted_protocol_input_cannot_override_owner_config_or_reveal_a
     services = api_context.client.app.state.services
     with api_context.sessions() as db:
         before_provider = db.scalar(
-            select(ProviderConfiguration).where(ProviderConfiguration.project_id == project_id)
+            select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
         )
         assert before_provider is not None
         provider_snapshot = (before_provider.provider, before_provider.model, before_provider.revision)
@@ -211,7 +211,7 @@ async def test_untrusted_protocol_input_cannot_override_owner_config_or_reveal_a
 
         with api_context.sessions() as db:
             after_provider = db.scalar(
-                select(ProviderConfiguration).where(ProviderConfiguration.project_id == project_id)
+                select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
             )
             assert after_provider is not None
             assert (after_provider.provider, after_provider.model, after_provider.revision) == provider_snapshot

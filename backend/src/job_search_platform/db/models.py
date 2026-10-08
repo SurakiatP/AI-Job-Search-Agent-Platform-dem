@@ -188,14 +188,16 @@ class DocumentRevision(Base):
 class ProviderConfiguration(Base):
     __tablename__ = "provider_configurations"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    # NULL = the one system-wide (owner-level) configuration; non-NULL rows are legacy per-project history.
+    project_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
     provider: Mapped[str] = mapped_column(String(80), nullable=False)
     model: Mapped[str] = mapped_column(String(160), nullable=False)
     secret_reference: Mapped[str] = mapped_column(String(512), nullable=False)
     base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     revision: Mapped[int] = mapped_column(Integer, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-    __table_args__ = (UniqueConstraint("project_id", "id", name="uq_provider_config_project_id"), UniqueConstraint("project_id", "revision", name="uq_provider_config_revision"), CheckConstraint("revision > 0", name="ck_provider_config_revision_positive"))
+    __table_args__ = (UniqueConstraint("project_id", "revision", name="uq_provider_config_revision"), CheckConstraint("revision > 0", name="ck_provider_config_revision_positive"),
+                      Index("uq_provider_config_global_revision", "revision", unique=True, postgresql_where=text("project_id IS NULL")))
 
 
 class ToolConnectorConfiguration(Base):
@@ -280,7 +282,7 @@ class Run(Base):
         ForeignKeyConstraint(["project_id", "session_id"], ["sessions.project_id", "sessions.id"]),
         ForeignKeyConstraint(["project_id", "cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"]),
         ForeignKeyConstraint(["project_id", "job_revision_id"], ["job_revisions.project_id", "job_revisions.id"]),
-        ForeignKeyConstraint(["project_id", "provider_configuration_id"], ["provider_configurations.project_id", "provider_configurations.id"]),
+        ForeignKeyConstraint(["provider_configuration_id"], ["provider_configurations.id"]),
         ForeignKeyConstraint(["project_id", "retry_of_id"], ["runs.project_id", "runs.id"]),
         UniqueConstraint("project_id", "actor_scope", "idempotency_key", name="uq_run_idempotency_scope"),
         UniqueConstraint("project_id", "id", name="uq_runs_project_id"),

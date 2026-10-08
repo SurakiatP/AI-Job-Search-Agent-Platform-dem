@@ -189,7 +189,6 @@ class RunExecutor:
             if connector.get("enabled") is not True or connector.get("adapter_key") != "career_ops":
                 raise ServiceError("connector_disabled")
             provider = await self.settings.trusted_provider(
-                run.project_id,
                 configuration_id=uuid.UUID(run.config_snapshot["provider_configuration_id"]),
             )
 

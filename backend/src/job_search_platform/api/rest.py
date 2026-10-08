@@ -19,7 +19,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
 from job_search_platform.db.models import (
     CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
-    ProjectPreference, StoredFile, Run, Grant, ProviderConfiguration,
+    ProjectPreference, StoredFile, Run, Grant,
     ToolConnectorConfiguration,
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
@@ -241,7 +241,7 @@ async def delete_project(project_id: UUID, actor=Depends(write_actor), services:
         has_durable_data = any(
             db.scalar(select(func.count()).select_from(model).where(model.project_id == project_id))
             for model in (ConversationSession, JobRevision, CVRevision, Document, StoredFile, Run,
-                          ProjectPreference, Grant, ProviderConfiguration, ToolConnectorConfiguration)
+                          ProjectPreference, Grant, ToolConnectorConfiguration)
         )
         if has_durable_data:
             raise ServiceError("project_not_empty")
@@ -769,24 +769,24 @@ async def provider_catalog(actor=Depends(owner_actor)):
     return {"providers": settings_catalog()}
 
 
-@router.get("/projects/{project_id}/settings/provider", response_model=ProviderSettingsView)
-async def get_provider(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
-    return await services.settings.get_provider(actor, project_id)
+@router.get("/settings/provider", response_model=ProviderSettingsView)
+async def get_provider(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await services.settings.get_provider(actor)
 
 
-@router.put("/projects/{project_id}/settings/provider", response_model=ProviderSettingsView)
-async def set_provider(project_id: UUID, body: ProviderSettingsUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await services.settings.save_provider(actor, project_id, body)
+@router.put("/settings/provider", response_model=ProviderSettingsView)
+async def set_provider(body: ProviderSettingsUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return await services.settings.save_provider(actor, body)
 
 
-@router.post("/projects/{project_id}/settings/provider/models", response_model=ProviderModelsView)
-async def provider_models(project_id: UUID, body: ProviderModelsRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return {"models": await services.settings.list_models(actor, project_id, body)}
+@router.post("/settings/provider/models", response_model=ProviderModelsView)
+async def provider_models(body: ProviderModelsRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return {"models": await services.settings.list_models(actor, body)}
 
 
-@router.post("/projects/{project_id}/settings/provider/test", response_model=ProviderConnectionTestView)
-async def test_provider(project_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await services.settings.test_provider(actor, project_id)
+@router.post("/settings/provider/test", response_model=ProviderConnectionTestView)
+async def test_provider(actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return await services.settings.test_provider(actor)
 
 
 @router.get("/projects/{project_id}/settings/tools", response_model=ToolConnectorSettingsView)
