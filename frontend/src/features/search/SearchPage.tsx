@@ -19,6 +19,7 @@ import { Markdown } from '@/components/Markdown';
 import { PageBack } from '@/components/PageBack';
 import { sampleJobs } from './sampleJobs';
 import { highlightSegments } from './highlight';
+import { ADV_KEYS, AdvancedFilters, Presets, splitList, type Facet } from './AdvancedFilters';
 
 type JobSearchItem = {
   slug: string; title: string; company: string | null; location: string | null; cities: string[];
@@ -34,8 +35,7 @@ type Highlight = { matched: Record<string, string>; missing: Record<string, stri
 type AiState = { status: 'ready' | 'partial' | 'missing' | 'unavailable'; categories: string[] | null; scored: number };
 type HiddenItem = { id: string; kind: 'job' | 'company'; label: string; created_at?: string };
 type Match = { score_percent: number; matched: string[]; missing: string[]; required_count: number };
-type Facet = { value: string; count: number };
-type Facets = { total: number; categories: Facet[]; cities: Facet[] };
+type Facets = { total: number; categories: Facet[]; cities: Facet[]; seniority?: Facet[]; employment_type?: Facet[]; company_type?: Facet[]; skills?: Facet[]; thai_postings?: number; new_7d?: number };
 type Page = { items: JobSearchItem[]; total: number; limit?: number; pool?: number; offset: number; ai?: AiState; hidden_count?: number };
 
 const PAGE_SIZE = 20;
@@ -48,11 +48,11 @@ const sleep = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, r
   signal.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('aborted', 'AbortError')); }, { once: true });
 });
 const RUN_DONE = ['completed', 'failed', 'cancelled', 'interrupted'];
-const FILTER_KEYS = ['q', 'cities', 'work_mode', 'posted_within_days', 'category'] as const;
+const FILTER_KEYS = ['q', 'cities', 'work_mode', 'posted_within_days', 'category', ...ADV_KEYS] as const;
 
 const copy = {
   th: {
-    title: 'ค้นหางาน', subtitle: (n: string) => `งานในประเทศไทย ${n} ตำแหน่ง`,
+    title: 'ค้นหางาน', subtitle: (n: string) => `งานในประเทศไทย ${n} ตำแหน่ง`, stats: (t: string, n: string, th: string) => `งานในไทย ${t} · ใหม่ 7 วัน ${n} · ประกาศภาษาไทย ${th}`,
     searchLabel: 'ค้นหาตำแหน่ง บริษัท หรือทักษะ', searchPlaceholder: 'เช่น Frontend, Data analyst หรือชื่อบริษัท',
     mode: 'รูปแบบการทำงาน', anyMode: 'ทุกแบบ', posted: 'ช่วงเวลาที่ลงประกาศ', anyPosted: 'ทุกช่วง',
     days: (n: number) => `${n} วันที่ผ่านมา`, city: 'จังหวัด/เมือง', anyCity: 'ทุกเมือง', categories: 'หมวดงาน',
@@ -83,7 +83,7 @@ const copy = {
     hiddenLink: (n: number) => `ที่ซ่อนไว้ (${n})`, hiddenTitle: 'งานและบริษัทที่ซ่อนไว้', hiddenEmpty: 'ไม่มีรายการที่ซ่อนไว้', kindWord: { job: 'งาน', company: 'บริษัท' } as Record<string, string>, unhide: 'เลิกซ่อน',
   },
   en: {
-    title: 'Job search', subtitle: (n: string) => `${n} jobs in Thailand`,
+    title: 'Job search', subtitle: (n: string) => `${n} jobs in Thailand`, stats: (t: string, n: string, th: string) => `Jobs in Thailand ${t} · New in 7 days ${n} · Thai postings ${th}`,
     searchLabel: 'Search title, company or skill', searchPlaceholder: 'e.g. Frontend, Data analyst or a company',
     mode: 'Work mode', anyMode: 'Any', posted: 'Posted within', anyPosted: 'Any time',
     days: (n: number) => `${n} days`, city: 'City', anyCity: 'All cities', categories: 'Categories',
@@ -248,7 +248,9 @@ export function SearchPage() {
   const mode = params.get('work_mode') ?? '';
   const posted = params.get('posted_within_days') ?? '';
   const category = params.get('category') ?? '';
-  const filtered = Boolean(q || city || mode || posted || category);
+  const advKey = ADV_KEYS.map(k => params.get(k) ?? '').join('|');
+  const filtered = Boolean(q || city || mode || posted || category || advKey.replace(/\|/g, ''));
+  const get = (k: string) => params.get(k) ?? '';
   const smart = params.get('mode') === 'match';
   const setSearchMode = (next: 'search' | 'match') => setParams(prev => {
     const out = new URLSearchParams(prev);
@@ -256,9 +258,10 @@ export function SearchPage() {
     return out;
   }, { replace: true });
 
-  const setFilter = useCallback((key: typeof FILTER_KEYS[number], value: string) => {
-    setParams(prev => { const next = new URLSearchParams(prev); if (value) next.set(key, value); else next.delete(key); return next; }, { replace: true });
+  const setMany = useCallback((changes: Record<string, string>) => {
+    setParams(prev => { const next = new URLSearchParams(prev); for (const [key, value] of Object.entries(changes)) { if (value) next.set(key, value); else next.delete(key); } return next; }, { replace: true });
   }, [setParams]);
+  const setFilter = useCallback((key: typeof FILTER_KEYS[number], value: string) => setMany({ [key]: value }), [setMany]);
   const clear = () => { setQInput(''); setParams(smart ? new URLSearchParams({ mode: 'match' }) : new URLSearchParams(), { replace: true }); };
 
   // Debounced search box -> URL.
@@ -286,7 +289,7 @@ export function SearchPage() {
   const profiled = useRef('');
   const [nextOffset, setNextOffset] = useState(POOL_SIZE);
 
-  const filterKey = useMemo(() => new URLSearchParams({ q, cities: city, work_mode: mode, posted_within_days: posted, category, smart: smartActive ? revisionId : '' }).toString(), [q, city, mode, posted, category, smartActive, revisionId]);
+  const filterKey = useMemo(() => new URLSearchParams({ q, cities: city, work_mode: mode, posted_within_days: posted, category, adv: advKey, smart: smartActive ? revisionId : '' }).toString(), [q, city, mode, posted, category, advKey, smartActive, revisionId]);
   const [items, setItems] = useState<JobSearchItem[]>([]);
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -311,10 +314,11 @@ export function SearchPage() {
     if (posted) search.set('posted_within_days', posted);
     if (category) search.set('category', category);
     if (smartActive && city) search.set('cities', city);
+    ADV_KEYS.forEach((key, i) => { const v = advKey.split('|')[i]; if (v) search.set(key, v); });
     if (!smartActive) search.set('limit', String(PAGE_SIZE));
     search.set('offset', String(offset));
     return `/projects/${projectId}/job-search${smartActive ? '/match' : ''}?${search.toString()}`;
-  }, [projectId, q, city, mode, posted, category, smartActive, revisionId]);
+  }, [projectId, q, city, mode, posted, category, advKey, smartActive, revisionId]);
 
   // Extracts the CV's skill names in the sandbox (no AI), then waits for the run to finish.
   async function profileCv(id: string, signal: AbortSignal) {
@@ -334,7 +338,9 @@ export function SearchPage() {
     setRanking(true);
     try {
       const run = await apiRequest<{ id: string }>(`/projects/${projectId}/job-search/match/runs`, { method: 'POST', signal, body: JSON.stringify({
-        cv_revision_id: revisionId, q, cities: city ? [city] : [], work_mode: mode || null, posted_within_days: posted ? Number(posted) : null, category: category || null, pool: POOL_SIZE, offset: 0 }) });
+        cv_revision_id: revisionId, q, cities: city ? [city] : [], work_mode: mode || null, posted_within_days: posted ? Number(posted) : null, category: category || null,
+        seniority: splitList(get('seniority')), employment_type: splitList(get('employment_type')), company_type: splitList(get('company_type')), skills: splitList(get('skills')),
+        posting_language: get('posting_language') || null, salary_min: get('salary_min') ? Number(get('salary_min')) : null, pool: POOL_SIZE, offset: 0 }) });
       let finished = false;
       for (let attempt = 0; attempt < 90 && !finished; attempt += 1) {
         await sleep(2000, signal);
@@ -488,7 +494,8 @@ export function SearchPage() {
     <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
     <div className="grid gap-1">
       <h1 className="min-w-0 break-words text-2xl font-semibold">{c.title}</h1>
-      {grandTotal != null && <p className="text-sm text-muted-foreground">{c.subtitle(number.format(grandTotal))}</p>}
+      {grandTotal != null && <p className="text-sm text-muted-foreground">{!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
+        ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))}</p>}
     </div>
 
     <div role="group" aria-label={c.modeLabel} className="inline-flex w-fit max-w-full rounded-lg border bg-muted p-1">
@@ -548,6 +555,9 @@ export function SearchPage() {
         </select>
       </div>}
     </div>
+
+    {!sample && <AdvancedFilters locale={locale} get={get} setMany={setMany} facets={facetsRes.data ?? undefined} number={number} />}
+    {!sample && <Presets locale={locale} get={get} setMany={setMany} />}
 
     {categories.length > 0 && <div role="group" aria-label={c.categories} className="flex flex-wrap gap-2">
       {categories.map(f => <Button key={f.value} type="button" variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal rounded-full text-left" aria-pressed={category === f.value}
