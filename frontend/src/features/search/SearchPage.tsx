@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Building2, ExternalLink, Loader2, MapPin, Search } from 'lucide-react';
+import { AlertTriangle, Bookmark, BookmarkCheck, Building2, ExternalLink, Loader2, MapPin, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '../../lib/api';
 import { NewSessionButton } from '../sessions/NewSessionDialog';
-import { safeHttpUrl, useResource } from '../projects/useResource';
+import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 import { Markdown } from '@/components/Markdown';
 import { PageBack } from '@/components/PageBack';
 import { sampleJobs } from './sampleJobs';
@@ -35,7 +35,7 @@ const copy = {
     days: (n: number) => `${n} วันที่ผ่านมา`, city: 'จังหวัด/เมือง', anyCity: 'ทุกเมือง', categories: 'หมวดงาน',
     remote: 'ทำงานทางไกล', hybrid: 'ไฮบริด', onsite: 'ทำงานที่ออฟฟิศ',
     found: (n: string) => `พบ ${n} ตำแหน่ง`, age: (n: number) => (n <= 0 ? 'ลงประกาศวันนี้' : `ลงประกาศ ${n} วันที่แล้ว`),
-    stale: 'ประกาศเก่า · อาจปิดรับแล้ว', evaluate: 'ประเมินงานนี้', saving: 'กำลังบันทึก…',
+    stale: 'ประกาศเก่า · อาจปิดรับแล้ว', evaluate: 'ประเมินงานนี้', save: 'บันทึกงาน', saved: 'บันทึกแล้ว', saving: 'กำลังบันทึก…',
     original: 'เปิดประกาศต้นฉบับ', saveError: 'บันทึกงานไม่สำเร็จ ลองอีกครั้ง', loadMore: 'โหลดเพิ่ม', loading: 'กำลังโหลด…',
     none: 'ไม่พบตำแหน่งที่ตรงกับตัวกรอง', noneNext: 'ลองเปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูทั้งหมด', clear: 'ล้างตัวกรอง',
     errTitle: 'ไม่สามารถเชื่อมต่อแหล่งข้อมูลงานได้', errBody: 'แหล่งข้อมูลอาจไม่พร้อมใช้งานชั่วคราว ลองใหม่อีกครั้ง หรือดูข้อมูลตัวอย่างเพื่อสำรวจหน้านี้',
@@ -51,7 +51,7 @@ const copy = {
     days: (n: number) => `${n} days`, city: 'City', anyCity: 'All cities', categories: 'Categories',
     remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site',
     found: (n: string) => `${n} ${n === '1' ? 'job' : 'jobs'} found`, age: (n: number) => (n <= 0 ? 'Posted today' : `${n} ${n === 1 ? 'day' : 'days'} ago`),
-    stale: 'Stale listing', evaluate: 'Evaluate this job', saving: 'Saving…',
+    stale: 'Stale listing', evaluate: 'Evaluate this job', save: 'Save job', saved: 'Saved', saving: 'Saving…',
     original: 'Open original posting', saveError: 'Could not save this job. Try again.', loadMore: 'Load more', loading: 'Loading…',
     none: 'No jobs match these filters', noneNext: 'Change the search or clear the filters to see everything.', clear: 'Clear filters',
     errTitle: "Couldn't reach the job source", errBody: 'The job source may be temporarily unavailable. Try again, or view sample data to explore this page.',
@@ -84,6 +84,30 @@ function useWide() {
 
 const selectClass = 'min-h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
+type SavedJob = { id: string; title: string; company?: string | null; source_url?: string | null };
+
+// Saves the posting to this project's saved jobs; a posting already saved (same link, or same title and company) links to it instead.
+function SaveJobButton({ job, c, projectId }: { job: JobSearchItem; c: Copy; projectId: string }) {
+  const saved = useResource<SavedJob[]>(`/projects/${projectId}/jobs`);
+  const [state, setState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const source = safeHttpUrl(job.source_url);
+  const match = (saved.data ?? []).find(item => (source && item.source_url === source) || (item.title === job.title && (item.company ?? '') === (job.company ?? '')));
+  if (match) return <Button asChild variant="outline" className="h-auto whitespace-normal text-left"><Link to={`/app/projects/${projectId}/jobs/${match.id}`}><BookmarkCheck className="size-4 text-primary" aria-hidden="true" />{c.saved}</Link></Button>;
+  async function save() {
+    setState('saving');
+    try {
+      await sendJson(`/projects/${projectId}/jobs`, 'POST', { title: job.title.slice(0, 300), company: job.company?.slice(0, 300) || null, source_url: source ?? null, description: job.description_markdown.slice(0, 50000) || job.title });
+      setState('idle'); saved.reload();
+    } catch { setState('error'); }
+  }
+  return <>
+    <Button type="button" variant="outline" className="h-auto whitespace-normal text-left" disabled={state === 'saving' || saved.status === 'loading'} onClick={() => void save()}>
+      {state === 'saving' ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Bookmark className="size-4" aria-hidden="true" />}{state === 'saving' ? c.saving : c.save}
+    </Button>
+    {state === 'error' && <p role="alert" className="basis-full text-sm text-destructive">{c.saveError}</p>}
+  </>;
+}
+
 function JobDetail({ job, c, projectId }: { job: JobSearchItem; c: Copy; projectId: string }) {
   const source = safeHttpUrl(job.source_url);
   const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
@@ -103,6 +127,7 @@ function JobDetail({ job, c, projectId }: { job: JobSearchItem; c: Copy; project
       <NewSessionButton projectId={projectId} className="h-auto whitespace-normal text-left" job={{ inline: { title: job.title, company: job.company, description: job.description_markdown.slice(0, 50000), source_url: safeHttpUrl(job.source_url) } }}>
         {c.evaluate}
       </NewSessionButton>
+      <SaveJobButton key={job.slug} job={job} c={c} projectId={projectId} />
       {source && <Button asChild variant="outline" className="h-auto whitespace-normal text-left">
         <a href={source} target="_blank" rel="noreferrer">{c.original}<ExternalLink className="size-4" aria-hidden="true" /></a>
       </Button>}

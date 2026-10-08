@@ -659,15 +659,13 @@ async def update_cv(project_id: UUID, cv_id: UUID, body: CVUpdate, actor=Depends
 
 @router.delete("/projects/{project_id}/cvs/{cv_id}", status_code=204)
 async def delete_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    """Soft-delete a CV no session uses; deleting the primary promotes the newest remaining CV."""
+    """Soft-delete a CV; sessions keep their pinned revision. Deleting the primary promotes the newest remaining CV."""
     _owner_only(actor)
     with services.sessions.begin() as db:
         authorize(db, actor, project_id, "write", "cv")
         if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
             raise ServiceError("not_found")
         cv = _live_cv(db, project_id, cv_id, lock=True)
-        if _cv_view(db, cv)["in_use"]:
-            raise ServiceError("cv_in_use")
         was_primary = cv.is_primary
         cv.is_primary = False
         cv.removed_at = datetime.now(timezone.utc)
