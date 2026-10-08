@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { apiRequest } from '../lib/api';
 import { ApiError } from '../lib/api-types';
 import { sendJson, useResource } from '../features/projects/useResource';
+import { NewSessionDialog } from '../features/sessions/NewSessionDialog';
 import { Button } from './ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import { ItemMenu } from './ItemMenu';
@@ -21,7 +22,7 @@ type SessionLite = { id: string; title: string };
 
 const copy = {
   th: {
-    projects: 'โปรเจกต์', toggleList: 'ย่อ/ขยายรายการโปรเจกต์', newProject: 'โปรเจกต์ใหม่', newSession: 'เซสชันใหม่', newSessionFailed: 'สร้างเซสชันไม่สำเร็จ ลองอีกครั้ง',
+    projects: 'โปรเจกต์', toggleList: 'ย่อ/ขยายรายการโปรเจกต์', newProject: 'โปรเจกต์ใหม่', newSession: 'เซสชันใหม่',
     expand: (n: string) => `แสดงเซสชันของ ${n}`, collapse: (n: string) => `ซ่อนเซสชันของ ${n}`, options: (n: string) => `ตัวเลือกสำหรับ ${n}`,
     rename: 'เปลี่ยนชื่อ', delete: 'ลบ', cancel: 'ยกเลิก', save: 'บันทึก', confirmDelete: 'ลบ', saving: 'กำลังบันทึก…',
     renameProject: 'เปลี่ยนชื่อโปรเจกต์', renameSession: 'เปลี่ยนชื่อเซสชัน', name: 'ชื่อ', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง',
@@ -31,7 +32,7 @@ const copy = {
     project_not_empty: 'ลบไม่ได้: โปรเจกต์นี้ยังมี CV งาน หรือประวัติการทำงานอยู่', session_has_runs: 'ลบไม่ได้: เซสชันนี้มีประวัติงานของเอเจนต์',
   },
   en: {
-    projects: 'Projects', toggleList: 'Collapse or expand the project list', newProject: 'New project', newSession: 'New session', newSessionFailed: 'Could not create the session. Try again.',
+    projects: 'Projects', toggleList: 'Collapse or expand the project list', newProject: 'New project', newSession: 'New session',
     expand: (n: string) => `Show sessions of ${n}`, collapse: (n: string) => `Hide sessions of ${n}`, options: (n: string) => `Options for ${n}`,
     rename: 'Rename', delete: 'Delete', cancel: 'Cancel', save: 'Save', confirmDelete: 'Delete', saving: 'Saving…',
     renameProject: 'Rename project', renameSession: 'Rename session', name: 'Name', failed: 'That did not work. Try again.',
@@ -99,28 +100,17 @@ function ItemDialog({ state, onClose, onDone }: { state: NonNullable<DialogState
   </Dialog>;
 }
 
-function ProjectRow({ project, current, sessionId, expanded, version, onToggle, onNavigate, onDialog, onCreated }: {
+function ProjectRow({ project, current, sessionId, expanded, version, onToggle, onNavigate, onDialog }: {
   project: SidebarProject; current: boolean; sessionId?: string; expanded: boolean; version: number;
-  onToggle: () => void; onNavigate?: () => void; onDialog: (state: NonNullable<DialogState>) => void; onCreated: () => void;
+  onToggle: () => void; onNavigate?: () => void; onDialog: (state: NonNullable<DialogState>) => void;
 }) {
   const c = useCopy();
-  const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [creating, setCreating] = useState(false);
   const lazy = useResource<SessionLite[]>(expanded && !current ? `/projects/${project.id}/sessions` : null);
   const { reload } = lazy;
   useEffect(() => { if (version) reload(); }, [version, reload]);
   const sessions = current ? project.sessions : (lazy.data ?? []).map(item => ({ id: item.id, name: item.title, href: `/app/projects/${project.id}/sessions/${item.id}` }));
-  async function createSession() {
-    if (busy) return;
-    setBusy(true); setFailed(false);
-    try {
-      const session = await sendJson<SessionLite>(`/projects/${project.id}/sessions`, 'POST', { title: 'New session' });
-      onCreated(); onNavigate?.();
-      navigate(`/app/projects/${project.id}/sessions/${session.id}`);
-    } catch { setFailed(true); } finally { setBusy(false); }
-  }
   const projectTarget: Target = { kind: 'project', projectId: project.id, id: project.id, name: project.name };
   return <li>
     <div className={cn(rowClass, current && currentProjectClass)}>
@@ -143,10 +133,10 @@ function ProjectRow({ project, current, sessionId, expanded, version, onToggle, 
         </li>;
       })}
       <li>
-        <button type="button" disabled={busy} onClick={() => void createSession()} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm text-muted-foreground outline-none transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+        <button type="button" onClick={() => setCreating(true)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm text-muted-foreground outline-none transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
           <Plus className="size-4 shrink-0" aria-hidden="true" />{c.newSession}
         </button>
-        {failed && <p role="alert" className="px-2 text-xs text-destructive">{c.newSessionFailed}</p>}
+        {creating && <NewSessionDialog projectId={project.id} onClose={() => { setCreating(false); onNavigate?.(); }} />}
       </li>
     </ul>}
   </li>;
@@ -184,7 +174,7 @@ export function ProjectTree({ projects, projectId, sessionId, onNavigate, onRelo
     {listOpen && (projects.length === 0 ? <p className="px-2 text-sm text-muted-foreground">{t('noProjects')}</p> : <ul className="grid gap-0.5">
       {projects.map(project => <ProjectRow key={project.id} project={project} current={project.id === projectId} sessionId={sessionId} expanded={expanded.has(project.id)} version={version}
         onToggle={() => setExpanded(set => { const next = new Set(set); if (!next.delete(project.id)) next.add(project.id); return next; })}
-        onNavigate={onNavigate} onDialog={setDialog} onCreated={refresh} />)}
+        onNavigate={onNavigate} onDialog={setDialog} />)}
     </ul>)}
     {dialog && <ItemDialog key={`${dialog.mode}:${dialog.target.id}`} state={dialog} onClose={() => setDialog(null)} onDone={done} />}
   </section>;

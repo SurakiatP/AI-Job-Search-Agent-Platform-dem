@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AppShell } from '../components/AppShell';
 import type { SidebarProject } from '../components/ProjectSidebar';
 import { DocumentDetailPage, DocumentsPage } from '../features/documents/DocumentsPage';
-import { ChatPage } from '../features/chat/ChatPage';
+import { SessionPage } from '../features/chat/SessionPage';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { JobDetailPage, JobsPage } from '../features/jobs/JobsPage';
 import { ConsolePage } from '../features/console/ConsolePage';
@@ -31,6 +31,8 @@ function AppWorkspace() {
   // New-project and project routes share this component, so a newly created project needs one list refresh.
   const refreshedFor = useRef<string | undefined>(undefined);
   const { data: projectList, reload: reloadProjects } = projects;
+  const reloadSessions = sessions.reload;
+  useEffect(() => { window.addEventListener('sessions:changed', reloadSessions); return () => window.removeEventListener('sessions:changed', reloadSessions); }, [reloadSessions]);
   useEffect(() => {
     if (!projectId || !projectList || projectList.some(item => item.id === projectId) || refreshedFor.current === projectId) return;
     refreshedFor.current = projectId;
@@ -87,7 +89,7 @@ export function AppRoutes() {
     <Route element={<OwnerGate />}><Route path="/app" element={<AppStart />} />
     <Route path="/app/settings" element={<AppWorkspace />}><Route index element={<SettingsPage />} /></Route>
     <Route path="/app/projects" element={<AppWorkspace />}><Route index element={<ProjectsPage />} /><Route path="new" element={<NewProjectPage />} /></Route>
-    <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="overview" element={<OverviewPage />} /><Route path="console" element={<ConsolePage />} /><Route path="search" element={<SearchPage />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions/:sessionId" element={<ChatPage />} /><Route path="jobs" element={<JobsPage />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /></Route>
+    <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="overview" element={<OverviewPage />} /><Route path="console" element={<ConsolePage />} /><Route path="search" element={<SearchPage />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions/:sessionId" element={<SessionPage />} /><Route path="jobs" element={<JobsPage />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /></Route>
     </Route><Route path="*" element={<NotFoundPage />} />
   </Routes>;
 }

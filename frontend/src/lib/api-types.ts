@@ -4,7 +4,8 @@ export type RunRequest = {
   session_id: string;
   operation: RunOperation;
   cv_revision_id?: string | null;
-  job_revision_id: string;
+  job_revision_id?: string;
+  document_id?: string;
   output_language: Locale;
   idempotency_key: string;
   retry_of_id?: string | null;
@@ -25,6 +26,7 @@ export class ApiError extends Error {
   readonly retryable: boolean;
   readonly correlation_id?: string;
   readonly status: number;
+  readonly fields?: Record<string, string>;
 
   constructor(status: number, body?: Partial<ApiErrorBody>) {
     super(isSafeMessageKey(body?.message_key) ? body.message_key : 'errors.request_failed');
@@ -33,6 +35,7 @@ export class ApiError extends Error {
     this.code = isSafeCode(body?.code) ? body.code : 'request_failed';
     this.message_key = isSafeMessageKey(body?.message_key) ? body.message_key : 'errors.request_failed';
     this.retryable = body?.retryable === true;
+    this.fields = body?.fields && typeof body.fields === 'object' ? body.fields : undefined;
     this.correlation_id = typeof body?.correlation_id === 'string' ? body.correlation_id : undefined;
   }
 }
@@ -51,7 +54,13 @@ export type OwnerSessionState =
   | { status: 'error'; error: ApiError };
 
 export type ProjectView = { id: string; name: string; created_at: string };
-export type SessionView = { id: string; project_id: string; title: string; created_at: string };
+export type SessionView = {
+  id: string; project_id: string; title: string; created_at: string;
+  cv_revision_id?: string | null; job_revision_id?: string | null; cv_name?: string | null; cv_revision?: number | null;
+  job_title?: string | null; job_company?: string | null; cv_outdated?: boolean; evaluation_run_id?: string | null;
+};
+export type CVRevisionInfo = { id: string; revision: number; created_at: string; original_filename: string; mime_type: string; size_bytes: number };
+export type CVView = { id: string; name: string; is_primary: boolean; created_at: string; latest_revision: CVRevisionInfo | null; revision_count: number; in_use: boolean };
 export type MessageView = {
   id: string;
   session_id: string;

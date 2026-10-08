@@ -13,10 +13,11 @@ import { SkillCoverage } from '@/components/SkillCoverage';
 import { PageBack } from '@/components/PageBack';
 import { Markdown } from '@/components/Markdown';
 import { StatusBadge } from '@/components/StatusBadge';
-import type { DocumentView, JobApplicationStatusView, JobRevisionView, RunView, SessionView } from '../../lib/api-types';
+import type { DocumentView, JobApplicationStatusView, JobRevisionView, RunView } from '../../lib/api-types';
 import { latestEvaluations } from '../overview/latestEvaluations';
 import { ErrorState, LoadingState, MissingResource } from '../projects/PageStates';
 import { JobRemoveMenu } from './JobRemoveMenu';
+import { NewSessionButton } from '../sessions/NewSessionDialog';
 import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 
 const copy = {
@@ -167,7 +168,6 @@ export function JobDetailPage() {
   const result = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
   const documents = useResource<DocumentView[]>(`/projects/${projectId}/documents`);
-  const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
   if (result.status === 'loading') return <LoadingState />;
   if (result.status === 'error') return <ErrorState onRetry={result.reload} />;
   const job = result.data?.find(item => item.id === jobId);
@@ -176,7 +176,6 @@ export function JobDetailPage() {
   const evaluation = latestEvaluations(runs.data ?? []).get(job.id);
   const jobRunIds = new Set((runs.data ?? []).filter(run => run.job_revision_id === job.id).map(run => run.id));
   const related = (documents.data ?? []).filter(doc => doc.source_run_id && jobRunIds.has(doc.source_run_id));
-  const evaluateHref = sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : `${base}/profile`;
   return <article className="grid gap-6">
     <div className="grid gap-3">
       <PageBack to={`${base}/jobs`}>{t('nav.savedJobs')}</PageBack>
@@ -204,7 +203,7 @@ export function JobDetailPage() {
           </CardContent>
         </Card> : <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
           <p className="font-medium">{c.notEvaluated}</p><p className="text-sm text-muted-foreground">{c.notEvaluatedNext}</p>
-          <Button asChild size="sm"><Link to={evaluateHref}>{c.evaluate}</Link></Button>
+          <NewSessionButton size="sm" projectId={projectId} job={{ savedId: job.id }}>{c.evaluate}</NewSessionButton>
         </div>}
         <Card>
           <CardHeader><CardTitle>{c.description}</CardTitle></CardHeader>
@@ -233,7 +232,7 @@ export function JobDetailPage() {
             <Link className="text-sm text-primary hover:underline" to={`${base}/documents`}>{c.allDocs}</Link>
           </CardContent>
         </Card>
-        <Button asChild className="h-auto whitespace-normal py-2 text-center"><Link to={evaluateHref}>{c.draft}</Link></Button>
+        <NewSessionButton className="h-auto whitespace-normal py-2 text-center" projectId={projectId} job={{ savedId: job.id }}>{c.draft}</NewSessionButton>
       </div>
     </div>
   </article>;

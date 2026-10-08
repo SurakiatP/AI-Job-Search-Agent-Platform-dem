@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Bookmark, Bot, FileText, FolderOpen, LayoutDashboard, MessagesSquare, Search, Settings, UserRound, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
@@ -6,6 +6,7 @@ import { AppearanceControl } from './AppearanceControl';
 import { HomeLink, LanguageSwitch } from './Header';
 import { ProjectTree } from './ProjectTree';
 import type { SidebarProject } from './ProjectTree';
+import { NewSessionDialog } from '../features/sessions/NewSessionDialog';
 
 export type { SidebarProject };
 
@@ -28,6 +29,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
   const inside = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const base = `/app/projects/${projectId}`;
   const sessions = project?.sessions ?? [];
+  const [creating, setCreating] = useState(false);
   const onSessions = inside(`${base}/sessions`);
   const sections = [
     ['overview', LayoutDashboard, t('nav.overview')],
@@ -48,7 +50,9 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
     </div>
     <ul className="grid gap-0.5" aria-label={t('pages.projectSections')}>
       {sections.slice(0, 1).map(([section, icon, label]) => <li key={section}><NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate}>{label}</NavItem></li>)}
-      <li><NavItem to={sessions[0]?.href ?? `${base}/profile`} icon={MessagesSquare} active={onSessions} current={false} onNavigate={onNavigate}>{t('nav.evaluate')}</NavItem></li>
+      <li>{sessions[0] ? <NavItem to={sessions[0].href} icon={MessagesSquare} active={onSessions} current={false} onNavigate={onNavigate}>{t('nav.evaluate')}</NavItem>
+        : <button type="button" className={`${itemClass} w-full text-start`} data-active={onSessions} onClick={() => setCreating(true)}><MessagesSquare size={16} aria-hidden="true" />{t('nav.evaluate')}</button>}
+        {creating && projectId && <NewSessionDialog projectId={projectId} onClose={() => { setCreating(false); onNavigate?.(); }} />}</li>
       {sections.slice(1).map(([section, icon, label]) => <li key={section}>
         <NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate}>{label}</NavItem>
       </li>)}

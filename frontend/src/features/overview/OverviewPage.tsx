@@ -6,8 +6,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FitScore } from '@/components/FitScore';
 import { SkillCount } from '@/components/SkillCoverage';
 import { StatusBadge } from '@/components/StatusBadge';
-import type { DocumentView, JobRevisionView, ProjectView, RunView, SessionView } from '@/lib/api-types';
+import type { DocumentView, JobRevisionView, ProjectView, RunView } from '@/lib/api-types';
 import { ErrorState } from '../projects/PageStates';
+import { NewSessionButton } from '../sessions/NewSessionDialog';
 import { useResource } from '../projects/useResource';
 import { JobRemoveMenu } from '../jobs/JobRemoveMenu';
 import { latestEvaluations } from './latestEvaluations';
@@ -64,8 +65,7 @@ export function OverviewPage() {
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const documents = useResource<DocumentView[]>(`/projects/${projectId}/documents`);
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
-  const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
-  const all = [project, cv, jobs, documents, runs, sessions];
+  const all = [project, cv, jobs, documents, runs];
 
   if (all.some(r => r.status === 'error')) return <ErrorState onRetry={() => all.forEach(r => r.status === 'error' && r.reload())} />;
   if (all.some(r => r.status !== 'ready')) return <OverviewSkeleton />;
@@ -78,7 +78,6 @@ export function OverviewPage() {
   const activeRuns = runList.filter(run => ACTIVE.includes(run.status)).slice(0, 5);
   const pending = runList.filter(run => run.status === 'waiting_approval');
   const pendingSession = pending[0]?.session_id;
-  const evaluateHref = sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : `${base}/profile`;
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   const stats = [
     { label: c.saved, value: jobList.length, to: `${base}/jobs` }, { label: c.applied, value: jobList.filter(j => j.application_status === 'applied').length, to: `${base}/jobs` }, { label: c.documents, value: docList.length, to: `${base}/documents` },
@@ -87,7 +86,7 @@ export function OverviewPage() {
   return <div className="grid gap-6">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{project.data?.name}</h1><p className="text-sm text-muted-foreground">{c.subtitle}</p></div>
-      <Button asChild><Link to={evaluateHref}>{c.evaluate}</Link></Button>
+      <NewSessionButton projectId={projectId}>{c.evaluate}</NewSessionButton>
     </div>
 
     <div className="grid gap-4 sm:grid-cols-3">{stats.map(s => <Link key={s.label} to={s.to} className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"><Card className="transition-shadow hover:shadow-md"><CardContent className="p-5"><p className="text-sm text-muted-foreground">{s.label}</p><p className="text-3xl font-semibold tabular-nums">{s.value}</p></CardContent></Card></Link>)}</div>

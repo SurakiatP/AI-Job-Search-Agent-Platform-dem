@@ -115,6 +115,7 @@ export function DocumentDetailPage() {
   const trash = useResource<DocumentItem[]>(`/projects/${projectId}/documents/trash`);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [pickedId, setPickedId] = useState('');
   const revisions = useResource<DocumentRevision[]>(`/projects/${projectId}/documents/${documentId}/revisions`);
   const cvRevisions = useResource<CVRevision[]>(`/projects/${projectId}/cv`);
   const sessions = useResource<SessionItem[]>(`/projects/${projectId}/sessions`);
@@ -139,7 +140,8 @@ export function DocumentDetailPage() {
   }
   const versions = revisions.data ?? [];
   const latestRevision = versions.find(revision => revision.id === document.latest_revision?.id) ?? versions.reduce<DocumentRevision | undefined>((latest, revision) => !latest || (revision.revision ?? 0) > (latest.revision ?? 0) ? revision : latest, undefined);
-  const preview = document.content_markdown ?? latestRevision?.content_markdown ?? null;
+  const viewed = versions.find(revision => revision.id && revision.id === pickedId) ?? latestRevision;
+  const preview = (viewed === latestRevision ? document.content_markdown ?? latestRevision?.content_markdown : viewed?.content_markdown) ?? null;
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   const Icon = typeIcon[document.document_type];
   const numbered = versions.map((revision, index) => ({ revision, number: revision.revision ?? index + 1, index }));
@@ -163,7 +165,10 @@ export function DocumentDetailPage() {
       <div className="min-w-0"><p className="text-sm text-muted-foreground">{t('pages.documentsTitle', { defaultValue: 'Documents' })}</p><h1 className="break-words text-2xl font-semibold">{document.title}</h1></div></div>
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <Card className="min-w-0"><CardContent className="p-5 sm:p-8">
-        <h2 className="mb-4 font-semibold">{t('pages.documentContent', { defaultValue: 'Document content' })}</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{t('pages.documentContent', { defaultValue: 'Document content' })}</h2>
+          {versions.length > 1 && <label className="flex items-center gap-2 text-sm"><span className="text-muted-foreground">{t('pages.revision', { defaultValue: 'Revision' })}</span>
+            <select className="min-h-9 rounded-md border border-input bg-card px-2 text-sm" value={viewed?.id ?? ''} onChange={event => setPickedId(event.target.value)}>
+              {newestFirst.map(({ revision, number }) => <option key={revision.id ?? number} value={revision.id ?? ''}>{number}{revision === latestRevision ? ` · ${c.current}` : ''}</option>)}</select></label>}</div>
         <Markdown className={cn('max-w-[68ch]', document.output_language === 'en' && 'document-english')} data-testid="document-content">{preview ?? t('pages.docPreviewUnavailable', { defaultValue: 'A text preview is unavailable. Download the authorized file to review this revision.' })}</Markdown>
       </CardContent></Card>
 
@@ -173,8 +178,8 @@ export function DocumentDetailPage() {
             onTrashed={() => navigate(`${base}/documents`, { state: { trashed: document.id } })} onFailed={() => setActionError(c.trashFailed)} />}</CardHeader><CardContent className="grid gap-3 text-sm">
           <p><span className="text-muted-foreground">{c.type}: </span>{documentTypeLabel(document.document_type, t)}</p>
           {document.output_language && <p data-testid="document-language">{t('pages.documentLanguage', { defaultValue: 'Document language' })}: {document.output_language === 'th' ? 'ไทย' : 'English'}</p>}
-          {latestRevision && <p><span className="text-muted-foreground">{t('pages.revision', { defaultValue: 'Revision' })}: </span>{latestRevision.revision ?? versions.indexOf(latestRevision) + 1}</p>}
-          {latestRevision?.created_at && <p><span className="text-muted-foreground">{c.created}: </span><time dateTime={latestRevision.created_at}>{date.format(new Date(latestRevision.created_at))}</time></p>}
+          {viewed && <p><span className="text-muted-foreground">{t('pages.revision', { defaultValue: 'Revision' })}: </span>{viewed.revision ?? versions.indexOf(viewed) + 1}</p>}
+          {viewed?.created_at && <p><span className="text-muted-foreground">{c.created}: </span><time dateTime={viewed.created_at}>{date.format(new Date(viewed.created_at))}</time></p>}
             {sourceJobId && <p><Link className="text-primary hover:underline" to={`${base}/jobs/${sourceJobId}`}>{c.sourceJob}</Link></p>}
           {sourceSessionId && <p><Link className="text-primary hover:underline" to={`${base}/sessions/${sourceSessionId}`}>{c.sourceSession}</Link></p>}
           {actionError && !isTrashed && <p role="alert" className="text-destructive">{actionError}</p>}

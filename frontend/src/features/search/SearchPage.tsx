@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Building2, ExternalLink, Loader2, MapPin, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '../../lib/api';
-import type { SessionView } from '../../lib/api-types';
-import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
+import { NewSessionButton } from '../sessions/NewSessionDialog';
+import { safeHttpUrl, useResource } from '../projects/useResource';
 import { Markdown } from '@/components/Markdown';
 import { PageBack } from '@/components/PageBack';
 import { sampleJobs } from './sampleJobs';
@@ -84,7 +84,7 @@ function useWide() {
 
 const selectClass = 'min-h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
-function JobDetail({ job, c, busy, error, onEvaluate }: { job: JobSearchItem; c: Copy; busy: boolean; error: boolean; onEvaluate: () => void }) {
+function JobDetail({ job, c, projectId }: { job: JobSearchItem; c: Copy; projectId: string }) {
   const source = safeHttpUrl(job.source_url);
   const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
   return <div className="grid gap-4">
@@ -100,14 +100,13 @@ function JobDetail({ job, c, busy, error, onEvaluate }: { job: JobSearchItem; c:
       {job.skills.map(s => <Badge key={s} variant="outline" className="break-words">{s}</Badge>)}
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button className="h-auto whitespace-normal text-left" disabled={busy} aria-busy={busy} onClick={onEvaluate}>
-        {busy ? <><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.saving}</> : c.evaluate}
-      </Button>
+      <NewSessionButton projectId={projectId} className="h-auto whitespace-normal text-left" job={{ inline: { title: job.title, company: job.company, description: job.description_markdown.slice(0, 50000), source_url: safeHttpUrl(job.source_url) } }}>
+        {c.evaluate}
+      </NewSessionButton>
       {source && <Button asChild variant="outline" className="h-auto whitespace-normal text-left">
         <a href={source} target="_blank" rel="noreferrer">{c.original}<ExternalLink className="size-4" aria-hidden="true" /></a>
       </Button>}
     </div>
-    {error && <p role="alert" className="text-sm text-destructive">{c.saveError}</p>}
     <div className="grid gap-2 border-t pt-4">
       <h3 className="text-sm font-semibold">{c.description}</h3>
       <Markdown className="text-sm">{job.description_markdown}</Markdown>
@@ -121,10 +120,8 @@ export function SearchPage() {
   const c = copy[locale];
   const number = useMemo(() => new Intl.NumberFormat(locale === 'th' ? 'th-TH' : 'en-US'), [locale]);
   const { projectId = '' } = useParams();
-  const navigate = useNavigate();
   const wide = useWide();
   const [params, setParams] = useSearchParams();
-  const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
 
   const q = params.get('q') ?? '';
   const city = params.get('cities') ?? '';
@@ -213,27 +210,10 @@ export function SearchPage() {
   const grandTotal = sample ? sampleItems.length : facetsRes.data?.total;
 
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
-  const [savingSlug, setSavingSlug] = useState<string | null>(null);
-  const [errorSlug, setErrorSlug] = useState<string | null>(null);
   const selected = visible.find(j => j.slug === selectedSlug) ?? (wide ? visible[0] : undefined);
 
-  async function evaluate(job: JobSearchItem) {
-    if (savingSlug) return;
-    setSavingSlug(job.slug); setErrorSlug(null);
-    try {
-      const created = await sendJson<{ id: string }>(`/projects/${projectId}/jobs`, 'POST', {
-        title: job.title, company: job.company, description: job.description_markdown.slice(0, 50000), source_url: safeHttpUrl(job.source_url),
-      });
-      const base = `/app/projects/${projectId}`;
-      const first = sessions.data?.[0];
-      void navigate(first ? `${base}/sessions/${first.id}` : `${base}/profile`, { state: { jobId: created.id } });
-    } catch {
-      setErrorSlug(job.slug); setSavingSlug(null);
-    }
-  }
-
   const catLabel = (slug: string) => c.cats[slug] ?? humanize(slug);
-  const detail = (job: JobSearchItem) => <JobDetail job={job} c={c} busy={savingSlug === job.slug} error={errorSlug === job.slug} onEvaluate={() => void evaluate(job)} />;
+  const detail = (job: JobSearchItem) => <JobDetail job={job} c={c} projectId={projectId} />;
 
   const list = <ul className="grid gap-3 [&>li]:min-w-0">
     {visible.map(job => {
