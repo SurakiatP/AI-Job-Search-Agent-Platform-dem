@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import type { DocumentView, JobRevisionView, ProjectView, RunView, SessionView } from '@/lib/api-types';
 import { ErrorState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
+import { JobRemoveMenu } from '../jobs/JobRemoveMenu';
 import { latestEvaluations } from './latestEvaluations';
 
 type CvRevision = { id: string; revision: number; original_filename?: string; mime_type?: string; size_bytes?: number; created_at?: string };
@@ -97,10 +98,11 @@ export function OverviewPage() {
           <CardHeader><CardTitle><Link className="hover:underline" to={`${base}/jobs`}>{c.jobsTitle}</Link></CardTitle></CardHeader>
           <CardContent>
             {jobList.length === 0 ? <Empty title={c.noJobs} next={c.noJobsNext}><Button asChild size="sm"><Link to={`${base}/jobs`}>{c.addJob}</Link></Button></Empty> :
-              <ul className="divide-y">{jobList.slice(0, 6).map(job => <li key={job.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <ul className="divide-y">{jobList.slice(0, 6).map(job => <li key={job.id} className="group flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <FitScore score={evaluations.get(job.id)?.evaluation_result?.score ?? null} locale={locale} />
                 <div className="min-w-0 flex-1"><Link className="break-words font-medium hover:underline" to={`${base}/jobs/${job.id}`}>{job.title}</Link>{job.company && <p className="break-words text-sm text-muted-foreground">{job.company}</p>}<SkillCount coverage={evaluations.get(job.id)?.evaluation_result?.skill_coverage} locale={locale} /></div>
                 <StatusBadge status={job.application_status ?? 'saved'} locale={locale} />
+                <JobRemoveMenu reveal projectId={projectId} jobId={job.id} title={job.title} onRemoved={jobs.reload} />
               </li>)}</ul>}
           </CardContent>
           {jobList.length > 0 && <CardFooter><Link className="text-sm text-primary hover:underline" to={`${base}/jobs`}>{c.viewAll}</Link></CardFooter>}

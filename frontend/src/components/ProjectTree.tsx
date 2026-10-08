@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, Folder, FolderOpen, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, Folder, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { cn } from '@/lib/utils';
@@ -8,7 +8,7 @@ import { ApiError } from '../lib/api-types';
 import { sendJson, useResource } from '../features/projects/useResource';
 import { Button } from './ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { ItemMenu } from './ItemMenu';
 import { Input } from './ui/input';
 
 export type SidebarProject = {
@@ -44,21 +44,17 @@ const copy = {
 type Copy = typeof copy.en;
 function useCopy(): Copy { return copy[useTranslation().i18n.language.startsWith('th') ? 'th' : 'en']; }
 
-const rowClass = 'group flex items-center gap-0.5 rounded-md text-sm transition-colors hover:bg-accent/60 has-[a[aria-current=page]]:bg-accent has-[a[aria-current=page]]:text-accent-foreground';
+const rowClass = 'group relative flex items-center gap-0.5 rounded-md text-sm transition-colors hover:bg-accent/60';
+// Only the project that matches the route gets the background and accent bar; the active session row is a lighter highlight.
+const currentProjectClass = 'bg-accent text-accent-foreground before:absolute before:inset-y-1.5 before:start-0 before:w-1 before:rounded-full before:bg-primary';
+const activeSessionClass = 'has-[a[aria-current=page]]:bg-accent/60 has-[a[aria-current=page]]:font-medium';
 
 function RowMenu({ name, onRename, onDelete }: { name: string; onRename: () => void; onDelete: () => void }) {
   const c = useCopy();
-  return <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <button type="button" aria-label={c.options(name)} className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground opacity-0 outline-none hover:bg-accent hover:text-accent-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100">
-        <MoreHorizontal className="size-4" aria-hidden="true" />
-      </button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="start" className="w-44">
-      <DropdownMenuItem onSelect={onRename}><Pencil className="size-4" aria-hidden="true" />{c.rename}</DropdownMenuItem>
-      <DropdownMenuItem className="text-destructive data-[highlighted]:text-destructive" onSelect={onDelete}><Trash2 className="size-4" aria-hidden="true" />{c.delete}</DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>;
+  return <ItemMenu reveal label={c.options(name)} actions={[
+    { label: c.rename, icon: <Pencil className="size-4" aria-hidden="true" />, onSelect: onRename },
+    { label: c.delete, icon: <Trash2 className="size-4" aria-hidden="true" />, destructive: true, onSelect: onDelete },
+  ]} />;
 }
 
 function ItemDialog({ state, onClose, onDone }: { state: NonNullable<DialogState>; onClose: () => void; onDone: (state: NonNullable<DialogState>, newName?: string) => void }) {
@@ -127,20 +123,20 @@ function ProjectRow({ project, current, sessionId, expanded, version, onToggle, 
   }
   const projectTarget: Target = { kind: 'project', projectId: project.id, id: project.id, name: project.name };
   return <li>
-    <div className={rowClass}>
+    <div className={cn(rowClass, current && currentProjectClass)}>
       <button type="button" aria-expanded={expanded} aria-label={expanded ? c.collapse(project.name) : c.expand(project.name)} onClick={onToggle}
         className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
         {expanded ? <FolderOpen className="size-4" aria-hidden="true" /> : <Folder className="size-4" aria-hidden="true" />}
       </button>
       <Link to={project.href} title={project.name} aria-current={pathname === project.href ? 'page' : undefined}
-        className={cn('min-w-0 flex-1 truncate rounded-md py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring', current && 'font-medium')}
+        className={cn('min-w-0 flex-1 truncate rounded-md py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring', current && 'font-semibold')}
         onClick={() => { if (!expanded) onToggle(); onNavigate?.(); }}>{project.name}</Link>
       <RowMenu name={project.name} onRename={() => onDialog({ mode: 'rename', target: projectTarget })} onDelete={() => onDialog({ mode: 'delete', target: projectTarget })} />
     </div>
     {expanded && <ul className="ms-4 mt-0.5 grid gap-0.5 border-s ps-1.5">
       {sessions.map(session => {
         const target: Target = { kind: 'session', projectId: project.id, id: session.id, name: session.name };
-        return <li key={session.id} className={rowClass}>
+        return <li key={session.id} className={cn(rowClass, activeSessionClass)}>
           <Link to={session.href} title={session.name} aria-current={current && session.id === sessionId ? 'page' : undefined}
             className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onNavigate}>{session.name}</Link>
           <RowMenu name={session.name} onRename={() => onDialog({ mode: 'rename', target })} onDelete={() => onDialog({ mode: 'delete', target })} />
@@ -166,7 +162,8 @@ export function ProjectTree({ projects, projectId, sessionId, onNavigate, onRelo
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(projectId ? [projectId] : []));
   const [dialog, setDialog] = useState<DialogState>(null);
   const [version, setVersion] = useState(0);
-  useEffect(() => { if (projectId) setExpanded(set => set.has(projectId) ? set : new Set(set).add(projectId)); }, [projectId]);
+  // Navigating to another project collapses the rest so the current one is the only open group.
+  useEffect(() => { if (projectId) setExpanded(new Set([projectId])); }, [projectId]);
   const refresh = () => { setVersion(value => value + 1); onReload?.(); };
   function done(state: NonNullable<DialogState>) {
     setDialog(null); refresh();

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { ChevronDown, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,20 @@ import { SkillCoverage } from '@/components/SkillCoverage';
 import { Markdown } from '@/components/Markdown';
 import type { DocumentView, Locale, RunView } from '../../lib/api-types';
 
+// Probe the download once (headers only, then abort) so a deleted document's file shows muted text instead of a broken link.
+function ResultFile({ href, label, deleted }: { href: string; label: string; deleted: string }) {
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(href, { credentials: 'same-origin', signal: controller.signal })
+      .then(response => { if (response.status === 404) setGone(true); controller.abort(); })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [href]);
+  if (gone) return <p className="text-sm text-muted-foreground" data-testid="document-deleted">{deleted}</p>;
+  return <Button asChild variant="outline" className="h-auto justify-start whitespace-normal py-2 text-left"><a href={href}><Download className="size-4" aria-hidden="true" />{label}</a></Button>;
+}
+
 export function RunResults({ projectId, locale, run, documents }: { projectId: string; locale: Locale; run: RunView | null; documents: DocumentView[] }) {
   if (!run) return null;
   const resultDocuments = documents.filter(document => document.source_run_id === run.id);
@@ -16,6 +31,7 @@ export function RunResults({ projectId, locale, run, documents }: { projectId: s
   const report = locale === 'th' ? 'รายงานประเมิน' : 'Evaluation report';
   const downloads = locale === 'th' ? 'ดาวน์โหลดไฟล์' : 'Download file';
   const noResult = locale === 'th' ? 'งานนี้ไม่มีผลลัพธ์ที่เผยแพร่' : 'This run has no published result yet.';
+  const deletedText = locale === 'th' ? 'เอกสารถูกลบแล้ว' : 'Document deleted';
   const openDocument = locale === 'th' ? 'เปิดเอกสาร' : 'Open document';
   return <Card role="region" aria-labelledby="run-results-heading">
     <CardHeader className="pb-3"><CardTitle id="run-results-heading" className="text-lg">{label}</CardTitle></CardHeader>
@@ -39,9 +55,9 @@ export function RunResults({ projectId, locale, run, documents }: { projectId: s
         {document.content_markdown && <Markdown className="max-h-96 overflow-auto">{document.content_markdown}</Markdown>}
         <Button asChild variant="outline" size="sm" className="justify-self-start"><Link to={`/app/projects/${projectId}/documents/${document.id}`}>{openDocument}</Link></Button>
       </article>)}
-      {run.result_file_ids.map((fileId, index) => <Button key={fileId} asChild variant="outline" className="h-auto justify-start whitespace-normal py-2 text-left">
-        <a href={`/api/v1/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileId)}/download`}><Download className="size-4" aria-hidden="true" />{downloads}{run.result_file_ids.length > 1 ? ` ${index + 1}` : ''}</a>
-      </Button>)}
+      {run.result_file_ids.map((fileId, index) => <ResultFile key={fileId} deleted={deletedText}
+        href={`/api/v1/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileId)}/download`}
+        label={`${downloads}${run.result_file_ids.length > 1 ? ` ${index + 1}` : ''}`} />)}
       {!evaluation && resultDocuments.length === 0 && run.result_file_ids.length === 0 && <p className="text-sm text-muted-foreground">{noResult}</p>}
     </CardContent>
   </Card>;

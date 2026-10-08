@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Bookmark, Bot, FileText, LayoutDashboard, MessagesSquare, Search, Settings, UserRound, type LucideIcon } from 'lucide-react';
+import { Bookmark, Bot, FileText, FolderOpen, LayoutDashboard, MessagesSquare, Search, Settings, UserRound, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { AppearanceControl } from './AppearanceControl';
@@ -22,7 +22,7 @@ function NavItem({ to, icon: Icon, active, current = active, onNavigate, childre
 export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate, onReload, toggle }: {
   projects?: SidebarProject[]; projectId?: string; sessionId?: string; onNavigate?: () => void; onReload?: () => void; toggle?: ReactNode;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { pathname } = useLocation();
   const project = projects.find(item => item.id === projectId);
   const inside = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
@@ -40,13 +40,19 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
   return <nav className="flex flex-1 flex-col gap-4 p-4" aria-label={t('navigation')}>
     <div className="hidden items-start justify-between gap-2 px-1 pt-1 lg:flex"><HomeLink onClick={onNavigate} />{toggle}</div>
     <ProjectTree projects={projects} projectId={projectId} sessionId={sessionId} onNavigate={onNavigate} onReload={onReload} />
-    {project && <ul className="grid gap-0.5 border-t pt-3" aria-label={t('pages.projectSections')}>
+    {project && <div className="grid gap-2 border-t pt-3">
+    <div className="flex items-center gap-2.5 px-3">
+      <FolderOpen className="size-4 shrink-0 text-primary" aria-hidden="true" />
+      <div className="min-w-0"><p className="truncate text-sm font-semibold" title={project.name}>{project.name}</p>
+        <p className="text-xs text-muted-foreground">{i18n.language.startsWith('th') ? 'เมนูของโปรเจกต์นี้' : 'This project'}</p></div>
+    </div>
+    <ul className="grid gap-0.5" aria-label={t('pages.projectSections')}>
       {sections.slice(0, 1).map(([section, icon, label]) => <li key={section}><NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate}>{label}</NavItem></li>)}
       <li><NavItem to={sessions[0]?.href ?? `${base}/profile`} icon={MessagesSquare} active={onSessions} current={false} onNavigate={onNavigate}>{t('nav.evaluate')}</NavItem></li>
       {sections.slice(1).map(([section, icon, label]) => <li key={section}>
         <NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate}>{label}</NavItem>
       </li>)}
-    </ul>}
+    </ul></div>}
     <div className="mt-auto grid gap-3">
       <NavItem to="/app/settings" icon={Settings} active={inside('/app/settings')} onNavigate={onNavigate}>{t('settings')}</NavItem>
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">

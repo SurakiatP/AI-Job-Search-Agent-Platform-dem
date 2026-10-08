@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Download, File, FileUser, Mail, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import type { RunView } from '@/lib/api-types';
 import { ErrorState, LoadingState, MissingResource } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
+import { DocumentDeleteMenu } from './DocumentDeleteMenu';
 
 type DocumentItem = { id: string; document_type: 'cv' | 'cover_letter' | 'other'; title: string; content_markdown?: string | null; output_language?: 'th' | 'en' | null; source_run_id?: string | null; partial?: boolean; latest_revision?: { id: string; revision: number } | null };
 type DocumentRevision = { document_id: string; id?: string; revision?: number; created_at?: string; source_cv_revision_id?: string | null; source_job_revision_id?: string | null; file_id?: string | null; content_markdown?: string | null };
@@ -63,7 +64,8 @@ export function DocumentsPage() {
         const Icon = typeIcon[document.document_type];
         return <Card key={document.id} className="transition-shadow hover:shadow-md"><CardHeader>
           <div className="flex items-start gap-3"><Icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-            <CardTitle className="min-w-0 break-words text-base"><Link className="hover:underline" to={`${base}/documents/${document.id}`}>{document.title}</Link></CardTitle></div>
+            <CardTitle className="min-w-0 flex-1 break-words text-base"><Link className="hover:underline" to={`${base}/documents/${document.id}`}>{document.title}</Link></CardTitle>
+            <DocumentDeleteMenu projectId={projectId} documentId={document.id} title={document.title} onDeleted={result.reload} /></div>
         </CardHeader><CardContent className="grid gap-3">
           <p className="text-sm text-muted-foreground">{documentTypeLabel(document.document_type, t)}</p>
           <div className="flex flex-wrap gap-2">
@@ -81,6 +83,7 @@ export function DocumentDetailPage() {
   const locale = i18n.language.startsWith('th') ? 'th' : 'en';
   const c = copy[locale];
   const { projectId = '', documentId = '' } = useParams();
+  const navigate = useNavigate();
   const base = `/app/projects/${projectId}`;
   const docs = useResource<DocumentItem[]>(`/projects/${projectId}/documents`);
   const revisions = useResource<DocumentRevision[]>(`/projects/${projectId}/documents/${documentId}/revisions`);
@@ -121,7 +124,8 @@ export function DocumentDetailPage() {
       </CardContent></Card>
 
       <div className="grid min-w-0 gap-6">
-        <Card><CardHeader><CardTitle>{c.metadata}</CardTitle></CardHeader><CardContent className="grid gap-3 text-sm">
+        <Card><CardHeader className="flex-row items-center justify-between gap-2"><CardTitle>{c.metadata}</CardTitle>
+          <DocumentDeleteMenu projectId={projectId} documentId={document.id} title={document.title} onDeleted={() => navigate(`${base}/documents`)} /></CardHeader><CardContent className="grid gap-3 text-sm">
           <p><span className="text-muted-foreground">{c.type}: </span>{documentTypeLabel(document.document_type, t)}</p>
           {document.output_language && <p data-testid="document-language">{t('pages.documentLanguage', { defaultValue: 'Document language' })}: {document.output_language === 'th' ? 'ไทย' : 'English'}</p>}
           {latestRevision && <p><span className="text-muted-foreground">{t('pages.revision', { defaultValue: 'Revision' })}: </span>{latestRevision.revision ?? versions.indexOf(latestRevision) + 1}</p>}

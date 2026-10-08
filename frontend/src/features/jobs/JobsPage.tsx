@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDraft } from '../../app/drafts';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ExternalLink, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import type { DocumentView, JobApplicationStatusView, JobRevisionView, RunView, SessionView } from '../../lib/api-types';
 import { latestEvaluations } from '../overview/latestEvaluations';
 import { ErrorState, LoadingState, MissingResource } from '../projects/PageStates';
+import { JobRemoveMenu } from './JobRemoveMenu';
 import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 
 const copy = {
@@ -148,6 +149,7 @@ export function JobsPage() {
             <p className="text-sm text-muted-foreground">{t('pages.revision')} {job.revision}</p>
           </div>
           <StatusBadge status={job.application_status ?? 'saved'} locale={locale} />
+          <JobRemoveMenu projectId={projectId} jobId={job.id} title={job.title} onRemoved={result.reload} />
         </div>
         <ApplicationStatusControl projectId={projectId} job={job} reload={result.reload} compact />
       </CardContent>
@@ -160,6 +162,7 @@ export function JobDetailPage() {
   const locale = useUiLocale();
   const c = copy[locale];
   const { projectId = '', jobId = '' } = useParams();
+  const navigate = useNavigate();
   const base = `/app/projects/${projectId}`;
   const result = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
@@ -184,7 +187,10 @@ export function JobDetailPage() {
           <p className="text-sm text-muted-foreground">{t('pages.revision')} {job.revision}</p>
           {source && <a className="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:underline" href={source} target="_blank" rel="noreferrer">{t('pages.sourceLink')}<ExternalLink className="size-4" aria-hidden="true" /></a>}
         </div>
-        <StatusBadge status={job.application_status ?? 'saved'} locale={locale} />
+        <div className="flex items-center gap-1">
+          <StatusBadge status={job.application_status ?? 'saved'} locale={locale} />
+          <JobRemoveMenu projectId={projectId} jobId={job.id} title={job.title} onRemoved={() => navigate(`${base}/jobs`)} />
+        </div>
       </div>
     </div>
     <div className="grid gap-6 lg:grid-cols-3">
