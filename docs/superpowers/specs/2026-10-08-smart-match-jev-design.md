@@ -1,6 +1,7 @@
 # Smart match with Jev — design
 
-Status: approved in chat 2026-10-08 (Q1–Q6 "as recommended"); this spec awaits owner review.
+Status: approved in chat 2026-10-08 (Q1–Q6 and, after a competitor review, Q7–Q13 "as recommended");
+this spec awaits owner review.
 Builds on Smart match option A (commit 1aba84e, migration 0013) and the throwaway spike
 `scripts/spikes/jev_rerank.py` on `feat/jev-rerank-spike` (7af838f).
 
@@ -21,9 +22,22 @@ and postings.
 | Q4 | No extra consent step. A one-line notice under AI mode says the CV text is sent to OpenRouter/TypeSafe, as evaluation already does. |
 | Q5 | Auto query: with no query and no category, the pool comes from the job categories Jev picks for the CV. |
 | Q6 | Fixed weights: role 50 %, skills 30 %, seniority 20 %, with a penalty when a must-have requirement is missing. |
+| Q7 | Each job skill is classified must-have or nice-to-have (as Huntr does); must-haves weigh double in the skill part and are listed separately. Same single Jev request per job. |
+| Q8 | The fit is shown as one of five bands (เหมาะมาก / เหมาะ / พอได้ / น้อย / ไม่เหมาะ) with the percent in small text. |
+| Q9 | The job detail pane highlights matched skills (green) and missing skills (red) inside the posting text (as JobGlance's extension does). |
+| Q11 | Per-project "hide this job" and "hide this company"; hidden items never reach Smart match or Jev. |
+| Q10, Q12, Q13 | Not now: CV evidence lines, daily Top Matches with alerts, embedding retrieval. |
 
 Not in scope: user-adjustable weights, project preferences as ranking input (preferences hold only
-locale/output language/notifications today), a separate TypeSafe key, scoring saved project jobs.
+locale/output language/notifications today), a separate TypeSafe key, scoring saved project jobs,
+CV evidence lines per skill (Q10), thumbs up/down learning, daily Top Matches and alerts (Q12),
+embedding retrieval (Q13: the pool is at most 100 jobs from the upstream API, so Jev scores all of them),
+hiding in the general search mode.
+
+Competitor notes that shaped Q7–Q13: JobGlance (two modes, one engine; filters narrow, ranking still
+ranks; "4/7 skills matched"; matched/missing keyword highlight), Huntr (LLM-weighted must-have vs
+nice-to-have, keywords < 20 %, five bands), Simplify (hide job / hide company, "why this job"),
+Jobscan (job title weight), LinkedIn/Indeed/CareerBuilder (two-stage embeddings at very large scale).
 
 ## Flow
 
@@ -50,17 +64,26 @@ parameters (the upstream response is already cached briefly by `search_jobs`).
 
 ### `services/smart_match.py` (new, pure functions + pool builder)
 - `job_questions(skills: list[str]) -> dict`: `role_fit` Score (4 levels), `seniority_fit` Score (4 levels:
-  far below / somewhat below / meets / well above), `hard_blocker` Noul, and one Noul per required skill
-  (`skill_0…skill_11`, at most 12; skills come from `match_skills` on the job text plus the job's upstream
-  skill tags, deduplicated, in posting order).
+  far below / somewhat below / meets / well above), `hard_blocker` Noul, and per job skill two Nouls:
+  `skill_i` ("the CV shows evidence of {skill}") and `must_i` ("the posting states {skill} as a required,
+  not preferred, qualification"), i = 0…11 (at most 12 skills; they come from `match_skills` on the job text
+  plus the job's upstream skill tags, deduplicated, in posting order).
 - `combine(answers, skills) -> dict` returns
-  `{"fit_percent": int, "uncertain": bool, "seniority": "far_below"|"below"|"meets"|"above",
-  "hard_blocker": bool, "skills_evidenced": [...], "skills_missing": [...]}`:
-  - role = `role_fit.score / 3`; skills = mean of skill nouls (role when none);
+  `{"fit_percent": int, "band": 1–5, "uncertain": bool, "seniority": "far_below"|"below"|"meets"|"above",
+  "hard_blocker": bool, "skills_evidenced": [...], "must_missing": [...], "nice_missing": [...]}`:
+  - role = `role_fit.score / 3`; skills = weighted mean of `skill_i` nouls with weight 2 when
+    `must_i ≥ 0.5`, else 1 (role when there are no skills);
     seniority = expected value of level weights `[0, 0.5, 1, 0.8]` over `seniority_fit.probabilities`.
   - fit = `(0.5·role + 0.3·skills + 0.2·seniority) · (1 − 0.5·hard_blocker.noul)`, rounded to an int percent.
   - `uncertain` when `role_fit.confidence < 0.5`; `hard_blocker` when its noul ≥ 0.5;
-    a skill is evidenced when its noul ≥ 0.5; `seniority` is the most probable level.
+    a skill is evidenced when its noul ≥ 0.5, otherwise it goes to `must_missing` or `nice_missing`;
+    `seniority` is the most probable level.
+  - `band` from `fit_percent` with constants `BANDS = (70, 55, 40, 25)`: ≥ 70 → 5 เหมาะมาก, ≥ 55 → 4 เหมาะ,
+    ≥ 40 → 3 พอได้, ≥ 25 → 2 น้อย, else 1 ไม่เหมาะ. Calibrated on the spike (LLM judge 82 ≈ Jev 70,
+    judge 65 ≈ 50, judge 15 ≈ 14); re-check with the spike script when the model version changes.
+- `highlight_terms(job_text, skills) -> dict[str, str]`: for each skill, the exact text the dictionary
+  pattern matched in the posting (first occurrence), so the UI can highlight aliases such as "ReactJS"
+  for React. Names and short surface strings only.
 - `category_question(categories) -> dict`: one Choice over the upstream facet categories (`job_facets`,
   top 12) with state = CV text. Selected categories: probability ≥ 0.25, at most 2, best first;
   if none qualify, the top one.
@@ -76,6 +99,9 @@ parameters (the upstream response is already cached briefly by `search_jobs`).
   `job_slug` (≤ 200), `content_hash` (64), `model` (≤ 80), `fit_percent` (0–100), `uncertain` bool,
   `details` JSON (the `combine` output minus `fit_percent`/`uncertain`), `created_at`.
   Unique `(cv_revision_id, job_slug, content_hash, model)`. Index `(cv_revision_id, job_slug)`.
+- `job_search_hidden`: `id`, `project_id` (FK projects, cascade), `kind` (`job`|`company`), `value`
+  (job slug, or company name lower-cased and trimmed; ≤ 300), `label` (title or company as shown; ≤ 300),
+  `created_at`. Unique `(project_id, kind, value)`.
 - `cv_revisions.skill_profile` gains optional `"categories": [...]` and `"categories_model"`
   (names only, still no CV text; the 0013 trigger already allows `skill_profile` updates).
 - Runs: `ck_runs_operation` adds `'match_jobs'`; `ck_runs_context_required` becomes
@@ -101,14 +127,21 @@ Owner-only like `profile_cv` (hidden from MCP/A2A in the same place, `services/r
 
 ### API
 - `GET …/job-search/match` (existing): each item gains `ai_match` =
-  `{fit_percent, uncertain, seniority, hard_blocker, skills_evidenced, skills_missing} | null`;
+  `{fit_percent, band, uncertain, seniority, hard_blocker, skills_evidenced, must_missing, nice_missing} | null`
+  and `highlight = {matched: {skill: surface}, missing: {skill: surface}}` (from `highlight_terms`, using
+  `ai_match` skill lists when present, otherwise the keyword lists);
   the response gains `ai = {status: "ready"|"partial"|"missing"|"unavailable", categories: [...]|null,
   scored: int}`. Sort order: items with `ai_match` by `fit_percent` desc, then items without it by the
   existing keyword order. `unavailable` when the global provider is not OpenRouter.
+  Hidden jobs and companies are removed from the pool before scoring and sorting; the response gains
+  `hidden_count`.
 - `POST …/job-search/match/runs` body `{cv_revision_id, q, cities, work_mode, posted_within_days,
   category, pool}` → `202 {run_id}`. Returns the active run for the same CV revision and parameters instead
   of a second one; `409 jev_unavailable` when the provider is not OpenRouter. No `cv_profile_missing`:
   the run parses the CV itself.
+- `GET …/job-search/hidden` → `{items: [{id, kind, label, created_at}]}`;
+  `POST …/job-search/hidden` body `{kind: "job"|"company", value, label}` → 201 (idempotent on the unique key);
+  `DELETE …/job-search/hidden/{id}` → 204. Owner only (`write` on the project), REST only.
 - `docs/contracts/application-api.yaml` updated in the same change (contract test must pass).
 
 ### UI (`features/search/SearchPage.tsx`, Smart match mode)
@@ -117,9 +150,13 @@ Owner-only like `profile_cv` (hidden from MCP/A2A in the same place, `services/r
 - First load with no query and no categories yet: shows "กำลังหางานที่เหมาะกับ CV…" instead of an unrelated
   list, then the category-based pool. The chosen categories appear as removable chips
   ("หมวดที่ AI เลือกจาก CV: …"); typing a query or picking a category replaces them.
-- Card: "AI fit 71%" primary badge, "ATS 57%" secondary, "ไม่แน่ใจ" badge when uncertain,
+- Card: band badge as the primary signal ("เหมาะมาก · 71%", colour per band), "ATS 57%" secondary, "ไม่แน่ใจ" badge when uncertain,
   "⚠ ขาดคุณสมบัติบังคับ" when `hard_blocker`, and seniority text (ต่ำกว่ามาก / ต่ำกว่าเล็กน้อย / ตรง / สูงกว่า).
-  Detail pane: evidenced and missing skill chips from `ai_match` (falls back to keyword lists).
+  Detail pane: three chip groups, "มีหลักฐานใน CV", "ขาด (บังคับ)", "ขาด (มีก็ดี)" (keyword lists as fallback),
+  and the posting text with `highlight` surfaces marked green (matched) and red (missing), case-insensitive,
+  whole-word where the term is Latin; text is escaped before marking (no HTML injection from postings).
+- Card "…" menu: "ซ่อนงานนี้" and "ซ่อนบริษัทนี้" with an Undo bar (same pattern as hidden sessions);
+  a "ที่ซ่อนไว้ (n)" link under the results opens a dialog listing hidden items with "เลิกซ่อน".
 - `unavailable`: ATS-only list plus "เปิดการจัดอันดับด้วย AI โดยตั้งผู้ให้บริการเป็น OpenRouter" linking to Settings.
 - Notice under AI mode: "ระบบส่งเนื้อหา CV ไปยัง OpenRouter/TypeSafe เพื่อจัดอันดับ".
 - Thai and English copy; no raw UUIDs; no upstream site name.
@@ -139,17 +176,21 @@ Owner-only like `profile_cv` (hidden from MCP/A2A in the same place, `services/r
 
 ## Testing
 
-- Unit: `combine` (weights, penalty, thresholds, seniority mapping, no-skill fallback), `category_question`
-  selection rule, `build_pool` split/dedup, `content_hash`.
+- Unit: `combine` (weights incl. must-have double weight, penalty, thresholds, band edges 24/25/39/40/
+  54/55/69/70, seniority mapping, no-skill fallback), `category_question` selection rule, `build_pool`
+  split/dedup, `content_hash`, `highlight_terms` (alias surfaces, Thai text, no match).
 - Integration (HTTP to Jev and the job board replaced by fakes): run lifecycle (parse once, cache hit on
   second run, partial failure, total failure, cancellation keeps scored rows), GET sort/`ai` block, POST
   dedup of active runs, `jev_unavailable`, owner-only (no MCP/A2A access), migration up/down guard,
-  cascade on project delete, key absent from run events and errors.
+  cascade on project delete, key absent from run events and errors; hidden job/company excluded from GET
+  and never sent to Jev, hide idempotent, unhide restores, company match case-insensitive, cross-project
+  hidden ids return 404.
 - Browser: Smart match with the AI CV and no query → categories chips → AI badges sorted; provider switched
-  away from OpenRouter → ATS-only with hint.
+  away from OpenRouter → ATS-only with hint; hide a company → its jobs disappear, Undo brings them back;
+highlights visible in the detail pane in light and dark themes.
 
 ## Cost and limits
 
-About 3 000 input tokens per job → about $0.013 per 100 new jobs; cached jobs are free. OpenRouter limits
+About 3 700 input tokens per job (the must-have questions add about 700) → about $0.016 per 100 new jobs; cached jobs are free. OpenRouter limits
 (80 req/s) are far above 8 concurrent calls. Jev is beta on OpenRouter; the endpoint and model are
 constants so a change is one edit.
