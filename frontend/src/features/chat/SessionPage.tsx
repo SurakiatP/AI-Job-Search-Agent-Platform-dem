@@ -45,13 +45,16 @@ function ReviseBox({ c, projectId, docId, busy, onSubmit }: { c: typeof copy.en;
 
 function DocCard({ c, base, projectId, doc, busy, onRevise }: { c: typeof copy.en; base: string; projectId: string; doc: DocumentView; busy: boolean; onRevise: (text: string) => Promise<boolean> }) {
   const ref = useRef<HTMLDivElement>(null);
+  // The document list omits content; the latest revision carries it.
+  const revisions = useResource<{ revision: number; content_markdown?: string | null }[]>(`/projects/${projectId}/documents/${doc.id}/revisions`);
+  const content = doc.content_markdown ?? [...(revisions.data ?? [])].sort((a, b) => b.revision - a.revision)[0]?.content_markdown ?? null;
   return <Card><CardContent className="grid gap-3 p-4">
     <h3 className="min-w-0 break-words font-semibold">{doc.title}{doc.latest_revision ? <span className="ms-2 text-sm font-normal text-muted-foreground">{c.version} {doc.latest_revision.revision}</span> : null}</h3>
-    {doc.content_markdown && <Link to={`${base}/documents/${doc.id}`} className="relative block max-h-28 overflow-hidden rounded-md text-foreground no-underline" title={c.open}>
-      <div ref={ref}><Markdown>{doc.content_markdown}</Markdown></div><div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" aria-hidden="true" /></Link>}
+    {content && <Link to={`${base}/documents/${doc.id}`} className="relative block max-h-28 overflow-hidden rounded-md text-foreground no-underline" title={c.open}>
+      <div ref={ref}><Markdown>{content}</Markdown></div><div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" aria-hidden="true" /></Link>}
     <div className="flex flex-wrap items-center gap-2">
       <Button asChild size="sm" className="min-h-11"><Link to={`${base}/documents/${doc.id}?edit=1`}><Pencil className="size-4" aria-hidden="true" />{c.edit}</Link></Button>
-      {doc.content_markdown && <CopyButton source={ref} markdown={doc.content_markdown} />}
+      {content && <CopyButton source={ref} markdown={content} />}
     </div>
     <ReviseBox c={c} projectId={projectId} docId={doc.id} busy={busy} onSubmit={onRevise} />
   </CardContent></Card>;
