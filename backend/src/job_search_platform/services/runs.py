@@ -194,6 +194,7 @@ class RunService:
             select(ConversationSession).where(
                 ConversationSession.project_id == project_id,
                 ConversationSession.id == session_id,
+                ConversationSession.removed_at.is_(None),
             )
         )
         if session is None:

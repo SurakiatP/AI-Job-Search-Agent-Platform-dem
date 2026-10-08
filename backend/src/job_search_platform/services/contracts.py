@@ -123,6 +123,11 @@ class SessionView(DTO):
     evaluation_run_id: UUID | None = None
 
 
+class SessionDeleteResult(DTO):
+    # "deleted": removed for good (no runs); "hidden": kept for run history, restorable.
+    mode: Literal["deleted", "hidden"]
+
+
 class MessageCreate(DTO):
     content: Annotated[str, StringConstraints(min_length=1, max_length=20000)]
 

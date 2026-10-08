@@ -225,12 +225,12 @@ def test_owner_renames_and_deletes_sessions_unless_runs_exist(api_context):
                    request_digest="a" * 64, session_id=UUID(busy), operation="evaluate_job",
                    cv_revision_id=cv.id, job_revision_id=job.id, provider_configuration_id=provider.id,
                    input_snapshot={}, config_snapshot={}, output_language="en", status="completed"))
-    blocked = client.delete(f"{base}/{busy}", headers=headers)
-    assert blocked.status_code == 409
-    assert blocked.json()["code"] == "session_has_runs" and blocked.json()["retryable"] is False
+    hidden = client.delete(f"{base}/{busy}", headers=headers)
+    assert hidden.status_code == 200 and hidden.json() == {"mode": "hidden"}
 
-    assert client.delete(f"{base}/{empty}", headers=headers).status_code == 204
-    assert [item["id"] for item in client.get(base).json()] == [busy]
+    deleted = client.delete(f"{base}/{empty}", headers=headers)
+    assert deleted.status_code == 200 and deleted.json() == {"mode": "deleted"}
+    assert client.get(base).json() == []
     with api_context.sessions() as db:
         assert db.scalar(select(func.count()).select_from(Message)
                          .where(Message.session_id == UUID(empty))) == 0

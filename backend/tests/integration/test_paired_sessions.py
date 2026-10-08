@@ -269,3 +269,124 @@ def test_migration_0009_backfills_one_primary_cv_per_project(postgres_engine):
         assert orphans == 0
         command.downgrade(config, "0008_document_trashed_at")
         assert connection.execute(text("SELECT count(*) FROM cv_revisions")).scalar() == 3
+
+
+def _set_status(api_context, run_id, status):
+    with api_context.sessions.begin() as db:
+        db.get(Run, UUID(run_id)).status = status
+
+
+@pytest.mark.integration
+def test_delete_session_hard_without_runs_hides_with_runs_and_restores(api_context):
+    client, csrf = api_context.client, _owner(api_context)
+    headers = _write_headers(csrf)
+    pid = _project(api_context, csrf)
+    other = _project(api_context, csrf, "Other")
+    cv = _upload(api_context, csrf, pid).json()
+    rev = cv["latest_revision"]["id"]
+    base = f"{PREFIX}/{pid}/sessions"
+
+    # Without runs: hard delete.
+    with api_context.sessions.begin() as db:
+        empty = ConversationSession(project_id=UUID(pid), title="Legacy")
+        db.add(empty)
+        db.flush()
+        empty_id = str(empty.id)
+    gone = client.delete(f"{base}/{empty_id}", headers=headers)
+    assert gone.status_code == 200 and gone.json() == {"mode": "deleted"}
+    with api_context.sessions() as db:
+        assert db.get(ConversationSession, UUID(empty_id)) is None
+
+    # With a queued evaluation run: busy.
+    created = _session(api_context, csrf, pid, rev, job=JOB).json()
+    sid, run_id = created["id"], created["evaluation_run_id"]
+    for status in ("queued", "running", "waiting_approval"):
+        _set_status(api_context, run_id, status)
+        busy = client.delete(f"{base}/{sid}", headers=headers)
+        assert busy.status_code == 409 and busy.json()["code"] == "session_busy"
+    _set_status(api_context, run_id, "completed")
+
+    # Cross-project delete/restore are 404.
+    assert client.delete(f"{PREFIX}/{other}/sessions/{sid}", headers=headers).status_code == 404
+    assert client.post(f"{PREFIX}/{other}/sessions/{sid}/restore", headers=headers).status_code == 404
+
+    hidden = client.delete(f"{base}/{sid}", headers=headers)
+    assert hidden.status_code == 200 and hidden.json() == {"mode": "hidden"}
+    assert client.delete(f"{base}/{sid}", headers=headers).status_code == 404
+    assert client.get(base).json() == []
+    assert client.get(f"{base}/{sid}").status_code == 404
+    assert client.patch(f"{base}/{sid}", json={"title": "x"}, headers=headers).status_code == 404
+    assert client.post(f"{PREFIX}/{pid}/runs", headers=headers, json={
+        "session_id": sid, "operation": "evaluate_job", "output_language": "en", "idempotency_key": "after-hide"}).status_code == 404
+    # Runs stay visible; the session row and its pair stay referenced.
+    assert [r["id"] for r in client.get(f"{PREFIX}/{pid}/runs").json()] == [run_id]
+    cvs = client.get(f"{PREFIX}/{pid}/cvs").json()
+    assert cvs[0]["in_use"] is True
+    assert client.delete(f"{PREFIX}/{pid}/cvs/{cv['id']}", headers=headers).status_code == 409
+
+    # Restore brings it back; restoring a visible session is idempotent.
+    restored = client.post(f"{base}/{sid}/restore", headers=headers)
+    assert restored.status_code == 200 and restored.json()["id"] == sid
+    assert [s["id"] for s in client.get(base).json()] == [sid]
+    assert client.post(f"{base}/{sid}/restore", headers=headers).status_code == 200
+    assert client.post(f"{base}/{sid}/restore", headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403
+
+    # Hide, recreate the same pair, then restoring the old one conflicts.
+    assert client.delete(f"{base}/{sid}", headers=headers).json() == {"mode": "hidden"}
+    again = _session(api_context, csrf, pid, rev, job=JOB)
+    assert again.status_code == 201, again.text
+    clash = client.post(f"{base}/{sid}/restore", headers=headers)
+    assert clash.status_code == 409 and clash.json()["code"] == "session_pair_exists"
+    assert clash.json()["fields"]["session_id"] == again.json()["id"]
+    with api_context.sessions() as db:
+        assert db.get(ConversationSession, UUID(sid)).removed_at is not None
+
+
+@pytest.mark.integration
+def test_hidden_external_agent_session_reappears_on_new_protocol_run(db_session):
+    import asyncio
+    from datetime import datetime, timezone
+    from sqlalchemy.orm import sessionmaker
+    from helpers import grant, project, provider_config, revisions
+    from job_search_platform.services.protocol_runs import ProtocolJobInput, ProtocolRuns
+
+    p = project(db_session)
+    actor, _ = grant(db_session, p.id, capabilities=("jobs:evaluate", "results:read"))
+    provider_config(db_session, p.id)
+    revisions(db_session, p.id)
+    db_session.commit()
+    service = ProtocolRuns(sessionmaker(bind=db_session.get_bind(), expire_on_commit=False))
+
+    def submit(key):
+        return asyncio.run(service.submit(actor, "evaluate_job", ProtocolJobInput.model_validate({
+            "job": {"title": "T", "description": "Synthetic posting", "company": "C"},
+            "output_language": "en", "idempotency_key": key})))
+
+    run = submit("one")
+    session_id = db_session.get(Run, run.id).session_id
+    db_session.get(ConversationSession, session_id).removed_at = datetime.now(timezone.utc)
+    db_session.commit()
+    db_session.expire_all()
+    submit("two")
+    db_session.expire_all()
+    assert db_session.get(ConversationSession, session_id).removed_at is None
+
+
+@pytest.mark.integration
+def test_migration_0011_partial_pair_index_up_down(postgres_engine):
+    config = Config()
+    config.set_main_option("script_location", str(ROOT_FOR_MIGRATIONS))
+    with postgres_engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "0010_export_document_operation")
+        command.upgrade(config, "0011_session_removed_at")
+
+        def pair_index():
+            return connection.execute(text("SELECT indexdef FROM pg_indexes WHERE indexname = 'uq_sessions_pair'")).scalar()
+
+        assert "removed_at IS NULL" in pair_index()
+        command.downgrade(config, "0010_export_document_operation")
+        assert connection.execute(text(
+            "SELECT count(*) FROM pg_constraint WHERE conname = 'uq_sessions_pair'")).scalar() == 1
+        assert "removed_at" not in connection.execute(text(
+            "SELECT string_agg(column_name, ',') FROM information_schema.columns WHERE table_name = 'sessions'")).scalar()

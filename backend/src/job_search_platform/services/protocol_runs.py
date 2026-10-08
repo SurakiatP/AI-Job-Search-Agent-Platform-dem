@@ -73,6 +73,8 @@ class ProtocolRuns:
                 db.flush()
             elif grant_session.project_id != project_id:
                 raise ServiceError("not_found")
+            else:
+                grant_session.removed_at = None  # a hidden External agent session reappears
 
             if request.job is not None:
                 job = Repositories.resolve_job_submission(

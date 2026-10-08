@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, Folder, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, Folder, FolderOpen, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { cn } from '@/lib/utils';
@@ -29,8 +29,9 @@ const copy = {
     renameProject: 'เปลี่ยนชื่อโปรเจกต์', renameSession: 'เปลี่ยนชื่อเซสชัน', name: 'ชื่อ', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง',
     deleteProject: (n: string) => `ลบโปรเจกต์ “${n}”?`, deleteSession: (n: string) => `ลบเซสชัน “${n}”?`,
     deleteProjectBody: 'โปรเจกต์นี้จะถูกลบถาวร ลบได้เฉพาะโปรเจกต์ที่ไม่มี CV งาน หรือประวัติการทำงานของเอเจนต์ และย้อนกลับไม่ได้',
-    deleteSessionBody: 'เซสชันและข้อความในเซสชันนี้จะถูกลบถาวร ลบได้เฉพาะเซสชันที่ไม่มีประวัติงานของเอเจนต์ และย้อนกลับไม่ได้',
-    project_not_empty: 'ลบไม่ได้: โปรเจกต์นี้ยังมี CV งาน หรือประวัติการทำงานอยู่', session_has_runs: 'ลบไม่ได้: เซสชันนี้มีประวัติงานของเอเจนต์',
+    deleteSessionBody: 'ประวัติงานและเอกสารที่ร่างไว้จะยังเก็บไว้ เซสชันจะถูกซ่อนจากรายการ',
+    sessionDeleted: 'ลบเซสชันแล้ว', undo: 'เลิกทำ', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', session_pair_exists: 'กู้คืนไม่ได้: มีเซสชันของ CV และงานคู่นี้อยู่แล้ว',
+    project_not_empty: 'ลบไม่ได้: โปรเจกต์นี้ยังมี CV งาน หรือประวัติการทำงานอยู่', session_busy: 'ลบไม่ได้: มีงานกำลังทำหรือรออนุมัติ หยุดงานก่อน',
   },
   en: {
     projects: 'Projects', toggleList: 'Collapse or expand the project list', newProject: 'New project', newSession: 'New session',
@@ -39,8 +40,9 @@ const copy = {
     renameProject: 'Rename project', renameSession: 'Rename session', name: 'Name', failed: 'That did not work. Try again.',
     deleteProject: (n: string) => `Delete project “${n}”?`, deleteSession: (n: string) => `Delete session “${n}”?`,
     deleteProjectBody: 'This permanently deletes the project. It can only be deleted when it has no CV, jobs or agent run history, and this cannot be undone.',
-    deleteSessionBody: 'This permanently deletes the session and its messages. It can only be deleted when it has no agent run history, and this cannot be undone.',
-    project_not_empty: 'Cannot delete: this project still has a CV, jobs or run history.', session_has_runs: 'Cannot delete: this session has agent run history.',
+    deleteSessionBody: 'Run history and drafted documents are kept. The session is hidden from the list.',
+    sessionDeleted: 'Session deleted', undo: 'Undo', undoFailed: 'Could not restore. Try again.', session_pair_exists: 'Cannot restore: a session for this CV and job already exists.',
+    project_not_empty: 'Cannot delete: this project still has a CV, jobs or run history.', session_busy: 'Cannot delete: a task is running or waiting for approval. Stop it first.',
   },
 };
 type Copy = typeof copy.en;
@@ -59,7 +61,7 @@ function RowMenu({ name, onRename, onDelete }: { name: string; onRename: () => v
   ]} />;
 }
 
-function ItemDialog({ state, onClose, onDone }: { state: NonNullable<DialogState>; onClose: () => void; onDone: (state: NonNullable<DialogState>, newName?: string) => void }) {
+function ItemDialog({ state, onClose, onDone }: { state: NonNullable<DialogState>; onClose: () => void; onDone: (state: NonNullable<DialogState>, hidden?: boolean) => void }) {
   const c = useCopy();
   const { mode, target } = state;
   const [value, setValue] = useState(target.name);
@@ -74,11 +76,15 @@ function ItemDialog({ state, onClose, onDone }: { state: NonNullable<DialogState
     setBusy(true); setError('');
     try {
       if (mode === 'rename') await sendJson(base, 'PATCH', isProject ? { name: next } : { title: next });
-      else await apiRequest(base, { method: 'DELETE' });
-      onDone(state, next);
+      else {
+        const result = await apiRequest<{ mode?: string } | undefined>(base, { method: 'DELETE' });
+        onDone(state, result?.mode === 'hidden');
+        return;
+      }
+      onDone(state);
     } catch (caught) {
       const code = caught instanceof ApiError && caught.status === 409 ? caught.code : '';
-      setError(code === 'project_not_empty' || code === 'session_has_runs' ? c[code] : c.failed);
+      setError(code === 'project_not_empty' || code === 'session_busy' ? c[code] : c.failed);
       setBusy(false);
     }
   }
@@ -156,8 +162,24 @@ export function ProjectTree({ projects, projectId, sessionId, onNavigate, onRelo
   // Navigating to another project collapses the rest so the current one is the only open group.
   useEffect(() => { if (projectId) setExpanded(new Set([projectId])); }, [projectId]);
   const refresh = () => { setVersion(value => value + 1); onReload?.(); };
-  function done(state: NonNullable<DialogState>) {
+  const [undo, setUndo] = useState<{ projectId: string; id: string; message: string; retry: boolean } | null>(null);
+  useEffect(() => {
+    if (!undo?.retry) return;
+    const timer = window.setTimeout(() => setUndo(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [undo]);
+  async function undoDelete() {
+    if (!undo) return;
+    try {
+      await apiRequest(`/projects/${undo.projectId}/sessions/${undo.id}/restore`, { method: 'POST' });
+      setUndo(null); refresh();
+    } catch (caught) {
+      setUndo({ ...undo, retry: false, message: caught instanceof ApiError && caught.code === 'session_pair_exists' ? c.session_pair_exists : c.undoFailed });
+    }
+  }
+  function done(state: NonNullable<DialogState>, hidden?: boolean) {
     setDialog(null); refresh();
+    if (hidden) setUndo({ projectId: state.target.projectId, id: state.target.id, message: c.sessionDeleted, retry: true });
     const { kind, id, projectId: owner } = state.target;
     if (state.mode !== 'delete') return;
     if (kind === 'session' && id === sessionId) { onNavigate?.(); navigate(`/app/projects/${owner}/overview`); }
@@ -177,6 +199,10 @@ export function ProjectTree({ projects, projectId, sessionId, onNavigate, onRelo
         onToggle={() => setExpanded(set => { const next = new Set(set); if (!next.delete(project.id)) next.add(project.id); return next; })}
         onNavigate={onNavigate} onDialog={setDialog} />)}
     </ul>)}
+    {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-3 py-2 text-sm">
+      <span className="[overflow-wrap:anywhere]">{undo.message}</span>
+      {undo.retry && <Button type="button" size="sm" variant="outline" onClick={() => { void undoDelete(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
+    </div>}
     {dialog && <ItemDialog key={`${dialog.mode}:${dialog.target.id}`} state={dialog} onClose={() => setDialog(null)} onDone={done} />}
   </section>;
 }

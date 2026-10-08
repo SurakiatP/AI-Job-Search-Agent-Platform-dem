@@ -129,11 +129,31 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
     delete:
       tags: [sessions]
-      description: Owner-only delete of a session and its messages. Refused with 409 session_has_runs when any run references the session.
+      description: >-
+        Owner-only. A session without runs is deleted for good with its messages (mode deleted).
+        A session with run history is hidden instead (mode hidden, removed_at set): runs, events,
+        documents and approvals stay, and it disappears from the session list, GET (404) and new runs (404).
+        Refused with 409 session_busy while any of its runs is queued, running or waiting_approval.
       responses:
-        '204': {description: Deleted}
+        '200': {description: Result, content: {application/json: {schema: {$ref: '#/components/schemas/SessionDeleteResult'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: Session has runs (code session_has_runs)}
+        '409': {description: Session has active runs (code session_busy)}
+  /projects/{project_id}/sessions/{session_id}/restore:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: session_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Un-hides a session hidden by DELETE (idempotent on a visible session). 409
+        session_pair_exists with fields.session_id when a visible session now holds the same CV/job pair.
+      responses:
+        '200': {description: Restored session, content: {application/json: {schema: {$ref: '#/components/schemas/SessionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Pair taken by another session (code session_pair_exists)}
   /projects/{project_id}/sessions/{session_id}/messages:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -713,6 +733,12 @@ components:
       additionalProperties: false
       required: [title]
       properties: {title: {type: string, minLength: 1, maxLength: 200}}
+    SessionDeleteResult:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode: {type: string, enum: [deleted, hidden]}
     SessionView:
       type: object
       additionalProperties: false
