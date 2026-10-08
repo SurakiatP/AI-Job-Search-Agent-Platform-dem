@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import sessionmaker
 
 from helpers import grant, owner, project, provider_config, revisions, session
-from job_search_platform.db.models import Approval, CVRevision, Document, DocumentRevision, Grant, Run, StoredFile
+from job_search_platform.db.models import CV, Approval, CVRevision, Document, DocumentRevision, Grant, Run, StoredFile
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.contracts import ApprovalRequest, RunRequest
 from job_search_platform.services.errors import ServiceError
@@ -143,6 +143,18 @@ def test_approval_promotes_exact_revision_once_and_owner_decisions_race_safely(d
         assert persisted_run.active_seconds == pytest.approx(5.0, abs=0.1)
         row = db.get(Approval, approval.id)
         assert row.consumed_at is not None and row.applied_at is not None
+
+
+def test_cv_approval_cannot_promote_into_a_removed_cv(db_session):
+    factory, p, creator, owner_actor, current_cv, run = _setup(db_session)
+    revision_id, _ = _document_revision(factory, p.id)
+    service = ApprovalService(factory)
+    pending = service.request(creator, p.id, run.id, ApprovalRequest(
+        action="promote_cv", revision_id=revision_id, expected_cv_revision_id=current_cv.id))
+    with factory.begin() as db:
+        db.get(CV, current_cv.cv_id).removed_at = datetime.now(timezone.utc)
+    with pytest.raises(ServiceError, match="approval_stale"):
+        service.resolve(owner_actor, p.id, pending.id, "approve")
 
 
 def test_stale_cv_approval_cannot_promote_and_expiry_fails_run_durably(db_session):

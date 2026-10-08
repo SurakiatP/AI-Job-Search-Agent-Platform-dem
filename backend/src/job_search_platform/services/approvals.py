@@ -11,7 +11,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import Approval, CVRevision, DocumentRevision, Grant, Project, Run, StoredFile
+from job_search_platform.db.models import CV, Approval, CVRevision, DocumentRevision, Grant, Project, Run, StoredFile
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import Actor, ApprovalRequest, ApprovalView
 from job_search_platform.services.errors import ServiceError
@@ -472,7 +472,8 @@ def _utc(value: datetime) -> datetime:
 
 def _latest_in_cv_of(db: Session, project_id: UUID, revision_id: UUID | None, *, lock: bool = False):
     """Newest revision of the CV that owns revision_id (None when that revision is unknown)."""
-    cv_id = db.scalar(select(CVRevision.cv_id).where(CVRevision.project_id == project_id, CVRevision.id == revision_id))
+    cv_id = db.scalar(select(CVRevision.cv_id).join(CV, (CV.project_id == CVRevision.project_id) & (CV.id == CVRevision.cv_id))
+                      .where(CVRevision.project_id == project_id, CVRevision.id == revision_id, CV.removed_at.is_(None)))
     if cv_id is None:
         return None
     query = select(CVRevision).where(CVRevision.cv_id == cv_id).order_by(CVRevision.revision.desc()).limit(1)

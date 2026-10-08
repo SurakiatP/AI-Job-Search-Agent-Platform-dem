@@ -275,6 +275,11 @@ class RunService:
                 Document.project_id == project_id, Document.id == canonical_request.document_id))
             if document is None or document.trashed_at is not None:
                 raise ServiceError("not_found")
+            # A paired session may only revise documents drafted for its own job.
+            if session.job_revision_id is not None and session.job_revision_id not in db.scalars(
+                    select(DocumentRevision.source_job_revision_id).where(
+                        DocumentRevision.project_id == project_id, DocumentRevision.document_id == document.id)).all():
+                raise ServiceError("not_found")
             previous_draft = db.scalar(
                 select(DocumentRevision.content_markdown)
                 .where(DocumentRevision.project_id == project_id, DocumentRevision.document_id == document.id)

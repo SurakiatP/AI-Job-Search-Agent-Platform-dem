@@ -59,6 +59,8 @@ def parse_draft_manifest(value: str) -> tuple[dict[str, str], ...]:
             }:
                 raise ValueError
             path = draft["path"]
+            if isinstance(path, str) and path.startswith("staging/"):
+                path = path.removeprefix("staging/")
             title = draft["title"]
             document_type = draft["document_type"]
             output_format = draft["format"]
@@ -293,7 +295,8 @@ class RunExecutor:
             task = "Evaluate this candidate for the job. Return only JSON with report_markdown and an optional score from 1 to 5."
         else:
             task = (
-                "Prepare application documents. Write each draft under staging/ and return only JSON shaped as "
+                "Prepare application documents. Write each draft as Markdown under staging/ and return only JSON "
+                "with paths relative to staging/, shaped as "
                 '{"drafts":[{"path":"draft.md","document_type":"cover_letter",'
                 '"title":"...","format":"pdf"}]}. Use only pdf or docx formats.'
             )

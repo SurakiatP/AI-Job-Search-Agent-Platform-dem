@@ -172,8 +172,13 @@ def test_revise_run_requires_a_live_document_and_snapshots_it(api_context):
         document = Document(project_id=UUID(pid), document_type="cover_letter", title="Letter")
         db.add(document)
         db.flush()
-        db.add(DocumentRevision(project_id=UUID(pid), document_id=document.id, revision=1, content_markdown="Dear team"))
-        doc_id = str(document.id)
+        db.add(DocumentRevision(project_id=UUID(pid), document_id=document.id, revision=1, content_markdown="Dear team",
+                                source_job_revision_id=UUID(paired["job_revision_id"])))
+        other = Document(project_id=UUID(pid), document_type="cover_letter", title="Other job letter")
+        db.add(other)
+        db.flush()
+        db.add(DocumentRevision(project_id=UUID(pid), document_id=other.id, revision=1, content_markdown="Other"))
+        doc_id, other_id = str(document.id), str(other.id)
 
     def draft(key, **extra):
         return client.post(f"{PREFIX}/{pid}/runs", headers=headers, json={
@@ -186,6 +191,7 @@ def test_revise_run_requires_a_live_document_and_snapshots_it(api_context):
         snapshot = db.get(Run, UUID(ok.json()["id"])).input_snapshot
         assert snapshot["document_id"] == doc_id and snapshot["previous_draft"] == "Dear team"
     assert draft("r2", document_id=str(uuid4())).status_code == 404
+    assert draft("r2b", document_id=other_id).status_code == 404  # not drafted for this session's job
     evaluate = client.post(f"{PREFIX}/{pid}/runs", headers=headers, json={
         "session_id": paired["id"], "operation": "evaluate_job", "output_language": "en",
         "idempotency_key": "r3", "document_id": doc_id})

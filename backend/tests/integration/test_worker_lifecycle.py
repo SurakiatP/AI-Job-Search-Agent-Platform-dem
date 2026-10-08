@@ -182,7 +182,12 @@ def test_draft_manifest_requires_safe_staging_relative_paths() -> None:
 
     drafts = parse('{"drafts":[{"path":"cover.md","document_type":"cover_letter","title":"Synthetic cover","format":"pdf"}]}')
     assert drafts[0]["path"] == "cover.md"
+    # Models often echo the "under staging/" instruction into the path itself.
+    drafts = parse('{"drafts":[{"path":"staging/cover.md","document_type":"cover_letter","title":"Synthetic cover","format":"pdf"}]}')
+    assert drafts[0]["path"] == "cover.md"
 
+    with pytest.raises(ValueError, match="native_response_invalid"):
+        parse('{"drafts":[{"path":"staging/../../outside.md","document_type":"cover_letter","title":"Synthetic","format":"pdf"}]}')
     with pytest.raises(ValueError, match="native_response_invalid"):
         parse('{"drafts":[{"path":"../outside.md","document_type":"cover_letter","title":"Synthetic","format":"pdf"}]}')
 
