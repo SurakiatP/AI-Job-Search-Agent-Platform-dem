@@ -14,7 +14,7 @@ RunStatus = Literal["queued", "running", "waiting_approval", "completed", "faile
 Operation = Literal["evaluate_job", "draft_documents"]
 # profile_cv (CV skill profile, no LLM) is likewise owner-only and internal.
 # export_document is an owner-only, non-LLM run created by the manual-edit endpoint; never a request operation.
-ViewOperation = Literal["evaluate_job", "draft_documents", "export_document", "profile_cv"]
+ViewOperation = Literal["evaluate_job", "draft_documents", "export_document", "profile_cv", "match_jobs"]
 DraftKind = Literal["cover_letter", "application_message"]
 
 
@@ -29,6 +29,17 @@ class Actor:
 
 class DTO(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class MatchRunRequest(DTO):
+    cv_revision_id: UUID
+    q: Annotated[str, StringConstraints(max_length=200)] = ""
+    cities: Annotated[list[Annotated[str, StringConstraints(min_length=1, max_length=80)]], Field(max_length=10)] = []
+    work_mode: Literal["remote", "hybrid", "onsite"] | None = None
+    posted_within_days: Annotated[int, Field(ge=1, le=90)] | None = None
+    category: Annotated[str, StringConstraints(pattern=r"^[a-z0-9_-]{1,60}$")] | None = None
+    pool: Annotated[int, Field(ge=1, le=100)] = 100
+    offset: Annotated[int, Field(ge=0, le=1000)] = 0
 
 
 class RunRequest(DTO):

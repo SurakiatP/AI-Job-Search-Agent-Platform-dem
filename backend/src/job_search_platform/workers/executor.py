@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import contextlib
+import functools
 import json
 import re
 import asyncio
@@ -15,11 +16,14 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import Approval, CVRevision, Run, RunArtifact, StoredFile
+from job_search_platform.db.models import Approval, CVRevision, CVRevisionText, JobMatchScore, JobSearchHidden, Run, RunArtifact, StoredFile
 from job_search_platform.services.contracts import EvaluationResult, SkillCoverage
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
+from job_search_platform.integrations.jev import JEV_MODEL, JevClient
+from job_search_platform.services import job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.runs import append_event
@@ -27,6 +31,9 @@ from job_search_platform.workers.sandbox import RunSandbox
 from job_search_platform.workers.supervisor import process_birth
 
 CLAIM_HEARTBEAT_INTERVAL_SECONDS = 1
+MAX_JEV_CALLS = 101
+JEV_CONCURRENCY = 8
+MAX_CV_TEXT = 200_000
 
 
 def _native_json(value: str):
@@ -118,6 +125,7 @@ class RunExecutor:
         object_store,
         *,
         workspace_root: Path,
+        jev_factory=JevClient,
     ) -> None:
         self.sessions = sessions
         self.queue = queue
@@ -126,6 +134,7 @@ class RunExecutor:
         self.artifacts = artifacts
         self.object_store = object_store
         self.workspace_root = workspace_root
+        self.jev_factory = jev_factory
 
     async def execute(self, run: Run, lease_owner: str) -> None:
         execution = asyncio.current_task()
@@ -197,6 +206,9 @@ class RunExecutor:
                 return
             if run.operation == "profile_cv":
                 await self._execute_profile(run, lease_owner, sandbox)
+                return
+            if run.operation == "match_jobs":
+                await self._execute_match(run, lease_owner, sandbox)
                 return
             cv_path = await self._materialize(run, sandbox)
             connector = run.config_snapshot.get("connector", {})
@@ -326,43 +338,141 @@ class RunExecutor:
     def _store_profile(self, cv_revision_id: uuid.UUID, cv_text: str) -> None:
         with self.sessions.begin() as db:
             revision = db.scalar(select(CVRevision).where(CVRevision.id == cv_revision_id).with_for_update())
-            if revision is not None and (revision.skill_profile or {}).get("method") != SKILL_METHOD:
+            if revision is None:
+                return
+            if (revision.skill_profile or {}).get("method") != SKILL_METHOD:
                 revision.skill_profile = {"skills": extract_skills(cv_text), "method": SKILL_METHOD}
+            text = cv_text[:MAX_CV_TEXT]
+            if text.strip() and db.get(CVRevisionText, cv_revision_id) is None:
+                db.add(CVRevisionText(cv_revision_id=cv_revision_id, project_id=revision.project_id, text=text))
 
-    async def _execute_profile(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
-        """Parse the CV in the sandbox and keep only its skill names; no LLM, no provider, no job."""
+    async def _parse_cv_text(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> str:
+        """Parse the run's CV inside the sandbox (no LLM); the native project is stopped again before returning."""
+        cv_path = await self._materialize(run, sandbox)
+
+        async def reserve_tool(_call_id: str, _tool_name: str) -> bool:
+            try:
+                await asyncio.to_thread(self.queue.reserve_tool_call, run.id, lease_owner)
+                return True
+            except ServiceError:
+                return False
+
         started = False
         try:
-            cv_path = await self._materialize(run, sandbox)
-
-            async def reserve_tool(_call_id: str, _tool_name: str) -> bool:
-                try:
-                    await asyncio.to_thread(self.queue.reserve_tool_call, run.id, lease_owner)
-                    return True
-                except ServiceError:
-                    return False
-
             project = await self.runtime.start_project(run.project_id, sandbox.workspace)
             started = True
             self.runtime.projects[run.project_id].tool_gate = reserve_tool
             self._record_process(run.id, lease_owner, project)
             parsed = await self.runtime.parse_input(run.project_id, cv_path)
-            await asyncio.to_thread(self._store_profile, run.cv_revision_id, parsed.text)
+        finally:
             await self._stop(run.project_id, started)
-            started = False
+        return parsed.text
+
+    async def _execute_profile(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
+        """Parse the CV in the sandbox and keep its skill names (and text for Smart match); no LLM, no provider, no job."""
+        try:
+            text = await self._parse_cv_text(run, lease_owner, sandbox)
+            await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
             await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed")
         except ServiceError as exc:
-            await self._stop(run.project_id, started)
-            if exc.code == "cancellation_requested":
-                await self._finish_after_stop(run, lease_owner, "cancelled", None)
-            else:
-                await self._finish_after_stop(run, lease_owner, "failed", _safe_message(exc.code))
+            status = "cancelled" if exc.code == "cancellation_requested" else "failed"
+            await self._finish_after_stop(run, lease_owner, status, None if status == "cancelled" else _safe_message(exc.code))
         except Exception:
-            await self._stop(run.project_id, started)
             await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
+
+    async def _execute_match(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
+        """Score the run's job pool with Jev; each finished score is committed at once, so cancel keeps them."""
+        try:
+            provider = await self.settings.trusted_provider()
+            if provider is None or provider.provider != "openrouter":
+                raise ServiceError("jev_unavailable")
+            text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
+            if text is None:
+                text = await self._parse_cv_text(run, lease_owner, sandbox)
+                await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
+            if not text.strip():
+                raise ServiceError("cv_text_empty")
+            client = self.jev_factory(provider.api_key)
+            snap = run.input_snapshot
+            auto = not (snap.get("q") or "").strip() and not snap.get("category")
+            categories = await asyncio.to_thread(self._match_categories, run.cv_revision_id, client, text) if auto else None
+            hidden = await asyncio.to_thread(self._hidden_keys, run.project_id)
+            page = await asyncio.to_thread(functools.partial(
+                smart_match.build_pool, q=snap.get("q") or "", cities=snap.get("cities") or [],
+                work_mode=snap.get("work_mode"), posted_within_days=snap.get("posted_within_days"),
+                category=snap.get("category"), pool=snap["pool"], offset=snap.get("offset", 0), cv_categories=categories))
+            jobs = [job for job in page["items"] if not smart_match.is_hidden(job, hidden)]
+            todo = (await asyncio.to_thread(self._unscored, run.cv_revision_id, jobs))[: MAX_JEV_CALLS - 1]
+            limit = asyncio.Semaphore(JEV_CONCURRENCY)
+
+            async def score(job: dict) -> bool:
+                async with limit:
+                    skills = smart_match.job_skills(job)
+                    try:
+                        answers = await asyncio.to_thread(client.decide, smart_match.job_state(text, job), smart_match.job_questions(skills))
+                        result = smart_match.combine(answers, skills)
+                    except (ServiceError, KeyError, TypeError, ValueError):
+                        return False
+                    await asyncio.to_thread(self._store_score, run, job, result)
+                    return True
+
+            results = await asyncio.gather(*(score(job) for job in todo))
+            if todo and not any(results):
+                raise ServiceError("jev_failed")
+            await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed")
+        except ServiceError as exc:
+            status = "cancelled" if exc.code == "cancellation_requested" else "failed"
+            await self._finish_after_stop(run, lease_owner, status, None if status == "cancelled" else _safe_message(exc.code))
+        except Exception:
+            await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
+
+    def _stored_cv_text(self, cv_revision_id: uuid.UUID) -> str | None:
+        with self.sessions() as db:
+            row = db.get(CVRevisionText, cv_revision_id)
+            return None if row is None else row.text
+
+    def _hidden_keys(self, project_id: uuid.UUID) -> set[tuple[str, str]]:
+        with self.sessions() as db:
+            return {(kind, value) for kind, value in db.execute(
+                select(JobSearchHidden.kind, JobSearchHidden.value).where(JobSearchHidden.project_id == project_id))}
+
+    def _unscored(self, cv_revision_id: uuid.UUID, jobs: list[dict]) -> list[dict]:
+        with self.sessions() as db:
+            done = set(db.execute(select(JobMatchScore.job_slug, JobMatchScore.content_hash).where(
+                JobMatchScore.cv_revision_id == cv_revision_id, JobMatchScore.model == JEV_MODEL,
+                JobMatchScore.job_slug.in_([job["slug"] for job in jobs]))).all())
+        return [job for job in jobs if (job["slug"], smart_match.content_hash(job)) not in done]
+
+    def _store_score(self, run: Run, job: dict, result: dict) -> None:
+        details = {k: v for k, v in result.items() if k not in ("fit_percent", "uncertain")}
+        statement = pg_insert(JobMatchScore).values(
+            id=uuid.uuid4(), project_id=run.project_id, cv_revision_id=run.cv_revision_id, job_slug=job["slug"][:200],
+            content_hash=smart_match.content_hash(job), model=JEV_MODEL, fit_percent=result["fit_percent"],
+            uncertain=result["uncertain"], details=details,
+        ).on_conflict_do_nothing(constraint="uq_job_match_scores_key")
+        with self.sessions.begin() as db:
+            db.execute(statement)
+
+    def _match_categories(self, cv_revision_id: uuid.UUID, client, text: str) -> list[str] | None:
+        with self.sessions() as db:
+            profile = (db.get(CVRevision, cv_revision_id).skill_profile or {})
+        if profile.get("categories_model") == JEV_MODEL and profile.get("categories"):
+            return list(profile["categories"])
+        options = [facet["value"] for facet in job_sources.job_facets()["categories"]]
+        if not options:
+            return None
+        chosen = smart_match.pick_categories(client.decide({"cv": text}, smart_match.category_question(options))["category"])
+        with self.sessions.begin() as db:
+            revision = db.scalar(select(CVRevision).where(CVRevision.id == cv_revision_id).with_for_update())
+            revision.skill_profile = {**(revision.skill_profile or {}), "categories": chosen, "categories_model": JEV_MODEL}
+        return chosen
 
     async def _materialize(self, run: Run, sandbox: RunSandbox) -> str:
         file_id = run.input_snapshot.get("cv_file_id")
+        if not file_id and run.cv_revision_id is not None:  # match_jobs snapshots carry the revision, not the file
+            with self.sessions() as db:
+                revision = db.get(CVRevision, run.cv_revision_id)
+                file_id = str(revision.file_id) if revision is not None and revision.file_id else None
         if not file_id:
             raise ServiceError("cv_unavailable")
         with self.sessions() as db:
@@ -644,5 +754,8 @@ def _safe_message(code: str) -> str:
         "provider_not_configured": "errors.provider_not_configured",
         "connector_disabled": "errors.connector_disabled",
         "export_failed": "errors.export_failed",
+        "jev_unavailable": "errors.jev_unavailable",
+        "jev_failed": "errors.jev_failed",
+        "cv_text_empty": "errors.cv_text_empty",
         "native_response_invalid": "errors.native_response_invalid",
     }.get(code, "errors.execution_failed")

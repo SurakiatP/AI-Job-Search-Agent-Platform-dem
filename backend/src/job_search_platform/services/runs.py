@@ -31,10 +31,12 @@ from job_search_platform.db.models import (
 from job_search_platform.db.models import (
     RunEvent as RunEventRow,
 )
+from job_search_platform.integrations.jev import JEV_MODEL
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
     Actor,
     DocumentEdit,
+    MatchRunRequest,
     RunEvent,
     RunEventData,
     RunEventView,
@@ -564,6 +566,48 @@ class RunService:
             append_event(db, run, "run_queued", {"status": "queued"}, now=now)
             return self._authorized_view(db, actor, run)
 
+    async def submit_match(self, actor: Actor, project_id: UUID, request: MatchRunRequest) -> RunView:
+        """Owner-only: queue a Jev scoring run for one CV revision and one job-search pool."""
+        return await asyncio.to_thread(self._submit_match_sync, actor, project_id, request)
+
+    def _submit_match_sync(self, actor: Actor, project_id: UUID, request: MatchRunRequest) -> RunView:
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        now = datetime.now(timezone.utc)
+        snapshot = request.model_dump(mode="json")
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "cv")
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            revision = db.scalar(select(CVRevision).join(CV, (CV.project_id == CVRevision.project_id) & (CV.id == CVRevision.cv_id))
+                                 .where(CVRevision.project_id == project_id, CVRevision.id == request.cv_revision_id,
+                                        CV.removed_at.is_(None)))
+            if revision is None:
+                raise ServiceError("not_found")
+            config = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
+                               .order_by(ProviderConfiguration.revision.desc()).limit(1))
+            if config is None or config.provider != "openrouter" or config.secret_reference.startswith("restored-unconfigured:"):
+                raise ServiceError("jev_unavailable")
+            for active in db.scalars(select(Run).where(
+                    Run.project_id == project_id, Run.operation == "match_jobs", Run.cv_revision_id == revision.id,
+                    Run.status.in_(("queued", "running")))):
+                if active.input_snapshot == snapshot:
+                    return self._authorized_view(db, actor, active)
+            queued = db.scalar(select(func.count()).select_from(Run).where(
+                Run.project_id == project_id, Run.status == "queued")) or 0
+            if queued >= MAX_QUEUED_PER_PROJECT:
+                raise ServiceError("queue_full", retryable=True)
+            key = uuid4().hex
+            run = Run(project_id=project_id, actor_scope="owner", idempotency_key=key,
+                      request_digest=hashlib.sha256(json.dumps({"match_jobs": snapshot, "key": key}, sort_keys=True).encode()).hexdigest(),
+                      operation="match_jobs", cv_revision_id=revision.id, provider_configuration_id=config.id,
+                      input_snapshot=snapshot, config_snapshot={"model": JEV_MODEL},
+                      output_language="en", status="queued", created_at=now)
+            db.add(run)
+            db.flush()
+            append_event(db, run, "run_queued", {"status": "queued"}, now=now)
+            return self._authorized_view(db, actor, run)
+
     @staticmethod
     def _retry_source(db: Session, project_id: UUID, retry_of_id: UUID) -> Run:
         source = db.scalar(
@@ -657,7 +701,7 @@ class RunService:
             select(Run).where(Run.project_id == project_id, Run.id == run_id)
         )
         # Manual-edit export runs are owner-only; grants (REST, MCP, A2A) never see them.
-        if run is None or (actor is not None and actor.kind != "owner" and run.operation in {"export_document", "profile_cv"}):
+        if run is None or (actor is not None and actor.kind != "owner" and run.operation in {"export_document", "profile_cv", "match_jobs"}):
             raise ServiceError("not_found")
         return run
 
