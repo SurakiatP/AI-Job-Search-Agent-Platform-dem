@@ -195,6 +195,7 @@ class RunView(DTO):
     finished_at: datetime | None = None
     retry_of_id: UUID | None = None
     evaluation_result: EvaluationResult | None = None
+    job_removed: bool = False
 
 
 class RunEventData(DTO):

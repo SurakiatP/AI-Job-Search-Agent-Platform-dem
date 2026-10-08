@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import logging
 import os
 import stat
 import unicodedata
@@ -12,12 +14,16 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import (
+    Approval,
+    CVRevision,
     Document,
     DocumentRevision,
+    JobRevision,
+    Project,
     Run,
     RunArtifact,
     StoredFile,
@@ -39,6 +45,9 @@ from job_search_platform.services.files import (
     _sniff_mime,
     _view,
 )
+
+
+_log = logging.getLogger(__name__)
 
 
 class Artifacts:
@@ -306,6 +315,67 @@ class Documents:
     def __init__(self, sessions: sessionmaker[Session], object_store) -> None:
         self.sessions = sessions
         self.object_store = object_store
+
+    async def delete(self, actor: Actor, project_id: UUID, document_id: UUID) -> None:
+        """Owner hard delete: rows commit first, then objects are removed best-effort."""
+        storage_keys = await asyncio.to_thread(self._delete_rows, actor, project_id, document_id)
+        for key in storage_keys:
+            try:
+                await self.object_store.delete(key)
+            except Exception:
+                # Rows are already gone; an orphaned private object is harmless. Never log the key.
+                _log.warning("document_object_delete_failed")
+
+    def _delete_rows(self, actor: Actor, project_id: UUID, document_id: UUID) -> list[str]:
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "document")
+            # Project lock first (as approvals do) so no approval can be requested mid-delete.
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            document = db.scalar(select(Document).where(
+                Document.project_id == project_id, Document.id == document_id).with_for_update())
+            if document is None:
+                raise ServiceError("not_found")
+            revisions = list(db.scalars(select(DocumentRevision).where(
+                DocumentRevision.project_id == project_id,
+                DocumentRevision.document_id == document_id).with_for_update()))
+            revision_ids = [row.id for row in revisions]
+            file_ids = {row.file_id for row in revisions if row.file_id is not None}
+            files = list(db.scalars(select(StoredFile).where(
+                StoredFile.project_id == project_id, StoredFile.id.in_(file_ids)).with_for_update())) if file_ids else []
+            if any(file.publication_state == "pending" for file in files):
+                raise ServiceError("document_in_use")
+
+            related = and_(Approval.project_id == project_id, or_(
+                Approval.revision_id.in_(revision_ids), Approval.target_file_id.in_(file_ids)))
+            in_flight = and_(related, or_(
+                Approval.consumed_at.is_(None),
+                and_(Approval.decision == "approve", Approval.applied_at.is_(None)),
+            ))
+            if db.scalar(select(func.count()).select_from(Approval).where(in_flight)):
+                raise ServiceError("document_in_use")
+
+            # Settled approvals are history that would dangle; dependents go before their targets.
+            db.execute(delete(Approval).where(related))
+            db.execute(delete(RunArtifact).where(
+                RunArtifact.project_id == project_id, RunArtifact.document_revision_id.in_(revision_ids)))
+            db.execute(delete(DocumentRevision).where(
+                DocumentRevision.project_id == project_id, DocumentRevision.document_id == document_id))
+            db.execute(delete(Document).where(Document.project_id == project_id, Document.id == document_id))
+
+            # A file stays when anything else (e.g. a CV promoted from this draft) still points at it.
+            kept: set[UUID] = set()
+            for column in (CVRevision.file_id, JobRevision.content_file_id, DocumentRevision.file_id,
+                           RunArtifact.file_id, Approval.target_file_id):
+                kept.update(db.scalars(select(column).where(
+                    column.class_.project_id == project_id, column.in_(file_ids))))
+            doomed = [file for file in files if file.id not in kept]
+            if doomed:
+                db.execute(delete(StoredFile).where(
+                    StoredFile.project_id == project_id, StoredFile.id.in_([file.id for file in doomed])))
+            return [file.storage_key for file in doomed]
 
     async def list_ready(self, actor: Actor, project_id: UUID) -> list[DocumentView]:
         with self.sessions() as db:

@@ -32,6 +32,7 @@ _SAFE_SERVICE_ERRORS = {
     "cv_required",
     "cv_unavailable",
     "connector_disabled",
+    "job_removed",
     "queue_full",
     "submission_rate_limited",
 }

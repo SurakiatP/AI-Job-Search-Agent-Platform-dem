@@ -69,7 +69,7 @@ def actor_scope(actor: Actor) -> str:
     raise ServiceError("unauthorized")
 
 
-def run_view(run: Run, *, result_file_ids: tuple[UUID, ...] = ()) -> RunView:
+def run_view(run: Run, *, result_file_ids: tuple[UUID, ...] = (), job_removed: bool = False) -> RunView:
     return RunView(
         id=run.id,
         project_id=run.project_id,
@@ -83,6 +83,7 @@ def run_view(run: Run, *, result_file_ids: tuple[UUID, ...] = ()) -> RunView:
         created_at=run.created_at,
         finished_at=run.finished_at,
         retry_of_id=run.retry_of_id,
+        job_removed=job_removed,
     )
 
 
@@ -264,6 +265,9 @@ class RunService:
                 raise ServiceError("idempotency_conflict")
             return self._authorized_view(db, actor, previous)
 
+        # Replays above stay valid; a removed job cannot start new work.
+        if job.removed_at is not None:
+            raise ServiceError("job_removed")
         if retry_source is not None and retry_source.status not in {"failed", "cancelled", "interrupted"}:
             raise ServiceError("retry_not_allowed")
         queued = db.scalar(
@@ -441,7 +445,12 @@ class RunService:
             return run_view(run).model_copy(
                 update={"evaluation_result": None, "result_file_ids": ()}
             )
-        return run_view(run, result_file_ids=self._result_file_ids(db, run))
+        job_removed = db.scalar(
+            select(JobRevision.removed_at).where(
+                JobRevision.project_id == run.project_id, JobRevision.id == run.job_revision_id
+            )
+        ) is not None
+        return run_view(run, result_file_ids=self._result_file_ids(db, run), job_removed=job_removed)
 
     @staticmethod
     def _visible_run(db: Session, project_id: UUID, run_id: UUID) -> Run:

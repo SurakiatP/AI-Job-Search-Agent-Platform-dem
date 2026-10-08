@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import secrets
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
@@ -19,7 +20,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import sessionmaker
 
 from job_search_platform.api.dependencies import Services
-from job_search_platform.db.models import CVRevision, Message, Project, Run
+from job_search_platform.db.models import (
+    Approval, CVRevision, Document, DocumentRevision, JobRevision, Message, Project, Run, RunArtifact, StoredFile,
+)
 from job_search_platform.integrations.hermes_runtime import ParsedInput
 from job_search_platform.integrations.object_store import S3ObjectStore
 from job_search_platform.main import create_app
@@ -305,6 +308,243 @@ def test_validation_error_never_echoes_credentials_or_raw_input(api_context):
     assert "input" not in body and "ctx" not in body
     assert set(response.json()) <= {"code", "message_key", "retryable", "correlation_id", "fields"}
     assert response.json().get("fields", {}) == {"credential": "invalid"}
+
+
+def _removal_project(api_context, csrf: str):
+    """Project with a session, current CV and provider so owner runs can be admitted."""
+    client = api_context.client
+    pid = client.post("/api/v1/projects", json={"name": "Removal"}, headers=_write_headers(csrf)).json()["id"]
+    sid = client.post(f"/api/v1/projects/{pid}/sessions", json={"title": "S"}, headers=_write_headers(csrf)).json()["id"]
+    with api_context.sessions.begin() as db:
+        db.add(CVRevision(project_id=UUID(pid), revision=1))
+        provider_config(db, UUID(pid))
+    return pid, sid
+
+
+def _new_job(client, csrf, pid, title):
+    created = client.post(f"/api/v1/projects/{pid}/jobs", json={"title": title, "description": "Synthetic role"},
+                          headers=_write_headers(csrf))
+    assert created.status_code == 201
+    return created.json()["id"]
+
+
+def _submit(client, csrf, pid, sid, job_id, key):
+    return client.post(f"/api/v1/projects/{pid}/runs", headers=_write_headers(csrf), json={
+        "session_id": sid, "operation": "evaluate_job", "job_revision_id": job_id,
+        "output_language": "en", "idempotency_key": key})
+
+
+@pytest.mark.integration
+def test_owner_removes_job_softly_hides_it_and_blocks_new_runs_but_old_runs_stay(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    headers = _write_headers(csrf)
+    pid, sid = _removal_project(api_context, csrf)
+    keep, gone = _new_job(client, csrf, pid, "Keep"), _new_job(client, csrf, pid, "Gone")
+    first = _submit(client, csrf, pid, sid, gone, "before-removal")
+    assert first.status_code == 202 and first.json()["job_removed"] is False
+    other_run = _submit(client, csrf, pid, sid, keep, "other-job")
+    assert other_run.status_code == 202
+    status_url = f"/api/v1/projects/{pid}/jobs/{gone}/application-status"
+    assert client.get(status_url).status_code == 200
+
+    url = f"/api/v1/projects/{pid}/jobs/{gone}"
+    assert client.delete(url, headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403  # no CSRF
+    assert len(client.get(f"/api/v1/projects/{pid}/jobs").json()) == 2
+    removed = client.delete(url, headers=headers)
+    assert removed.status_code == 204 and removed.content == b""
+    assert client.delete(url, headers=headers).status_code == 204  # idempotent
+    assert [job["id"] for job in client.get(f"/api/v1/projects/{pid}/jobs").json()] == [keep]
+    assert client.get(status_url).status_code == 404
+    assert client.patch(status_url, json={"application_status": "applied"}, headers=headers).status_code == 404
+    with api_context.sessions() as db:
+        row = db.get(JobRevision, UUID(gone))
+        assert row is not None and row.removed_at is not None and row.title == "Gone"
+
+    blocked = _submit(client, csrf, pid, sid, gone, "after-removal")
+    assert blocked.status_code == 409 and blocked.json()["code"] == "job_removed"
+    replay = _submit(client, csrf, pid, sid, gone, "before-removal")  # idempotent replay still resolves
+    assert replay.status_code == 202 and replay.json()["id"] == first.json()["id"]
+    old = client.get(f"/api/v1/projects/{pid}/runs/{first.json()['id']}")
+    assert old.status_code == 200 and old.json()["job_removed"] is True
+    assert client.get(f"/api/v1/projects/{pid}/runs/{other_run.json()['id']}").json()["job_removed"] is False
+    assert len(client.get(f"/api/v1/projects/{pid}/runs").json()) == 2
+
+    missing = "00000000-0000-4000-8000-000000000000"
+    assert client.delete(f"/api/v1/projects/{pid}/jobs/{missing}", headers=headers).status_code == 404
+    other_pid, _ = _removal_project(api_context, csrf)
+    assert client.delete(f"/api/v1/projects/{other_pid}/jobs/{keep}", headers=headers).status_code == 404
+
+    token = client.post(f"/api/v1/projects/{pid}/grants", headers=headers, json={
+        "capabilities": ["results:read", "jobs:evaluate"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+    client.cookies.clear()
+    denied = client.delete(f"/api/v1/projects/{pid}/jobs/{keep}", headers={"Authorization": f"Bearer {token}"})
+    assert denied.status_code in (401, 403)
+    csrf = _owner(api_context)
+    assert [job["id"] for job in client.get(f"/api/v1/projects/{pid}/jobs").json()] == [keep]
+
+
+def _seed_document(api_context, pid: str, name: str = "letter.pdf", *, run_id=None):
+    """Published document with one revision, file row and private object; optionally linked to a run."""
+    body = f"%PDF synthetic {name}".encode()
+    key = f"objects/{secrets.token_hex(16)}"
+    api_context.s3.put_object(Bucket=api_context.bucket, Key=key, Body=body)
+    project_id = UUID(pid)
+    with api_context.sessions.begin() as db:
+        file = StoredFile(project_id=project_id, kind="generated_document", publication_state="published",
+                          storage_key=key, checksum_sha256=hashlib.sha256(body).hexdigest(),
+                          size_bytes=len(body), mime_type="application/pdf", display_name=name)
+        document = Document(project_id=project_id, document_type="cover_letter", title=name)
+        db.add_all([file, document])
+        db.flush()
+        revision = DocumentRevision(project_id=project_id, document_id=document.id, revision=1,
+                                    file_id=file.id, content_markdown="Synthetic body")
+        db.add(revision)
+        db.flush()
+        if run_id is not None:
+            db.add(RunArtifact(project_id=project_id, run_id=run_id, file_id=file.id, document_revision_id=revision.id))
+        return SimpleNamespace(document=document.id, revision=revision.id, file=file.id, key=key)
+
+
+def _object_exists(api_context, key: str) -> bool:
+    return any(item["Key"] == key for item in api_context.s3.list_objects_v2(Bucket=api_context.bucket).get("Contents", []))
+
+
+def _seed_completed_run(api_context, pid: str, sid: str, *, status="completed", key="doc-run"):
+    with api_context.sessions.begin() as db:
+        cv_id = db.scalar(select(CVRevision.id).where(CVRevision.project_id == UUID(pid)))
+        provider_id = provider_config_id(db, UUID(pid))
+        job = JobRevision(project_id=UUID(pid), revision=99, title="Doc job", description="Synthetic")
+        db.add(job)
+        db.flush()
+        run = Run(project_id=UUID(pid), actor_scope="owner", idempotency_key=key, request_digest="b" * 64,
+                  session_id=UUID(sid), operation="draft_documents", cv_revision_id=cv_id, job_revision_id=job.id,
+                  provider_configuration_id=provider_id, input_snapshot={}, config_snapshot={},
+                  output_language="en", status=status)
+        db.add(run)
+        db.flush()
+        return run.id
+
+
+def provider_config_id(db, project_id):
+    from job_search_platform.db.models import ProviderConfiguration
+    return db.scalar(select(ProviderConfiguration.id).where(ProviderConfiguration.project_id == project_id))
+
+
+@pytest.mark.integration
+def test_owner_hard_deletes_document_rows_files_and_objects_while_run_stays_readable(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    headers = _write_headers(csrf)
+    pid, sid = _removal_project(api_context, csrf)
+    run_id = _seed_completed_run(api_context, pid, sid)
+    doomed = _seed_document(api_context, pid, "doomed.pdf", run_id=run_id)
+    survivor = _seed_document(api_context, pid, "survivor.pdf")
+    url = f"/api/v1/projects/{pid}/documents/{doomed.document}"
+    assert client.get(f"/api/v1/projects/{pid}/runs/{run_id}").json()["result_file_ids"] == [str(doomed.file)]
+    assert client.get(f"/api/v1/projects/{pid}/files/{doomed.file}/download").status_code == 200
+
+    assert client.delete(url, headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403  # no CSRF
+    assert _object_exists(api_context, doomed.key)
+    deleted = client.delete(url, headers=headers)
+    assert deleted.status_code == 204 and deleted.content == b""
+    with api_context.sessions() as db:
+        assert db.get(Document, doomed.document) is None
+        assert db.get(DocumentRevision, doomed.revision) is None
+        assert db.get(StoredFile, doomed.file) is None
+        assert db.scalar(select(func.count()).select_from(RunArtifact)) == 0
+        assert db.get(Document, survivor.document) is not None and db.get(StoredFile, survivor.file) is not None
+    assert not _object_exists(api_context, doomed.key) and _object_exists(api_context, survivor.key)
+    assert [doc["id"] for doc in client.get(f"/api/v1/projects/{pid}/documents").json()] == [str(survivor.document)]
+    assert client.get(f"/api/v1/projects/{pid}/files/{doomed.file}/download").status_code == 404
+    run = client.get(f"/api/v1/projects/{pid}/runs/{run_id}")
+    assert run.status_code == 200 and run.json()["result_file_ids"] == []
+    assert client.get(f"/api/v1/projects/{pid}/runs").status_code == 200
+
+    assert client.delete(url, headers=headers).status_code == 404  # already gone
+    missing = "00000000-0000-4000-8000-000000000000"
+    assert client.delete(f"/api/v1/projects/{pid}/documents/{missing}", headers=headers).status_code == 404
+    other_pid, _ = _removal_project(api_context, csrf)
+    assert client.delete(f"/api/v1/projects/{other_pid}/documents/{survivor.document}", headers=headers).status_code == 404
+    assert _object_exists(api_context, survivor.key)
+
+    token = client.post(f"/api/v1/projects/{pid}/grants", headers=headers, json={
+        "capabilities": ["results:read", "documents:draft"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+    client.cookies.clear()
+    denied = client.delete(f"/api/v1/projects/{pid}/documents/{survivor.document}",
+                           headers={"Authorization": f"Bearer {token}"})
+    assert denied.status_code in (401, 403)
+    assert _object_exists(api_context, survivor.key)
+
+
+@pytest.mark.integration
+def test_document_delete_refused_while_approval_pending_then_allowed_once_settled(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    headers = _write_headers(csrf)
+    pid, sid = _removal_project(api_context, csrf)
+    run_id = _seed_completed_run(api_context, pid, sid, status="waiting_approval", key="approval-run")
+    seeded = _seed_document(api_context, pid, "approval.pdf", run_id=run_id)
+    with api_context.sessions.begin() as db:
+        approval = Approval(project_id=UUID(pid), run_id=run_id, action="delete_document_revision",
+                            revision_id=seeded.revision, change_digest="c" * 64,
+                            token_hash=hashlib.sha256(b"synthetic").digest(),
+                            expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
+        db.add(approval)
+        db.flush()
+        approval_id = approval.id
+    url = f"/api/v1/projects/{pid}/documents/{seeded.document}"
+    blocked = client.delete(url, headers=headers)
+    assert blocked.status_code == 409 and blocked.json()["code"] == "document_in_use"
+    assert _object_exists(api_context, seeded.key)
+    with api_context.sessions() as db:
+        assert db.get(Document, seeded.document) is not None and db.get(Approval, approval_id) is not None
+
+    with api_context.sessions.begin() as db:  # approved deletion not yet applied still blocks
+        row = db.get(Approval, approval_id)
+        row.consumed_at, row.decision = datetime.now(timezone.utc), "approve"
+    assert client.delete(url, headers=headers).status_code == 409
+
+    with api_context.sessions.begin() as db:  # rejected = settled history
+        row = db.get(Approval, approval_id)
+        row.decision, row.applied_at = "reject", datetime.now(timezone.utc)
+    assert client.delete(url, headers=headers).status_code == 204
+    with api_context.sessions() as db:
+        assert db.get(Approval, approval_id) is None and db.get(Run, run_id) is not None
+    assert not _object_exists(api_context, seeded.key)
+
+
+@pytest.mark.integration
+def test_document_delete_keeps_file_still_referenced_and_survives_object_store_failure(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    headers = _write_headers(csrf)
+    pid, sid = _removal_project(api_context, csrf)
+    promoted = _seed_document(api_context, pid, "promoted.pdf")
+    with api_context.sessions.begin() as db:  # a CV promoted from this draft keeps pointing at its file
+        db.add(CVRevision(project_id=UUID(pid), revision=2, file_id=promoted.file))
+    assert client.delete(f"/api/v1/projects/{pid}/documents/{promoted.document}", headers=headers).status_code == 204
+    with api_context.sessions() as db:
+        assert db.get(Document, promoted.document) is None
+        assert db.get(StoredFile, promoted.file) is not None
+    assert _object_exists(api_context, promoted.key)
+
+    flaky = _seed_document(api_context, pid, "flaky.pdf")
+    store = client.app.state.services.documents.object_store
+    original = store.delete
+
+    async def failing(_key):
+        raise RuntimeError("synthetic-object-store-outage")
+
+    store.delete = failing
+    try:
+        response = client.delete(f"/api/v1/projects/{pid}/documents/{flaky.document}", headers=headers)
+    finally:
+        store.delete = original
+    assert response.status_code == 204
+    with api_context.sessions() as db:
+        assert db.get(Document, flaky.document) is None and db.get(StoredFile, flaky.file) is None
+    assert _object_exists(api_context, flaky.key)  # orphan object left for later cleanup
 
 
 def test_runtime_openapi_matches_application_contract_paths_methods_and_schemas(api_context):

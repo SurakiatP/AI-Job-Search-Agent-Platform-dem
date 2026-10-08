@@ -55,6 +55,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
         "project_not_empty": 409, "session_has_runs": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "approval_conflict": 409,
+        "job_removed": 409, "document_in_use": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
@@ -77,6 +78,14 @@ def _http_error(error: ServiceError) -> JSONResponse:
 def _owner_only(actor) -> None:
     if actor.kind != "owner":
         raise ServiceError("forbidden")
+
+
+def _require_live_job(db, project_id: UUID, job_id: UUID) -> JobRevision:
+    """Resolve a job revision in this project; soft-removed jobs read as missing."""
+    row = require_scoped_id(db, JobRevision, project_id, job_id)
+    if row.removed_at is not None:
+        raise ServiceError("not_found")
+    return row
 
 
 def _session_view(row: ConversationSession) -> dict[str, Any]:
@@ -280,7 +289,7 @@ async def list_jobs(project_id: UUID, actor=Depends(owner_actor), services: Serv
                 (JobApplicationStatus.project_id == JobRevision.project_id)
                 & (JobApplicationStatus.job_revision_id == JobRevision.id),
             )
-            .where(JobRevision.project_id == project_id)
+            .where(JobRevision.project_id == project_id, JobRevision.removed_at.is_(None))
             .order_by(JobRevision.created_at, JobRevision.revision)
         ).all()
         return [_job_view(row, status or "saved") for row, status in rows]
@@ -328,7 +337,7 @@ async def get_job_application_status(
 ):
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "job")
-        require_scoped_id(db, JobRevision, project_id, job_id)
+        _require_live_job(db, project_id, job_id)
         row = db.get(JobApplicationStatus, (project_id, job_id))
         return {"job_revision_id": job_id, "application_status": row.status if row else "saved"}
 
@@ -347,7 +356,7 @@ async def update_job_application_status(
     _owner_only(actor)
     with services.sessions.begin() as db:
         authorize(db, actor, project_id, "write", "job")
-        require_scoped_id(db, JobRevision, project_id, job_id)
+        _require_live_job(db, project_id, job_id)
         statement = pg_insert(JobApplicationStatus).values(
             project_id=project_id,
             job_revision_id=job_id,
@@ -375,6 +384,30 @@ async def create_job(project_id: UUID, body: JobCreate, actor=Depends(write_acto
         db.add(row)
         db.flush()
         return _job_view(row)
+
+
+@router.delete("/projects/{project_id}/jobs/{job_revision_id}", status_code=204)
+async def remove_job(project_id: UUID, job_revision_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Soft-remove one saved job revision. Idempotent; runs that used it stay readable."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "job")
+        # Same Project-first lock order as run submission, so a run cannot start on a job mid-removal.
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        row = db.scalar(select(JobRevision).where(
+            JobRevision.project_id == project_id, JobRevision.id == job_revision_id).with_for_update())
+        if row is None:
+            raise ServiceError("not_found")
+        if row.removed_at is None:
+            row.removed_at = datetime.now(timezone.utc)
+
+
+@router.delete("/projects/{project_id}/documents/{document_id}", status_code=204)
+async def delete_document(project_id: UUID, document_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Hard-delete a drafted document with its revisions and unreferenced files."""
+    _owner_only(actor)
+    await services.documents.delete(actor, project_id, document_id)
 
 
 @router.get("/projects/{project_id}/documents", response_model=list[DocumentView])

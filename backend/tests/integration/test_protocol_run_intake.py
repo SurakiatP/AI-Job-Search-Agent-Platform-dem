@@ -124,3 +124,18 @@ def test_protocol_input_cannot_select_project_session_or_credentials():
         _input(job=None)
     with pytest.raises(ValidationError):
         _input(job_revision_id="17d87cae-ed0c-4a74-b814-0e105c9f959a")
+
+
+def test_removed_job_revision_cannot_start_protocol_runs_but_inline_replay_still_works(db_session):
+    service, actor, _, p, _, job, _ = _context(db_session)
+    first = asyncio.run(service.submit(actor, "evaluate_job", _input()))
+    job.removed_at = datetime.now(timezone.utc)
+    db_session.commit()
+    before = _counts(db_session)
+    for operation in ("evaluate_job", "draft_documents"):
+        with pytest.raises(ServiceError) as error:
+            asyncio.run(service.submit(actor, operation, ProtocolJobInput.model_validate({
+                "job_revision_id": str(job.id), "output_language": "en", "idempotency_key": f"removed-{operation}"})))
+        assert error.value.code == "job_removed"
+    assert _counts(db_session) == before
+    assert asyncio.run(service.submit(actor, "evaluate_job", _input())).id == first.id

@@ -75,6 +75,7 @@ class JobRevision(Base):
     source_url: Mapped[str | None] = mapped_column(Text)
     content_file_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (ForeignKeyConstraint(["project_id", "content_file_id"], ["files.project_id", "files.id"]), UniqueConstraint("project_id", "id", name="uq_job_revisions_project_id"), UniqueConstraint("project_id", "revision", name="uq_job_revisions_number"), CheckConstraint("revision > 0", name="ck_job_revision_positive"))
 
 

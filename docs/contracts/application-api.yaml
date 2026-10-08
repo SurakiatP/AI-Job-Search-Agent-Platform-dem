@@ -147,6 +147,25 @@ paths:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/JobCreate'}}}
       responses: {'201': {description: Created immutable job revision}}
+  /projects/{project_id}/jobs/{job_revision_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: job_revision_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    delete:
+      tags: [jobs]
+      description: >-
+        Owner-only soft removal of one saved job revision (revisions are independent rows; no logical job groups them).
+        Idempotent: removing an already removed job returns 204. Removed jobs disappear from the job list and the
+        application-status routes (404), and new runs for them are refused with 409 job_removed. Existing runs and
+        results stay readable (RunView.job_removed is true).
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Removed}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/job-search:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -202,6 +221,27 @@ paths:
       tags: [files]
       description: Owner-only generated document metadata and latest revision references.
       responses: {'200': {description: Documents, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/DocumentView'}}}}}}
+  /projects/{project_id}/documents/{document_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    delete:
+      tags: [files]
+      description: >-
+        Owner-only hard delete of a drafted document: its revisions, settled approvals that reference them, run output
+        links and any stored file no longer referenced elsewhere are removed in one transaction; private objects are
+        deleted afterwards on a best-effort basis. Refused with 409 document_in_use while an approval referencing the
+        document is pending or approved but not yet applied. Run results that pointed at the document no longer list
+        its files, and file downloads for them return 404.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Deleted}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Document in use by a pending approval (code document_in_use)}
   /projects/{project_id}/documents/{document_id}/revisions:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -277,7 +317,7 @@ paths:
         content: {application/json: {schema: {$ref: '#/components/schemas/RunRequest'}}}
       responses:
         '202': {description: Queued or existing idempotent run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '409': {description: Idempotency key reused with different inputs}
+        '409': {description: Idempotency key reused with different inputs, or the job was removed (code job_removed)}
   /projects/{project_id}/runs/{run_id}:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -662,6 +702,7 @@ components:
         created_at: {type: string, format: date-time}
         finished_at: {type: [string, 'null'], format: date-time}
         retry_of_id: {type: [string, 'null'], format: uuid}
+        job_removed: {type: boolean, default: false}
     RunEventView:
       type: object
       additionalProperties: false
