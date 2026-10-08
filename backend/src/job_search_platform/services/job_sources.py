@@ -178,9 +178,13 @@ def job_facets(*, fetch=None) -> dict:
         raise ServiceError("job_source_unavailable", retryable=True)
     thai = facets.get("posting_language")
     thai = thai.get("th") if isinstance(thai, dict) else None
+    try:  # decorative number: a failed second call must not take the facets down
+        new_7d = search_jobs(posted_within_days=7, limit=1, fetch=fetch)["total"]
+    except ServiceError:
+        new_7d = None
     return {"total": data["total"], "categories": _top(facets.get("category"), 12),
             "cities": _top(facets.get("cities"), 10), "seniority": _top(facets.get("seniority"), 12),
             "employment_type": _top(facets.get("employment_type"), 12),
             "company_type": _top(facets.get("company_type"), 12), "skills": _top(facets.get("skills"), 20),
             "thai_postings": thai if isinstance(thai, int) and not isinstance(thai, bool) else 0,
-            "new_7d": search_jobs(posted_within_days=7, limit=1, fetch=fetch)["total"]}
+            "new_7d": new_7d}

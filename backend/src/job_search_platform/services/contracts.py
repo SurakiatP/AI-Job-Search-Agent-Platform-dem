@@ -46,8 +46,8 @@ class MatchRunRequest(DTO):
     seniority: _Choices[Literal["intern", "junior", "middle", "senior", "lead", "staff", "principal", "c_level"]] = []
     employment_type: _Choices[Literal["full_time", "part_time", "contract", "internship", "fellowship"]] = []
     company_type: _Choices[Literal["product", "startup", "agency", "outsource", "outstaff", "inhouse", "government"]] = []
-    skills: Annotated[list[Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9.+#-]{0,40}$")]],
-                      Field(max_length=5), AfterValidator(lambda v: sorted(set(v)))] = []
+    skills: Annotated[list[Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[a-z0-9][a-z0-9.+#-]{0,40}$")]],
+                      AfterValidator(lambda v: sorted(set(v))), Field(max_length=5)] = []
     posting_language: Literal["th"] | None = None
     salary_min: Annotated[int, Field(ge=1, le=1_000_000)] | None = None
     pool: Annotated[int, Field(ge=1, le=100)] = 100

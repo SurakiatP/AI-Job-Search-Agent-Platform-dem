@@ -54,7 +54,7 @@ export function Presets({ locale, get, setMany }: { locale: 'th' | 'en'; get: (k
   return <div role="group" aria-label={c.presets} className="flex flex-wrap gap-2">
     {PRESETS.map(p => {
       const entries = Object.entries(p.params);
-      const on = entries.every(([k, v]) => get(k) === v);
+      const on = entries.every(([k, v]) => splitList(get(k)).sort().join(',') === v.split(',').sort().join(','));
       return <Button key={p.id} type="button" variant={on ? 'default' : 'outline'} size="sm" className="min-h-9 whitespace-nowrap rounded-full" aria-pressed={on}
         onClick={() => setMany(Object.fromEntries(entries.map(([k, v]) => [k, on ? '' : v])))}>{c.preset[p.id]}</Button>;
     })}

@@ -19,6 +19,7 @@ import { Markdown } from '@/components/Markdown';
 import { PageBack } from '@/components/PageBack';
 import { sampleJobs } from './sampleJobs';
 import { highlightSegments } from './highlight';
+import { categoryLabel } from './categories';
 import { ADV_KEYS, AdvancedFilters, Presets, splitList, type Facet } from './AdvancedFilters';
 
 type JobSearchItem = {
@@ -65,7 +66,6 @@ const copy = {
     retry: 'ลองอีกครั้ง', viewSample: 'ดูข้อมูลตัวอย่าง', backLive: 'กลับไปข้อมูลจริง',
     sampleBanner: 'ข้อมูลตัวอย่าง', sampleBody: 'ข้อมูลทั้งหมดในมุมมองนี้เป็นข้อมูลสมมติ ไม่ใช่ประกาศงานจริง',
     description: 'รายละเอียดงาน', credit: 'แหล่งข้อมูลงานโอเพนซอร์ส (MIT)', untitled: 'ไม่ระบุบริษัท',
-    cats: { frontend: 'Frontend', backend: 'Backend', fullstack: 'Fullstack', design: 'ดีไซน์', devops: 'DevOps', data_analytics: 'วิเคราะห์ข้อมูล', finance: 'การเงิน' } as Record<string, string>,
     modeSearch: 'ค้นหาทั่วไป', modeMatch: 'Smart match', modeLabel: 'โหมดการค้นหา',
     cvLabel: 'CV ที่ใช้จับคู่', noCv: 'ยังไม่มี CV ในโปรเจกต์นี้', noCvBody: 'เพิ่ม CV ก่อน เพื่อให้ระบบเทียบทักษะกับประกาศงานได้', addCv: 'ไปที่หน้า CV',
     analyzing: 'กำลังวิเคราะห์ CV…', analyzeError: 'วิเคราะห์ CV ไม่สำเร็จ ลองอีกครั้ง',
@@ -96,7 +96,6 @@ const copy = {
     retry: 'Retry', viewSample: 'View sample data', backLive: 'Back to live data',
     sampleBanner: 'Sample', sampleBody: 'Everything in this view is fictional sample data, not real postings.',
     description: 'Job description', credit: 'Open-source job data source (MIT)', untitled: 'Company not listed',
-    cats: { frontend: 'Frontend', backend: 'Backend', fullstack: 'Fullstack', design: 'Design', devops: 'DevOps', data_analytics: 'Data analytics', finance: 'Finance' } as Record<string, string>,
     modeSearch: 'Search', modeMatch: 'Smart match', modeLabel: 'Search mode',
     cvLabel: 'CV to match against', noCv: 'This project has no CV yet', noCvBody: 'Add a CV first so skills can be compared with each posting.', addCv: 'Go to the CV page',
     analyzing: 'Analyzing your CV…', analyzeError: 'Could not analyze the CV. Try again.',
@@ -116,7 +115,6 @@ const copy = {
 };
 type Copy = typeof copy.th;
 
-const humanize = (slug: string) => { const s = slug.replace(/[_-]+/g, ' ').trim(); return s.charAt(0).toUpperCase() + s.slice(1); };
 
 const sampleItems: JobSearchItem[] = sampleJobs.map(j => ({
   slug: j.id, title: j.title, company: j.company, location: j.province, cities: [j.province], work_mode: j.remote,
@@ -449,7 +447,7 @@ export function SearchPage() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const selected = visible.find(j => j.slug === selectedSlug) ?? (wide ? visible[0] : undefined);
 
-  const catLabel = (slug: string) => c.cats[slug] ?? humanize(slug);
+  const catLabel = (slug: string) => categoryLabel(locale, slug);
   const detail = (job: JobSearchItem) => <JobDetail job={job} c={c} projectId={projectId} scored={smartActive} />;
 
   const list = <ul className="grid gap-3 [&>li]:min-w-0">

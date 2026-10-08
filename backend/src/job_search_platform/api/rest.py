@@ -437,11 +437,14 @@ def job_filters(
     employment_type: Annotated[str, Query(max_length=200)] = "",
     company_type: Annotated[str, Query(max_length=200)] = "",
     skills: Annotated[str, Query(max_length=400)] = "",
-    posting_language: Annotated[str | None, Query(pattern="^th$")] = None,
-    salary_min: Annotated[int | None, Query(ge=1, le=1_000_000)] = None,
+    posting_language: Annotated[str, Query(pattern="^(th)?$")] = "",
+    salary_min: Annotated[str, Query(pattern=r"^(\d{1,7})?$")] = "",
 ) -> dict:
     """The advanced job-search filters shared by both GET routes; invalid lists give 422."""
-    out: dict = {"posting_language": posting_language or None, "salary_min": salary_min}
+    salary = int(salary_min) if salary_min else None
+    if salary is not None and not 1 <= salary <= 1_000_000:
+        raise RequestValidationError([{"loc": ("query", "salary_min"), "msg": "invalid", "type": "value_error"}])
+    out: dict = {"posting_language": posting_language or None, "salary_min": salary}
     for name, raw in (("seniority", seniority), ("employment_type", employment_type),
                       ("company_type", company_type), ("skills", skills)):
         values = job_sources.parse_choices(raw, name)

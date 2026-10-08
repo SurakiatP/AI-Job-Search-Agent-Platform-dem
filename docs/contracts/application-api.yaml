@@ -204,7 +204,7 @@ paths:
     get:
       tags: [jobs]
       description: >-
-        Unauthenticated, read-only landing numbers {total, new_7d, thai_postings, categories (top 8
+        Unauthenticated, read-only landing numbers {total, new_7d (int|null), thai_postings, categories (top 8
         [{value, count}])} built only from the cached Thailand facets. Accepts no query parameters and returns
         no job items or project data. 502 job_source_unavailable (retryable) on upstream failure.
       security: []
@@ -221,12 +221,12 @@ paths:
         posted_within_days (1-90), category (slug, max 60), limit (1-20, default 20), offset (0-1000).
         Items carry slug, title, company, location, cities, work_mode, skills (max 8), category, posted_at,
         age_days, stale (upstream reality.class other than fresh), source_url (http/https, utm_* stripped)
+        and description_markdown (max 50000). Upstream failure returns 502 job_source_unavailable (retryable).
         Advanced filters (all optional, empty = unset; invalid values give 422): seniority (comma list of
         intern|junior|middle|senior|lead|staff|principal|c_level), employment_type (full_time|part_time|contract|
         internship|fellowship), company_type (product|startup|agency|outsource|outstaff|inhouse|government),
         skills (comma list, max 5, each ^[a-z0-9][a-z0-9.+#-]{0,40}$), posting_language (th), salary_min
         (1-1000000 THB per month). Comma values mean OR.
-        and description_markdown (max 50000). Upstream failure returns 502 job_source_unavailable (retryable).
       security: [{ownerSession: []}]
       responses:
         '200': {description: 'Job search page {items, total, limit, offset}'}
@@ -328,8 +328,8 @@ paths:
       tags: [jobs]
       description: >-
         Owner-only Thailand facets {total, categories (top 12), cities (top 10), seniority, employment_type,
-        company_type, skills (top 20)} as [{value, count}], plus thai_postings (int) and new_7d (int, postings
-        from the last 7 days).
+        company_type, skills (top 20)} as [{value, count}], plus thai_postings (int) and new_7d (int|null, postings
+        from the last 7 days; null when that count is unavailable).
       security: [{ownerSession: []}]
       responses:
         '200': {description: Job search facets}

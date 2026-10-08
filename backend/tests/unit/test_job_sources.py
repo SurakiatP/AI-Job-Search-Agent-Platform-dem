@@ -90,6 +90,10 @@ def test_facets_top_n():
     job_sources._cache.clear()
     missing = job_sources.job_facets(fetch=lambda url: page(total=0) if "/agent/jobs/search" in url
                                      else {"data": {"total": 1, "facets": {"category": {"a": 1}}}})
+    job_sources._cache.clear()
+    degraded = job_sources.job_facets(fetch=lambda url: (_ for _ in ()).throw(ServiceError("job_source_unavailable", retryable=True))
+                                      if "/agent/jobs/search" in url else {"data": {"total": 1, "facets": {"category": {"a": 1}}}})
+    assert degraded["total"] == 1 and degraded["new_7d"] is None
     assert missing["cities"] == [] and missing["skills"] == [] and missing["thai_postings"] == 0 and missing["new_7d"] == 0
 
 
@@ -184,6 +188,9 @@ def test_filters_reach_upstream_on_search(client, monkeypatch):
     for part in ("seniority=intern%2Cjunior", "skills=python", "posting_language=th", "salary_min=15000"):
         assert part in seen[0]
     assert "employment_type" not in seen[0]
+    seen.clear()
+    assert client.get(f"/projects/{uuid4()}/job-search?posting_language=&salary_min=&q=").status_code == 200
+    assert "posting_language" not in seen[0] and "salary_min" not in seen[0]
 
 
 def test_public_job_stats_needs_no_auth_and_returns_four_keys(monkeypatch):
@@ -218,3 +225,11 @@ def test_routes_ok_and_upstream_error_is_502(client, monkeypatch):
     down_resp = client.get(f"/projects/{pid}/job-search")
     assert down_resp.status_code == 502
     assert down_resp.json()["code"] == "job_source_unavailable" and down_resp.json()["retryable"] is True
+
+
+def test_match_skills_dedupe_and_strip_before_counting():
+    from job_search_platform.services.contracts import MatchRunRequest
+    req = MatchRunRequest(cv_revision_id=uuid4(), skills=["a", "a", "a", "a", "a", "a", "b", "python\n"])
+    assert req.skills == ["a", "b", "python"]
+    with pytest.raises(ValueError):
+        MatchRunRequest(cv_revision_id=uuid4(), skills=list("abcdef"))
