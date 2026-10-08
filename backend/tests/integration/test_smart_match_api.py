@@ -206,3 +206,36 @@ def test_empty_pool_is_ready_and_different_filters_leave_one_queued_run(api_cont
     with api_context.sessions() as db:
         statuses = sorted(db.scalars(select(Run.status).where(Run.operation == "match_jobs")))
     assert statuses == ["cancelled", "cancelled", "queued"]
+
+
+@pytest.mark.integration
+def test_run_request_validates_and_stores_filters_and_public_route_needs_no_cookie(api_context, monkeypatch):
+    _serve(monkeypatch, [])
+    csrf, pid, rev = _setup(api_context)
+    _provider(api_context)
+    client, headers = api_context.client, _write_headers(csrf)
+    url = f"{PREFIX}/{pid}/job-search/match/runs"
+    for bad in ({"seniority": ["boss"]}, {"employment_type": ["x"]}, {"company_type": ["bank"]}, {"skills": ["Py"]},
+                {"skills": list("abcdef")}, {"posting_language": "en"}, {"salary_min": 0}, {"salary_min": 1_000_001}):
+        assert client.post(url, json={"cv_revision_id": rev, **bad}, headers=headers).status_code == 422, bad
+    body = {"cv_revision_id": rev, "q": "dev", "seniority": ["junior", "intern"], "skills": ["sql", "python"],
+            "posting_language": "th", "salary_min": 25000}
+    run = client.post(url, json=body, headers=headers)
+    assert run.status_code == 202, run.text
+    again = client.post(url, json={**body, "seniority": ["intern", "junior"], "skills": ["python", "sql"]}, headers=headers)
+    assert again.json()["id"] == run.json()["id"]  # equal filter sets dedup
+    with api_context.sessions() as db:
+        snap = db.scalar(select(Run.input_snapshot).where(Run.id == UUID(run.json()["id"])))
+    assert snap["seniority"] == ["intern", "junior"] and snap["skills"] == ["python", "sql"]
+    assert snap["posting_language"] == "th" and snap["salary_min"] == 25000 and snap["employment_type"] == []
+    seen = _serve(monkeypatch, [_raw("a")])
+    ok = client.get(_url(pid, rev, "&q=dev&seniority=junior&company_type=startup&salary_min=15000"))
+    assert ok.status_code == 200 and "seniority=junior" in seen[0] and "company_type=startup" in seen[0]
+    client.cookies.clear()
+    monkeypatch.setattr(job_sources, "fetch_json", lambda url: {"data": [], "meta": {"total": 4}} if "/agent/jobs/search" in url
+                        else {"data": {"total": 9, "facets": {"category": {"it": 9}, "posting_language": {"th": 3}}}})
+    job_sources._cache.clear()
+    public = client.get("/api/v1/public/job-stats")
+    assert public.status_code == 200 and public.json() == {"total": 9, "new_7d": 4, "thai_postings": 3,
+                                                             "categories": [{"value": "it", "count": 9}]}
+    assert client.get(f"{PREFIX}/{pid}/job-search/facets").status_code == 401

@@ -432,6 +432,33 @@ async def list_jobs(project_id: UUID, actor=Depends(owner_actor), services: Serv
         return [_job_view(row, status or "saved") for row, status in rows]
 
 
+def job_filters(
+    seniority: Annotated[str, Query(max_length=200)] = "",
+    employment_type: Annotated[str, Query(max_length=200)] = "",
+    company_type: Annotated[str, Query(max_length=200)] = "",
+    skills: Annotated[str, Query(max_length=400)] = "",
+    posting_language: Annotated[str | None, Query(pattern="^th$")] = None,
+    salary_min: Annotated[int | None, Query(ge=1, le=1_000_000)] = None,
+) -> dict:
+    """The advanced job-search filters shared by both GET routes; invalid lists give 422."""
+    out: dict = {"posting_language": posting_language or None, "salary_min": salary_min}
+    for name, raw in (("seniority", seniority), ("employment_type", employment_type),
+                      ("company_type", company_type), ("skills", skills)):
+        values = job_sources.parse_choices(raw, name)
+        if values is None:
+            raise RequestValidationError([{"loc": ("query", name), "msg": "invalid", "type": "value_error"}])
+        out[name] = values
+    return out
+
+
+@router.get("/public/job-stats")
+async def public_job_stats():
+    """Unauthenticated, read-only, parameterless landing numbers built from the cached facets only."""
+    facets = await asyncio.to_thread(job_sources.job_facets)
+    return {"total": facets["total"], "new_7d": facets["new_7d"], "thai_postings": facets["thai_postings"],
+            "categories": facets["categories"][:8]}
+
+
 @router.get("/projects/{project_id}/job-search")
 async def search_job_sources(
     project_id: UUID,
@@ -442,6 +469,7 @@ async def search_job_sources(
     category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
     limit: Annotated[int, Query(ge=1, le=20)] = 20,
     offset: Annotated[int, Query(ge=0, le=1000)] = 0,
+    filters: dict = Depends(job_filters),
     actor=Depends(owner_actor),
     services: Services = Depends(get_services),
 ):
@@ -452,7 +480,7 @@ async def search_job_sources(
         raise RequestValidationError([{"loc": ("query", "cities"), "msg": "invalid", "type": "value_error"}])
     return await asyncio.to_thread(
         job_sources.search_jobs, q=q, cities=city_list, work_mode=work_mode,
-        posted_within_days=posted_within_days, category=category, limit=limit, offset=offset)
+        posted_within_days=posted_within_days, category=category, limit=limit, offset=offset, **filters)
 
 
 def _jev_available(db) -> bool:
@@ -472,6 +500,7 @@ async def match_job_sources(
     category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
     pool: Annotated[int, Query(ge=1, le=100)] = 100,
     offset: Annotated[int, Query(ge=0, le=1000)] = 0,
+    filters: dict = Depends(job_filters),
     actor=Depends(owner_actor),
     services: Services = Depends(get_services),
 ):
@@ -500,7 +529,8 @@ async def match_job_sources(
             return {"items": [], "total": 0, "offset": offset, "pool": pool, "hidden_count": 0,
                     "ai": {"status": "missing", "categories": None, "scored": 0}}
         page = smart_match.build_pool(q=q, cities=city_list, work_mode=work_mode, posted_within_days=posted_within_days,
-                                      category=category, pool=pool, offset=offset, cv_categories=stored if ai_on else None)
+                                      category=category, pool=pool, offset=offset, cv_categories=stored if ai_on else None,
+                                      filters=filters)
         items = [item for item in page["items"] if not smart_match.is_hidden(item, hidden)]
         with services.sessions() as db:
             rows = {(r.job_slug, r.content_hash): r for r in db.scalars(select(JobMatchScore).where(

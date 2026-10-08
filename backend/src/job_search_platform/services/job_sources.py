@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from collections import OrderedDict
@@ -114,8 +115,27 @@ def parse_cities(value: str | None) -> list[str] | None:
     return cities if len(cities) <= 5 and all(len(c) <= 60 for c in cities) else None
 
 
+CHOICES = {
+    "seniority": ("intern", "junior", "middle", "senior", "lead", "staff", "principal", "c_level"),
+    "employment_type": ("full_time", "part_time", "contract", "internship", "fellowship"),
+    "company_type": ("product", "startup", "agency", "outsource", "outstaff", "inhouse", "government"),
+}
+SKILL_RE = re.compile(r"^[a-z0-9][a-z0-9.+#-]{0,40}$")
+# Names of the advanced filters, shared by rest.py, MatchRunRequest snapshots and the match worker.
+FILTER_KEYS = ("seniority", "employment_type", "company_type", "skills", "posting_language", "salary_min")
+
+
+def parse_choices(value: str | None, name: str) -> list[str] | None:
+    """Sorted unique comma list limited to CHOICES[name] (or skill slugs, max 5); None when invalid."""
+    items = sorted({c.strip() for c in (value or "").split(",") if c.strip()})
+    if name == "skills":
+        return items if len(items) <= 5 and all(SKILL_RE.match(c) for c in items) else None
+    return items if set(items) <= set(CHOICES[name]) else None
+
+
 def search_jobs(*, q=None, cities=(), work_mode=None, posted_within_days=None, category=None,
-                limit=20, offset=0, fetch=None) -> dict:
+                seniority=(), employment_type=(), company_type=(), skills=(), posting_language=None,
+                salary_min=None, limit=20, offset=0, fetch=None) -> dict:
     """Params must already be validated by the caller (see rest.py)."""
     params = [("countries", "TH"), ("description_format", "markdown"), ("limit", limit), ("offset", offset)]
     if q and q.strip():
@@ -126,6 +146,14 @@ def search_jobs(*, q=None, cities=(), work_mode=None, posted_within_days=None, c
                         ("category", category)):
         if value:
             params.append((name, value))
+    for name, values in (("seniority", seniority), ("employment_type", employment_type),
+                         ("company_type", company_type), ("skills", skills)):
+        if values:
+            params.append((name, ",".join(values)))
+    if posting_language:
+        params.append(("posting_language", posting_language))
+    if salary_min:
+        params += [("salary_min", salary_min), ("salary_currency", "thb"), ("salary_period", "month")]
     data = _cached(f"{BASE}/agent/jobs/search?{urlencode(sorted(params))}", fetch or fetch_json)
     rows, meta = data.get("data"), data.get("meta")
     if not isinstance(rows, list) or not isinstance(meta, dict):
@@ -148,5 +176,11 @@ def job_facets(*, fetch=None) -> dict:
     facets = data.get("facets") if isinstance(data, dict) else None
     if not isinstance(facets, dict) or not isinstance(data.get("total"), int):
         raise ServiceError("job_source_unavailable", retryable=True)
+    thai = facets.get("posting_language")
+    thai = thai.get("th") if isinstance(thai, dict) else None
     return {"total": data["total"], "categories": _top(facets.get("category"), 12),
-            "cities": _top(facets.get("cities"), 10)}
+            "cities": _top(facets.get("cities"), 10), "seniority": _top(facets.get("seniority"), 12),
+            "employment_type": _top(facets.get("employment_type"), 12),
+            "company_type": _top(facets.get("company_type"), 12), "skills": _top(facets.get("skills"), 20),
+            "thai_postings": thai if isinstance(thai, int) and not isinstance(thai, bool) else 0,
+            "new_7d": search_jobs(posted_within_days=7, limit=1, fetch=fetch)["total"]}

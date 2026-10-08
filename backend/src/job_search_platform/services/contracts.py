@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Annotated, AsyncIterator, Literal, Protocol
+from typing import Annotated, AsyncIterator, Literal, Protocol, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, StringConstraints, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, SecretStr, StringConstraints, model_validator
 
 
 Capability = Literal["results:read", "jobs:evaluate", "documents:draft"]
@@ -31,6 +31,11 @@ class DTO(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+T = TypeVar("T")
+# Sorted and de-duplicated so equal filter sets compare equal in run snapshots.
+_Choices = Annotated[list[T], Field(max_length=10), AfterValidator(lambda v: sorted(set(v)))]
+
+
 class MatchRunRequest(DTO):
     cv_revision_id: UUID
     q: Annotated[str, StringConstraints(max_length=200)] = ""
@@ -38,6 +43,13 @@ class MatchRunRequest(DTO):
     work_mode: Literal["remote", "hybrid", "onsite"] | None = None
     posted_within_days: Annotated[int, Field(ge=1, le=90)] | None = None
     category: Annotated[str, StringConstraints(pattern=r"^[a-z0-9_-]{1,60}$")] | None = None
+    seniority: _Choices[Literal["intern", "junior", "middle", "senior", "lead", "staff", "principal", "c_level"]] = []
+    employment_type: _Choices[Literal["full_time", "part_time", "contract", "internship", "fellowship"]] = []
+    company_type: _Choices[Literal["product", "startup", "agency", "outsource", "outstaff", "inhouse", "government"]] = []
+    skills: Annotated[list[Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9.+#-]{0,40}$")]],
+                      Field(max_length=5), AfterValidator(lambda v: sorted(set(v)))] = []
+    posting_language: Literal["th"] | None = None
+    salary_min: Annotated[int, Field(ge=1, le=1_000_000)] | None = None
     pool: Annotated[int, Field(ge=1, le=100)] = 100
     offset: Annotated[int, Field(ge=0, le=1000)] = 0
 

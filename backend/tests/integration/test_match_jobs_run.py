@@ -312,3 +312,18 @@ async def test_cancelled_match_run_keeps_finished_scores(db_session, tmp_path, m
         await task
     fake.release.set()
     assert {row.job_slug for row in _scores(sessions, revision.id)} == {"j1"}
+
+
+@pytest.mark.asyncio
+async def test_match_run_passes_snapshot_filters_to_build_pool(db_session, tmp_path, monkeypatch):
+    db_project, actor, revision, sessions = _arrange(db_session, monkeypatch)
+    urls = []
+    monkeypatch.setattr(job_sources, "fetch_json", lambda url: (urls.append(url), _fake_fetch(url))[1])
+    request = MatchRunRequest(cv_revision_id=revision.id, seniority=["junior"], skills=["python"], posting_language="th", salary_min=15000)
+    view = await _run_once(sessions, tmp_path, actor, db_project.id, request, FakeRuntime(), FakeJev())
+    with sessions() as db:
+        snap = db.get(Run, view.id).input_snapshot
+    assert snap["seniority"] == ["junior"] and snap["salary_min"] == 15000
+    searches = [u for u in urls if "/agent/jobs/search" in u and "limit=100" in u]  # skips the facets new_7d probe
+    assert searches and all("seniority=junior" in u and "skills=python" in u and "posting_language=th" in u
+                            and "salary_min=15000" in u for u in searches)

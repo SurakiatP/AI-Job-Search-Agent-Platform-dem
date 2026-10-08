@@ -400,7 +400,8 @@ class RunExecutor:
             page = await asyncio.to_thread(functools.partial(
                 smart_match.build_pool, q=snap.get("q") or "", cities=snap.get("cities") or [],
                 work_mode=snap.get("work_mode"), posted_within_days=snap.get("posted_within_days"),
-                category=snap.get("category"), pool=snap["pool"], offset=snap.get("offset", 0), cv_categories=categories))
+                category=snap.get("category"), pool=snap["pool"], offset=snap.get("offset", 0), cv_categories=categories,
+                filters={k: snap.get(k) for k in job_sources.FILTER_KEYS}))
             jobs = [job for job in page["items"] if not smart_match.is_hidden(job, hidden)]
             jobs = [job for job in jobs if len(job["slug"]) <= 200]  # longer slugs do not fit the score column
             todo = (await asyncio.to_thread(self._unscored, run.cv_revision_id, jobs))[: MAX_JEV_CALLS - 1]

@@ -200,6 +200,17 @@ paths:
         '204': {description: Removed}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /public/job-stats:
+    get:
+      tags: [jobs]
+      description: >-
+        Unauthenticated, read-only landing numbers {total, new_7d, thai_postings, categories (top 8
+        [{value, count}])} built only from the cached Thailand facets. Accepts no query parameters and returns
+        no job items or project data. 502 job_source_unavailable (retryable) on upstream failure.
+      security: []
+      responses:
+        '200': {description: Public job statistics}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -210,6 +221,11 @@ paths:
         posted_within_days (1-90), category (slug, max 60), limit (1-20, default 20), offset (0-1000).
         Items carry slug, title, company, location, cities, work_mode, skills (max 8), category, posted_at,
         age_days, stale (upstream reality.class other than fresh), source_url (http/https, utm_* stripped)
+        Advanced filters (all optional, empty = unset; invalid values give 422): seniority (comma list of
+        intern|junior|middle|senior|lead|staff|principal|c_level), employment_type (full_time|part_time|contract|
+        internship|fellowship), company_type (product|startup|agency|outsource|outstaff|inhouse|government),
+        skills (comma list, max 5, each ^[a-z0-9][a-z0-9.+#-]{0,40}$), posting_language (th), salary_min
+        (1-1000000 THB per month). Comma values mean OR.
         and description_markdown (max 50000). Upstream failure returns 502 job_source_unavailable (retryable).
       security: [{ownerSession: []}]
       responses:
@@ -221,7 +237,7 @@ paths:
       tags: [jobs]
       description: >-
         Owner-only "Smart match": the job-search filters (q, cities, work_mode, posted_within_days, category)
-        plus cv_revision_id (a live CV revision of this project) and pool (1-100, default 100, upstream page
+        and the advanced filters below, plus cv_revision_id (a live CV revision of this project) and pool (1-100, default 100, upstream page
         size) and offset (0-1000, start of the pool chunk). The pool is scored against the revision's stored
         skill profile (keyword dictionary, no AI) and returned sorted by score descending, ties by recency,
         jobs naming fewer than two recognisable skills (match null) last. Items are job-search items plus
@@ -234,6 +250,11 @@ paths:
         list is empty and ai.status is missing. Response {items, total, offset, pool, hidden_count,
         ai {status: unavailable|missing|partial|ready, categories|null, scored}}; unavailable means no OpenRouter
         provider is configured (keyword result only).
+        Advanced filters (all optional, empty = unset; invalid values give 422): seniority (comma list of
+        intern|junior|middle|senior|lead|staff|principal|c_level), employment_type (full_time|part_time|contract|
+        internship|fellowship), company_type (product|startup|agency|outsource|outstaff|inhouse|government),
+        skills (comma list, max 5, each ^[a-z0-9][a-z0-9.+#-]{0,40}$), posting_language (th), salary_min
+        (1-1000000 THB per month). Comma values mean OR.
         409 cv_profile_missing when the revision has no profile yet (POST the CV's /profile first);
         404 for a foreign or removed CV revision; 502 job_source_unavailable.
       security: [{ownerSession: []}]
@@ -305,7 +326,10 @@ paths:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
       tags: [jobs]
-      description: Owner-only Thailand facets {total, categories (top 12), cities (top 10)} as [{value, count}].
+      description: >-
+        Owner-only Thailand facets {total, categories (top 12), cities (top 10), seniority, employment_type,
+        company_type, skills (top 20)} as [{value, count}], plus thai_postings (int) and new_7d (int, postings
+        from the last 7 days).
       security: [{ownerSession: []}]
       responses:
         '200': {description: Job search facets}
@@ -764,6 +788,12 @@ components:
         work_mode: {type: [string, 'null'], enum: [remote, hybrid, onsite, null]}
         posted_within_days: {type: [integer, 'null'], minimum: 1, maximum: 90}
         category: {type: [string, 'null'], pattern: '^[a-z0-9_-]{1,60}$'}
+        seniority: {type: array, maxItems: 10, default: [], items: {type: string, enum: [intern, junior, middle, senior, lead, staff, principal, c_level]}}
+        employment_type: {type: array, maxItems: 10, default: [], items: {type: string, enum: [full_time, part_time, contract, internship, fellowship]}}
+        company_type: {type: array, maxItems: 10, default: [], items: {type: string, enum: [product, startup, agency, outsource, outstaff, inhouse, government]}}
+        skills: {type: array, maxItems: 5, default: [], items: {type: string, pattern: '^[a-z0-9][a-z0-9.+#-]{0,40}$'}}
+        posting_language: {type: [string, 'null'], enum: [th, null]}
+        salary_min: {type: [integer, 'null'], minimum: 1, maximum: 1000000, description: THB per month}
         pool: {type: integer, minimum: 1, maximum: 100, default: 100}
         offset: {type: integer, minimum: 0, maximum: 1000, default: 0}
     HiddenCreate:

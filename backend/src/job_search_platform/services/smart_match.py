@@ -123,9 +123,10 @@ def is_hidden(job: dict, hidden: set[tuple[str, str]]) -> bool:
 
 
 def build_pool(*, q: str, cities, work_mode, posted_within_days, category, pool: int, offset: int,
-               cv_categories: list[str] | None, fetch=None) -> dict:
+               cv_categories: list[str] | None, filters: dict | None = None, fetch=None) -> dict:
     """One job pool for GET and the worker: the typed query, or CV-derived categories when none is typed."""
-    common = {"cities": cities, "work_mode": work_mode, "posted_within_days": posted_within_days, "fetch": fetch}
+    common = {"cities": cities, "work_mode": work_mode, "posted_within_days": posted_within_days, "fetch": fetch,
+              **{k: v for k, v in (filters or {}).items() if k in job_sources.FILTER_KEYS}}
     if (q or "").strip() or category or not cv_categories:
         page = job_sources.search_jobs(q=q, category=category, limit=pool, offset=offset, **common)
         return {"items": page["items"], "total": page["total"]}
