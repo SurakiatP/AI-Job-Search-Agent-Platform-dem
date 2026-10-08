@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from '../components/AppShell';
@@ -28,6 +28,14 @@ function AppWorkspace() {
   const projects = useResource<Project[]>('/projects');
   const project = useResource<Project>(projectId ? `/projects/${projectId}` : null);
   const sessions = useResource<Session[]>(projectId ? `/projects/${projectId}/sessions` : null);
+  // New-project and project routes share this component, so a newly created project needs one list refresh.
+  const refreshedFor = useRef<string | undefined>(undefined);
+  const { data: projectList, reload: reloadProjects } = projects;
+  useEffect(() => {
+    if (!projectId || !projectList || projectList.some(item => item.id === projectId) || refreshedFor.current === projectId) return;
+    refreshedFor.current = projectId;
+    reloadProjects();
+  }, [projectId, projectList, reloadProjects]);
   // Keep the page mounted during background reloads (rename/delete): only block on the first load.
   if ((projects.status === 'loading' && !projects.data) || (projectId && ((project.status === 'loading' && !project.data) || (sessions.status === 'loading' && !sessions.data)))) return <AppShell><LoadingState /></AppShell>;
   if (projects.status === 'error') return <AppShell><ErrorState onRetry={projects.reload} /></AppShell>;
