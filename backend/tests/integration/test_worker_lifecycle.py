@@ -175,6 +175,21 @@ def test_native_json_wrapped_in_one_markdown_fence_is_accepted() -> None:
         executor.parse_evaluation_result('Here you go:\n```json\n{"report_markdown":"Synthetic","score":3.5}\n```')
 
 
+def test_unreadable_manifest_falls_back_to_the_newest_staged_markdown(tmp_path: Path) -> None:
+    executor = import_module("job_search_platform.workers.executor")
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    assert executor.staged_draft_manifest(staging, "Synthetic role", "cover_letter") is None
+    (staging / "old.md").write_text("old", encoding="utf-8")
+    newest = staging / "letter.md"
+    newest.write_text("Dear team", encoding="utf-8")
+    import os
+    os.utime(staging / "old.md", (1, 1))
+    (staging / "link.md").symlink_to(newest)
+    drafts = executor.staged_draft_manifest(staging, "Synthetic role", "application_message")
+    assert drafts == ({"path": "letter.md", "document_type": "application_message", "title": "Synthetic role", "format": "pdf"},)
+
+
 def test_draft_manifest_requires_safe_staging_relative_paths() -> None:
     spec = util.find_spec("job_search_platform.workers.executor")
     assert spec is not None, "run executor implementation is missing"

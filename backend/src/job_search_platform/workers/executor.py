@@ -94,6 +94,16 @@ def parse_draft_manifest(value: str) -> tuple[dict[str, str], ...]:
         raise ValueError("native_response_invalid") from exc
 
 
+def staged_draft_manifest(staging: Path, title: str, kind: str | None) -> tuple[dict[str, str], ...] | None:
+    """Fallback when the model drafted a file but returned an unreadable manifest: use the newest staged Markdown."""
+    candidates = [path for path in staging.glob("*.md") if not path.is_symlink() and path.is_file()]
+    if not candidates:
+        return None
+    newest = max(candidates, key=lambda path: path.stat().st_mtime)
+    document_type = kind if kind in {"cover_letter", "application_message"} else "cover_letter"
+    return ({"path": newest.name, "document_type": document_type, "title": title[:300] or "Draft", "format": "pdf"},)
+
+
 class RunExecutor:
     """Execute claimed immutable inputs through the pinned native runtime."""
 
@@ -419,8 +429,13 @@ class RunExecutor:
     async def _export_drafts(
         self, run: Run, sandbox: RunSandbox, result: str
     ) -> list[dict[str, str]]:
-        drafts = parse_draft_manifest(result)
         kind = run.input_snapshot.get("draft_kind")
+        try:
+            drafts = parse_draft_manifest(result)
+        except ValueError:
+            drafts = staged_draft_manifest(sandbox.staging, run.input_snapshot["job"]["title"], kind)
+            if drafts is None:
+                raise
         if kind in {"cover_letter", "application_message"}:
             # The requested kind wins over whatever the model declared for the first output.
             drafts = ({**drafts[0], "document_type": kind}, *drafts[1:])
