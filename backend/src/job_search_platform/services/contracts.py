@@ -12,8 +12,9 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, StringConstraints,
 Capability = Literal["results:read", "jobs:evaluate", "documents:draft"]
 RunStatus = Literal["queued", "running", "waiting_approval", "completed", "failed", "cancelled", "interrupted"]
 Operation = Literal["evaluate_job", "draft_documents"]
+# profile_cv (CV skill profile, no LLM) is likewise owner-only and internal.
 # export_document is an owner-only, non-LLM run created by the manual-edit endpoint; never a request operation.
-ViewOperation = Literal["evaluate_job", "draft_documents", "export_document"]
+ViewOperation = Literal["evaluate_job", "draft_documents", "export_document", "profile_cv"]
 DraftKind = Literal["cover_letter", "application_message"]
 
 
@@ -175,6 +176,8 @@ class CVRevisionView(RevisionView):
     mime_type: str
     size_bytes: int
     file_id: UUID | None = None
+    skill_profile_ready: bool = False
+    skill_count: int | None = None
 
 
 class CVUpdate(DTO):
@@ -257,7 +260,7 @@ class EvaluationResult(DTO):
 class RunView(DTO):
     id: UUID
     project_id: UUID
-    session_id: UUID
+    session_id: UUID | None = None  # None only for profile_cv
     job_revision_id: UUID | None = None
     operation: ViewOperation
     status: RunStatus

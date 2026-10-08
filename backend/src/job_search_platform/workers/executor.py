@@ -1,6 +1,7 @@
 """Durable orchestration of one claimed native workflow run."""
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import asyncio
@@ -16,9 +17,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import Approval, Run, RunArtifact, StoredFile
+from job_search_platform.db.models import Approval, CVRevision, Run, RunArtifact, StoredFile
 from job_search_platform.services.contracts import EvaluationResult, SkillCoverage
-from job_search_platform.services.skill_coverage import compute_skill_coverage
+from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.runs import append_event
@@ -194,6 +195,9 @@ class RunExecutor:
             if run.operation == "export_document":
                 await self._execute_export(run, lease_owner, sandbox)
                 return
+            if run.operation == "profile_cv":
+                await self._execute_profile(run, lease_owner, sandbox)
+                return
             cv_path = await self._materialize(run, sandbox)
             connector = run.config_snapshot.get("connector", {})
             if connector.get("enabled") is not True or connector.get("adapter_key") != "career_ops":
@@ -219,6 +223,9 @@ class RunExecutor:
             self.runtime.projects[run.project_id].tool_gate = reserve_tool
             self._record_process(run.id, lease_owner, project)
             parsed = await self.runtime.parse_input(run.project_id, cv_path)
+            # Free by-product of parsing: remember the CV's skill names (never its text) if not yet stored.
+            with contextlib.suppress(Exception):
+                await asyncio.to_thread(self._store_profile, run.cv_revision_id, parsed.text)
 
             prompt, instructions = self._prompt(run, parsed.text)
             await self.runtime.submit(
@@ -316,6 +323,44 @@ class RunExecutor:
             await self._stop(run.project_id, started)
             await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
 
+    def _store_profile(self, cv_revision_id: uuid.UUID, cv_text: str) -> None:
+        with self.sessions.begin() as db:
+            revision = db.scalar(select(CVRevision).where(CVRevision.id == cv_revision_id).with_for_update())
+            if revision is not None and (revision.skill_profile or {}).get("method") != SKILL_METHOD:
+                revision.skill_profile = {"skills": extract_skills(cv_text), "method": SKILL_METHOD}
+
+    async def _execute_profile(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
+        """Parse the CV in the sandbox and keep only its skill names; no LLM, no provider, no job."""
+        started = False
+        try:
+            cv_path = await self._materialize(run, sandbox)
+
+            async def reserve_tool(_call_id: str, _tool_name: str) -> bool:
+                try:
+                    await asyncio.to_thread(self.queue.reserve_tool_call, run.id, lease_owner)
+                    return True
+                except ServiceError:
+                    return False
+
+            project = await self.runtime.start_project(run.project_id, sandbox.workspace)
+            started = True
+            self.runtime.projects[run.project_id].tool_gate = reserve_tool
+            self._record_process(run.id, lease_owner, project)
+            parsed = await self.runtime.parse_input(run.project_id, cv_path)
+            await asyncio.to_thread(self._store_profile, run.cv_revision_id, parsed.text)
+            await self._stop(run.project_id, started)
+            started = False
+            await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed")
+        except ServiceError as exc:
+            await self._stop(run.project_id, started)
+            if exc.code == "cancellation_requested":
+                await self._finish_after_stop(run, lease_owner, "cancelled", None)
+            else:
+                await self._finish_after_stop(run, lease_owner, "failed", _safe_message(exc.code))
+        except Exception:
+            await self._stop(run.project_id, started)
+            await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
+
     async def _materialize(self, run: Run, sandbox: RunSandbox) -> str:
         file_id = run.input_snapshot.get("cv_file_id")
         if not file_id:
@@ -337,10 +382,11 @@ class RunExecutor:
         suffix = mimetypes.guess_extension(mime_type) or ".bin"
         name = f"cv-source{suffix}"
         sandbox.write_input(name, body)
-        sandbox.write_input(
-            "job.json",
-            json.dumps(run.input_snapshot["job"], ensure_ascii=False, separators=(",", ":")),
-        )
+        if "job" in run.input_snapshot:
+            sandbox.write_input(
+                "job.json",
+                json.dumps(run.input_snapshot["job"], ensure_ascii=False, separators=(",", ":")),
+            )
         return f"inputs/{name}"
 
     @staticmethod

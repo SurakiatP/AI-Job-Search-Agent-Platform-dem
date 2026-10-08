@@ -90,6 +90,8 @@ class CVRevision(Base):
     revision: Mapped[int] = mapped_column(Integer, nullable=False)
     file_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # {"skills": [canonical names], "method": ...}; names only, never CV text. NULL until a run parsed the CV.
+    skill_profile: Mapped[dict | None] = mapped_column(JSON)
     __table_args__ = (ForeignKeyConstraint(["project_id", "file_id"], ["files.project_id", "files.id"]), ForeignKeyConstraint(["project_id", "cv_id"], ["cvs.project_id", "cvs.id"]), UniqueConstraint("project_id", "id", name="uq_cv_revisions_project_id"), UniqueConstraint("cv_id", "revision", name="uq_cv_revisions_number"), CheckConstraint("revision > 0", name="ck_cv_revision_positive"))
 
 
@@ -254,11 +256,12 @@ class Run(Base):
     actor_scope: Mapped[str] = mapped_column(String(80), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
-    session_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    # session / job / provider are NULL only for the internal profile_cv operation (no LLM, no job).
+    session_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     operation: Mapped[str] = mapped_column(String(32), nullable=False)
     cv_revision_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
-    job_revision_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
-    provider_configuration_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    job_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    provider_configuration_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     input_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     config_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     output_language: Mapped[str] = mapped_column(String(2), nullable=False)
@@ -288,7 +291,8 @@ class Run(Base):
         UniqueConstraint("project_id", "id", name="uq_runs_project_id"),
         CheckConstraint("status IN ('queued','running','waiting_approval','completed','failed','cancelled','interrupted')", name="ck_runs_status"),
         CheckConstraint("length(idempotency_key) BETWEEN 1 AND 128", name="ck_runs_idempotency_key_length"),
-        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document')", name="ck_runs_operation"),
+        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv')", name="ck_runs_operation"),
+        CheckConstraint("operation = 'profile_cv' OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL AND provider_configuration_id IS NOT NULL)", name="ck_runs_context_required"),
         CheckConstraint("output_language IN ('th','en')", name="ck_runs_language"),
         CheckConstraint("length(request_digest) = 64", name="ck_runs_digest_length"),
         CheckConstraint("active_seconds >= 0", name="ck_runs_active_seconds"),

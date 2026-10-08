@@ -215,6 +215,28 @@ paths:
       responses:
         '200': {description: 'Job search page {items, total, limit, offset}'}
         '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/job-search/match:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: >-
+        Owner-only "Smart match": the job-search filters (q, cities, work_mode, posted_within_days, category)
+        plus cv_revision_id (a live CV revision of this project) and pool (1-100, default 100, upstream page
+        size) and offset (0-1000, start of the pool chunk). The pool is scored against the revision's stored
+        skill profile (keyword dictionary, no AI) and returned sorted by score descending, ties by recency,
+        jobs naming fewer than two recognisable skills (match null) last. Items are job-search items plus
+        match {score_percent, matched[], missing[], required_count} or null. Response {items, total, offset, pool}.
+        409 cv_profile_missing when the revision has no profile yet (POST the CV's /profile first);
+        404 for a foreign or removed CV revision; 502 job_source_unavailable.
+      security: [{ownerSession: []}]
+      parameters:
+        - {name: cv_revision_id, in: query, required: true, schema: {type: string, format: uuid}}
+        - {name: pool, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 100}}
+      responses:
+        '200': {description: 'Scored pool {items, total, offset, pool}'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: CV has no skill profile yet (code cv_profile_missing), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search/facets:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -418,6 +440,24 @@ paths:
               properties: {file: {type: string, format: binary}}
       responses:
         '201': {description: Published CV revision metadata, content: {application/json: {schema: {$ref: '#/components/schemas/CVRevisionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/cvs/{cv_id}/profile:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Queues a non-LLM profile_cv run (no session, job or provider) that parses the latest
+        revision in the sandbox and stores only the canonical skill names found (never CV text). Returns the
+        run (202; an already active run for the revision is returned again) or 200 {status: ready} when the
+        revision already has a profile. profile_cv runs are hidden from the run list, grants, MCP and A2A.
+      responses:
+        '200': {description: 'Already profiled: {status: ready}'}
+        '202': {description: Profile run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/files/{file_id}/download:
     parameters:
@@ -795,6 +835,8 @@ components:
             mime_type: {type: string}
             size_bytes: {type: integer, minimum: 0}
             file_id: {type: [string, 'null'], format: uuid}
+            skill_profile_ready: {type: boolean, default: false}
+            skill_count: {type: [integer, 'null'], minimum: 0}
     CVUpdate:
       type: object
       additionalProperties: false
@@ -895,14 +937,14 @@ components:
     RunView:
       type: object
       additionalProperties: false
-      required: [id, project_id, session_id, operation, status, output_language, result_file_ids, created_at]
+      required: [id, project_id, operation, status, output_language, result_file_ids, created_at]
       properties:
         job_revision_id: {type: [string, 'null'], format: uuid}
         evaluation_result: {anyOf: [{$ref: '#/components/schemas/EvaluationResult'}, {type: 'null'}]}
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
-        session_id: {type: string, format: uuid}
-        operation: {type: string, enum: [evaluate_job, draft_documents, export_document]}
+        session_id: {type: [string, 'null'], format: uuid, description: Null only for profile_cv.}
+        operation: {type: string, enum: [evaluate_job, draft_documents, export_document, profile_cv]}
         status: {type: string, enum: [queued, running, waiting_approval, completed, failed, cancelled, interrupted]}
         output_language: {type: string, enum: [th, en]}
         result_file_ids: {type: array, items: {type: string, format: uuid}}

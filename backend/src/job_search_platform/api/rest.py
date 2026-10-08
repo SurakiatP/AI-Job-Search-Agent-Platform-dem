@@ -36,6 +36,7 @@ from job_search_platform.services.contracts import (
 from job_search_platform.services import job_sources
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
+from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
 from job_search_platform.services.runs import actor_scope
 from job_search_platform.services.settings import provider_catalog as settings_catalog
 
@@ -56,7 +57,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "unauthorized": 401, "invalid_launch": 401, "invalid_origin": 403,
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
         "project_not_empty": 409, "session_busy": 409, "idempotency_conflict": 409,
-        "retry_not_allowed": 409, "approval_conflict": 409,
+        "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
         "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409,
         "document_busy": 409, "document_source_unavailable": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
@@ -124,7 +125,9 @@ def _pair_holder(db, row: ConversationSession) -> UUID | None:
 
 
 def _cv_revision_view(revision: CVRevision, file: StoredFile) -> dict[str, Any]:
-    return {"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
+    profile = revision.skill_profile if (revision.skill_profile or {}).get("method") == SKILL_METHOD else None
+    return {"skill_profile_ready": profile is not None,
+            "skill_count": len(profile["skills"]) if profile else None,"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
             "original_filename": file.display_name, "mime_type": file.mime_type, "size_bytes": file.size_bytes,
             "file_id": file.id}
 
@@ -451,6 +454,53 @@ async def search_job_sources(
         posted_within_days=posted_within_days, category=category, limit=limit, offset=offset)
 
 
+@router.get("/projects/{project_id}/job-search/match")
+async def match_job_sources(
+    project_id: UUID,
+    cv_revision_id: UUID,
+    q: Annotated[str, Query(max_length=200)] = "",
+    cities: Annotated[str, Query(max_length=400)] = "",
+    work_mode: Annotated[str | None, Query(pattern="^(remote|hybrid|onsite)$")] = None,
+    posted_within_days: Annotated[int | None, Query(ge=1, le=90)] = None,
+    category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
+    pool: Annotated[int, Query(ge=1, le=100)] = 100,
+    offset: Annotated[int, Query(ge=0, le=1000)] = 0,
+    actor=Depends(owner_actor),
+    services: Services = Depends(get_services),
+):
+    """One pool of job-source results scored against a CV's stored skill profile (dictionary only, no AI)."""
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        revision = require_scoped_id(db, CVRevision, project_id, cv_revision_id)
+        if db.scalar(select(CV.id).where(CV.project_id == project_id, CV.id == revision.cv_id,
+                                         CV.removed_at.is_(None))) is None:
+            raise ServiceError("not_found")
+        profile = revision.skill_profile or {}
+        if profile.get("method") != SKILL_METHOD:
+            raise ServiceError("cv_profile_missing", fields={"cv_revision_id": str(revision.id)})
+        cv_skills = list(profile["skills"])
+    city_list = job_sources.parse_cities(cities)
+    if city_list is None:
+        raise RequestValidationError([{"loc": ("query", "cities"), "msg": "invalid", "type": "value_error"}])
+
+    def run() -> dict:
+        page = job_sources.search_jobs(
+            q=q, cities=city_list, work_mode=work_mode, posted_within_days=posted_within_days,
+            category=category, limit=pool, offset=offset)
+        for item in page["items"]:
+            found = match_skills(cv_skills, f"{item['title']}\n{item['description_markdown']}\n" + ", ".join(item["skills"]))
+            item["match"] = None if found is None else {
+                "score_percent": round(found["ratio"] * 100), "matched": found["matched"],
+                "missing": found["missing"], "required_count": len(found["required"])}
+        # Stable sort keeps the upstream (recency) order for ties; unscored jobs go last.
+        page["items"].sort(key=lambda i: (i["match"] is None, -(i["match"] or {}).get("score_percent", 0),
+                                          i["age_days"] if i["age_days"] is not None else 10**6))
+        page["pool"] = page.pop("limit")
+        return page
+
+    return await asyncio.to_thread(run)
+
+
 @router.get("/projects/{project_id}/job-search/facets")
 async def job_search_facets(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
     with services.sessions() as db:
@@ -633,6 +683,14 @@ async def create_cv(project_id: UUID, file: UploadFile = File(...),
         return _cv_view(db, _live_cv(db, project_id, new_cv_id))
 
 
+@router.post("/projects/{project_id}/cvs/{cv_id}/profile", status_code=202, response_model=RunView,
+             responses={200: {"description": "The latest revision already has a skill profile", "content": {"application/json": {"schema": {"type": "object", "properties": {"status": {"const": "ready"}}}}}}})
+async def profile_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Extract the CV's skill names in the sandbox (no AI); 200 {status: ready} when already done."""
+    run = await services.runs.submit_profile(actor, project_id, cv_id)
+    return JSONResponse({"status": "ready"}, status_code=200) if run is None else run
+
+
 @router.post("/projects/{project_id}/cvs/{cv_id}/revisions", status_code=201, response_model=CVRevisionView)
 async def add_cv_revision(project_id: UUID, cv_id: UUID, file: UploadFile = File(...),
                           actor=Depends(write_actor), services: Services = Depends(get_services)):
@@ -698,6 +756,7 @@ async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Servic
         authorize(db, actor, project_id, "read", "run")
         from job_search_platform.db.models import Run
         query = select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())
+        query = query.where(Run.operation != "profile_cv")
         if actor.kind != "owner":
             query = query.where(Run.operation != "export_document")
         rows = db.scalars(query).all()

@@ -229,18 +229,24 @@ def _first_position(entry: tuple[str, re.Pattern[str] | None, tuple[str, ...]], 
     return min(found) if found else None
 
 
-def compute_skill_coverage(cv_text: str, job_text: str) -> dict | None:
-    """Return required/matched/missing skills by dictionary lookup, or None when the job names fewer than two."""
-    job, cv = job_text.lower(), cv_text.lower()
+def extract_skills(text: str) -> list[str]:
+    """Canonical dictionary skills named in the text, in dictionary order (names only)."""
+    low = text.lower()
+    return [entry[0] for entry in _ENTRIES if _first_position(entry, low) is not None]
+
+
+def match_skills(cv_skills: list[str], job_text: str) -> dict | None:
+    """Required/matched/missing skills of a job against a CV's extracted skills; None when the job names fewer than two."""
+    job = job_text.lower()
     required = sorted(
-        ((pos, entry[0], entry) for entry in _ENTRIES if (pos := _first_position(entry, job)) is not None),
-        key=lambda item: (item[0], item[1]),
+        ((pos, entry[0]) for entry in _ENTRIES if (pos := _first_position(entry, job)) is not None)
     )
     if len(required) < 2:
         return None
-    names = [name for _, name, _ in required]
-    matched = [name for _, name, entry in required if _first_position(entry, cv) is not None]
-    missing = [name for name in names if name not in matched]
+    have = set(cv_skills)
+    names = [name for _, name in required]
+    matched = [name for name in names if name in have]
+    missing = [name for name in names if name not in have]
     return {
         "required": names[:MAX_ITEMS],
         "matched": matched[:MAX_ITEMS],
@@ -248,3 +254,8 @@ def compute_skill_coverage(cv_text: str, job_text: str) -> dict | None:
         "ratio": round(len(matched) / len(names), 2),
         "method": METHOD,
     }
+
+
+def compute_skill_coverage(cv_text: str, job_text: str) -> dict | None:
+    """Same as match_skills over the skills found in the CV text."""
+    return match_skills(extract_skills(cv_text), job_text)
