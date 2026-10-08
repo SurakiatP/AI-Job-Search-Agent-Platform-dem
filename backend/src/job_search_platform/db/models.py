@@ -95,6 +95,50 @@ class CVRevision(Base):
     __table_args__ = (ForeignKeyConstraint(["project_id", "file_id"], ["files.project_id", "files.id"]), ForeignKeyConstraint(["project_id", "cv_id"], ["cvs.project_id", "cvs.id"]), UniqueConstraint("project_id", "id", name="uq_cv_revisions_project_id"), UniqueConstraint("cv_id", "revision", name="uq_cv_revisions_number"), CheckConstraint("revision > 0", name="ck_cv_revision_positive"))
 
 
+class CVRevisionText(Base):
+    """Parsed CV text, written once per revision by a sandbox parse; never returned by any API."""
+    __tablename__ = "cv_revision_texts"
+    cv_revision_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (ForeignKeyConstraint(["project_id", "cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"], ondelete="CASCADE"),
+                      CheckConstraint("char_length(text) BETWEEN 1 AND 200000", name="ck_cv_revision_text_length"))
+
+
+class JobMatchScore(Base):
+    """One Jev score of a job-board posting (slug + content hash) against a CV revision."""
+    __tablename__ = "job_match_scores"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    cv_revision_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    job_slug: Mapped[str] = mapped_column(String(200), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    model: Mapped[str] = mapped_column(String(80), nullable=False)
+    fit_percent: Mapped[int] = mapped_column(Integer, nullable=False)
+    uncertain: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    details: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (ForeignKeyConstraint(["project_id", "cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"], ondelete="CASCADE"),
+                      UniqueConstraint("cv_revision_id", "job_slug", "content_hash", "model", name="uq_job_match_scores_key"),
+                      CheckConstraint("fit_percent BETWEEN 0 AND 100", name="ck_job_match_fit_range"),
+                      Index("ix_job_match_scores_lookup", "cv_revision_id", "job_slug"))
+
+
+class JobSearchHidden(Base):
+    """A job (slug) or company (normalized name) the owner hid from Smart match in this project."""
+    __tablename__ = "job_search_hidden"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    value: Mapped[str] = mapped_column(String(300), nullable=False)
+    label: Mapped[str] = mapped_column(String(300), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (UniqueConstraint("project_id", "kind", "value", name="uq_job_search_hidden_key"),
+                      UniqueConstraint("project_id", "id", name="uq_job_search_hidden_project_id"),
+                      CheckConstraint("kind IN ('job','company')", name="ck_job_search_hidden_kind"))
+
+
 class JobRevision(Base):
     __tablename__ = "job_revisions"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -291,8 +335,8 @@ class Run(Base):
         UniqueConstraint("project_id", "id", name="uq_runs_project_id"),
         CheckConstraint("status IN ('queued','running','waiting_approval','completed','failed','cancelled','interrupted')", name="ck_runs_status"),
         CheckConstraint("length(idempotency_key) BETWEEN 1 AND 128", name="ck_runs_idempotency_key_length"),
-        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv')", name="ck_runs_operation"),
-        CheckConstraint("operation = 'profile_cv' OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL AND provider_configuration_id IS NOT NULL)", name="ck_runs_context_required"),
+        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs')", name="ck_runs_operation"),
+        CheckConstraint("operation IN ('profile_cv','match_jobs') OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL AND provider_configuration_id IS NOT NULL)", name="ck_runs_context_required"),
         CheckConstraint("output_language IN ('th','en')", name="ck_runs_language"),
         CheckConstraint("length(request_digest) = 64", name="ck_runs_digest_length"),
         CheckConstraint("active_seconds >= 0", name="ck_runs_active_seconds"),
