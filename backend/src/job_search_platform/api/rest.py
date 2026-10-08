@@ -103,7 +103,7 @@ def _session_view(db, row: ConversationSession, evaluation_run_id: UUID | None =
                                                CVRevision.revision > cv_revision.revision)))
     view.update(cv_revision_id=row.cv_revision_id, job_revision_id=row.job_revision_id,
                 cv_name=cv.name, cv_revision=cv_revision.revision, job_title=job.title,
-                job_company=job.company, cv_outdated=bool(outdated))
+                job_company=job.company, cv_outdated=bool(outdated), cv_file_id=cv_revision.file_id)
     return view
 
 
@@ -125,7 +125,8 @@ def _pair_holder(db, row: ConversationSession) -> UUID | None:
 
 def _cv_revision_view(revision: CVRevision, file: StoredFile) -> dict[str, Any]:
     return {"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
-            "original_filename": file.display_name, "mime_type": file.mime_type, "size_bytes": file.size_bytes}
+            "original_filename": file.display_name, "mime_type": file.mime_type, "size_bytes": file.size_bytes,
+            "file_id": file.id}
 
 
 def _cv_view(db, cv: CV) -> dict[str, Any]:
@@ -601,7 +602,8 @@ async def _upload_cv(services, actor, project_id: UUID, file: UploadFile, **targ
         if revision is None:
             raise ServiceError("file_unavailable")
         return ({"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
-                 "original_filename": view.display_name, "mime_type": view.mime_type, "size_bytes": view.size_bytes},
+                 "original_filename": view.display_name, "mime_type": view.mime_type, "size_bytes": view.size_bytes,
+                 "file_id": view.id},
                 revision.cv_id)
 
 

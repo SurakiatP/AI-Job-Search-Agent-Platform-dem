@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { CvPreviewButton } from '@/components/CvPreview';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Plus, Star, Upload } from 'lucide-react';
@@ -120,6 +121,7 @@ export function ProfilePage() {
             {cv.latest_revision && <p className="break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{c.version} {cv.latest_revision.revision} · {cv.latest_revision.original_filename} · {date.format(new Date(cv.latest_revision.created_at))} · {formatSize(cv.latest_revision.size_bytes)} · {cv.revision_count} {c.versions}</p>}
             {cv.in_use && <p className="text-xs text-muted-foreground">{c.inUse}</p>}
             <div className="flex flex-wrap gap-2">
+              {cv.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="default" />}
               <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>
               {!cv.is_primary && <Button type="button" size="sm" variant="ghost" onClick={() => void makePrimary(cv)}>{c.makePrimary}</Button>}
             </div>

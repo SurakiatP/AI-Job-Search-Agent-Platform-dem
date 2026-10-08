@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { CvPreviewButton } from '@/components/CvPreview';
 import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeftRight, Bot, ChevronDown, Pencil, TriangleAlert } from 'lucide-react';
@@ -134,6 +135,7 @@ export function SessionPage() {
     <div className="grid gap-2"><h1 className="break-words text-2xl font-semibold">{current.title}</h1>
       {paired ? <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         <Link className="font-medium text-primary hover:underline" to={`${base}/profile`} title={c.cvPage}>{current.cv_name} · v{current.cv_revision}</Link>
+        <CvPreviewButton projectId={projectId} fileId={current.cv_file_id} name={current.cv_name ?? 'CV'} revision={current.cv_revision} variant="ghost" className="h-8 px-2" />
         <ArrowLeftRight className="size-4 text-muted-foreground" aria-hidden="true" />
         <Link className="font-medium text-primary hover:underline" to={`${base}/jobs/${current.job_revision_id}`} title={c.jobPage}>{current.job_title}{current.job_company ? ` · ${current.job_company}` : ''}</Link></p>
         : <Badge variant="outline" className="w-fit">{c.unpaired}</Badge>}</div>

@@ -119,6 +119,7 @@ class SessionView(DTO):
     job_title: str | None = None
     job_company: str | None = None
     cv_outdated: bool = False
+    cv_file_id: UUID | None = None
     # Only set on the create response.
     evaluation_run_id: UUID | None = None
 
@@ -173,6 +174,7 @@ class CVRevisionView(RevisionView):
     original_filename: str
     mime_type: str
     size_bytes: int
+    file_id: UUID | None = None
 
 
 class CVUpdate(DTO):

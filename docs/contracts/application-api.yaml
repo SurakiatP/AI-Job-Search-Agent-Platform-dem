@@ -753,6 +753,7 @@ components:
         job_title: {type: [string, 'null']}
         job_company: {type: [string, 'null']}
         cv_outdated: {type: boolean, default: false}
+        cv_file_id: {type: [string, 'null'], format: uuid}
         evaluation_run_id: {type: [string, 'null'], format: uuid, description: Set only on the create response.}
     RevisionView:
       type: object
@@ -793,6 +794,7 @@ components:
             original_filename: {type: string}
             mime_type: {type: string}
             size_bytes: {type: integer, minimum: 0}
+            file_id: {type: [string, 'null'], format: uuid}
     CVUpdate:
       type: object
       additionalProperties: false

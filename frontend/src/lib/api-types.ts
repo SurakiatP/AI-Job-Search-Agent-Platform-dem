@@ -57,9 +57,9 @@ export type ProjectView = { id: string; name: string; created_at: string };
 export type SessionView = {
   id: string; project_id: string; title: string; created_at: string;
   cv_revision_id?: string | null; job_revision_id?: string | null; cv_name?: string | null; cv_revision?: number | null;
-  job_title?: string | null; job_company?: string | null; cv_outdated?: boolean; evaluation_run_id?: string | null;
+  job_title?: string | null; job_company?: string | null; cv_outdated?: boolean; cv_file_id?: string | null; evaluation_run_id?: string | null;
 };
-export type CVRevisionInfo = { id: string; revision: number; created_at: string; original_filename: string; mime_type: string; size_bytes: number };
+export type CVRevisionInfo = { id: string; revision: number; created_at: string; original_filename: string; mime_type: string; size_bytes: number; file_id?: string | null };
 export type CVView = { id: string; name: string; is_primary: boolean; created_at: string; latest_revision: CVRevisionInfo | null; revision_count: number; in_use: boolean };
 export type MessageView = {
   id: string;
