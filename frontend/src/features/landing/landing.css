@@ -1,0 +1,89 @@
+/* Landing-only tokens, all derived from the shared tokens in styles.css. */
+.landing {
+  --l-cool: oklch(from var(--primary) calc(l + 0.07) c calc(h - 38));
+  --l-violet: oklch(from var(--primary) l c calc(h + 38));
+  --l-dot: color-mix(in oklch, var(--foreground) 14%, transparent);
+  --l-glass: color-mix(in oklch, var(--card) 72%, transparent);
+  --l-glass-border: color-mix(in oklch, var(--primary) 20%, var(--border));
+  --l-glow: color-mix(in oklch, var(--primary) 22%, transparent);
+  --l-glow-2: color-mix(in oklch, var(--l-violet) 14%, transparent);
+  isolation: isolate;
+  overflow-x: clip;
+  background: color-mix(in oklch, var(--background) 62%, var(--accent));
+}
+:root[data-theme='dark'] .landing {
+  --l-cool: oklch(from var(--primary) calc(l + 0.1) c calc(h - 42));
+  --l-dot: color-mix(in oklch, var(--foreground) 10%, transparent);
+  --l-glow: color-mix(in oklch, var(--primary) 26%, transparent);
+  --l-glow-2: color-mix(in oklch, var(--l-violet) 20%, transparent);
+  background: color-mix(in oklch, var(--background) 86%, var(--accent));
+}
+@supports not (color: oklch(from red l c h)) {
+  .landing { --l-cool: var(--accent-foreground); --l-violet: var(--primary); }
+}
+
+.landing-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 62% at 50% 0%, var(--l-glow), transparent 72%),
+    radial-gradient(ellipse 34% 40% at 88% 28%, var(--l-glow-2), transparent 72%),
+    radial-gradient(ellipse 34% 40% at 10% 40%, var(--l-glow-2), transparent 72%),
+    radial-gradient(var(--l-dot) 1px, transparent 1.3px) 0 0 / 22px 22px;
+  mask-image: linear-gradient(to bottom, var(--background) 60%, transparent);
+}
+
+.landing-gradient-text {
+  background: linear-gradient(90deg, var(--primary), var(--l-cool));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding-block: 0.1em;
+}
+
+.landing-glass {
+  background: var(--l-glass);
+  border: 1px solid var(--l-glass-border);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px -12px color-mix(in oklch, var(--primary) 35%, transparent);
+}
+
+.landing-panel { position: relative; }
+.landing-panel::before {
+  content: '';
+  position: absolute;
+  inset: -8% -6%;
+  z-index: -1;
+  background: radial-gradient(ellipse at center, var(--l-glow), transparent 70%);
+  filter: blur(24px);
+}
+
+.landing-cta-bg {
+  background:
+    radial-gradient(ellipse 70% 90% at 50% 120%, var(--l-glow), transparent 70%),
+    radial-gradient(ellipse 40% 60% at 90% 0%, var(--l-glow-2), transparent 70%),
+    radial-gradient(var(--l-dot) 1px, transparent 1.3px) 0 0 / 22px 22px,
+    var(--card);
+}
+
+/* Reveal on scroll: opacity/transform only, once. */
+.landing-fade { opacity: 0.18; transition: opacity var(--dur-slow) var(--ease-out) var(--d, 0ms); }
+[data-seen='true'] .landing-fade { opacity: 1; }
+.landing-rise { opacity: 0; transform: translateY(12px); transition: opacity var(--dur-slow) var(--ease-out) var(--d, 0ms), transform var(--dur-slow) var(--ease-out) var(--d, 0ms); }
+.landing-rise[data-seen='true'] { opacity: 1; transform: none; }
+
+/* Tour steps crossfade. */
+/* Outgoing step hides instantly; only the incoming step animates, so text never overlaps mid-switch. */
+.landing-tstep { opacity: 0; transform: translateY(10px); pointer-events: none; visibility: hidden; }
+.landing-tstep[data-active='true'] { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-fade, .landing-rise, .landing-tstep { transition: none; }
+  .landing-fade, .landing-rise { opacity: 1; transform: none; }
+  .landing-tstep[data-active='false'] { transform: none; }
+}

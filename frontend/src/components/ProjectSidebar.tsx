@@ -1,0 +1,69 @@
+import { useState, type ReactNode } from 'react';
+import { Bookmark, Bot, FileText, FolderOpen, LayoutDashboard, MessagesSquare, Search, Settings, UserRound, type LucideIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Link, useLocation } from 'react-router';
+import { AppearanceControl } from './AppearanceControl';
+import { HomeLink, LanguageSwitch } from './Header';
+import { ProjectTree } from './ProjectTree';
+import { ScrollingName } from './ScrollingName';
+import type { SidebarProject } from './ProjectTree';
+import { NewSessionDialog } from '../features/sessions/NewSessionDialog';
+
+export type { SidebarProject };
+
+const itemClass = 'flex min-h-9 items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent/60 data-[active=true]:bg-accent data-[active=true]:font-medium data-[active=true]:text-accent-foreground [overflow-wrap:anywhere]';
+
+function NavItem({ to, icon: Icon, active, current = active, onNavigate, children }: {
+  to: string; icon: LucideIcon; active: boolean; current?: boolean; onNavigate?: () => void; children: ReactNode;
+}) {
+  return <Link className={itemClass} to={to} data-active={active} aria-current={current ? 'page' : undefined} onClick={onNavigate}>
+    <Icon size={16} aria-hidden="true" />{children}
+  </Link>;
+}
+
+export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate, onReload, toggle }: {
+  projects?: SidebarProject[]; projectId?: string; sessionId?: string; onNavigate?: () => void; onReload?: () => void; toggle?: ReactNode;
+}) {
+  const { t, i18n } = useTranslation();
+  const { pathname } = useLocation();
+  const project = projects.find(item => item.id === projectId);
+  const inside = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const base = `/app/projects/${projectId}`;
+  const sessions = project?.sessions ?? [];
+  const [creating, setCreating] = useState(false);
+  const onSessions = inside(`${base}/sessions`);
+  const sections = [
+    ['overview', LayoutDashboard, t('nav.overview')],
+    ['console', Bot, t('nav.console')],
+    ['jobs', Bookmark, t('nav.savedJobs')],
+    ['search', Search, t('nav.search')],
+    ['documents', FileText, t('nav.documents')],
+    ['profile', UserRound, t('nav.cv')],
+  ] as const;
+  return <nav className="flex flex-1 flex-col gap-4 p-4" aria-label={t('navigation')}>
+    <div className="hidden items-start justify-between gap-2 px-1 pt-1 lg:flex"><HomeLink onClick={onNavigate} />{toggle}</div>
+    <ProjectTree projects={projects} projectId={projectId} sessionId={sessionId} onNavigate={onNavigate} onReload={onReload} />
+    {project && <div className="grid gap-2 border-t pt-3">
+    <div className="group flex items-center gap-2.5 px-3">
+      <FolderOpen className="size-4 shrink-0 text-primary" aria-hidden="true" />
+      <div className="min-w-0"><p className="text-sm font-semibold" title={project.name}><ScrollingName>{project.name}</ScrollingName></p>
+        <p className="text-xs text-muted-foreground">{i18n.language.startsWith('th') ? 'เมนูของโปรเจกต์นี้' : 'This project'}</p></div>
+    </div>
+    <ul className="grid gap-0.5" aria-label={t('pages.projectSections')}>
+      {sections.slice(0, 1).map(([section, icon, label]) => <li key={section}><NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate}>{label}</NavItem></li>)}
+      <li>{sessions[0] ? <NavItem to={sessions[0].href} icon={MessagesSquare} active={onSessions} current={false} onNavigate={onNavigate}>{t('nav.evaluate')}</NavItem>
+        : <button type="button" className={`${itemClass} w-full text-start`} data-active={onSessions} onClick={() => setCreating(true)}><MessagesSquare size={16} aria-hidden="true" />{t('nav.evaluate')}</button>}
+        {creating && projectId && <NewSessionDialog projectId={projectId} onClose={() => { setCreating(false); onNavigate?.(); }} />}</li>
+      {sections.slice(1).map(([section, icon, label]) => <li key={section}>
+        <NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate}>{label}</NavItem>
+      </li>)}
+    </ul></div>}
+    <div className="mt-auto grid gap-3">
+      <NavItem to="/app/settings" icon={Settings} active={inside('/app/settings')} onNavigate={onNavigate}>{t('settings')}</NavItem>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <AppearanceControl />
+        <LanguageSwitch />
+      </div>
+    </div>
+  </nav>;
+}
