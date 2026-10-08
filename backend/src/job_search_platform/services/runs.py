@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from job_search_platform.db.models import (
     ConversationSession,
     CVRevision,
+    Document,
+    DocumentRevision,
     Grant,
     JobRevision,
     Project,
@@ -463,16 +465,24 @@ class RunService:
 
     @staticmethod
     def _result_file_ids(db: Session, run: Run) -> tuple[UUID, ...]:
-        return tuple(
-            db.scalars(
-                select(RunArtifact.file_id)
-                .join(
-                    StoredFile,
-                    (StoredFile.project_id == RunArtifact.project_id)
-                    & (StoredFile.id == RunArtifact.file_id),
-                )
-                .where(RunArtifact.project_id == run.project_id, RunArtifact.run_id == run.id)
-                .where(StoredFile.publication_state == "published")
-                .order_by(RunArtifact.file_id)
-            ).all()
+        query = (
+            select(RunArtifact.file_id)
+            .join(
+                StoredFile,
+                (StoredFile.project_id == RunArtifact.project_id)
+                & (StoredFile.id == RunArtifact.file_id),
+            )
+            .where(RunArtifact.project_id == run.project_id, RunArtifact.run_id == run.id)
+            .where(StoredFile.publication_state == "published")
+            .order_by(RunArtifact.file_id)
         )
+        # Trashed drafts drop out of run results for everyone; the owner finds them in the trash view.
+        query = query.where(~select(DocumentRevision.id).join(
+            Document,
+            (Document.project_id == DocumentRevision.project_id) & (Document.id == DocumentRevision.document_id),
+        ).where(
+            DocumentRevision.project_id == RunArtifact.project_id,
+            DocumentRevision.id == RunArtifact.document_revision_id,
+            Document.trashed_at.is_not(None),
+        ).exists())
+        return tuple(db.scalars(query).all())

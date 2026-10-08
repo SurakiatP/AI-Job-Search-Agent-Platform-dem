@@ -55,7 +55,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
         "project_not_empty": 409, "session_has_runs": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "approval_conflict": 409,
-        "job_removed": 409, "document_in_use": 409,
+        "job_removed": 409, "document_in_use": 409, "document_not_trashed": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
@@ -404,8 +404,21 @@ async def remove_job(project_id: UUID, job_revision_id: UUID, actor=Depends(writ
 
 
 @router.delete("/projects/{project_id}/documents/{document_id}", status_code=204)
-async def delete_document(project_id: UUID, document_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    """Hard-delete a drafted document with its revisions and unreferenced files."""
+async def trash_document(project_id: UUID, document_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Move a drafted document to the trash. Idempotent."""
+    await services.documents.set_trashed(actor, project_id, document_id, True)
+
+
+@router.post("/projects/{project_id}/documents/{document_id}/restore", response_model=DocumentView)
+async def restore_document(project_id: UUID, document_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Take a document out of the trash. Idempotent: restoring a live document returns it unchanged."""
+    await services.documents.set_trashed(actor, project_id, document_id, False)
+    return await services.documents.get(actor, project_id, document_id)
+
+
+@router.delete("/projects/{project_id}/documents/{document_id}/permanent", status_code=204)
+async def delete_document_permanently(project_id: UUID, document_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Hard-delete a trashed document with its revisions and unreferenced files."""
     _owner_only(actor)
     await services.documents.delete(actor, project_id, document_id)
 
@@ -413,6 +426,11 @@ async def delete_document(project_id: UUID, document_id: UUID, actor=Depends(wri
 @router.get("/projects/{project_id}/documents", response_model=list[DocumentView])
 async def list_documents(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
     return await services.documents.list_ready(actor, project_id)
+
+
+@router.get("/projects/{project_id}/documents/trash", response_model=list[DocumentView])
+async def list_trashed_documents(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await services.documents.list_trashed(actor, project_id)
 
 
 @router.get("/projects/{project_id}/documents/{document_id}/revisions", response_model=list[DocumentRevisionView])

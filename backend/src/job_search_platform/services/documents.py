@@ -316,8 +316,28 @@ class Documents:
         self.sessions = sessions
         self.object_store = object_store
 
+    async def set_trashed(self, actor: Actor, project_id: UUID, document_id: UUID, trashed: bool) -> None:
+        """Owner move to / restore from trash. Idempotent: repeating either keeps the first timestamp."""
+        await asyncio.to_thread(self._set_trashed, actor, project_id, document_id, trashed)
+
+    def _set_trashed(self, actor: Actor, project_id: UUID, document_id: UUID, trashed: bool) -> None:
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "document")
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            document = db.scalar(select(Document).where(
+                Document.project_id == project_id, Document.id == document_id).with_for_update())
+            if document is None:
+                raise ServiceError("not_found")
+            if trashed and document.trashed_at is None:
+                document.trashed_at = datetime.now(timezone.utc)
+            elif not trashed:
+                document.trashed_at = None
+
     async def delete(self, actor: Actor, project_id: UUID, document_id: UUID) -> None:
-        """Owner hard delete: rows commit first, then objects are removed best-effort."""
+        """Owner permanent delete of a trashed document: rows commit first, then objects best-effort."""
         storage_keys = await asyncio.to_thread(self._delete_rows, actor, project_id, document_id)
         for key in storage_keys:
             try:
@@ -338,6 +358,8 @@ class Documents:
                 Document.project_id == project_id, Document.id == document_id).with_for_update())
             if document is None:
                 raise ServiceError("not_found")
+            if document.trashed_at is None:
+                raise ServiceError("document_not_trashed")
             revisions = list(db.scalars(select(DocumentRevision).where(
                 DocumentRevision.project_id == project_id,
                 DocumentRevision.document_id == document_id).with_for_update()))
@@ -378,13 +400,26 @@ class Documents:
             return [file.storage_key for file in doomed]
 
     async def list_ready(self, actor: Actor, project_id: UUID) -> list[DocumentView]:
+        """Documents outside the trash; owners and grants (REST, MCP, A2A) all see only these."""
+        return self._list(actor, project_id, trashed=False)
+
+    async def list_trashed(self, actor: Actor, project_id: UUID) -> list[DocumentView]:
+        """Owner-only trash view, newest trashed first."""
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        return self._list(actor, project_id, trashed=True)
+
+    def _list(self, actor: Actor, project_id: UUID, *, trashed: bool) -> list[DocumentView]:
         with self.sessions() as db:
             authorize(db, actor, project_id, "results:read", "generated_document")
             docs = list(
                 db.scalars(
                     select(Document)
-                    .where(Document.project_id == project_id)
-                    .order_by(Document.created_at, Document.id)
+                    .where(
+                        Document.project_id == project_id,
+                        Document.trashed_at.is_not(None) if trashed else Document.trashed_at.is_(None),
+                    )
+                    .order_by(*((Document.trashed_at.desc(), Document.id) if trashed else (Document.created_at, Document.id)))
                 )
             )
             result: list[DocumentView] = []
@@ -414,7 +449,7 @@ class Documents:
                     Document.project_id == project_id, Document.id == document_id
                 )
             )
-            if doc is None:
+            if doc is None or doc.trashed_at is not None:
                 raise ServiceError("not_found")
             latest = db.scalar(
                 select(DocumentRevision)
@@ -437,11 +472,13 @@ class Documents:
     ) -> list[DocumentRevisionView]:
         with self.sessions() as db:
             authorize(db, actor, project_id, "results:read", "generated_document")
-            if db.scalar(
-                select(Document.id).where(
+            document = db.scalar(
+                select(Document).where(
                     Document.project_id == project_id, Document.id == document_id
                 )
-            ) is None:
+            )
+            # A trashed document stays previewable to its owner only.
+            if document is None or (document.trashed_at is not None and actor.kind != "owner"):
                 raise ServiceError("not_found")
             rows = list(
                 db.scalars(
@@ -485,6 +522,7 @@ def _document_view(document: Document, revision: DocumentRevision, db: Session, 
         output_language=source.output_language if source is not None else None,
         source_run_id=source.id if source is not None else None,
         partial=source is None or source.status != "completed",
+        trashed_at=document.trashed_at,
         latest_revision=RevisionView(
             id=revision.id,
             revision=revision.revision,

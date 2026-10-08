@@ -113,6 +113,7 @@ export type DocumentView = {
   output_language: Locale | null;
   source_run_id: string | null;
   partial: boolean;
+  trashed_at?: string | null;
 };
 export type ApprovalView = {
   id: string;

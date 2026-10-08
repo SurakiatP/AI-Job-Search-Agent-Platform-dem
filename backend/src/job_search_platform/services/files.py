@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import CVRevision, Project, Run, RunArtifact, StoredFile
+from job_search_platform.db.models import CVRevision, Document, DocumentRevision, Project, Run, RunArtifact, StoredFile
 from job_search_platform.integrations.hermes_runtime import PARSE_ERRORS, RuntimeErrorCode
 from job_search_platform.integrations.object_store import ObjectMissing, ObjectTooLarge
 from job_search_platform.services.authorization import authorize
@@ -149,7 +149,7 @@ class Files:
                 try:
                     _authorize_file(db, actor, project_id, row)
                 except ServiceError as exc:
-                    if exc.code == "forbidden":
+                    if exc.code in {"forbidden", "not_found"}:
                         continue
                     raise
                 visible.append(_view(row))
@@ -515,6 +515,17 @@ def _add_cv_revision(db: Session, project_id: UUID, file_id: UUID) -> None:
 def _authorize_file(db: Session, actor: Actor, project_id: UUID, row: StoredFile) -> None:
     if row.kind == "generated_document":
         authorize(db, actor, project_id, "results:read", "generated_document")
+        # Owners may still preview a trashed draft; grants never reach it.
+        if actor.kind != "owner" and db.scalar(
+            select(Document.id).join(
+                DocumentRevision,
+                (DocumentRevision.project_id == Document.project_id) & (DocumentRevision.document_id == Document.id),
+            ).where(
+                Document.project_id == project_id, Document.trashed_at.is_not(None),
+                DocumentRevision.file_id == row.id,
+            ).limit(1)
+        ) is not None:
+            raise ServiceError("not_found")
     else:
         authorize(db, actor, project_id, "read", "cv_original")
 

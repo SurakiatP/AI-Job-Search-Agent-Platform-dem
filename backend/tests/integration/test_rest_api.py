@@ -21,9 +21,11 @@ from sqlalchemy.orm import sessionmaker
 
 from job_search_platform.api.dependencies import Services
 from job_search_platform.db.models import (
-    Approval, CVRevision, Document, DocumentRevision, JobRevision, Message, Project, Run, RunArtifact, StoredFile,
+    Approval, CVRevision, Document, DocumentRevision, Grant, JobRevision, Message, Project, Run, RunArtifact, StoredFile,
 )
 from job_search_platform.integrations.hermes_runtime import ParsedInput
+from job_search_platform.services.contracts import Actor
+from job_search_platform.services.errors import ServiceError
 from job_search_platform.integrations.object_store import S3ObjectStore
 from job_search_platform.main import create_app
 from job_search_platform.services.approvals import ApprovalService
@@ -432,7 +434,7 @@ def provider_config_id(db, project_id):
 
 
 @pytest.mark.integration
-def test_owner_hard_deletes_document_rows_files_and_objects_while_run_stays_readable(api_context):
+def test_owner_permanently_deletes_trashed_document_rows_files_and_objects_while_run_stays_readable(api_context):
     client = api_context.client
     csrf = _owner(api_context)
     headers = _write_headers(csrf)
@@ -440,11 +442,18 @@ def test_owner_hard_deletes_document_rows_files_and_objects_while_run_stays_read
     run_id = _seed_completed_run(api_context, pid, sid)
     doomed = _seed_document(api_context, pid, "doomed.pdf", run_id=run_id)
     survivor = _seed_document(api_context, pid, "survivor.pdf")
-    url = f"/api/v1/projects/{pid}/documents/{doomed.document}"
+    trash_url = f"/api/v1/projects/{pid}/documents/{doomed.document}"
+    url = f"{trash_url}/permanent"
     assert client.get(f"/api/v1/projects/{pid}/runs/{run_id}").json()["result_file_ids"] == [str(doomed.file)]
     assert client.get(f"/api/v1/projects/{pid}/files/{doomed.file}/download").status_code == 200
 
     assert client.delete(url, headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403  # no CSRF
+    not_trashed = client.delete(url, headers=headers)  # permanent delete requires the trash first
+    assert not_trashed.status_code == 409 and not_trashed.json()["code"] == "document_not_trashed"
+    assert _object_exists(api_context, doomed.key)
+    with api_context.sessions() as db:
+        assert db.get(Document, doomed.document) is not None
+    assert client.delete(trash_url, headers=headers).status_code == 204
     assert _object_exists(api_context, doomed.key)
     deleted = client.delete(url, headers=headers)
     assert deleted.status_code == 204 and deleted.content == b""
@@ -462,17 +471,25 @@ def test_owner_hard_deletes_document_rows_files_and_objects_while_run_stays_read
     assert client.get(f"/api/v1/projects/{pid}/runs").status_code == 200
 
     assert client.delete(url, headers=headers).status_code == 404  # already gone
+    assert client.delete(trash_url, headers=headers).status_code == 404
+    assert client.get(f"/api/v1/projects/{pid}/documents/trash").json() == []
     missing = "00000000-0000-4000-8000-000000000000"
     assert client.delete(f"/api/v1/projects/{pid}/documents/{missing}", headers=headers).status_code == 404
+    assert client.delete(f"/api/v1/projects/{pid}/documents/{missing}/permanent", headers=headers).status_code == 404
     other_pid, _ = _removal_project(api_context, csrf)
     assert client.delete(f"/api/v1/projects/{other_pid}/documents/{survivor.document}", headers=headers).status_code == 404
+    assert client.delete(f"/api/v1/projects/{other_pid}/documents/{survivor.document}/permanent", headers=headers).status_code == 404
     assert _object_exists(api_context, survivor.key)
 
     token = client.post(f"/api/v1/projects/{pid}/grants", headers=headers, json={
         "capabilities": ["results:read", "documents:draft"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
     client.cookies.clear()
-    denied = client.delete(f"/api/v1/projects/{pid}/documents/{survivor.document}",
-                           headers={"Authorization": f"Bearer {token}"})
+    for suffix in ("", "/permanent"):
+        denied = client.delete(f"/api/v1/projects/{pid}/documents/{survivor.document}{suffix}",
+                               headers={"Authorization": f"Bearer {token}"})
+        assert denied.status_code in (401, 403)
+    denied = client.post(f"/api/v1/projects/{pid}/documents/{survivor.document}/restore",
+                         headers={"Authorization": f"Bearer {token}"})
     assert denied.status_code in (401, 403)
     assert _object_exists(api_context, survivor.key)
 
@@ -493,7 +510,8 @@ def test_document_delete_refused_while_approval_pending_then_allowed_once_settle
         db.add(approval)
         db.flush()
         approval_id = approval.id
-    url = f"/api/v1/projects/{pid}/documents/{seeded.document}"
+    url = f"/api/v1/projects/{pid}/documents/{seeded.document}/permanent"
+    assert client.delete(f"/api/v1/projects/{pid}/documents/{seeded.document}", headers=headers).status_code == 204
     blocked = client.delete(url, headers=headers)
     assert blocked.status_code == 409 and blocked.json()["code"] == "document_in_use"
     assert _object_exists(api_context, seeded.key)
@@ -523,7 +541,9 @@ def test_document_delete_keeps_file_still_referenced_and_survives_object_store_f
     promoted = _seed_document(api_context, pid, "promoted.pdf")
     with api_context.sessions.begin() as db:  # a CV promoted from this draft keeps pointing at its file
         db.add(CVRevision(project_id=UUID(pid), revision=2, file_id=promoted.file))
-    assert client.delete(f"/api/v1/projects/{pid}/documents/{promoted.document}", headers=headers).status_code == 204
+    base = f"/api/v1/projects/{pid}/documents"
+    assert client.delete(f"{base}/{promoted.document}", headers=headers).status_code == 204
+    assert client.delete(f"{base}/{promoted.document}/permanent", headers=headers).status_code == 204
     with api_context.sessions() as db:
         assert db.get(Document, promoted.document) is None
         assert db.get(StoredFile, promoted.file) is not None
@@ -538,13 +558,106 @@ def test_document_delete_keeps_file_still_referenced_and_survives_object_store_f
 
     store.delete = failing
     try:
-        response = client.delete(f"/api/v1/projects/{pid}/documents/{flaky.document}", headers=headers)
+        assert client.delete(f"{base}/{flaky.document}", headers=headers).status_code == 204
+        response = client.delete(f"{base}/{flaky.document}/permanent", headers=headers)
     finally:
         store.delete = original
     assert response.status_code == 204
     with api_context.sessions() as db:
         assert db.get(Document, flaky.document) is None and db.get(StoredFile, flaky.file) is None
     assert _object_exists(api_context, flaky.key)  # orphan object left for later cleanup
+
+
+@pytest.mark.integration
+def test_trash_soft_deletes_lists_restores_and_is_idempotent(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    headers = _write_headers(csrf)
+    pid, sid = _removal_project(api_context, csrf)
+    run_id = _seed_completed_run(api_context, pid, sid, key="trash-run")
+    first = _seed_document(api_context, pid, "first.pdf", run_id=run_id)
+    second = _seed_document(api_context, pid, "second.pdf")
+    base = f"/api/v1/projects/{pid}/documents"
+    assert client.get(f"{base}/trash").json() == []
+    assert client.delete(f"{base}/{first.document}", headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403
+    assert client.post(f"{base}/{first.document}/restore", headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403
+
+    assert client.delete(f"{base}/{first.document}", headers=headers).status_code == 204
+    with api_context.sessions() as db:
+        stamp = db.get(Document, first.document).trashed_at
+        assert stamp is not None and db.get(StoredFile, first.file) is not None
+    assert client.delete(f"{base}/{first.document}", headers=headers).status_code == 204  # idempotent
+    with api_context.sessions() as db:
+        assert db.get(Document, first.document).trashed_at == stamp
+    assert client.delete(f"{base}/{second.document}", headers=headers).status_code == 204
+    assert client.get(base).json() == []
+    trash = client.get(f"{base}/trash").json()
+    assert [doc["id"] for doc in trash] == [str(second.document), str(first.document)]  # newest first
+    assert all(doc["trashed_at"] for doc in trash)
+    # Owner can still preview a trashed draft (file download, revisions) though run results drop it.
+    assert client.get(f"/api/v1/projects/{pid}/files/{first.file}/download").status_code == 200
+    assert client.get(f"{base}/{first.document}/revisions").status_code == 200
+    assert client.get(f"/api/v1/projects/{pid}/runs/{run_id}").json()["result_file_ids"] == []
+
+    restored = client.post(f"{base}/{first.document}/restore", headers=headers)
+    assert restored.status_code == 200 and restored.json()["id"] == str(first.document)
+    assert restored.json()["trashed_at"] is None
+    again = client.post(f"{base}/{first.document}/restore", headers=headers)  # idempotent
+    assert again.status_code == 200 and again.json()["trashed_at"] is None
+    assert client.get(f"/api/v1/projects/{pid}/runs/{run_id}").json()["result_file_ids"] == [str(first.file)]
+    listed = client.get(base).json()
+    assert [doc["id"] for doc in listed] == [str(first.document)] and listed[0]["trashed_at"] is None
+    assert [doc["id"] for doc in client.get(f"{base}/trash").json()] == [str(second.document)]
+    missing = "00000000-0000-4000-8000-000000000000"
+    assert client.post(f"{base}/{missing}/restore", headers=headers).status_code == 404
+    assert client.delete(f"{base}/{missing}", headers=headers).status_code == 404
+
+
+@pytest.mark.integration
+def test_trashed_document_is_hidden_from_grants_but_not_the_owner(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    headers = _write_headers(csrf)
+    pid, sid = _removal_project(api_context, csrf)
+    run_id = _seed_completed_run(api_context, pid, sid, key="grant-run")
+    seeded = _seed_document(api_context, pid, "grant.pdf", run_id=run_id)
+    token = client.post(f"/api/v1/projects/{pid}/grants", headers=headers, json={
+        "capabilities": ["results:read"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+    base = f"/api/v1/projects/{pid}"
+    bearer = {"Authorization": f"Bearer {token}"}
+    services = client.app.state.services
+
+    def as_grant(path):
+        saved = dict(client.cookies)
+        client.cookies.clear()
+        try:
+            return client.get(f"{base}{path}", headers=bearer)
+        finally:
+            client.cookies.update(saved)
+
+    assert as_grant(f"/files/{seeded.file}/download").status_code == 200
+    assert as_grant(f"/runs/{run_id}").json()["result_file_ids"] == [str(seeded.file)]
+
+    assert client.delete(f"{base}/documents/{seeded.document}", headers=headers).status_code == 204
+    assert as_grant(f"/files/{seeded.file}/download").status_code == 404
+    assert as_grant(f"/runs/{run_id}").json()["result_file_ids"] == []
+    # Grant-facing service calls (MCP / A2A use these) no longer see the document.
+    with api_context.sessions() as db:
+        grant_id = db.scalar(select(Grant.id).where(Grant.project_id == UUID(pid)))
+    grant_actor = Actor("grant", None, grant_id, UUID(pid), frozenset({"results:read"}))
+    assert asyncio.run(services.documents.list_ready(grant_actor, UUID(pid))) == []
+    assert asyncio.run(services.files.list_ready(grant_actor, UUID(pid))) == []
+    with pytest.raises(ServiceError) as raised:
+        asyncio.run(services.documents.get(grant_actor, UUID(pid), seeded.document))
+    assert raised.value.code == "not_found"
+    with pytest.raises(ServiceError) as raised:
+        asyncio.run(services.documents.revisions(grant_actor, UUID(pid), seeded.document))
+    assert raised.value.code == "not_found"
+
+    assert client.post(f"{base}/documents/{seeded.document}/restore", headers=headers).status_code == 200
+    assert as_grant(f"/files/{seeded.file}/download").status_code == 200
+    assert as_grant(f"/runs/{run_id}").json()["result_file_ids"] == [str(seeded.file)]
+    assert [d.id for d in asyncio.run(services.documents.list_ready(grant_actor, UUID(pid)))] == [seeded.document]
 
 
 def test_runtime_openapi_matches_application_contract_paths_methods_and_schemas(api_context):

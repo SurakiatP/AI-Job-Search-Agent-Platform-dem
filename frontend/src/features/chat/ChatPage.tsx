@@ -36,11 +36,12 @@ export function ChatPage() {
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const cv = useResource<unknown[]>(`/projects/${projectId}/cv`);
   const documents = useResource<DocumentView[]>(`/projects/${projectId}/documents`);
+  const trashed = useResource<DocumentView[]>(`/projects/${projectId}/documents/trash`);
   const workflow = useRun(projectId, sessionId);
   const [message, setMessage] = useDraft(projectId, sessionId);
   const [documentPanel, setDocumentPanel] = useState(true);
   const finished = workflow.run?.finished_at;
-  useEffect(() => { if (finished) documents.reload(); }, [finished, documents.reload]);
+  useEffect(() => { if (finished) { documents.reload(); trashed.reload(); } }, [finished, documents.reload, trashed.reload]);
   const resources = [sessions, provider, jobs, cv, documents];
   if (resources.some(item => item.status === 'loading' && item.data === undefined) || workflow.loading) return <LoadingState />;
   if (resources.some(item => item.status === 'error')) return <ErrorState onRetry={() => resources.forEach(item => item.reload())} />;
@@ -69,7 +70,7 @@ export function ChatPage() {
     {workflow.run && !active && <Button type="button" variant="outline" className="self-start" disabled={workflow.submitting} onClick={() => void workflow.retry()}>{copy.retry}</Button>}
     <ApprovalCard approval={workflow.pendingApproval} locale={locale} busy={workflow.submitting} onDecision={(id, decision) => void workflow.decideApproval(id, decision)} onRefresh={() => void workflow.reload().catch(() => undefined)} />
     {runJob && <Link className="w-fit break-words text-sm text-primary hover:underline" to={`${base}/jobs/${runJob.id}`}>{copy.viewJob}: {runJob.title}</Link>}
-    <RunResults projectId={projectId} locale={locale} run={workflow.run} documents={documents.data ?? []} />
+    <RunResults projectId={projectId} locale={locale} run={workflow.run} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} />
     <Composer locale={locale} jobs={jobs.data ?? []} initialJobId={initialJobId} message={message} onMessageChange={setMessage} busy={!available || Boolean(active) || workflow.submitting} onSubmit={input => { void workflow.submit(input).then(run => { if (run) setMessage(''); }); }} />
   </div>{documentPanel && <Card className="self-start" role="complementary" aria-labelledby="chat-documents-heading"><CardHeader><CardTitle id="chat-documents-heading" className="text-lg">{t('pages.documentsTitle')}</CardTitle></CardHeader><CardContent className="grid gap-3">
     {documents.data?.length ? <ul className="grid gap-2">{documents.data.map(document => <li key={document.id}><Link className="break-words text-sm font-medium hover:underline" to={`${base}/documents/${document.id}`}>{document.title}</Link></li>)}</ul> : <p className="text-sm text-muted-foreground">{copy.noDocs}</p>}

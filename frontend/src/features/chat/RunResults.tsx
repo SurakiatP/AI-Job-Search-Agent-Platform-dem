@@ -23,15 +23,18 @@ function ResultFile({ href, label, deleted }: { href: string; label: string; del
   return <Button asChild variant="outline" className="h-auto justify-start whitespace-normal py-2 text-left"><a href={href}><Download className="size-4" aria-hidden="true" />{label}</a></Button>;
 }
 
-export function RunResults({ projectId, locale, run, documents }: { projectId: string; locale: Locale; run: RunView | null; documents: DocumentView[] }) {
+export function RunResults({ projectId, locale, run, documents, trashedDocuments = [] }: { projectId: string; locale: Locale; run: RunView | null; documents: DocumentView[]; trashedDocuments?: DocumentView[] }) {
   if (!run) return null;
   const resultDocuments = documents.filter(document => document.source_run_id === run.id);
+  const trashedHere = trashedDocuments.filter(document => document.source_run_id === run.id);
   const evaluation = run.evaluation_result;
   const label = locale === 'th' ? 'ผลลัพธ์' : 'Results';
   const report = locale === 'th' ? 'รายงานประเมิน' : 'Evaluation report';
   const downloads = locale === 'th' ? 'ดาวน์โหลดไฟล์' : 'Download file';
   const noResult = locale === 'th' ? 'งานนี้ไม่มีผลลัพธ์ที่เผยแพร่' : 'This run has no published result yet.';
   const deletedText = locale === 'th' ? 'เอกสารถูกลบแล้ว' : 'Document deleted';
+  const inTrashText = locale === 'th' ? 'อยู่ในถังขยะ' : 'In trash';
+  const openTrash = locale === 'th' ? 'เปิดถังขยะ' : 'Open trash';
   const openDocument = locale === 'th' ? 'เปิดเอกสาร' : 'Open document';
   return <Card role="region" aria-labelledby="run-results-heading">
     <CardHeader className="pb-3"><CardTitle id="run-results-heading" className="text-lg">{label}</CardTitle></CardHeader>
@@ -55,10 +58,11 @@ export function RunResults({ projectId, locale, run, documents }: { projectId: s
         {document.content_markdown && <Markdown className="max-h-96 overflow-auto">{document.content_markdown}</Markdown>}
         <Button asChild variant="outline" size="sm" className="justify-self-start"><Link to={`/app/projects/${projectId}/documents/${document.id}`}>{openDocument}</Link></Button>
       </article>)}
+      {trashedHere.map(document => <p key={document.id} className="text-sm text-muted-foreground" data-testid="document-in-trash">{document.title} · {inTrashText} · <Link className="text-primary hover:underline" to={`/app/projects/${projectId}/documents?view=trash`}>{openTrash}</Link></p>)}
       {run.result_file_ids.map((fileId, index) => <ResultFile key={fileId} deleted={deletedText}
         href={`/api/v1/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileId)}/download`}
         label={`${downloads}${run.result_file_ids.length > 1 ? ` ${index + 1}` : ''}`} />)}
-      {!evaluation && resultDocuments.length === 0 && run.result_file_ids.length === 0 && <p className="text-sm text-muted-foreground">{noResult}</p>}
+      {!evaluation && resultDocuments.length === 0 && trashedHere.length === 0 && run.result_file_ids.length === 0 && <p className="text-sm text-muted-foreground">{noResult}</p>}
     </CardContent>
   </Card>;
 }

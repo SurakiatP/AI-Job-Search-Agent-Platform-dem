@@ -137,6 +137,7 @@ class DocumentView(DTO):
     output_language: Literal["th", "en"] | None = None
     source_run_id: UUID | None = None
     partial: bool = False
+    trashed_at: datetime | None = None
 
 
 class DocumentRevisionView(RevisionView):

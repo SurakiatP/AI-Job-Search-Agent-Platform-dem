@@ -231,17 +231,55 @@ paths:
     delete:
       tags: [files]
       description: >-
-        Owner-only hard delete of a drafted document: its revisions, settled approvals that reference them, run output
-        links and any stored file no longer referenced elsewhere are removed in one transaction; private objects are
-        deleted afterwards on a best-effort basis. Refused with 409 document_in_use while an approval referencing the
-        document is pending or approved but not yet applied. Run results that pointed at the document no longer list
-        its files, and file downloads for them return 404.
+        Owner-only move of a drafted document to the trash (soft delete, sets trashed_at). Idempotent. Trashed
+        documents disappear from the document list and from grant, MCP and A2A results (documents, run result files,
+        file downloads and revisions return not found for grants); the owner can still preview them and restore them.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Moved to trash}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/documents/trash:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [files]
+      description: Owner-only trashed documents, newest trashed first, each with trashed_at.
+      responses: {'200': {description: Trashed documents, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/DocumentView'}}}}}}
+  /projects/{project_id}/documents/{document_id}/restore:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: Owner-only restore from the trash. Idempotent, so restoring a document that is not in the trash returns it unchanged.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Restored document, content: {application/json: {schema: {$ref: '#/components/schemas/DocumentView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/documents/{document_id}/permanent:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    delete:
+      tags: [files]
+      description: >-
+        Owner-only permanent delete of a trashed document: its revisions, settled approvals that reference them, run
+        output links and any stored file no longer referenced elsewhere are removed in one transaction; private objects
+        are deleted afterwards on a best-effort basis. Refused with 409 document_not_trashed unless the document is in
+        the trash, and with 409 document_in_use while an approval referencing it is pending or approved but not yet applied.
       security: [{ownerSession: []}]
       responses:
         '204': {description: Deleted}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: Document in use by a pending approval (code document_in_use)}
+        '409': {description: Not in trash (code document_not_trashed) or in use by a pending approval (code document_in_use)}
   /projects/{project_id}/documents/{document_id}/revisions:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -620,6 +658,7 @@ components:
         output_language: {type: [string, 'null'], enum: [th, en, null]}
         source_run_id: {type: [string, 'null'], format: uuid}
         partial: {type: boolean, default: false}
+        trashed_at: {type: [string, 'null'], format: date-time}
         latest_revision: {oneOf: [{$ref: '#/components/schemas/RevisionView'}, {type: 'null'}]}
     DocumentRevisionView:
       allOf:
