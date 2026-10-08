@@ -123,7 +123,7 @@ function ProjectRow({ project, current, sessionId, expanded, version, onToggle, 
         onClick={() => { if (!expanded) onToggle(); onNavigate?.(); }}>{project.name}</Link>
       <RowMenu name={project.name} onRename={() => onDialog({ mode: 'rename', target: projectTarget })} onDelete={() => onDialog({ mode: 'delete', target: projectTarget })} />
     </div>
-    {expanded && <ul className="ms-4 mt-0.5 grid gap-0.5 border-s ps-1.5">
+    {expanded && <ul className="ms-4 mt-0.5 grid grid-cols-1 gap-0.5 border-s ps-1.5">
       {sessions.map(session => {
         const target: Target = { kind: 'session', projectId: project.id, id: session.id, name: session.name };
         return <li key={session.id} className={cn(rowClass, activeSessionClass)}>
@@ -162,7 +162,7 @@ export function ProjectTree({ projects, projectId, sessionId, onNavigate, onRelo
     if (kind === 'session' && id === sessionId) { onNavigate?.(); navigate(`/app/projects/${owner}/overview`); }
     if (kind === 'project' && id === projectId) { onNavigate?.(); navigate('/app/projects'); }
   }
-  return <section aria-labelledby="sidebar-projects-heading" className="grid gap-1">
+  return <section aria-labelledby="sidebar-projects-heading" className="grid grid-cols-1 gap-1">
     <div className="flex items-center justify-between gap-1">
       <h2 id="sidebar-projects-heading" className="min-w-0 text-sm font-medium">
         <button type="button" aria-expanded={listOpen} aria-label={`${c.projects}: ${c.toggleList}`} onClick={() => setListOpen(value => !value)} className="flex items-center gap-1 rounded-md px-2 py-1.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
@@ -171,7 +171,7 @@ export function ProjectTree({ projects, projectId, sessionId, onNavigate, onRelo
       </h2>
       <Button asChild variant="ghost" size="icon" className="size-8"><Link to="/app/projects/new" aria-label={c.newProject} title={c.newProject} onClick={onNavigate}><Plus className="size-4" aria-hidden="true" /></Link></Button>
     </div>
-    {listOpen && (projects.length === 0 ? <p className="px-2 text-sm text-muted-foreground">{t('noProjects')}</p> : <ul className="grid gap-0.5">
+    {listOpen && (projects.length === 0 ? <p className="px-2 text-sm text-muted-foreground">{t('noProjects')}</p> : <ul className="grid grid-cols-1 gap-0.5">
       {projects.map(project => <ProjectRow key={project.id} project={project} current={project.id === projectId} sessionId={sessionId} expanded={expanded.has(project.id)} version={version}
         onToggle={() => setExpanded(set => { const next = new Set(set); if (!next.delete(project.id)) next.add(project.id); return next; })}
         onNavigate={onNavigate} onDialog={setDialog} />)}
