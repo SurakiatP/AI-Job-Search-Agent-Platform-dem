@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Sparkles } from 'lucide-react';
+import { House, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useLocale } from '../app/providers';
@@ -16,6 +16,18 @@ export function Wordmark({ compact = false }: { compact?: boolean }) {
 export function HomeLink({ onClick, compact = false }: { onClick?: () => void; compact?: boolean }) {
   const { i18n } = useTranslation();
   return <Link to="/" onClick={onClick} aria-label={i18n.language.startsWith('th') ? 'หน้าแรก' : 'Home'} className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Wordmark compact={compact} /></Link>;
+}
+
+// Collapsed-sidebar rail: a plain home icon (like ChatGPT) that clearly reads as "back to the landing page".
+export function HomeIconLink() {
+  const { i18n } = useTranslation();
+  const label = i18n.language.startsWith('th') ? 'หน้าแรก' : 'Home';
+  return <span className="group relative inline-flex">
+    <Link to="/" aria-label={label} className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <House size={18} aria-hidden="true" />
+    </Link>
+    <span role="tooltip" className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background shadow group-hover:flex group-focus-within:flex">{label}</span>
+  </span>;
 }
 
 export function LanguageSwitch() {

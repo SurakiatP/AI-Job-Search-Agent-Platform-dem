@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Header, HomeLink } from './Header';
+import { Header, HomeIconLink } from './Header';
 import { isSidebarShortcut, SidebarToggle } from './SidebarToggle';
 import { readPreference, savePreference } from '../app/theme';
 import { MobileDrawer } from './MobileDrawer';
@@ -24,7 +24,7 @@ export function AppShell({ children, projects, projectId, sessionId, onReload }:
     <div className={open ? 'min-h-dvh lg:grid lg:grid-cols-[264px_minmax(0,1fr)]' : 'min-h-dvh lg:grid lg:grid-cols-[56px_minmax(0,1fr)]'}>
       {open
         ? <aside className="sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r bg-sidebar lg:flex"><ProjectSidebar {...sidebarProps} toggle={<SidebarToggle open onToggle={toggle} />} /></aside>
-        : <aside className="sticky top-0 hidden h-dvh flex-col items-center gap-3 border-r bg-sidebar py-4 lg:flex"><SidebarToggle open={false} onToggle={toggle} /><HomeLink compact /></aside>}
+        : <aside className="sticky top-0 hidden h-dvh flex-col items-center gap-3 border-r bg-sidebar py-4 lg:flex"><SidebarToggle open={false} onToggle={toggle} /><HomeIconLink /></aside>}
       <div className="min-w-0">
         <div className="lg:hidden"><Header menu={<MobileDrawer>{close => <ProjectSidebar {...sidebarProps} onNavigate={close} />}</MobileDrawer>} /></div>
         <main id="main-content" className="page-enter mx-auto w-full min-w-0 max-w-6xl px-6 py-8 lg:px-10" tabIndex={-1}>{children}</main>
