@@ -6,16 +6,16 @@ import { useLocale } from '../app/providers';
 import { AppearanceControl } from './AppearanceControl';
 import { Button } from './ui/button';
 
-export function Wordmark() {
+export function Wordmark({ compact = false }: { compact?: boolean }) {
   return <span className="flex min-w-0 items-center gap-2 text-sm font-semibold leading-snug">
     <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"><Sparkles aria-hidden="true" size={16} /></span>
-    <span className="min-w-0 [overflow-wrap:anywhere]">AI Job Search Agent Platform</span>
+    {!compact && <span className="min-w-0 [overflow-wrap:anywhere]">AI Job Search Agent Platform</span>}
   </span>;
 }
 
-export function HomeLink({ onClick }: { onClick?: () => void }) {
+export function HomeLink({ onClick, compact = false }: { onClick?: () => void; compact?: boolean }) {
   const { i18n } = useTranslation();
-  return <Link to="/" onClick={onClick} aria-label={i18n.language.startsWith('th') ? 'หน้าแรก' : 'Home'} className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Wordmark /></Link>;
+  return <Link to="/" onClick={onClick} aria-label={i18n.language.startsWith('th') ? 'หน้าแรก' : 'Home'} className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Wordmark compact={compact} /></Link>;
 }
 
 export function LanguageSwitch() {

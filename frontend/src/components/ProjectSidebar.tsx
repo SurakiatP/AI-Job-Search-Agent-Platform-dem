@@ -19,8 +19,8 @@ function NavItem({ to, icon: Icon, active, current = active, onNavigate, childre
   </Link>;
 }
 
-export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate, onReload }: {
-  projects?: SidebarProject[]; projectId?: string; sessionId?: string; onNavigate?: () => void; onReload?: () => void;
+export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate, onReload, toggle }: {
+  projects?: SidebarProject[]; projectId?: string; sessionId?: string; onNavigate?: () => void; onReload?: () => void; toggle?: ReactNode;
 }) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
@@ -38,7 +38,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
     ['profile', UserRound, t('nav.cv')],
   ] as const;
   return <nav className="flex flex-1 flex-col gap-4 p-4" aria-label={t('navigation')}>
-    <div className="hidden px-1 pt-1 lg:block"><HomeLink onClick={onNavigate} /></div>
+    <div className="hidden items-start justify-between gap-2 px-1 pt-1 lg:flex"><HomeLink onClick={onNavigate} />{toggle}</div>
     <ProjectTree projects={projects} projectId={projectId} sessionId={sessionId} onNavigate={onNavigate} onReload={onReload} />
     {project && <ul className="grid gap-0.5 border-t pt-3" aria-label={t('pages.projectSections')}>
       {sections.slice(0, 1).map(([section, icon, label]) => <li key={section}><NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate}>{label}</NavItem></li>)}
