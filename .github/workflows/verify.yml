@@ -24,7 +24,10 @@ jobs:
       - name: Run isolated dependency verification tests
         run: uv run --locked --project backend pytest backend/tests/test_dependency_checks.py -q
       - name: Audit locked backend dependencies
-        run: uv run --locked --project backend pip-audit --strict --format=json
+        # Audit the hash-pinned lock export; the local project itself is not on PyPI.
+        run: |
+          uv export --locked --project backend --all-groups --no-emit-project --format requirements-txt -o "$RUNNER_TEMP/backend-requirements.txt"
+          uv run --locked --project backend pip-audit --strict --disable-pip -r "$RUNNER_TEMP/backend-requirements.txt" --format=json
 
   frontend:
     runs-on: ubuntu-latest
