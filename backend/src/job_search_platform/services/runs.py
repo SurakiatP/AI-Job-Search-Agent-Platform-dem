@@ -25,7 +25,6 @@ from job_search_platform.db.models import (
     JobApplicationStatus,
     JobRevision,
     Project,
-    ProviderConfiguration,
     Run,
     RunArtifact,
     StoredFile,
@@ -34,7 +33,7 @@ from job_search_platform.db.models import (
 from job_search_platform.db.models import (
     RunEvent as RunEventRow,
 )
-from job_search_platform.integrations.jev import JEV_MODEL
+from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
     Actor,
@@ -423,14 +422,9 @@ class RunService:
             if recent >= MAX_EXTERNAL_SUBMISSIONS_PER_HOUR:
                 raise ServiceError("submission_rate_limited", retryable=True)
 
-        provider_config = db.scalar(
-            select(ProviderConfiguration)
-            .where(ProviderConfiguration.project_id.is_(None))
-            .order_by(ProviderConfiguration.revision.desc())
-            .limit(1)
-        )
-        if provider_config is None or provider_config.secret_reference.startswith("restored-unconfigured:"):
-            raise ServiceError("provider_configuration_required")
+        gateway = GatewaySettings.from_env()
+        if not gateway.api_key:
+            raise ServiceError("gateway_unconfigured")
         connector = db.scalar(
             select(ToolConnectorConfiguration)
             .where(ToolConnectorConfiguration.project_id == project_id)
@@ -460,7 +454,6 @@ class RunService:
             operation=retry_source.operation if retry_source is not None else request.operation,
             cv_revision_id=cv_id,
             job_revision_id=job.id,
-            provider_configuration_id=provider_config.id,
             input_snapshot={
                 "cv_revision_id": str(cv_id),
                 "cv_file_id": str(cv.file_id) if cv.file_id else None,
@@ -489,11 +482,7 @@ class RunService:
                 },
             },
             config_snapshot={
-                "provider_configuration_id": str(provider_config.id),
-                "provider": provider_config.provider,
-                "model": provider_config.model,
-                "revision": provider_config.revision,
-                "secret_reference": provider_config.secret_reference,
+                **gateway.snapshot(),
                 "connector": {
                     "adapter_key": connector.adapter_key if connector else "career_ops",
                     "revision": connector.revision if connector else None,
@@ -609,7 +598,6 @@ class RunService:
             operation="export_document",
             cv_revision_id=source.cv_revision_id,
             job_revision_id=source.job_revision_id,
-            provider_configuration_id=source.provider_configuration_id,
             input_snapshot={
                 **({"document_id": str(document.id)} if document else {}),
                 "export_format": output_format,
@@ -836,17 +824,16 @@ class RunService:
                 Run.project_id == project_id, Run.status == "queued")) or 0
             if queued >= MAX_QUEUED_PER_PROJECT:
                 raise ServiceError("queue_full", retryable=True)
-            config = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
-                               .order_by(ProviderConfiguration.revision.desc()).limit(1))
-            if config is None or config.secret_reference.startswith("restored-unconfigured:"):
-                raise ServiceError("provider_configuration_required")
+            gateway = GatewaySettings.from_env()
+            if not gateway.api_key:
+                raise ServiceError("gateway_unconfigured")
             key = uuid4().hex
             run = Run(
                 project_id=project_id, actor_scope="owner", idempotency_key=key,
                 request_digest=hashlib.sha256(json.dumps({"extract_experience": str(latest.id), "key": key}).encode()).hexdigest(),
-                operation="extract_experience", cv_revision_id=latest.id, provider_configuration_id=config.id,
+                operation="extract_experience", cv_revision_id=latest.id,
                 input_snapshot={"cv_file_id": str(latest.file_id)},
-                config_snapshot={"provider_configuration_id": str(config.id)},
+                config_snapshot=gateway.snapshot(),
                 output_language="en", status="queued", created_at=now)
             db.add(run)
             db.flush()
@@ -871,10 +858,9 @@ class RunService:
                                         CV.removed_at.is_(None)))
             if revision is None:
                 raise ServiceError("not_found")
-            config = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
-                               .order_by(ProviderConfiguration.revision.desc()).limit(1))
-            if config is None or config.provider != "openrouter" or config.secret_reference.startswith("restored-unconfigured:"):
-                raise ServiceError("jev_unavailable")
+            gateway = GatewaySettings.from_env()
+            if not gateway.api_key:
+                raise ServiceError("gateway_unconfigured")
             for active in db.scalars(select(Run).where(
                     Run.project_id == project_id, Run.operation == "match_jobs", Run.cv_revision_id == revision.id,
                     Run.status.in_(("queued", "running")))).all():
@@ -894,8 +880,8 @@ class RunService:
             key = uuid4().hex
             run = Run(project_id=project_id, actor_scope="owner", idempotency_key=key,
                       request_digest=hashlib.sha256(json.dumps({"match_jobs": snapshot, "key": key}, sort_keys=True).encode()).hexdigest(),
-                      operation="match_jobs", cv_revision_id=revision.id, provider_configuration_id=config.id,
-                      input_snapshot=snapshot, config_snapshot={"model": JEV_MODEL},
+                      operation="match_jobs", cv_revision_id=revision.id,
+                      input_snapshot=snapshot, config_snapshot=gateway.snapshot(),
                       output_language="en", status="queued", created_at=now)
             db.add(run)
             db.flush()

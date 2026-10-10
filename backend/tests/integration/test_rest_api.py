@@ -113,7 +113,7 @@ def api_context(migrated_engine, tmp_path):
         documents=Documents(sessions, store),
         runs=RunService(sessions),
         grants=Grants(sessions),
-        settings=Settings(sessions, secret_store),
+        settings=Settings(sessions),
         approvals=ApprovalService(sessions),
         supervisor=_Supervisor(), runtime=runtime, queue=PostgresRunQueue(sessions),
         artifacts=artifacts, secret_store=secret_store,
@@ -707,136 +707,24 @@ def test_runtime_openapi_matches_application_contract_paths_methods_and_schemas(
             node = node[part.replace("~1", "/").replace("~0", "~")]
 
 
-def _provider_project(api_context):
-    csrf = _owner(api_context)
-    return csrf, "/api/v1/settings/provider"
+REMOVED_ROUTES = (("get", "/providers"), ("get", "/settings/provider"), ("put", "/settings/provider"),
+                  ("post", "/settings/provider/models"), ("post", "/settings/provider/test"))
 
 
-def test_provider_catalog_and_custom_base_url_validation(api_context):
-    client = api_context.client
-    assert client.get("/api/v1/providers").status_code == 401
-    csrf, url = _provider_project(api_context)
-    catalog = {p["id"]: p for p in client.get("/api/v1/providers").json()["providers"]}
-    assert {"openai", "anthropic", "openrouter", "gemini", "deepseek", "xai", "zai", "kimi-coding", "alibaba",
-            "minimax", "nvidia", "huggingface", "ai-gateway", "lmstudio", "custom"} == set(catalog)
-    assert catalog["custom"]["requires_base_url"] and catalog["lmstudio"]["key_optional"] and catalog["lmstudio"]["local"]
-    assert catalog["openai"]["default_base_url"] == "https://api.openai.com/v1"
-    headers = _write_headers(csrf)
-
-    def put(**body):
-        return client.put(url, json={"model": "m", **body}, headers=headers)
-
-    for bad in ("http://example.com/v1", "https://user:pw@example.com/v1", "https://example.com/v1?x=1",
-                "https://example.com/v1#frag", "ftp://example.com", "https://example.com/" + "a" * 520):
-        response = put(provider="custom", credential="k", base_url=bad)
-        assert response.status_code == 422, bad
-        assert "pw@" not in response.text
-    assert put(provider="custom", credential="k").status_code == 422  # base URL required
-    assert put(provider="openai").status_code == 409  # credential required
-    assert put(provider="nope", credential="k").status_code == 400
-
-    saved = put(provider="custom", credential="k", base_url=" https://llm.example.com/v1/chat/completions/ ")
-    assert saved.status_code == 200
-    assert saved.json()["base_url"] == "https://llm.example.com/v1" and saved.json()["provider_label"].startswith("Custom")
-    assert client.get(url).json()["base_url"] == "https://llm.example.com/v1"
-    assert put(provider="custom", credential="k", base_url="http://localhost:8080/v1").status_code == 200
-
-    lm = put(provider="lmstudio")
-    assert lm.status_code == 200 and lm.json()["base_url"] == "http://127.0.0.1:1234/v1"
-    openai = put(provider="openai", credential="k")
-    assert openai.json()["base_url"] == "https://api.openai.com/v1"
-
-
-def test_trusted_provider_maps_hermes_id_and_base_url(api_context):
-    csrf, url = _provider_project(api_context)
-    api_context.client.put(url, json={"provider": "openai", "model": "m", "credential": "k"}, headers=_write_headers(csrf))
-    settings = api_context.client.app.state.services.settings
-    config = asyncio.run(settings.trusted_provider())
-    assert (config.provider, config.base_url) == ("openai-api", "https://api.openai.com/v1")
-    api_context.client.put(url, json={"provider": "custom", "model": "m", "credential": "k",
-                                      "base_url": "https://llm.example.com/v1"}, headers=_write_headers(csrf))
-    config = asyncio.run(settings.trusted_provider())
-    assert (config.provider, config.base_url) == ("custom", "https://llm.example.com/v1")
-
-
-def test_provider_models_listing(api_context, monkeypatch):
-    from job_search_platform.services import settings as settings_module
-    client = api_context.client
-    csrf, url = _provider_project(api_context)
-    headers = _write_headers(csrf)
-    calls = []
-    payload = {"data": []}
-
-    def fake_get(target, request_headers, max_bytes):
-        calls.append((target, request_headers))
-        if isinstance(payload, Exception):
-            raise payload
-        return 200, json.dumps(payload).encode()
-
-    monkeypatch.setattr(settings_module, "_get", fake_get)
-    body = {"provider": "openai", "credential": "typed-key"}
-
-    payload = {"data": [{"id": "b-model"}, {"id": "a-model"}, {"id": "a-model"}, {"nope": 1}]}
-    response = client.post(url + "/models", json=body, headers=headers)
-    assert response.status_code == 200
-    assert response.json() == {"models": [{"id": "a-model", "name": None}, {"id": "b-model", "name": None}]}
-    assert calls[-1] == ("https://api.openai.com/v1/models", {"Authorization": "Bearer typed-key"})
-    assert client.post(url + "/models", json=body).status_code == 403  # CSRF required
-
-    payload = {"data": [{"id": "claude-x", "display_name": "Claude X"}]}
-    response = client.post(url + "/models", json={"provider": "anthropic", "credential": "ak"}, headers=headers)
-    assert response.json() == {"models": [{"id": "claude-x", "name": "Claude X"}]}
-    assert calls[-1][0] == "https://api.anthropic.com/v1/models?limit=1000"
-    assert calls[-1][1]["x-api-key"] == "ak" and "anthropic-version" in calls[-1][1]
-
-    payload = {"models": [{"name": "models/gemini-2", "displayName": "Gemini 2"}]}
-    response = client.post(url + "/models", json={"provider": "gemini", "credential": "gk"}, headers=headers)
-    assert response.json() == {"models": [{"id": "gemini-2", "name": "Gemini 2"}]}
-
-    payload = {"data": [{"id": f"m{i:04d}"} for i in range(600)]}
-    models = client.post(url + "/models", json=body, headers=headers).json()["models"]
-    assert len(models) == 500 and models[0]["id"] == "m0000"
-
-    # No typed key: stored key only for a matching provider and base URL.
-    payload = {"data": [{"id": "x"}]}
-    assert client.post(url + "/models", json={"provider": "openai"}, headers=headers).status_code == 409
-    client.put(url, json={"provider": "openai", "model": "m", "credential": "k"}, headers=headers)
-    assert client.post(url + "/models", json={"provider": "openai"}, headers=headers).status_code == 200
-    assert calls[-1][1] == {"Authorization": "Bearer synthetic-secret"}
-    assert client.post(url + "/models", json={"provider": "openai", "base_url": "https://other.example.com/v1"},
-                       headers=headers).status_code == 409
-    assert client.post(url + "/models", json={"provider": "deepseek"}, headers=headers).status_code == 409
-    keyless = client.post(url + "/models", json={"provider": "lmstudio"}, headers=headers)
-    assert keyless.status_code == 200 and calls[-1][0] == "http://127.0.0.1:1234/v1/models"
-    bad = client.post(url + "/models", json={"provider": "custom", "base_url": "http://example.com", "credential": "k"},
-                      headers=headers)
-    assert bad.status_code == 422
-
-    sentinel = "typed-key-do-not-echo"
-    payload = RuntimeError(sentinel)
-    failed = client.post(url + "/models", json={"provider": "openai", "credential": sentinel}, headers=headers)
-    assert failed.status_code == 502 and failed.json()["retryable"] is True
-    assert failed.json()["code"] == "provider_models_unavailable" and sentinel not in failed.text
-
-
-@pytest.mark.integration
-def test_global_provider_settings_are_owner_only(api_context):
+def test_provider_routes_are_gone_and_gateway_status_is_owner_only(api_context):
     client = api_context.client
     csrf = _owner(api_context)
     headers = _write_headers(csrf)
-    url = "/api/v1/settings/provider"
-    assert client.get(url).json()["configured"] is False
-    assert client.put(url, json={"provider": "openai", "model": "m", "credential": "k"}, headers=headers).status_code == 200
-    assert client.get(url).json()["revision"] == 1
-    assert client.put(url, json={"provider": "openai", "model": "m2", "credential": "k"}, headers=headers).json()["revision"] == 2
-    assert client.get("/api/v1/projects/00000000-0000-4000-8000-000000000000/settings/provider").status_code in (404, 405)
+    for method, path in REMOVED_ROUTES:
+        assert getattr(client, method)("/api/v1" + path, headers=headers).status_code in (404, 405)
+    owner_view = client.get("/api/v1/gateway")
+    assert owner_view.status_code == 200
+    body = owner_view.json()
+    assert body["configured"] is True and body["reachable"] is False  # nothing listens on the fake base URL
+    assert body["analyze_model"] == "ai-analyze" and body["decision_model"] == "typesafe/jev-1.13"
+    assert "sk-test-gateway" not in owner_view.text
     pid, _ = _removal_project(api_context, csrf)
     token = client.post(f"/api/v1/projects/{pid}/grants", headers=headers, json={
         "capabilities": ["results:read", "jobs:evaluate"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
     client.cookies.clear()
-    bearer = {"Authorization": f"Bearer {token}"}
-    for call in (lambda: client.get(url, headers=bearer),
-                 lambda: client.put(url, json={"provider": "openai", "model": "x", "credential": "k"}, headers=bearer),
-                 lambda: client.post(url + "/models", json={"provider": "openai"}, headers=bearer),
-                 lambda: client.post(url + "/test", headers=bearer)):
-        assert call().status_code in (401, 403)
+    assert client.get("/api/v1/gateway", headers={"Authorization": f"Bearer {token}"}).status_code in (401, 403)

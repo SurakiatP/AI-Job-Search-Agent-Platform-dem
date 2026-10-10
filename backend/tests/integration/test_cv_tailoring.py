@@ -45,6 +45,7 @@ class _Runtime:
         return SimpleNamespace(text=CV_TEXT)
 
     async def submit(self, project_id, session_id, prompt, instructions, provider, **kwargs):
+        assert (provider.provider, provider.model, provider.base_url) == ("custom", "ai-analyze", "http://127.0.0.1:4000/v1")
         self.submits.append((session_id, prompt, kwargs))
 
     async def events(self, project_id):
@@ -67,9 +68,6 @@ class _Runtime:
         self.projects.pop(project_id, None)
 
 
-class _Settings:
-    async def trusted_provider(self, *_args, **_kwargs):
-        return SimpleNamespace(provider="openrouter", api_key="sk-test", model="m", base_url="")
 
 
 def _execute_next(ctx, runtime):
@@ -77,7 +75,7 @@ def _execute_next(ctx, runtime):
     queue = PostgresRunQueue(ctx.sessions)
     root = ctx.tmp_path / "ws"
     artifacts = Artifacts(ctx.sessions, store, lambda p, r: root / str(p) / str(r) / "staging")
-    executor = RunExecutor(ctx.sessions, queue, runtime, _Settings(), artifacts, store, workspace_root=root)
+    executor = RunExecutor(ctx.sessions, queue, runtime, artifacts, store, workspace_root=root)
     lease = f"test-{uuid4()}"
     claimed = queue.claim_next(lease)
     assert claimed is not None

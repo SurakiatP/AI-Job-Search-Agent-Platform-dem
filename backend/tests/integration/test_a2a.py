@@ -519,7 +519,6 @@ async def test_official_a2a_cancel_waits_for_real_native_cleanup(api_context, un
             services.sessions,
             services.queue,
             runtime,
-            services.settings,
             services.artifacts,
             services.files.object_store,
             workspace_root=runtime_root,

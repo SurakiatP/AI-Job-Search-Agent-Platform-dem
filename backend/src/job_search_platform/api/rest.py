@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
 from job_search_platform.db.models import (
     CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
-    ProjectPreference, StoredFile, Run, Grant, JobMatchScore, JobSearchHidden, ProviderConfiguration,
+    ProjectPreference, StoredFile, Run, Grant, JobMatchScore, JobSearchHidden,
     ToolConnectorConfiguration,
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
@@ -29,9 +29,7 @@ from job_search_platform.services.contracts import (
     ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
-    PreferencesView, ProjectUpdate, ProjectView, ProviderCatalogView, ProviderConnectionTestView,
-    ProviderModelsRequest, ProviderModelsView, ProviderSettingsUpdate,
-    ProviderSettingsView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
+    GatewayStatusView, PreferencesView, ProjectUpdate, ProjectView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
 from job_search_platform.integrations.jev import JEV_MODEL
@@ -41,7 +39,7 @@ from job_search_platform.services.owner_sessions import COOKIE_NAME
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
 from job_search_platform.services.runs import actor_scope
 from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
-from job_search_platform.services.settings import provider_catalog as settings_catalog
+from job_search_platform.integrations.gateway import GatewaySettings
 
 router = APIRouter()
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -68,9 +66,9 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
         "object_store_unavailable": 503, "service_unavailable": 503,
-        "secret_store_unavailable": 503, "invalid_base_url": 422, "credential_required": 409,
-        "provider_models_unavailable": 502, "jev_unavailable": 409,
-        "duplicate": 409, "bank_full": 409, "provider_configuration_required": 409,
+        "secret_store_unavailable": 503,
+        "jev_unavailable": 409, "gateway_unconfigured": 409,
+        "duplicate": 409, "bank_full": 409,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
     body = {
@@ -496,9 +494,7 @@ async def search_job_sources(
 
 
 def _jev_available(db) -> bool:
-    row = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
-                    .order_by(ProviderConfiguration.revision.desc()).limit(1))
-    return row is not None and row.provider == "openrouter" and not row.secret_reference.startswith("restored-unconfigured:")
+    return bool(GatewaySettings.from_env().api_key)
 
 
 def _direct_skill_route(skill):
@@ -644,11 +640,9 @@ def _extraction(db, project_id: UUID) -> dict | None:
 async def list_experience(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "cv")
-        provider = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
-                             .order_by(ProviderConfiguration.revision.desc()).limit(1))
         return {"items": [experience.item_view(db, item) for item in experience.list_items(db, project_id)],
                 "extraction": _extraction(db, project_id),
-                "provider_configured": provider is not None and not provider.secret_reference.startswith("restored-unconfigured:")}
+                "provider_configured": bool(GatewaySettings.from_env().api_key)}
 
 
 @router.post("/projects/{project_id}/experience", status_code=201)
@@ -1033,29 +1027,9 @@ async def revoke_grant(project_id: UUID, grant_id: UUID, actor=Depends(write_act
     await services.grants.revoke(actor, project_id, grant_id)
 
 
-@router.get("/providers", response_model=ProviderCatalogView)
-async def provider_catalog(actor=Depends(owner_actor)):
-    return {"providers": settings_catalog()}
-
-
-@router.get("/settings/provider", response_model=ProviderSettingsView)
-async def get_provider(actor=Depends(owner_actor), services: Services = Depends(get_services)):
-    return await services.settings.get_provider(actor)
-
-
-@router.put("/settings/provider", response_model=ProviderSettingsView)
-async def set_provider(body: ProviderSettingsUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await services.settings.save_provider(actor, body)
-
-
-@router.post("/settings/provider/models", response_model=ProviderModelsView)
-async def provider_models(body: ProviderModelsRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return {"models": await services.settings.list_models(actor, body)}
-
-
-@router.post("/settings/provider/test", response_model=ProviderConnectionTestView)
-async def test_provider(actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await services.settings.test_provider(actor)
+@router.get("/gateway", response_model=GatewayStatusView)
+async def gateway_status(actor=Depends(owner_actor)):
+    return await GatewaySettings.from_env().status()
 
 
 @router.get("/projects/{project_id}/settings/tools", response_model=ToolConnectorSettingsView)

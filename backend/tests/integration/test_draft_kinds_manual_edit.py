@@ -72,9 +72,6 @@ class _FakeRuntime:
         self.projects.pop(project_id, None)
 
 
-class _Settings:
-    async def trusted_provider(self, *_args, **_kwargs):
-        return None
 
 
 def _execute_next(ctx, runtime):
@@ -83,7 +80,7 @@ def _execute_next(ctx, runtime):
     queue = PostgresRunQueue(ctx.sessions)
     root = ctx.tmp_path / "ws"
     artifacts = Artifacts(ctx.sessions, store, lambda p, r: root / str(p) / str(r) / "staging")
-    executor = RunExecutor(ctx.sessions, queue, runtime, _Settings(), artifacts, store, workspace_root=root)
+    executor = RunExecutor(ctx.sessions, queue, runtime, artifacts, store, workspace_root=root)
     lease = f"test-{uuid4()}"
     claimed = queue.claim_next(lease)
     assert claimed is not None

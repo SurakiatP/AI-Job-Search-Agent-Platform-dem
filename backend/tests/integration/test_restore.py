@@ -311,8 +311,8 @@ def test_pg_minio_backup_restores_content_auth_reset_and_keychain_invalidation(
             assert retried is not None
             assert retried.cv_revision_id == original_cv_id
             assert retried.job_revision_id == original_job_id
-            assert retried.provider_configuration_id != snapshot["provider"]
-            assert retried.config_snapshot["secret_reference"] == "fresh-destination-keychain-reference"
+            assert retried.provider_configuration_id is None  # gateway runs carry no provider row
+            assert retried.config_snapshot["gateway"]["analyze_model"] == "ai-analyze"
             assert session.scalar(select(CVRevision.file_id).limit(1)) is not None
             assert session.scalar(select(JobRevision.content_file_id).limit(1)) is not None
             document_revision = session.scalar(select(DocumentRevision).limit(1))

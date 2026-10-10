@@ -123,7 +123,7 @@ def build_services() -> Services:
         raise RuntimeError("native_runtime_metadata_unavailable") from None
     runtime = HermesRuntime(image)
     secrets = MacOSKeychain()
-    settings = Settings(sessions, secrets)
+    settings = Settings(sessions)
     runs = RunService(sessions)
     files = Files(sessions, store, runtime)
     documents = Documents(sessions, store)
@@ -131,7 +131,7 @@ def build_services() -> Services:
     approvals = ApprovalService(sessions)
     grants = Grants(sessions)
     queue = PostgresRunQueue(sessions)
-    executor = RunExecutor(sessions, queue, runtime, settings, artifacts, store,
+    executor = RunExecutor(sessions, queue, runtime, artifacts, store,
                            workspace_root=runtime.workspace_root)
     supervisor = WorkerSupervisor(sessions, queue, executor, runtime)
     origins, hosts = _origin_settings()
@@ -263,11 +263,10 @@ def create_app(
 
     contract_schema_names = (
         "ApprovalDecision", "ApprovalRequest", "ApprovalView", "CVRevisionView", "CVUpdate", "CVView", "InlineJob",
-        "DocumentRevisionView", "DocumentView", "ErrorView", "EvaluationResult", "FileView",
+        "DocumentRevisionView", "DocumentView", "ErrorView", "EvaluationResult", "FileView", "GatewayStatusView",
         "GrantIssueRequest", "GrantIssuedView", "GrantView", "JobCreate", "JobRevisionView",
         "MessageCreate", "OwnerBootstrapRequest", "OwnerBootstrapView", "PreferencesUpdate",
         "PreferencesView", "ProjectCreate", "ProjectUpdate", "ProjectView",
-        "ProviderConnectionTestView", "ProviderSettingsUpdate", "ProviderSettingsView",
         "RevisionView", "RunEventData", "RunEventView", "RunRequest", "RunRequester", "RunView",
         "SessionCreate", "SessionView", "SkillCoverage", "ToolConnectorSettingsView", "ToolConnectorUpdate",
         "ToolConnectorView", "ToolDescriptor", "ToolsView", "UploadRequest",

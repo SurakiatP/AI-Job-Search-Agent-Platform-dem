@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from job_search_platform.db.models import OwnerSession
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
-    Actor, ApprovalRequest, ProviderSettingsUpdate, RunRequest, ToolConnectorUpdate,
+    Actor, ApprovalRequest, RunRequest, ToolConnectorUpdate,
 )
 from job_search_platform.services.errors import ServiceError
 from helpers import grant, owner, project
@@ -61,10 +61,7 @@ def test_public_run_contract_rejects_provider_and_model_overrides():
         RunRequest(**request, provider="arbitrary", model="arbitrary")
 
 
-def test_provider_credential_is_masked_in_settings_dto():
-    dto = ProviderSettingsUpdate(provider="synthetic", model="test", credential="SYNTHETIC-SECRET")
-    assert "SYNTHETIC-SECRET" not in repr(dto)
-    assert dto.model_dump(mode="json")["credential"] == "**********"
+def test_tool_connector_update_rejects_arbitrary_base_url():
     with pytest.raises(ValueError):
         ToolConnectorUpdate(enabled=True, base_url="https://arbitrary.example")
     with pytest.raises(ValueError, match="approval_target_mismatch"):

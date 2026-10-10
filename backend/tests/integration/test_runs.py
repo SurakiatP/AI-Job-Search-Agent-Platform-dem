@@ -47,7 +47,6 @@ def test_idempotent_replay_keeps_original_implicit_cv_and_config_snapshot(db_ses
     actor = owner(db_session)
     chat = session(db_session, p.id)
     cv, job = revisions(db_session, p.id)
-    provider = provider_config(db_session, p.id)
     db_session.commit()
     service = _service(db_session)
     request = run_request(chat.id, job.id, key="stable-replay")
@@ -55,24 +54,15 @@ def test_idempotent_replay_keeps_original_implicit_cv_and_config_snapshot(db_ses
     first = _submit(service, actor, p.id, request)
     with service.sessions.begin() as db:
         db.add(CVRevision(project_id=p.id, cv_id=primary_cv(db, p.id).id, revision=2))
-        db.add(
-            ProviderConfiguration(
-                project_id=None,
-                provider="synthetic-next",
-                model="new-model",
-                secret_reference="secret-ref://synthetic/next",
-                revision=2,
-            )
-        )
 
     replay = _submit(service, actor, p.id, request)
     assert replay.id == first.id
     with service.sessions.begin() as db:
         saved = db.get(Run, first.id)
         assert saved.cv_revision_id == cv.id
-        assert saved.provider_configuration_id == provider.id
+        assert saved.provider_configuration_id is None
         assert saved.input_snapshot["cv_revision_id"] == str(cv.id)
-        assert saved.config_snapshot["model"] == "test-model"
+        assert saved.config_snapshot["gateway"]["analyze_model"] == "ai-analyze"
         assert db.scalar(select(RunEvent.sequence).where(RunEvent.run_id == first.id)) == 1
 
     with pytest.raises(ServiceError, match="idempotency_conflict"):
@@ -429,25 +419,23 @@ async def test_events_reauthorize_between_yields_after_capability_removal(db_ses
         await anext(events)
 
 
-def test_admission_uses_global_provider_for_every_project_and_requires_one(db_session):
+def test_admission_needs_gateway_key_not_a_provider_row(db_session, tmp_path, monkeypatch):
     actor = owner(db_session)
     a, b = project(db_session, "A"), project(db_session, "B")
     sa, sb = session(db_session, a.id), session(db_session, b.id)
     (_, ja), (_, jb) = revisions(db_session, a.id), revisions(db_session, b.id)
     db_session.commit()
     service = _service(db_session)
-    with pytest.raises(ServiceError, match="provider_configuration_required"):
+    monkeypatch.delenv("LITELLM_API_KEY")
+    monkeypatch.setenv("CORE02_PRIVATE_DIR", str(tmp_path))
+    with pytest.raises(ServiceError, match="gateway_unconfigured"):
         _submit(service, actor, a.id, run_request(sa.id, ja.id, key="none"))
-    # A legacy per-project row must not satisfy admission.
-    db_session.add(ProviderConfiguration(project_id=a.id, provider="synthetic", model="legacy",
-                                         secret_reference="secret-ref://legacy", revision=1))
-    db_session.commit()
-    with pytest.raises(ServiceError, match="provider_configuration_required"):
-        _submit(service, actor, a.id, run_request(sa.id, ja.id, key="legacy"))
-    global_cfg = provider_config(db_session)
-    db_session.commit()
+    monkeypatch.setenv("LITELLM_API_KEY", "sk-test-gateway")
     ra = _submit(service, actor, a.id, run_request(sa.id, ja.id, key="a"))
     rb = _submit(service, actor, b.id, run_request(sb.id, jb.id, key="b"))
     db_session.expire_all()
-    used = {db_session.get(Run, r.id).provider_configuration_id for r in (ra, rb)}
-    assert used == {global_cfg.id}
+    for r in (ra, rb):
+        run = db_session.get(Run, r.id)
+        assert run.provider_configuration_id is None
+        assert run.config_snapshot["gateway"] == {"analyze_model": "ai-analyze", "decision_model": "typesafe/jev-1.13"}
+        assert "sk-test-gateway" not in str(run.config_snapshot)

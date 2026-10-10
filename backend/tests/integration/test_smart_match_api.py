@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import func, select
 
-from job_search_platform.db.models import CVRevision, JobMatchScore, ProviderConfiguration, Run
+from job_search_platform.db.models import CVRevision, JobMatchScore, Run
 from job_search_platform.integrations.jev import JEV_MODEL
 from job_search_platform.services import job_sources, smart_match
 from test_paired_sessions import _project, _upload  # noqa: F401
@@ -26,13 +26,6 @@ def _serve(monkeypatch, raws):
     seen = []
     monkeypatch.setattr(job_sources, "fetch_json", lambda url: (seen.append(url), {"data": raws, "meta": {"total": len(raws)}})[1])
     return seen
-
-
-def _provider(api_context, provider="openrouter"):
-    with api_context.sessions.begin() as db:
-        revision = (db.scalar(select(func.max(ProviderConfiguration.revision)).where(ProviderConfiguration.project_id.is_(None))) or 0) + 1
-        db.add(ProviderConfiguration(project_id=None, provider=provider, model="m",
-                                     secret_reference=f"keychain:{uuid4()}", revision=revision))
 
 
 def _profile(api_context, revision_id, **extra):
@@ -63,7 +56,7 @@ def _url(pid, rev, extra=""):
 
 
 @pytest.mark.integration
-def test_unavailable_without_openrouter_keeps_keyword_order(api_context, monkeypatch):
+def test_unavailable_without_gateway_key_keeps_keyword_order(api_context, monkeypatch, no_gateway_key):
     raws = [_raw("a", description="Kitchen"), _raw("b", description="Python and SQL")]
     _serve(monkeypatch, raws)
     csrf, pid, rev = _setup(api_context)
@@ -75,7 +68,7 @@ def test_unavailable_without_openrouter_keeps_keyword_order(api_context, monkeyp
     assert body["items"][0]["highlight"]["missing"] == {}
     run = api_context.client.post(f"{PREFIX}/{pid}/job-search/match/runs", json={"cv_revision_id": rev, "q": "dev"},
                                   headers=_write_headers(csrf))
-    assert run.status_code == 409 and run.json()["code"] == "jev_unavailable"
+    assert run.status_code == 409 and run.json()["code"] == "gateway_unconfigured"
 
 
 @pytest.mark.integration
@@ -83,7 +76,6 @@ def test_ai_status_missing_partial_ready_and_stale_hash_ignored(api_context, mon
     raws = [_raw(s) for s in SLUGS]
     _serve(monkeypatch, raws)
     csrf, pid, rev = _setup(api_context)
-    _provider(api_context)
     client = api_context.client
     body = client.get(_url(pid, rev, "&q=dev")).json()
     assert body["ai"] == {"status": "missing", "categories": None, "scored": 0}
@@ -106,7 +98,6 @@ def test_ai_status_missing_partial_ready_and_stale_hash_ignored(api_context, mon
 def test_auto_mode_uses_stored_categories_only(api_context, monkeypatch):
     seen = _serve(monkeypatch, [_raw("a")])
     csrf, pid, rev = _setup(api_context)
-    _provider(api_context)
     body = api_context.client.get(_url(pid, rev)).json()
     assert body["items"] == [] and body["ai"] == {"status": "missing", "categories": None, "scored": 0}
     assert seen == []
@@ -159,11 +150,10 @@ def test_hide_company_job_unhide_and_authorization(api_context, monkeypatch):
 
 
 @pytest.mark.integration
-def test_start_run_is_idempotent_hidden_from_list_and_provider_switch(api_context, monkeypatch):
+def test_start_run_is_idempotent_hidden_from_list_and_key_removal(api_context, monkeypatch, tmp_path):
     raws = [_raw(s) for s in SLUGS]
     _serve(monkeypatch, raws)
     csrf, pid, rev = _setup(api_context)
-    _provider(api_context)
     client, headers = api_context.client, _write_headers(csrf)
     body = {"cv_revision_id": rev, "q": "dev"}
     first = client.post(f"{PREFIX}/{pid}/job-search/match/runs", json=body, headers=headers)
@@ -175,7 +165,8 @@ def test_start_run_is_idempotent_hidden_from_list_and_provider_switch(api_contex
         assert db.scalar(select(func.count()).select_from(Run).where(Run.operation == "match_jobs")) == 1
     _score(api_context, pid, rev, raws[0], 70)
     assert client.get(_url(pid, rev, "&q=dev")).json()["ai"]["status"] == "partial"
-    _provider(api_context, "gemini")
+    monkeypatch.delenv("LITELLM_API_KEY")
+    monkeypatch.setenv("CORE02_PRIVATE_DIR", str(tmp_path))
     switched = client.get(_url(pid, rev, "&q=dev")).json()
     assert switched["ai"]["status"] == "unavailable" and all(i["ai_match"] is None for i in switched["items"])
     with api_context.sessions() as db:
@@ -198,7 +189,6 @@ def test_highlight_surfaces_are_plain_posting_strings(api_context, monkeypatch):
 def test_empty_pool_is_ready_and_different_filters_leave_one_queued_run(api_context, monkeypatch):
     _serve(monkeypatch, [])
     csrf, pid, rev = _setup(api_context)
-    _provider(api_context)
     client, headers = api_context.client, _write_headers(csrf)
     assert client.get(_url(pid, rev, "&q=nothing")).json()["ai"] == {"status": "ready", "categories": None, "scored": 0}
     for q in ("one", "two", "three"):
@@ -212,7 +202,6 @@ def test_empty_pool_is_ready_and_different_filters_leave_one_queued_run(api_cont
 def test_run_request_validates_and_stores_filters_and_public_route_needs_no_cookie(api_context, monkeypatch):
     _serve(monkeypatch, [])
     csrf, pid, rev = _setup(api_context)
-    _provider(api_context)
     client, headers = api_context.client, _write_headers(csrf)
     url = f"{PREFIX}/{pid}/job-search/match/runs"
     for bad in ({"seniority": ["boss"]}, {"employment_type": ["x"]}, {"company_type": ["bank"]}, {"skills": ["Py"]},

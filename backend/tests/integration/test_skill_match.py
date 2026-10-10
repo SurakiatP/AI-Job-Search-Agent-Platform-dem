@@ -71,7 +71,7 @@ def test_match_sorting_null_last_and_missing_profile(api_context, source):
 
 
 @pytest.mark.integration
-def test_match_is_project_scoped_owner_only_and_reports_source_errors(api_context, source, monkeypatch):
+def test_match_is_project_scoped_owner_only_and_reports_source_errors(api_context, source, monkeypatch, no_gateway_key):
     client, csrf = api_context.client, _owner(api_context)
     pid, other = _project(api_context, csrf, "A"), _project(api_context, csrf, "B")
     rev = _upload(api_context, csrf, pid).json()["latest_revision"]["id"]

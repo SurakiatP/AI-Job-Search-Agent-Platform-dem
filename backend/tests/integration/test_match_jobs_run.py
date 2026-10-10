@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 
 from helpers import grant, owner, primary_cv, project
 from job_search_platform.db.models import (
-    CVRevision, CVRevisionText, JobMatchScore, JobSearchHidden, ProviderConfiguration, Run, RunEvent, StoredFile,
+    CVRevision, CVRevisionText, JobMatchScore, JobSearchHidden, Run, RunEvent, StoredFile,
 )
 from job_search_platform.integrations.jev import JEV_MODEL
 from job_search_platform.services import job_sources, smart_match
@@ -99,18 +99,7 @@ class SyntheticObjectStore:
         return CV_BODY
 
 
-class FakeSettings:
-    async def trusted_provider(self, *_args, **_kwargs):
-        return SimpleNamespace(provider="openrouter", api_key="sk-test", model="m", base_url="")
-
-
-def _provider(db, provider: str = "openrouter") -> None:
-    revision = (db.scalar(select(func.max(ProviderConfiguration.revision)).where(ProviderConfiguration.project_id.is_(None))) or 0) + 1
-    db.add(ProviderConfiguration(project_id=None, provider=provider, model="m",
-                                 secret_reference=f"keychain:{uuid.uuid4()}", revision=revision))
-
-
-def _arrange(db_session, monkeypatch, provider: str = "openrouter"):
+def _arrange(db_session, monkeypatch):
     db_project = project(db_session, "Synthetic match")
     actor = owner(db_session)
     stored = StoredFile(project_id=db_project.id, kind="cv_original", publication_state="published",
@@ -121,7 +110,6 @@ def _arrange(db_session, monkeypatch, provider: str = "openrouter"):
     cv = primary_cv(db_session, db_project.id)
     revision = CVRevision(project_id=db_project.id, cv_id=cv.id, revision=1, file_id=stored.id)
     db_session.add(revision)
-    _provider(db_session, provider)
     db_session.flush()
     db_session.add(JobSearchHidden(project_id=db_project.id, kind="company",
                                    value=smart_match.company_key("Hidden Co"), label="Hidden Co"))
@@ -138,8 +126,8 @@ async def _run_once(sessions, tmp_path, actor, project_id, request, runtime, fak
     lease_owner = f"executor-{uuid.uuid4()}"
     claimed = queue.claim_next(lease_owner)
     assert claimed is not None and claimed.id == view.id
-    executor = RunExecutor(sessions, queue, runtime, FakeSettings(), object(), SyntheticObjectStore(),
-                           workspace_root=tmp_path, jev_factory=lambda key: fake)
+    executor = RunExecutor(sessions, queue, runtime, object(), SyntheticObjectStore(),
+                           workspace_root=tmp_path, jev_factory=lambda gateway: fake)
     await executor.execute(claimed, lease_owner)
     return view
 
@@ -212,7 +200,7 @@ async def test_match_run_partial_failure_keeps_scored_jobs(db_session, tmp_path,
 
 
 @pytest.mark.asyncio
-async def test_submit_match_dedups_active_run_and_requires_openrouter(db_session, monkeypatch):
+async def test_submit_match_dedups_active_run_and_requires_gateway_key(db_session, tmp_path, monkeypatch):
     db_project, actor, revision, sessions = _arrange(db_session, monkeypatch)
     service = RunService(sessions)
     first = await service.submit_match(actor, db_project.id, MatchRunRequest(cv_revision_id=revision.id))
@@ -230,11 +218,11 @@ async def test_submit_match_dedups_active_run_and_requires_openrouter(db_session
     assert hidden.value.code == "not_found"
     assert (await service.get(actor, db_project.id, first.id)).operation == "match_jobs"
 
-    _provider(db_session, "gemini")
-    db_session.commit()
+    monkeypatch.delenv("LITELLM_API_KEY")
+    monkeypatch.setenv("CORE02_PRIVATE_DIR", str(tmp_path))
     with pytest.raises(ServiceError) as unavailable:
         await service.submit_match(actor, db_project.id, MatchRunRequest(cv_revision_id=revision.id, q="new"))
-    assert unavailable.value.code == "jev_unavailable"
+    assert unavailable.value.code == "gateway_unconfigured"
 
 
 @pytest.mark.asyncio
@@ -298,8 +286,8 @@ async def test_cancelled_match_run_keeps_finished_scores(db_session, tmp_path, m
     queue = PostgresRunQueue(sessions)
     lease_owner = f"executor-{uuid.uuid4()}"
     claimed = queue.claim_next(lease_owner)
-    executor = RunExecutor(sessions, queue, runtime, FakeSettings(), object(), SyntheticObjectStore(),
-                           workspace_root=tmp_path, jev_factory=lambda key: fake)
+    executor = RunExecutor(sessions, queue, runtime, object(), SyntheticObjectStore(),
+                           workspace_root=tmp_path, jev_factory=lambda gateway: fake)
     sandbox = RunSandbox(tmp_path, str(claimed.project_id), str(claimed.id))
     sandbox.prepare()
     task = asyncio.create_task(executor._execute_match(claimed, lease_owner, sandbox))
