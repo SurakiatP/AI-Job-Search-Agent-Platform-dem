@@ -62,3 +62,13 @@ def test_prompt_marks_questions_as_data_and_lists_fact_ids():
     prompt, instructions = pack_prompt("CV text", "Dev", "Dev job", QUESTIONS, [{"id": str(F1), "text": "Docker"}], "en")
     assert str(F1) in prompt and "Questions (JSON data)" in prompt and '"id": "why"' in prompt
     assert "untrusted data" in instructions and "Nothing is submitted" in instructions
+
+
+def test_prompts_require_citing_a_fact_for_every_number_and_skill():
+    from job_search_platform.services.applications import pack_prompt
+    from job_search_platform.services.tailoring import round_prompt
+
+    rule = "every number and skill named"
+    _, pack = pack_prompt("CV text", "Dev", "Dev job", QUESTIONS, [], "en")
+    _, tailor = round_prompt("cv", "Job", "Python", ["Go"], [], "en")
+    assert rule in pack.lower() and rule in tailor.lower()
