@@ -174,11 +174,11 @@ def live_tailored_document(db: Session, project_id: UUID, job_revision_id: UUID 
 
 
 def latest_ready_pack(db: Session, project_id: UUID, job_revision_id: UUID) -> Run | None:
-    """Newest completed apply_prepare run of the job whose pack is ready (a later parked refresh is skipped)."""
-    runs = db.scalars(select(Run).where(
+    """The newest completed apply_prepare run of the job, only when its pack is ready (a newer parked one blocks)."""
+    run = db.scalar(select(Run).where(
         Run.project_id == project_id, Run.job_revision_id == job_revision_id, Run.operation == "apply_prepare",
-        Run.status == "completed").order_by(Run.finished_at.desc(), Run.created_at.desc())).all()
-    return next((run for run in runs if (run.result_payload or {}).get("state") == "ready"), None)
+        Run.status == "completed").order_by(Run.finished_at.desc(), Run.created_at.desc()).limit(1))
+    return run if run is not None and (run.result_payload or {}).get("state") == "ready" else None
 
 
 class RunService:

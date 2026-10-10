@@ -172,6 +172,19 @@ def test_submit_needs_a_ready_pack(api_context):
 
 
 @pytest.mark.integration
+def test_submit_uses_only_the_latest_pack_so_a_newer_parked_one_blocks_it(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, runtime, _ = _ready_pack(ctx)
+    runtime.script = [[_ans("why", None), _ans("auth", True, facts["py"])]]
+    parked = _prepare(ctx, csrf, pid, session, "p2")
+    assert parked.status_code == 202
+    _execute_next(ctx, runtime)
+    assert _run(ctx, parked.json()["id"]).result_payload["state"] == "parked"
+    refused = _post(ctx, csrf, pid, session, "apply_submit", "s1")
+    assert refused.status_code == 409 and refused.json()["code"] == "apply_pack_required"
+
+
+@pytest.mark.integration
 def test_submit_waits_for_owner_then_approve_records_applied_and_completes(api_context):
     ctx = api_context
     csrf, pid, session, facts, runtime, pack_id = _ready_pack(ctx)
