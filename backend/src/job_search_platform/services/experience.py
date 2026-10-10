@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from job_search_platform.db.models import CV, CVRevision, ExperienceItem
+from job_search_platform.db.models import CV, CVRevision, ExperienceItem, Project
 from job_search_platform.services.errors import ServiceError
 
 MAX_ITEMS = 1000
@@ -95,9 +95,16 @@ def _insert(db: Session, project_id: UUID, *, kind: str, text: str, role: str | 
     return db.scalar(statement)
 
 
+def _lock_project(db: Session, project_id: UUID) -> None:
+    """Serialize bank writes per project so the live-item cap cannot be raced."""
+    if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+        raise ServiceError("not_found")
+
+
 def store_extracted(db: Session, project_id: UUID, cv_revision_id: UUID, cv_text: str,
                     items: list[ExtractedItem]) -> dict[str, int]:
     """Add verbatim facts only; never delete or edit. Records the summary on the revision's skill_profile."""
+    _lock_project(db, project_id)
     revision = db.scalar(select(CVRevision).where(CVRevision.project_id == project_id,
                                                   CVRevision.id == cv_revision_id).with_for_update())
     if revision is None:
@@ -123,6 +130,7 @@ def store_extracted(db: Session, project_id: UUID, cv_revision_id: UUID, cv_text
 def add_item(db: Session, project_id: UUID, *, kind: str, text: str, role: str | None = None,
              organization: str | None = None, period: str | None = None) -> ExperienceItem:
     """Owner-added fact (candidate provenance)."""
+    _lock_project(db, project_id)
     if _live_count(db, project_id) >= MAX_ITEMS:
         raise ServiceError("bank_full")
     item_id = _insert(db, project_id, kind=kind, text=text, role=role, organization=organization, period=period,
@@ -146,14 +154,14 @@ def replace_item(db: Session, project_id: UUID, item_id: UUID, *, kind: str, tex
     """Same text: update context in place (citations stay valid). New text: new item, old one soft-removed."""
     old = _live(db, project_id, item_id)
     if text_hash(text) == old.text_hash:
+        old.text = text.strip()
         old.kind, old.role, old.organization, old.period = kind, role or None, organization or None, period or None
         return old
-    old.removed_at = datetime.now(timezone.utc)
-    db.flush()
     item_id = _insert(db, project_id, kind=kind, text=text, role=role, organization=organization, period=period,
                       source="owner", source_cv_revision_id=None)
     if item_id is None:
         raise ServiceError("duplicate")
+    old.removed_at = datetime.now(timezone.utc)
     return db.get(ExperienceItem, item_id)
 
 

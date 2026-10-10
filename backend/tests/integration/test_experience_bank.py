@@ -93,3 +93,19 @@ def test_fact_lines_include_context(db_session):
     p, _ = _revision(db_session)
     experience.add_item(db_session, p.id, kind="experience", text="Ran BigQuery", organization="SCB", period="2023")
     assert experience.fact_lines(db_session, p.id) == ["Ran BigQuery (SCB, 2023)"]
+
+
+def test_replace_same_hash_stores_new_casing(db_session):
+    p, _ = _revision(db_session)
+    first = experience.add_item(db_session, p.id, kind="experience", text="Ran BigQuery")
+    same = experience.replace_item(db_session, p.id, first.id, kind="experience", text="ran bigquery")
+    assert same.id == first.id and same.text == "ran bigquery"
+
+
+def test_replace_duplicate_leaves_old_item_live(db_session):
+    p, _ = _revision(db_session)
+    a = experience.add_item(db_session, p.id, kind="skill", text="A")
+    experience.add_item(db_session, p.id, kind="skill", text="B")
+    with pytest.raises(ServiceError) as dup:
+        experience.replace_item(db_session, p.id, a.id, kind="skill", text="B")
+    assert dup.value.code == "duplicate" and db_session.get(ExperienceItem, a.id).removed_at is None
