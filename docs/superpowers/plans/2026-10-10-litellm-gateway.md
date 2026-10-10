@@ -122,3 +122,43 @@
 - The build passes.
 - The new e2e passes, with mocked routes.
 - No new failures against the 25-stale baseline.
+
+### Task 4: Service addresses, readiness and logs (owner request 2026-10-10)
+**Depends on:** T1 and T2 merged on the branch. It touches `scripts/local_infra.py`, `backend/src/job_search_platform/main.py` and `api/rest.py` after them.
+**Owns:**
+- `backend/src/job_search_platform/main.py`, `config.py` (new, if it helps)
+- `api/rest.py` (health only)
+- `integrations/logging.py` (new)
+- `scripts/local_infra.py`, `scripts/run_local.py`
+- `.env.example` and the owner's `.env`. The owner explicitly asked for these to be edited. For `.env`: append missing keys only, never print or rewrite existing values.
+- `docs/engineering/local-operation.md`
+- tests for these
+
+**Build:**
+- **Addresses come from env, with today's defaults.** Every service address the app uses is read from env:
+  - `JSP_POSTGRES_HOST` (127.0.0.1), `JSP_POSTGRES_PORT` (55432, replacing `CORE02_POSTGRES_PORT` but still honouring it), `JSP_DATABASE`
+  - `JSP_MINIO_ENDPOINT` (`http://127.0.0.1:59000`), `JSP_PRIVATE_BUCKET`
+  - `LITELLM_BASE_URL`
+  - `LANGFUSE_HOST` (reserved; used in branch 2)
+  - `OTEL_EXPORTER_OTLP_ENDPOINT` (existing)
+- **No secrets in `.env.example`.**
+  - Secret keys appear in `.env.example` with empty values and a comment: `OPENROUTER_API_KEY`, and `LITELLM_API_KEY` (optional; falls back to the private-dir file).
+  - Generated infrastructure secrets never appear in either file. These are the DB/MinIO passwords, the LiteLLM master and salt keys, and the LiteLLM DB password.
+  - `.env.example` gets a header section that explains which values belong where.
+- **Readiness.** `GET /api/v1/health` stays liveness. New `GET /api/v1/health/ready` returns `{"status": "ok"|"degraded", "components": {"postgres": "ok"|"down", "object_store": ..., "llm_gateway": ..., "sandbox_image": ...}}`.
+  - Each check is bounded: about 2 s timeout per check, run concurrently.
+  - It is unauthenticated, but returns no addresses, versions or error text.
+  - It returns HTTP 200 when ok and 503 when degraded.
+  - Add both paths to the contract YAML.
+- **Logs.** Configure stdlib logging to emit one JSON line per record on stdout: `ts`, `level`, `logger`, `msg`, `request_id`.
+  - Add request middleware that assigns or propagates an `X-Request-ID` header (validated as a uuid or 1–64 safe characters). It logs method, route template (not the raw path with ids), status and `duration_ms`.
+  - Never log headers, bodies, query strings, tokens or CV text.
+  - Level comes from `JSP_LOG_LEVEL` (default INFO).
+  - Keep the existing redaction filters.
+- **Docs.** `local-operation.md` gains a "Configuration and multi-host" section listing every env key, its default and whether it is secret.
+
+**Acceptance:**
+- Unit tests for env parsing and defaults.
+- Readiness test: all ok gives 200; LiteLLM down gives 503 with `llm_gateway: down` and no leaked address.
+- Log test: a request produces one JSON line with `request_id` and the route template, and contains no token or query values.
+- Full backend suite and the contract test pass.
