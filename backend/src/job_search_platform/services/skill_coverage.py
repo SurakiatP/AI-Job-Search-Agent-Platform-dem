@@ -241,6 +241,18 @@ def skill_mentions(text: str) -> list[tuple[int, str, str]]:
     return sorted((span[0], entry[0], source[span[0]:span[1]]) for entry in _ENTRIES if (span := _first_span(entry, low)))
 
 
+def mask_skills(text: str) -> str:
+    """The text with every dictionary skill occurrence blanked out (same length), so skill words leave no remnant."""
+    low = text.lower()
+    if len(low) != len(text):
+        return text
+    for entry in _ENTRIES:
+        while span := _first_span(entry, low):
+            low = low[:span[0]] + " " * (span[1] - span[0]) + low[span[1]:]
+            text = text[:span[0]] + " " * (span[1] - span[0]) + text[span[1]:]
+    return text
+
+
 def extract_skills(text: str) -> list[str]:
     """Canonical dictionary skills named in the text, in dictionary order (names only)."""
     low = text.lower()

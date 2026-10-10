@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from job_search_platform.db.models import ExperienceItem
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.experience import _found_in, normalize, numbers
-from job_search_platform.services.skill_coverage import extract_skills
+from job_search_platform.services.skill_coverage import extract_skills, mask_skills
 from job_search_platform.services.tailoring import apply_edits
 
 
@@ -44,14 +44,14 @@ def _latin_names(text: str, strict: bool = False) -> set[str]:
     """Capitalized Latin words (incl. 2-4 letter acronyms) not at a line/bullet/sentence start, not allowlisted
     acronyms, stopwords or skills."""
     found = set()
-    for line in text.replace("\x00", "").splitlines():
+    for line in mask_skills(text.replace("\x00", "")).splitlines():
         lead = len(_BULLET_LEAD.match(line).group())
         for match in _NAME.finditer(line, lead):
             word = match.group()
             before = line[lead:match.start()]
             if (not strict and (not before.strip() or _SENTENCE_END.search(before)) and not _heading(line[match.end():])
                     or (word.upper() in _ACRONYMS and (word.isupper() or word in ("SaaS", "APIs")))
-                    or word.lower() in _STOPWORDS or extract_skills(word)):
+                    or word.lower() in _STOPWORDS):
                 continue
             found.add(f"name:{word.lower()}")
     return found

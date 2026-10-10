@@ -108,3 +108,7 @@ def test_heading_lines_starting_with_a_name_are_checked():  # I3
 
 def test_semicolon_ends_a_sentence():  # M1
     assert _names("Built APIs; Led migration") == set()
+
+
+def test_multi_word_skills_leave_no_name_remnant():  # M2
+    assert extract_skills("Google Cloud") and _names("Deployed on Google Cloud and Google Cloud") == set()
