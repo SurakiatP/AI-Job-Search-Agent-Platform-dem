@@ -90,7 +90,7 @@ The last five have no host port. They take about 2–3 GB of RAM and about 5 GB 
 - **Failures.** If Langfuse is down or its keys are missing, tracing stays off or drops spans. Runs and `/api/v1/health/ready` are unaffected.
 - **Turning it off.** Clear `LANGFUSE_HOST` and run `stop`, then `start`. `stop` always stops the Langfuse containers, and their volumes are kept.
 - **Cost.** Langfuse shows no cost, because `ai-analyze` is a gateway alias.
-- **Accepted risk.** The Langfuse 4.56.0 images carry accepted unfixed High CVEs (ADR-014). Keep the UI on loopback.
+- **Accepted risk.** The Langfuse 4.56.0 images carry accepted High CVEs (see "Langfuse images (2026-10-11)" in `dependencies.md`). Keep the UI on loopback.
 - **Disk (Colima).** Docker runs in Colima here: after removing images run `colima ssh -- sudo fstrim -v /var/lib/docker` to return the space to macOS.
 - **Corrupt pull.** An image pulled while the host disk is full can unpack corrupted (zero-byte files). Re-pull it by digest.
 

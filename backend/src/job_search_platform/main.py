@@ -223,7 +223,8 @@ def create_app(
                 current.maintenance_lock = None
 
     app = FastAPI(title="Job Search Platform Application API", version="1.0.0",
-                  servers=[{"url": "/api/v1"}], lifespan=lifespan)
+                  servers=[{"url": "/api/v1"}], lifespan=lifespan,
+                  telemetry={"auto_configure": False})
     app.include_router(rest_router, prefix="/api/v1")
     app.include_router(sse_router, prefix="/api/v1")
 

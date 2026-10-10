@@ -131,7 +131,7 @@ No change goes to LiteLLM, Hermes, the API or the UI.
 - **Live smoke, owner machine:**
   1. `local_infra.py start` brings all services healthy.
   2. Run one `evaluate_job` through the app.
-  3. `GET /api/public/traces` with the project keys returns a trace containing `run.execute` and at least one `llm.round` generation with a model and token counts.
+  3. `GET /api/public/v2/observations?traceId=...` with the project keys returns observations including `run.execute` and at least one `llm.round` generation with a model and token counts.
   4. A string search of the trace JSON for the job description text and the CV text finds nothing.
 - **Regression:** the backend suite still shows 530 PASS with the 2 known baseline failures. With `LANGFUSE_HOST` empty, `start` brings up only the existing services.
 - **Disk:** check `df -h /System/Volumes/Data` before the first `up`, and require at least 10 GB free. Current state: 15 GB free.
