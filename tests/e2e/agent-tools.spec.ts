@@ -71,7 +71,7 @@ test('grant picker lists both new capabilities in Thai and fits 320px', async ({
   await page.goto(`/app/projects/${projectId}/console?tab=agents`);
   await expect(page.getByText('jobs:search')).toBeVisible();
   await expect(page.getByText('applications:apply')).toBeVisible();
-  await expect(page.getByText('ค้นหางานและดูคะแนนความเหมาะสม')).toBeVisible();
-  await expect(page.getByText('เตรียมคำตอบใบสมัคร')).toBeVisible();
+  await expect(page.getByText('ค้นหาประกาศงาน (รายละเอียดฉบับเต็ม)')).toBeVisible();
+  await expect(page.getByText('เตรียมคำตอบใบสมัครจาก CV และขอให้คุณอนุมัติการยื่นสมัคร')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
