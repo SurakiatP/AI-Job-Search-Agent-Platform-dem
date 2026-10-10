@@ -73,3 +73,108 @@ async def test_submit_extract_requires_provider(db_session):
     with pytest.raises(ServiceError) as missing:
         await RunService(sessions).submit_extract(actor, p.id, cv.id)
     assert missing.value.code == "provider_configuration_required"
+
+
+class SyntheticObjectStore:
+    async def get(self, _key: str) -> bytes:
+        return CV_BODY.encode()
+
+
+class FakeSettings:
+    async def trusted_provider(self, *_args, **_kwargs):
+        return SimpleNamespace(provider="openrouter", api_key="sk-test", model="m", base_url="")
+
+
+class FakeRuntime:
+    instance_id = uuid.uuid4()
+
+    def __init__(self, answer: str, cv_text: str = CV_BODY) -> None:
+        self.projects: dict = {}
+        self.answer, self.cv_text, self.submits = answer, cv_text, []
+
+    async def start_project(self, project_id, workspace):
+        self.projects[project_id] = SimpleNamespace(process=SimpleNamespace(pid=os.getpid(), returncode=0), workspace=workspace)
+        return self.projects[project_id]
+
+    async def parse_input(self, _project_id, _path):
+        return SimpleNamespace(text=self.cv_text)
+
+    async def submit(self, project_id, session_id, prompt, instructions, provider, *, operation, tool_gate=None):
+        self.submits.append((operation, prompt))
+
+    async def events(self, _project_id):
+        yield SimpleNamespace(kind="result", result=self.answer)
+
+    async def stop(self, project_id) -> None:
+        return None
+
+    async def close(self, project_id) -> None:
+        self.projects.pop(project_id, None)
+
+
+def _answer(*texts, kind="experience"):
+    return json.dumps({"items": [{"kind": kind, "text": t, "role": "Data Engineer", "organization": "SCB",
+                                  "period": "2022–2024"} for t in texts]})
+
+
+async def _run(sessions, tmp_path, actor, p, cv, runtime):
+    view = await RunService(sessions).submit_extract(actor, p.id, cv.id)
+    queue = PostgresRunQueue(sessions)
+    lease = f"executor-{uuid.uuid4()}"
+    claimed = queue.claim_next(lease)
+    assert claimed is not None and claimed.id == view.id
+    await RunExecutor(sessions, queue, runtime, FakeSettings(), object(), SyntheticObjectStore(),
+                      workspace_root=tmp_path).execute(claimed, lease)
+    return view
+
+
+def _events(sessions, run_id):
+    with sessions() as db:
+        return json.dumps(list(db.scalars(select(RunEvent.public_data).where(RunEvent.run_id == run_id))))
+
+
+@pytest.mark.asyncio
+async def test_extract_adds_verbatim_and_rejects_invented(db_session, tmp_path):
+    p, actor, cv, revision, sessions = _arrange(db_session)
+    runtime = FakeRuntime(_answer("Built Airflow pipelines that cut load time by 40%", "Led 12 engineers"))
+    view = await _run(sessions, tmp_path, actor, p, cv, runtime)
+    with sessions() as db:
+        assert db.get(Run, view.id).status == "completed"
+        items = list(db.scalars(select(ExperienceItem).where(ExperienceItem.project_id == p.id)))
+        assert [i.text for i in items] == ["Built Airflow pipelines that cut load time by 40%"]
+        assert items[0].source == "cv" and items[0].source_cv_revision_id == revision.id
+        assert db.get(CVRevision, revision.id).skill_profile["experience"] == {"added": 1, "duplicates": 0, "rejected": 1}
+    assert runtime.submits[0][0] == "extract_experience" and "verbatim" in runtime.submits[0][1]
+    assert "secret-marker-xyz" not in _events(sessions, view.id) and "sk-test" not in _events(sessions, view.id)
+
+
+@pytest.mark.asyncio
+async def test_second_upload_keeps_earlier_items(db_session, tmp_path):
+    p, actor, cv, revision, sessions = _arrange(db_session)
+    await _run(sessions, tmp_path, actor, p, cv, FakeRuntime(_answer("Ran BigQuery secret-marker-xyz")))
+    with sessions.begin() as db:  # a new revision with different text
+        stored = db.get(StoredFile, db.get(CVRevision, revision.id).file_id)
+        db.add(CVRevision(project_id=p.id, cv_id=cv.id, revision=2, file_id=stored.id))
+    await _run(sessions, tmp_path, actor, p, cv, FakeRuntime(_answer("Built Airflow pipelines that cut load time by 40%")))
+    with sessions() as db:
+        texts = set(db.scalars(select(ExperienceItem.text).where(ExperienceItem.project_id == p.id, ExperienceItem.removed_at.is_(None))))
+    assert texts == {"Ran BigQuery secret-marker-xyz", "Built Airflow pipelines that cut load time by 40%"}
+
+
+@pytest.mark.asyncio
+async def test_extract_thai_cv(db_session, tmp_path):
+    p, actor, cv, _, sessions = _arrange(db_session)
+    thai = "ประสบการณ์\n• ลดเวลาโหลดข้อมูล ๔๐% ด้วย Airflow"
+    await _run(sessions, tmp_path, actor, p, cv, FakeRuntime(_answer("ลดเวลาโหลดข้อมูล 40% ด้วย Airflow"), cv_text=thai))
+    with sessions() as db:
+        assert db.scalar(select(func.count()).select_from(ExperienceItem).where(ExperienceItem.project_id == p.id)) == 1
+
+
+@pytest.mark.asyncio
+async def test_malformed_answer_fails_without_native_text(db_session, tmp_path):
+    p, actor, cv, _, sessions = _arrange(db_session)
+    view = await _run(sessions, tmp_path, actor, p, cv, FakeRuntime("Sure! secret-marker-xyz {not json"))
+    with sessions() as db:
+        assert db.get(Run, view.id).status == "failed"
+    events = _events(sessions, view.id)
+    assert "errors.execution_failed" in events and "secret-marker-xyz" not in events
