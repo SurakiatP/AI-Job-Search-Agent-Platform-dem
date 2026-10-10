@@ -208,6 +208,24 @@ class JobCreate(DTO):
     description: Annotated[str, StringConstraints(min_length=1, max_length=50000)]
 
 
+class ProtocolJobInput(DTO):
+    job: JobCreate | None = None
+    job_revision_id: UUID | None = None
+    cv_id: UUID | None = None
+    output_language: Literal["th", "en"]
+    idempotency_key: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+
+    @model_validator(mode="after")
+    def validate_intent(self):
+        if (self.job is None) == (self.job_revision_id is None):
+            raise ValueError("exactly_one_job_source_required")
+        if not self.idempotency_key.strip():
+            raise ValueError("idempotency_key_required")
+        if self.job is not None and not self.job.description.strip():
+            raise ValueError("job_description_required")
+        return self
+
+
 class CVRevisionView(RevisionView):
     original_filename: str
     mime_type: str
@@ -469,7 +487,8 @@ class ToolRunRequest(RunRequest):
 
 
 class ToolDescriptor(DTO):
-    name: Literal["evaluate_job", "draft_documents", "get_run", "cancel_run", "list_results"]
+    # A nested Literal flattens to one OpenAPI enum; `Operation | Literal[...]` would emit anyOf.
+    name: Literal[Operation, Literal["get_run", "cancel_run", "list_results"]]
     description: str
     required_capability: Capability
 
