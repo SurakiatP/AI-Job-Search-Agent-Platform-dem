@@ -15,7 +15,7 @@ from job_search_platform.integrations.jev import JevClient
 from job_search_platform.services.contracts import GatewayStatusView
 from job_search_platform.services.errors import ServiceError
 
-DEFAULT_BASE_URL = "http://127.0.0.1:4000"
+DEFAULT_BASE_URL = "http://127.0.0.1:54000"
 STATUS_TIMEOUT_SECONDS = 3
 MAX_MODELS_BYTES = 1_000_000
 

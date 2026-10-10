@@ -220,7 +220,7 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     environment["GOSU_SOURCE_COMMIT"] = GOSU_COMMIT
     environment.setdefault("CORE02_POSTGRES_PORT", "55432")
     environment.setdefault("CORE02_MINIO_PORT", "59000")
-    environment.setdefault("CORE02_LITELLM_PORT", "4000")
+    environment.setdefault("CORE02_LITELLM_PORT", "54000")
     environment["OPENROUTER_API_KEY"] = os.environ.get("OPENROUTER_API_KEY", "")  # reaches only litellm
     environment["OPENROUTER_KEY_PRESENT"] = "1" if environment["OPENROUTER_API_KEY"] else ""  # flag for the seed
     return environment

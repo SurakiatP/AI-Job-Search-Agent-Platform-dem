@@ -123,7 +123,7 @@ services:
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
     ports:
-      - "127.0.0.1:${CORE02_LITELLM_PORT:-4000}:4000"
+      - "127.0.0.1:${CORE02_LITELLM_PORT:-54000}:4000"
     networks:
       - litellm_private
     healthcheck:

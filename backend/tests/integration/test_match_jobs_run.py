@@ -315,3 +315,17 @@ async def test_match_run_passes_snapshot_filters_to_build_pool(db_session, tmp_p
     searches = [u for u in urls if "/agent/jobs/search" in u and "limit=100" in u]  # skips the facets new_7d probe
     assert searches and all("seniority=junior" in u and "skills=python" in u and "posting_language=th" in u
                             and "salary_min=15000" in u for u in searches)
+
+
+@pytest.mark.asyncio
+async def test_match_run_stamps_and_reuses_by_configured_decision_model(db_session, tmp_path, monkeypatch):
+    db_project, actor, revision, sessions = _arrange(db_session, monkeypatch)
+    request = MatchRunRequest(cv_revision_id=revision.id)
+    await _run_once(sessions, tmp_path, actor, db_project.id, request, FakeRuntime(), FakeJev())
+    monkeypatch.setenv("AI_DECISION_MODEL", "other/decision-model")
+    fake = FakeJev()
+    await _run_once(sessions, tmp_path, actor, db_project.id, request, FakeRuntime(), fake)
+    assert fake.postings  # old-model scores were not reused
+    assert {row.model for row in _scores(sessions, revision.id)} == {JEV_MODEL, "other/decision-model"}
+    with sessions() as db:
+        assert db.get(CVRevision, revision.id).skill_profile["categories_model"] == "other/decision-model"

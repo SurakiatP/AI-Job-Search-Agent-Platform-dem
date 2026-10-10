@@ -34,7 +34,6 @@ from job_search_platform.services.contracts import (
     GatewayStatusView, PreferencesView, ProjectUpdate, ProjectView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
-from job_search_platform.integrations.jev import JEV_MODEL
 from job_search_platform.services import experience, job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
@@ -495,10 +494,6 @@ async def search_job_sources(
         posted_within_days=posted_within_days, category=category, limit=limit, offset=offset, **filters)
 
 
-def _jev_available(db) -> bool:
-    return bool(GatewaySettings.from_env().api_key)
-
-
 def _direct_skill_route(skill):
     async def endpoint(project_id: UUID, body, actor=Depends(run_write_actor), services: Services = Depends(get_services)):
         return await skill.handler(services, actor, body, project_id=project_id)
@@ -540,8 +535,9 @@ async def match_job_sources(
         if profile.get("method") != SKILL_METHOD:
             raise ServiceError("cv_profile_missing", fields={"cv_revision_id": str(revision.id)})
         cv_skills = list(profile["skills"])
-        ai_on = _jev_available(db)
-        stored = profile.get("categories") if profile.get("categories_model") == JEV_MODEL else None
+        gateway = GatewaySettings.from_env()
+        model, ai_on = gateway.decision_model, bool(gateway.api_key)
+        stored = profile.get("categories") if profile.get("categories_model") == model else None
         hidden = {(kind, value) for kind, value in db.execute(
             select(JobSearchHidden.kind, JobSearchHidden.value).where(JobSearchHidden.project_id == project_id))}
     city_list = job_sources.parse_cities(cities)
@@ -556,7 +552,7 @@ async def match_job_sources(
         items = [item for item in page["items"] if not smart_match.is_hidden(item, hidden)]
         with services.sessions() as db:
             rows = {(r.job_slug, r.content_hash): r for r in db.scalars(select(JobMatchScore).where(
-                JobMatchScore.cv_revision_id == cv_revision_id, JobMatchScore.model == JEV_MODEL,
+                JobMatchScore.cv_revision_id == cv_revision_id, JobMatchScore.model == model,
                 JobMatchScore.job_slug.in_([item["slug"] for item in items])))} if ai_on else {}
         for item in items:
             text = smart_match.job_text(item)

@@ -76,7 +76,7 @@ def db_session(migrated_engine):
 @pytest.fixture(autouse=True)
 def gateway_env(monkeypatch):
     """Every test sees a configured LiteLLM gateway with a fake key; nothing real is contacted."""
-    monkeypatch.setenv("LITELLM_BASE_URL", "http://127.0.0.1:4000")
+    monkeypatch.setenv("LITELLM_BASE_URL", "http://127.0.0.1:54000")
     monkeypatch.setenv("LITELLM_API_KEY", "sk-test-gateway")
     monkeypatch.setenv("AI_ANALYZE_MODEL", "ai-analyze")
     monkeypatch.setenv("AI_DECISION_MODEL", "typesafe/jev-1.13")

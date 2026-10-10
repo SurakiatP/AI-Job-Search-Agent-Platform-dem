@@ -47,7 +47,7 @@ def stub(monkeypatch):
 def test_provider_config_is_custom_openai_compatible_v1():
     config = GatewaySettings.from_env().provider_config()
     assert (config.provider, config.model, config.base_url, config.api_key) == (
-        "custom", "ai-analyze", "http://127.0.0.1:4000/v1", KEY)
+        "custom", "ai-analyze", "http://127.0.0.1:54000/v1", KEY)
 
 
 def test_missing_key_raises_gateway_unconfigured(no_gateway_key):
@@ -90,11 +90,18 @@ def test_jev_posts_to_gateway_passthrough_with_app_key(stub):
 
 
 def test_jev_default_opener_ignores_env_proxy(monkeypatch):
+    import importlib
     import urllib.request
     from job_search_platform.integrations import jev
     monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:1")
-    proxies = [h for h in jev._OPENER.handlers if isinstance(h, urllib.request.ProxyHandler)]
-    assert all(h.proxies == {} for h in proxies)  # an env-derived ProxyHandler would carry the proxy
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:1")
+    try:
+        importlib.reload(jev)  # the opener is built at import, with the proxy env set
+        registered = jev._OPENER.handle_open.get("http", []) + jev._OPENER.handle_open.get("https", [])
+        assert not any(isinstance(h, urllib.request.ProxyHandler) for h in registered)  # an env proxy would register here
+    finally:
+        monkeypatch.undo()
+        importlib.reload(jev)
 
 
 async def test_status_base_url_has_no_userinfo(monkeypatch):

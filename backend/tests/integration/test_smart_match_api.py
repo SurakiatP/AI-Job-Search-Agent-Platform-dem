@@ -229,3 +229,15 @@ def test_run_request_validates_and_stores_filters_and_public_route_needs_no_cook
     assert public.status_code == 200 and public.json() == {"total": 9, "new_7d": 4, "thai_postings": 3,
                                                              "categories": [{"value": "it", "count": 9}]}
     assert client.get(f"{PREFIX}/{pid}/job-search/facets").status_code == 401
+
+
+@pytest.mark.integration
+def test_scores_and_categories_under_another_decision_model_are_not_reused(api_context, monkeypatch):
+    raws = [_raw("a")]
+    _serve(monkeypatch, raws)
+    csrf, pid, rev = _setup(api_context, categories=["it"], categories_model=JEV_MODEL)
+    _score(api_context, pid, rev, raws[0], 70)
+    assert api_context.client.get(_url(pid, rev, "&q=dev")).json()["ai"]["scored"] == 1
+    monkeypatch.setenv("AI_DECISION_MODEL", "other/decision-model")
+    body = api_context.client.get(_url(pid, rev)).json()
+    assert body["ai"]["scored"] == 0 and body["ai"]["categories"] is None

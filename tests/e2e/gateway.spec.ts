@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { jobId, projectId, sessionId, useSyntheticApplication } from '../fixtures/application';
 
-const view = { configured: true, reachable: true, base_url: 'http://127.0.0.1:4000', analyze_model: 'ai-analyze', decision_model: 'typesafe/jev-1.13', models: ['ai-analyze', 'ai-extra'] };
+const view = { configured: true, reachable: true, base_url: 'http://127.0.0.1:54000', analyze_model: 'ai-analyze', decision_model: 'typesafe/jev-1.13', models: ['ai-analyze', 'ai-extra'] };
 
 async function open(page: Page, locale: 'en' | 'th', body: unknown, calls: string[] = []) {
   await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
@@ -18,7 +18,7 @@ test('gateway card shows status, models and a safe LiteLLM link; no provider cal
   await expect(page.getByText('typesafe/jev-1.13')).toBeVisible();
   await expect(page.getByText('ai-extra')).toBeVisible();
   const link = page.getByRole('link', { name: 'Manage models in LiteLLM' });
-  await expect(link).toHaveAttribute('href', 'http://127.0.0.1:4000/ui');
+  await expect(link).toHaveAttribute('href', 'http://127.0.0.1:54000/ui');
   await expect(link).toHaveAttribute('target', '_blank');
   await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   await expect(page.getByLabel('API key')).toHaveCount(0);

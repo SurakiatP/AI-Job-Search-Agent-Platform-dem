@@ -45,7 +45,7 @@ class _Runtime:
         return SimpleNamespace(text=CV_TEXT)
 
     async def submit(self, project_id, session_id, prompt, instructions, provider, **kwargs):
-        assert (provider.provider, provider.model, provider.base_url) == ("custom", "ai-analyze", "http://127.0.0.1:4000/v1")
+        assert (provider.provider, provider.model, provider.base_url) == ("custom", "ai-analyze", "http://127.0.0.1:54000/v1")
         self.submits.append((session_id, prompt, kwargs))
 
     async def events(self, project_id):

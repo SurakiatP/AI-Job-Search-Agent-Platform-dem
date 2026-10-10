@@ -63,7 +63,7 @@ Create a project, add a CV and a job posting you supplied, and start the evaluat
 
 ## LiteLLM gateway
 
-`scripts/local_infra.py start` also runs the LiteLLM gateway (`litellm`, its own `litellm-db` Postgres and a one-shot `litellm-seed`). It listens on `127.0.0.1:4000` only (override with `CORE02_LITELLM_PORT`); the UI is at `http://127.0.0.1:4000/ui` (user `owner`).
+`scripts/local_infra.py start` also runs the LiteLLM gateway (`litellm`, its own `litellm-db` Postgres and a one-shot `litellm-seed`). It listens on `127.0.0.1:54000` only (override with `CORE02_LITELLM_PORT`); the UI is at `http://127.0.0.1:54000/ui` (user `owner`).
 
 - `OPENROUTER_API_KEY` is read from the environment of the `start` command (for example the owner's `.env`, exported) and reaches only the LiteLLM containers. Without it LiteLLM still starts and the seed logs `openrouter_key_missing` and skips model creation; export the key and run `start` again.
 - `start` generates `litellm-master-key`, `litellm-salt-key`, `litellm-db-password` and `litellm-ui-password` in `CORE02_PRIVATE_DIR` (mode 0600, never regenerated). Do not change the salt key after models are stored.
@@ -82,7 +82,7 @@ Every address the app uses comes from the environment, with the local-stack defa
 | `JSP_DATABASE` | `jobsearch_platform_core02` | no |
 | `JSP_MINIO_ENDPOINT` | `http://127.0.0.1:59000` (or `CORE02_MINIO_PORT`) | no |
 | `JSP_PRIVATE_BUCKET` | `job-search-platform-private` | no |
-| `LITELLM_BASE_URL` | `http://127.0.0.1:4000` | no |
+| `LITELLM_BASE_URL` | `http://127.0.0.1:54000` | no |
 | `LITELLM_API_KEY` | empty, falls back to `CORE02_PRIVATE_DIR/litellm_app_key` | yes |
 | `OPENROUTER_API_KEY` | empty; read only by `local_infra.py start`, reaches only LiteLLM | yes |
 | `AI_ANALYZE_MODEL` / `AI_DECISION_MODEL` | `ai-analyze` / `typesafe/jev-1.13` | no |
@@ -92,7 +92,7 @@ Every address the app uses comes from the environment, with the local-stack defa
 | `JSP_ALLOWED_ORIGINS` / `JSP_DEV_ORIGIN` | owner loopback origin / unset | no |
 | `CORE02_PRIVATE_DIR` | `~/.cache/job-search-platform/core02-runtime-20261003` | no (the directory holds secrets) |
 | `MINIO_SOURCE_DIR` / `GOSU_SOURCE_DIR` | `~/.cache/job-search-platform/upstream/{minio,gosu}` | no |
-| `CORE02_POSTGRES_PORT` / `CORE02_MINIO_PORT` / `CORE02_LITELLM_PORT` | `55432` / `59000` / `4000` (host ports published by compose) | no |
+| `CORE02_POSTGRES_PORT` / `CORE02_MINIO_PORT` / `CORE02_LITELLM_PORT` | `55432` / `59000` / `54000` (host ports published by compose) | no |
 
 `CORE02_PRIVATE_DIR`, `MINIO_SOURCE_DIR` and `GOSU_SOURCE_DIR` are optional overrides: `local_infra.py`, the app, backup and restore share one default. To run the app on another host, point `JSP_POSTGRES_*`, `JSP_MINIO_ENDPOINT` and `LITELLM_BASE_URL` at the service host and copy the credential files into that host's `CORE02_PRIVATE_DIR`.
 
