@@ -180,7 +180,7 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
             card_response = await public_client.get(f"{base_url}/.well-known/agent-card.json")
         assert card_response.status_code == 200
         card = card_response.json()
-        assert [skill["id"] for skill in card["skills"]] == ["evaluate_job", "draft_documents"]
+        assert [skill["id"] for skill in card["skills"]] == ["evaluate_job", "draft_documents", "tailor_cv"]
         assert card["capabilities"]["extendedAgentCard"] is True
         assert "extract_experience" not in json.dumps(card)
         assert {interface["protocolBinding"] for interface in card["supportedInterfaces"]} == {

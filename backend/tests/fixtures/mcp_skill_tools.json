@@ -264,5 +264,138 @@
       "title": "evaluate_jobDictOutput",
       "type": "object"
     }
+  },
+  "tailor_cv": {
+    "description": "Tailor the current Project CV to one supplied job posting or same-Project job revision using only experience-bank evidence; produces a draft CV revision.",
+    "input_schema": {
+      "$defs": {
+        "JobCreate": {
+          "additionalProperties": false,
+          "properties": {
+            "company": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Company"
+            },
+            "description": {
+              "maxLength": 50000,
+              "minLength": 1,
+              "title": "Description",
+              "type": "string"
+            },
+            "source_url": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Source Url"
+            },
+            "title": {
+              "maxLength": 300,
+              "minLength": 1,
+              "title": "Title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "JobCreate",
+          "type": "object"
+        },
+        "ProtocolJobInput": {
+          "additionalProperties": false,
+          "properties": {
+            "cv_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cv Id"
+            },
+            "idempotency_key": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency Key",
+              "type": "string"
+            },
+            "job": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/JobCreate"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "job_revision_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Job Revision Id"
+            },
+            "output_language": {
+              "enum": [
+                "th",
+                "en"
+              ],
+              "title": "Output Language",
+              "type": "string"
+            }
+          },
+          "required": [
+            "output_language",
+            "idempotency_key"
+          ],
+          "title": "ProtocolJobInput",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/ProtocolJobInput"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "tailor_cvArguments",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "tailor_cvDictOutput",
+      "type": "object"
+    }
   }
 }

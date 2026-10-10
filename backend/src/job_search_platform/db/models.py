@@ -337,6 +337,7 @@ class Run(Base):
     config_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     output_language: Mapped[str] = mapped_column(String(2), nullable=False)
     evaluation_result: Mapped[dict | None] = mapped_column(JSON)
+    result_payload: Mapped[dict | None] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="queued")
     lease_owner: Mapped[str | None] = mapped_column(String(200))
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -362,7 +363,7 @@ class Run(Base):
         UniqueConstraint("project_id", "id", name="uq_runs_project_id"),
         CheckConstraint("status IN ('queued','running','waiting_approval','completed','failed','cancelled','interrupted')", name="ck_runs_status"),
         CheckConstraint("length(idempotency_key) BETWEEN 1 AND 128", name="ck_runs_idempotency_key_length"),
-        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs','extract_experience')", name="ck_runs_operation"),
+        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs','extract_experience','tailor_cv')", name="ck_runs_operation"),
         CheckConstraint("operation IN ('profile_cv','match_jobs') OR (operation = 'extract_experience' AND provider_configuration_id IS NOT NULL) OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL AND provider_configuration_id IS NOT NULL)", name="ck_runs_context_required"),
         CheckConstraint("output_language IN ('th','en')", name="ck_runs_language"),
         CheckConstraint("length(request_digest) = 64", name="ck_runs_digest_length"),

@@ -90,6 +90,7 @@ def run_view(run: Run, *, result_file_ids: tuple[UUID, ...] = (), job_removed: b
         output_language=run.output_language,
         result_file_ids=result_file_ids,
         evaluation_result=run.evaluation_result,
+        result_payload=run.result_payload,
         created_at=run.created_at,
         finished_at=run.finished_at,
         retry_of_id=run.retry_of_id,
@@ -273,14 +274,21 @@ class RunService:
                     "document_id": UUID(retry_source.input_snapshot["document_id"])
                     if retry_source.input_snapshot.get("document_id") else None,
                     "draft_kind": retry_source.input_snapshot.get("draft_kind"),
+                    "tailor_mode": retry_source.input_snapshot.get("tailor_mode"),
                 }
             )
         if canonical_request.draft_kind is not None and actor.kind != "owner":
             raise ServiceError("forbidden")
+        is_tailor = canonical_request.operation == "tailor_cv"
+        tailor_mode = (canonical_request.tailor_mode or "autopilot") if is_tailor else None
+        if tailor_mode == "interactive" and actor.kind != "owner":
+            raise ServiceError("forbidden")
+        # A tailor run appends to the job's live tailored CV document, like a draft of its kind.
+        auto_kind = "cv" if is_tailor else canonical_request.draft_kind
         previous_draft = None
         revise_id = canonical_request.document_id
         if (
-            revise_id is None and canonical_request.draft_kind is not None and previous is None
+            revise_id is None and auto_kind is not None and previous is None
             and session.job_revision_id is not None
         ):
             # One live document per draft kind and paired job: append a revision to it.
@@ -288,7 +296,7 @@ class RunService:
                 select(Document.id)
                 .where(
                     Document.project_id == project_id,
-                    Document.document_type == canonical_request.draft_kind,
+                    Document.document_type == auto_kind,
                     Document.trashed_at.is_(None),
                     Document.id.in_(
                         select(DocumentRevision.document_id).where(
@@ -305,9 +313,10 @@ class RunService:
                 .limit(1)
             )
         if revise_id is not None:
-            if canonical_request.operation != "draft_documents" or actor.kind != "owner" or (
-                retry_source is None and request.document_id is None and canonical_request.draft_kind is None
-            ):
+            if canonical_request.operation not in {"draft_documents", "tailor_cv"} or (
+                not is_tailor and (actor.kind != "owner" or (
+                    retry_source is None and request.document_id is None and canonical_request.draft_kind is None))
+            ) or (is_tailor and actor.kind != "owner" and request.document_id is not None):
                 raise ServiceError("forbidden")
             document = db.scalar(select(Document).where(
                 Document.project_id == project_id, Document.id == revise_id))
@@ -409,6 +418,7 @@ class RunService:
                     else {}
                 ),
                 **({"draft_kind": canonical_request.draft_kind} if canonical_request.draft_kind else {}),
+                **({"tailor_mode": tailor_mode} if tailor_mode else {}),
                 "job": {
                     "title": job.title,
                     "company": job.company,

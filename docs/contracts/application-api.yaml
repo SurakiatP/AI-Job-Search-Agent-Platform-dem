@@ -903,7 +903,7 @@ components:
       required: [session_id, operation, output_language, idempotency_key]
       properties:
         session_id: {type: string, format: uuid}
-        operation: {type: string, enum: [evaluate_job, draft_documents]}
+        operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv]}
         cv_revision_id: {type: [string, 'null'], format: uuid}
         cv_id: {type: [string, 'null'], format: uuid, description: Latest revision of this CV; omitted means the primary CV. Ignored for paired sessions except that a conflicting value gives 422 session_pair_mismatch.}
         job_revision_id: {type: [string, 'null'], format: uuid, description: Required unless the session is paired; a paired session fixes the pair and a conflicting id gives 422 session_pair_mismatch.}
@@ -913,6 +913,7 @@ components:
         owner_instructions: {type: [string, 'null'], maxLength: 4000, description: Owner-only instructions captured in immutable run inputs; manual retry retains the original instructions.}
         document_id: {type: [string, 'null'], format: uuid, description: Owner-only draft_documents revise; the first draft is appended as a new revision of this live document.}
         draft_kind: {type: [string, 'null'], enum: [cover_letter, application_message, null], description: 'Owner-only, draft_documents only (otherwise 422). Forces the first output document_type. On a paired session an existing live document of this kind drafted for the session job receives a new revision instead of a new document.'}
+        tailor_mode: {type: [string, 'null'], enum: [autopilot, interactive, null], description: 'tailor_cv only (otherwise 422); defaults to autopilot. Grants may not send interactive (forbidden).'}
     DocumentEdit:
       type: object
       additionalProperties: false
@@ -1149,10 +1150,11 @@ components:
       properties:
         job_revision_id: {type: [string, 'null'], format: uuid}
         evaluation_result: {anyOf: [{$ref: '#/components/schemas/EvaluationResult'}, {type: 'null'}]}
+        result_payload: {type: [object, 'null'], additionalProperties: true, description: Machine result that is neither an evaluation nor an artifact (tailoring proposals and round summaries).}
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
         session_id: {type: [string, 'null'], format: uuid, description: Null only for profile_cv.}
-        operation: {type: string, enum: [evaluate_job, draft_documents, export_document, profile_cv, match_jobs, extract_experience]}
+        operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, export_document, profile_cv, match_jobs, extract_experience]}
         status: {type: string, enum: [queued, running, waiting_approval, completed, failed, cancelled, interrupted]}
         output_language: {type: string, enum: [th, en]}
         result_file_ids: {type: array, items: {type: string, format: uuid}}
@@ -1227,7 +1229,7 @@ components:
       additionalProperties: false
       required: [capabilities, expires_at]
       properties:
-        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft']}}
+        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor']}}
         expires_at: {type: string, format: date-time}
     GrantIssuedView:
       type: object
@@ -1246,7 +1248,7 @@ components:
       properties:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
-        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft']}}
+        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor']}}
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}
     ProviderSettingsUpdate:
@@ -1342,9 +1344,9 @@ components:
       additionalProperties: false
       required: [name, description, required_capability]
       properties:
-        name: {type: string, enum: [evaluate_job, draft_documents, get_run, cancel_run, list_results]}
+        name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, get_run, cancel_run, list_results]}
         description: {type: string}
-        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft']}
+        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor']}
     ToolsView:
       type: object
       additionalProperties: false

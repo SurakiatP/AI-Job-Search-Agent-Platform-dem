@@ -3,18 +3,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Annotated, AsyncIterator, Literal, Protocol, TypeVar
+from typing import Annotated, Any, AsyncIterator, Literal, Protocol, TypeVar
 from uuid import UUID
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, SecretStr, StringConstraints, model_validator
 
 
-Capability = Literal["results:read", "jobs:evaluate", "documents:draft"]
+Capability = Literal["results:read", "jobs:evaluate", "documents:draft", "cv:tailor"]
 RunStatus = Literal["queued", "running", "waiting_approval", "completed", "failed", "cancelled", "interrupted"]
-Operation = Literal["evaluate_job", "draft_documents"]
+Operation = Literal["evaluate_job", "draft_documents", "tailor_cv"]
 # profile_cv (CV skill profile, no LLM) and extract_experience (LLM experience-bank extraction) are likewise owner-only and internal.
 # export_document is an owner-only, non-LLM run created by the manual-edit endpoint; never a request operation.
-ViewOperation = Literal["evaluate_job", "draft_documents", "export_document", "profile_cv", "match_jobs", "extract_experience"]
+ViewOperation = Literal["evaluate_job", "draft_documents", "tailor_cv", "export_document", "profile_cv", "match_jobs", "extract_experience"]
 DraftKind = Literal["cover_letter", "application_message"]
 
 
@@ -84,11 +84,15 @@ class RunRequest(DTO):
     # Draft runs only (owner-only): the document kind to produce; an existing live document
     # of this kind for the paired job gets a new revision instead of a new document.
     draft_kind: DraftKind | None = None
+    # tailor_cv only; omitted means autopilot. Grants cannot ask for interactive.
+    tailor_mode: Literal["autopilot", "interactive"] | None = None
 
     @model_validator(mode="after")
     def draft_kind_needs_draft(self):
         if self.draft_kind is not None and self.operation != "draft_documents":
             raise ValueError("draft_kind_requires_draft_documents")
+        if self.tailor_mode is not None and self.operation != "tailor_cv":
+            raise ValueError("tailor_mode_requires_tailor_cv")
         return self
 
 
@@ -326,6 +330,7 @@ class RunView(DTO):
     retry_of_id: UUID | None = None
     evaluation_result: EvaluationResult | None = None
     job_removed: bool = False
+    result_payload: dict[str, Any] | None = None
 
 
 class RunEventData(DTO):
