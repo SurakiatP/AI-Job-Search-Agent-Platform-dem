@@ -511,9 +511,10 @@ class RunExecutor:
             accepted_counts: list[int] = []
             rounds: list[dict] = []
             proposals: list[dict] = []
-            stop_reason = "interactive"
+            full = coverages[0] == 1.0  # nothing left to add: skip the LLM rounds and publish nothing
+            stop_reason = "full_coverage" if full and not interactive else "interactive"
             longest_round = 0.0
-            for round_no in range(1, 2 if interactive else tailoring.MAX_ROUNDS + 1):
+            for round_no in range(1, 1 if full else 2 if interactive else tailoring.MAX_ROUNDS + 1):
                 round_began = time.monotonic()
                 # One fresh Hermes session per round (the bridge builds a new agent on every submit).
                 prompt, instructions = tailoring.round_prompt(
@@ -553,7 +554,7 @@ class RunExecutor:
                 "coverage_before": coverages[0], "coverage_after": coverages[0] if interactive else coverages[-1],
             }
             artifact_ids: tuple[uuid.UUID, ...] = ()
-            if not interactive:
+            if not interactive and not full:
                 sandbox.staging_path("tailored-cv.md").write_text(text, encoding="utf-8")
                 manifest = json.dumps({"drafts": [{
                     "path": "tailored-cv.md", "document_type": "cv",

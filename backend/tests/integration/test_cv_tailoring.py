@@ -274,3 +274,24 @@ def test_concurrent_tailor_runs_and_restore_are_document_busy(api_context):
     assert _tailor(ctx, csrf, pid, session, "b4").json()["code"] == "document_busy"
     restore = ctx.client.post(f"{PREFIX}/{pid}/documents/{first.document_id}/revisions/{first.id}/restore", headers=headers)
     assert restore.status_code == 409 and restore.json()["code"] == "document_busy"
+
+
+@pytest.mark.integration
+def test_full_starting_coverage_skips_rounds(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, _ = _setup(ctx, [])
+    runtime = _Runtime(ctx.tmp_path / "ws", [[_edit("Wrote Python services", facts["py"])]])
+
+    async def covered(project_id, path):
+        return SimpleNamespace(text="Skills: Python, Docker, Kubernetes, Terraform")
+
+    runtime.parse_input = covered
+    auto = _tailor(ctx, csrf, pid, session, "f1").json()["id"]
+    _execute_next(ctx, runtime)
+    run = _run(ctx, auto)
+    assert run.status == "completed" and run.result_payload["stop_reason"] == "full_coverage"
+    assert run.result_payload["rounds"] == [] and run.result_payload["proposals"] == []
+    assert _revisions(ctx, pid) == [] and runtime.submits == []
+    inter = _tailor(ctx, csrf, pid, session, "f2", tailor_mode="interactive").json()["id"]
+    _execute_next(ctx, runtime)
+    assert _run(ctx, inter).result_payload["proposals"] == [] and runtime.submits == []
