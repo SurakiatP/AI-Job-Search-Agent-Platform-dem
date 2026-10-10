@@ -247,9 +247,9 @@ class HermesRuntime:
 
     async def submit(self, project_id: UUID, session_id: UUID, prompt: str,
                      instructions: str, provider: ProviderConfig | None, *,
-                     operation: Literal["evaluate_job", "draft_documents"],
+                     operation: Literal["evaluate_job", "draft_documents", "extract_experience"],
                      tool_gate: Callable[[str, str], Awaitable[bool]] | None = None) -> None:
-        if operation not in ("evaluate_job", "draft_documents"):
+        if operation not in ("evaluate_job", "draft_documents", "extract_experience"):
             raise RuntimeErrorCode("native_response_invalid")
         project = self.projects[project_id]
         project.tool_gate = tool_gate

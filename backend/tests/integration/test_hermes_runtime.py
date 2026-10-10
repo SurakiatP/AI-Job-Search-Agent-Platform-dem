@@ -38,3 +38,22 @@ def test_native_offline_proof():
                             capture_output=True, text=True, timeout=180)
     assert result.returncode == 0, result.stdout + result.stderr
     assert '"native_tool_isolation": "complete"' in result.stdout
+
+
+def test_submit_accepts_extract_experience(monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+    from uuid import uuid4
+    from job_search_platform.integrations.hermes_runtime import HermesRuntime
+
+    runtime = HermesRuntime.__new__(HermesRuntime)
+    project_id = uuid4()
+    runtime.projects = {project_id: SimpleNamespace(tool_gate=None, terminal_received=True)}
+    sent = {}
+
+    async def request(_project, method, **payload):
+        sent.update(method=method, **payload)
+        return {"accepted": True}
+    monkeypatch.setattr(runtime, "_request", request)
+    asyncio.run(runtime.submit(project_id, uuid4(), "p", "i", None, operation="extract_experience"))
+    assert sent["operation"] == "extract_experience"
