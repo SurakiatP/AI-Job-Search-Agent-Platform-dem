@@ -266,3 +266,17 @@ def test_seed_regenerates_key_only_when_rejected_or_missing(tmp_path: Path, monk
         assert key_file.read_text() == "sk-new\n"
     finally:
         server.shutdown()
+
+
+@pytest.mark.parametrize("key,warns", [("", True), ("fake-key", False)])
+def test_start_warns_on_stderr_when_openrouter_key_missing(tmp_path, monkeypatch, capsys, key, warns) -> None:
+    local_infra = _load_local_infra()
+    monkeypatch.setattr(local_infra, "prepare_private_directory", lambda p: p)
+    monkeypatch.setattr(local_infra, "validate_minio_source", lambda p: p)
+    monkeypatch.setattr(local_infra, "ensure_credentials", lambda p: None)
+    monkeypatch.setattr(local_infra, "_compose", lambda *a, **k: None)
+    monkeypatch.setenv("OPENROUTER_API_KEY", key)
+    assert local_infra.start(tmp_path, tmp_path)["status"] == "started"
+    err = capsys.readouterr().err
+    assert ("warning: OPENROUTER_API_KEY not set" in err) is warns
+    assert "fake-key" not in err

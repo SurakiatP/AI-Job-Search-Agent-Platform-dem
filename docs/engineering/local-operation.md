@@ -68,6 +68,7 @@ Create a project, add a CV and a job posting you supplied, and start the evaluat
 - `OPENROUTER_API_KEY` is read from the environment of the `start` command (for example the owner's `.env`, exported) and reaches only the LiteLLM containers. Without it LiteLLM still starts and the seed logs `openrouter_key_missing` and skips model creation; export the key and run `start` again.
 - `start` generates `litellm-master-key`, `litellm-salt-key`, `litellm-db-password` and `litellm-ui-password` in `CORE02_PRIVATE_DIR` (mode 0600, never regenerated). Do not change the salt key after models are stored.
 - The seed adds model `ai-analyze` (`openrouter/z-ai/glm-5.3-flash`) if absent and creates the `job-search-app` virtual key (model `ai-analyze`, pass-through `/jev/decisions`), written to `CORE02_PRIVATE_DIR/litellm_app_key` (0600; empty until seeded). Manage models afterwards in the UI.
+- The app key only allows the `ai-analyze` alias. If `AI_ANALYZE_MODEL` is changed to another alias, the key must be regenerated: delete the `job-search-app` key in the LiteLLM UI, then run `start` again.
 - `/jev/decisions` forwards to the OpenRouter decisions API with the server-side key. The app uses `AI_DECISION_MODEL` (default `typesafe/jev-1.13`) in the request body.
 - `status` lists `litellm`, `litellm-db` and `litellm-seed` with their health.
 

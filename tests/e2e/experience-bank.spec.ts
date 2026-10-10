@@ -52,7 +52,8 @@ test('experience bank empty states and Thai at 320px', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto(`/app/projects/${projectId}/profile`);
   const section = page.getByRole('region', { name: 'คลังประสบการณ์' });
-  await expect(section.getByRole('link', { name: 'ไปที่การตั้งค่า' })).toHaveAttribute('href', '/app/settings');
+  await expect(section.getByText('ยังไม่ได้ตั้งค่า AI gateway')).toBeVisible();
+  await expect(section.getByRole('link', { name: 'ไปที่การตั้งค่า' })).toHaveAttribute('href', '/app/settings?section=gateway');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 

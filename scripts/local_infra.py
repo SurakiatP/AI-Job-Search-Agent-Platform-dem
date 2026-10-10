@@ -266,6 +266,8 @@ def start(private_dir: Path, source_dir: Path) -> dict[str, str]:
     private_dir = prepare_private_directory(private_dir)
     source_dir = validate_minio_source(source_dir)
     ensure_credentials(private_dir)
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        print("warning: OPENROUTER_API_KEY not set; LiteLLM has no provider key and model calls will fail", file=sys.stderr)
     _compose(["up", "--detach", "--build", "--wait", "--wait-timeout", "300"], private_dir, source_dir, timeout=1800)
     return {"status": "started", "private_directory": str(private_dir), "minio_source_commit": MINIO_COMMIT}
 
