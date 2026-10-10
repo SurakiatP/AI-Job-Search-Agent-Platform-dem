@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import (
@@ -358,6 +358,17 @@ class RunService:
         # Replays above stay valid; a removed job cannot start new work.
         if job.removed_at is not None:
             raise ServiceError("job_removed")
+        if is_tailor:
+            active = Run.status.in_(("queued", "running", "waiting_approval"))
+            if revise_id is not None:
+                clash = (Run.operation.in_(("draft_documents", "export_document", "tailor_cv")),
+                         Run.input_snapshot["document_id"].as_string() == str(revise_id))
+            else:  # no document yet: another tailor or cv export for this job would create a second one
+                clash = (Run.job_revision_id == job.id, or_(
+                    Run.operation == "tailor_cv",
+                    (Run.operation == "export_document") & (Run.input_snapshot["export_document_type"].as_string() == "cv")))
+            if db.scalar(select(func.count()).select_from(Run).where(Run.project_id == project_id, active, *clash)):
+                raise ServiceError("document_busy")
         if retry_source is not None and retry_source.status not in {"failed", "cancelled", "interrupted"}:
             raise ServiceError("retry_not_allowed")
         queued = db.scalar(
@@ -499,7 +510,7 @@ class RunService:
             busy = db.scalar(
                 select(func.count()).select_from(Run).where(
                     Run.project_id == project_id,
-                    Run.operation.in_(("draft_documents", "export_document")),
+                    Run.operation.in_(("draft_documents", "export_document", "tailor_cv")),
                     Run.status.in_(("queued", "running", "waiting_approval")),
                     Run.input_snapshot["document_id"].as_string() == str(document_id),
                 )
@@ -610,9 +621,10 @@ class RunService:
             title = f"CV — {(run.input_snapshot.get('job') or {}).get('title', 'job')}"[:300]
             if document is None:
                 busy = db.scalar(select(func.count()).select_from(Run).where(
-                    Run.project_id == project_id, Run.operation == "export_document", Run.job_revision_id == run.job_revision_id,
+                    Run.project_id == project_id, Run.job_revision_id == run.job_revision_id,
                     Run.status.in_(("queued", "running", "waiting_approval")),
-                    Run.input_snapshot["export_document_type"].as_string() == "cv"))
+                    or_(Run.operation == "tailor_cv", (Run.operation == "export_document")
+                        & (Run.input_snapshot["export_document_type"].as_string() == "cv"))))
                 if busy:
                     raise ServiceError("document_busy")
                 return self._queue_export(db, actor, run, None, "pdf", text, now, title=title)

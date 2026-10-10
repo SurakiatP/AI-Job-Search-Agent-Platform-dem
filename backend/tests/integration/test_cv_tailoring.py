@@ -255,3 +255,22 @@ def test_digit_splice_rejected_in_autopilot_and_apply(api_context):
     response = ctx.client.post(f"{PREFIX}/{pid}/runs/{inter}/tailor/apply", headers=_write_headers(csrf),
                                json={"proposal_ids": [0]})
     assert response.status_code == 400 and response.json()["code"] == "evidence_required"
+
+
+@pytest.mark.integration
+def test_concurrent_tailor_runs_and_restore_are_document_busy(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, _ = _setup(ctx, [])
+    headers = _write_headers(csrf)
+    runtime = _Runtime(ctx.tmp_path / "ws", [[_edit("Wrote Python services", facts["py"])]])
+    _tailor(ctx, csrf, pid, session, "b1")
+    # Second tailor run for the same job (no document yet) while the first is queued.
+    assert _tailor(ctx, csrf, pid, session, "b2").json()["code"] == "document_busy"
+    _execute_next(ctx, runtime)
+    (first,) = _revisions(ctx, pid)
+    # A queued tailor run on the live document blocks restore and further tailor runs.
+    queued = _tailor(ctx, csrf, pid, session, "b3")
+    assert queued.status_code == 202
+    assert _tailor(ctx, csrf, pid, session, "b4").json()["code"] == "document_busy"
+    restore = ctx.client.post(f"{PREFIX}/{pid}/documents/{first.document_id}/revisions/{first.id}/restore", headers=headers)
+    assert restore.status_code == 409 and restore.json()["code"] == "document_busy"
