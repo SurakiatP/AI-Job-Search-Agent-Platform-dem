@@ -553,7 +553,7 @@ def _run_publishable(run: Run | None, manifest_lease_owner: str | None) -> bool:
     now = datetime.now(timezone.utc)
     return (
         run is not None
-        and run.operation in {"draft_documents", "export_document"}
+        and run.operation in {"draft_documents", "export_document", "tailor_cv"}
         and run.status == "running"
         and run.cancellation_requested_at is None
         and _lease_matches(run, manifest_lease_owner, now, require_unexpired=True)

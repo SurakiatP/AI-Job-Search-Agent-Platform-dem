@@ -223,3 +223,10 @@ def fact_lines(db: Session, project_id: UUID) -> list[str]:
         context = ", ".join(part for part in (item.role, item.organization, item.period) if part)
         lines.append(f"{item.text} ({context})" if context else item.text)
     return lines
+
+
+def fact_records(db: Session, project_id: UUID) -> list[dict]:
+    """Bank facts with ids, for prompts whose answers must cite them."""
+    return [{"id": str(item.id), "text": item.text,
+             "context": ", ".join(part for part in (item.role, item.organization, item.period) if part)}
+            for item in list_items(db, project_id)]

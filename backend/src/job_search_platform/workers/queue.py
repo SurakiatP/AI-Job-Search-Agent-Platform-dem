@@ -142,6 +142,7 @@ class PostgresRunQueue:
         self, run_id: UUID, lease_owner: str, status: str, *,
         message_key: str | None = None, artifact_ids: tuple[UUID, ...] = (),
         evaluation_result: EvaluationResult | dict | None = None,
+        result_payload: dict | None = None,
         now: datetime | None = None,
     ) -> Run:
         """Atomically publish a validated report and terminal event after real stop."""
@@ -173,6 +174,8 @@ class PostgresRunQueue:
                 accrue_active_time(run, now)
                 if report is not None:
                     run.evaluation_result = report
+                if result_payload is not None and status == "completed":
+                    run.result_payload = result_payload
                 run.status = status
                 run.finished_at = now
                 self._clear_lease(run)

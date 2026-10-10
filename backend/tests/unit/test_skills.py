@@ -16,6 +16,7 @@ def test_every_skill_capability_is_a_grant_capability():
     assert {skill.capability for skill in SKILLS} <= set(get_args(Capability))
     assert SKILL_BY_ID["evaluate_job"].capability == "jobs:evaluate"
     assert SKILL_BY_ID["draft_documents"].capability == "documents:draft"
+    assert SKILL_BY_ID["tailor_cv"].capability == "cv:tailor"
     assert all(skill.input_model is ProtocolJobInput for skill in SKILLS)
 
 
@@ -26,10 +27,10 @@ def test_owner_only_operations_are_not_skills():
 
 
 def test_grant_capabilities_unchanged():
-    assert GRANT_CAPABILITIES == frozenset({"results:read", "jobs:evaluate", "documents:draft"})
-    assert GRANT_WORK_RESOURCES == frozenset({"evaluate_job", "draft_documents"})
+    assert GRANT_CAPABILITIES == frozenset({"results:read", "jobs:evaluate", "documents:draft", "cv:tailor"})
+    assert GRANT_WORK_RESOURCES == frozenset({"evaluate_job", "draft_documents", "tailor_cv"})
 
 
 def test_tool_descriptor_name_is_one_flat_enum():
     name = ToolDescriptor.model_json_schema()["properties"]["name"]
-    assert name["enum"] == ["evaluate_job", "draft_documents", "get_run", "cancel_run", "list_results"]
+    assert name["enum"] == ["evaluate_job", "draft_documents", "tailor_cv", "get_run", "cancel_run", "list_results"]

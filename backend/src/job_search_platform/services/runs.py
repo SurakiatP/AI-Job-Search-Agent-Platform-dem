@@ -10,13 +10,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import (
     ConversationSession,
     CV,
     CVRevision,
+    CVRevisionText,
     Document,
     DocumentRevision,
     Grant,
@@ -90,6 +91,7 @@ def run_view(run: Run, *, result_file_ids: tuple[UUID, ...] = (), job_removed: b
         output_language=run.output_language,
         result_file_ids=result_file_ids,
         evaluation_result=run.evaluation_result,
+        result_payload=run.result_payload,
         created_at=run.created_at,
         finished_at=run.finished_at,
         retry_of_id=run.retry_of_id,
@@ -153,6 +155,20 @@ def lock_current_grant(db: Session, actor: Actor, project_id: UUID, now: datetim
     )
     if grant is None or grant.revoked_at is not None or _utc(grant.expires_at) <= now:
         raise ServiceError("unauthorized")
+
+
+def live_tailored_document(db: Session, project_id: UUID, job_revision_id: UUID | None) -> Document | None:
+    """The job's live (untrashed) tailored CV document, newest revision first."""
+    if job_revision_id is None:
+        return None
+    return db.scalar(
+        select(Document).where(
+            Document.project_id == project_id, Document.document_type == "cv", Document.trashed_at.is_(None),
+            Document.id.in_(select(DocumentRevision.document_id).where(
+                DocumentRevision.project_id == project_id, DocumentRevision.source_job_revision_id == job_revision_id)))
+        .order_by(select(func.max(DocumentRevision.created_at)).where(
+            DocumentRevision.project_id == project_id, DocumentRevision.document_id == Document.id)
+            .correlate(Document).scalar_subquery().desc()).limit(1))
 
 
 class RunService:
@@ -273,14 +289,21 @@ class RunService:
                     "document_id": UUID(retry_source.input_snapshot["document_id"])
                     if retry_source.input_snapshot.get("document_id") else None,
                     "draft_kind": retry_source.input_snapshot.get("draft_kind"),
+                    "tailor_mode": retry_source.input_snapshot.get("tailor_mode"),
                 }
             )
         if canonical_request.draft_kind is not None and actor.kind != "owner":
             raise ServiceError("forbidden")
+        is_tailor = canonical_request.operation == "tailor_cv"
+        tailor_mode = (canonical_request.tailor_mode or "autopilot") if is_tailor else None
+        if tailor_mode == "interactive" and actor.kind != "owner":
+            raise ServiceError("forbidden")
+        # A tailor run appends to the job's live tailored CV document, like a draft of its kind.
+        auto_kind = "cv" if is_tailor else canonical_request.draft_kind
         previous_draft = None
         revise_id = canonical_request.document_id
         if (
-            revise_id is None and canonical_request.draft_kind is not None and previous is None
+            revise_id is None and auto_kind is not None and previous is None
             and session.job_revision_id is not None
         ):
             # One live document per draft kind and paired job: append a revision to it.
@@ -288,7 +311,7 @@ class RunService:
                 select(Document.id)
                 .where(
                     Document.project_id == project_id,
-                    Document.document_type == canonical_request.draft_kind,
+                    Document.document_type == auto_kind,
                     Document.trashed_at.is_(None),
                     Document.id.in_(
                         select(DocumentRevision.document_id).where(
@@ -305,9 +328,10 @@ class RunService:
                 .limit(1)
             )
         if revise_id is not None:
-            if canonical_request.operation != "draft_documents" or actor.kind != "owner" or (
-                retry_source is None and request.document_id is None and canonical_request.draft_kind is None
-            ):
+            if canonical_request.operation not in {"draft_documents", "tailor_cv"} or (
+                not is_tailor and (actor.kind != "owner" or (
+                    retry_source is None and request.document_id is None and canonical_request.draft_kind is None))
+            ) or (is_tailor and actor.kind != "owner" and request.document_id is not None):
                 raise ServiceError("forbidden")
             document = db.scalar(select(Document).where(
                 Document.project_id == project_id, Document.id == revise_id))
@@ -334,6 +358,17 @@ class RunService:
         # Replays above stay valid; a removed job cannot start new work.
         if job.removed_at is not None:
             raise ServiceError("job_removed")
+        if is_tailor:
+            active = Run.status.in_(("queued", "running", "waiting_approval"))
+            if revise_id is not None:
+                clash = (Run.operation.in_(("draft_documents", "export_document", "tailor_cv")),
+                         Run.input_snapshot["document_id"].as_string() == str(revise_id))
+            else:  # no document yet: another tailor or cv export for this job would create a second one
+                clash = (Run.job_revision_id == job.id, or_(
+                    Run.operation == "tailor_cv",
+                    (Run.operation == "export_document") & (Run.input_snapshot["export_document_type"].as_string() == "cv")))
+            if db.scalar(select(func.count()).select_from(Run).where(Run.project_id == project_id, active, *clash)):
+                raise ServiceError("document_busy")
         if retry_source is not None and retry_source.status not in {"failed", "cancelled", "interrupted"}:
             raise ServiceError("retry_not_allowed")
         queued = db.scalar(
@@ -409,6 +444,7 @@ class RunService:
                     else {}
                 ),
                 **({"draft_kind": canonical_request.draft_kind} if canonical_request.draft_kind else {}),
+                **({"tailor_mode": tailor_mode} if tailor_mode else {}),
                 "job": {
                     "title": job.title,
                     "company": job.company,
@@ -474,7 +510,7 @@ class RunService:
             busy = db.scalar(
                 select(func.count()).select_from(Run).where(
                     Run.project_id == project_id,
-                    Run.operation.in_(("draft_documents", "export_document")),
+                    Run.operation.in_(("draft_documents", "export_document", "tailor_cv")),
                     Run.status.in_(("queued", "running", "waiting_approval")),
                     Run.input_snapshot["document_id"].as_string() == str(document_id),
                 )
@@ -490,34 +526,110 @@ class RunService:
                 mime = db.scalar(select(StoredFile.mime_type).where(
                     StoredFile.project_id == project_id, StoredFile.id == latest.file_id)) or ""
                 output_format = "docx" if mime.endswith("wordprocessingml.document") else "pdf"
-            key = uuid4().hex
-            run = Run(
-                project_id=project_id,
-                actor_scope="owner",
-                idempotency_key=key,
-                request_digest=hashlib.sha256(json.dumps(
-                    {"export_document": str(document_id), "key": key}).encode()).hexdigest(),
-                session_id=source.session_id,
-                operation="export_document",
-                cv_revision_id=source.cv_revision_id,
-                job_revision_id=source.job_revision_id,
-                provider_configuration_id=source.provider_configuration_id,
-                input_snapshot={
-                    "document_id": str(document_id),
-                    "export_format": output_format,
-                    "export_title": document.title,
-                    "export_document_type": document.document_type,
-                    "export_content_markdown": edit.content_markdown,
-                },
-                config_snapshot={},
-                output_language=source.output_language,
-                status="queued",
-                created_at=now,
-            )
-            db.add(run)
-            db.flush()
-            append_event(db, run, "run_queued", {"status": "queued"}, now=now)
-            return self._authorized_view(db, actor, run)
+            return self._queue_export(db, actor, source, document, output_format, edit.content_markdown, now)
+
+    def _queue_export(self, db: Session, actor: Actor, source: Run, document: Document | None, output_format: str,
+                      markdown: str, now: datetime, *, title: str = "", document_type: str = "cv") -> RunView:
+        """Queue a non-LLM export run that inherits session/CV/job/provider from `source`; no document means a new one."""
+        key = uuid4().hex
+        run = Run(
+            project_id=source.project_id,
+            actor_scope="owner",
+            idempotency_key=key,
+            request_digest=hashlib.sha256(json.dumps(
+                {"export_document": str(document.id) if document else key, "key": key}).encode()).hexdigest(),
+            session_id=source.session_id,
+            operation="export_document",
+            cv_revision_id=source.cv_revision_id,
+            job_revision_id=source.job_revision_id,
+            provider_configuration_id=source.provider_configuration_id,
+            input_snapshot={
+                **({"document_id": str(document.id)} if document else {}),
+                "export_format": output_format,
+                "export_title": document.title if document else title,
+                "export_document_type": document.document_type if document else document_type,
+                "export_content_markdown": markdown,
+            },
+            config_snapshot={},
+            output_language=source.output_language,
+            status="queued",
+            created_at=now,
+        )
+        db.add(run)
+        db.flush()
+        append_event(db, run, "run_queued", {"status": "queued"}, now=now)
+        return self._authorized_view(db, actor, run)
+
+    async def submit_restore(self, actor: Actor, project_id: UUID, document_id: UUID, revision_id: UUID) -> RunView:
+        """Owner-only undo: re-export an earlier revision's Markdown as a new revision of the same document."""
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+
+        def load() -> str:
+            with self.sessions() as db:
+                authorize(db, actor, project_id, "write", "document")
+                content = db.scalar(select(DocumentRevision.content_markdown).where(
+                    DocumentRevision.project_id == project_id, DocumentRevision.document_id == document_id,
+                    DocumentRevision.id == revision_id))
+            if not content:
+                raise ServiceError("not_found")
+            return content
+
+        content = await asyncio.to_thread(load)
+        return await self.submit_export(actor, project_id, document_id, DocumentEdit(content_markdown=content))
+
+    async def submit_tailor_apply(self, actor: Actor, project_id: UUID, run_id: UUID, proposal_ids: list[int]) -> RunView:
+        """Owner-only: apply chosen interactive proposals (evidence re-checked as one batch) via an export run."""
+        return await asyncio.to_thread(self._tailor_apply_sync, actor, project_id, run_id, proposal_ids)
+
+    def _tailor_apply_sync(self, actor: Actor, project_id: UUID, run_id: UUID, proposal_ids: list[int]) -> RunView:
+        from job_search_platform.services.evidence import EvidencedEdit, apply_gated, fact_claims, require_evidence
+
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "document")
+            run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id))
+            payload = None if run is None else run.result_payload
+            if (run is None or run.operation != "tailor_cv" or run.status != "completed"
+                    or not isinstance(payload, dict) or payload.get("mode") != "interactive"):
+                raise ServiceError("not_found")
+            by_id = {item["id"]: item for item in payload.get("proposals", [])}
+            chosen = [by_id.get(pid) for pid in dict.fromkeys(proposal_ids)]
+            if any(item is None or item.get("status") != "proposed" for item in chosen):
+                raise ServiceError("evidence_required")
+            edits = [{"find": item["find"], "text": item["text"], "evidence_ids": item["evidence_ids"]} for item in chosen]
+            try:
+                require_evidence(db, project_id, [EvidencedEdit(text=e["text"], evidence_ids=e["evidence_ids"]) for e in edits])
+            except ValueError:
+                raise ServiceError("evidence_required") from None
+            base_id = payload.get("base_revision_id")
+            base = db.scalar(select(DocumentRevision.content_markdown).where(
+                DocumentRevision.project_id == project_id, DocumentRevision.id == UUID(base_id))) if base_id else None
+            if base is None:
+                base = db.scalar(select(CVRevisionText.text).where(CVRevisionText.cv_revision_id == run.cv_revision_id))
+            if base is None:
+                raise ServiceError("document_source_unavailable")
+            text, applied, spliced = apply_gated(
+                base, edits, fact_claims(db, project_id, {UUID(i) for e in edits for i in e["evidence_ids"]}))
+            if spliced:
+                raise ServiceError("evidence_required")
+            if not applied:
+                raise ServiceError("tailor_nothing_to_apply")
+            document = live_tailored_document(db, project_id, run.job_revision_id)
+            title = f"CV — {(run.input_snapshot.get('job') or {}).get('title', 'job')}"[:300]
+            if document is None:
+                busy = db.scalar(select(func.count()).select_from(Run).where(
+                    Run.project_id == project_id, Run.job_revision_id == run.job_revision_id,
+                    Run.status.in_(("queued", "running", "waiting_approval")),
+                    or_(Run.operation == "tailor_cv", (Run.operation == "export_document")
+                        & (Run.input_snapshot["export_document_type"].as_string() == "cv"))))
+                if busy:
+                    raise ServiceError("document_busy")
+                return self._queue_export(db, actor, run, None, "pdf", text, now, title=title)
+            document_id = document.id
+        return self._submit_export_sync(actor, project_id, document_id, DocumentEdit(content_markdown=text, format="pdf"))
 
     async def submit_profile(self, actor: Actor, project_id: UUID, cv_id: UUID) -> RunView | None:
         """Owner-only: queue a non-LLM run that stores the CV's skill names; None when already profiled."""
@@ -744,7 +856,7 @@ class RunService:
             if exc.code != "forbidden":
                 raise
             return run_view(run).model_copy(
-                update={"evaluation_result": None, "result_file_ids": ()}
+                update={"evaluation_result": None, "result_file_ids": (), "result_payload": None}
             )
         job_removed = db.scalar(
             select(JobRevision.removed_at).where(

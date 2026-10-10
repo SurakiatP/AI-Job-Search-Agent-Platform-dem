@@ -44,7 +44,8 @@
   "capability": {
     "resultsRead": "Read generated results (may contain personal information)",
     "jobsEvaluate": "Evaluate supplied job postings",
-    "documentsDraft": "Draft application documents"
+    "documentsDraft": "Draft application documents",
+    "cvTailor": "Tailor CV to a job"
   },
   "expiresAfter": "Token expires after",
   "createGrant": "Create project token",

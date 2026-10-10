@@ -42,5 +42,14 @@ SKILLS: tuple[Skill, ...] = (
         examples=("Draft application documents for this job",),
         input_model=ProtocolJobInput,
     ),
+    Skill(
+        id="tailor_cv",
+        name="Tailor CV",
+        description="Tailor the current Project CV to one supplied job posting or same-Project job revision using only experience-bank evidence; produces a draft CV revision.",
+        capability="cv:tailor",
+        tags=("cv", "tailoring"),
+        examples=("Tailor my CV for this job",),
+        input_model=ProtocolJobInput,
+    ),
 )
 SKILL_BY_ID: dict[str, Skill] = {skill.id: skill for skill in SKILLS}

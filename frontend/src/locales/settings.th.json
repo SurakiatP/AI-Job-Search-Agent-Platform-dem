@@ -44,7 +44,8 @@
   "capability": {
     "resultsRead": "อ่านผลลัพธ์ที่สร้างขึ้น (อาจมีข้อมูลส่วนบุคคล)",
     "jobsEvaluate": "ประเมินประกาศงานที่ระบุ",
-    "documentsDraft": "ร่างเอกสารสมัครงาน"
+    "documentsDraft": "ร่างเอกสารสมัครงาน",
+    "cvTailor": "ปรับ CV ให้เข้ากับงาน"
   },
   "expiresAfter": "โทเค็นหมดอายุใน",
   "createGrant": "สร้างโทเค็นโปรเจกต์",

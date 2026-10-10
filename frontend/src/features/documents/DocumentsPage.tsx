@@ -28,8 +28,8 @@ type SessionItem = { id: string };
 type DocType = DocumentItem['document_type'];
 
 const copy = {
-  th: { all: 'ทั้งหมด', filter: 'กรองตามประเภท', empty: 'ไม่มีเอกสารในประเภทนี้', evaluate: 'ไปที่หน้าประเมิน', back: 'กลับไปหน้าเอกสาร', type: 'ประเภท', created: 'สร้างเมื่อ', revisions: 'ประวัติฉบับ', current: 'ฉบับปัจจุบัน', metadata: 'รายละเอียด', downloadLatest: 'ดาวน์โหลดฉบับล่าสุด', requestChanges: 'ขอแก้ไข', sourceJob: 'งานต้นทาง', sourceSession: 'เซสชันต้นทาง', sessionDeleted: 'เซสชันถูกลบแล้ว', trash: 'ถังขยะ', trashed: 'ย้ายไปถังขยะแล้ว', undo: 'เลิกทำ', trashFailed: 'ย้ายไปถังขยะไม่สำเร็จ ลองอีกครั้ง', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', inTrash: 'เอกสารนี้อยู่ในถังขยะ', restore: 'กู้คืน', deleteForever: 'ลบถาวร', edit: 'แก้ไข', editTab: 'แก้ไข', previewTab: 'ดูตัวอย่าง', save: 'บันทึก', cancel: 'ยกเลิก', discard: 'ทิ้งการแก้ไขที่ยังไม่บันทึกหรือไม่?', generating: 'กำลังสร้างไฟล์…', manual: 'แก้เอง', ai: 'AI', editor: 'แก้ไขเอกสาร', retry: 'ลองบันทึกอีกครั้ง', exportFailed: 'สร้างไฟล์ไม่สำเร็จ', saveFailed: 'บันทึกไม่สำเร็จ ลองอีกครั้ง', busyDoc: 'มีงานของเอกสารนี้กำลังทำอยู่ ลองใหม่ภายหลัง', noSource: 'เอกสารนี้ยังไม่มีต้นฉบับสำหรับสร้างไฟล์ ไม่สามารถบันทึกการแก้ไขได้', queueFull: 'คิวงานเต็ม ลองใหม่ภายหลัง', tooLong: 'เนื้อหายาวเกินไปหรือว่างเปล่า' },
-  en: { all: 'All', filter: 'Filter by type', empty: 'No documents of this type', evaluate: 'Go to Evaluate', back: 'Back to documents', type: 'Type', created: 'Created', revisions: 'Revisions', current: 'Current', metadata: 'Details', downloadLatest: 'Download latest', requestChanges: 'Request changes', sourceJob: 'Source job', sourceSession: 'Source session', sessionDeleted: 'Session deleted', trash: 'Trash', trashed: 'Moved to trash', undo: 'Undo', trashFailed: 'Could not move to trash. Try again.', undoFailed: 'Could not restore. Try again.', inTrash: 'This document is in the trash', restore: 'Restore', deleteForever: 'Delete permanently', edit: 'Edit', editTab: 'Edit', previewTab: 'Preview', save: 'Save', cancel: 'Cancel', discard: 'Discard unsaved changes?', generating: 'Generating file…', manual: 'Edited by you', ai: 'AI', editor: 'Edit document', retry: 'Try saving again', exportFailed: 'Could not generate the file', saveFailed: 'Could not save. Try again.', busyDoc: 'A task for this document is running. Try again later.', noSource: 'This document has no source to build a file from, so edits cannot be saved.', queueFull: 'The job queue is full. Try again later.', tooLong: 'The content is empty or too long' },
+  th: { all: 'ทั้งหมด', filter: 'กรองตามประเภท', empty: 'ไม่มีเอกสารในประเภทนี้', evaluate: 'ไปที่หน้าประเมิน', back: 'กลับไปหน้าเอกสาร', type: 'ประเภท', created: 'สร้างเมื่อ', revisions: 'ประวัติฉบับ', current: 'ฉบับปัจจุบัน', metadata: 'รายละเอียด', downloadLatest: 'ดาวน์โหลดฉบับล่าสุด', requestChanges: 'ขอแก้ไข', sourceJob: 'งานต้นทาง', sourceSession: 'เซสชันต้นทาง', sessionDeleted: 'เซสชันถูกลบแล้ว', trash: 'ถังขยะ', trashed: 'ย้ายไปถังขยะแล้ว', undo: 'เลิกทำ', trashFailed: 'ย้ายไปถังขยะไม่สำเร็จ ลองอีกครั้ง', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', inTrash: 'เอกสารนี้อยู่ในถังขยะ', restore: 'กู้คืน', deleteForever: 'ลบถาวร', edit: 'แก้ไข', editTab: 'แก้ไข', previewTab: 'ดูตัวอย่าง', save: 'บันทึก', cancel: 'ยกเลิก', discard: 'ทิ้งการแก้ไขที่ยังไม่บันทึกหรือไม่?', generating: 'กำลังสร้างไฟล์…', manual: 'แก้เอง', ai: 'AI', editor: 'แก้ไขเอกสาร', retry: 'ลองบันทึกอีกครั้ง', exportFailed: 'สร้างไฟล์ไม่สำเร็จ', saveFailed: 'บันทึกไม่สำเร็จ ลองอีกครั้ง', busyDoc: 'มีงานของเอกสารนี้กำลังทำอยู่ ลองใหม่ภายหลัง', restoreVersion: 'กู้คืนเวอร์ชันนี้', restoring: 'กำลังกู้คืน…', restored: 'กู้คืนแล้ว เวอร์ชันใหม่ถูกสร้างขึ้น', restoreFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', promote: 'ใช้เป็น CV หลัก', promoteSent: 'ส่งคำขอแล้ว ไปอนุมัติที่ Agent Console', promoteFailed: 'ส่งคำขอไม่สำเร็จ ลองอีกครั้ง', openApprovals: 'เปิดกล่องคำขออนุมัติ', noSource: 'เอกสารนี้ยังไม่มีต้นฉบับสำหรับสร้างไฟล์ ไม่สามารถบันทึกการแก้ไขได้', queueFull: 'คิวงานเต็ม ลองใหม่ภายหลัง', tooLong: 'เนื้อหายาวเกินไปหรือว่างเปล่า' },
+  en: { all: 'All', filter: 'Filter by type', empty: 'No documents of this type', evaluate: 'Go to Evaluate', back: 'Back to documents', type: 'Type', created: 'Created', revisions: 'Revisions', current: 'Current', metadata: 'Details', downloadLatest: 'Download latest', requestChanges: 'Request changes', sourceJob: 'Source job', sourceSession: 'Source session', sessionDeleted: 'Session deleted', trash: 'Trash', trashed: 'Moved to trash', undo: 'Undo', trashFailed: 'Could not move to trash. Try again.', undoFailed: 'Could not restore. Try again.', inTrash: 'This document is in the trash', restore: 'Restore', deleteForever: 'Delete permanently', edit: 'Edit', editTab: 'Edit', previewTab: 'Preview', save: 'Save', cancel: 'Cancel', discard: 'Discard unsaved changes?', generating: 'Generating file…', manual: 'Edited by you', ai: 'AI', editor: 'Edit document', retry: 'Try saving again', exportFailed: 'Could not generate the file', saveFailed: 'Could not save. Try again.', busyDoc: 'A task for this document is running. Try again later.', restoreVersion: 'Restore this version', restoring: 'Restoring…', restored: 'Restored. A new version was created.', restoreFailed: 'Could not restore. Try again.', promote: 'Use as my CV', promoteSent: 'Request sent. Approve it in the Agent Console.', promoteFailed: 'Could not send the request. Try again.', openApprovals: 'Open the approval inbox', noSource: 'This document has no source to build a file from, so edits cannot be saved.', queueFull: 'The job queue is full. Try again later.', tooLong: 'The content is empty or too long' },
 };
 
 const typeIcon: Record<DocType, LucideIcon> = { cv: FileUser, cover_letter: Mail, application_message: MessageSquareText, other: File };
@@ -184,6 +184,8 @@ export function DocumentDetailPage() {
   const stopEditing = () => { setEditing(false); if (params.has('edit')) setParams({}, { replace: true }); };
   const revisions = useResource<DocumentRevision[]>(`/projects/${projectId}/documents/${documentId}/revisions`);
   const cvRevisions = useResource<CVRevision[]>(`/projects/${projectId}/cv`);
+  const [revNote, setRevNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [revBusy, setRevBusy] = useState(false);
   const sessions = useResource<SessionItem[]>(`/projects/${projectId}/sessions`);
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
   if (docs.status === 'loading') return <LoadingState />;
@@ -217,6 +219,25 @@ export function DocumentDetailPage() {
   const requestHref = sessions.status === 'ready' && sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : null;
 
   const canEdit = !isTrashed && preview !== null;
+  const isCv = document.document_type === 'cv' && !isTrashed;
+  const latestCv = [...(cvRevisions.data ?? [])].sort((a, b) => b.revision - a.revision)[0];
+  async function restoreRevision(revisionId: string) {
+    setRevBusy(true); setRevNote(null);
+    try {
+      let run = await sendJson<RunView>(`/projects/${projectId}/documents/${documentId}/revisions/${revisionId}/restore`, 'POST', {});
+      while (run.status === 'queued' || run.status === 'running' || run.status === 'waiting_approval') {
+        await new Promise(resolve => window.setTimeout(resolve, 1500));
+        run = await apiRequest<RunView>(`/projects/${projectId}/runs/${run.id}`);
+      }
+      if (run.status !== 'completed') throw new Error('restore_failed');
+      setRevNote({ ok: true, text: c.restored }); setPickedId(''); docs.reload(); revisions.reload();
+    } catch (caught) { setRevNote({ ok: false, text: caught instanceof ApiError && caught.code === 'document_busy' ? c.busyDoc : c.restoreFailed }); } finally { setRevBusy(false); }
+  }
+  async function promote(revisionId: string) {
+    setRevBusy(true); setRevNote(null);
+    try { await sendJson(`/projects/${projectId}/approvals`, 'POST', { action: 'promote_cv', revision_id: revisionId, expected_cv_revision_id: latestCv?.id }); setRevNote({ ok: true, text: c.promoteSent }); }
+    catch { setRevNote({ ok: false, text: c.promoteFailed }); } finally { setRevBusy(false); }
+  }
 
   return <article className="grid gap-6">
     <PageBack to={`${base}/documents`}>{t('nav.documents')}</PageBack>
@@ -264,6 +285,7 @@ export function DocumentDetailPage() {
         </CardContent></Card>
 
         <Card><CardHeader><CardTitle>{c.revisions}</CardTitle></CardHeader><CardContent>
+          {revNote && <p role={revNote.ok ? 'status' : 'alert'} className={cn('mb-3 text-sm', !revNote.ok && 'text-destructive')}>{revNote.text}{revNote.ok && revNote.text === c.promoteSent && <> <Link className="text-primary hover:underline" to={`${base}/console?tab=approvals`}>{c.openApprovals}</Link></>}</p>}
           <ol className="grid gap-3">{newestFirst.map(({ revision, number, index }) => {
             const sourceRevisionId = revision.source_cv_revision_id;
             const sourceRevision = sourceRevisionId && cvRevisions.status === 'ready'
@@ -277,6 +299,10 @@ export function DocumentDetailPage() {
                 {sourceRevision ? <span data-testid={`source-cv-revision-${number}`}>{t('pages.sourceCVRevision', { revision: sourceRevision.revision, defaultValue: `CV revision ${sourceRevision.revision}` })}</span> : cvRevisions.status === 'loading' && sourceRevisionId ? <span data-testid={`source-cv-lookup-${number}`}>…</span> : <span data-testid="source-cv-unavailable">{t('pages.sourceCVUnavailable', { defaultValue: 'Source CV unavailable' })}{sourceRevisionId && <> · <code className="break-all">{sourceRevisionId}</code></>}</span>}
                 {' '}<Link className="text-primary hover:underline" to={`${base}/profile`}>{t('pages.openCVProfile', { defaultValue: 'Open CV profile' })}</Link>
               </p>
+              {isCv && revision.id && <div className="flex flex-wrap gap-2">
+                {!isCurrent && <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={revBusy} onClick={() => void restoreRevision(revision.id!)}><RotateCcw className="size-4" aria-hidden="true" />{revBusy ? c.restoring : c.restoreVersion}</Button>}
+                {isCurrent && revision.file_id && latestCv && <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={revBusy} onClick={() => void promote(revision.id!)}>{c.promote}</Button>}
+              </div>}
               {revision.file_id && <a className="inline-flex w-fit items-center gap-1.5 text-primary hover:underline" href={downloadUrl(projectId, revision.file_id)}><Download className="size-4" aria-hidden="true" />{t('pages.downloadDocument', { defaultValue: 'Download document' })}</a>}
             </li>;
           })}</ol>

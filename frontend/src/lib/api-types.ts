@@ -82,10 +82,13 @@ export type JobApplicationStatusView = { job_revision_id: string; application_st
 export type ExperienceKind = 'experience' | 'education' | 'skill' | 'certification' | 'project' | 'other';
 export type ExperienceItem = { id: string; kind: ExperienceKind; text: string; role: string | null; organization: string | null; period: string | null; source: 'cv' | 'owner'; source_cv_id: string | null; source_cv_name: string | null; created_at: string };
 export type ExperienceView = { items: ExperienceItem[]; extraction: { run_id: string; status: RunStatus; cv_id: string; summary: { added: number; duplicates: number; rejected: number } | null } | null; provider_configured: boolean };
-export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document' | 'profile_cv' | 'match_jobs' | 'extract_experience';
+export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document' | 'profile_cv' | 'match_jobs' | 'extract_experience' | 'tailor_cv';
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 export type SkillCoverage = { required: string[]; matched: string[]; missing: string[]; ratio: number; method: string };
 export type EvaluationResult = { report_markdown: string; score: number | null; skill_coverage?: SkillCoverage | null };
+export type TailorProposal = { id: number; find: string; text: string; evidence_ids: string[]; status: 'proposed' | 'applied' | 'rejected_by_gate' };
+export type TailorPayload = { kind: 'tailor'; mode: 'autopilot' | 'interactive'; base_revision_id?: string | null; stop_reason?: string | null; rounds?: { round: number; accepted: number; rejected: number; coverage: number | null }[]; proposals?: TailorProposal[]; coverage_before?: number | null; coverage_after?: number | null };
+export type TailorMode = 'autopilot' | 'interactive';
 export type RunView = {
   id: string;
   project_id: string;
@@ -99,6 +102,7 @@ export type RunView = {
   finished_at: string | null;
   retry_of_id: string | null;
   evaluation_result: EvaluationResult | null;
+  result_payload?: TailorPayload | Record<string, unknown> | null;
 };
 export type RunEventData = {
   approval_id: string | null;
