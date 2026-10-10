@@ -113,8 +113,8 @@ class ApprovalService:
             # The project row lock above also serializes the budget count against the approve below.
             limit = db.scalar(select(ProjectPreference.submit_autopilot_daily_limit).where(
                 ProjectPreference.project_id == project_id))
-            if limit is None:
-                return view
+            if limit is None or not self._creator_is_current(db, run, now):
+                return view  # no autopilot: stays waiting, goes stale under the usual rules
             pack = db.scalar(select(Run.result_payload).where(Run.project_id == project_id, Run.id == request.target_run_id))
             if not isinstance(pack, dict) or pack.get("state") != "ready" or pack.get("missing_required"):
                 return view

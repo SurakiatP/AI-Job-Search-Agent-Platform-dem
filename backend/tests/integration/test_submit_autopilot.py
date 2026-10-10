@@ -1,14 +1,21 @@
 """FR-A05: submit autopilot with a daily budget (records applied only; the owner still submits on the company site)."""
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from alembic import command
 from sqlalchemy import select, text
 from sqlalchemy.orm import sessionmaker
 from uuid import UUID, uuid4
 
+from datetime import datetime, timezone
+
+from helpers import grant as make_grant
 from helpers import project as make_project
-from job_search_platform.db.models import Approval, RunEvent
+from job_search_platform.db.models import Approval, Run, RunEvent
+from job_search_platform.services.contracts import RunRequest
+from job_search_platform.workers.queue import PostgresRunQueue
 from test_agent_applications import (
     PREFIX, _PackRuntime, _actor, _approvals, _decide, _good, _post, _prepare, _ready_pack, _run, _status,
 )
@@ -95,6 +102,28 @@ def test_parked_pack_is_never_submitted(api_context):
     _limit(ctx, csrf, pid, 5)
     assert _post(ctx, csrf, pid, session, "apply_submit", "s1").json()["code"] == "apply_pack_required"
     assert _approvals(ctx, pid) == []
+
+
+@pytest.mark.integration
+def test_revoked_creator_grant_blocks_autopilot(api_context):
+    ctx = api_context
+    csrf, pid, session, _, _, _ = _ready_pack(ctx)
+    _limit(ctx, csrf, pid, 3)
+    with ctx.sessions.begin() as db:
+        actor, g = make_grant(db, UUID(pid), capabilities=("applications:apply", "results:read"))
+    run = asyncio.run(ctx.client.app.state.services.runs.submit(actor, UUID(pid), RunRequest(
+        session_id=UUID(session["id"]), operation="apply_submit", cv_revision_id=UUID(session["cv_revision_id"]),
+        job_revision_id=UUID(session["job_revision_id"]), output_language="en", idempotency_key="g1")))
+    run_id = str(run.id)
+    claimed = PostgresRunQueue(ctx.sessions).claim_next("w1")
+    assert claimed is not None and str(claimed.id) == run_id
+    with ctx.sessions.begin() as db:
+        g_row = db.get(type(g), g.id)
+        g_row.revoked_at = datetime.now(timezone.utc)
+    ctx.client.app.state.services.approvals.request_submission(claimed.id, "w1")
+    (approval,) = _approvals(ctx, pid)
+    assert approval["decided_by"] is None and approval["consumed_at"] is None
+    assert _run(ctx, run_id).status == "waiting_approval"
 
 
 @pytest.mark.integration
