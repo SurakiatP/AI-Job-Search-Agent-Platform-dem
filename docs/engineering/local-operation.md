@@ -61,6 +61,16 @@ In Settings, select OpenAI, Anthropic, or OpenRouter, choose a model, enter the 
 
 Create a project, add a CV and a job posting you supplied, and start the evaluation/draft workflow. Review the evaluation and every generated document yourself. Application submission remains manual. In Saved jobs, the owner can mark a posting as applied or return it to saved. This persisted status is separate from an agent Run status; the button only records the owner’s action and does not send an application.
 
+## LiteLLM gateway
+
+`scripts/local_infra.py start` also runs the LiteLLM gateway (`litellm`, its own `litellm-db` Postgres and a one-shot `litellm-seed`). It listens on `127.0.0.1:4000` only (override with `CORE02_LITELLM_PORT`); the UI is at `http://127.0.0.1:4000/ui` (user `owner`).
+
+- `OPENROUTER_API_KEY` is read from the environment of the `start` command (for example the owner's `.env`, exported) and reaches only the LiteLLM containers. Without it LiteLLM still starts and the seed logs `openrouter_key_missing` and skips model creation; export the key and run `start` again.
+- `start` generates `litellm-master-key`, `litellm-salt-key`, `litellm-db-password` and `litellm-ui-password` in `CORE02_PRIVATE_DIR` (mode 0600, never regenerated). Do not change the salt key after models are stored.
+- The seed adds model `ai-analyze` (`openrouter/z-ai/glm-5.3-flash`) if absent and creates the `job-search-app` virtual key (model `ai-analyze`, pass-through `/jev/decisions`), written to `CORE02_PRIVATE_DIR/litellm_app_key` (0600; empty until seeded). Manage models afterwards in the UI.
+- `/jev/decisions` forwards to the OpenRouter decisions API with the server-side key. The app uses `AI_DECISION_MODEL` (default `typesafe/jev-1.13`) in the request body.
+- `status` lists `litellm`, `litellm-db` and `litellm-seed` with their health.
+
 ## Optional LAN project sharing
 
 Sharing is opt-in and starts a second listener on port `8001`. Bind it to a concrete LAN IP on the owner's machine; do not use `0.0.0.0` or `::`. The owner app remains on loopback port `8000`.

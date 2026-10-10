@@ -23,7 +23,17 @@ GOSU_COMMIT = "6456aaa0f3c854d199d0f037f068eb97515b7513"
 DEFAULT_PRIVATE_DIR = Path.home() / ".local" / "share" / "job-search-platform" / "core02"
 DEFAULT_MINIO_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "minio"
 DEFAULT_GOSU_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "gosu"
-SECRET_NAMES = ("postgres-user", "postgres-password", "minio-access-key", "minio-secret-key")
+SECRET_NAMES = (
+    "postgres-user",
+    "postgres-password",
+    "minio-access-key",
+    "minio-secret-key",
+    "litellm-master-key",
+    "litellm-salt-key",
+    "litellm-db-password",
+    "litellm-ui-password",
+)
+APP_KEY_FILE = "litellm_app_key"
 
 
 class ConfigurationError(ValueError):
@@ -144,6 +154,10 @@ def ensure_credentials(private_dir: Path) -> None:
             secrets.token_urlsafe(40),
             secrets.token_hex(20),
             secrets.token_urlsafe(40),
+            "sk-" + secrets.token_hex(24),
+            secrets.token_hex(32),
+            secrets.token_urlsafe(40),
+            secrets.token_urlsafe(24),
         ),
     ):
         path = private_dir / name
@@ -155,6 +169,12 @@ def ensure_credentials(private_dir: Path) -> None:
             output.write("\n")
             output.flush()
             os.fsync(output.fileno())
+    # The seed container writes the app key into this bind-mounted file; it must exist first.
+    app_key = private_dir / APP_KEY_FILE
+    if app_key.exists() or app_key.is_symlink():
+        _check_secret_file(app_key)
+    else:
+        os.close(os.open(app_key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600))
 
 
 def validate_minio_source(path: Path) -> Path:
@@ -200,6 +220,8 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     environment["GOSU_SOURCE_COMMIT"] = GOSU_COMMIT
     environment.setdefault("CORE02_POSTGRES_PORT", "55432")
     environment.setdefault("CORE02_MINIO_PORT", "59000")
+    environment.setdefault("CORE02_LITELLM_PORT", "4000")
+    environment["OPENROUTER_API_KEY"] = os.environ.get("OPENROUTER_API_KEY", "")  # reaches only litellm and its seed
     return environment
 
 

@@ -61,3 +61,8 @@ MinIO `GO-2026-5932` remains UNKNOWN in both Go inventory and image reports. Par
 - The MinIO module overlay gains `golang.org/x/net` v0.60.0 (CVE-2026-78669), together with the x/crypto, x/sync, x/sys, x/term, x/mod and x/text releases it requires. The provenance hashes are refreshed.
 - A full `security_scan.py` run found 0 High/Critical across all 11 scopes. Evidence: `~/.cache/job-search-platform/security/20261010T133017.497342Z`.
 - One UNKNOWN finding remains visible: GO-2026-5932. It covers the unmaintained `golang.org/x/crypto/openpgp` package inside MinIO, and there is no fix version.
+
+## LiteLLM gateway image (2026-10-10)
+
+- `ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a` (local image ID `sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a`), pinned in `infra/compose.yaml` for `litellm` and `litellm-seed`. `litellm-db` reuses the project PostgreSQL image.
+- `trivy image --scanners vuln --severity HIGH,CRITICAL` (Trivy 0.75.0): 0 High/Critical findings. Full `security_scan.py` was not re-run for this change.

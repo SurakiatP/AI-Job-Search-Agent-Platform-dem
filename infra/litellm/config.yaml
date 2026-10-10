@@ -1,0 +1,11 @@
+# Models live in the database (store_model_in_db); seed.py adds the first one.
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  store_model_in_db: true
+  pass_through_endpoints:
+    - path: /jev/decisions
+      target: https://openrouter.ai/api/alpha/decisions
+      headers:
+        Authorization: "Bearer os.environ/OPENROUTER_API_KEY"
+      auth: true

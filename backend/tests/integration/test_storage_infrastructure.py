@@ -140,3 +140,27 @@ def test_real_postgres_minio_checksum_and_restart_proof() -> None:
     assert '"object_checksum": "verified"' in result.stdout
     assert '"restart_persistence": "verified"' in result.stdout
     assert '"anonymous_access": "denied"' in result.stdout
+
+
+def test_ensure_credentials_generates_litellm_secrets_and_app_key_file(tmp_path: Path) -> None:
+    local_infra = _load_local_infra()
+    private_dir = tmp_path / "private"
+    private_dir.mkdir(mode=0o700)
+
+    local_infra.ensure_credentials(private_dir)
+    master = (private_dir / "litellm-master-key").read_text().strip()
+    for name in (*local_infra.SECRET_NAMES, local_infra.APP_KEY_FILE):
+        assert (private_dir / name).stat().st_mode & 0o777 == 0o600
+    assert master.startswith("sk-")
+    assert (private_dir / local_infra.APP_KEY_FILE).read_text() == ""
+
+    local_infra.ensure_credentials(private_dir)  # idempotent: nothing is regenerated
+    assert (private_dir / "litellm-master-key").read_text().strip() == master
+
+
+def test_compose_environment_passes_openrouter_key_only_when_set(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    local_infra = _load_local_infra()
+    monkeypatch.setenv("OPENROUTER_API_KEY", "fake-key")
+    assert local_infra.compose_environment(tmp_path, tmp_path)["OPENROUTER_API_KEY"] == "fake-key"
+    monkeypatch.delenv("OPENROUTER_API_KEY")
+    assert local_infra.compose_environment(tmp_path, tmp_path)["OPENROUTER_API_KEY"] == ""
