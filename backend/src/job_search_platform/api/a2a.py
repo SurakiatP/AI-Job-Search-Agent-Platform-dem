@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Sequence
 from urllib.parse import urlsplit
 from uuid import UUID, uuid5, NAMESPACE_URL
 
@@ -50,17 +50,10 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from job_search_platform.api.dependencies import Services
 from job_search_platform.services.contracts import Actor, RunView
 from job_search_platform.services.errors import ServiceError
-from job_search_platform.services.protocol_runs import ProtocolJobInput, ProtocolRuns
+from job_search_platform.services.protocol_runs import ProtocolRuns
+from job_search_platform.services.skills import SKILL_BY_ID, SKILLS, Skill
 
 _CARD_PATH = "/.well-known/agent-card.json"
-_CAPABILITY_FOR_SKILL = {
-    "evaluate_job": "jobs:evaluate",
-    "draft_documents": "documents:draft",
-}
-_OPERATION_FOR_SKILL = {
-    "evaluate_job": "evaluate_job",
-    "draft_documents": "draft_documents",
-}
 _MAX_ARTIFACT_BYTES = 200_000
 
 
@@ -212,10 +205,9 @@ class _A2APayloadLogFilter(logging.Filter):
 
 
 class _PlatformRequestHandler(RequestHandler):
-    def __init__(self, services: Services, card: AgentCard, *, base_url: str) -> None:
+    def __init__(self, services: Services, *, base_url: str) -> None:
         self.services = services
         self.intake = ProtocolRuns(services.sessions)
-        self.card = card
         self.base_url = base_url.rstrip("/")
 
     async def _actor(self, context: ServerCallContext, capability: str | None = None) -> Actor:
@@ -337,18 +329,18 @@ class _PlatformRequestHandler(RequestHandler):
             raise A2AError("request_rejected")
         try:
             metadata = MessageToDict(message.metadata, preserving_proto_field_name=True) if message.HasField("metadata") else {}
-            if set(metadata) != {"skill_id"} or metadata["skill_id"] not in _CAPABILITY_FOR_SKILL:
+            if set(metadata) != {"skill_id"} or metadata["skill_id"] not in SKILL_BY_ID:
                 raise ValueError("invalid skill")
-            skill = metadata["skill_id"]
-            actor = await self._actor(context, _CAPABILITY_FOR_SKILL[skill])
+            skill = SKILL_BY_ID[metadata["skill_id"]]
+            actor = await self._actor(context, skill.capability)
             payload = MessageToDict(message.parts[0].data, preserving_proto_field_name=True)
-            request = ProtocolJobInput.model_validate(payload)
+            request = skill.input_model.model_validate(payload)
         except A2AError:
             raise
         except Exception:
             raise A2AError("request_rejected") from None
         try:
-            run = await self.intake.submit(actor, _OPERATION_FOR_SKILL[skill], request)
+            run = await self.intake.submit(actor, skill.id, request)
             return self._task(run)
         except ServiceError as exc:
             raise A2AError("request_rejected") from None
@@ -414,11 +406,13 @@ class _PlatformRequestHandler(RequestHandler):
         raise PushNotificationNotSupportedError("Push notifications are not supported")
 
     async def on_get_extended_agent_card(self, params: GetExtendedAgentCardRequest, context: ServerCallContext) -> AgentCard:
-        await self._actor(context)
-        return self.card
+        actor = await self._actor(context)
+        # grants.authenticate re-reads the grant row, so capabilities are current (FR-P05).
+        return _agent_card(self.base_url, [skill for skill in SKILLS if skill.capability in actor.capabilities])
 
 
-def _agent_card(base_url: str) -> AgentCard:
+def _agent_card(base_url: str, skills: Sequence[Skill]) -> AgentCard:
+    security = [{"schemes": {"bearerAuth": {"list": []}}}]
     return _protobuf(
         AgentCard,
         {
@@ -429,7 +423,7 @@ def _agent_card(base_url: str) -> AgentCard:
                 {"url": base_url, "protocolBinding": "HTTP+JSON", "protocolVersion": "1.0"},
             ],
             "version": "0.1.0",
-            "capabilities": {"streaming": False, "pushNotifications": False},
+            "capabilities": {"streaming": False, "pushNotifications": False, "extendedAgentCard": True},
             "securitySchemes": {
                 "bearerAuth": {
                     "httpAuthSecurityScheme": {
@@ -438,30 +432,21 @@ def _agent_card(base_url: str) -> AgentCard:
                     }
                 }
             },
-            "securityRequirements": [{"schemes": {"bearerAuth": {"list": []}}}],
+            "securityRequirements": security,
             "defaultInputModes": ["application/json"],
             "defaultOutputModes": ["application/json", "text/markdown"],
             "skills": [
                 {
-                    "id": "evaluate_job",
-                    "name": "Evaluate job",
-                    "description": "Create a durable job evaluation run using the current Project CV and supplied or same-Project job revision.",
-                    "tags": ["jobs", "evaluation"],
-                    "examples": ["Evaluate this job posting"],
+                    "id": skill.id,
+                    "name": skill.name,
+                    "description": skill.description,
+                    "tags": list(skill.tags),
+                    "examples": list(skill.examples),
                     "inputModes": ["application/json"],
                     "outputModes": ["application/json"],
-                    "securityRequirements": [{"schemes": {"bearerAuth": {"list": []}}}],
-                },
-                {
-                    "id": "draft_documents",
-                    "name": "Draft application documents",
-                    "description": "Create a durable document drafting run using the current Project CV and supplied or same-Project job revision.",
-                    "tags": ["documents", "drafting"],
-                    "examples": ["Draft application documents for this job"],
-                    "inputModes": ["application/json"],
-                    "outputModes": ["application/json"],
-                    "securityRequirements": [{"schemes": {"bearerAuth": {"list": []}}}],
-                },
+                    "securityRequirements": security,
+                }
+                for skill in skills
             ],
         },
     )
@@ -494,8 +479,8 @@ def create_a2a_app(services: Services, *, base_url: str, allowed_hosts: list[str
         "a2a.server.routes.rest_dispatcher",
     ):
         logging.getLogger(logger_name).addFilter(_A2APayloadLogFilter())
-    card = _agent_card(normalized_base_url)
-    handler = _PlatformRequestHandler(services, card, base_url=normalized_base_url)
+    card = _agent_card(normalized_base_url, SKILLS)
+    handler = _PlatformRequestHandler(services, base_url=normalized_base_url)
     context_builder = _ContextBuilder()
     app = FastAPI(title="Job Search Platform A2A", docs_url=None, redoc_url=None, openapi_url=None)
     rest_routes = [

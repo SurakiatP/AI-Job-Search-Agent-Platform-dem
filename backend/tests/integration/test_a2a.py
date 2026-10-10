@@ -181,6 +181,7 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
         assert card_response.status_code == 200
         card = card_response.json()
         assert [skill["id"] for skill in card["skills"]] == ["evaluate_job", "draft_documents"]
+        assert card["capabilities"]["extendedAgentCard"] is True
         assert "extract_experience" not in json.dumps(card)
         assert {interface["protocolBinding"] for interface in card["supportedInterfaces"]} == {
             "JSONRPC",
@@ -550,3 +551,82 @@ async def test_official_a2a_cancel_waits_for_real_native_cleanup(api_context, un
         await http_client.aclose()
         await _stop_a2a(server, server_task)
         shutil.rmtree(runtime_root, ignore_errors=True)
+
+
+async def _extended_card(base_url: str, token: str) -> httpx.Response:
+    async with httpx.AsyncClient() as client:
+        return await client.post(
+            f"{base_url}/",
+            json={"jsonrpc": "2.0", "id": 1, "method": "GetExtendedAgentCard", "params": {}},
+            headers={"Authorization": f"Bearer {token}", "A2A-Version": "1.0"},
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_extended_agent_card_filters_by_grant_capabilities(api_context, unused_tcp_port):
+    csrf, project_id, evaluate_grant = await asyncio.to_thread(
+        _project_and_grant, api_context, ["jobs:evaluate"]
+    )
+    read_grant = await asyncio.to_thread(_grant, api_context, project_id, csrf, ["results:read"])
+    full_grant = await asyncio.to_thread(
+        _grant, api_context, project_id, csrf, ["results:read", "jobs:evaluate", "documents:draft"]
+    )
+    services = api_context.client.app.state.services
+    base_url, _app, server, server_task = await _start_a2a(services, unused_tcp_port)
+    try:
+        cards = {}
+        for label, grant in (("evaluate", evaluate_grant), ("read", read_grant), ("full", full_grant)):
+            response = await _extended_card(base_url, grant["token"])
+            assert response.status_code == 200, response.text
+            cards[label] = response.json()["result"]
+        assert [skill["id"] for skill in cards["evaluate"]["skills"]] == ["evaluate_job"]
+        assert cards["read"].get("skills", []) == []
+        assert [skill["id"] for skill in cards["full"]["skills"]] == ["evaluate_job", "draft_documents"]
+        assert "extract_experience" not in json.dumps(cards)
+
+        revoked = api_context.client.delete(
+            f"/api/v1/projects/{project_id}/grants/{evaluate_grant['id']}", headers=_write_headers(csrf)
+        )
+        assert revoked.status_code == 204
+        denied = await _extended_card(base_url, evaluate_grant["token"])
+        assert denied.status_code == 401
+    finally:
+        await _stop_a2a(server, server_task)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_a2a_rejects_owner_only_skill_id(api_context, unused_tcp_port):
+    csrf, project_id, grant = await asyncio.to_thread(
+        _project_and_grant, api_context, ["results:read", "jobs:evaluate", "documents:draft"]
+    )
+    services = api_context.client.app.state.services
+    base_url, _app, server, server_task = await _start_a2a(services, unused_tcp_port)
+    try:
+        with api_context.sessions() as db:
+            before = len(db.scalars(select(Run).where(Run.project_id == project_id)).all())
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{base_url}/",
+                json={
+                    "jsonrpc": "2.0", "id": 1, "method": "SendMessage",
+                    "params": {"message": {
+                        "role": "ROLE_USER",
+                        "metadata": {"skill_id": "extract_experience"},
+                        "parts": [{"data": {
+                            "job": {"title": "Synthetic", "description": "Synthetic input."},
+                            "output_language": "en",
+                            "idempotency_key": "a2a-owner-only-01",
+                        }}],
+                    }},
+                },
+                headers={"Authorization": f"Bearer {grant['token']}", "A2A-Version": "1.0"},
+            )
+        body = response.json()
+        assert "result" not in body and "error" in body
+        with api_context.sessions() as db:
+            after = len(db.scalars(select(Run).where(Run.project_id == project_id)).all())
+        assert after == before
+    finally:
+        await _stop_a2a(server, server_task)
