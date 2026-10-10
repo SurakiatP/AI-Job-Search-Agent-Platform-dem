@@ -86,3 +86,15 @@ def test_one_word_answers_are_checked_against_cited_facts():  # I1
     for text in ("Google", "Current employer: Google"):
         assert not _answer(text, "Wrote services at Acme")
     assert _answer("Google", "Worked at Google") and _answer("Current employer: Google", "Worked at Google")
+
+
+
+def test_short_acronyms_are_names_unless_allowlisted():  # I2
+    assert _names("Worked at KBTG and PTT and AIS and LINE") == {f"name:{n}" for n in ("kbtg", "ptt", "ais", "line")}
+    assert _names("Built REST APIs and ETL on GCP, SaaS for B2B") == set()
+    fid = uuid4()
+    edits = [{"find": "Engineer", "text": "Software Engineer at SCB", "evidence_ids": [str(fid)]}]
+    assert apply_gated("Engineer", edits, {fid: claims("Wrote services")})[2] == edits
+    for text in ("SCB", "KBTG"):
+        assert not _answer(text, "Wrote services at Acme")
+    assert _answer("SCB", "Engineer at SCB")
