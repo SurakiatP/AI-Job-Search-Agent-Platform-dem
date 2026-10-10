@@ -34,7 +34,7 @@ export function RunTimeline({ locale, run, events, cancellationPending }: { loca
         {events.map((event, index) => <li key={`${run.id}:${event.sequence}`} className="flex items-start gap-3 text-sm">
           <span aria-hidden="true" className={cn('mt-2 size-2 shrink-0 rounded-full', index === events.length - 1 ? 'bg-primary ring-4 ring-primary/20' : 'bg-muted-foreground/40')} />
           <span className={cn('min-w-0 break-words', index === events.length - 1 ? 'font-medium' : 'text-muted-foreground')}>
-            {event.data.step ?? (event.data.message_key ? translate(event.data.message_key, { defaultValue: locale === 'th' ? 'อัปเดตสถานะ' : 'Status updated' }) : event.event_type)}
+            {event.event_type === 'run_resumed' ? (locale === 'th' ? 'ทำต่อหลังเซิร์ฟเวอร์รีสตาร์ท' : 'Resumed after a server restart') : event.data.step === 'llm_round' ? (locale === 'th' ? 'รอบ LLM' : 'LLM round') : event.data.step ?? (event.data.message_key ? translate(event.data.message_key, { defaultValue: locale === 'th' ? 'อัปเดตสถานะ' : 'Status updated' }) : event.event_type)}
           </span>
         </li>)}
       </ol>}

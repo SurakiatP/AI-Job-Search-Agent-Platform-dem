@@ -13,7 +13,7 @@ export type RunRequest = {
   questions?: ApplyQuestion[];
 };
 export type ApplyQuestion = { id: string; label: string; required: boolean; kind: 'text' | 'choice' | 'boolean'; choices?: string[] };
-export type ApplyPack = { kind: 'apply_pack'; state: 'ready' | 'parked'; answers: { question_id: string; label?: string; answer: string | boolean | null; evidence_ids: string[]; reason?: string }[]; missing_required: string[] };
+export type ApplyPack = { kind: 'apply_pack'; state: 'ready' | 'parked'; answers: { question_id: string; label?: string; answer: string | boolean | null; evidence_ids: string[]; reason?: string; source?: 'owner' | null }[]; missing_required: string[] };
 
 export type ApiErrorBody = {
   code: string;
@@ -106,7 +106,10 @@ export type RunView = {
   retry_of_id: string | null;
   evaluation_result: EvaluationResult | null;
   result_payload?: TailorPayload | ApplyPack | Record<string, unknown> | null;
+  requester?: RunRequester | null;
 };
+export type RunRequester = { kind: 'owner' | 'agent'; grant_id?: string | null; label?: string | null };
+export type RunInputBody = { answers: Record<string, string | boolean> };
 export type RunEventData = {
   approval_id: string | null;
   step: string | null;
@@ -114,6 +117,12 @@ export type RunEventData = {
   artifact_ids: string[];
   message_key: string | null;
   progress_percent: number | null;
+  round?: number | null;
+  coverage?: number | null;
+  model?: string | null;
+  latency_ms?: number | null;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
 };
 export type PublicEventPayload = RunEventData;
 export type RunEventView = {
