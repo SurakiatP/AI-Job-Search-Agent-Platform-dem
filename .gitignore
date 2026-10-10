@@ -1,0 +1,32 @@
+# Python virtual environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Python build and test output
+build/
+dist/
+*.egg-info/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local secrets (keep example configuration)
+.env
+.env.*
+!.env.example
+!.env.*.example
+/CREDENTIALS.md
+
+# macOS
+.DS_Store
+
+# Local AI integration memory
+/.integration-hub/
+/AGENTS.md
+/CLAUDE.md
+/DESIGN.md
