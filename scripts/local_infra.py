@@ -23,16 +23,32 @@ GOSU_COMMIT = "6456aaa0f3c854d199d0f037f068eb97515b7513"
 DEFAULT_PRIVATE_DIR = Path(os.environ.get("CORE02_PRIVATE_DIR") or Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003")
 DEFAULT_MINIO_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "minio"
 DEFAULT_GOSU_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "gosu"
-SECRET_NAMES = (
-    "postgres-user",
-    "postgres-password",
-    "minio-access-key",
-    "minio-secret-key",
-    "litellm-master-key",
-    "litellm-salt-key",
-    "litellm-db-password",
-    "litellm-ui-password",
-)
+# Name -> generator. Values embedded in URLs (DB, ClickHouse, Redis, MinIO) stay hex.
+SECRETS = {
+    "postgres-user": lambda: secrets.token_hex(20),
+    "postgres-password": lambda: secrets.token_urlsafe(40),
+    "minio-access-key": lambda: secrets.token_hex(20),
+    "minio-secret-key": lambda: secrets.token_urlsafe(40),
+    "litellm-master-key": lambda: "sk-" + secrets.token_hex(24),
+    "litellm-salt-key": lambda: secrets.token_hex(32),
+    "litellm-db-password": lambda: secrets.token_urlsafe(40),
+    "litellm-ui-password": lambda: secrets.token_urlsafe(24),
+    "langfuse-db-password": lambda: secrets.token_hex(24),
+    "langfuse-clickhouse-password": lambda: secrets.token_hex(24),
+    "langfuse-redis-password": lambda: secrets.token_hex(24),
+    "langfuse-minio-access-key": lambda: secrets.token_hex(20),
+    "langfuse-minio-secret-key": lambda: secrets.token_hex(32),
+    "langfuse-nextauth-secret": lambda: secrets.token_urlsafe(40),
+    "langfuse-salt": lambda: secrets.token_urlsafe(40),
+    "langfuse-encryption-key": lambda: secrets.token_hex(32),
+    "langfuse-ui-password": lambda: secrets.token_urlsafe(24),
+    "langfuse-public-key": lambda: "pk-lf-" + secrets.token_hex(16),
+    "langfuse-secret-key": lambda: "sk-lf-" + secrets.token_hex(16),
+}
+SECRET_NAMES = tuple(SECRETS)
+DERIVED_NAMES = ("langfuse-clickhouse-users.xml", "langfuse-valkey.conf")
+LANGFUSE_PROFILE = ["--profile", "langfuse"]
+LANGFUSE_OWNER_EMAIL = "owner@jobsearch.local"
 APP_KEY_FILE = "litellm_app_key"
 
 
@@ -142,33 +158,52 @@ def _check_secret_file(path: Path) -> None:
         raise ConfigurationError("credential_file_permissions")
 
 
+def _write_owner_only(path: Path, text: str) -> None:
+    """Create or replace a 0600 file without following a symlink."""
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+        os.fchmod(output.fileno(), 0o600)
+        output.write(text)
+        output.flush()
+        os.fsync(output.fileno())
+
+
+def _read_secret(private_dir: Path, name: str) -> str:
+    return (private_dir / name).read_text(encoding="utf-8").strip()
+
+
+def _clickhouse_users(password: str) -> str:
+    """users.d override: the pinned distroless image ignores CLICKHOUSE_PASSWORD_FILE and leaves `default` open."""
+    digest = hashlib.sha256(password.encode("utf-8")).hexdigest()
+    return (
+        "<clickhouse>\n  <users>\n    <default remove=\"remove\"/>\n    <langfuse>\n"
+        f"      <password_sha256_hex>{digest}</password_sha256_hex>\n"
+        "      <networks><ip>::/0</ip></networks>\n      <profile>default</profile>\n"
+        "      <quota>default</quota>\n      <access_management>1</access_management>\n"
+        "    </langfuse>\n  </users>\n</clickhouse>\n"
+    )
+
+
 def ensure_credentials(private_dir: Path) -> None:
-    present = [private_dir / name for name in SECRET_NAMES]
-    for path in present:
+    for name in (*SECRET_NAMES, *DERIVED_NAMES):
+        path = private_dir / name
         if path.exists() or path.is_symlink():
             _check_secret_file(path)
-    for name, value in zip(
-        SECRET_NAMES,
-        (
-            secrets.token_hex(20),
-            secrets.token_urlsafe(40),
-            secrets.token_hex(20),
-            secrets.token_urlsafe(40),
-            "sk-" + secrets.token_hex(24),
-            secrets.token_hex(32),
-            secrets.token_urlsafe(40),
-            secrets.token_urlsafe(24),
-        ),
-    ):
+    for name, generate in SECRETS.items():
         path = private_dir / name
         if path.exists():
             continue
         descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, "w", encoding="utf-8") as output:
-            output.write(value)
+            output.write(generate())
             output.write("\n")
             output.flush()
             os.fsync(output.fileno())
+    # Derived from the secrets above, so rewriting keeps them in sync and is byte-identical when unchanged.
+    _write_owner_only(private_dir / "langfuse-clickhouse-users.xml",
+                      _clickhouse_users(_read_secret(private_dir, "langfuse-clickhouse-password")))
+    _write_owner_only(private_dir / "langfuse-valkey.conf",
+                      f"requirepass {_read_secret(private_dir, 'langfuse-redis-password')}\nmaxmemory-policy noeviction\n")
     # The seed container writes the app key into this bind-mounted file; it must exist first.
     app_key = private_dir / APP_KEY_FILE
     if app_key.exists() or app_key.is_symlink():
@@ -221,6 +256,7 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     environment.setdefault("CORE02_POSTGRES_PORT", "55432")
     environment.setdefault("CORE02_MINIO_PORT", "59000")
     environment.setdefault("CORE02_LITELLM_PORT", "54000")
+    environment.setdefault("CORE02_LANGFUSE_PORT", "53000")
     environment["OPENROUTER_API_KEY"] = os.environ.get("OPENROUTER_API_KEY", "")  # reaches only litellm
     environment["OPENROUTER_KEY_PRESENT"] = "1" if environment["OPENROUTER_API_KEY"] else ""  # flag for the seed
     return environment
@@ -262,24 +298,83 @@ def _compose(
     return result
 
 
+def langfuse_enabled() -> bool:
+    return bool(os.environ.get("LANGFUSE_HOST", "").strip())
+
+
+def write_credentials_summary(private_dir: Path, langfuse: bool, target: Path = ROOT / "CREDENTIALS.md") -> Path:
+    """Owner-only, gitignored login sheet built from the private dir. Values are never printed."""
+    if target.is_symlink():
+        raise ConfigurationError("credentials_summary_symlink")
+    s = lambda name: _read_secret(private_dir, name)  # noqa: E731
+    port = lambda name, default: os.environ.get(name) or default  # noqa: E731
+    litellm = f"http://127.0.0.1:{port('CORE02_LITELLM_PORT', '54000')}"
+    text = f"""# Local credentials — DO NOT COMMIT (gitignored, mode 0600)
+
+Regenerated by `scripts/local_infra.py start` from `{private_dir}`; the files there are the source of truth.
+
+## Owner app
+- URL: http://127.0.0.1:8000 (share listener :8001 when enabled)
+- Login: one-use bootstrap URL printed by the launcher (no stored password)
+
+## PostgreSQL (app data)
+- Address: 127.0.0.1:{port('CORE02_POSTGRES_PORT', '55432')}, database `jobsearch_platform_core02`
+- User: `{s('postgres-user')}`
+- Password: `{s('postgres-password')}`
+
+## MinIO (object store)
+- API: http://127.0.0.1:{port('CORE02_MINIO_PORT', '59000')}
+- Access key: `{s('minio-access-key')}`
+- Secret key: `{s('minio-secret-key')}`
+
+## LiteLLM gateway
+- API: {litellm}
+- UI: {litellm}/ui — user `owner`, password `{s('litellm-ui-password')}`
+- Master key: `{s('litellm-master-key')}`
+- App virtual key (job-search-app): `{s(APP_KEY_FILE)}`
+- Salt key (never change after first start): `{s('litellm-salt-key')}`
+
+## LiteLLM Postgres (internal network only, no host port)
+- Host `litellm-db:5432`, database `litellm`, user `litellm`
+- Password: `{s('litellm-db-password')}`
+
+## OpenRouter
+- Key lives in `.env` as `OPENROUTER_API_KEY` (reaches LiteLLM only)
+"""
+    if langfuse:
+        ui = f"http://127.0.0.1:{port('CORE02_LANGFUSE_PORT', '53000')}"
+        text += f"""
+## Langfuse (run tracing)
+- UI: {ui} — email `{LANGFUSE_OWNER_EMAIL}`, password `{s('langfuse-ui-password')}`
+- Project `job-search-platform` public key: `{s('langfuse-public-key')}`
+- Project secret key: `{s('langfuse-secret-key')}`
+- Internal services (langfuse-db, langfuse-clickhouse, langfuse-valkey, langfuse-minio) have no host port; their passwords are the `langfuse-*` files in the private dir.
+"""
+    _write_owner_only(target, text)
+    return target
+
+
 def start(private_dir: Path, source_dir: Path) -> dict[str, str]:
     private_dir = prepare_private_directory(private_dir)
     source_dir = validate_minio_source(source_dir)
     ensure_credentials(private_dir)
     if not os.environ.get("OPENROUTER_API_KEY"):
         print("warning: OPENROUTER_API_KEY not set; LiteLLM has no provider key and model calls will fail", file=sys.stderr)
-    _compose(["up", "--detach", "--build", "--wait", "--wait-timeout", "300"], private_dir, source_dir, timeout=1800)
+    langfuse = langfuse_enabled()
+    profile = LANGFUSE_PROFILE if langfuse else []
+    _compose([*profile, "up", "--detach", "--build", "--wait", "--wait-timeout", "300"], private_dir, source_dir, timeout=1800)
     try:  # one-shot seed is profiled out of `up --wait`, which treats its exit as failure
         _compose(["--profile", "seed", "run", "--rm", "litellm-seed"], private_dir, source_dir, timeout=300)
     except ConfigurationError as exc:
         raise ConfigurationError("litellm_seed_failed") from exc
+    write_credentials_summary(private_dir, langfuse)
     return {"status": "started", "private_directory": str(private_dir), "minio_source_commit": MINIO_COMMIT}
 
 
 def status(private_dir: Path, source_dir: Path) -> list[dict[str, object]]:
     private_dir = prepare_private_directory(private_dir)
     source_dir = validate_minio_source(source_dir)
-    result = _compose(["ps", "--all", "--format", "json"], private_dir, source_dir)
+    result = _compose([*LANGFUSE_PROFILE, "ps", "--all", "--format", "json"], private_dir, source_dir)
     services: list[dict[str, object]] = []
     for line in result.stdout.splitlines():
         if line.strip():
@@ -291,7 +386,7 @@ def status(private_dir: Path, source_dir: Path) -> list[dict[str, object]]:
 def stop(private_dir: Path, source_dir: Path) -> dict[str, str]:
     private_dir = validate_private_directory(private_dir)
     source_dir = validate_minio_source(source_dir)
-    _compose(["stop"], private_dir, source_dir)
+    _compose([*LANGFUSE_PROFILE, "stop"], private_dir, source_dir)
     return {"status": "stopped", "volumes": "preserved"}
 
 
