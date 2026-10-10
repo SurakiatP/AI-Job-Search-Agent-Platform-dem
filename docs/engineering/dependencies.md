@@ -6,7 +6,7 @@ Date: 2026-10-03. This is a sanitized snapshot of CORE-01 verification; it is no
 
 - Python runtime: CPython 3.12.13 selected by uv 0.12.2; `backend/pyproject.toml` accepts Python `>=3.12,<3.13`.
 - JavaScript runtime: Node 24.18.0 and npm 11.16.0. Both frontend manifests require those exact versions.
-- Backend direct pins: `fastapi==0.142.2`, `pydantic==2.13.5`, `sqlalchemy==2.1.3`, `alembic==1.20.0`, `psycopg[binary]==3.3.6`, `boto3==1.43.108`, `mcp==2.3.0`, `a2a-sdk==1.2.1`, `python-multipart==0.0.32`, `keyring==25.6.0`, and `uvicorn[standard]==0.41.0`. Build and development tools are `hatchling==1.28.0`, `pytest==9.1.1`, `pytest-asyncio==1.3.0`, and `pip-audit==2.10.1`.
+- Backend direct pins: `fastapi==0.142.2`, `pydantic==2.13.5`, `sqlalchemy==2.1.3`, `alembic==1.20.0`, `psycopg[binary]==3.3.6`, `boto3==1.43.108`, `mcp==2.3.0`, `opentelemetry-api==1.45.1`, `opentelemetry-sdk==1.45.1`, `opentelemetry-exporter-otlp-proto-http==1.45.1` (optional OTLP tracing, enabled only by `OTEL_EXPORTER_OTLP_ENDPOINT`), `a2a-sdk==1.2.1`, `python-multipart==0.0.32`, `keyring==25.6.0`, and `uvicorn[standard]==0.41.0`. Build and development tools are `hatchling==1.28.0`, `pytest==9.1.1`, `pytest-asyncio==1.3.0`, and `pip-audit==2.10.1`.
 - Frontend direct pins: React and React DOM 19.3.0, React Router 8.4.0, i18next 26.4.2, react-i18next 17.0.15, Vite 8.3.2, TypeScript 7.0.2, Tailwind CSS and `@tailwindcss/vite` 4.3.3, and `@vitejs/plugin-react` 6.1.1. UI support pins include Radix Dialog 1.1.15, Dropdown Menu 2.1.16, Slot 1.2.3, class-variance-authority 0.7.1, clsx 2.1.1, lucide-react 0.577.0, and tailwind-merge 3.5.0. Packaged fonts are Manrope 5.3.0, Noto Sans Thai 5.2.8, and Noto Serif Thai 5.3.0.
 - Browser test pin: `@playwright/test==1.63.0`.
 

@@ -10,7 +10,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, SecretStr, St
 
 
 Capability = Literal["results:read", "jobs:evaluate", "documents:draft", "cv:tailor", "jobs:search", "applications:apply"]
-RunStatus = Literal["queued", "running", "waiting_approval", "completed", "failed", "cancelled", "interrupted"]
+RunStatus = Literal["queued", "running", "waiting_approval", "needs_input", "completed", "failed", "cancelled", "interrupted"]
 Operation = Literal["evaluate_job", "draft_documents", "tailor_cv", "apply_prepare", "apply_submit", "draft_follow_up"]
 # profile_cv (CV skill profile, no LLM) and extract_experience (LLM experience-bank extraction) are likewise owner-only and internal.
 # export_document is an owner-only, non-LLM run created by the manual-edit endpoint; never a request operation.
@@ -318,6 +318,11 @@ class DocumentEdit(DTO):
     format: Literal["pdf", "docx"] | None = None
 
 
+class RunInput(DTO):
+    """Owner answers for a parked apply pack, keyed by question id."""
+    answers: Annotated[dict[Annotated[str, StringConstraints(min_length=1, max_length=64)], str | bool], Field(min_length=1, max_length=50)]
+
+
 class TailorApply(DTO):
     proposal_ids: Annotated[list[int], Field(min_length=1, max_length=50)]
 
@@ -357,6 +362,12 @@ class EvaluationResult(DTO):
     skill_coverage: SkillCoverage | None = None
 
 
+class RunRequester(DTO):
+    kind: Literal["owner", "agent"]
+    grant_id: UUID | None = None
+    label: str | None = None
+
+
 class RunView(DTO):
     id: UUID
     project_id: UUID
@@ -372,6 +383,7 @@ class RunView(DTO):
     evaluation_result: EvaluationResult | None = None
     job_removed: bool = False
     result_payload: dict[str, Any] | None = None
+    requester: RunRequester | None = None
 
 
 class RunEventData(DTO):
@@ -383,6 +395,10 @@ class RunEventData(DTO):
     progress_percent: Annotated[int, Field(ge=0, le=100)] | None = None
     round: Annotated[int, Field(ge=1, le=100)] | None = None
     coverage: Annotated[float, Field(ge=0, le=1)] | None = None
+    model: Annotated[str, StringConstraints(max_length=120)] | None = None
+    latency_ms: Annotated[int, Field(ge=0, le=3_600_000)] | None = None
+    input_tokens: Annotated[int, Field(ge=0, le=10_000_000)] | None = None
+    output_tokens: Annotated[int, Field(ge=0, le=10_000_000)] | None = None
 
 
 class RunEventView(DTO):
@@ -457,6 +473,7 @@ class OwnerBootstrapView(DTO):
 class GrantIssueRequest(DTO):
     capabilities: frozenset[Capability]
     expires_at: datetime
+    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)] | None = None
 
 
 class GrantIssuedView(DTO):
@@ -473,6 +490,7 @@ class GrantView(DTO):
     capabilities: frozenset[Capability]
     expires_at: datetime
     revoked_at: datetime | None = None
+    label: str | None = None
 
 
 class ProviderSettingsUpdate(DTO):

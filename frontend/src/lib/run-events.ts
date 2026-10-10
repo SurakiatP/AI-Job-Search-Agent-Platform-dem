@@ -101,3 +101,12 @@ export function watchRun(
 export async function getRun(projectId: string, runId: string) {
   return apiRequest<import('./api-types').RunView>(`/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}`);
 }
+
+/** Reads the persisted event log of a resting run as one finite replay. */
+export async function fetchRunEvents(projectId: string, runId: string): Promise<RunEventView[]> {
+  const response = await fetch(`/api/v1/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/events`, { credentials: 'same-origin', headers: { 'Last-Event-ID': '0' } });
+  if (!response.ok) throw new Error('events_failed');
+  return (await response.text()).replace(/\r\n/g, '\n').split('\n\n')
+    .map(frame => decodeEvent(frame.split('\n').filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n')))
+    .filter((event): event is RunEventView => event !== null);
+}

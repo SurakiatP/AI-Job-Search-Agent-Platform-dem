@@ -43,8 +43,10 @@ from job_search_platform.services.contracts import (
     RunEventData,
     RunEventView,
     RunRequest,
+    RunRequester,
     RunView,
 )
+from job_search_platform.services.applications import MAX_ANSWER_CHARS
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD
 
@@ -64,6 +66,7 @@ EVENT_TYPES = frozenset(
         "run_completed",
         "run_failed",
         "run_interrupted",
+        "run_needs_input",
         "approval_requested",
         "approval_approved",
         "approval_rejected",
@@ -82,8 +85,10 @@ def actor_scope(actor: Actor) -> str:
     raise ServiceError("unauthorized")
 
 
-def run_view(run: Run, *, result_file_ids: tuple[UUID, ...] = (), job_removed: bool = False) -> RunView:
+def run_view(run: Run, *, result_file_ids: tuple[UUID, ...] = (), job_removed: bool = False,
+             requester: RunRequester | None = None) -> RunView:
     return RunView(
+        requester=requester,
         id=run.id,
         project_id=run.project_id,
         session_id=run.session_id,
@@ -177,8 +182,21 @@ def latest_ready_pack(db: Session, project_id: UUID, job_revision_id: UUID) -> R
     """The newest completed apply_prepare run of the job, only when its pack is ready (a newer parked one blocks)."""
     run = db.scalar(select(Run).where(
         Run.project_id == project_id, Run.job_revision_id == job_revision_id, Run.operation == "apply_prepare",
-        Run.status == "completed").order_by(Run.finished_at.desc(), Run.created_at.desc()).limit(1))
-    return run if run is not None and (run.result_payload or {}).get("state") == "ready" else None
+        Run.status.in_(("completed", "needs_input")))
+        .order_by(func.coalesce(Run.finished_at, Run.created_at).desc(), Run.created_at.desc()).limit(1))
+    return run if run is not None and run.status == "completed" and (run.result_payload or {}).get("state") == "ready" else None
+
+
+def _owner_answer(question: dict, raw: object) -> str | bool | None:
+    """The owner's answer checked against the question kind, or None when invalid."""
+    kind = question["kind"]
+    if kind == "boolean":
+        return raw if isinstance(raw, bool) else {"true": True, "false": False}.get(raw) if isinstance(raw, str) else None
+    if not isinstance(raw, str) or not 0 < len(raw.strip()) <= MAX_ANSWER_CHARS:
+        return None
+    if kind == "choice":
+        return raw if raw in (question.get("choices") or ()) else None
+    return raw.strip()
 
 
 class RunService:
@@ -533,43 +551,48 @@ class RunService:
             authorize(db, actor, project_id, "write", "document")
             if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
                 raise ServiceError("not_found")
-            document = db.scalar(select(Document).where(
-                Document.project_id == project_id, Document.id == document_id).with_for_update())
-            if document is None or document.trashed_at is not None:
-                raise ServiceError("not_found")
-            latest = db.scalar(
-                select(DocumentRevision)
-                .join(StoredFile, (StoredFile.project_id == DocumentRevision.project_id) & (StoredFile.id == DocumentRevision.file_id))
-                .where(DocumentRevision.project_id == project_id, DocumentRevision.document_id == document_id,
-                       StoredFile.publication_state == "published")
-                .order_by(DocumentRevision.revision.desc()).limit(1))
-            # The producing run supplies the session / CV / job / provider the new run row must reference.
-            source = db.scalar(
-                select(Run).join(RunArtifact, (RunArtifact.project_id == Run.project_id) & (RunArtifact.run_id == Run.id))
-                .where(RunArtifact.project_id == project_id,
-                       RunArtifact.document_revision_id == (latest.id if latest else None)))
-            if latest is None or source is None:
-                raise ServiceError("document_source_unavailable")
-            busy = db.scalar(
-                select(func.count()).select_from(Run).where(
-                    Run.project_id == project_id,
-                    Run.operation.in_(("draft_documents", "draft_follow_up", "export_document", "tailor_cv")),
-                    Run.status.in_(("queued", "running", "waiting_approval")),
-                    Run.input_snapshot["document_id"].as_string() == str(document_id),
-                )
-            ) or 0
-            if busy:
-                raise ServiceError("document_busy")
-            queued = db.scalar(select(func.count()).select_from(Run).where(
-                Run.project_id == project_id, Run.status == "queued")) or 0
-            if queued >= MAX_QUEUED_PER_PROJECT:
-                raise ServiceError("queue_full", retryable=True)
-            output_format = edit.format
-            if output_format is None:
-                mime = db.scalar(select(StoredFile.mime_type).where(
-                    StoredFile.project_id == project_id, StoredFile.id == latest.file_id)) or ""
-                output_format = "docx" if mime.endswith("wordprocessingml.document") else "pdf"
-            return self._queue_export(db, actor, source, document, output_format, edit.content_markdown, now)
+            return self._export_locked(db, actor, project_id, document_id, edit, now)
+
+    def _export_locked(self, db: Session, actor: Actor, project_id: UUID, document_id: UUID, edit: DocumentEdit,
+                       now: datetime) -> RunView:
+        """Queue an export for an existing document; the caller holds the project lock."""
+        document = db.scalar(select(Document).where(
+            Document.project_id == project_id, Document.id == document_id).with_for_update())
+        if document is None or document.trashed_at is not None:
+            raise ServiceError("not_found")
+        latest = db.scalar(
+            select(DocumentRevision)
+            .join(StoredFile, (StoredFile.project_id == DocumentRevision.project_id) & (StoredFile.id == DocumentRevision.file_id))
+            .where(DocumentRevision.project_id == project_id, DocumentRevision.document_id == document_id,
+                   StoredFile.publication_state == "published")
+            .order_by(DocumentRevision.revision.desc()).limit(1))
+        # The producing run supplies the session / CV / job / provider the new run row must reference.
+        source = db.scalar(
+            select(Run).join(RunArtifact, (RunArtifact.project_id == Run.project_id) & (RunArtifact.run_id == Run.id))
+            .where(RunArtifact.project_id == project_id,
+                   RunArtifact.document_revision_id == (latest.id if latest else None)))
+        if latest is None or source is None:
+            raise ServiceError("document_source_unavailable")
+        busy = db.scalar(
+            select(func.count()).select_from(Run).where(
+                Run.project_id == project_id,
+                Run.operation.in_(("draft_documents", "draft_follow_up", "export_document", "tailor_cv")),
+                Run.status.in_(("queued", "running", "waiting_approval")),
+                Run.input_snapshot["document_id"].as_string() == str(document_id),
+            )
+        ) or 0
+        if busy:
+            raise ServiceError("document_busy")
+        queued = db.scalar(select(func.count()).select_from(Run).where(
+            Run.project_id == project_id, Run.status == "queued")) or 0
+        if queued >= MAX_QUEUED_PER_PROJECT:
+            raise ServiceError("queue_full", retryable=True)
+        output_format = edit.format
+        if output_format is None:
+            mime = db.scalar(select(StoredFile.mime_type).where(
+                StoredFile.project_id == project_id, StoredFile.id == latest.file_id)) or ""
+            output_format = "docx" if mime.endswith("wordprocessingml.document") else "pdf"
+        return self._queue_export(db, actor, source, document, output_format, edit.content_markdown, now)
 
     def _queue_export(self, db: Session, actor: Actor, source: Run, document: Document | None, output_format: str,
                       markdown: str, now: datetime, *, title: str = "", document_type: str = "cv") -> RunView:
@@ -633,11 +656,16 @@ class RunService:
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "write", "document")
-            run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id))
+            # Lock order: project, then run; the status is re-checked under the lock so two applies cannot both pass.
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id).with_for_update())
             payload = None if run is None else run.result_payload
-            if (run is None or run.operation != "tailor_cv" or run.status != "completed"
+            if (run is None or run.operation != "tailor_cv" or run.status not in ("needs_input", "completed")
                     or not isinstance(payload, dict) or payload.get("mode") != "interactive"):
                 raise ServiceError("not_found")
+            if run.status == "completed":
+                raise ServiceError("tailor_already_applied")
             by_id = {item["id"]: item for item in payload.get("proposals", [])}
             chosen = [by_id.get(pid) for pid in dict.fromkeys(proposal_ids)]
             if any(item is None or item.get("status") != "proposed" for item in chosen):
@@ -670,9 +698,58 @@ class RunService:
                         & (Run.input_snapshot["export_document_type"].as_string() == "cv"))))
                 if busy:
                     raise ServiceError("document_busy")
-                return self._queue_export(db, actor, run, None, "pdf", text, now, title=title)
-            document_id = document.id
-        return self._submit_export_sync(actor, project_id, document_id, DocumentEdit(content_markdown=text, format="pdf"))
+                view = self._queue_export(db, actor, run, None, "pdf", text, now, title=title)
+                self._complete_resting(db, run, now)
+                return view
+            view = self._export_locked(db, actor, project_id, document.id,
+                                       DocumentEdit(content_markdown=text, format="pdf"), now)
+            self._complete_resting(db, run, now)
+            return view
+
+    @staticmethod
+    def _complete_resting(db: Session, run: Run, now: datetime) -> None:
+        """A needs_input run whose owner step is done becomes completed."""
+        run.status = "completed"
+        run.finished_at = now
+        append_event(db, run, "run_completed", {"status": "completed"}, now=now)
+
+    async def submit_input(self, actor: Actor, project_id: UUID, run_id: UUID, answers: dict[str, str | bool]) -> RunView:
+        """Owner-only: fill the null answers of a parked apply pack; a ready pack completes the run."""
+        return await asyncio.to_thread(self._input_sync, actor, project_id, run_id, answers)
+
+    def _input_sync(self, actor: Actor, project_id: UUID, run_id: UUID, answers: dict[str, str | bool]) -> RunView:
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "run")
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id).with_for_update())
+            if run is None or run.operation != "apply_prepare":
+                raise ServiceError("not_found")
+            payload = run.result_payload
+            if run.status != "needs_input" or not isinstance(payload, dict):
+                raise ServiceError("run_not_awaiting_input")
+            entries = [dict(entry) for entry in payload["answers"]]
+            by_id = {entry["question_id"]: entry for entry in entries}
+            # Each entry carries its own kind/choices/required; the snapshot only serves packs stored before that.
+            legacy = {q["id"]: q for q in run.input_snapshot.get("questions") or []}
+            questions = {qid: e if "kind" in e else legacy[qid] for qid, e in by_id.items() if "kind" in e or qid in legacy}
+            for qid, raw in answers.items():
+                entry, question = by_id.get(qid), questions.get(qid)
+                value = _owner_answer(question, raw) if question is not None else None
+                if entry is None or entry["answer"] is not None or value is None:
+                    raise ServiceError("invalid_answer")
+                entry.update(answer=value, evidence_ids=[], source="owner")
+                entry.pop("reason", None)
+            missing = [qid for qid, q in questions.items() if q["required"] and by_id[qid]["answer"] is None]
+            ready = not missing
+            run.result_payload = {**payload, "answers": entries, "missing_required": missing,
+                                  "state": "ready" if ready else "parked"}
+            if ready:
+                self._complete_resting(db, run, now)
+            return self._authorized_view(db, actor, run)
 
     async def submit_profile(self, actor: Actor, project_id: UUID, cv_id: UUID) -> RunView | None:
         """Owner-only: queue a non-LLM run that stores the CV's skill names; None when already profiled."""
@@ -857,7 +934,7 @@ class RunService:
                 raise ServiceError("forbidden")
             if run.status in {"completed", "failed", "cancelled", "interrupted"}:
                 return self._authorized_view(db, actor, run)
-            if run.status == "queued":
+            if run.status in ("queued", "needs_input"):  # neither holds a sandbox
                 run.status = "cancelled"
                 run.finished_at = now
                 append_event(db, run, "run_cancelled", {"status": "cancelled"}, now=now)
@@ -892,13 +969,26 @@ class RunService:
                 self._visible_run(db, project_id, run_id, actor)
             yield event
 
+    @staticmethod
+    def _requester(db: Session, run: Run) -> RunRequester | None:
+        if run.actor_scope == "owner":
+            return RunRequester(kind="owner")
+        try:
+            grant_id = UUID(run.actor_scope.removeprefix("grant:"))
+        except ValueError:
+            return None
+        # One primary-key lookup per grant run; list_runs already loads each run on its own.
+        label = db.scalar(select(Grant.label).where(Grant.id == grant_id, Grant.project_id == run.project_id))
+        return RunRequester(kind="agent", grant_id=grant_id, label=label)
+
     def _authorized_view(self, db: Session, actor: Actor, run: Run) -> RunView:
+        requester = self._requester(db, run)
         try:
             authorize(db, actor, run.project_id, "results:read", "run")
         except ServiceError as exc:
             if exc.code != "forbidden":
                 raise
-            return run_view(run).model_copy(
+            return run_view(run, requester=requester).model_copy(
                 update={"evaluation_result": None, "result_file_ids": (), "result_payload": None}
             )
         job_removed = db.scalar(
@@ -906,7 +996,8 @@ class RunService:
                 JobRevision.project_id == run.project_id, JobRevision.id == run.job_revision_id
             )
         ) is not None
-        return run_view(run, result_file_ids=self._result_file_ids(db, run), job_removed=job_removed)
+        return run_view(run, result_file_ids=self._result_file_ids(db, run), job_removed=job_removed,
+                        requester=requester)
 
     @staticmethod
     def _visible_run(db: Session, project_id: UUID, run_id: UUID, actor: Actor | None = None) -> Run:

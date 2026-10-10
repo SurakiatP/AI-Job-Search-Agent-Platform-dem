@@ -13,7 +13,7 @@ export type RunRequest = {
   questions?: ApplyQuestion[];
 };
 export type ApplyQuestion = { id: string; label: string; required: boolean; kind: 'text' | 'choice' | 'boolean'; choices?: string[] };
-export type ApplyPack = { kind: 'apply_pack'; state: 'ready' | 'parked'; answers: { question_id: string; label?: string; answer: string | boolean | null; evidence_ids: string[]; reason?: string }[]; missing_required: string[] };
+export type ApplyPack = { kind: 'apply_pack'; state: 'ready' | 'parked'; answers: { question_id: string; label?: string; kind?: ApplyQuestion['kind']; choices?: string[] | null; required?: boolean; answer: string | boolean | null; evidence_ids: string[]; reason?: string; source?: 'owner' | null }[]; missing_required: string[] };
 
 export type ApiErrorBody = {
   code: string;
@@ -86,7 +86,7 @@ export type ExperienceKind = 'experience' | 'education' | 'skill' | 'certificati
 export type ExperienceItem = { id: string; kind: ExperienceKind; text: string; role: string | null; organization: string | null; period: string | null; source: 'cv' | 'owner'; source_cv_id: string | null; source_cv_name: string | null; created_at: string };
 export type ExperienceView = { items: ExperienceItem[]; extraction: { run_id: string; status: RunStatus; cv_id: string; summary: { added: number; duplicates: number; rejected: number } | null } | null; provider_configured: boolean };
 export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document' | 'profile_cv' | 'match_jobs' | 'extract_experience' | 'tailor_cv' | 'apply_prepare' | 'apply_submit' | 'draft_follow_up';
-export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
+export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'needs_input' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 export type SkillCoverage = { required: string[]; matched: string[]; missing: string[]; ratio: number; method: string };
 export type EvaluationResult = { report_markdown: string; score: number | null; skill_coverage?: SkillCoverage | null };
 export type TailorProposal = { id: number; find: string; text: string; evidence_ids: string[]; status: 'proposed' | 'applied' | 'rejected_by_gate' };
@@ -106,7 +106,10 @@ export type RunView = {
   retry_of_id: string | null;
   evaluation_result: EvaluationResult | null;
   result_payload?: TailorPayload | ApplyPack | Record<string, unknown> | null;
+  requester?: RunRequester | null;
 };
+export type RunRequester = { kind: 'owner' | 'agent'; grant_id?: string | null; label?: string | null };
+export type RunInputBody = { answers: Record<string, string | boolean> };
 export type RunEventData = {
   approval_id: string | null;
   step: string | null;
@@ -114,6 +117,12 @@ export type RunEventData = {
   artifact_ids: string[];
   message_key: string | null;
   progress_percent: number | null;
+  round?: number | null;
+  coverage?: number | null;
+  model?: string | null;
+  latency_ms?: number | null;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
 };
 export type PublicEventPayload = RunEventData;
 export type RunEventView = {

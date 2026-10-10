@@ -53,7 +53,8 @@ def test_gate_nulls_unsupported_claims_invalid_options_and_missing_evidence():
 def test_unanswered_required_question_is_parked_and_optional_is_not():
     entries, missing = gate_answers([], QUESTIONS, FACTS)
     assert missing == ["why", "auth"] and entries[2] == {
-        "question_id": "level", "label": "Level", "answer": None, "evidence_ids": [], "reason": "not_answerable"}
+        "question_id": "level", "label": "Level", "answer": None, "evidence_ids": [], "reason": "not_answerable",
+        "kind": "choice", "choices": ["junior", "senior"], "required": False}
     null_answer, missing = gate_answers(_answers(why=(None, [])), QUESTIONS[:1], FACTS)
     assert missing == ["why"] and null_answer[0]["reason"] == "not_answerable"
 
@@ -72,3 +73,9 @@ def test_prompts_require_citing_a_fact_for_every_number_and_skill():
     _, pack = pack_prompt("CV text", "Dev", "Dev job", QUESTIONS, [], "en")
     _, tailor = round_prompt("cv", "Job", "Python", ["Go"], [], "en")
     assert rule in pack.lower() and rule in tailor.lower()
+
+
+def test_entries_carry_kind_choices_and_required():
+    entries, _ = gate_answers(_answers(why=("Wrote Python services", [F2]), level=("senior", [F2])), QUESTIONS, FACTS)
+    assert [(e["kind"], e["choices"], e["required"]) for e in entries] == [
+        ("text", None, True), ("boolean", None, True), ("choice", ["junior", "senior"], False)]

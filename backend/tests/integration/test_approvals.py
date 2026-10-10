@@ -24,7 +24,7 @@ from job_search_platform.workers.supervisor import WorkerSupervisor
 from job_search_platform.integrations.hermes_runtime import HermesRuntime
 
 
-def test_restart_invalidates_pending_approval_without_requeue(db_session, tmp_path):
+def test_restart_keeps_pending_approval_valid_without_requeue(db_session, tmp_path):
     factory, p, creator, owner_actor, current_cv, run = _setup(db_session)
     revision_id, _ = _document_revision(factory, p.id)
     approvals = ApprovalService(factory)
@@ -39,10 +39,10 @@ def test_restart_invalidates_pending_approval_without_requeue(db_session, tmp_pa
     )
     queue = PostgresRunQueue(factory)
     asyncio.run(WorkerSupervisor(factory, queue, object(), runtime).reconcile_startup())
-    with pytest.raises(ServiceError, match="approval_stale"):
-        approvals.resolve(owner_actor, p.id, approval.id, "approve")
     with factory() as db:
-        assert db.get(Run, run.id).status == "interrupted"
+        assert db.get(Run, run.id).status == "waiting_approval"
+    approvals.resolve(owner_actor, p.id, approval.id, "reject")  # still valid: no approval_stale
+    with factory() as db:
         latest_cv = db.scalar(select(CVRevision).where(CVRevision.project_id == p.id).order_by(CVRevision.revision.desc()))
         assert latest_cv.id == current_cv.id
     assert queue.claim_next("synthetic-stale-approval") is None

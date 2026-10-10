@@ -88,16 +88,18 @@ def gate_answers(answers: Sequence[Mapping], questions: Sequence[Mapping],
         by_id.setdefault(answer["question_id"], answer)  # first answer per question wins
     entries, missing = [], []
     for question in questions:
+        shape = {"kind": question["kind"], "choices": list(question.get("choices") or []) or None,
+                 "required": bool(question["required"])}
         given = by_id.get(question["id"])
         reason = "not_answerable"
         if given is not None and given["answer"] is not None:
             reason = _check(question, given["answer"], given["evidence_ids"], facts_claims)
         if reason is None:
             entries.append({"question_id": question["id"], "label": question["label"], "answer": given["answer"],
-                            "evidence_ids": given["evidence_ids"]})
+                            "evidence_ids": given["evidence_ids"], **shape})
             continue
         entries.append({"question_id": question["id"], "label": question["label"], "answer": None, "evidence_ids": [],
-                        "reason": reason})
+                        "reason": reason, **shape})
         if question["required"]:
             missing.append(question["id"])
     return entries, missing

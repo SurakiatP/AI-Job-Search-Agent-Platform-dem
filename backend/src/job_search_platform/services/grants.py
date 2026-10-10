@@ -19,7 +19,7 @@ from job_search_platform.services.owner_sessions import token_hash
 def grant_view(row):
     return GrantView(id=row.id, project_id=row.project_id,
                      capabilities=frozenset(row.capabilities),
-                     expires_at=row.expires_at, revoked_at=row.revoked_at)
+                     expires_at=row.expires_at, revoked_at=row.revoked_at, label=row.label)
 
 
 class Grants:
@@ -37,7 +37,8 @@ class Grants:
                 authorize(db, actor, project_id, "manage", "grant")
                 Repositories.project(db, project_id)
                 row = Grant(project_id=project_id, token_hash=token_hash(token),
-                            capabilities=sorted(request.capabilities), expires_at=request.expires_at)
+                            capabilities=sorted(request.capabilities), expires_at=request.expires_at,
+                            label=request.label)
                 db.add(row)
                 db.flush()
                 view = GrantIssuedView(id=row.id, token=token, project_id=project_id,

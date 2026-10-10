@@ -63,14 +63,14 @@ async def stream_run_events(
                 yield f"id: {event.sequence}\nevent: {event.event_type}\ndata: {payload}\n\n".encode("utf-8")
                 cursor = event.sequence
                 sent = True
-                if event.event_type in {"run_completed", "run_failed", "run_cancelled", "run_interrupted"}:
+                if event.event_type in {"run_completed", "run_failed", "run_cancelled", "run_interrupted", "run_needs_input"}:
                     return
             now = asyncio.get_running_loop().time()
             if now - last_heartbeat >= HEARTBEAT_SECONDS:
                 # `runs.get` above is the live authorization check for the heartbeat.
                 yield b": heartbeat\n\n"
                 last_heartbeat = now
-            if current.status in {"completed", "failed", "cancelled", "interrupted"} and not sent:
+            if current.status in {"completed", "failed", "cancelled", "interrupted", "needs_input"} and not sent:
                 return
             await asyncio.sleep(POLL_SECONDS)
 

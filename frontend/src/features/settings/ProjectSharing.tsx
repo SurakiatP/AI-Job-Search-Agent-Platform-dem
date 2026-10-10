@@ -3,13 +3,14 @@ import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiRequest } from '../../lib/api';
 import { useResource } from '../projects/useResource';
 import { Field, LoadingBlock, Notice, SectionCard, selectClass } from './Field';
 
 type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor' | 'jobs:search' | 'applications:apply';
-type Grant = { id: string; project_id: string; capabilities: Capability[]; expires_at: string; revoked_at: string | null };
+type Grant = { id: string; label?: string | null; project_id: string; capabilities: Capability[]; expires_at: string; revoked_at: string | null };
 type IssuedGrant = Grant & { token: string };
 const capabilityKey: Record<Capability, string> = { 'results:read': 'capability.resultsRead', 'jobs:evaluate': 'capability.jobsEvaluate', 'documents:draft': 'capability.documentsDraft', 'cv:tailor': 'capability.cvTailor', 'jobs:search': 'capability.jobsSearch', 'applications:apply': 'capability.applicationsApply' };
 
@@ -18,6 +19,7 @@ export function ProjectSharing({ projectId }: { projectId: string }) {
   const project = encodeURIComponent(projectId);
   const grants = useResource<Grant[]>(`/projects/${project}/grants`);
   const [capabilities, setCapabilities] = useState<Capability[]>(['results:read']);
+  const [name, setName] = useState('');
   const [expiryHours, setExpiryHours] = useState('24');
   const [issued, setIssued] = useState<IssuedGrant | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,7 +35,7 @@ export function ProjectSharing({ projectId }: { projectId: string }) {
     setBusy(true); setError(false); setCopied(false);
     try {
       const expiresAt = new Date(Date.now() + Number(expiryHours) * 60 * 60 * 1000).toISOString();
-      const value = await apiRequest<IssuedGrant>(`/projects/${project}/grants`, { method: 'POST', body: JSON.stringify({ capabilities, expires_at: expiresAt }) });
+      const value = await apiRequest<IssuedGrant>(`/projects/${project}/grants`, { method: 'POST', body: JSON.stringify({ capabilities, expires_at: expiresAt, ...(name.trim() ? { label: name.trim() } : {}) }) });
       setIssued(value); grants.reload();
     } catch { setError(true); }
     finally { setBusy(false); }
@@ -62,6 +64,7 @@ export function ProjectSharing({ projectId }: { projectId: string }) {
           <input type="checkbox" className="size-5 accent-primary" checked={capabilities.includes(capability)} onChange={event => toggle(capability, event.target.checked)} />{t(capabilityKey[capability])}
         </label>)}
       </fieldset>
+      <Field id="grant-name" label={t('grantName')} className="sm:max-w-xs"><Input id="grant-name" value={name} maxLength={80} autoComplete="off" onChange={event => setName(event.target.value)} /></Field>
       <Field id="grant-expiry" label={t('expiresAfter')} className="sm:max-w-xs">
         <select id="grant-expiry" className={selectClass} value={expiryHours} onChange={event => setExpiryHours(event.target.value)}>
           {[1, 6, 24].map(hours => <option key={hours} value={hours}>{t('hours', { count: hours })}</option>)}
@@ -89,6 +92,7 @@ export function ProjectSharing({ projectId }: { projectId: string }) {
         {grants.data?.length === 0 && <p className="text-sm text-muted-foreground">{t('noGrants')}</p>}
         {grants.data && grants.data.length > 0 && <ul className="divide-y">{grants.data.map(grant => <li key={grant.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
           <div className="min-w-0 flex-1">
+            {grant.label && <p className="break-words text-sm font-semibold">{grant.label}</p>}
             <p className="break-words text-sm font-medium">{grant.capabilities.map(capability => t(capabilityKey[capability])).join(', ')}</p>
             <p className="text-sm text-muted-foreground">{grant.revoked_at ? t('revoked') : active(grant) ? t('expires', { date: new Date(grant.expires_at).toLocaleString(i18n.language) }) : t('expired')}</p>
           </div>

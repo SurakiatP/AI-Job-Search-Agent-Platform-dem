@@ -50,6 +50,7 @@
     "applicationsApply": "Prepare application answers from your CV and request that you approve a submission"
   },
   "expiresAfter": "Token expires after",
+  "grantName": "Name (optional)",
   "createGrant": "Create project token",
   "activeGrants": "Project tokens",
   "tokenShownOnce": "Copy this token now",

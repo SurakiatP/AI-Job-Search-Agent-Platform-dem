@@ -31,7 +31,7 @@ from job_search_platform.services.contracts import (
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
     PreferencesView, ProjectUpdate, ProjectView, ProviderCatalogView, ProviderConnectionTestView,
     ProviderModelsRequest, ProviderModelsView, ProviderSettingsUpdate,
-    ProviderSettingsView, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
+    ProviderSettingsView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
 from job_search_platform.integrations.jev import JEV_MODEL
@@ -62,7 +62,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "project_not_empty": 409, "session_busy": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
         "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409,
-        "document_busy": 409, "document_source_unavailable": 409,
+        "document_busy": 409, "tailor_already_applied": 409, "run_not_awaiting_input": 409, "invalid_answer": 422, "document_source_unavailable": 409,
         "apply_pack_required": 409, "approval_requires_run": 409, "approval_stale": 409, "already_applied": 409, "application_not_applied": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
         "job_source_unavailable": 502,
@@ -819,6 +819,13 @@ async def restore_revision(project_id: UUID, document_id: UUID, revision_id: UUI
     """Owner undo: queue an export run that re-publishes an earlier revision's Markdown."""
     _owner_only(actor)
     return await services.runs.submit_restore(actor, project_id, document_id, revision_id)
+
+
+@router.post("/projects/{project_id}/runs/{run_id}/input", response_model=RunView)
+async def submit_run_input(project_id: UUID, run_id: UUID, body: RunInput, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Owner fills the missing answers of a parked apply pack; a ready pack completes the run."""
+    _owner_only(actor)
+    return await services.runs.submit_input(actor, project_id, run_id, body.answers)
 
 
 @router.post("/projects/{project_id}/runs/{run_id}/tailor/apply", status_code=202, response_model=RunView)

@@ -12,13 +12,14 @@ import { CopyButton, Empty, useNow, type Locale } from './shared';
 
 type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor' | 'jobs:search' | 'applications:apply';
 const CAPS: Capability[] = ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply'];
-type Grant = { id: string; project_id: string; capabilities: Capability[]; expires_at: string; revoked_at: string | null };
+type Grant = { id: string; label?: string | null; project_id: string; capabilities: Capability[]; expires_at: string; revoked_at: string | null };
 type Issued = Grant & { token: string };
 
 export function AgentsTab({ projectId, locale, c }: { projectId: string; locale: Locale; c: Copy }) {
   const project = encodeURIComponent(projectId);
   const grants = useResource<Grant[]>(`/projects/${project}/grants`);
   const [caps, setCaps] = useState<Capability[]>(['results:read', 'jobs:evaluate']);
+  const [name, setName] = useState('');
   const [hours, setHours] = useState('24');
   const [issued, setIssued] = useState<Issued | null>(null);
   const [busy, setBusy] = useState(false);
@@ -32,7 +33,7 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
     setBusy(true); setFailed(false);
     try {
       const expires_at = new Date(Date.now() + Number(hours) * 3600_000).toISOString();
-      setIssued(await sendJson<Issued>(`/projects/${project}/grants`, 'POST', { capabilities: caps, expires_at }));
+      setIssued(await sendJson<Issued>(`/projects/${project}/grants`, 'POST', { capabilities: caps, expires_at, ...(name.trim() ? { label: name.trim() } : {}) }));
       grants.reload();
     } catch { setFailed(true); } finally { setBusy(false); }
   }
@@ -57,6 +58,11 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
             </label>)}
             {caps.length === 0 && <p role="alert" className="text-xs text-destructive">{c.needCap}</p>}
           </fieldset>
+          <div className="grid max-w-xs gap-1.5">
+            <label htmlFor="console-grant-name" className="text-sm font-medium">{c.grantName}</label>
+            <Input id="console-grant-name" value={name} maxLength={80} onChange={e => setName(e.target.value)} autoComplete="off" aria-describedby="console-grant-name-hint" />
+            <p id="console-grant-name-hint" className="text-xs text-muted-foreground">{c.grantNameHint}</p>
+          </div>
           <div className="grid max-w-xs gap-1.5">
             <label htmlFor="console-expiry" className="text-sm font-medium">{c.expiry}</label>
             <select id="console-expiry" value={hours} onChange={e => setHours(e.target.value)} className="min-h-10 rounded-md border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -85,6 +91,7 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
           const s = state(g);
           return <li key={g.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${s === 'active' ? '' : 'text-muted-foreground'}`}>
             <div className="grid min-w-0 gap-1.5">
+              {g.label && <p className="break-words text-sm font-medium">{g.label}</p>}
               <div className="flex flex-wrap gap-1.5">{g.capabilities.map(cap => <Badge key={cap} variant="outline">{c.caps[cap]}</Badge>)}</div>
               <p className="text-sm">{c.expiresAt} <time dateTime={g.expires_at}>{fmt.format(new Date(g.expires_at))}</time> · <span className="text-xs">{c.id} #{index + 1}</span></p>
             </div>

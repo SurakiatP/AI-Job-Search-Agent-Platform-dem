@@ -40,6 +40,7 @@ Rejected DTO values and SDK parse failures return a generic protocol error. The 
 | `queued` | `submitted` | Run ID and operation |
 | `running` | `working` | Run ID and operation |
 | `waiting_approval` | `input-required` | States that owner approval is required in the platform |
+| `needs_input` | `input-required` | States that owner input is required in the platform |
 | `completed` | `completed` | Authorized opaque references to the evaluation report and published documents |
 | `failed` | `failed` | No private worker error text |
 | `interrupted` | `failed` | Stable `terminal_reason: interrupted` metadata |

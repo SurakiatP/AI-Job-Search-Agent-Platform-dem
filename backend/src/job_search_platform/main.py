@@ -27,6 +27,7 @@ from job_search_platform.api.rest import _http_error, router as rest_router
 from job_search_platform.api.sse import router as sse_router
 from job_search_platform.db.session import make_engine
 from job_search_platform.integrations.hermes_runtime import HermesRuntime
+from job_search_platform.integrations import tracing
 from job_search_platform.integrations.object_store import S3ObjectStore
 from job_search_platform.integrations.secrets import MacOSKeychain
 from job_search_platform.services.approvals import ApprovalService
@@ -182,6 +183,8 @@ def create_app(
     service_factory: Callable[[], Services] = build_services,
     frontend_dist: Path | None = None,
 ) -> FastAPI:
+    tracing.configure()
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         current = services or service_factory()
@@ -265,7 +268,7 @@ def create_app(
         "MessageCreate", "OwnerBootstrapRequest", "OwnerBootstrapView", "PreferencesUpdate",
         "PreferencesView", "ProjectCreate", "ProjectUpdate", "ProjectView",
         "ProviderConnectionTestView", "ProviderSettingsUpdate", "ProviderSettingsView",
-        "RevisionView", "RunEventData", "RunEventView", "RunRequest", "RunView",
+        "RevisionView", "RunEventData", "RunEventView", "RunRequest", "RunRequester", "RunView",
         "SessionCreate", "SessionView", "SkillCoverage", "ToolConnectorSettingsView", "ToolConnectorUpdate",
         "ToolConnectorView", "ToolDescriptor", "ToolsView", "UploadRequest",
     )

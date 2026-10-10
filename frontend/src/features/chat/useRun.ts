@@ -30,7 +30,7 @@ type State = {
 const initial: State = { loading: true, messages: [], run: null, events: [], approvals: [], error: null, submitting: false, cancellationPending: false };
 
 function isTerminal(status: RunStatus) {
-  return status === 'completed' || status === 'failed' || status === 'cancelled' || status === 'interrupted';
+  return status === 'completed' || status === 'needs_input' || status === 'failed' || status === 'cancelled' || status === 'interrupted';
 }
 
 function newIdempotencyKey() {

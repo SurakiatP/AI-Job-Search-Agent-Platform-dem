@@ -3,16 +3,17 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import sessionmaker
 
 from helpers import grant as make_grant, project as make_project, provider_config, revisions, session as make_session
-from job_search_platform.db.models import Approval, Run, RunEvent
+from job_search_platform.db.models import Approval, JobRevision, Run, RunEvent
 from job_search_platform.services.contracts import ApplyPrepareInput, ApplySubmitInput, ProtocolJobInput
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.protocol_runs import ProtocolRuns
@@ -93,9 +94,12 @@ def test_prepare_ready_pack_cites_evidence_and_events_hold_no_answers(api_contex
     assert run.status == "completed" and run.operation == "apply_prepare"
     assert run.result_payload == {
         "kind": "apply_pack", "state": "ready", "missing_required": [],
-        "answers": [{"question_id": "why", "label": "Why do you want this job?", "answer": "Packaged services with Docker", "evidence_ids": [facts["docker"]]},
-                    {"question_id": "auth", "label": "Authorised to work in Thailand?", "answer": True, "evidence_ids": [facts["py"]]},
-                    {"question_id": "level", "label": "Seniority", "answer": "senior", "evidence_ids": [facts["py"]]}]}
+        "answers": [{"question_id": "why", "label": "Why do you want this job?", "answer": "Packaged services with Docker", "evidence_ids": [facts["docker"]],
+                         "kind": "text", "choices": None, "required": True},
+                    {"question_id": "auth", "label": "Authorised to work in Thailand?", "answer": True, "evidence_ids": [facts["py"]],
+                         "kind": "boolean", "choices": None, "required": True},
+                    {"question_id": "level", "label": "Seniority", "answer": "senior", "evidence_ids": [facts["py"]],
+                         "kind": "choice", "choices": ["junior", "senior"], "required": False}]}
     (_, prompt, kwargs), = runtime.submits
     assert kwargs["operation"] == "apply_prepare" and "Why do you want this job?" in prompt
     with ctx.sessions() as db:
@@ -111,10 +115,10 @@ def test_prepare_parks_when_a_required_answer_is_unanswerable(api_context):
     run_id = _prepare(ctx, csrf, pid, session).json()["id"]
     _execute_next(ctx, runtime)
     run = _run(ctx, run_id)
-    assert run.status == "completed"
+    assert run.status == "needs_input" and run.finished_at is None
     assert run.result_payload["state"] == "parked" and run.result_payload["missing_required"] == ["why"]
     assert run.result_payload["answers"][0] == {"question_id": "why", "label": "Why do you want this job?", "answer": None, "evidence_ids": [],
-                                               "reason": "not_answerable"}
+                                               "reason": "not_answerable", "kind": "text", "choices": None, "required": True}
     # A parked pack cannot be submitted.
     assert _post(ctx, csrf, pid, session, "apply_submit", "s1").json()["code"] == "apply_pack_required"
 
@@ -349,9 +353,11 @@ def test_migration_0017_upgrades_a_database_that_already_has_runs(postgres_engin
     with factory() as db:
         p = make_project(db)
         old_cv, _ = revisions(db, p.id)
-        db.add(Run(project_id=p.id, actor_scope="owner", idempotency_key="old", request_digest="d" * 64,
-                   operation="profile_cv", cv_revision_id=old_cv.id, input_snapshot={}, config_snapshot={}, output_language="en",
-                   status="completed"))
+        # Raw SQL: the ORM model already has columns (resume_count) that revision 0016 lacks.
+        db.execute(text("INSERT INTO runs (id, project_id, actor_scope, idempotency_key, request_digest, operation, "
+                        "cv_revision_id, input_snapshot, config_snapshot, output_language, status, active_seconds, tool_calls) "
+                        "VALUES (:id, :p, 'owner', 'old', :d, 'profile_cv', :cv, '{}', '{}', 'en', 'completed', 0, 0)"),
+                   {"id": uuid4(), "p": p.id, "d": "d" * 64, "cv": old_cv.id})
         db.commit()
     _migrate(postgres_engine, command.upgrade, "head")
     with factory() as db:
@@ -367,6 +373,48 @@ def test_migration_0017_upgrades_a_database_that_already_has_runs(postgres_engin
         db.commit()
     with pytest.raises(RuntimeError, match="downgrade_blocked"):
         _migrate(postgres_engine, command.downgrade, "0016_run_result_payload")
+
+
+@pytest.mark.integration
+def test_migration_0018_moves_stranded_resting_runs_to_needs_input(postgres_engine):
+    _migrate(postgres_engine, command.upgrade, "0017_agent_tools")
+    factory = sessionmaker(bind=postgres_engine, expire_on_commit=False)
+    ids = {}
+    with factory() as db:
+        p = make_project(db)
+        cv, job = revisions(db, p.id)
+        other_job = JobRevision(project_id=p.id, revision=2, title="Other", description="d", company="c",
+                                source_url="https://jobs.example.test/2")
+        db.add(other_job)
+        chat, config = make_session(db, p.id), provider_config(db)
+        db.flush()
+
+        def add(name, operation, payload, job_id, created):
+            ids[name] = uuid4()
+            db.execute(text(
+                "INSERT INTO runs (id, project_id, actor_scope, idempotency_key, request_digest, operation, "
+                "session_id, provider_configuration_id, cv_revision_id, job_revision_id, input_snapshot, config_snapshot, output_language, status, "
+                "active_seconds, tool_calls, result_payload, finished_at, created_at) VALUES (:id, :p, 'owner', :k, :d, "
+                ":op, :sid, :cfg, :cv, :job, '{}', '{}', 'en', 'completed', 0, 0, CAST(:payload AS json), now(), :created)"),
+                {"id": ids[name], "p": p.id, "k": name, "d": "d" * 64, "op": operation, "sid": chat.id, "cfg": config.id, "cv": cv.id, "job": job_id,
+                 "payload": json.dumps(payload), "created": created})
+
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        add("open_tailor", "tailor_cv", {"mode": "interactive"}, job.id, t0)
+        add("applied_tailor", "tailor_cv", {"mode": "interactive"}, other_job.id, t0)
+        add("export", "export_document", {}, other_job.id, t0 + timedelta(hours=1))
+        add("auto_tailor", "tailor_cv", {"mode": "autopilot"}, job.id, t0)
+        add("parked", "apply_prepare", {"kind": "apply_pack", "state": "parked"}, job.id, t0)
+        add("ready", "apply_prepare", {"kind": "apply_pack", "state": "ready"}, job.id, t0)
+        db.commit()
+    _migrate(postgres_engine, command.upgrade, "head")
+    with factory() as db:
+        rows = {r.idempotency_key: r for r in db.scalars(select(Run).where(Run.project_id == p.id))}
+    assert {k: rows[k].status for k in ids} == {
+        "open_tailor": "needs_input", "applied_tailor": "completed", "export": "completed",
+        "auto_tailor": "completed", "parked": "needs_input", "ready": "completed"}
+    assert rows["open_tailor"].finished_at is None and rows["parked"].finished_at is None
+    assert rows["applied_tailor"].finished_at is not None
 
 
 def _promote_setup(ctx):

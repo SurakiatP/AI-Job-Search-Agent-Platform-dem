@@ -317,6 +317,7 @@ class Grant(Base):
     capabilities: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    label: Mapped[str | None] = mapped_column(String(80))
     __table_args__ = (UniqueConstraint("project_id", "id", name="uq_grants_project_id"),)
 
 
@@ -353,6 +354,7 @@ class Run(Base):
     active_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     active_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default="0")
     tool_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    resume_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     __table_args__ = (
         ForeignKeyConstraint(["project_id", "session_id"], ["sessions.project_id", "sessions.id"]),
         ForeignKeyConstraint(["project_id", "cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"]),
@@ -361,7 +363,7 @@ class Run(Base):
         ForeignKeyConstraint(["project_id", "retry_of_id"], ["runs.project_id", "runs.id"]),
         UniqueConstraint("project_id", "actor_scope", "idempotency_key", name="uq_run_idempotency_scope"),
         UniqueConstraint("project_id", "id", name="uq_runs_project_id"),
-        CheckConstraint("status IN ('queued','running','waiting_approval','completed','failed','cancelled','interrupted')", name="ck_runs_status"),
+        CheckConstraint("status IN ('queued','running','waiting_approval','needs_input','completed','failed','cancelled','interrupted')", name="ck_runs_status"),
         CheckConstraint("length(idempotency_key) BETWEEN 1 AND 128", name="ck_runs_idempotency_key_length"),
         CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs','extract_experience','tailor_cv','apply_prepare','apply_submit','draft_follow_up')", name="ck_runs_operation"),
         CheckConstraint("operation IN ('profile_cv','match_jobs') OR (operation = 'extract_experience' AND provider_configuration_id IS NOT NULL) OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL AND provider_configuration_id IS NOT NULL)", name="ck_runs_context_required"),
@@ -369,6 +371,7 @@ class Run(Base):
         CheckConstraint("length(request_digest) = 64", name="ck_runs_digest_length"),
         CheckConstraint("active_seconds >= 0", name="ck_runs_active_seconds"),
         CheckConstraint("tool_calls BETWEEN 0 AND 30", name="ck_runs_tool_calls"),
+        CheckConstraint("resume_count >= 0", name="ck_runs_resume_count"),
         Index("uq_runs_one_active_per_project", "project_id", unique=True, postgresql_where=(status.in_(["running", "waiting_approval"]) & (operation != "apply_submit"))),
     )
 

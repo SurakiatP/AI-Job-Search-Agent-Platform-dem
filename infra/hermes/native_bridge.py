@@ -128,6 +128,16 @@ def _career_ops_context(operation: object, source_root_value: object, skill: obj
     return context
 
 
+def _usage(agent):
+    """Token counts and model name only, never content. Missing counters give nulls."""
+    def count(name):
+        n = getattr(agent, name, None)
+        return n if isinstance(n, int) and not isinstance(n, bool) and 0 <= n <= 10_000_000 else None
+    model = getattr(agent, "model", None)
+    return {"model": model[:120] if isinstance(model, str) and model else None,
+            "input_tokens": count("session_input_tokens"), "output_tokens": count("session_output_tokens")}
+
+
 def _system_message(instructions: object, career_ops_context: str) -> str:
     if not isinstance(instructions, str) or not instructions.strip():
         raise RuntimeError("native_instructions_invalid")
@@ -316,7 +326,7 @@ def main():
                         )
                         if not isinstance(value, dict) or not isinstance(value.get("final_response"), str):
                             raise RuntimeError("native_response_invalid")
-                        emit({"event": "result", "result": value["final_response"]})
+                        emit({"event": "result", "result": value["final_response"], "usage": _usage(agent)})
                     except Exception:
                         emit({"event": "failed", "code": "native_execution_failed"})
                 thread = threading.Thread(target=run, daemon=True)

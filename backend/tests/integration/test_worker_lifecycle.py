@@ -399,11 +399,11 @@ async def test_startup_reconciliation_stops_container_after_bridge_crash(
             assert native.process.returncode is not None
         with sessions() as db:
             recovered = db.get(Run, view.id)
-            assert recovered.status == ("failed" if persisted_failure else "interrupted")
+            assert recovered.status == ("failed" if persisted_failure else "queued")  # first interruption resumes
             if persisted_failure:
                 assert recovered.finished_at == previous_finished_at
             else:
-                assert recovered.finished_at is not None
+                assert recovered.finished_at is None and recovered.resume_count == 1
         remaining = await runtime._docker(
             "ps", "-aq", "--no-trunc",
             "--filter", f"label=platform.project={db_project.id}",

@@ -17,7 +17,7 @@ from job_search_platform.workers.supervisor import WorkerSupervisor
 
 @pytest.mark.parametrize("unfinished_status", ["queued", "waiting_approval"])
 @pytest.mark.asyncio
-async def test_startup_interrupts_unfinished_work_without_redispatch(db_session, tmp_path, unfinished_status):
+async def test_startup_keeps_queued_and_waiting_work_untouched(db_session, tmp_path, unfinished_status):
     p = project(db_session, "Synthetic restart recovery")
     actor = owner(db_session)
     conversation = session(db_session, p.id)
@@ -42,16 +42,9 @@ async def test_startup_interrupts_unfinished_work_without_redispatch(db_session,
     await supervisor.reconcile_startup()
     with sessions() as db:
         recovered = db.get(Run, view.id)
-        assert recovered.status == "interrupted"
-        assert recovered.finished_at is not None
-        assert recovered.lease_owner is None
-        assert recovered.lease_expires_at is None
-        assert recovered.active_started_at is None
+        assert recovered.status == unfinished_status and recovered.resume_count == 0
+        assert recovered.finished_at is None
         events = list(db.scalars(select(RunEvent).where(RunEvent.run_id == view.id)))
-        assert sum(event.event_type == "run_interrupted" for event in events) == 1
-    assert queue.claim_next("synthetic-post-restart") is None
-    retry = await service.submit(actor, p.id, request.model_copy(update={
-        "retry_of_id": view.id, "idempotency_key": str(uuid.uuid4()),
-    }))
-    claimed = queue.claim_next("synthetic-manual-retry")
-    assert claimed is not None and claimed.id == retry.id and claimed.id != view.id
+        assert not [e for e in events if e.event_type in ("run_interrupted", "run_resumed")]
+    claimed = queue.claim_next("synthetic-post-restart")
+    assert (claimed is not None and claimed.id == view.id) == (unfinished_status == "queued")
