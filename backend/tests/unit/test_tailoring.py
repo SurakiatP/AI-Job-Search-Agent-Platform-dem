@@ -83,3 +83,8 @@ def test_apply_gated_blocks_digit_splicing():
     ok = {"find": "engineers", "text": "engineers in 2024", "evidence_ids": [str(fact)]}
     assert apply_gated(cv, [ok], {fact: {"2024"}})[0] == "Led a team of 5 engineers in 2024."
     assert apply_gated(cv, [ok], {fact: set()})[2] == [ok]
+
+
+def test_stop_when_next_round_would_exceed_budget():
+    assert should_stop([0.5, 0.6], [1], 1, 60, 100, longest_round_s=40) == "time_budget"
+    assert should_stop([0.5, 0.6], [1], 1, 60, 100, longest_round_s=39) is None

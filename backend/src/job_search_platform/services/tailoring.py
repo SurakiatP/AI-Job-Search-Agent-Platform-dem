@@ -71,11 +71,11 @@ def apply_edits(text: str, edits: list[dict]) -> tuple[str, list[dict]]:
 
 
 def should_stop(coverages: list[float | None], accepted_counts: list[int], round_no: int, elapsed_s: float,
-                budget_s: float, max_rounds: int = MAX_ROUNDS) -> str | None:
+                budget_s: float, max_rounds: int = MAX_ROUNDS, longest_round_s: float = 0.0) -> str | None:
     """coverages[0] is the starting score; coverages[i] is the score after round i."""
     if round_no >= max_rounds:
         return "max_rounds"
-    if elapsed_s >= budget_s:
+    if elapsed_s + longest_round_s >= budget_s:
         return "time_budget"
     if coverages and coverages[-1] == 1.0:
         return "full_coverage"

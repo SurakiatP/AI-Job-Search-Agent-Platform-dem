@@ -512,7 +512,9 @@ class RunExecutor:
             rounds: list[dict] = []
             proposals: list[dict] = []
             stop_reason = "interactive"
+            longest_round = 0.0
             for round_no in range(1, 2 if interactive else tailoring.MAX_ROUNDS + 1):
+                round_began = time.monotonic()
                 # One fresh Hermes session per round (the bridge builds a new agent on every submit).
                 prompt, instructions = tailoring.round_prompt(
                     text, job["title"], job_text, coverage["missing"] if coverage else [], facts, run.output_language)
@@ -539,7 +541,9 @@ class RunExecutor:
                 rounds.append({"round": round_no, "accepted": len(applied), "rejected": len(rejected), "coverage": coverages[-1]})
                 self._public_event(run.id, "run_progress",
                                    {"step": "tailor_round", "round": round_no, "coverage": coverages[-1]})
-                stop_reason = tailoring.should_stop(coverages, accepted_counts, round_no, time.monotonic() - began, budget)
+                longest_round = max(longest_round, time.monotonic() - round_began)
+                stop_reason = tailoring.should_stop(
+                    coverages, accepted_counts, round_no, time.monotonic() - began, budget, longest_round_s=longest_round)
                 if stop_reason:
                     break
             payload = {
