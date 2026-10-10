@@ -21,7 +21,7 @@ def test_sentence_line_and_bullet_starts_are_exempt():
 
 def test_short_acronyms_and_stopwords_are_not_names():
     assert _names("Used AWS and SQL since January with I and May") == set()
-    assert _names("Left NASAA") == {"name:nasaa"} and _names("Left GOOGLE") == {"name:google"}
+    assert _names("Left at NASAA") == {"name:nasaa"} and _names("Left at GOOGLE") == {"name:google"}
 
 
 def test_dictionary_skills_are_skills_not_names():
@@ -98,3 +98,9 @@ def test_short_acronyms_are_names_unless_allowlisted():  # I2
     for text in ("SCB", "KBTG"):
         assert not _answer(text, "Wrote services at Acme")
     assert _answer("SCB", "Engineer at SCB")
+
+
+def test_heading_lines_starting_with_a_name_are_checked():  # I3
+    for line in ("**Google** — Senior Engineer", "### Google, Bangkok", "Google | Remote", "Google", "Google (2020)"):
+        assert "name:google" in _names(line), line
+    assert _names("Led a team") == set() and _names("Built APIs") == set()

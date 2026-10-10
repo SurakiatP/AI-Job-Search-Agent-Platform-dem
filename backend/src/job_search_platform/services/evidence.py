@@ -25,6 +25,7 @@ class EvidencedEdit(BaseModel):
 _NAME = re.compile(r"(?<![A-Za-z])[A-Z][A-Za-z]+")
 _BULLET_LEAD = re.compile(r"^[\s\-*\u2022\u2013\u2014>#\d.)]*")
 _SENTENCE_END = re.compile(r"[.!?:]\s*$")
+_HEADING_DELIMITERS = ("\u2014", "\u2013", "|", ",", ":", "(", "**", "__")
 _ACRONYMS = frozenset(  # technical acronyms that are not names; other 2-4 letter all-caps tokens are
     "AI ML API APIS UI UX QA CI CD IT HR BI ETL SQL AWS GCP CEO CTO CFO COO VP PM MBA BSC MSC PHD GPA CV KPI OKR SLA "
     "REST SAAS B2B B2C IOT NLP LLM RAG OCR TH EN USA UK EU US".split())
@@ -32,6 +33,11 @@ _STOPWORDS = frozenset(
     "january february march april may june july august september october november december "
     "jan feb mar apr jun jul aug sep sept oct nov dec monday tuesday wednesday thursday friday saturday sunday "
     "present current".split())
+
+
+def _heading(after: str) -> bool:
+    """A sentence-initial word is a name, not a verb, when a delimiter follows it or nothing lowercase does."""
+    return after.lstrip().startswith(_HEADING_DELIMITERS) or not re.search(r"[a-z]", after)
 
 
 def _latin_names(text: str, strict: bool = False) -> set[str]:
@@ -43,7 +49,8 @@ def _latin_names(text: str, strict: bool = False) -> set[str]:
         for match in _NAME.finditer(line, lead):
             word = match.group()
             before = line[lead:match.start()]
-            if (not strict and (not before.strip() or _SENTENCE_END.search(before)) or (word.upper() in _ACRONYMS and (word.isupper() or word in ("SaaS", "APIs")))
+            if (not strict and (not before.strip() or _SENTENCE_END.search(before)) and not _heading(line[match.end():])
+                    or (word.upper() in _ACRONYMS and (word.isupper() or word in ("SaaS", "APIs")))
                     or word.lower() in _STOPWORDS or extract_skills(word)):
                 continue
             found.add(f"name:{word.lower()}")
