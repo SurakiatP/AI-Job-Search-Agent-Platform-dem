@@ -4,15 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiRequest } from '../../lib/api';
 import { ApiError, type ExperienceItem, type ExperienceKind, type ExperienceView } from '../../lib/api-types';
-import { sendJson, useResource } from '../projects/useResource';
+import { sendJson, type useResource } from '../projects/useResource';
 
 const KINDS: ExperienceKind[] = ['experience', 'education', 'skill', 'certification', 'project', 'other'];
 const copy = {
-  th: { title: 'คลังประสบการณ์', hint: 'ข้อเท็จจริงจาก CV ของคุณ AI ใช้ได้เฉพาะข้อมูลในคลังนี้', fromCv: (n: string) => `จาก CV: ${n}`, mine: 'เพิ่มเอง', fact: 'ข้อเท็จจริง', kind: 'ประเภท', role: 'ตำแหน่ง', org: 'องค์กร', period: 'ช่วงเวลา', add: 'เพิ่มข้อเท็จจริง', remove: 'ลบ', edit: 'แก้ไข', save: 'บันทึก', cancel: 'ยกเลิก', extract: 'ดึงจาก CV อีกครั้ง', stop: 'หยุด', retry: 'ลองอีกครั้ง',
+  th: { title: 'คลังประสบการณ์', hint: 'ข้อเท็จจริงจาก CV ของคุณ AI ใช้ได้เฉพาะข้อมูลในคลังนี้', fromCv: (n: string) => `จาก CV: ${n}`, mine: 'เพิ่มเอง', fact: 'ข้อเท็จจริง', kind: 'ประเภท', role: 'ตำแหน่ง', org: 'องค์กร', period: 'ช่วงเวลา', add: 'เพิ่มข้อเท็จจริง', remove: 'ลบ', edit: 'แก้ไข', save: 'บันทึก', cancel: 'ยกเลิก', extract: 'ดึงจาก CV อีกครั้ง', extractFirst: 'ดึงประสบการณ์จาก CV', loadError: 'โหลดคลังประสบการณ์ไม่สำเร็จ', stop: 'หยุด', retry: 'ลองอีกครั้ง',
     queued: 'รอคิวดึงประสบการณ์จาก CV', running: 'กำลังดึงประสบการณ์จาก CV', failed: 'ดึงประสบการณ์ไม่สำเร็จ', done: (s: { added: number; duplicates: number; rejected: number }) => `เพิ่ม ${s.added}, ซ้ำ ${s.duplicates}, ทิ้ง ${s.rejected} (ไม่พบใน CV)`,
     noProvider: 'ตั้งค่า AI provider เพื่อดึงประสบการณ์จาก CV', settings: 'ไปที่การตั้งค่า', empty: 'ยังไม่มีข้อเท็จจริง เพิ่มเองได้ด้านล่าง', duplicate: 'มีข้อเท็จจริงนี้อยู่แล้ว', full: 'คลังเต็มแล้ว (1,000 รายการ)', failedAction: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง', other: 'อื่น ๆ',
     kinds: { experience: 'ประสบการณ์', education: 'การศึกษา', skill: 'ทักษะ', certification: 'ใบรับรอง', project: 'โปรเจกต์', other: 'อื่น ๆ' } },
-  en: { title: 'Experience bank', hint: 'Facts from your CVs. AI may only use what is in this bank.', fromCv: (n: string) => `From CV: ${n}`, mine: 'Added by you', fact: 'Fact', kind: 'Type', role: 'Role', org: 'Organization', period: 'Period', add: 'Add fact', remove: 'Remove', edit: 'Edit', save: 'Save', cancel: 'Cancel', extract: 'Extract from CV again', stop: 'Stop', retry: 'Retry',
+  en: { title: 'Experience bank', hint: 'Facts from your CVs. AI may only use what is in this bank.', fromCv: (n: string) => `From CV: ${n}`, mine: 'Added by you', fact: 'Fact', kind: 'Type', role: 'Role', org: 'Organization', period: 'Period', add: 'Add fact', remove: 'Remove', edit: 'Edit', save: 'Save', cancel: 'Cancel', extract: 'Extract from CV again', extractFirst: 'Extract experience', loadError: 'Could not load the experience bank.', stop: 'Stop', retry: 'Retry',
     queued: 'Waiting to extract experience from your CV', running: 'Extracting experience from your CV', failed: 'Extraction did not finish', done: (s: { added: number; duplicates: number; rejected: number }) => `Added ${s.added}, duplicates ${s.duplicates}, dropped ${s.rejected} (not found in the CV)`,
     noProvider: 'Set up an AI provider to extract experience from your CV', settings: 'Go to Settings', empty: 'No facts yet. You can add one below.', duplicate: 'This fact is already in the bank', full: 'The bank is full (1,000 facts)', failedAction: 'That did not work. Try again.', other: 'Other',
     kinds: { experience: 'Experience', education: 'Education', skill: 'Skill', certification: 'Certification', project: 'Project', other: 'Other' } },
@@ -38,9 +38,8 @@ function FactForm({ c, initial, submitLabel, onSubmit, onCancel }: { c: Copy; in
 
 const toBody = (d: Draft) => ({ kind: d.kind, text: d.text.trim(), role: d.role.trim() || null, organization: d.organization.trim() || null, period: d.period.trim() || null });
 
-export function ExperienceBank({ projectId, locale, primaryCvId }: { projectId: string; locale: 'th' | 'en'; primaryCvId: string | null }) {
+export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { projectId: string; locale: 'th' | 'en'; primaryCvId: string | null; bank: ReturnType<typeof useResource<ExperienceView>> }) {
   const c = copy[locale];
-  const bank = useResource<ExperienceView>(`/projects/${projectId}/experience`);
   const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const status = bank.data?.extraction?.status;
@@ -70,6 +69,7 @@ export function ExperienceBank({ projectId, locale, primaryCvId }: { projectId: 
       {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && <p className="flex flex-wrap items-center gap-2">{c.failed}{cvForRun && <Button size="sm" variant="outline" onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}>{c.retry}</Button>}</p>}
     </div>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    {bank.status === 'error' && <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{c.loadError}<Button variant="outline" onClick={bank.reload}>{c.retry}</Button></p>}
     {bank.data && bank.data.items.length === 0 && <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{c.empty}</p>}
     {[...groups].map(([title, items]) => <div key={title} className="grid gap-2">
       <h3 className="break-words font-medium [overflow-wrap:anywhere]">{title}</h3>
@@ -85,6 +85,6 @@ export function ExperienceBank({ projectId, locale, primaryCvId }: { projectId: 
       </li>)}</ul>
     </div>)}
     <FactForm c={c} initial={blank} submitLabel={c.add} onSubmit={d => act(() => sendJson(base, 'POST', toBody(d)))} />
-    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" size="sm" onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}>{c.extract}</Button></div>}
+    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}>{extraction ? c.extract : c.extractFirst}</Button></div>}
   </section>;
 }
