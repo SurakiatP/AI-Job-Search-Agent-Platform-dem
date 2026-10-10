@@ -875,7 +875,8 @@ class RunExecutor:
         usage = usage or {}
         data = {"step": "llm_round", "model": usage.get("model"), "latency_ms": min(int((time.monotonic() - began) * 1000), 3_600_000),
                 "input_tokens": usage.get("input_tokens"), "output_tokens": usage.get("output_tokens")}
-        tracing.record("llm.round", **{k: v for k, v in data.items() if k != "step"}, run_id=run.id)
+        tracing.llm_round(run_id=run.id, model=data["model"], latency_ms=data["latency_ms"],
+                          input_tokens=data["input_tokens"], output_tokens=data["output_tokens"])
         self._public_event(run.id, "run_progress", data)
 
     def _raise_gate_failure(self, run_id: uuid.UUID, lease_owner: str) -> None:

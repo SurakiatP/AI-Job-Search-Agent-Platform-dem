@@ -275,6 +275,8 @@ def test_start_warns_on_stderr_when_openrouter_key_missing(tmp_path, monkeypatch
     monkeypatch.setattr(local_infra, "validate_minio_source", lambda p: p)
     monkeypatch.setattr(local_infra, "ensure_credentials", lambda p: None)
     monkeypatch.setattr(local_infra, "_compose", lambda *a, **k: None)
+    monkeypatch.setattr(local_infra, "write_credentials_summary", lambda p, langfuse: None)
+    monkeypatch.delenv("LANGFUSE_HOST", raising=False)
     monkeypatch.setenv("OPENROUTER_API_KEY", key)
     assert local_infra.start(tmp_path, tmp_path)["status"] == "started"
     err = capsys.readouterr().err
@@ -294,6 +296,8 @@ def test_start_runs_seed_after_up_and_maps_failure(tmp_path, monkeypatch, seed_r
     monkeypatch.setattr(local_infra, "validate_postgres_overlay", lambda: None)
     monkeypatch.setattr(local_infra, "validate_dependency_overlay", lambda: None)
     monkeypatch.setattr(local_infra, "compose_environment", lambda *a: {})
+    monkeypatch.setattr(local_infra, "write_credentials_summary", lambda p, langfuse: None)
+    monkeypatch.delenv("LANGFUSE_HOST", raising=False)
     commands: list[list[str]] = []
 
     def fake_run(command, **kwargs):
@@ -310,3 +314,136 @@ def test_start_runs_seed_after_up_and_maps_failure(tmp_path, monkeypatch, seed_r
     assert "up" in up and "--wait" in up and "litellm-seed" not in up and "--profile" not in up
     assert seed[seed.index("--file") + 2 :][:2] == ["--profile", "seed"]
     assert seed[-3:] == ["run", "--rm", "litellm-seed"]
+
+
+LANGFUSE_FILES = (
+    "langfuse-db-password", "langfuse-clickhouse-password", "langfuse-redis-password",
+    "langfuse-minio-access-key", "langfuse-minio-secret-key", "langfuse-nextauth-secret",
+    "langfuse-salt", "langfuse-encryption-key", "langfuse-ui-password",
+    "langfuse-public-key", "langfuse-secret-key",
+)
+
+
+def _stub_compose_checks(local_infra, monkeypatch) -> list[list[str]]:
+    import subprocess
+
+    for name in ("prepare_private_directory", "validate_private_directory", "validate_minio_source"):
+        monkeypatch.setattr(local_infra, name, lambda p: p)
+    monkeypatch.setattr(local_infra, "ensure_credentials", lambda p: None)
+    monkeypatch.setattr(local_infra, "validate_gosu_source", lambda p: None)
+    monkeypatch.setattr(local_infra, "validate_postgres_overlay", lambda: None)
+    monkeypatch.setattr(local_infra, "validate_dependency_overlay", lambda: None)
+    monkeypatch.setattr(local_infra, "compose_environment", lambda *a: {})
+    commands: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(local_infra.subprocess, "run", fake_run)
+    return commands
+
+
+def test_ensure_credentials_adds_langfuse_files_without_touching_existing(tmp_path: Path) -> None:
+    import hashlib
+    import re
+
+    local_infra = _load_local_infra()
+    private_dir = tmp_path / "private"
+    private_dir.mkdir(mode=0o700)
+    old = private_dir / "litellm-master-key"  # a machine set up before this branch
+    old.write_text("sk-existing\n")
+    old.chmod(0o600)
+
+    local_infra.ensure_credentials(private_dir)
+    for name in (*LANGFUSE_FILES, "langfuse-clickhouse-users.xml", "langfuse-valkey.conf"):
+        assert (private_dir / name).stat().st_mode & 0o777 == 0o600, name
+    assert old.read_text() == "sk-existing\n"
+    assert (private_dir / "langfuse-public-key").read_text().startswith("pk-lf-")
+    assert (private_dir / "langfuse-secret-key").read_text().startswith("sk-lf-")
+    assert re.fullmatch(r"[0-9a-f]{64}\n", (private_dir / "langfuse-encryption-key").read_text())
+    for name in ("langfuse-db-password", "langfuse-clickhouse-password", "langfuse-redis-password",
+                 "langfuse-minio-access-key", "langfuse-minio-secret-key"):
+        assert re.fullmatch(r"[0-9a-f]+\n", (private_dir / name).read_text()), name  # URL-safe
+
+    password = (private_dir / "langfuse-clickhouse-password").read_text().strip()
+    xml = (private_dir / "langfuse-clickhouse-users.xml").read_text()
+    assert password not in xml
+    assert hashlib.sha256(password.encode()).hexdigest() in xml
+    assert '<default remove="remove"/>' in xml
+    redis = (private_dir / "langfuse-redis-password").read_text().strip()
+    assert (private_dir / "langfuse-valkey.conf").read_text() == f"requirepass {redis}\nmaxmemory-policy noeviction\n"
+
+    snapshot = {p.name: p.read_bytes() for p in private_dir.iterdir()}
+    local_infra.ensure_credentials(private_dir)  # idempotent
+    assert {p.name: p.read_bytes() for p in private_dir.iterdir()} == snapshot
+
+
+@pytest.mark.parametrize("host,enabled", [("", False), ("  ", False), ("http://127.0.0.1:53000", True)])
+def test_start_adds_langfuse_profile_only_when_host_set(tmp_path, monkeypatch, host, enabled) -> None:
+    local_infra = _load_local_infra()
+    commands = _stub_compose_checks(local_infra, monkeypatch)
+    summaries: list[bool] = []
+    monkeypatch.setattr(local_infra, "write_credentials_summary", lambda p, langfuse: summaries.append(langfuse))
+    monkeypatch.setenv("LANGFUSE_HOST", host)
+
+    assert local_infra.start(tmp_path, tmp_path)["status"] == "started"
+    up = commands[0]
+    assert "up" in up and ("langfuse" in up) is enabled
+    assert summaries == [enabled]
+
+
+def test_status_and_stop_always_include_langfuse_profile(tmp_path, monkeypatch) -> None:
+    local_infra = _load_local_infra()
+    commands = _stub_compose_checks(local_infra, monkeypatch)
+    monkeypatch.delenv("LANGFUSE_HOST", raising=False)  # Langfuse turned off after it ran
+
+    local_infra.status(tmp_path, tmp_path)
+    local_infra.stop(tmp_path, tmp_path)
+    assert len(commands) == 2
+    for command in commands:
+        assert command[command.index("--profile") + 1] == "langfuse"
+
+
+def test_compose_environment_defaults_langfuse_port(tmp_path, monkeypatch) -> None:
+    local_infra = _load_local_infra()
+    monkeypatch.delenv("CORE02_LANGFUSE_PORT", raising=False)
+    assert local_infra.compose_environment(tmp_path, tmp_path)["CORE02_LANGFUSE_PORT"] == "53000"
+
+
+def test_credentials_summary_is_owner_only_and_lists_langfuse_when_enabled(tmp_path, monkeypatch) -> None:
+    local_infra = _load_local_infra()
+    monkeypatch.delenv("CORE02_LANGFUSE_PORT", raising=False)
+    private_dir = tmp_path / "private"
+    private_dir.mkdir(mode=0o700)
+    local_infra.ensure_credentials(private_dir)
+    target = tmp_path / "CREDENTIALS.md"
+    target.write_text("stale")
+    target.chmod(0o644)
+
+    assert local_infra.write_credentials_summary(private_dir, langfuse=False, target=target) == target
+    text = target.read_text()
+    assert target.stat().st_mode & 0o777 == 0o600
+    assert (private_dir / "litellm-master-key").read_text().strip() in text
+    assert "Langfuse" not in text and "stale" not in text
+
+    local_infra.write_credentials_summary(private_dir, langfuse=True, target=target)
+    text = target.read_text()
+    assert (private_dir / "langfuse-secret-key").read_text().strip() in text
+    assert (private_dir / "langfuse-ui-password").read_text().strip() in text
+    assert "http://127.0.0.1:53000" in text and "owner@jobsearch.local" in text
+
+
+def test_credentials_summary_refuses_symlink(tmp_path) -> None:
+    local_infra = _load_local_infra()
+    private_dir = tmp_path / "private"
+    private_dir.mkdir(mode=0o700)
+    local_infra.ensure_credentials(private_dir)
+    elsewhere = tmp_path / "elsewhere.md"
+    elsewhere.write_text("keep")
+    target = tmp_path / "CREDENTIALS.md"
+    target.symlink_to(elsewhere)
+
+    with pytest.raises(local_infra.ConfigurationError, match="credentials_summary_symlink"):
+        local_infra.write_credentials_summary(private_dir, langfuse=True, target=target)
+    assert elsewhere.read_text() == "keep"

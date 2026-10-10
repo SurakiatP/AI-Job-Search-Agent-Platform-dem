@@ -37,8 +37,9 @@ def _without_userinfo(url: str) -> str:
     return parts._replace(netloc=parts.netloc.rpartition("@")[2]).geturl()
 
 
-def _key_file(private_dir: Path) -> str | None:
-    path = private_dir / "litellm_app_key"
+def read_private_file(private_dir: Path, name: str) -> str | None:
+    """Stripped contents of an owner-only regular file in the private dir, else None."""
+    path = private_dir / name
     try:
         if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & 0o077:
             return None
@@ -58,7 +59,7 @@ class GatewaySettings:
     @classmethod
     def from_env(cls, private_dir: Path | None = None) -> "GatewaySettings":
         env = os.environ
-        key = (env.get("LITELLM_API_KEY") or "").strip() or _key_file(private_dir or default_private_dir())
+        key = (env.get("LITELLM_API_KEY") or "").strip() or read_private_file(private_dir or default_private_dir(), "litellm_app_key")
         return cls((env.get("LITELLM_BASE_URL") or DEFAULT_BASE_URL).rstrip("/"), key,
                    env.get("AI_ANALYZE_MODEL") or "ai-analyze",
                    env.get("AI_DECISION_MODEL") or "typesafe/jev-1.13")
