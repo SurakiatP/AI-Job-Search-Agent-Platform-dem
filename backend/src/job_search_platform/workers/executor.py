@@ -918,6 +918,7 @@ class RunExecutor:
                 draft["format"],
                 f"staging/{draft['path']}",
                 f"staging/{name}",
+                engine="typst" if draft["document_type"] == "cv" and draft["format"] == "pdf" else "chromium",
             )
             try:
                 exported_markdown = source.read_text(encoding="utf-8")

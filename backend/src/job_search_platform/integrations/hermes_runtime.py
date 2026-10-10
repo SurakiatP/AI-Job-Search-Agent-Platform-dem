@@ -286,9 +286,9 @@ class HermesRuntime:
         return ParsedInput(response["text"], response["kind"], response["sha256"])
 
     async def export_document(self, project_id: UUID, format: Literal["pdf", "docx"],
-                              source: str, output: str) -> str:
+                              source: str, output: str, engine: str = "chromium") -> str:
         response = await self._request(self.projects[project_id], "export", format=format,
-                                       source=source, output=output)
+                                       source=source, output=output, engine=engine)
         if response.get("output") != output or response.get("format") != format:
             raise RuntimeErrorCode("native_response_invalid")
         return output

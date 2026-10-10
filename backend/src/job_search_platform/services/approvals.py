@@ -6,13 +6,14 @@ import json
 import secrets
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import (
-    CV, Approval, CVRevision, DocumentRevision, Grant, JobApplicationStatus, Project, Run, StoredFile,
+    CV, Approval, CVRevision, DocumentRevision, Grant, JobApplicationStatus, Project, ProjectPreference, Run, StoredFile,
 )
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import Actor, ApprovalRequest, ApprovalView
@@ -21,6 +22,13 @@ from job_search_platform.services.runs import accrue_active_time, actor_scope, a
 from job_search_platform.workers.queue import PostgresRunQueue
 
 APPROVAL_TTL = timedelta(hours=24)
+BUDGET_TZ = ZoneInfo("Asia/Bangkok")
+
+
+def budget_day_start(now: datetime) -> datetime:
+    """UTC instant of the most recent 00:00 Asia/Bangkok at or before now."""
+    local = _utc(now).astimezone(BUDGET_TZ)
+    return local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
 
 class ApprovalService:
@@ -101,7 +109,27 @@ class ApprovalService:
             if run.cancellation_requested_at is not None:
                 raise ServiceError("cancellation_requested")
             request = ApprovalRequest(action="submit_application", target_run_id=UUID(run.input_snapshot["pack_run_id"]))
-            return self._open(db, run, request, now)
+            view = self._open(db, run, request, now)
+            # The project row lock above also serializes the budget count against the approve below.
+            limit = db.scalar(select(ProjectPreference.submit_autopilot_daily_limit).where(
+                ProjectPreference.project_id == project_id))
+            if limit is None or not self._creator_is_current(db, run, now):
+                return view  # no autopilot: stays waiting, goes stale under the usual rules
+            pack = db.scalar(select(Run.result_payload).where(Run.project_id == project_id, Run.id == request.target_run_id))
+            if not isinstance(pack, dict) or pack.get("state") != "ready" or pack.get("missing_required"):
+                return view
+            used = db.scalar(select(func.count()).select_from(Approval).where(
+                Approval.project_id == project_id, Approval.action == "submit_application",
+                Approval.decided_by == "autopilot", Approval.decision == "approve",
+                Approval.consumed_at >= budget_day_start(now)))
+            if used >= limit:
+                return view
+            approval = db.get(Approval, view.id)
+            approval.consumed_at, approval.decision, approval.decided_by = now, "approve", "autopilot"
+            append_event(db, run, "run_progress", {"step": "autopilot_approved"}, now=now)
+            self._finish_submission(db, approval, run, "approve", now)
+            db.flush()
+            return _view(approval)
 
     def _open(self, db: Session, run: Run, request: ApprovalRequest, now: datetime) -> ApprovalView:
         change, _ = self._resolve_change(db, run.project_id, request)
@@ -169,7 +197,7 @@ class ApprovalService:
                 raise ServiceError("approval_consumed")
             if _utc(approval.expires_at) <= now:
                 approval.consumed_at = now
-                approval.decision = "reject"
+                approval.decision = "reject"  # expiry: nobody decided, decided_by stays NULL
                 approval.applied_at = now
                 self._fail_approval(db, approval, "approval_expired", "errors.approval_expired", now)
                 expired = True
@@ -206,6 +234,7 @@ class ApprovalService:
 
                 approval.consumed_at = now
                 approval.decision = decision
+                approval.decided_by = "owner"
                 if approval.action == "submit_application":
                     self._finish_submission(db, approval, run, decision, now)
                 elif decision == "reject":
@@ -534,6 +563,7 @@ def _view(approval: Approval) -> ApprovalView:
         consumed_at=approval.consumed_at,
         decision=approval.decision,
         applied_at=approval.applied_at,
+        decided_by=approval.decided_by,
     )
 
 

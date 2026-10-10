@@ -5,11 +5,11 @@ COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
     apk upgrade --no-cache && apk add --no-cache \
-        bash=5.3.9-r1 chromium=152.0.7977.82-r0 ripgrep=15.1.0-r0 libstdc++=15.2.0-r5
+        bash=5.3.9-r1 chromium=152.0.7977.82-r0 ripgrep=15.1.0-r0 libstdc++=15.2.0-r5 typst=0.14.2-r0 font-noto-thai=2026.06.01-r0
 COPY career-ops/ /opt/career-ops/
 COPY career-ops-docx/ /opt/career-ops-docx/
 COPY package.json package-lock.json /opt/runtime/
-COPY parser-requirements.txt parse_document.py export_pdf.mjs /opt/runtime/
+COPY parser-requirements.txt parse_document.py export_pdf.mjs typst_render.py /opt/runtime/
 RUN cd /opt/runtime && npm ci --ignore-scripts && \
     ln -s /opt/runtime/node_modules /opt/career-ops/node_modules && \
     pip install --require-hashes --only-binary=:all: --no-deps -r parser-requirements.txt && \

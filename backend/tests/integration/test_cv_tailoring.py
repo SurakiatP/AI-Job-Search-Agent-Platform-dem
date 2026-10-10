@@ -34,7 +34,7 @@ class _Runtime:
 
     def __init__(self, root, script):
         self.projects: dict = {}
-        self.root, self.script, self.submits = root, list(script), []
+        self.root, self.script, self.submits, self.engines = root, list(script), [], []
 
     async def start_project(self, project_id, workspace):
         self.projects[project_id] = SimpleNamespace(
@@ -51,7 +51,8 @@ class _Runtime:
         edits = self.script.pop(0) if self.script else []
         yield SimpleNamespace(kind="result", result=json.dumps({"edits": edits}))
 
-    async def export_document(self, project_id, fmt, source, output):
+    async def export_document(self, project_id, fmt, source, output, engine="chromium"):
+        self.engines.append(engine)
         # Like the real bridge, the exporter runs the sandbox terminal tool, so it asks the project tool gate.
         gate = getattr(self.projects[project_id], "tool_gate", None)
         if gate is not None and not await gate("export", "terminal"):
@@ -191,6 +192,7 @@ def test_interactive_proposals_then_apply_and_restore(api_context):
     assert _run(ctx, run_id).status == "completed"
     assert ctx.client.post(url, headers=headers, json={"proposal_ids": [0]}).json()["code"] == "tailor_already_applied"
     _execute_next(ctx, runtime)
+    assert runtime.engines == ["typst"]
     (first,) = _revisions(ctx, pid)
     assert CV_TEXT in first.content_markdown and "Docker" in first.content_markdown and "Terraform" in first.content_markdown
 
@@ -207,6 +209,12 @@ def test_interactive_proposals_then_apply_and_restore(api_context):
     _execute_next(ctx, runtime)
     revisions = _revisions(ctx, pid)
     assert len(revisions) == 3 and revisions[2].content_markdown == first.content_markdown
+    assert runtime.engines == ["typst"] * 3  # apply, apply, restore all render CVs with typst
+    edit = ctx.client.post(f"{PREFIX}/{pid}/documents/{first.document_id}/revisions", headers=headers,
+                           json={"content_markdown": "# Hand edited CV"})
+    assert edit.status_code == 202
+    _execute_next(ctx, runtime)
+    assert runtime.engines[-1] == "typst" and len(runtime.engines) == 4  # manual edit too
     assert ctx.client.post(f"{PREFIX}/{pid}/documents/{first.document_id}/revisions/{uuid4()}/restore",
                            headers=headers).status_code == 404
 

@@ -156,4 +156,5 @@ export type ApprovalView = {
   consumed_at: string | null;
   decision: 'approve' | 'reject' | null;
   applied_at: string | null;
+  decided_by?: 'owner' | 'autopilot' | null;
 };

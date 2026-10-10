@@ -27,7 +27,10 @@ class ProjectPreference(Base):
     __tablename__ = "project_preferences"
     project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
     values: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    submit_autopilot_daily_limit: Mapped[int | None] = mapped_column(Integer)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (CheckConstraint("submit_autopilot_daily_limit IS NULL OR submit_autopilot_daily_limit BETWEEN 1 AND 20",
+                                      name="ck_pref_autopilot_limit"),)
 
 
 class ConversationSession(Base):
@@ -404,7 +407,9 @@ class Approval(Base):
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     decision: Mapped[str | None] = mapped_column(String(8))
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decided_by: Mapped[str | None] = mapped_column(String(16))
     __table_args__ = (
+        CheckConstraint("decided_by IS NULL OR decided_by IN ('owner','autopilot')", name="ck_approval_decided_by"),
         ForeignKeyConstraint(["project_id", "run_id"], ["runs.project_id", "runs.id"], ondelete="CASCADE"),
         ForeignKeyConstraint(["project_id", "revision_id"], ["document_revisions.project_id", "document_revisions.id"]),
         ForeignKeyConstraint(["project_id", "expected_cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"]),

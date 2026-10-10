@@ -56,7 +56,7 @@ export function ApprovalsTab({ projectId, locale, c }: { projectId: string; loca
   const resolved = sorted.filter(a => !isPending(a));
   const base = `/app/projects/${project}`;
   const runLink = (a: ApprovalView) => { const sessionId = sessionOf.get(a.run_id); return sessionId ? <Link className="text-sm text-primary hover:underline" to={`${base}/sessions/${encodeURIComponent(sessionId)}`}>{c.openRun}</Link> : null; };
-  const label = (a: ApprovalView) => a.decision === 'approve' ? <Badge variant="success">{c.approved}</Badge> : a.decision === 'reject' ? <Badge variant="secondary">{c.rejected}</Badge> : a.consumed_at ? <Badge variant="secondary">{c.used}</Badge> : <Badge variant="secondary">{c.expired}</Badge>;
+  const label = (a: ApprovalView) => a.decision === 'approve' ? <><Badge variant="success">{c.approved}</Badge>{a.decided_by === 'autopilot' && <Badge variant="secondary" className="ml-1">{c.autoApproved}</Badge>}</> : a.decision === 'reject' ? <Badge variant="secondary">{c.rejected}</Badge> : a.consumed_at ? <Badge variant="secondary">{c.used}</Badge> : <Badge variant="secondary">{c.expired}</Badge>;
   return <div className="grid gap-6">
     {failed && <p role="alert" className="text-sm text-destructive">{c.opaction}</p>}
     <section aria-labelledby="pending-heading" className="grid gap-3">

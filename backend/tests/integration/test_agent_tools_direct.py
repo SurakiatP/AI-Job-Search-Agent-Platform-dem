@@ -89,17 +89,18 @@ def test_rest_search_full_description_age_stale_and_text_mode(api_context, fake_
     csrf, project_id = _project(api_context)
     token = _grant(api_context, project_id, csrf, ["jobs:search"])
     base = f"/api/v1/projects/{project_id}/agent/jobs/search"
-    job = _as_grant(api_context.client, "GET", f"{base}?q=python&limit=30", token).json()["jobs"][0]
+    job = _as_grant(api_context.client, "POST", base, token, json={"q": "python", "limit": 30}).json()["jobs"][0]
     assert job["description_format"] == "markdown" and job["description"] == RAW["description"]
     assert job["posting_age_days"] == 9 and job["stale"] is True
     assert job["source_id"] == "synthetic-python-dev" and job["city"] == "Bangkok"
     assert job["source_url"] == "https://jobs.example.test/1"
     assert fake_source[-1]["limit"] == 30 and fake_source[-1]["q"] == "python"
-    text = _as_grant(api_context.client, "GET", f"{base}?description_format=text", token).json()["jobs"][0]
+    text = _as_grant(api_context.client, "POST", base, token, json={"description_format": "text"}).json()["jobs"][0]
     assert text["description_format"] == "text"
     assert text["description"] == "Role\n\nNeed Python and Docker.\n\n- Ship APIs"
-    assert _as_grant(api_context.client, "GET", f"{base}?limit=51", token).status_code == 422
-    owner_view = api_context.client.get(base)
+    assert _as_grant(api_context.client, "POST", base, token, json={"limit": 51}).status_code == 422
+    owner_view = api_context.client.post(base, json={}, headers=_write_headers(csrf))
+    assert api_context.client.get(base).status_code == 405
     assert owner_view.status_code == 200 and len(owner_view.json()["jobs"]) == 1
 
 
@@ -133,9 +134,9 @@ def test_rest_capability_denials(api_context):
     search = f"/api/v1/projects/{project_id}/agent/jobs/search"
     fit = f"/api/v1/projects/{project_id}/agent/jobs/fit"
     body = {"job": {"title": "Synthetic dev", "description": JOB_TEXT}}
-    assert _as_grant(api_context.client, "GET", search, evaluate_only).status_code == 403
+    assert _as_grant(api_context.client, "POST", search, evaluate_only, json={}).status_code == 403
     assert _as_grant(api_context.client, "POST", fit, search_only, json=body).status_code == 403
-    assert _as_grant(api_context.client, "GET", search, "not-a-token").status_code == 401
+    assert _as_grant(api_context.client, "POST", search, "not-a-token", json={}).status_code == 401
 
 
 def test_rest_grant_cannot_use_another_projects_path(api_context):
@@ -144,7 +145,7 @@ def test_rest_grant_cannot_use_another_projects_path(api_context):
     other = UUID(api_context.client.post("/api/v1/projects", json={"name": "Other"}, headers=_write_headers(csrf)).json()["id"])
     body = {"job": {"title": "Synthetic dev", "description": JOB_TEXT}}
     assert _as_grant(api_context.client, "POST", f"/api/v1/projects/{other}/agent/jobs/fit", token, json=body).status_code == 404
-    assert _as_grant(api_context.client, "GET", f"/api/v1/projects/{other}/agent/jobs/search", token).status_code == 404
+    assert _as_grant(api_context.client, "POST", f"/api/v1/projects/{other}/agent/jobs/search", token, json={}).status_code == 404
 
 
 @pytest.mark.integration

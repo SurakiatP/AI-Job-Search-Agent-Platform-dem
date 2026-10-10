@@ -142,6 +142,7 @@ class PreferencesUpdate(DTO):
     locale: Literal["th", "en"] | None = None
     output_language: Literal["th", "en"] | None = None
     notifications_enabled: bool | None = None
+    submit_autopilot_daily_limit: Annotated[int, Field(ge=1, le=20)] | None = None
 
 
 class PreferencesView(DTO):
@@ -149,6 +150,7 @@ class PreferencesView(DTO):
     locale: Literal["th", "en"]
     output_language: Literal["th", "en"]
     notifications_enabled: bool
+    submit_autopilot_daily_limit: int | None = None
     updated_at: datetime
 
 
@@ -424,6 +426,7 @@ class ApprovalView(DTO):
     consumed_at: datetime | None = None
     decision: Literal["approve", "reject"] | None = None
     applied_at: datetime | None = None
+    decided_by: Literal["owner", "autopilot"] | None = None
 
 
 class CVPromoteRequest(DTO):

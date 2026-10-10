@@ -50,3 +50,8 @@ The corrected invocation supplied the verified MinIO source checkout through `MI
 Actual image IDs: PostgreSQL `sha256:b65a00df9778bc6f6e8c7f0208555da8f13fb391f92a69c160f853e21aaf8e2c`; MinIO `sha256:ed336a7464e2eeecf94c70ff5778c6c0dd6ed84cefdb2e6fd67822b8334e5b20`; Hermes `sha256:f132adc318b2553808e33b32b830fc99be14f500206a88f47d5dcee97c00432a`. Each has a recorded SBOM. These local image IDs identify the tested builds and are not registry pull references.
 
 MinIO `GO-2026-5932` remains UNKNOWN in both Go inventory and image reports. Parser coverage is release-source inventory; the compiled wheel is unattested. No findings were suppressed. The preceding `20261004T072345.071208Z` attempt exited 1 because the invocation omitted `MINIO_SOURCE_DIR`; its missing Go-build scope remains historical evidence, and is not a passing scan. Live-provider and independent final acceptance remain separate gates.
+
+## Hermes image: Typst CV renderer (2026-10-10)
+
+- Added to the pinned Alpine 3.24 `apk add`: `typst=0.14.2-r0` (CV PDF renderer, no packages, network disabled) and `font-noto-thai=2026.06.01-r0`. Rebuilt image `sha256:ffbda4c7911b7bcaff52ebc259bc2a77425d32685d10542c8ed14c0a6a3cee6a` (previous `sha256:f132adc318b2...`).
+- `trivy image --scanners vuln` on the rebuilt image: 0 findings at every severity (0 High/Critical, none in typst or fonts). The previous image had 0 High/Critical and 1 Medium. Full `security_scan.py` was not re-run for this change.

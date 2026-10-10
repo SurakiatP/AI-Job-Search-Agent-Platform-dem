@@ -17,11 +17,11 @@ import { ApiError, type CVView, type ExperienceView } from '../../lib/api-types'
 import { ExperienceBank } from './ExperienceBank';
 import { sendJson, useResource } from '../projects/useResource';
 
-type Preferences = { project_id: string; output_language: 'th' | 'en'; notifications_enabled: boolean };
+type Preferences = { project_id: string; output_language: 'th' | 'en'; notifications_enabled: boolean; submit_autopilot_daily_limit?: number | null };
 
 const copy = {
-  th: { subtitle: 'จัดการ CV หลายฉบับและค่ากำหนดของเอกสาร', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', empty: 'ยังไม่มี CV', emptyBody: 'เลือกไฟล์ PDF, DOCX หรือ TXT (ไม่เกิน 20 MB) เพื่อเพิ่ม CV ชื่อจะตั้งจากชื่อไฟล์ แก้ไขได้ภายหลัง', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ลบ CV “${n}”?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้อีก เซสชันที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง', extract: 'ดึงประสบการณ์', docSettings: 'การตั้งค่าเอกสาร', notifyHint: 'แจ้งเตือนเมื่องานของเอเจนต์เสร็จหรือรออนุมัติ' },
-  en: { subtitle: 'Manage several CVs and document preferences', cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Set as primary', rename: 'Rename', delete: 'Delete', empty: 'No CV yet', emptyBody: 'Choose a PDF, DOCX or TXT file (up to 20 MB) to add a CV. The name comes from the file name and can be changed later.', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Delete CV “${n}”?`, delBody: 'This CV leaves the list and can no longer be paired. Sessions that used it keep their results and documents.', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.', extract: 'Extract experience', docSettings: 'Document settings', notifyHint: 'Tell me when an agent task finishes or needs approval' },
+  th: { subtitle: 'จัดการ CV หลายฉบับและค่ากำหนดของเอกสาร', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', empty: 'ยังไม่มี CV', emptyBody: 'เลือกไฟล์ PDF, DOCX หรือ TXT (ไม่เกิน 20 MB) เพื่อเพิ่ม CV ชื่อจะตั้งจากชื่อไฟล์ แก้ไขได้ภายหลัง', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ลบ CV “${n}”?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้อีก เซสชันที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง', extract: 'ดึงประสบการณ์', docSettings: 'การตั้งค่าเอกสาร', autoLabel: 'อนุมัติอัตโนมัติสูงสุด N ใบสมัครต่อวัน (เว้นว่าง = ปิด)', autoHint: 'ระบบเพียงบันทึกว่า "สมัครแล้ว" ไม่ส่งใบสมัครให้ คุณยังต้องส่งเองบนเว็บไซต์ของบริษัท ใช้ได้เมื่อชุดคำตอบพร้อมและครบทุกข้อบังคับเท่านั้น เอเจนต์ที่คุณให้สิทธิ์เข้าถึงใบสมัครก็ใช้ฟังก์ชันนี้ได้ สูงสุด N ใบต่อวัน', autoInvalid: 'ใส่จำนวนเต็ม 1-20 หรือเว้นว่าง', notifyHint: 'แจ้งเตือนเมื่องานของเอเจนต์เสร็จหรือรออนุมัติ' },
+  en: { subtitle: 'Manage several CVs and document preferences', cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Set as primary', rename: 'Rename', delete: 'Delete', empty: 'No CV yet', emptyBody: 'Choose a PDF, DOCX or TXT file (up to 20 MB) to add a CV. The name comes from the file name and can be changed later.', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Delete CV “${n}”?`, delBody: 'This CV leaves the list and can no longer be paired. Sessions that used it keep their results and documents.', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.', extract: 'Extract experience', docSettings: 'Document settings', autoLabel: 'Auto-approve up to N submissions per day (empty = off)', autoHint: 'This only records "applied"; nothing is ever sent. You still submit on the company site yourself. Applies only when the answer pack is ready with every required answer filled. Agents you have given application access can also use this, up to N per day.', autoInvalid: 'Enter a whole number from 1 to 20, or leave empty', notifyHint: 'Tell me when an agent task finishes or needs approval' },
 };
 const selectClass = 'flex min-h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 const formatSize = (bytes: number) => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -71,6 +71,9 @@ export function ProfilePage() {
   const [notificationsDraft, setNotificationsDraft] = useDraft(projectId, 'profile', 'notifications');
   const language: 'th' | 'en' = languageDraft === 'th' || languageDraft === 'en' ? languageDraft : preferences.data?.output_language ?? 'th';
   const notifications = notificationsDraft ? notificationsDraft === 'true' : preferences.data?.notifications_enabled ?? true;
+  const [limitDraft, setLimitDraft] = useState<string | null>(null);
+  const limit = limitDraft ?? (preferences.data?.submit_autopilot_daily_limit?.toString() ?? '');
+  const limitValid = limit === '' || /^([1-9]|1\d|20)$/.test(limit);
   const [saveError, setSaveError] = useState(false);
   const [extractError, setExtractError] = useState(false);
   const bank = useResource<ExperienceView>(`/projects/${projectId}/experience`);
@@ -109,7 +112,8 @@ export function ProfilePage() {
   }
   async function savePreferences() {
     setSaveError(false);
-    try { await sendJson(`/projects/${projectId}/preferences`, 'PATCH', { output_language: language, notifications_enabled: notifications }); setLanguageDraft(''); setNotificationsDraft(''); preferences.reload(); }
+    if (!limitValid) return;
+    try { await sendJson(`/projects/${projectId}/preferences`, 'PATCH', { output_language: language, notifications_enabled: notifications, submit_autopilot_daily_limit: limit === '' ? null : Number(limit) }); setLanguageDraft(''); setNotificationsDraft(''); setLimitDraft(null); preferences.reload(); }
     catch { setSaveError(true); }
   }
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
@@ -155,6 +159,9 @@ export function ProfilePage() {
             <input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" checked={notifications} onChange={event => setNotificationsDraft(String(event.target.checked))} />
             <span className="min-w-0"><span className="block text-sm font-medium">{t('pages.notifications', { defaultValue: 'Notifications' })}</span><span className="block text-sm text-muted-foreground">{c.notifyHint}</span></span>
           </label>
+          <div className="grid gap-1.5"><label htmlFor="autopilot-limit" className="text-sm font-medium">{c.autoLabel}</label>
+            <Input id="autopilot-limit" inputMode="numeric" maxLength={2} value={limit} aria-invalid={!limitValid} aria-describedby="autopilot-hint" onChange={event => setLimitDraft(event.target.value.trim())} />
+            <p id="autopilot-hint" className={limitValid ? 'text-sm text-muted-foreground' : 'text-sm text-destructive'}>{limitValid ? c.autoHint : c.autoInvalid}</p></div>
           {saveError && <p className="text-sm text-destructive" role="alert">{t('pages.loadError', { defaultValue: 'We could not load this information.' })}</p>}
         </CardContent>
         <CardFooter className="justify-end gap-2"><Button onClick={() => void savePreferences()}>{t('pages.savePreferences', { defaultValue: 'Save preferences' })}</Button></CardFooter>

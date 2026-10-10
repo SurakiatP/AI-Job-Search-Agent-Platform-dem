@@ -14,6 +14,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import (
+    Approval,
     ConversationSession,
     CV,
     CVRevision,
@@ -934,9 +935,17 @@ class RunService:
                 raise ServiceError("forbidden")
             if run.status in {"completed", "failed", "cancelled", "interrupted"}:
                 return self._authorized_view(db, actor, run)
-            if run.status in ("queued", "needs_input"):  # neither holds a sandbox
+            if run.status in ("queued", "needs_input") or (
+                    run.status == "waiting_approval" and run.operation == "apply_submit"):
+                # None of these holds a sandbox; a pending submit has no worker, so it ends now and its approval is void.
+                if run.status == "waiting_approval":
+                    for approval in db.scalars(select(Approval).where(
+                            Approval.run_id == run.id, Approval.consumed_at.is_(None)).with_for_update()):
+                        approval.consumed_at = now
+                        approval.decision = "reject"
                 run.status = "cancelled"
                 run.finished_at = now
+                run.lease_owner = run.lease_expires_at = run.heartbeat_at = None
                 append_event(db, run, "run_cancelled", {"status": "cancelled"}, now=now)
             elif run.cancellation_requested_at is None:
                 run.cancellation_requested_at = now
