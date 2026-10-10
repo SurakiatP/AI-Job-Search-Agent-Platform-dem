@@ -809,7 +809,7 @@ paths:
       description: Owner-only, owner CSRF auth. Makes the document revision's file the next revision of the CV in one transaction (the owner is the approver); works while another run is active.
       requestBody:
         required: true
-        content: {application/json: {schema: {type: object, required: [revision_id, expected_cv_revision_id], properties: {revision_id: {type: string, format: uuid}, expected_cv_revision_id: {type: string, format: uuid}}}}}
+        content: {application/json: {schema: {$ref: '#/components/schemas/CVPromoteRequest'}}}
       responses:
         '200': {description: Promoted}
         '404': {description: Unknown or file-less document revision (not_found)}
@@ -1307,6 +1307,13 @@ components:
         change_digest: {type: string, pattern: '^[a-f0-9]{64}$'}
         expires_at: {type: string, format: date-time}
         consumed_at: {type: [string, 'null'], format: date-time}
+    CVPromoteRequest:
+      type: object
+      additionalProperties: false
+      required: [revision_id, expected_cv_revision_id]
+      properties:
+        revision_id: {type: string, format: uuid}
+        expected_cv_revision_id: {type: string, format: uuid}
     ApprovalRequest:
       type: object
       additionalProperties: false
