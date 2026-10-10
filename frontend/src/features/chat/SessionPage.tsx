@@ -21,6 +21,7 @@ import { useRun } from './useRun';
 import { RunTimeline } from './RunTimeline';
 import { ApprovalCard } from './ApprovalCard';
 import { RunResults } from './RunResults';
+import { TailorCard } from './TailorCard';
 
 const selectClass = 'flex min-h-9 rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50';
 const copy = {
@@ -163,6 +164,7 @@ export function SessionPage() {
           <Button type="button" className="min-h-11" variant="outline" disabled={busy} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button>
           <label className="ms-auto flex items-center gap-2 text-sm">{c.lang}<select className={selectClass} value={outputLanguage} onChange={event => setOutputLanguage(event.target.value === 'en' ? 'en' : 'th')} disabled={busy}><option value="th">{c.th}</option><option value="en">{c.en}</option></select></label>
         </div>{!evalIsLatest && runPanel}</CardContent></Card>
+      <TailorCard projectId={projectId} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} run={sessionRuns.find(run => run.operation === 'tailor_cv') ?? null} onChanged={() => { void workflow.reload().catch(() => undefined); reloadRuns(); }} />
     {confirmKind && <Dialog open onOpenChange={open => { if (!open) setConfirmKind(null); }}><DialogContent>
       <DialogTitle>{c.redraftConfirm}</DialogTitle><DialogDescription>{kindLabel(confirmKind)}: {c.redraftBody}</DialogDescription>
       <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" className="min-h-11">{c.dismiss}</Button></DialogClose><Button type="button" className="min-h-11" onClick={() => draftNow(confirmKind)}>{c.confirm}</Button></div>
