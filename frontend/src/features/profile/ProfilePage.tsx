@@ -14,6 +14,7 @@ import { useDraft } from '../../app/drafts';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { apiRequest } from '../../lib/api';
 import { ApiError, type CVView } from '../../lib/api-types';
+import { ExperienceBank } from './ExperienceBank';
 import { sendJson, useResource } from '../projects/useResource';
 
 type Preferences = { project_id: string; output_language: 'th' | 'en'; notifications_enabled: boolean };
@@ -126,6 +127,7 @@ export function ProfilePage() {
               {!cv.is_primary && <Button type="button" size="sm" variant="ghost" onClick={() => void makePrimary(cv)}>{c.makePrimary}</Button>}
             </div>
           </CardContent></Card></li>)}</ul>}
+        <ExperienceBank projectId={projectId} locale={locale} primaryCvId={list.find(cv => cv.is_primary)?.id ?? list[0]?.id ?? null} />
       </div>
       <Card className="lg:self-start">
         <CardHeader><CardTitle className="text-lg">{c.docSettings}</CardTitle></CardHeader>
