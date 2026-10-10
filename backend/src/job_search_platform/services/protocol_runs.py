@@ -12,7 +12,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from job_search_platform.db.models import ConversationSession, Project
 from job_search_platform.db.repositories import Repositories
 from job_search_platform.services.authorization import authorize
-from job_search_platform.services.contracts import Actor, Operation, ProtocolJobInput, RunRequest, RunView
+from job_search_platform.services.contracts import (
+    Actor, ApplyPrepareInput, ApplySubmitInput, Operation, ProtocolJobInput, RunRequest, RunView,
+)
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import RunService, actor_scope, lock_current_grant
 from job_search_platform.services.skills import SKILL_BY_ID
@@ -26,15 +28,15 @@ class ProtocolRuns:
         self.runs = RunService(sessions)
 
     async def submit(
-        self, actor: Actor, operation: Operation, request: ProtocolJobInput,
+        self, actor: Actor, operation: Operation, request: ProtocolJobInput | ApplySubmitInput,
     ) -> RunView:
         if actor.kind != "grant" or actor.project_id is None or actor.grant_id is None:
             raise ServiceError("forbidden")
-        if operation not in SKILL_BY_ID:
+        if operation not in SKILL_BY_ID or SKILL_BY_ID[operation].kind != "task":
             raise ServiceError("forbidden")
         return await asyncio.to_thread(self._submit, actor, operation, request)
 
-    def _submit(self, actor: Actor, operation: str, request: ProtocolJobInput) -> RunView:
+    def _submit(self, actor: Actor, operation: str, request: ProtocolJobInput | ApplySubmitInput) -> RunView:
         project_id = actor.project_id
         scope = actor_scope(actor)
         now = datetime.now(timezone.utc)
@@ -56,7 +58,7 @@ class ProtocolRuns:
             else:
                 grant_session.removed_at = None  # a hidden External agent session reappears
 
-            if request.job is not None:
+            if getattr(request, "job", None) is not None:
                 job = Repositories.resolve_job_submission(
                     db, project_id=project_id, actor_scope=scope,
                     idempotency_key=request.idempotency_key,
@@ -66,8 +68,11 @@ class ProtocolRuns:
                 job = Repositories.job_revision(db, project_id, request.job_revision_id)
             run_request = RunRequest(
                 session_id=grant_session_id, operation=operation,
-                job_revision_id=job.id, cv_id=request.cv_id, output_language=request.output_language,
+                job_revision_id=job.id, cv_id=getattr(request, "cv_id", None),
+                # apply_submit has no language of its own; the run takes the submitted pack's.
+                output_language=getattr(request, "output_language", "en"),
                 idempotency_key=request.idempotency_key,
+                questions=request.questions if isinstance(request, ApplyPrepareInput) else None,
             )
             # Failure rolls back every newly created row, including reservations.
             return self.runs._submit_in_transaction(

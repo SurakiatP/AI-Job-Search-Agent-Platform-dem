@@ -39,7 +39,7 @@ class PostgresRunQueue:
             active_projects = set(
                 db.scalars(
                     select(Run.project_id).distinct().where(
-                        Run.status.in_(("running", "waiting_approval"))
+                        Run.status.in_(("running", "waiting_approval")), Run.operation != "apply_submit"
                     )
                 ).all()
             )
@@ -50,9 +50,11 @@ class PostgresRunQueue:
                 .limit(100)
             ).all()
             for run_id, project_id, scope, operation in candidates:
-                if project_id in active_projects:
+                # apply_submit holds no sandbox and may wait days for the owner: it neither blocks nor is blocked.
+                exempt = operation == "apply_submit"
+                if project_id in active_projects and not exempt:
                     continue
-                if len(active_projects) >= MAX_ACTIVE_PROJECTS:
+                if len(active_projects) >= MAX_ACTIVE_PROJECTS and not exempt:
                     break
                 project = db.scalar(
                     select(Project).where(Project.id == project_id).with_for_update()
@@ -87,7 +89,8 @@ class PostgresRunQueue:
                 run.active_started_at = now
                 append_event(db, run, "run_started", {"status": "running"}, now=now)
                 db.flush()
-                active_projects.add(project_id)
+                if not exempt:
+                    active_projects.add(project_id)
                 return run
             return None
 

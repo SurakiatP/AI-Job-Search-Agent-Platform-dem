@@ -11,11 +11,12 @@ from sqlalchemy.orm import Session
 from job_search_platform.db.models import Grant, OwnerSession
 from job_search_platform.services.contracts import Actor, Capability
 from job_search_platform.services.errors import ServiceError
-from job_search_platform.services.skills import SKILL_BY_ID
+from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
 
 GRANT_CAPABILITIES = frozenset(get_args(Capability))
 RESULT_RESOURCES = frozenset({"run", "event", "result", "generated_document"})
-GRANT_WORK_RESOURCES = frozenset(SKILL_BY_ID)
+GRANT_WORK_RESOURCES = frozenset(skill.id for skill in SKILLS if skill.kind == "task")
+GRANT_READ_RESOURCES = frozenset(skill.id for skill in SKILLS if skill.kind == "direct")
 OWNER_ONLY_RESOURCES = frozenset({
     "project", "session", "message", "cv", "cv_original", "upload", "raw_input",
     "preference", "job", "provider_settings", "grant", "approval", "owner_session",
@@ -61,10 +62,10 @@ def authorize(db: Session, actor: Actor, project_id: UUID, action: str,
         if needed not in persisted:
             raise ServiceError("forbidden")
         return
-    if resource_kind in OWNER_ONLY_RESOURCES or resource_kind not in RESULT_RESOURCES | GRANT_WORK_RESOURCES:
+    if resource_kind in OWNER_ONLY_RESOURCES or resource_kind not in RESULT_RESOURCES | GRANT_WORK_RESOURCES | GRANT_READ_RESOURCES:
         raise ServiceError("forbidden")
     persisted = frozenset(grant.capabilities) & GRANT_CAPABILITIES
-    if resource_kind in GRANT_WORK_RESOURCES:
+    if resource_kind in GRANT_WORK_RESOURCES | GRANT_READ_RESOURCES:
         if SKILL_BY_ID[resource_kind].capability not in persisted:
             raise ServiceError("forbidden")
         return

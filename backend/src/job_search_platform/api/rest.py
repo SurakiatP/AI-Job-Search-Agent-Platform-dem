@@ -25,7 +25,7 @@ from job_search_platform.db.models import (
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
-    ApprovalDecision, ApprovalRequest, ApprovalView, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
+    AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVPromoteRequest, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
     ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
@@ -40,7 +40,7 @@ from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
 from job_search_platform.services.runs import actor_scope
-from job_search_platform.services.skills import SKILLS
+from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
 from job_search_platform.services.settings import provider_catalog as settings_catalog
 
 router = APIRouter()
@@ -63,6 +63,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
         "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409,
         "document_busy": 409, "document_source_unavailable": 409,
+        "apply_pack_required": 409, "approval_requires_run": 409, "approval_stale": 409, "already_applied": 409, "application_not_applied": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
@@ -493,6 +494,35 @@ def _jev_available(db) -> bool:
     row = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
                     .order_by(ProviderConfiguration.revision.desc()).limit(1))
     return row is not None and row.provider == "openrouter" and not row.secret_reference.startswith("restored-unconfigured:")
+
+
+@router.get("/projects/{project_id}/agent/jobs/search", response_model=AgentJobSearchResult)
+async def agent_jobs_search(
+    project_id: UUID,
+    q: Annotated[str, Query(max_length=200)] = "",
+    cities: Annotated[str, Query(max_length=400)] = "",
+    work_mode: Annotated[str | None, Query(pattern="^(remote|hybrid|onsite)$")] = None,
+    posted_within_days: Annotated[int | None, Query(ge=1, le=90)] = None,
+    category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    description_format: Annotated[str, Query(pattern="^(markdown|text)$")] = "markdown",
+    actor=Depends(run_actor),
+    services: Services = Depends(get_services),
+):
+    """Direct read for owners and grants holding jobs:search; full descriptions, no Task."""
+    city_list = job_sources.parse_cities(cities)
+    if city_list is None:
+        raise RequestValidationError([{"loc": ("query", "cities"), "msg": "invalid", "type": "value_error"}])
+    request = AgentJobSearch(q=q, cities=city_list, work_mode=work_mode, posted_within_days=posted_within_days,
+                             category=category, limit=limit, description_format=description_format)
+    return await SKILL_BY_ID["jobs_search"].handler(services, actor, request, project_id)
+
+
+@router.post("/projects/{project_id}/agent/jobs/fit", response_model=AgentJobFitResult)
+async def agent_jobs_fit(project_id: UUID, body: AgentJobFit, actor=Depends(run_write_actor),
+                         services: Services = Depends(get_services)):
+    """Deterministic keyword coverage of the current CV against one job; no model, no Run."""
+    return await SKILL_BY_ID["jobs_fit"].handler(services, actor, body, project_id)
 
 
 @router.get("/projects/{project_id}/job-search/match")
@@ -970,17 +1000,24 @@ async def list_approvals(project_id: UUID, actor=Depends(owner_actor), services:
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "approval")
         ids = db.scalars(select(Approval.id).where(Approval.project_id == project_id).order_by(Approval.expires_at)).all()
-    return [await services.approvals.get(actor, project_id, approval_id) for approval_id in ids]
+    return [await asyncio.to_thread(services.approvals.get, actor, project_id, approval_id) for approval_id in ids]
+
+
+@router.post("/projects/{project_id}/cv/promote", status_code=200)
+async def promote_cv(project_id: UUID, body: CVPromoteRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.approvals.promote_cv_direct, actor, project_id, body.revision_id, body.expected_cv_revision_id)
+    return {"status": "promoted"}
 
 
 @router.post("/projects/{project_id}/approvals", status_code=201, response_model=ApprovalView)
 async def request_approval(project_id: UUID, body: ApprovalRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await services.approvals.request(actor, project_id, body)
+    # Agents open approvals from inside their own run; the owner applies a change directly (e.g. /cv/promote).
+    raise ServiceError("approval_requires_run")
 
 
 @router.post("/projects/{project_id}/approvals/{approval_id}/decision", response_model=ApprovalView)
 async def decide_approval(project_id: UUID, approval_id: UUID, body: ApprovalDecision, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await services.approvals.resolve(actor, project_id, approval_id, body)
+    return await asyncio.to_thread(services.approvals.resolve, actor, project_id, approval_id, body.decision)
 
 
 @router.get("/projects/{project_id}/grants", response_model=list[GrantView])

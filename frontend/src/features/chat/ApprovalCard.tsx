@@ -17,7 +17,7 @@ export function ApprovalCard({ approval, locale, busy, onDecision, onRefresh }: 
   if (!approval) return null;
   const expired = Date.parse(approval.expires_at) <= Date.now();
   const target = approval.revision_id ? (locale === 'th' ? 'ฉบับเอกสาร' : 'Document revision') : approval.target_file_id ? (locale === 'th' ? 'ไฟล์' : 'File') : '—';
-  const action = ({ promote_cv: locale === 'th' ? 'ใช้เอกสารเป็น CV' : 'Promote document to CV', delete_document_revision: locale === 'th' ? 'ลบเอกสารฉบับนี้' : 'Delete this document revision', delete_file: locale === 'th' ? 'ลบไฟล์นี้' : 'Delete this file' })[approval.action];
+  const action = ({ promote_cv: locale === 'th' ? 'ใช้เอกสารเป็น CV' : 'Promote document to CV', delete_document_revision: locale === 'th' ? 'ลบเอกสารฉบับนี้' : 'Delete this document revision', delete_file: locale === 'th' ? 'ลบไฟล์นี้' : 'Delete this file', submit_application: locale === 'th' ? 'บันทึกว่าสมัครงานแล้ว (คุณส่งใบสมัครเองบนเว็บไซต์บริษัท)' : 'Record this job as applied (you submit on the company site)' })[approval.action];
   const t = locale === 'th'
     ? { heading: 'โปรดยืนยันการเปลี่ยนแปลง', target: 'เป้าหมาย', expires: 'หมดอายุ', approve: 'อนุมัติ', reject: 'ปฏิเสธ', confirm: 'ฉันตรวจสอบเป้าหมายและการเปลี่ยนแปลงแล้ว', expired: 'คำขอนี้หมดอายุแล้ว', refresh: 'โหลดสถานะใหม่' }
     : { heading: 'Review the requested change', target: 'Target', expires: 'Expires', approve: 'Approve', reject: 'Reject', confirm: 'I reviewed the target and proposed change', expired: 'This request has expired', refresh: 'Refresh status' };

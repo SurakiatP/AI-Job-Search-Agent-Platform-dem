@@ -9,13 +9,14 @@ from uuid import UUID
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, SecretStr, StringConstraints, model_validator
 
 
-Capability = Literal["results:read", "jobs:evaluate", "documents:draft", "cv:tailor"]
+Capability = Literal["results:read", "jobs:evaluate", "documents:draft", "cv:tailor", "jobs:search", "applications:apply"]
 RunStatus = Literal["queued", "running", "waiting_approval", "completed", "failed", "cancelled", "interrupted"]
-Operation = Literal["evaluate_job", "draft_documents", "tailor_cv"]
+Operation = Literal["evaluate_job", "draft_documents", "tailor_cv", "apply_prepare", "apply_submit", "draft_follow_up"]
 # profile_cv (CV skill profile, no LLM) and extract_experience (LLM experience-bank extraction) are likewise owner-only and internal.
 # export_document is an owner-only, non-LLM run created by the manual-edit endpoint; never a request operation.
-ViewOperation = Literal["evaluate_job", "draft_documents", "tailor_cv", "export_document", "profile_cv", "match_jobs", "extract_experience"]
-DraftKind = Literal["cover_letter", "application_message"]
+ViewOperation = Literal["evaluate_job", "draft_documents", "tailor_cv", "export_document", "profile_cv", "match_jobs", "extract_experience",
+                 "apply_prepare", "apply_submit", "draft_follow_up"]
+DraftKind = Literal["cover_letter", "application_message", "follow_up"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +69,29 @@ class ExperienceItemCreate(DTO):
     period: Annotated[str, StringConstraints(strip_whitespace=True, max_length=60)] | None = None
 
 
+class ApplyQuestion(DTO):
+    """One form question, supplied by the owner or agent. Untrusted data: the system never fetches forms."""
+    id: Annotated[str, StringConstraints(min_length=1, max_length=64)]
+    label: Annotated[str, StringConstraints(min_length=1, max_length=500)]
+    required: bool
+    kind: Literal["text", "choice", "boolean"]
+    choices: Annotated[list[Annotated[str, StringConstraints(min_length=1, max_length=200)]], Field(min_length=1, max_length=20)] | None = None
+
+    @model_validator(mode="after")
+    def choices_match_kind(self):
+        if (self.kind == "choice") != (self.choices is not None):
+            raise ValueError("choices_require_choice_kind")
+        return self
+
+
+ApplyQuestions = Annotated[list[ApplyQuestion], Field(min_length=1, max_length=40),
+                           AfterValidator(lambda v: v if len({q.id for q in v}) == len(v) else _duplicate_question_ids())]
+
+
+def _duplicate_question_ids():
+    raise ValueError("duplicate_question_ids")
+
+
 class RunRequest(DTO):
     session_id: UUID
     operation: Operation
@@ -86,6 +110,8 @@ class RunRequest(DTO):
     draft_kind: DraftKind | None = None
     # tailor_cv only; omitted means autopilot. Grants cannot ask for interactive.
     tailor_mode: Literal["autopilot", "interactive"] | None = None
+    # apply_prepare only (required there): the application form's questions.
+    questions: ApplyQuestions | None = None
 
     @model_validator(mode="after")
     def draft_kind_needs_draft(self):
@@ -93,6 +119,8 @@ class RunRequest(DTO):
             raise ValueError("draft_kind_requires_draft_documents")
         if self.tailor_mode is not None and self.operation != "tailor_cv":
             raise ValueError("tailor_mode_requires_tailor_cv")
+        if (self.questions is not None) != (self.operation == "apply_prepare"):
+            raise ValueError("questions_require_apply_prepare")
         return self
 
 
@@ -230,6 +258,15 @@ class ProtocolJobInput(DTO):
         return self
 
 
+class ApplyPrepareInput(ProtocolJobInput):
+    questions: ApplyQuestions
+
+
+class ApplySubmitInput(DTO):
+    job_revision_id: UUID
+    idempotency_key: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+
+
 class CVRevisionView(RevisionView):
     original_filename: str
     mime_type: str
@@ -256,7 +293,7 @@ class CVView(DTO):
 
 class DocumentView(DTO):
     id: UUID
-    document_type: Literal["cv", "cover_letter", "application_message", "other"]
+    document_type: Literal["cv", "cover_letter", "application_message", "follow_up", "other"]
     title: str
     latest_revision: RevisionView | None = None
     content_markdown: Annotated[str, StringConstraints(min_length=1, max_length=200000)] | None = None
@@ -361,10 +398,11 @@ RunEvent = RunEventView
 class ApprovalView(DTO):
     id: UUID
     run_id: UUID
-    action: Literal["promote_cv", "delete_document_revision", "delete_file"]
+    action: Literal["promote_cv", "delete_document_revision", "delete_file", "submit_application"]
     revision_id: UUID | None = None
     expected_cv_revision_id: UUID | None = None
     target_file_id: UUID | None = None
+    target_run_id: UUID | None = None
     change_digest: str
     expires_at: datetime
     consumed_at: datetime | None = None
@@ -372,15 +410,26 @@ class ApprovalView(DTO):
     applied_at: datetime | None = None
 
 
+class CVPromoteRequest(DTO):
+    revision_id: UUID
+    expected_cv_revision_id: UUID
+
+
 class ApprovalRequest(DTO):
-    action: Literal["promote_cv", "delete_document_revision", "delete_file"]
+    action: Literal["promote_cv", "delete_document_revision", "delete_file", "submit_application"]
     revision_id: UUID | None = None
     expected_cv_revision_id: UUID | None = None
     target_file_id: UUID | None = None
+    # submit_application only: the completed apply_prepare run whose pack is being submitted.
+    target_run_id: UUID | None = None
 
     @model_validator(mode="after")
     def target_matches_action(self) -> "ApprovalRequest":
-        if self.action == "promote_cv":
+        if self.action == "submit_application":
+            valid = self.target_run_id is not None and self.revision_id is None and self.expected_cv_revision_id is None and self.target_file_id is None
+        elif self.target_run_id is not None:
+            valid = False
+        elif self.action == "promote_cv":
             valid = self.revision_id is not None and self.expected_cv_revision_id is not None and self.target_file_id is None
         elif self.action == "delete_document_revision":
             valid = self.revision_id is not None and self.expected_cv_revision_id is None and self.target_file_id is None
@@ -497,9 +546,60 @@ class ToolRunRequest(RunRequest):
     """Protocol inputs intentionally share the REST request allowlist."""
 
 
+class AgentJobSearch(DTO):
+    """Direct jobs_search input: one page of the public job source with full descriptions."""
+    q: Annotated[str, StringConstraints(max_length=200)] = ""
+    cities: Annotated[list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]], Field(max_length=5)] = []
+    work_mode: Literal["remote", "hybrid", "onsite"] | None = None
+    posted_within_days: Annotated[int, Field(ge=1, le=90)] | None = None
+    category: Annotated[str, StringConstraints(pattern=r"^[a-z0-9_-]{1,60}$")] | None = None
+    limit: Annotated[int, Field(ge=1, le=50)] = 20
+    description_format: Literal["markdown", "text"] = "markdown"
+
+
+class AgentJobItem(DTO):
+    source_id: str
+    title: str
+    company: str | None = None
+    city: str | None = None
+    work_mode: str | None = None
+    posted_at: str | None = None
+    posting_age_days: int | None = None
+    stale: bool
+    source_url: str | None = None
+    description: str
+    description_format: Literal["markdown", "text"]
+
+
+class AgentJobSearchResult(DTO):
+    jobs: tuple[AgentJobItem, ...]
+
+
+class AgentJobFit(DTO):
+    """Direct jobs_fit input: a supplied job or a same-Project job revision, plus an optional CV."""
+    job: JobCreate | None = None
+    job_revision_id: UUID | None = None
+    cv_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def validate_intent(self):
+        if (self.job is None) == (self.job_revision_id is None):
+            raise ValueError("exactly_one_job_source_required")
+        return self
+
+
+class AgentJobFitResult(DTO):
+    method: str
+    ratio: Annotated[float, Field(ge=0, le=1)] | None = None
+    required: tuple[str, ...] = ()
+    matched: tuple[str, ...] = ()
+    missing: tuple[str, ...] = ()
+    reason: str | None = None
+
+
 class ToolDescriptor(DTO):
     # A nested Literal flattens to one OpenAPI enum; `Operation | Literal[...]` would emit anyOf.
-    name: Literal[Operation, Literal["get_run", "cancel_run", "list_results"]]
+    name: Literal[Operation, Literal["jobs_search", "jobs_fit", "get_run", "cancel_run", "list_results"]]
     description: str
     required_capability: Capability
 

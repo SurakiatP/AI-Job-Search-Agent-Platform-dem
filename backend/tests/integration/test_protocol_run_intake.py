@@ -139,3 +139,18 @@ def test_removed_job_revision_cannot_start_protocol_runs_but_inline_replay_still
         assert error.value.code == "job_removed"
     assert _counts(db_session) == before
     assert asyncio.run(service.submit(actor, "evaluate_job", _input())).id == first.id
+
+
+@pytest.mark.parametrize("direct_id", ["jobs_search", "jobs_fit"])
+def test_direct_skill_ids_never_create_runs(db_session, direct_id):
+    from job_search_platform.services.contracts import RunRequest
+    from job_search_platform.services.runs import RunService
+    service, actor, _, p, private_chat, job, _ = _context(db_session)
+    before = _counts(db_session)
+    with pytest.raises(ServiceError) as error:
+        asyncio.run(service.submit(actor, direct_id, _input()))
+    assert error.value.code == "forbidden"
+    with pytest.raises(ValidationError):
+        RunRequest(session_id=private_chat.id, operation=direct_id, job_revision_id=job.id,
+                   output_language="en", idempotency_key="direct-id")
+    assert _counts(db_session) == before

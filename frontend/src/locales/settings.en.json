@@ -43,9 +43,11 @@
   "capabilities": "Allowed capabilities",
   "capability": {
     "resultsRead": "Read generated results (may contain personal information)",
-    "jobsEvaluate": "Evaluate supplied job postings",
-    "documentsDraft": "Draft application documents",
-    "cvTailor": "Tailor CV to a job"
+    "jobsEvaluate": "Evaluate job postings (AI evaluation and keyword fit check)",
+    "documentsDraft": "Draft application documents and follow-up messages",
+    "cvTailor": "Tailor your CV to a job (saved as a new CV document)",
+    "jobsSearch": "Search job postings (full descriptions)",
+    "applicationsApply": "Prepare application answers from your CV and request that you approve a submission"
   },
   "expiresAfter": "Token expires after",
   "createGrant": "Create project token",

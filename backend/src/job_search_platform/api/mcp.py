@@ -36,6 +36,10 @@ _SAFE_SERVICE_ERRORS = {
     "job_removed",
     "queue_full",
     "submission_rate_limited",
+    "document_busy",
+    "apply_pack_required",
+    "already_applied",
+    "application_not_applied",
 }
 
 
@@ -181,6 +185,14 @@ def create_mcp_server(services: Any) -> MCPServer:
     def skill_tool(skill: Skill):
         async def tool(request, ctx: Context[Any, Any]) -> dict[str, Any]:
             require_arguments(ctx, {"request"})
+            if skill.kind == "direct":
+                actor = await _authenticate(ctx, services.grants)
+                try:
+                    return await skill.handler(services, actor, request)
+                except ServiceError as exc:
+                    raise _error(exc) from None
+                except Exception:
+                    raise MCPError(-32000, "request_failed") from None
             return await submit(skill.id, request, ctx)
         # The SDK derives the input schema from the signature, so bind the declared model.
         tool.__annotations__["request"] = skill.input_model

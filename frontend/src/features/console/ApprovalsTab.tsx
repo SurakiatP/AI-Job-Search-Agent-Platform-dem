@@ -3,11 +3,31 @@ import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { ApprovalView, RunView } from '@/lib/api-types';
+import type { ApplyPack, ApprovalView, JobRevisionView, RunView } from '@/lib/api-types';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { sendJson, useResource } from '../projects/useResource';
 import type { Copy } from './copy';
 import { Empty, relativeTime, useNow, type Locale } from './shared';
+
+function SubmitDetail({ projectId, approval, c }: { projectId: string; approval: ApprovalView; c: Copy }) {
+  const run = useResource<RunView>(`/projects/${projectId}/runs/${encodeURIComponent(approval.target_run_id ?? '')}`);
+  const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
+  const pack = run.data?.result_payload as ApplyPack | undefined;
+  const title = jobs.data?.find(job => job.id === run.data?.job_revision_id)?.title;
+  if (run.status === 'error' || (run.status === 'ready' && pack?.kind !== 'apply_pack')) return <p role="alert" className="text-sm text-destructive">{c.packGone}</p>;
+  if (!pack) return null;
+  return <div className="grid gap-2 text-sm">
+    <p><span className="text-muted-foreground">{c.job}: </span><span className="font-medium [overflow-wrap:anywhere]">{title ?? '—'}</span></p>
+    <h3 className="font-medium">{c.answers}</h3>
+    <ul className="grid gap-2">{pack.answers.map(a => <li key={a.question_id} className="grid gap-0.5 rounded-lg border p-3">
+      <span className="text-muted-foreground [overflow-wrap:anywhere]">{a.label ?? a.question_id}</span>
+      {a.answer === null ? <Badge variant="warning" className="justify-self-start">{c.notAnswerable}</Badge> : <span className="[overflow-wrap:anywhere]">{String(a.answer)}</span>}
+      <span className="text-xs text-muted-foreground">{a.evidence_ids.length} {c.evidenceN}</span>
+    </li>)}</ul>
+    {pack.missing_required.length > 0 && <div><h3 className="font-medium text-warning">{c.missingReq}</h3><ul className="list-disc ps-5">{pack.missing_required.map(id => <li key={id} className="[overflow-wrap:anywhere]">{pack.answers.find(a => a.question_id === id)?.label ?? id}</li>)}</ul></div>}
+    <p className="text-muted-foreground">{c.applyNote}</p>
+  </div>;
+}
 
 export function ApprovalsTab({ projectId, locale, c }: { projectId: string; locale: Locale; c: Copy }) {
   const project = encodeURIComponent(projectId);
@@ -47,8 +67,9 @@ export function ApprovalsTab({ projectId, locale, c }: { projectId: string; loca
             <p className="min-w-0 font-medium [overflow-wrap:anywhere]">{c.actions[a.action]}</p>
             <span className="text-sm text-muted-foreground">{c.expiresIn} <time dateTime={a.expires_at}>{relativeTime(a.expires_at, now, locale)}</time></span>
           </div>
+          {a.action === 'submit_application' && a.target_run_id && <SubmitDetail projectId={project} approval={a} c={c} />}
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" disabled={busyId !== null} onClick={() => void decide(a.id, 'approve')}>{c.approve}</Button>
+            <Button type="button" disabled={busyId !== null} onClick={() => void decide(a.id, 'approve')}>{a.action === 'submit_application' ? c.approveApply : c.approve}</Button>
             <Button type="button" variant="outline" disabled={busyId !== null} onClick={() => void decide(a.id, 'reject')}>{c.reject}</Button>
             {runLink(a)}
           </div>

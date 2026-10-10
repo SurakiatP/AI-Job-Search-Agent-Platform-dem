@@ -44,7 +44,8 @@ def test_mcp_skill_tools_match_golden_schemas():
     golden = json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "mcp_skill_tools.json").read_text())
     server = create_mcp_server(SimpleNamespace(sessions=None, grants=None))
     tools = {tool.name: tool for tool in asyncio.run(server.list_tools())}
-    assert [name for name in tools if name in golden] == ["evaluate_job", "draft_documents", "tailor_cv"]
+    assert [name for name in tools if name in golden] == [
+        "evaluate_job", "draft_documents", "tailor_cv", "jobs_search", "jobs_fit", "apply_prepare", "apply_submit", "draft_follow_up"]
     for name, expected in golden.items():
         assert tools[name].description == expected["description"]
         assert tools[name].input_schema == expected["input_schema"]
@@ -153,7 +154,9 @@ async def test_official_mcp_http_tools_submission_cancel_and_revocation(api_cont
                 assert initialized.protocol_version == "2025-11-25"
                 names = {tool.name for tool in (await session.list_tools()).tools}
                 assert names == {
-                    "evaluate_job", "draft_documents", "tailor_cv", "get_run", "cancel_run", "list_results"
+                    "evaluate_job", "draft_documents", "tailor_cv", "jobs_search", "jobs_fit",
+                    "apply_prepare", "apply_submit", "draft_follow_up",
+                    "get_run", "cancel_run", "list_results"
                 }
                 args = {
                     "request": {

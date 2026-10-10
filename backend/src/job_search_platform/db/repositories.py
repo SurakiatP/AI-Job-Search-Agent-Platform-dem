@@ -99,6 +99,9 @@ class Repositories:
             canonical["document_id"] = str(request.document_id)
         if request.draft_kind:
             canonical["draft_kind"] = request.draft_kind
+        if request.questions:
+            canonical["questions"] = [q.model_dump(mode="json", exclude_none=True) if hasattr(q, "model_dump") else q
+                                      for q in request.questions]
         payload = json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(payload).hexdigest()
 

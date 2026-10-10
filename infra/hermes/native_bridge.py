@@ -28,6 +28,8 @@ CAREER_OPS_FILES = {
     "extract_experience": (),
     # CV tailoring is pure writing over supplied facts; no tools are asked for.
     "tailor_cv": ("modes/_shared.md", "modes/_writing.md"),
+    # Form answers are pure writing over supplied facts; no tools are asked for.
+    "apply_prepare": ("modes/_shared.md", "modes/_writing.md"),
 }
 CAREER_OPS_ALLOWED_FILES = {CAREER_OPS_ROUTER} | {
     relative_path
