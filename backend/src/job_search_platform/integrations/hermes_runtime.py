@@ -39,12 +39,23 @@ class ProviderConfig:
     base_url: str
     api_key: str = field(repr=False)
 
+def _usage(raw) -> dict:
+    """Validate bridge usage; anything malformed becomes null fields."""
+    raw = raw if isinstance(raw, dict) else {}
+    def count(key):
+        n = raw.get(key)
+        return n if isinstance(n, int) and not isinstance(n, bool) and 0 <= n <= 10_000_000 else None
+    model = raw.get("model")
+    return {"model": model if isinstance(model, str) and 0 < len(model) <= 120 else None,
+            "input_tokens": count("input_tokens"), "output_tokens": count("output_tokens")}
+
 @dataclass(frozen=True)
 class NativeEvent:
     sequence: int
     kind: Literal["progress", "result", "failed"]
     result: str | None = None  # Private native result, not a public event DTO.
     code: str | None = None
+    usage: dict | None = None  # {"model", "input_tokens", "output_tokens"}; counts only, never content.
 
 @dataclass(frozen=True)
 class ParsedInput:
@@ -195,7 +206,8 @@ class HermesRuntime:
                     project.sequence += 1
                     await project.event_queue.put(NativeEvent(project.sequence, kind,
                         value.get("result") if kind == "result" else None,
-                        value.get("code") if kind == "failed" else None))
+                        value.get("code") if kind == "failed" else None,
+                        _usage(value.get("usage")) if kind == "result" else None))
                 else:
                     if not isinstance(value.get("id"), str):
                         raise ValueError()

@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from job_search_platform.db.models import Approval, CVRevision, CVRevisionText, DocumentRevision, JobMatchScore, JobSearchHidden, Run, RunArtifact, StoredFile
 from job_search_platform.services.contracts import EvaluationResult, SkillCoverage
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
+from job_search_platform.integrations import tracing
 from job_search_platform.integrations.jev import JEV_MODEL, JevClient
 from job_search_platform.services import applications, experience, job_sources, smart_match, tailoring
 from job_search_platform.services.evidence import EvidencedEdit, apply_gated, fact_claims, require_evidence
@@ -146,7 +147,8 @@ class RunExecutor:
             self._monitor_claim(run, lease_owner, execution, stop_reason)
         )
         try:
-            await self._execute_claimed(run, lease_owner)
+            with tracing.span("run.execute", operation=getattr(run, "operation", None), run_id=run.id, project_id=run.project_id):
+                await self._execute_claimed(run, lease_owner)
         except asyncio.CancelledError as exc:
             if exc.args != ("claim-watchdog",):
                 raise
@@ -255,6 +257,7 @@ class RunExecutor:
 
             facts = await asyncio.to_thread(self._bank_facts, run.project_id) if run.operation in {"draft_documents", "draft_follow_up"} else []
             prompt, instructions = self._prompt(run, parsed.text, facts)
+            began = time.monotonic()
             await self.runtime.submit(
                 run.project_id,
                 run.session_id,
@@ -265,7 +268,7 @@ class RunExecutor:
                 tool_gate=reserve_tool,
             )
             self._public_event(run.id, "run_progress", {"step": "agent_running"})
-            native_result = await self._await_result(run, lease_owner, gate_failure)
+            native_result = await self._await_result(run, lease_owner, gate_failure, began)
             if run.operation == "evaluate_job":
                 evaluation = parse_evaluation_result(native_result)
                 job = run.input_snapshot["job"]
@@ -424,10 +427,11 @@ class RunExecutor:
             if not text.strip():
                 raise ServiceError("cv_text_empty")
             prompt, instructions = experience.extraction_prompt(text)
+            began = time.monotonic()
             await self.runtime.submit(run.project_id, run.id, prompt, instructions, provider,
                                       operation="extract_experience", tool_gate=reserve_tool)
             self._public_event(run.id, "run_progress", {"step": "agent_running"})
-            items = experience.parse_experience_items(await self._await_result(run, lease_owner, gate_failure))
+            items = experience.parse_experience_items(await self._await_result(run, lease_owner, gate_failure, began))
             await self._stop(run.project_id, started)
             started = False
             await asyncio.to_thread(self._store_experience, run, text, items)
@@ -529,10 +533,11 @@ class RunExecutor:
                 # One fresh Hermes session per round (the bridge builds a new agent on every submit).
                 prompt, instructions = tailoring.round_prompt(
                     text, job["title"], job_text, coverage["missing"] if coverage else [], facts, run.output_language)
+                began = time.monotonic()
                 await self.runtime.submit(run.project_id, uuid.uuid5(run.id, f"round-{round_no}"), prompt, instructions,
                                           provider, operation="tailor_cv", tool_gate=deny_tool)
                 self._public_event(run.id, "run_progress", {"step": "agent_running"})
-                edits = tailoring.parse_edits(await self._await_result(run, lease_owner, gate_failure))
+                edits = tailoring.parse_edits(await self._await_result(run, lease_owner, gate_failure, began))
                 verdicts = await asyncio.to_thread(self._gate_edits, run.project_id, edits)
                 accepted = [edit for edit, ok in zip(edits, verdicts) if ok]
                 rejected = [edit for edit, ok in zip(edits, verdicts) if not ok]
@@ -630,10 +635,11 @@ class RunExecutor:
                 raise ServiceError("cv_text_empty")
             prompt, instructions = applications.pack_prompt(
                 text, job["title"], f"{job['title']}\n{job['description']}", questions, facts, run.output_language)
+            began = time.monotonic()
             await self.runtime.submit(run.project_id, uuid.uuid5(run.id, "apply_prepare"), prompt, instructions,
                                       provider, operation="apply_prepare", tool_gate=deny_tool)
             self._public_event(run.id, "run_progress", {"step": "agent_running"})
-            answers = applications.parse_answers(await self._await_result(run, lease_owner, gate_failure))
+            answers = applications.parse_answers(await self._await_result(run, lease_owner, gate_failure, began))
             entries, missing = applications.gate_answers(
                 answers, questions, await asyncio.to_thread(self._fact_claims, run.project_id, answers))
             payload = {"kind": "apply_pack", "state": "parked" if missing else "ready",
@@ -838,7 +844,7 @@ class RunExecutor:
         )
         return prompt, instructions
 
-    async def _await_result(self, run: Run, lease_owner: str, gate_failure: asyncio.Event) -> str:
+    async def _await_result(self, run: Run, lease_owner: str, gate_failure: asyncio.Event, began: float) -> str:
         events = self.runtime.events(run.project_id)
         next_event = asyncio.create_task(events.__anext__())
         gate_wait = asyncio.create_task(gate_failure.wait())
@@ -859,11 +865,20 @@ class RunExecutor:
                     continue
                 if event.kind == "failed" or event.kind != "result" or not isinstance(event.result, str):
                     raise ServiceError("native_execution_failed")
+                self._record_round(run, getattr(event, "usage", None), began)
                 return event.result
         finally:
             for task in (next_event, gate_wait):
                 if not task.done():
                     task.cancel()
+
+    def _record_round(self, run: Run, usage: dict | None, began: float) -> None:
+        """One llm_round progress event and span: model, latency and token counts, never content."""
+        usage = usage or {}
+        data = {"step": "llm_round", "model": usage.get("model"), "latency_ms": min(int((time.monotonic() - began) * 1000), 3_600_000),
+                "input_tokens": usage.get("input_tokens"), "output_tokens": usage.get("output_tokens")}
+        tracing.record("llm.round", **{k: v for k, v in data.items() if k != "step"}, run_id=run.id)
+        self._public_event(run.id, "run_progress", data)
 
     def _raise_gate_failure(self, run_id: uuid.UUID, lease_owner: str) -> None:
         state = self.queue.heartbeat(run_id, lease_owner)
