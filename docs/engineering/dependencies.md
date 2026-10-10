@@ -66,3 +66,24 @@ MinIO `GO-2026-5932` remains UNKNOWN in both Go inventory and image reports. Par
 
 - `ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a` (local image ID `sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a`), pinned in `infra/compose.yaml` for `litellm` and `litellm-seed`. `litellm-db` reuses the project PostgreSQL image.
 - `trivy image --scanners vuln --severity HIGH,CRITICAL` (Trivy 0.75.0): 0 High/Critical findings. Full `security_scan.py` was not re-run for this change.
+
+## Langfuse images (2026-10-11)
+
+Pinned in `infra/compose.yaml` (profile `langfuse`):
+- `langfuse/langfuse:4.56.0@sha256:b1948c7c0931f277975b985e30e73536b1bca5822705ddd9a89ba7c1ed79b3ee`
+- `langfuse/langfuse-worker:4.56.0@sha256:3f7571ff3a725ebdcdf4c35e06bdf8c3f8325770691c673793ad61b328265e13`
+- `clickhouse/clickhouse-server:25.12.11.4-distroless@sha256:f72a88eba5b89e80faea55f048bc0827d4a8a09c4f62701bf9dc802c9e049f53`
+- `valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507`
+
+`langfuse-db` and `langfuse-minio` reuse the project PostgreSQL and MinIO images.
+
+Trivy High/Critical (2026-10-11):
+
+| Image | Count | Notes |
+|---|---|---|
+| langfuse web | 23 | Mostly nodejs/pcre2, no fix available |
+| langfuse worker | 24 | 3 fixable upstream |
+| clickhouse 25.12.11.4-distroless | 0 | Langfuse 4.56 ClickHouse migration 39 (text index) fails on 25.8; 25.12 is the version in Langfuse's own compose |
+| valkey 8-alpine | 0 | |
+
+Accepted under the owner's option A (loopback only, private network, metadata-only spans, signup and telemetry off). Re-scan on every Langfuse version bump.

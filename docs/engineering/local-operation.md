@@ -72,6 +72,28 @@ Create a project, add a CV and a job posting you supplied, and start the evaluat
 - `/jev/decisions` forwards to the OpenRouter decisions API with the server-side key. The app uses `AI_DECISION_MODEL` (default `typesafe/jev-1.13`) in the request body.
 - `status` lists `litellm`, `litellm-db` and `litellm-seed` with their health.
 
+## Langfuse run tracing (optional)
+
+Set `LANGFUSE_HOST=http://127.0.0.1:53000` in `.env`, export it and run `scripts/local_infra.py start`. This adds the `langfuse` profile:
+- `langfuse-web` (UI at `http://127.0.0.1:53000`, loopback only)
+- `langfuse-worker`
+- `langfuse-db`
+- `langfuse-clickhouse`
+- `langfuse-valkey`
+- `langfuse-minio`
+
+The last five have no host port. They take about 2–3 GB of RAM and about 5 GB of images. Check `df -h /System/Volumes/Data` first.
+
+- **Secrets.** `start` generates every Langfuse secret and the project keys in `CORE02_PRIVATE_DIR` (0600, never regenerated). The first start creates org `job-search`, project `job-search-platform` and user `owner@jobsearch.local`. Signup is disabled and telemetry is off.
+- **Logins.** `start` writes `CREDENTIALS.md` (repo root, 0600, gitignored) with every local login, including the Langfuse password and project keys. Do not share or commit it.
+- **What the app sends.** With `LANGFUSE_HOST` set, the app sends one trace per run (`run.execute` with `llm.round` generations). Each holds model, latency and token counts only: never prompts, CVs, job text or outputs. An explicit `OTEL_EXPORTER_OTLP_ENDPOINT` takes precedence.
+- **Failures.** If Langfuse is down or its keys are missing, tracing stays off or drops spans. Runs and `/api/v1/health/ready` are unaffected.
+- **Turning it off.** Clear `LANGFUSE_HOST` and run `stop`, then `start`. `stop` always stops the Langfuse containers, and their volumes are kept.
+- **Cost.** Langfuse shows no cost, because `ai-analyze` is a gateway alias.
+- **Accepted risk.** The Langfuse 4.56.0 images carry accepted unfixed High CVEs (ADR-014). Keep the UI on loopback.
+- **Disk (Colima).** Docker runs in Colima here: after removing images run `colima ssh -- sudo fstrim -v /var/lib/docker` to return the space to macOS.
+- **Corrupt pull.** An image pulled while the host disk is full can unpack corrupted (zero-byte files). Re-pull it by digest.
+
 ## Configuration and multi-host
 
 Every address the app uses comes from the environment, with the local-stack default. Put them in `.env` (see `.env.example`). Secret values stay out of git and logs; generated infrastructure secrets (Postgres/MinIO passwords, LiteLLM master and salt keys, LiteLLM DB and UI passwords) live only in `CORE02_PRIVATE_DIR` and are never set in `.env`.
@@ -87,13 +109,13 @@ Every address the app uses comes from the environment, with the local-stack defa
 | `LITELLM_API_KEY` | empty, falls back to `CORE02_PRIVATE_DIR/litellm_app_key` | yes |
 | `OPENROUTER_API_KEY` | empty; read only by `local_infra.py start`, reaches only LiteLLM | yes |
 | `AI_ANALYZE_MODEL` / `AI_DECISION_MODEL` | `ai-analyze` / `typesafe/jev-1.13` | no |
-| `LANGFUSE_HOST` | empty; reserved for the Langfuse branch | no |
+| `LANGFUSE_HOST` | empty (Langfuse off). `http://127.0.0.1:53000` turns on the `langfuse` compose profile in `local_infra.py start` and the app's span export | no |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | unset (tracing off) | no |
 | `JSP_LOG_LEVEL` | `INFO` | no |
 | `JSP_ALLOWED_ORIGINS` / `JSP_DEV_ORIGIN` | owner loopback origin / unset | no |
 | `CORE02_PRIVATE_DIR` | `~/.cache/job-search-platform/core02-runtime-20261003` | no (the directory holds secrets) |
 | `MINIO_SOURCE_DIR` / `GOSU_SOURCE_DIR` | `~/.cache/job-search-platform/upstream/{minio,gosu}` | no |
-| `CORE02_POSTGRES_PORT` / `CORE02_MINIO_PORT` / `CORE02_LITELLM_PORT` | `55432` / `59000` / `54000` (host ports published by compose) | no |
+| `CORE02_POSTGRES_PORT` / `CORE02_MINIO_PORT` / `CORE02_LITELLM_PORT` / `CORE02_LANGFUSE_PORT` | `55432` / `59000` / `54000` / `53000` (host ports published by compose) | no |
 
 `CORE02_PRIVATE_DIR`, `MINIO_SOURCE_DIR` and `GOSU_SOURCE_DIR` are optional overrides: `local_infra.py`, the app, backup and restore share one default. To run the app on another host, point `JSP_POSTGRES_*`, `JSP_MINIO_ENDPOINT` and `LITELLM_BASE_URL` at the service host and copy the credential files into that host's `CORE02_PRIVATE_DIR`.
 
