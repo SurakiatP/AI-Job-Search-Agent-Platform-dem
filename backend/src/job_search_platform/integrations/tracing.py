@@ -1,12 +1,13 @@
 """Optional OpenTelemetry tracing: an OTLP collector or the self-hosted Langfuse; off unless configured.
 
-Spans carry identifiers, model names, latencies and token counts only, never prompts or outputs.
+Spans carry identifiers, model names, latencies, token counts and provider-reported cost only, never prompts or outputs.
 """
 from __future__ import annotations
 
 import base64
 import json
 import logging
+import math
 import os
 import time
 from contextlib import contextmanager
@@ -75,29 +76,44 @@ def record(name: str, **attrs: Any) -> None:
 
 
 def llm_round(*, run_id: Any, model: str | None, latency_ms: int, input_tokens: int | None, output_tokens: int | None) -> None:
-    """One llm.round span that Langfuse renders as a generation. Metadata only."""
-    with span("llm.round", model=model, latency_ms=latency_ms, input_tokens=input_tokens,
-              output_tokens=output_tokens, run_id=run_id, start_time=time.time_ns() - latency_ms * 1_000_000,
-              **{"gen_ai.request.model": model, "gen_ai.usage.input_tokens": input_tokens,
-                 "gen_ai.usage.output_tokens": output_tokens, "langfuse.observation.type": "generation"}):
-        pass
+    """One llm.round span that Langfuse renders as a generation. Metadata only; never raises."""
+    try:
+        with span("llm.round", model=model, latency_ms=latency_ms, input_tokens=input_tokens,
+                  output_tokens=output_tokens, run_id=run_id, start_time=time.time_ns() - latency_ms * 1_000_000,
+                  **{"gen_ai.request.model": model, "gen_ai.usage.input_tokens": input_tokens,
+                     "gen_ai.usage.output_tokens": output_tokens, "langfuse.observation.type": "generation"}):
+            pass
+    except Exception:
+        logger.debug("llm_trace_dropped")
 
 
 def _count(value: Any) -> int | None:
-    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+    return value if isinstance(value, int) and not isinstance(value, bool) and 0 <= value < 2 ** 53 else None
+
+
+def _cost(value: Any) -> float | None:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    try:
+        value = float(value)
+    except OverflowError:
+        return None
+    return value if math.isfinite(value) and value >= 0 else None
 
 
 def jev_decision(*, model: str, served_model: str | None, latency_ms: int, usage: Any) -> None:
-    """One jev.decide generation with OpenRouter's reported tokens and cost. Never state, questions or answers."""
-    usage = usage if isinstance(usage, dict) else {}
-    input_tokens, output_tokens = _count(usage.get("input_tokens")), _count(usage.get("output_tokens"))
-    cost = usage.get("cost")
-    cost = float(cost) if isinstance(cost, (int, float)) and not isinstance(cost, bool) and cost >= 0 else None
-    with span("jev.decide", model=model, served_model=served_model, latency_ms=latency_ms,
-              input_tokens=input_tokens, output_tokens=output_tokens, cost_usd=cost,
-              start_time=time.time_ns() - latency_ms * 1_000_000,
-              **{"gen_ai.request.model": model, "gen_ai.usage.input_tokens": input_tokens,
-                 "gen_ai.usage.output_tokens": output_tokens, "gen_ai.usage.cost": cost,
-                 "langfuse.observation.cost_details": json.dumps({"total": cost}) if cost is not None else None,
-                 "langfuse.observation.type": "generation"}):
-        pass
+    """One jev.decide generation with OpenRouter's reported tokens and cost. Never state, questions or answers; never raises."""
+    try:
+        usage = usage if isinstance(usage, dict) else {}
+        input_tokens, output_tokens = _count(usage.get("input_tokens")), _count(usage.get("output_tokens"))
+        cost = _cost(usage.get("cost"))
+        with span("jev.decide", model=model, served_model=served_model, latency_ms=latency_ms,
+                  input_tokens=input_tokens, output_tokens=output_tokens, cost_usd=cost,
+                  start_time=time.time_ns() - latency_ms * 1_000_000,
+                  **{"gen_ai.request.model": model, "gen_ai.usage.input_tokens": input_tokens,
+                     "gen_ai.usage.output_tokens": output_tokens, "gen_ai.usage.cost": cost,
+                     "langfuse.observation.cost_details": json.dumps({"total": cost}) if cost is not None else None,
+                     "langfuse.observation.type": "generation"}):
+            pass
+    except Exception:
+        logger.debug("jev_trace_dropped")

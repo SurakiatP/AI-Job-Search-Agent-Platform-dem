@@ -57,7 +57,7 @@ class JevClient:
             answers = data.get("answers") if isinstance(data, dict) else None
             if not isinstance(answers, dict):
                 raise ServiceError("jev_failed")
-            served = data.get("model")
+            served = data.get("model")  # latency spans retries and backoff; usage/cost are the final attempt's
             tracing.jev_decision(model=self._model, served_model=served if isinstance(served, str) else None,
                                  latency_ms=min(int((time.monotonic() - began) * 1000), 3_600_000), usage=data.get("usage"))
             return answers

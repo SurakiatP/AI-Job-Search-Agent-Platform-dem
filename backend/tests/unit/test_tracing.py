@@ -186,3 +186,25 @@ def test_jev_decision_drops_malformed_usage(monkeypatch, usage):
     assert dict(span.attributes) == {"model": "typesafe/jev-1.13", "latency_ms": 3,
                                      "gen_ai.request.model": "typesafe/jev-1.13",
                                      "langfuse.observation.type": "generation"}
+
+
+@pytest.mark.parametrize("usage", [{"cost": 10 ** 400}, {"cost": float("inf")}, {"cost": float("nan")},
+                                   {"input_tokens": 2 ** 64, "output_tokens": 10 ** 400}])
+def test_jev_decision_never_raises_and_drops_out_of_range_values(monkeypatch, usage):
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    monkeypatch.setattr(tracing, "_tracer", provider.get_tracer("test"))
+    tracing.jev_decision(model="typesafe/jev-1.13", served_model=None, latency_ms=3, usage=usage)
+    (span,) = exporter.get_finished_spans()
+    attrs = dict(span.attributes)
+    assert not {"cost_usd", "input_tokens", "output_tokens", "langfuse.observation.cost_details"} & attrs.keys()
+
+
+def test_trace_helpers_swallow_tracer_errors(monkeypatch):
+    class Broken:
+        def start_as_current_span(self, *a, **k):
+            raise RuntimeError("exporter down")
+    monkeypatch.setattr(tracing, "_tracer", Broken())
+    tracing.jev_decision(model="m", served_model=None, latency_ms=1, usage={"cost": 0.1})
+    tracing.llm_round(run_id="r", model="m", latency_ms=1, input_tokens=1, output_tokens=1)
