@@ -52,6 +52,10 @@ class _Runtime:
         yield SimpleNamespace(kind="result", result=json.dumps({"edits": edits}))
 
     async def export_document(self, project_id, fmt, source, output):
+        # Like the real bridge, the exporter runs the sandbox terminal tool, so it asks the project tool gate.
+        gate = getattr(self.projects[project_id], "tool_gate", None)
+        if gate is not None and not await gate("export", "terminal"):
+            raise RuntimeError("export_failed")
         (self.projects[project_id].workspace / output).write_bytes(PDF)
         return output
 

@@ -559,6 +559,8 @@ class RunExecutor:
             }
             artifact_ids: tuple[uuid.UUID, ...] = ()
             if not interactive and not full:
+                # The model is done; the trusted exporter runs the sandbox terminal tool, so restore the counting gate.
+                self.runtime.projects[run.project_id].tool_gate = reserve_tool
                 sandbox.staging_path("tailored-cv.md").write_text(text, encoding="utf-8")
                 manifest = json.dumps({"drafts": [{
                     "path": "tailored-cv.md", "document_type": "cv",
