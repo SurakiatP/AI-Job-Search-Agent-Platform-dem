@@ -265,6 +265,229 @@
       "type": "object"
     }
   },
+  "jobs_fit": {
+    "description": "Deterministic keyword skill coverage of the current Project CV against one supplied job or same-Project job revision: required, matched and missing skills and a ratio. No model is called; creates no Task.",
+    "input_schema": {
+      "$defs": {
+        "AgentJobFit": {
+          "additionalProperties": false,
+          "description": "Direct jobs_fit input: a supplied job or a same-Project job revision, plus an optional CV.",
+          "properties": {
+            "cv_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cv Id"
+            },
+            "job": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/JobCreate"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "job_revision_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Job Revision Id"
+            }
+          },
+          "title": "AgentJobFit",
+          "type": "object"
+        },
+        "JobCreate": {
+          "additionalProperties": false,
+          "properties": {
+            "company": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Company"
+            },
+            "description": {
+              "maxLength": 50000,
+              "minLength": 1,
+              "title": "Description",
+              "type": "string"
+            },
+            "source_url": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Source Url"
+            },
+            "title": {
+              "maxLength": 300,
+              "minLength": 1,
+              "title": "Title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "JobCreate",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/AgentJobFit"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "jobs_fitArguments",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "jobs_fitDictOutput",
+      "type": "object"
+    }
+  },
+  "jobs_search": {
+    "description": "Search public Thailand job postings. Returns up to 50 postings with the full description (markdown or plain text), posting age in days and a stale flag. Read-only; creates no Task.",
+    "input_schema": {
+      "$defs": {
+        "AgentJobSearch": {
+          "additionalProperties": false,
+          "description": "Direct jobs_search input: one page of the public job source with full descriptions.",
+          "properties": {
+            "category": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z0-9_-]{1,60}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Category"
+            },
+            "cities": {
+              "default": [],
+              "items": {
+                "maxLength": 60,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 5,
+              "title": "Cities",
+              "type": "array"
+            },
+            "description_format": {
+              "default": "markdown",
+              "enum": [
+                "markdown",
+                "text"
+              ],
+              "title": "Description Format",
+              "type": "string"
+            },
+            "limit": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "posted_within_days": {
+              "anyOf": [
+                {
+                  "maximum": 90,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Posted Within Days"
+            },
+            "q": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Q",
+              "type": "string"
+            },
+            "work_mode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "remote",
+                    "hybrid",
+                    "onsite"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Work Mode"
+            }
+          },
+          "title": "AgentJobSearch",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/AgentJobSearch"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "jobs_searchArguments",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "jobs_searchDictOutput",
+      "type": "object"
+    }
+  },
   "tailor_cv": {
     "description": "Tailor the current Project CV to one supplied job posting or same-Project job revision using only experience-bank evidence; produces a draft CV revision.",
     "input_schema": {

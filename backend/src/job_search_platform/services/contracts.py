@@ -9,7 +9,7 @@ from uuid import UUID
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, SecretStr, StringConstraints, model_validator
 
 
-Capability = Literal["results:read", "jobs:evaluate", "documents:draft", "cv:tailor"]
+Capability = Literal["results:read", "jobs:evaluate", "documents:draft", "cv:tailor", "jobs:search"]
 RunStatus = Literal["queued", "running", "waiting_approval", "completed", "failed", "cancelled", "interrupted"]
 Operation = Literal["evaluate_job", "draft_documents", "tailor_cv"]
 # profile_cv (CV skill profile, no LLM) and extract_experience (LLM experience-bank extraction) are likewise owner-only and internal.
@@ -497,9 +497,60 @@ class ToolRunRequest(RunRequest):
     """Protocol inputs intentionally share the REST request allowlist."""
 
 
+class AgentJobSearch(DTO):
+    """Direct jobs_search input: one page of the public job source with full descriptions."""
+    q: Annotated[str, StringConstraints(max_length=200)] = ""
+    cities: Annotated[list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]], Field(max_length=5)] = []
+    work_mode: Literal["remote", "hybrid", "onsite"] | None = None
+    posted_within_days: Annotated[int, Field(ge=1, le=90)] | None = None
+    category: Annotated[str, StringConstraints(pattern=r"^[a-z0-9_-]{1,60}$")] | None = None
+    limit: Annotated[int, Field(ge=1, le=50)] = 20
+    description_format: Literal["markdown", "text"] = "markdown"
+
+
+class AgentJobItem(DTO):
+    source_id: str
+    title: str
+    company: str | None = None
+    city: str | None = None
+    work_mode: str | None = None
+    posted_at: str | None = None
+    posting_age_days: int | None = None
+    stale: bool
+    source_url: str | None = None
+    description: str
+    description_format: Literal["markdown", "text"]
+
+
+class AgentJobSearchResult(DTO):
+    jobs: tuple[AgentJobItem, ...]
+
+
+class AgentJobFit(DTO):
+    """Direct jobs_fit input: a supplied job or a same-Project job revision, plus an optional CV."""
+    job: JobCreate | None = None
+    job_revision_id: UUID | None = None
+    cv_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def validate_intent(self):
+        if (self.job is None) == (self.job_revision_id is None):
+            raise ValueError("exactly_one_job_source_required")
+        return self
+
+
+class AgentJobFitResult(DTO):
+    method: str
+    ratio: Annotated[float, Field(ge=0, le=1)] | None = None
+    required: tuple[str, ...] = ()
+    matched: tuple[str, ...] = ()
+    missing: tuple[str, ...] = ()
+    reason: str | None = None
+
+
 class ToolDescriptor(DTO):
     # A nested Literal flattens to one OpenAPI enum; `Operation | Literal[...]` would emit anyOf.
-    name: Literal[Operation, Literal["get_run", "cancel_run", "list_results"]]
+    name: Literal[Operation, Literal["jobs_search", "jobs_fit", "get_run", "cancel_run", "list_results"]]
     description: str
     required_capability: Capability
 

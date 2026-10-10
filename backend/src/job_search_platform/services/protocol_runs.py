@@ -30,7 +30,7 @@ class ProtocolRuns:
     ) -> RunView:
         if actor.kind != "grant" or actor.project_id is None or actor.grant_id is None:
             raise ServiceError("forbidden")
-        if operation not in SKILL_BY_ID:
+        if operation not in SKILL_BY_ID or SKILL_BY_ID[operation].kind != "task":
             raise ServiceError("forbidden")
         return await asyncio.to_thread(self._submit, actor, operation, request)
 

@@ -231,6 +231,36 @@ paths:
       responses:
         '200': {description: 'Job search page {items, total, limit, offset}'}
         '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/agent/jobs/search:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: >-
+        Direct agent read (skill jobs_search, capability jobs:search; owner session also allowed). Creates no Run.
+        Query: q (max 200), cities (comma list, max 5 x 60), work_mode (remote|hybrid|onsite), posted_within_days (1-90),
+        category (slug), limit (1-50, default 20), description_format (markdown|text, default markdown).
+        Each job carries the full description, posting_age_days and stale. Upstream failure returns 502 job_source_unavailable.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      responses:
+        '200': {description: Jobs, content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobSearchResult'}}}}
+        '403': {description: Grant lacks jobs:search}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/agent/jobs/fit:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [jobs]
+      description: >-
+        Direct agent call (skill jobs_fit, capability jobs:evaluate; owner session also allowed). Deterministic keyword
+        coverage of the current CV (cv_id, else the primary CV) against a supplied job or same-Project job revision.
+        No model is called and no Run is created. 400 cv_text_unavailable when no CV text is stored.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobFit'}}}
+      responses:
+        '200': {description: Coverage, content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobFitResult'}}}}
+        '403': {description: Grant lacks jobs:evaluate}
+        '404': {description: Unknown job revision or CV}
   /projects/{project_id}/job-search/match:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -1280,7 +1310,7 @@ components:
       additionalProperties: false
       required: [capabilities, expires_at]
       properties:
-        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor']}}
+        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search']}}
         expires_at: {type: string, format: date-time}
     GrantIssuedView:
       type: object
@@ -1299,7 +1329,7 @@ components:
       properties:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
-        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor']}}
+        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search']}}
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}
     ProviderSettingsUpdate:
@@ -1390,14 +1420,54 @@ components:
       required: [connectors]
       properties:
         connectors: {type: array, items: {$ref: '#/components/schemas/ToolConnectorView'}}
+    AgentJobFit:
+      type: object
+      additionalProperties: false
+      properties:
+        job: {anyOf: [{$ref: '#/components/schemas/JobCreate'}, {type: 'null'}]}
+        job_revision_id: {type: [string, 'null'], format: uuid}
+        cv_id: {type: [string, 'null'], format: uuid}
+    AgentJobFitResult:
+      type: object
+      additionalProperties: false
+      required: [method]
+      properties:
+        method: {type: string}
+        ratio: {type: [number, 'null'], minimum: 0, maximum: 1}
+        required: {type: array, items: {type: string}}
+        matched: {type: array, items: {type: string}}
+        missing: {type: array, items: {type: string}}
+        reason: {type: [string, 'null']}
+    AgentJobItem:
+      type: object
+      additionalProperties: false
+      required: [source_id, title, stale, description, description_format]
+      properties:
+        source_id: {type: string}
+        title: {type: string}
+        company: {type: [string, 'null']}
+        city: {type: [string, 'null']}
+        work_mode: {type: [string, 'null']}
+        posted_at: {type: [string, 'null']}
+        posting_age_days: {type: [integer, 'null']}
+        stale: {type: boolean}
+        source_url: {type: [string, 'null']}
+        description: {type: string}
+        description_format: {type: string, enum: [markdown, text]}
+    AgentJobSearchResult:
+      type: object
+      additionalProperties: false
+      required: [jobs]
+      properties:
+        jobs: {type: array, items: {$ref: '#/components/schemas/AgentJobItem'}}
     ToolDescriptor:
       type: object
       additionalProperties: false
       required: [name, description, required_capability]
       properties:
-        name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, get_run, cancel_run, list_results]}
+        name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, jobs_search, jobs_fit, get_run, cancel_run, list_results]}
         description: {type: string}
-        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor']}
+        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search']}
     ToolsView:
       type: object
       additionalProperties: false

@@ -8,7 +8,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any, AsyncIterator, Sequence
 from urllib.parse import urlsplit
-from uuid import UUID, uuid5, NAMESPACE_URL
+from uuid import UUID, uuid4, uuid5, NAMESPACE_URL
 
 from a2a.server.context import ServerCallContext
 from a2a.server.request_handlers.request_handler import RequestHandler
@@ -27,6 +27,7 @@ from a2a.types import (
     GetExtendedAgentCardRequest,
     GetTaskPushNotificationConfigRequest,
     GetTaskRequest,
+    Message,
     ListTaskPushNotificationConfigsRequest,
     ListTaskPushNotificationConfigsResponse,
     ListTasksRequest,
@@ -320,7 +321,7 @@ class _PlatformRequestHandler(RequestHandler):
     def _not_found() -> TaskNotFoundError:
         return TaskNotFoundError("Task not found")
 
-    async def on_message_send(self, params: SendMessageRequest, context: ServerCallContext) -> Task:
+    async def on_message_send(self, params: SendMessageRequest, context: ServerCallContext) -> Task | Message:
         message = params.message
         if message is None:
             raise A2AError("request_rejected")
@@ -339,6 +340,14 @@ class _PlatformRequestHandler(RequestHandler):
             raise
         except Exception:
             raise A2AError("request_rejected") from None
+        if skill.kind == "direct":
+            try:
+                output = await skill.handler(self.services, actor, request)
+            except Exception:
+                raise A2AError("request_rejected") from None
+            return _protobuf(Message, {
+                "messageId": str(uuid4()), "role": "ROLE_AGENT", "parts": [{"data": output}],
+            })
         try:
             run = await self.intake.submit(actor, skill.id, request)
             return self._task(run)
