@@ -57,3 +57,18 @@ def test_log_level_from_env(monkeypatch):
     finally:
         root.handlers[:] = before[1]
         root.setLevel(before[0])
+
+
+def test_empty_private_dir_falls_back_to_default(monkeypatch):
+    from pathlib import Path
+    from job_search_platform.integrations.gateway import default_private_dir
+    monkeypatch.setenv("CORE02_PRIVATE_DIR", "")
+    assert default_private_dir() == Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003"
+    monkeypatch.setenv("CORE02_PRIVATE_DIR", "/somewhere")
+    assert default_private_dir() == Path("/somewhere")
+
+
+def test_chatty_client_libraries_are_capped():
+    jsp_logging.configure_logging()
+    for name in ("httpx", "httpcore", "botocore", "boto3", "urllib3", "sqlalchemy.engine"):
+        assert logging.getLogger(name).level == logging.WARNING

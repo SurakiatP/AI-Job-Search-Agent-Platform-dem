@@ -1032,6 +1032,8 @@ async def health():
 
 
 READY_TIMEOUT_SECONDS = 2
+READY_MAX_BODY_BYTES = 4096
+READY_CACHE_SECONDS = 5
 
 
 def _gateway_alive() -> None:
@@ -1039,6 +1041,7 @@ def _gateway_alive() -> None:
     with gateway.opener.open(_UrlRequest(gateway.base_url + "/health/liveliness"), timeout=READY_TIMEOUT_SECONDS) as response:
         if response.status != 200:
             raise ValueError
+        response.read(READY_MAX_BODY_BYTES)  # bounded; urllib's timeout is per socket operation, not total
 
 
 def _image_present(image: str) -> None:
@@ -1053,10 +1056,10 @@ async def _probe(check) -> str:
         return "down"
 
 
-@router.get("/health/ready")
-async def health_ready(services: Services = Depends(get_services)):
+async def _check_components(services: Services) -> tuple[int, dict]:
     def postgres():
         with services.sessions() as session:
+            session.execute(text("SET LOCAL statement_timeout = 2000"))
             session.execute(text("SELECT 1"))
 
     async def sandbox():
@@ -1066,10 +1069,22 @@ async def health_ready(services: Services = Depends(get_services)):
     results = await asyncio.gather(
         _probe(lambda: asyncio.to_thread(postgres)), _probe(services.files.object_store.ping),
         _probe(lambda: asyncio.to_thread(_gateway_alive)), _probe(sandbox))
-    components = dict(zip(names, results))
-    ok = all(value == "ok" for value in components.values())
-    return JSONResponse({"status": "ok" if ok else "degraded", "components": components},
-                        status_code=200 if ok else 503)
+    ok = all(value == "ok" for value in results)
+    return (200 if ok else 503), {"status": "ok" if ok else "degraded", "components": dict(zip(names, results))}
+
+
+@router.get("/health/ready")
+async def health_ready(request: Request, services: Services = Depends(get_services)):
+    """Cached for a few seconds and single-flight: an unauthenticated caller cannot multiply probes."""
+    state = request.app.state.__dict__.setdefault("readiness", {"at": -1e9, "result": None, "task": None})
+    now = asyncio.get_running_loop().time()
+    if state["result"] is None or now - state["at"] >= READY_CACHE_SECONDS:
+        if state["task"] is None or state["task"].done():
+            state["task"] = asyncio.ensure_future(_check_components(services))
+        state["result"] = await asyncio.shield(state["task"])
+        state["at"] = asyncio.get_running_loop().time()
+    code, body = state["result"]
+    return JSONResponse(body, status_code=code)
 
 
 @router.get("/gateway", response_model=GatewayStatusView)

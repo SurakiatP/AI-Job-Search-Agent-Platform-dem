@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import time
 import secrets
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
@@ -750,6 +751,7 @@ def test_health_is_liveness_and_ready_reports_components(api_context, monkeypatc
     def down():
         raise OSError("http://10.9.8.7:4000 refused")
     monkeypatch.setattr(rest, "_gateway_alive", down)
+    client.app.state.readiness["result"] = None  # drop the TTL cache
     degraded = client.get("/api/v1/health/ready")
     assert degraded.status_code == 503
     assert degraded.json()["status"] == "degraded" and degraded.json()["components"]["llm_gateway"] == "down"
@@ -774,3 +776,58 @@ def test_request_log_has_id_and_route_template_but_no_query(api_context):
     assert (first["method"], first["route"], first["status"]) == ("GET", "/projects/{project_id}", response.status_code)
     assert "duration_ms" in first and "s3cr3t" not in stream.getvalue() and pid not in stream.getvalue()
     assert re.fullmatch(r"[0-9a-f-]{36}", second["request_id"]) and second["request_id"] == bad.headers["X-Request-ID"]
+
+
+def test_ready_is_single_flight_and_cached(api_context, monkeypatch):
+    from job_search_platform.api import rest
+    calls = {"gateway": 0}
+
+    def slow_gateway():
+        calls["gateway"] += 1
+        time.sleep(0.4)
+
+    monkeypatch.setattr(rest, "_gateway_alive", slow_gateway)
+    monkeypatch.setattr(rest, "_image_present", lambda image: None)
+    api_context.client.app.state.services.runtime.image = "sandbox@sha256:" + "0" * 64
+    api_context.client.cookies.clear()
+    with ThreadPoolExecutor(20) as pool:
+        codes = list(pool.map(lambda _: api_context.client.get("/api/v1/health/ready").status_code, range(20)))
+    assert codes == [200] * 20 and calls["gateway"] == 1
+    assert api_context.client.get("/api/v1/health/ready").status_code == 200
+    assert calls["gateway"] == 1  # within the TTL: no new probe
+
+
+def test_gateway_probe_reads_a_bounded_body(monkeypatch):
+    from job_search_platform.api import rest
+    read = []
+
+    class Response:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self, n=-1):
+            read.append(n)
+            return b""
+
+    class Opener:
+        def open(self, request, timeout): return Response()
+
+    monkeypatch.setattr(rest.GatewaySettings, "from_env", classmethod(lambda cls, *a: rest.GatewaySettings(
+        "http://gateway.invalid", None, "a", "b", Opener())))
+    rest._gateway_alive()
+    assert read and all(0 < n <= 4096 for n in read)
+
+
+def test_unmatched_route_is_labelled_unmatched(api_context):
+    stream = io.StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.setFormatter(jsp_logging.JsonFormatter())
+    logger = logging.getLogger("jsp.request")
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    try:
+        api_context.client.get("/api/v1/no/such/secret-path-123")
+    finally:
+        logger.removeHandler(handler)
+    line = json.loads(stream.getvalue().splitlines()[0])
+    assert line["route"] == "unmatched" and "secret-path" not in stream.getvalue()

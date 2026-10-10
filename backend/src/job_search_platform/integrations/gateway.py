@@ -29,7 +29,7 @@ _OPENER = build_opener(_NoRedirect(), ProxyHandler({}))
 
 
 def default_private_dir() -> Path:
-    return Path(os.environ.get("CORE02_PRIVATE_DIR", str(Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003")))
+    return Path(os.environ.get("CORE02_PRIVATE_DIR") or Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003")
 
 
 def _without_userinfo(url: str) -> str:

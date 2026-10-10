@@ -48,7 +48,7 @@ from job_search_platform.workers.supervisor import WorkerSupervisor
 
 ROOT = Path(__file__).resolve().parents[3]
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
-PRIVATE_DIR = Path(os.environ.get("CORE02_PRIVATE_DIR", str(Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003")))
+PRIVATE_DIR = Path(os.environ.get("CORE02_PRIVATE_DIR") or Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003")
 RUNTIME_METADATA = Path.home() / ".cache" / "job-search-platform" / "hermes-runtime.json"
 
 
@@ -94,7 +94,7 @@ def build_services() -> Services:
     db_url = URL.create("postgresql+psycopg", username=user, password=password,
                         host=config.postgres_host(), port=config.postgres_port(),
                         database=config.database_name())
-    engine = make_engine(db_url)
+    engine = make_engine(db_url, connect_args={"connect_timeout": 2})
     sessions = sessionmaker(engine, expire_on_commit=False)
 
     access = _private_text("minio-access-key")
@@ -103,7 +103,8 @@ def build_services() -> Services:
         "s3", endpoint_url=config.minio_endpoint(),
         aws_access_key_id=access, aws_secret_access_key=secret, region_name="us-east-1",
         config=__import__("botocore.config", fromlist=["Config"]).Config(
-            signature_version="s3v4", s3={"addressing_style": "path"}, retries={"max_attempts": 2}),
+            signature_version="s3v4", s3={"addressing_style": "path"}, retries={"max_attempts": 2},
+            connect_timeout=2, read_timeout=10),  # bounds the readiness probe too
     )
     bucket = config.private_bucket()
     try:

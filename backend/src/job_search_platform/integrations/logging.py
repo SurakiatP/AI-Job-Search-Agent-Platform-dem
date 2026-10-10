@@ -42,7 +42,7 @@ def configure_logging() -> None:
     root.addHandler(handler)
     level = logging.getLevelName((os.environ.get("JSP_LOG_LEVEL") or "INFO").strip().upper())
     root.setLevel(level if isinstance(level, int) else logging.INFO)
-    for noisy in ("httpx", "httpcore"):  # their INFO lines carry full URLs including query strings
+    for noisy in ("httpx", "httpcore", "botocore", "boto3", "urllib3", "sqlalchemy.engine"):  # their INFO/DEBUG lines carry URLs, query strings or SQL parameters
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
