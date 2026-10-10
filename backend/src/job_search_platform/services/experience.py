@@ -42,15 +42,24 @@ def numbers(text: str) -> set[str]:
     return {token.replace(",", "") for token in _NUMBER.findall(normalize(text))}
 
 
+def _joined(left: str, right: str, beyond: str) -> bool:
+    """True when two characters belong to one Latin word or number, including '3.5' / '1,000' across the separator."""
+    if _WORD.match(left) and _WORD.match(right):
+        return True
+    return left.isdigit() and right in ".," and beyond.isdigit() or left in ".," and right.isdigit() and beyond.isdigit()
+
+
 def _found_in(needle: str, haystack: str) -> bool:
     """Normalized needle occurs in haystack without splitting a Latin word or number (Thai edges: plain substring)."""
     if not needle:
         return False
+    def at(index: int) -> str:
+        return haystack[index] if 0 <= index < len(haystack) else " "
+
     start = haystack.find(needle)
     while start != -1:
         end = start + len(needle)
-        if not (_WORD.match(needle[0]) and start and _WORD.match(haystack[start - 1])) and not (
-                _WORD.match(needle[-1]) and end < len(haystack) and _WORD.match(haystack[end])):
+        if not _joined(at(start - 1), needle[0], at(start - 2)) and not _joined(needle[-1], at(end), at(end + 1)):
             return True
         start = haystack.find(needle, start + 1)
     return False

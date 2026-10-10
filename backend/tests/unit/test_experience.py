@@ -44,3 +44,15 @@ def test_parse_items_accepts_fence_and_rejects_bad_shapes():
 def test_prompt_contains_cv_and_verbatim_rule():
     prompt, instructions = extraction_prompt("CV BODY")
     assert "CV BODY" in prompt and "verbatim" in prompt and "untrusted" in instructions
+
+
+def test_found_in_does_not_split_numbers_at_separators():
+    from job_search_platform.services.experience import _found_in
+    cv = normalize("3.5 years of Python; 1,000 users; 2022, 2023; v2.1 shipped")
+    assert not _found_in(normalize("5 years of Python"), cv)
+    assert not _found_in(normalize("000 users"), cv)
+    assert not _found_in(normalize("3 years"), normalize("3.5 years"))
+    assert not _found_in(normalize("1 shipped"), cv)
+    assert _found_in(normalize("3.5 years of Python"), cv)
+    assert _found_in(normalize("1,000 users"), cv)
+    assert _found_in(normalize("2022"), cv) and _found_in(normalize("2023"), cv)
