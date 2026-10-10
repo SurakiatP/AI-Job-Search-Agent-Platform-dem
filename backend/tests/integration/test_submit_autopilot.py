@@ -185,3 +185,19 @@ def test_migration_0020_backfills_owner_on_existing_decisions(postgres_engine):
         rows = {r[0]: r[1] for r in db.execute(text("SELECT coalesce(decision,'none'), decided_by FROM approvals"))}
         assert rows == {"approve": "owner", "none": None}
     _migrate(postgres_engine, command.downgrade, "0019_grant_label")
+
+
+@pytest.mark.integration
+def test_cancelling_a_pending_submit_cancels_it_and_voids_its_approval(api_context):
+    # apply_submit holds no worker while it waits, so a cancel request must finish it at once,
+    # not leave it waiting until the approval expires.
+    ctx = api_context
+    csrf, pid, session, _, runtime, _ = _ready_pack(ctx)
+    run_id = _submit(ctx, csrf, pid, session, runtime, "s-cancel")
+    assert _run(ctx, run_id).status == "waiting_approval"
+    response = ctx.client.post(f"{PREFIX}/{pid}/runs/{run_id}/cancel", headers=_write_headers(csrf))
+    assert response.status_code == 202 and response.json()["status"] == "cancelled"
+    with ctx.sessions() as db:
+        approval = db.scalar(select(Approval).where(Approval.run_id == UUID(run_id)))
+        assert approval.decision == "reject" and approval.consumed_at is not None
+    assert _status(ctx, pid, session) != "applied"
