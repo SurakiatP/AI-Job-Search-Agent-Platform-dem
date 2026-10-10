@@ -51,7 +51,7 @@ def _authorize(db, actor, project, skill_id):
 
 
 def _project(actor: Actor, project_id: UUID | None) -> UUID:
-    value = actor.project_id or project_id
+    value = project_id or actor.project_id  # the REST path wins; authorize turns a grant mismatch into not_found
     if value is None:
         raise ServiceError("not_found")
     return value

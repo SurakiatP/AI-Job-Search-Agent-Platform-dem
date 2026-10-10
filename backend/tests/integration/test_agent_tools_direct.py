@@ -138,6 +138,15 @@ def test_rest_capability_denials(api_context):
     assert _as_grant(api_context.client, "GET", search, "not-a-token").status_code == 401
 
 
+def test_rest_grant_cannot_use_another_projects_path(api_context):
+    csrf, project_id = _project(api_context)
+    token = _grant(api_context, project_id, csrf, ["jobs:evaluate", "jobs:search"])
+    other = UUID(api_context.client.post("/api/v1/projects", json={"name": "Other"}, headers=_write_headers(csrf)).json()["id"])
+    body = {"job": {"title": "Synthetic dev", "description": JOB_TEXT}}
+    assert _as_grant(api_context.client, "POST", f"/api/v1/projects/{other}/agent/jobs/fit", token, json=body).status_code == 404
+    assert _as_grant(api_context.client, "GET", f"/api/v1/projects/{other}/agent/jobs/search", token).status_code == 404
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_mcp_and_a2a_direct_calls(api_context, unused_tcp_port):
