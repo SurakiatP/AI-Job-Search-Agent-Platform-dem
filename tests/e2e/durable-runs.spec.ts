@@ -90,11 +90,22 @@ for (const [locale, label] of [['en', 'Suggested from your facts — confirm'], 
     await page.route(`**/api/v1/projects/${projectId}/runs`, r => r.fulfill(json([run({ result_payload: suggested })])));
     await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
     await expect(page.getByText(label)).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Authorised to work?' })).toHaveAccessibleDescription(label);
     await expect(page.getByRole('radio', { name: locale === 'en' ? 'Yes' : 'ใช่', exact: true })).toBeChecked();
     await page.getByRole('button', { name: locale === 'en' ? 'Save answers' : 'บันทึกคำตอบ' }).click();
     await expect.poll(() => seen.input).toEqual({ answers: { q2: true } });
   });
 }
+
+test('an optional suggested answer in a ready pack is not described as needing confirmation', async ({ page }) => {
+  await mock(page, 'en');
+  const ready = { ...pack, state: 'ready', missing_required: [], answers: [pack.answers[0], { ...pack.answers[1], required: false, suggestion: true, evidence_ids: ['f1'], reason: 'needs_confirmation' }] };
+  await page.route(`**/api/v1/projects/${projectId}/runs`, r => r.fulfill(json([run({ status: 'completed', result_payload: ready })])));
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await expect(page.getByText('Authorised to work?')).toBeVisible();
+  await expect(page.getByText('A suggestion was made; nothing is included until you answer.')).toBeVisible();
+  await expect(page.getByText('You need to confirm this answer')).toHaveCount(0);
+});
 
 test('grant issue form has an optional name sent as label, shown in the list (Thai)', async ({ page }) => {
   const seen = await mock(page, 'th');
