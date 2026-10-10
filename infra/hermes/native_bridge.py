@@ -352,9 +352,19 @@ def main():
                            "docx": "/opt/career-ops-docx/bin/generate-docx.mjs"}
                 if format not in scripts or output.suffix != "." + format:
                     raise RuntimeError("unsupported_export")
+                engine = request.get("engine", "chromium")
+                if engine not in ("chromium", "typst") or (engine == "typst" and (format != "pdf" or source.suffix.lower() != ".md")):
+                    raise RuntimeError("unsupported_export")
                 rendered = None
                 source_path = "/workspace/" + str(source)
-                if format == "pdf" and source.suffix.lower() == ".md":
+                if engine == "typst":
+                    rendered = output.with_name(output.stem + ".render.typ")
+                    prepared = json.loads(terminal.terminal_tool(
+                        "python /opt/runtime/typst_render.py " + shlex.quote(source_path)
+                        + " " + shlex.quote("/workspace/" + str(rendered)), task_id=task_id, timeout=30))
+                    if prepared.get("exit_code") != 0:
+                        raise RuntimeError("export_failed")
+                elif format == "pdf" and source.suffix.lower() == ".md":
                     rendered = output.with_name(output.stem + ".render.html")
                     source_path = "/workspace/" + str(rendered)
                     render_script = (
@@ -373,7 +383,11 @@ def main():
                     ))
                     if prepared.get("exit_code") != 0:
                         raise RuntimeError("export_failed")
-                command = "node " + scripts[format] + " " + shlex.quote(source_path) + " " + shlex.quote("/workspace/" + str(output))
+                if engine == "typst":
+                    command = ("typst compile --font-path /usr/share/fonts " + shlex.quote("/workspace/" + str(rendered))
+                               + " " + shlex.quote("/workspace/" + str(output)))
+                else:
+                    command = "node " + scripts[format] + " " + shlex.quote(source_path) + " " + shlex.quote("/workspace/" + str(output))
                 execution = json.loads(terminal.terminal_tool(command, task_id=task_id, timeout=60))
                 if rendered is not None:
                     terminal.terminal_tool(

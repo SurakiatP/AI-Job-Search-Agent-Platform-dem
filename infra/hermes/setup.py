@@ -72,7 +72,7 @@ def main():
         subprocess.run(["git", "-C", manifest["career-ops-docx"]["source"], "archive", "--format=tar", "-o", str(docx_archive), INPUTS["career-ops-docx"][1]], check=True, timeout=60)
         with tarfile.open(docx_archive) as source_archive:
             source_archive.extractall(build / "career-ops-docx", filter="data")
-        for name in ("Dockerfile", "package.json", "package-lock.json", "parser-requirements.txt", "parse_document.py", "export_pdf.mjs"):
+        for name in ("Dockerfile", "package.json", "package-lock.json", "parser-requirements.txt", "parse_document.py", "export_pdf.mjs", "typst_render.py"):
             shutil.copyfile(ROOT / "infra/hermes" / name, build / name)
         run(["docker", "build", "--iidfile", str(build / "image-id"), "-t", "job-search-platform-hermes:core-03", str(build)])
         manifest["image"] = (build / "image-id").read_text().strip()

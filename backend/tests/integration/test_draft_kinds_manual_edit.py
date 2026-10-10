@@ -58,7 +58,7 @@ class _FakeRuntime:
                                 "title": "Synthetic draft", "format": "pdf"}]}
         yield SimpleNamespace(kind="result", result=json.dumps(manifest))
 
-    async def export_document(self, project_id, fmt, source, output):
+    async def export_document(self, project_id, fmt, source, output, engine="chromium"):
         self.exports.append((fmt, source, output))
         (self.projects[project_id].workspace / output).write_bytes(PDF)
         return output
