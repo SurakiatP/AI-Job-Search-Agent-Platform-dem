@@ -60,6 +60,14 @@ class HiddenCreate(DTO):
     label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
 
 
+class ExperienceItemCreate(DTO):
+    kind: Literal["experience", "education", "skill", "certification", "project", "other"]
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+    role: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    organization: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    period: Annotated[str, StringConstraints(strip_whitespace=True, max_length=60)] | None = None
+
+
 class RunRequest(DTO):
     session_id: UUID
     operation: Operation

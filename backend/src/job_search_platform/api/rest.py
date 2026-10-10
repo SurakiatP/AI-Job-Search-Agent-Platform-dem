@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import re
 from pathlib import PurePath
 from collections.abc import AsyncIterator
@@ -25,7 +26,7 @@ from job_search_platform.db.models import (
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
     ApprovalDecision, ApprovalRequest, ApprovalView, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
-    GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
+    ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
     PreferencesView, ProjectUpdate, ProjectView, ProviderCatalogView, ProviderConnectionTestView,
@@ -34,7 +35,7 @@ from job_search_platform.services.contracts import (
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
 from job_search_platform.integrations.jev import JEV_MODEL
-from job_search_platform.services import job_sources, smart_match
+from job_search_platform.services import experience, job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
@@ -67,6 +68,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "object_store_unavailable": 503, "service_unavailable": 503,
         "secret_store_unavailable": 503, "invalid_base_url": 422, "credential_required": 409,
         "provider_models_unavailable": 502, "jev_unavailable": 409,
+        "duplicate": 409, "bank_full": 409, "provider_configuration_required": 409,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
     body = {
@@ -606,6 +608,57 @@ async def unhide_job_search_item(project_id: UUID, hidden_id: UUID, actor=Depend
     return Response(status_code=204)
 
 
+def _extraction(db, project_id: UUID) -> dict | None:
+    run = db.scalar(select(Run).where(Run.project_id == project_id, Run.operation == "extract_experience")
+                    .order_by(Run.created_at.desc()).limit(1))
+    if run is None:
+        return None
+    revision = db.get(CVRevision, run.cv_revision_id)
+    summary = (revision.skill_profile or {}).get("experience") if run.status == "completed" else None
+    return {"run_id": str(run.id), "status": run.status, "cv_id": str(revision.cv_id), "summary": summary}
+
+
+@router.get("/projects/{project_id}/experience")
+async def list_experience(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        provider = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
+                             .order_by(ProviderConfiguration.revision.desc()).limit(1))
+        return {"items": [experience.item_view(db, item) for item in experience.list_items(db, project_id)],
+                "extraction": _extraction(db, project_id),
+                "provider_configured": provider is not None and not provider.secret_reference.startswith("restored-unconfigured:")}
+
+
+@router.post("/projects/{project_id}/experience", status_code=201)
+async def add_experience(project_id: UUID, body: ExperienceItemCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        return experience.item_view(db, experience.add_item(db, project_id, **body.model_dump()))
+
+
+@router.put("/projects/{project_id}/experience/{item_id}")
+async def replace_experience(project_id: UUID, item_id: UUID, body: ExperienceItemCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        return experience.item_view(db, experience.replace_item(db, project_id, item_id, **body.model_dump()))
+
+
+@router.delete("/projects/{project_id}/experience/{item_id}", status_code=204)
+async def remove_experience(project_id: UUID, item_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        experience.remove_item(db, project_id, item_id)
+    return Response(status_code=204)
+
+
+@router.post("/projects/{project_id}/cvs/{cv_id}/experience-runs", status_code=202, response_model=RunView)
+async def start_experience_run(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Queue (or return the active) owner-only extraction of this CV's latest revision into the experience bank."""
+    return await services.runs.submit_extract(actor, project_id, cv_id)
+
+
 @router.get("/projects/{project_id}/job-search/facets")
 async def job_search_facets(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
     with services.sessions() as db:
@@ -756,10 +809,13 @@ async def _upload_cv(services, actor, project_id: UUID, file: UploadFile, **targ
         ))
         if revision is None:
             raise ServiceError("file_unavailable")
-        return ({"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
-                 "original_filename": view.display_name, "mime_type": view.mime_type, "size_bytes": view.size_bytes,
-                 "file_id": view.id},
-                revision.cv_id)
+    # Every new CV revision feeds the experience bank; without a provider (or with a full queue) the owner starts it later.
+    with contextlib.suppress(ServiceError):
+        await services.runs.submit_extract(actor, project_id, revision.cv_id, automatic=True)
+    return ({"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
+             "original_filename": view.display_name, "mime_type": view.mime_type, "size_bytes": view.size_bytes,
+             "file_id": view.id},
+            revision.cv_id)
 
 
 @router.post("/projects/{project_id}/cv", status_code=201, response_model=CVRevisionView)
@@ -859,7 +915,6 @@ async def download_file(project_id: UUID, file_id: UUID, actor=Depends(run_actor
 async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Services = Depends(get_services)):
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "run")
-        from job_search_platform.db.models import Run
         query = select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())
         query = query.where(Run.operation.not_in(("profile_cv", "match_jobs", "extract_experience")))
         if actor.kind != "owner":

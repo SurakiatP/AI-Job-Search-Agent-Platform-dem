@@ -322,6 +322,89 @@ paths:
         '204': {description: Unhidden}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/experience:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [files]
+      description: >-
+        Owner-only experience bank: {items: [{id, kind, text, role, organization, period, source, source_cv_id,
+        source_cv_name, created_at}], extraction: {run_id, status, cv_id, summary: {added, duplicates, rejected} | null}
+        | null, provider_configured: bool}. extraction is the latest extract_experience run; summary is set once it
+        completed. Grants get 401.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: 'Bank items, latest extraction and provider state'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Adds one fact (source owner). 409 duplicate when the normalised text already exists in this
+        project (removed facts included); 409 bank_full at 1,000 live items.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ExperienceItemCreate'}}}
+      responses:
+        '201': {description: 'Created item {id, kind, text, role, organization, period, source, source_cv_id, source_cv_name, created_at}'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Duplicate fact or full bank (codes duplicate, bank_full), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+  /projects/{project_id}/experience/{item_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: item_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    put:
+      tags: [files]
+      description: >-
+        Owner-only. Item text is immutable: a text change inserts a new item and soft-removes this one (new id);
+        a context-only change (kind, role, organization, period) updates in place.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ExperienceItemCreate'}}}
+      responses:
+        '200': {description: 'Resulting item {id, kind, text, role, organization, period, source, source_cv_id, source_cv_name, created_at}'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Duplicate fact (code duplicate), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+    delete:
+      tags: [files]
+      description: Owner-only. Soft-removes one live item of this project; extraction never re-adds a removed fact.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Removed}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/cvs/{cv_id}/experience-runs:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Queues (or returns the active) extract_experience run that reads the CV's latest revision and
+        adds its verbatim facts to the experience bank. Every CV upload also queues one automatically when a
+        provider is configured. extract_experience runs are hidden from the run list, grants, MCP and A2A.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Extraction run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: No provider configured (code provider_configuration_required), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {description: Project run queue is full (code queue_full), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search/facets:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -804,6 +887,16 @@ components:
         kind: {type: string, enum: [job, company]}
         value: {type: string, minLength: 1, maxLength: 300}
         label: {type: string, minLength: 1, maxLength: 300}
+    ExperienceItemCreate:
+      type: object
+      additionalProperties: false
+      required: [kind, text]
+      properties:
+        kind: {type: string, enum: [experience, education, skill, certification, project, other]}
+        text: {type: string, minLength: 1, maxLength: 1000}
+        role: {anyOf: [{type: string, maxLength: 200}, {type: 'null'}]}
+        organization: {anyOf: [{type: string, maxLength: 200}, {type: 'null'}]}
+        period: {anyOf: [{type: string, maxLength: 60}, {type: 'null'}]}
     RunRequest:
       type: object
       additionalProperties: false
