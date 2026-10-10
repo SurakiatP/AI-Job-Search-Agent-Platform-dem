@@ -251,7 +251,9 @@ class WorkerSupervisor:
                     await asyncio.sleep(0.05)
                 if _recorded_process_alive(native_pid, native_created_at):
                     raise ServiceError("native_stop_incomplete")
-            if stopped_container and stale.status == "running":
+            # Startup runs before the dispatcher, so any `running` row is orphaned, even one killed before its
+            # sandbox was recorded; leaving it would hold the project's single active slot forever.
+            if stale.status == "running":
                 # queued never held a sandbox (the dispatcher claims it as is) and waiting_approval keeps waiting.
                 await asyncio.to_thread(self.queue.interrupt_or_resume, stale.id, message_key="errors.worker_interrupted")
         await asyncio.to_thread(self._reconcile_pending_artifacts)

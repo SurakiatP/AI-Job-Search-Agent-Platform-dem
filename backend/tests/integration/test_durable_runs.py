@@ -153,6 +153,25 @@ async def test_startup_reconcile(db_session, tmp_path, scenario):
         assert queue.claim_next("new-worker").id == run_id
 
 
+@pytest.mark.asyncio
+async def test_startup_reconcile_resumes_running_run_killed_before_its_sandbox_was_recorded(db_session, tmp_path):
+    # A crash between claim and sandbox start leaves `running` with no container to stop; it must not
+    # hold the project's single active slot forever.
+    sessions, queue, run_id = await _queued_run(db_session)
+    assert queue.claim_next("old-worker").id == run_id
+    runtime = _FakeRuntime(tmp_path)
+
+    async def nothing_recorded(*_args):
+        return False
+
+    runtime.stop_recorded_container = nothing_recorded
+    await WorkerSupervisor(sessions, queue, object(), runtime).reconcile_startup()
+    with sessions() as db:
+        run = db.get(Run, run_id)
+        assert (run.status, run.resume_count) == ("queued", 1)
+    assert queue.claim_next("new-worker").id == run_id
+
+
 def _parked(ctx):
     csrf, pid, session_, facts, _ = _setup(ctx, [])
     runtime = _PackRuntime(ctx.tmp_path / "ws", [[_ans("why", None), _ans("auth", True, facts["py"])]])
