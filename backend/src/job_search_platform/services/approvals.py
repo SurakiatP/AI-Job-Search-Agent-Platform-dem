@@ -11,7 +11,9 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import CV, Approval, CVRevision, DocumentRevision, Grant, Project, Run, StoredFile
+from job_search_platform.db.models import (
+    CV, Approval, CVRevision, DocumentRevision, Grant, JobApplicationStatus, Project, Run, StoredFile,
+)
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import Actor, ApprovalRequest, ApprovalView
 from job_search_platform.services.errors import ServiceError
@@ -39,6 +41,8 @@ class ApprovalService:
         now = _utc(now or datetime.now(timezone.utc))
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "request", "approval")
+            if request.action == "submit_application":
+                raise ServiceError("forbidden")  # only the apply_submit run itself asks, from the executor
             if db.scalar(select(Project).where(Project.id == project_id).with_for_update()) is None:
                 raise ServiceError("not_found")
             lock_current_grant(db, actor, project_id, now)
@@ -60,6 +64,7 @@ class ApprovalService:
                         Approval.revision_id == request.revision_id,
                         Approval.expected_cv_revision_id == request.expected_cv_revision_id,
                         Approval.target_file_id == request.target_file_id,
+                        Approval.target_run_id == request.target_run_id,
                     )
                 )
                 if old is not None and old.consumed_at is None:
@@ -67,35 +72,56 @@ class ApprovalService:
                 raise ServiceError("approval_already_pending")
             if run.status != "running" or run.cancellation_requested_at is not None:
                 raise ServiceError("run_not_approvable")
-            change, _ = self._resolve_change(db, project_id, request)
-            approval = Approval(
-                project_id=project_id,
-                run_id=run_id,
-                action=request.action,
-                revision_id=request.revision_id,
-                expected_cv_revision_id=request.expected_cv_revision_id,
-                target_file_id=request.target_file_id,
-                change_digest=_digest(change),
-                token_hash=hashlib.sha256(secrets.token_bytes(32)).digest(),
-                expires_at=now + APPROVAL_TTL,
-            )
-            db.add(approval)
-            db.flush()
-            accrue_active_time(run, now)
-            run.status = "waiting_approval"
-            run.active_started_at = None
-            append_event(
-                db,
-                run,
-                "approval_requested",
-                {
-                    "status": "waiting_approval",
-                    "message_key": "approvals.requested",
-                    "approval_id": approval.id,
-                },
-                now=now,
-            )
-            return _view(approval)
+            return self._open(db, run, request, now)
+
+    def request_submission(self, run_id: UUID, lease_owner: str, *, now: datetime | None = None) -> ApprovalView:
+        """Executor side: the running apply_submit run asks the owner to record its pack as applied.
+        No run enters waiting_approval on its own elsewhere, so this is the one place that does."""
+        now = _utc(now or datetime.now(timezone.utc))
+        with self.sessions.begin() as db:
+            project_id = db.scalar(select(Run.project_id).where(Run.id == run_id))
+            if project_id is None or db.scalar(select(Project).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id).with_for_update())
+            if (run is None or run.operation != "apply_submit" or run.status != "running"
+                    or run.lease_owner != lease_owner):
+                raise ServiceError("lease_lost")
+            if run.cancellation_requested_at is not None:
+                raise ServiceError("cancellation_requested")
+            request = ApprovalRequest(action="submit_application", target_run_id=UUID(run.input_snapshot["pack_run_id"]))
+            return self._open(db, run, request, now)
+
+    def _open(self, db: Session, run: Run, request: ApprovalRequest, now: datetime) -> ApprovalView:
+        change, _ = self._resolve_change(db, run.project_id, request)
+        approval = Approval(
+            project_id=run.project_id,
+            run_id=run.id,
+            action=request.action,
+            revision_id=request.revision_id,
+            expected_cv_revision_id=request.expected_cv_revision_id,
+            target_file_id=request.target_file_id,
+            target_run_id=request.target_run_id,
+            change_digest=_digest(change),
+            token_hash=hashlib.sha256(secrets.token_bytes(32)).digest(),
+            expires_at=now + APPROVAL_TTL,
+        )
+        db.add(approval)
+        db.flush()
+        accrue_active_time(run, now)
+        run.status = "waiting_approval"
+        run.active_started_at = None
+        append_event(
+            db,
+            run,
+            "approval_requested",
+            {
+                "status": "waiting_approval",
+                "message_key": "approvals.requested",
+                "approval_id": approval.id,
+            },
+            now=now,
+        )
+        return _view(approval)
 
     def resolve(
         self,
@@ -153,8 +179,14 @@ class ApprovalService:
                     revision_id=approval.revision_id,
                     expected_cv_revision_id=approval.expected_cv_revision_id,
                     target_file_id=approval.target_file_id,
+                    target_run_id=approval.target_run_id,
                 )
-                change, target_file_id = self._resolve_change(db, project_id, request)
+                try:
+                    change, target_file_id = self._resolve_change(db, project_id, request)
+                except ServiceError as exc:
+                    if approval.action == "submit_application" and exc.code in {"apply_pack_required", "already_applied"}:
+                        raise ServiceError("approval_stale") from None
+                    raise
                 if _digest(change) != approval.change_digest:
                     raise ServiceError("approval_stale")
                 if decision == "approve" and approval.action == "promote_cv":
@@ -176,7 +208,9 @@ class ApprovalService:
 
                 approval.consumed_at = now
                 approval.decision = decision
-                if decision == "reject":
+                if approval.action == "submit_application":
+                    self._finish_submission(db, approval, run, decision, now)
+                elif decision == "reject":
                     approval.applied_at = now
                     run.status = "failed"
                     run.finished_at = now
@@ -214,6 +248,32 @@ class ApprovalService:
             raise ServiceError("approval_expired")
         assert result is not None
         return result
+
+    @staticmethod
+    def _finish_submission(db: Session, approval: Approval, run: Run, decision: str, now: datetime) -> None:
+        """No external effect exists to queue: approve records applied and completes the run, reject cancels it."""
+        approval.applied_at = now
+        run.finished_at = now
+        PostgresRunQueue._clear_lease(run)
+        if decision == "reject":
+            run.status = "cancelled"
+            append_event(db, run, "approval_rejected",
+                         {"status": "cancelled", "message_key": "errors.approval_rejected", "approval_id": approval.id}, now=now)
+            return
+        job_id = db.scalar(select(Run.job_revision_id).where(Run.project_id == run.project_id, Run.id == approval.target_run_id))
+        row = db.get(JobApplicationStatus, (run.project_id, job_id))
+        if row is None:
+            db.add(JobApplicationStatus(project_id=run.project_id, job_revision_id=job_id, status="applied"))
+        else:
+            row.status = "applied"
+        run.status = "completed"
+        run.result_payload = {"kind": "apply_submit", "state": "recorded",
+                              "pack_run_id": str(approval.target_run_id), "job_revision_id": str(job_id)}
+        append_event(db, run, "approval_approved",
+                     {"status": "completed", "message_key": "approvals.approved", "approval_id": approval.id}, now=now)
+        append_event(db, run, "application_recorded",
+                     {"status": "completed", "message_key": "applications.recorded"}, now=now)
+        append_event(db, run, "run_completed", {"status": "completed"}, now=now)
 
     def apply_pending_deletion(
         self,
@@ -348,6 +408,18 @@ class ApprovalService:
                 },
                 file.id if file else None,
             )
+        if request.action == "submit_application":
+            pack = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == request.target_run_id))
+            payload = None if pack is None else pack.result_payload
+            if (pack is None or pack.operation != "apply_prepare" or pack.status != "completed"
+                    or not isinstance(payload, dict) or payload.get("state") != "ready"):
+                raise ServiceError("apply_pack_required")
+            if db.scalar(select(JobApplicationStatus.status).where(
+                    JobApplicationStatus.project_id == project_id,
+                    JobApplicationStatus.job_revision_id == pack.job_revision_id)) == "applied":
+                raise ServiceError("already_applied")
+            return ({"action": request.action, "target_run_id": str(pack.id), "job_revision_id": str(pack.job_revision_id),
+                     "pack_digest": _digest(payload)}, None)
         file = self._file(db, project_id, request.target_file_id, allow_unavailable)
         self._ensure_unshared(db, project_id, file.id)
         return (
@@ -458,6 +530,7 @@ def _view(approval: Approval) -> ApprovalView:
         revision_id=approval.revision_id,
         expected_cv_revision_id=approval.expected_cv_revision_id,
         target_file_id=approval.target_file_id,
+        target_run_id=approval.target_run_id,
         change_digest=approval.change_digest,
         expires_at=approval.expires_at,
         consumed_at=approval.consumed_at,

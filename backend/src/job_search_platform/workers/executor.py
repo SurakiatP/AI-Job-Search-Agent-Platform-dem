@@ -24,7 +24,7 @@ from job_search_platform.db.models import Approval, CVRevision, CVRevisionText, 
 from job_search_platform.services.contracts import EvaluationResult, SkillCoverage
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
 from job_search_platform.integrations.jev import JEV_MODEL, JevClient
-from job_search_platform.services import experience, job_sources, smart_match, tailoring
+from job_search_platform.services import applications, experience, job_sources, smart_match, tailoring
 from job_search_platform.services.evidence import EvidencedEdit, apply_gated, fact_claims, require_evidence
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.approvals import ApprovalService
@@ -84,7 +84,7 @@ def parse_draft_manifest(value: str) -> tuple[dict[str, str], ...]:
                 or any(part in {"", ".", ".."} for part in relative.parts)
                 or "\\" in path
                 or relative.suffix.lower() != ".md"
-                or document_type not in {"cv", "cover_letter", "application_message"}
+                or document_type not in {"cv", "cover_letter", "application_message", "follow_up"}
                 or output_format not in {"pdf", "docx"}
                 or not isinstance(title, str)
                 or not title.strip()
@@ -110,7 +110,7 @@ def staged_draft_manifest(staging: Path, title: str, kind: str | None) -> tuple[
     if not candidates:
         return None
     newest = max(candidates, key=lambda path: path.stat().st_mtime)
-    document_type = kind if kind in {"cover_letter", "application_message"} else "cover_letter"
+    document_type = kind if kind in {"cover_letter", "application_message", "follow_up"} else "cover_letter"
     return ({"path": newest.name, "document_type": document_type, "title": title[:300] or "Draft", "format": "pdf"},)
 
 
@@ -199,6 +199,9 @@ class RunExecutor:
     async def _execute_claimed(self, run: Run, lease_owner: str) -> None:
         if await self._apply_approved_action(run, lease_owner):
             return
+        if run.operation == "apply_submit":
+            await self._execute_submit(run, lease_owner)
+            return
         sandbox = RunSandbox(self.workspace_root, str(run.project_id), str(run.id))
         project_started = False
         try:
@@ -217,6 +220,9 @@ class RunExecutor:
                 return
             if run.operation == "tailor_cv":
                 await self._execute_tailor(run, lease_owner, sandbox)
+                return
+            if run.operation == "apply_prepare":
+                await self._execute_prepare(run, lease_owner, sandbox)
                 return
             cv_path = await self._materialize(run, sandbox)
             connector = run.config_snapshot.get("connector", {})
@@ -247,7 +253,7 @@ class RunExecutor:
             with contextlib.suppress(Exception):
                 await asyncio.to_thread(self._store_profile, run.cv_revision_id, parsed.text)
 
-            facts = await asyncio.to_thread(self._bank_facts, run.project_id) if run.operation == "draft_documents" else []
+            facts = await asyncio.to_thread(self._bank_facts, run.project_id) if run.operation in {"draft_documents", "draft_follow_up"} else []
             prompt, instructions = self._prompt(run, parsed.text, facts)
             await self.runtime.submit(
                 run.project_id,
@@ -255,7 +261,7 @@ class RunExecutor:
                 prompt,
                 instructions,
                 provider,
-                operation=run.operation,
+                operation="draft_documents" if run.operation == "draft_follow_up" else run.operation,
                 tool_gate=reserve_tool,
             )
             self._public_event(run.id, "run_progress", {"step": "agent_running"})
@@ -582,6 +588,67 @@ class RunExecutor:
             await self._stop(run.project_id, started)
             await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
 
+    async def _execute_submit(self, run: Run, lease_owner: str) -> None:
+        """Open the owner's submit_application approval; the run then waits in waiting_approval until it is decided."""
+        try:
+            await asyncio.to_thread(ApprovalService(self.sessions).request_submission, run.id, lease_owner)
+        except ServiceError as exc:
+            status = "cancelled" if exc.code == "cancellation_requested" else "failed"
+            await self._finish_after_stop(run, lease_owner, status, None if status == "cancelled" else _safe_message(exc.code))
+        except Exception:
+            await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
+
+    async def _execute_prepare(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
+        """One LLM round drafts form answers from the CV and bank facts; the evidence gate nulls unsupported ones."""
+        started = False
+        try:
+            job = run.input_snapshot["job"]
+            questions = run.input_snapshot["questions"]
+            provider = await self.settings.trusted_provider(
+                configuration_id=uuid.UUID(run.config_snapshot["provider_configuration_id"]))
+            text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
+            cv_path = None if text is not None else await self._materialize(run, sandbox)
+            facts = await asyncio.to_thread(self._facts, run.project_id)
+            gate_failure = asyncio.Event()
+
+            async def deny_tool(_call_id: str, _tool_name: str) -> bool:
+                try:
+                    await asyncio.to_thread(self.queue.reserve_tool_call, run.id, lease_owner)  # still counted
+                except ServiceError:
+                    gate_failure.set()
+                return False  # answering needs no tools
+
+            project = await self.runtime.start_project(run.project_id, sandbox.workspace)
+            started = True
+            self.runtime.projects[run.project_id].tool_gate = deny_tool
+            self._record_process(run.id, lease_owner, project)
+            if text is None:
+                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+                with contextlib.suppress(Exception):
+                    await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
+            if not text.strip():
+                raise ServiceError("cv_text_empty")
+            prompt, instructions = applications.pack_prompt(
+                text, job["title"], f"{job['title']}\n{job['description']}", questions, facts, run.output_language)
+            await self.runtime.submit(run.project_id, uuid.uuid5(run.id, "apply_prepare"), prompt, instructions,
+                                      provider, operation="apply_prepare", tool_gate=deny_tool)
+            self._public_event(run.id, "run_progress", {"step": "agent_running"})
+            answers = applications.parse_answers(await self._await_result(run, lease_owner, gate_failure))
+            entries, missing = applications.gate_answers(
+                answers, questions, await asyncio.to_thread(self._fact_claims, run.project_id, answers))
+            payload = {"kind": "apply_pack", "state": "parked" if missing else "ready",
+                       "answers": entries, "missing_required": missing}
+            await self._stop(run.project_id, started)
+            started = False
+            await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed", result_payload=payload)
+        except ServiceError as exc:
+            await self._stop(run.project_id, started)
+            status = "cancelled" if exc.code == "cancellation_requested" else "failed"
+            await self._finish_after_stop(run, lease_owner, status, None if status == "cancelled" else _safe_message(exc.code))
+        except Exception:
+            await self._stop(run.project_id, started)
+            await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
+
     def _bank_facts(self, project_id: uuid.UUID) -> list[str]:
         with self.sessions() as db:
             return experience.fact_lines(db, project_id)
@@ -728,6 +795,11 @@ class RunExecutor:
                     "Write exactly one short application message, such as an email or chat message to the "
                     "recruiter, not a formal letter (document_type application_message). "
                 ),
+                "follow_up": (
+                    "Write exactly one short follow-up message the candidate can send after applying, asking politely "
+                    "about the application status (document_type follow_up). The candidate has already applied. "
+                    "Nothing is sent by this system; the candidate copies the text. "
+                ),
             }.get(kind, "")
             task = (
                 "Prepare application documents. " + what +
@@ -810,7 +882,7 @@ class RunExecutor:
             drafts = staged_draft_manifest(sandbox.staging, run.input_snapshot["job"]["title"], kind)
             if drafts is None:
                 raise
-        if kind in {"cover_letter", "application_message"}:
+        if kind in {"cover_letter", "application_message", "follow_up"}:
             # The requested kind wins over whatever the model declared for the first output.
             drafts = ({**drafts[0], "document_type": kind}, *drafts[1:])
         files: list[dict[str, str]] = []

@@ -1,4 +1,249 @@
 {
+  "apply_prepare": {
+    "description": "Draft answers to a supplied application form (1-40 questions) for one job, using only experience-bank facts. Each answer cites its evidence or is null; the pack is ready or parked (a required answer is missing). Nothing is submitted.",
+    "input_schema": {
+      "$defs": {
+        "ApplyPrepareInput": {
+          "additionalProperties": false,
+          "properties": {
+            "cv_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cv Id"
+            },
+            "idempotency_key": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency Key",
+              "type": "string"
+            },
+            "job": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/JobCreate"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "job_revision_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Job Revision Id"
+            },
+            "output_language": {
+              "enum": [
+                "th",
+                "en"
+              ],
+              "title": "Output Language",
+              "type": "string"
+            },
+            "questions": {
+              "items": {
+                "$ref": "#/$defs/ApplyQuestion"
+              },
+              "maxItems": 40,
+              "minItems": 1,
+              "title": "Questions",
+              "type": "array"
+            }
+          },
+          "required": [
+            "output_language",
+            "idempotency_key",
+            "questions"
+          ],
+          "title": "ApplyPrepareInput",
+          "type": "object"
+        },
+        "ApplyQuestion": {
+          "additionalProperties": false,
+          "description": "One form question, supplied by the owner or agent. Untrusted data: the system never fetches forms.",
+          "properties": {
+            "choices": {
+              "anyOf": [
+                {
+                  "items": {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "minItems": 1,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Choices"
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Id",
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "text",
+                "choice",
+                "boolean"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Label",
+              "type": "string"
+            },
+            "required": {
+              "title": "Required",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "label",
+            "required",
+            "kind"
+          ],
+          "title": "ApplyQuestion",
+          "type": "object"
+        },
+        "JobCreate": {
+          "additionalProperties": false,
+          "properties": {
+            "company": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Company"
+            },
+            "description": {
+              "maxLength": 50000,
+              "minLength": 1,
+              "title": "Description",
+              "type": "string"
+            },
+            "source_url": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Source Url"
+            },
+            "title": {
+              "maxLength": 300,
+              "minLength": 1,
+              "title": "Title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "JobCreate",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/ApplyPrepareInput"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "apply_prepareArguments",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "apply_prepareDictOutput",
+      "type": "object"
+    }
+  },
+  "apply_submit": {
+    "description": "Ask the owner to approve recording a prepared application as applied. Needs a ready answer pack for the job. The system never submits a form; the owner submits on the company site. Only the owner can approve.",
+    "input_schema": {
+      "$defs": {
+        "ApplySubmitInput": {
+          "additionalProperties": false,
+          "properties": {
+            "idempotency_key": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency Key",
+              "type": "string"
+            },
+            "job_revision_id": {
+              "format": "uuid",
+              "title": "Job Revision Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "job_revision_id",
+            "idempotency_key"
+          ],
+          "title": "ApplySubmitInput",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/ApplySubmitInput"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "apply_submitArguments",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "apply_submitDictOutput",
+      "type": "object"
+    }
+  },
   "draft_documents": {
     "description": "Draft application documents for one supplied job posting or same-Project job revision.",
     "input_schema": {
@@ -129,6 +374,139 @@
     "output_schema": {
       "additionalProperties": true,
       "title": "draft_documentsDictOutput",
+      "type": "object"
+    }
+  },
+  "draft_follow_up": {
+    "description": "Draft a follow-up message for a job whose application is recorded as applied. Produces a document; no message is ever sent.",
+    "input_schema": {
+      "$defs": {
+        "JobCreate": {
+          "additionalProperties": false,
+          "properties": {
+            "company": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Company"
+            },
+            "description": {
+              "maxLength": 50000,
+              "minLength": 1,
+              "title": "Description",
+              "type": "string"
+            },
+            "source_url": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Source Url"
+            },
+            "title": {
+              "maxLength": 300,
+              "minLength": 1,
+              "title": "Title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "JobCreate",
+          "type": "object"
+        },
+        "ProtocolJobInput": {
+          "additionalProperties": false,
+          "properties": {
+            "cv_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cv Id"
+            },
+            "idempotency_key": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency Key",
+              "type": "string"
+            },
+            "job": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/JobCreate"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "job_revision_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Job Revision Id"
+            },
+            "output_language": {
+              "enum": [
+                "th",
+                "en"
+              ],
+              "title": "Output Language",
+              "type": "string"
+            }
+          },
+          "required": [
+            "output_language",
+            "idempotency_key"
+          ],
+          "title": "ProtocolJobInput",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/ProtocolJobInput"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "draft_follow_upArguments",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "draft_follow_upDictOutput",
       "type": "object"
     }
   },

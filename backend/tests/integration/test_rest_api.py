@@ -174,7 +174,7 @@ def test_owner_bootstrap_csrf_crud_and_empty_project_delete_only(api_context):
     project_id = created.json()["id"]
     assert client.get("/api/v1/projects").status_code == 200
     tools = client.get("/api/v1/tools")
-    assert tools.status_code == 200 and len(tools.json()["tools"]) == 8
+    assert tools.status_code == 200 and len(tools.json()["tools"]) == 11
     assert client.patch(f"/api/v1/projects/{project_id}", json={"name": "Renamed"},
                         headers=_write_headers(csrf)).json()["name"] == "Renamed"
     pref = client.patch(f"/api/v1/projects/{project_id}/preferences",

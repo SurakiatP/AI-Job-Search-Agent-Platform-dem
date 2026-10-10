@@ -976,7 +976,7 @@ components:
       required: [session_id, operation, output_language, idempotency_key]
       properties:
         session_id: {type: string, format: uuid}
-        operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv]}
+        operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, apply_prepare, apply_submit, draft_follow_up], description: 'apply_prepare needs questions. apply_submit queues an owner approval (submit_application) for the latest ready answer pack: apply_pack_required or already_applied (409) otherwise; the owner approving records the job as applied and the system sends nothing. draft_follow_up drafts a follow_up document and needs an applied job (application_not_applied, 409).'}
         cv_revision_id: {type: [string, 'null'], format: uuid}
         cv_id: {type: [string, 'null'], format: uuid, description: Latest revision of this CV; omitted means the primary CV. Ignored for paired sessions except that a conflicting value gives 422 session_pair_mismatch.}
         job_revision_id: {type: [string, 'null'], format: uuid, description: Required unless the session is paired; a paired session fixes the pair and a conflicting id gives 422 session_pair_mismatch.}
@@ -985,8 +985,24 @@ components:
         retry_of_id: {type: [string, 'null'], format: uuid, description: New manual retry of a same-project terminal run; original execution never resumes.}
         owner_instructions: {type: [string, 'null'], maxLength: 4000, description: Owner-only instructions captured in immutable run inputs; manual retry retains the original instructions.}
         document_id: {type: [string, 'null'], format: uuid, description: Owner-only draft_documents revise; the first draft is appended as a new revision of this live document.}
-        draft_kind: {type: [string, 'null'], enum: [cover_letter, application_message, null], description: 'Owner-only, draft_documents only (otherwise 422). Forces the first output document_type. On a paired session an existing live document of this kind drafted for the session job receives a new revision instead of a new document.'}
+        draft_kind: {type: [string, 'null'], enum: [cover_letter, application_message, follow_up, null], description: 'Owner-only, draft_documents only (follow_up also needs an applied job) (otherwise 422). Forces the first output document_type. On a paired session an existing live document of this kind drafted for the session job receives a new revision instead of a new document.'}
         tailor_mode: {type: [string, 'null'], enum: [autopilot, interactive, null], description: 'tailor_cv only (otherwise 422); defaults to autopilot. Grants may not send interactive (forbidden).'}
+        questions:
+          type: [array, 'null']
+          minItems: 1
+          maxItems: 40
+          description: 'Required for apply_prepare and rejected otherwise (422). The application form questions, untrusted data; ids must be unique. The run result_payload is an apply_pack: {kind, state ready|parked, answers[{question_id, answer|null, evidence_ids, reason?}], missing_required[]}, readable only with results:read. A required question without an evidenced answer parks the pack. A second apply_prepare for the same job while one is queued or running gives 409 document_busy.'
+          items: {$ref: '#/components/schemas/ApplyQuestion'}
+    ApplyQuestion:
+      type: object
+      additionalProperties: false
+      required: [id, label, required, kind]
+      properties:
+        id: {type: string, minLength: 1, maxLength: 64}
+        label: {type: string, minLength: 1, maxLength: 500}
+        required: {type: boolean}
+        kind: {type: string, enum: [text, choice, boolean]}
+        choices: {type: [array, 'null'], minItems: 1, maxItems: 20, items: {type: string, minLength: 1, maxLength: 200}, description: Required for kind choice and not allowed otherwise.}
     TailorApply:
       type: object
       additionalProperties: false
@@ -1149,7 +1165,7 @@ components:
       required: [id, document_type, title]
       properties:
         id: {type: string, format: uuid}
-        document_type: {type: string, enum: [cv, cover_letter, application_message, other]}
+        document_type: {type: string, enum: [cv, cover_letter, application_message, follow_up, other]}
         title: {type: string}
         content_markdown: {type: [string, 'null'], minLength: 1, maxLength: 200000}
         output_language: {type: [string, 'null'], enum: [th, en, null]}
@@ -1233,7 +1249,7 @@ components:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
         session_id: {type: [string, 'null'], format: uuid, description: Null only for profile_cv.}
-        operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, export_document, profile_cv, match_jobs, extract_experience]}
+        operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, export_document, profile_cv, match_jobs, extract_experience, apply_prepare, apply_submit, draft_follow_up]}
         status: {type: string, enum: [queued, running, waiting_approval, completed, failed, cancelled, interrupted]}
         output_language: {type: string, enum: [th, en]}
         result_file_ids: {type: array, items: {type: string, format: uuid}}
@@ -1271,10 +1287,11 @@ components:
         applied_at: {type: [string, 'null'], format: date-time}
         id: {type: string, format: uuid}
         run_id: {type: string, format: uuid}
-        action: {type: string, enum: [promote_cv, delete_document_revision, delete_file]}
+        action: {type: string, enum: [promote_cv, delete_document_revision, delete_file, submit_application]}
         revision_id: {type: [string, 'null'], format: uuid}
         expected_cv_revision_id: {type: [string, 'null'], format: uuid}
         target_file_id: {type: [string, 'null'], format: uuid}
+        target_run_id: {type: [string, 'null'], format: uuid, description: 'submit_application only: the completed apply_prepare run whose pack is submitted.'}
         change_digest: {type: string, pattern: '^[a-f0-9]{64}$'}
         expires_at: {type: string, format: date-time}
         consumed_at: {type: [string, 'null'], format: date-time}
@@ -1283,10 +1300,11 @@ components:
       additionalProperties: false
       required: [action]
       properties:
-        action: {type: string, enum: [promote_cv, delete_document_revision, delete_file]}
+        action: {type: string, enum: [promote_cv, delete_document_revision, delete_file, submit_application]}
         revision_id: {type: [string, 'null'], format: uuid}
         expected_cv_revision_id: {type: [string, 'null'], format: uuid}
         target_file_id: {type: [string, 'null'], format: uuid}
+        target_run_id: {type: [string, 'null'], format: uuid, description: 'submit_application only (then the only target allowed); that action is opened by the apply_submit run itself and is refused here with 403.'}
     ApprovalDecision:
       type: object
       additionalProperties: false
@@ -1310,7 +1328,7 @@ components:
       additionalProperties: false
       required: [capabilities, expires_at]
       properties:
-        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search']}}
+        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}}
         expires_at: {type: string, format: date-time}
     GrantIssuedView:
       type: object
@@ -1329,7 +1347,7 @@ components:
       properties:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
-        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search']}}
+        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}}
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}
     ProviderSettingsUpdate:
@@ -1465,9 +1483,9 @@ components:
       additionalProperties: false
       required: [name, description, required_capability]
       properties:
-        name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, jobs_search, jobs_fit, get_run, cancel_run, list_results]}
+        name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, apply_prepare, apply_submit, draft_follow_up, jobs_search, jobs_fit, get_run, cancel_run, list_results]}
         description: {type: string}
-        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search']}
+        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}
     ToolsView:
       type: object
       additionalProperties: false

@@ -363,7 +363,7 @@ class Run(Base):
         UniqueConstraint("project_id", "id", name="uq_runs_project_id"),
         CheckConstraint("status IN ('queued','running','waiting_approval','completed','failed','cancelled','interrupted')", name="ck_runs_status"),
         CheckConstraint("length(idempotency_key) BETWEEN 1 AND 128", name="ck_runs_idempotency_key_length"),
-        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs','extract_experience','tailor_cv')", name="ck_runs_operation"),
+        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs','extract_experience','tailor_cv','apply_prepare','apply_submit','draft_follow_up')", name="ck_runs_operation"),
         CheckConstraint("operation IN ('profile_cv','match_jobs') OR (operation = 'extract_experience' AND provider_configuration_id IS NOT NULL) OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL AND provider_configuration_id IS NOT NULL)", name="ck_runs_context_required"),
         CheckConstraint("output_language IN ('th','en')", name="ck_runs_language"),
         CheckConstraint("length(request_digest) = 64", name="ck_runs_digest_length"),
@@ -394,6 +394,7 @@ class Approval(Base):
     revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     expected_cv_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     target_file_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    target_run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     change_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     token_hash: Mapped[bytes] = mapped_column(LargeBinary(32), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -405,10 +406,11 @@ class Approval(Base):
         ForeignKeyConstraint(["project_id", "revision_id"], ["document_revisions.project_id", "document_revisions.id"]),
         ForeignKeyConstraint(["project_id", "expected_cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"]),
         ForeignKeyConstraint(["project_id", "target_file_id"], ["files.project_id", "files.id"]),
-        CheckConstraint("action IN ('promote_cv','delete_document_revision','delete_file')", name="ck_approval_action"),
+        ForeignKeyConstraint(["project_id", "target_run_id"], ["runs.project_id", "runs.id"], ondelete="CASCADE", name="fk_approvals_target_run"),
+        CheckConstraint("action IN ('promote_cv','delete_document_revision','delete_file','submit_application')", name="ck_approval_action"),
         CheckConstraint("length(change_digest) = 64", name="ck_approval_change_digest_length"),
         CheckConstraint("decision IS NULL OR decision IN ('approve','reject')", name="ck_approval_decision"),
-        CheckConstraint("(action = 'promote_cv' AND revision_id IS NOT NULL AND expected_cv_revision_id IS NOT NULL AND target_file_id IS NULL) OR (action = 'delete_document_revision' AND revision_id IS NOT NULL AND expected_cv_revision_id IS NULL AND target_file_id IS NULL) OR (action = 'delete_file' AND revision_id IS NULL AND expected_cv_revision_id IS NULL AND target_file_id IS NOT NULL)", name="ck_approval_target_shape"),
+        CheckConstraint("(action = 'promote_cv' AND revision_id IS NOT NULL AND expected_cv_revision_id IS NOT NULL AND target_file_id IS NULL AND target_run_id IS NULL) OR (action = 'delete_document_revision' AND revision_id IS NOT NULL AND expected_cv_revision_id IS NULL AND target_file_id IS NULL AND target_run_id IS NULL) OR (action = 'delete_file' AND revision_id IS NULL AND expected_cv_revision_id IS NULL AND target_file_id IS NOT NULL AND target_run_id IS NULL) OR (action = 'submit_application' AND revision_id IS NULL AND expected_cv_revision_id IS NULL AND target_file_id IS NULL AND target_run_id IS NOT NULL)", name="ck_approval_target_shape"),
         UniqueConstraint("run_id", "revision_id", name="uq_approval_run_revision"),
         UniqueConstraint("run_id", "target_file_id", name="uq_approval_run_file"),
     )

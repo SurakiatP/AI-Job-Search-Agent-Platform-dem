@@ -63,6 +63,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
         "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409,
         "document_busy": 409, "document_source_unavailable": 409,
+        "apply_pack_required": 409, "already_applied": 409, "application_not_applied": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
@@ -999,7 +1000,7 @@ async def list_approvals(project_id: UUID, actor=Depends(owner_actor), services:
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "approval")
         ids = db.scalars(select(Approval.id).where(Approval.project_id == project_id).order_by(Approval.expires_at)).all()
-    return [await services.approvals.get(actor, project_id, approval_id) for approval_id in ids]
+    return [await asyncio.to_thread(services.approvals.get, actor, project_id, approval_id) for approval_id in ids]
 
 
 @router.post("/projects/{project_id}/approvals", status_code=201, response_model=ApprovalView)
@@ -1009,7 +1010,7 @@ async def request_approval(project_id: UUID, body: ApprovalRequest, actor=Depend
 
 @router.post("/projects/{project_id}/approvals/{approval_id}/decision", response_model=ApprovalView)
 async def decide_approval(project_id: UUID, approval_id: UUID, body: ApprovalDecision, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await services.approvals.resolve(actor, project_id, approval_id, body)
+    return await asyncio.to_thread(services.approvals.resolve, actor, project_id, approval_id, body.decision)
 
 
 @router.get("/projects/{project_id}/grants", response_model=list[GrantView])

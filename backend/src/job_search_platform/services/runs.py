@@ -21,6 +21,7 @@ from job_search_platform.db.models import (
     Document,
     DocumentRevision,
     Grant,
+    JobApplicationStatus,
     JobRevision,
     Project,
     ProviderConfiguration,
@@ -67,6 +68,7 @@ EVENT_TYPES = frozenset(
         "approval_approved",
         "approval_rejected",
         "approval_expired",
+        "application_recorded",
     }
 )
 
@@ -169,6 +171,14 @@ def live_tailored_document(db: Session, project_id: UUID, job_revision_id: UUID 
         .order_by(select(func.max(DocumentRevision.created_at)).where(
             DocumentRevision.project_id == project_id, DocumentRevision.document_id == Document.id)
             .correlate(Document).scalar_subquery().desc()).limit(1))
+
+
+def latest_ready_pack(db: Session, project_id: UUID, job_revision_id: UUID) -> Run | None:
+    """Newest completed apply_prepare run of the job whose pack is ready (a later parked refresh is skipped)."""
+    runs = db.scalars(select(Run).where(
+        Run.project_id == project_id, Run.job_revision_id == job_revision_id, Run.operation == "apply_prepare",
+        Run.status == "completed").order_by(Run.finished_at.desc(), Run.created_at.desc())).all()
+    return next((run for run in runs if (run.result_payload or {}).get("state") == "ready"), None)
 
 
 class RunService:
@@ -290,16 +300,19 @@ class RunService:
                     if retry_source.input_snapshot.get("document_id") else None,
                     "draft_kind": retry_source.input_snapshot.get("draft_kind"),
                     "tailor_mode": retry_source.input_snapshot.get("tailor_mode"),
+                    "questions": retry_source.input_snapshot.get("questions"),
                 }
             )
-        if canonical_request.draft_kind is not None and actor.kind != "owner":
+        if canonical_request.operation == "draft_follow_up":
+            canonical_request = canonical_request.model_copy(update={"draft_kind": "follow_up"})
+        if canonical_request.draft_kind is not None and actor.kind != "owner" and canonical_request.operation != "draft_follow_up":
             raise ServiceError("forbidden")
         is_tailor = canonical_request.operation == "tailor_cv"
         tailor_mode = (canonical_request.tailor_mode or "autopilot") if is_tailor else None
         if tailor_mode == "interactive" and actor.kind != "owner":
             raise ServiceError("forbidden")
         # A tailor run appends to the job's live tailored CV document, like a draft of its kind.
-        auto_kind = "cv" if is_tailor else canonical_request.draft_kind
+        auto_kind = "cv" if is_tailor else canonical_request.draft_kind if actor.kind == "owner" else None
         previous_draft = None
         revise_id = canonical_request.document_id
         if (
@@ -328,7 +341,7 @@ class RunService:
                 .limit(1)
             )
         if revise_id is not None:
-            if canonical_request.operation not in {"draft_documents", "tailor_cv"} or (
+            if canonical_request.operation not in {"draft_documents", "draft_follow_up", "tailor_cv"} or (
                 not is_tailor and (actor.kind != "owner" or (
                     retry_source is None and request.document_id is None and canonical_request.draft_kind is None))
             ) or (is_tailor and actor.kind != "owner" and request.document_id is not None):
@@ -358,10 +371,11 @@ class RunService:
         # Replays above stay valid; a removed job cannot start new work.
         if job.removed_at is not None:
             raise ServiceError("job_removed")
+        pack_run = self._application_checks(db, project_id, job, canonical_request)
         if is_tailor:
             active = Run.status.in_(("queued", "running", "waiting_approval"))
             if revise_id is not None:
-                clash = (Run.operation.in_(("draft_documents", "export_document", "tailor_cv")),
+                clash = (Run.operation.in_(("draft_documents", "draft_follow_up", "export_document", "tailor_cv")),
                          Run.input_snapshot["document_id"].as_string() == str(revise_id))
             else:  # no document yet: another tailor or cv export for this job would create a second one
                 clash = (Run.job_revision_id == job.id, or_(
@@ -445,6 +459,9 @@ class RunService:
                 ),
                 **({"draft_kind": canonical_request.draft_kind} if canonical_request.draft_kind else {}),
                 **({"tailor_mode": tailor_mode} if tailor_mode else {}),
+                **({"questions": [q.model_dump(mode="json", exclude_none=True) if hasattr(q, "model_dump") else q
+                                  for q in canonical_request.questions]} if canonical_request.questions else {}),
+                **({"pack_run_id": str(pack_run.id)} if pack_run is not None else {}),
                 "job": {
                     "title": job.title,
                     "company": job.company,
@@ -464,7 +481,9 @@ class RunService:
                     "enabled": connector.enabled if connector else True,
                 },
             },
-            output_language=retry_source.output_language if retry_source is not None else request.output_language,
+            # apply_submit carries no language of its own: it follows the pack it submits.
+            output_language=pack_run.output_language if pack_run is not None else (
+                retry_source.output_language if retry_source is not None else request.output_language),
             status="queued",
             retry_of_id=retry_source.id if retry_source is not None else None,
             created_at=now,
@@ -473,6 +492,30 @@ class RunService:
         db.flush()
         append_event(db, run, "run_queued", {"status": "queued"}, now=now)
         return self._authorized_view(db, actor, run)
+
+    @staticmethod
+    def _application_checks(db: Session, project_id: UUID, job: JobRevision, request: RunRequest) -> Run | None:
+        """Intake rules of the application tasks; returns the ready pack run an apply_submit will submit."""
+        applied = (db.scalar(select(JobApplicationStatus.status).where(
+            JobApplicationStatus.project_id == project_id, JobApplicationStatus.job_revision_id == job.id)) == "applied")
+        active = Run.status.in_(("queued", "running", "waiting_approval"))
+        if request.draft_kind == "follow_up" and not applied:
+            raise ServiceError("application_not_applied")
+        if request.operation == "apply_prepare":
+            if db.scalar(select(func.count()).select_from(Run).where(
+                    Run.project_id == project_id, Run.job_revision_id == job.id, Run.operation == "apply_prepare", active)):
+                raise ServiceError("document_busy")
+        if request.operation != "apply_submit":
+            return None
+        if applied:
+            raise ServiceError("already_applied")
+        pack = latest_ready_pack(db, project_id, job.id)
+        if pack is None:
+            raise ServiceError("apply_pack_required")
+        if db.scalar(select(func.count()).select_from(Run).where(
+                Run.project_id == project_id, Run.job_revision_id == job.id, Run.operation == "apply_submit", active)):
+            raise ServiceError("document_busy")
+        return pack
 
     async def submit_export(
         self, actor: Actor, project_id: UUID, document_id: UUID, edit: DocumentEdit
@@ -510,7 +553,7 @@ class RunService:
             busy = db.scalar(
                 select(func.count()).select_from(Run).where(
                     Run.project_id == project_id,
-                    Run.operation.in_(("draft_documents", "export_document", "tailor_cv")),
+                    Run.operation.in_(("draft_documents", "draft_follow_up", "export_document", "tailor_cv")),
                     Run.status.in_(("queued", "running", "waiting_approval")),
                     Run.input_snapshot["document_id"].as_string() == str(document_id),
                 )

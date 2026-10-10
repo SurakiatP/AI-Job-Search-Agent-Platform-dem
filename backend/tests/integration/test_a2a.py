@@ -181,7 +181,8 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
         assert card_response.status_code == 200
         card = card_response.json()
         assert [skill["id"] for skill in card["skills"]] == [
-            "evaluate_job", "draft_documents", "tailor_cv", "jobs_search", "jobs_fit"]
+            "evaluate_job", "draft_documents", "tailor_cv", "jobs_search", "jobs_fit",
+            "apply_prepare", "apply_submit", "draft_follow_up"]
         assert card["capabilities"]["extendedAgentCard"] is True
         assert "extract_experience" not in json.dumps(card)
         assert {interface["protocolBinding"] for interface in card["supportedInterfaces"]} == {
@@ -583,7 +584,8 @@ async def test_extended_agent_card_filters_by_grant_capabilities(api_context, un
             cards[label] = response.json()["result"]
         assert [skill["id"] for skill in cards["evaluate"]["skills"]] == ["evaluate_job", "jobs_fit"]
         assert cards["read"].get("skills", []) == []
-        assert [skill["id"] for skill in cards["full"]["skills"]] == ["evaluate_job", "draft_documents", "jobs_fit"]
+        assert [skill["id"] for skill in cards["full"]["skills"]] == [
+            "evaluate_job", "draft_documents", "jobs_fit", "draft_follow_up"]
         assert "extract_experience" not in json.dumps(cards)
 
         revoked = api_context.client.delete(

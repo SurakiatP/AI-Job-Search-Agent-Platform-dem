@@ -36,6 +36,10 @@ _SAFE_SERVICE_ERRORS = {
     "job_removed",
     "queue_full",
     "submission_rate_limited",
+    "document_busy",
+    "apply_pack_required",
+    "already_applied",
+    "application_not_applied",
 }
 
 
