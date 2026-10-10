@@ -230,6 +230,40 @@ def test_pack_entries_own_kind_and_choices_drive_input(api_context):
 
 
 @pytest.mark.integration
+def test_concurrent_tailor_applies_queue_exactly_one_export(api_context):
+    from concurrent.futures import ThreadPoolExecutor
+    from helpers import owner
+    from job_search_platform.db.models import Run as RunRow
+    ctx = api_context
+    csrf, pid, session_, facts, _ = _setup(ctx, [])
+    run_id, _runtime = _interactive(ctx, csrf, pid, session_, facts)
+    with ctx.sessions.begin() as db:
+        actor = owner(db)
+    runs = ctx.client.app.state.services.runs
+    original = runs._queue_export
+
+    def slow(*args, **kwargs):  # widen the race window so an unlocked read is caught
+        import time
+        time.sleep(0.5)
+        return original(*args, **kwargs)
+
+    runs._queue_export = slow
+    try:
+        def apply(_):
+            try:
+                return runs._tailor_apply_sync(actor, UUID(pid), UUID(run_id), [0, 1]).operation
+            except Exception as exc:
+                return getattr(exc, "code", repr(exc))
+        with ThreadPoolExecutor(2) as pool:
+            results = sorted(pool.map(apply, range(2)))
+    finally:
+        runs._queue_export = original
+    assert results == ["export_document", "tailor_already_applied"]
+    with ctx.sessions() as db:
+        assert len(db.scalars(select(RunRow).where(RunRow.operation == "export_document")).all()) == 1
+
+
+@pytest.mark.integration
 def test_cancel_works_from_needs_input_and_input_is_owner_only(api_context):
     ctx = api_context
     csrf, pid, session_, facts, run_id = _parked(ctx)

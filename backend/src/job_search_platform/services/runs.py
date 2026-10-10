@@ -551,43 +551,48 @@ class RunService:
             authorize(db, actor, project_id, "write", "document")
             if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
                 raise ServiceError("not_found")
-            document = db.scalar(select(Document).where(
-                Document.project_id == project_id, Document.id == document_id).with_for_update())
-            if document is None or document.trashed_at is not None:
-                raise ServiceError("not_found")
-            latest = db.scalar(
-                select(DocumentRevision)
-                .join(StoredFile, (StoredFile.project_id == DocumentRevision.project_id) & (StoredFile.id == DocumentRevision.file_id))
-                .where(DocumentRevision.project_id == project_id, DocumentRevision.document_id == document_id,
-                       StoredFile.publication_state == "published")
-                .order_by(DocumentRevision.revision.desc()).limit(1))
-            # The producing run supplies the session / CV / job / provider the new run row must reference.
-            source = db.scalar(
-                select(Run).join(RunArtifact, (RunArtifact.project_id == Run.project_id) & (RunArtifact.run_id == Run.id))
-                .where(RunArtifact.project_id == project_id,
-                       RunArtifact.document_revision_id == (latest.id if latest else None)))
-            if latest is None or source is None:
-                raise ServiceError("document_source_unavailable")
-            busy = db.scalar(
-                select(func.count()).select_from(Run).where(
-                    Run.project_id == project_id,
-                    Run.operation.in_(("draft_documents", "draft_follow_up", "export_document", "tailor_cv")),
-                    Run.status.in_(("queued", "running", "waiting_approval")),
-                    Run.input_snapshot["document_id"].as_string() == str(document_id),
-                )
-            ) or 0
-            if busy:
-                raise ServiceError("document_busy")
-            queued = db.scalar(select(func.count()).select_from(Run).where(
-                Run.project_id == project_id, Run.status == "queued")) or 0
-            if queued >= MAX_QUEUED_PER_PROJECT:
-                raise ServiceError("queue_full", retryable=True)
-            output_format = edit.format
-            if output_format is None:
-                mime = db.scalar(select(StoredFile.mime_type).where(
-                    StoredFile.project_id == project_id, StoredFile.id == latest.file_id)) or ""
-                output_format = "docx" if mime.endswith("wordprocessingml.document") else "pdf"
-            return self._queue_export(db, actor, source, document, output_format, edit.content_markdown, now)
+            return self._export_locked(db, actor, project_id, document_id, edit, now)
+
+    def _export_locked(self, db: Session, actor: Actor, project_id: UUID, document_id: UUID, edit: DocumentEdit,
+                       now: datetime) -> RunView:
+        """Queue an export for an existing document; the caller holds the project lock."""
+        document = db.scalar(select(Document).where(
+            Document.project_id == project_id, Document.id == document_id).with_for_update())
+        if document is None or document.trashed_at is not None:
+            raise ServiceError("not_found")
+        latest = db.scalar(
+            select(DocumentRevision)
+            .join(StoredFile, (StoredFile.project_id == DocumentRevision.project_id) & (StoredFile.id == DocumentRevision.file_id))
+            .where(DocumentRevision.project_id == project_id, DocumentRevision.document_id == document_id,
+                   StoredFile.publication_state == "published")
+            .order_by(DocumentRevision.revision.desc()).limit(1))
+        # The producing run supplies the session / CV / job / provider the new run row must reference.
+        source = db.scalar(
+            select(Run).join(RunArtifact, (RunArtifact.project_id == Run.project_id) & (RunArtifact.run_id == Run.id))
+            .where(RunArtifact.project_id == project_id,
+                   RunArtifact.document_revision_id == (latest.id if latest else None)))
+        if latest is None or source is None:
+            raise ServiceError("document_source_unavailable")
+        busy = db.scalar(
+            select(func.count()).select_from(Run).where(
+                Run.project_id == project_id,
+                Run.operation.in_(("draft_documents", "draft_follow_up", "export_document", "tailor_cv")),
+                Run.status.in_(("queued", "running", "waiting_approval")),
+                Run.input_snapshot["document_id"].as_string() == str(document_id),
+            )
+        ) or 0
+        if busy:
+            raise ServiceError("document_busy")
+        queued = db.scalar(select(func.count()).select_from(Run).where(
+            Run.project_id == project_id, Run.status == "queued")) or 0
+        if queued >= MAX_QUEUED_PER_PROJECT:
+            raise ServiceError("queue_full", retryable=True)
+        output_format = edit.format
+        if output_format is None:
+            mime = db.scalar(select(StoredFile.mime_type).where(
+                StoredFile.project_id == project_id, StoredFile.id == latest.file_id)) or ""
+            output_format = "docx" if mime.endswith("wordprocessingml.document") else "pdf"
+        return self._queue_export(db, actor, source, document, output_format, edit.content_markdown, now)
 
     def _queue_export(self, db: Session, actor: Actor, source: Run, document: Document | None, output_format: str,
                       markdown: str, now: datetime, *, title: str = "", document_type: str = "cv") -> RunView:
@@ -651,7 +656,10 @@ class RunService:
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "write", "document")
-            run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id))
+            # Lock order: project, then run; the status is re-checked under the lock so two applies cannot both pass.
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id).with_for_update())
             payload = None if run is None else run.result_payload
             if (run is None or run.operation != "tailor_cv" or run.status not in ("needs_input", "completed")
                     or not isinstance(payload, dict) or payload.get("mode") != "interactive"):
@@ -693,13 +701,10 @@ class RunService:
                 view = self._queue_export(db, actor, run, None, "pdf", text, now, title=title)
                 self._complete_resting(db, run, now)
                 return view
-            document_id = document.id
-        view = self._submit_export_sync(actor, project_id, document_id, DocumentEdit(content_markdown=text, format="pdf"))
-        with self.sessions.begin() as db:
-            done = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id).with_for_update())
-            if done is not None and done.status == "needs_input":
-                self._complete_resting(db, done, datetime.now(timezone.utc))
-        return view
+            view = self._export_locked(db, actor, project_id, document.id,
+                                       DocumentEdit(content_markdown=text, format="pdf"), now)
+            self._complete_resting(db, run, now)
+            return view
 
     @staticmethod
     def _complete_resting(db: Session, run: Run, now: datetime) -> None:
@@ -718,6 +723,8 @@ class RunService:
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "write", "run")
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
             run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id).with_for_update())
             if run is None or run.operation != "apply_prepare":
                 raise ServiceError("not_found")
