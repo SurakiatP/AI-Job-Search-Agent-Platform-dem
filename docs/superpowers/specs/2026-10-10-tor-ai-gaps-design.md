@@ -32,7 +32,7 @@ This closes three partial items left after the TOR AI phases 2–5.
 - **Setting.** `project_preferences.submit_autopilot_daily_limit INTEGER NULL`, with a check of 1–20. `NULL` means off, which is the default. It is owner-editable through the existing preferences PATCH and shown in Settings, with Thai and English copy that says it still never sends anything.
 - **Behaviour.** When the executor opens a `submit_application` approval (`ApprovalService.request_submission`), it auto-approves in the same transaction, and only when ALL of these hold:
   - the limit is set;
-  - the pack is `ready`, `missing_required` is empty, and every non-null answer has `source != "owner"` or is owner-entered;
+  - the pack is `ready` and `missing_required` is empty, so every required answer is either evidence-gated or entered by the owner;
   - fewer than `limit` submissions were auto-approved for this project since 00:00 Asia/Bangkok today. Count approvals with `decision = 'approve'` and `decided_by = 'autopilot'`; add a `decided_by VARCHAR(16)` column, `owner` or `autopilot`, with `owner` backfilled.
 - An auto-approval runs exactly the owner-approve path: mark applied, add an `application_recorded` event, complete the run. It also adds the event `run_progress {step: "autopilot_approved"}`.
 - Over budget, or when any condition fails, the run waits for the owner as today.
