@@ -76,6 +76,16 @@ async def test_requester_for_owner_and_labelled_grant_and_label_listing(db_sessi
     assert (await service.get(actor, p.id, theirs.id)).requester.label == "Synthetic agent"
 
 
+def test_requester_label_ignores_a_grant_of_another_project(db_session):
+    here, there = project(db_session, "Synthetic here"), project(db_session, "Synthetic there")
+    _, foreign = grant(db_session, there.id, capabilities=("results:read",))
+    foreign.label = "Foreign agent"
+    db_session.commit()
+    run = SimpleNamespace(project_id=here.id, actor_scope=f"grant:{foreign.id}")
+    requester = RunService._requester(db_session, run)
+    assert requester.kind == "agent" and requester.label is None
+
+
 @pytest.mark.asyncio
 async def test_grant_issued_with_label_lists_it_back(db_session):
     p = project(db_session, "Synthetic label")

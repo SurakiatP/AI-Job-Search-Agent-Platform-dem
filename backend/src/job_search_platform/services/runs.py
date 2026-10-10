@@ -978,7 +978,7 @@ class RunService:
         except ValueError:
             return None
         # One primary-key lookup per grant run; list_runs already loads each run on its own.
-        label = db.scalar(select(Grant.label).where(Grant.id == grant_id))
+        label = db.scalar(select(Grant.label).where(Grant.id == grant_id, Grant.project_id == run.project_id))
         return RunRequester(kind="agent", grant_id=grant_id, label=label)
 
     def _authorized_view(self, db: Session, actor: Actor, run: Run) -> RunView:
