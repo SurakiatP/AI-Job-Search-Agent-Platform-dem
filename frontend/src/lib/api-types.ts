@@ -10,7 +10,10 @@ export type RunRequest = {
   idempotency_key: string;
   retry_of_id?: string | null;
   owner_instructions?: string | null;
+  questions?: ApplyQuestion[];
 };
+export type ApplyQuestion = { id: string; label: string; required: boolean; kind: 'text' | 'choice' | 'boolean'; choices?: string[] };
+export type ApplyPack = { kind: 'apply_pack'; state: 'ready' | 'parked'; answers: { question_id: string; answer: string | boolean | null; evidence_ids: string[]; reason?: string }[]; missing_required: string[] };
 
 export type ApiErrorBody = {
   code: string;
@@ -82,7 +85,7 @@ export type JobApplicationStatusView = { job_revision_id: string; application_st
 export type ExperienceKind = 'experience' | 'education' | 'skill' | 'certification' | 'project' | 'other';
 export type ExperienceItem = { id: string; kind: ExperienceKind; text: string; role: string | null; organization: string | null; period: string | null; source: 'cv' | 'owner'; source_cv_id: string | null; source_cv_name: string | null; created_at: string };
 export type ExperienceView = { items: ExperienceItem[]; extraction: { run_id: string; status: RunStatus; cv_id: string; summary: { added: number; duplicates: number; rejected: number } | null } | null; provider_configured: boolean };
-export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document' | 'profile_cv' | 'match_jobs' | 'extract_experience' | 'tailor_cv';
+export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document' | 'profile_cv' | 'match_jobs' | 'extract_experience' | 'tailor_cv' | 'apply_prepare' | 'apply_submit' | 'draft_follow_up';
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 export type SkillCoverage = { required: string[]; matched: string[]; missing: string[]; ratio: number; method: string };
 export type EvaluationResult = { report_markdown: string; score: number | null; skill_coverage?: SkillCoverage | null };
@@ -102,7 +105,7 @@ export type RunView = {
   finished_at: string | null;
   retry_of_id: string | null;
   evaluation_result: EvaluationResult | null;
-  result_payload?: TailorPayload | Record<string, unknown> | null;
+  result_payload?: TailorPayload | ApplyPack | Record<string, unknown> | null;
 };
 export type RunEventData = {
   approval_id: string | null;
@@ -134,10 +137,11 @@ export type DocumentView = {
 export type ApprovalView = {
   id: string;
   run_id: string;
-  action: 'promote_cv' | 'delete_document_revision' | 'delete_file';
+  action: 'promote_cv' | 'delete_document_revision' | 'delete_file' | 'submit_application';
   revision_id: string | null;
   expected_cv_revision_id: string | null;
   target_file_id: string | null;
+  target_run_id?: string | null;
   change_digest: string;
   expires_at: string;
   consumed_at: string | null;

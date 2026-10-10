@@ -8,10 +8,10 @@ import { apiRequest } from '../../lib/api';
 import { useResource } from '../projects/useResource';
 import { Field, LoadingBlock, Notice, SectionCard, selectClass } from './Field';
 
-type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor';
+type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor' | 'jobs:search' | 'applications:apply';
 type Grant = { id: string; project_id: string; capabilities: Capability[]; expires_at: string; revoked_at: string | null };
 type IssuedGrant = Grant & { token: string };
-const capabilityKey: Record<Capability, string> = { 'results:read': 'capability.resultsRead', 'jobs:evaluate': 'capability.jobsEvaluate', 'documents:draft': 'capability.documentsDraft', 'cv:tailor': 'capability.cvTailor' };
+const capabilityKey: Record<Capability, string> = { 'results:read': 'capability.resultsRead', 'jobs:evaluate': 'capability.jobsEvaluate', 'documents:draft': 'capability.documentsDraft', 'cv:tailor': 'capability.cvTailor', 'jobs:search': 'capability.jobsSearch', 'applications:apply': 'capability.applicationsApply' };
 
 export function ProjectSharing({ projectId }: { projectId: string }) {
   const { t, i18n } = useTranslation('settings');

@@ -45,7 +45,9 @@
     "resultsRead": "Read generated results (may contain personal information)",
     "jobsEvaluate": "Evaluate supplied job postings",
     "documentsDraft": "Draft application documents",
-    "cvTailor": "Tailor CV to a job"
+    "cvTailor": "Tailor CV to a job",
+    "jobsSearch": "Search jobs and check fit",
+    "applicationsApply": "Prepare application answers and draft follow-ups"
   },
   "expiresAfter": "Token expires after",
   "createGrant": "Create project token",
