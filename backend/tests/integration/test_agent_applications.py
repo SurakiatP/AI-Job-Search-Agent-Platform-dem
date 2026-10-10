@@ -204,6 +204,24 @@ def test_submit_waits_for_owner_then_approve_records_applied_and_completes(api_c
 
 
 @pytest.mark.integration
+def test_pending_submit_approval_does_not_freeze_the_project_queue(api_context):
+    from job_search_platform.workers.queue import PostgresRunQueue
+    ctx = api_context
+    csrf, pid, session, facts, runtime, pack_id = _ready_pack(ctx)
+    submit_id = _post(ctx, csrf, pid, session, "apply_submit", "s1").json()["id"]
+    _execute_next(ctx, runtime)
+    assert _run(ctx, submit_id).status == "waiting_approval"
+    other = _post(ctx, csrf, pid, session, "draft_documents", "d1", draft_kind="cover_letter")
+    assert other.status_code == 202, other.text
+    claimed = PostgresRunQueue(ctx.sessions).claim_next("w")
+    assert claimed is not None and str(claimed.id) == other.json()["id"]
+    # An apply_submit queued behind an active run is claimable too (it holds no sandbox).
+    (approval,) = _approvals(ctx, pid)
+    assert _decide(ctx, csrf, pid, approval["id"], "approve").status_code == 200
+    assert _run(ctx, submit_id).status == "completed"
+
+
+@pytest.mark.integration
 def test_denied_submit_cancels_the_run_and_leaves_the_job_saved(api_context):
     ctx = api_context
     csrf, pid, session, facts, runtime, pack_id = _ready_pack(ctx)
