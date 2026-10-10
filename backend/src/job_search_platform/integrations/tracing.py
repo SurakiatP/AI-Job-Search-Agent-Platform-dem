@@ -5,6 +5,7 @@ Spans carry identifiers, model names, latencies and token counts only, never pro
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import os
 import time
@@ -17,8 +18,6 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from job_search_platform.integrations.gateway import default_private_dir, read_private_file
-
 logger = logging.getLogger(__name__)
 SERVICE_NAME = "job-search-platform"
 _tracer = trace.get_tracer(SERVICE_NAME)
@@ -27,6 +26,9 @@ _configured = False
 
 def _langfuse_exporter() -> OTLPSpanExporter | None:
     """OTLP exporter for the self-hosted Langfuse, or None until its project keys exist."""
+    # Local import: gateway → jev → tracing would otherwise be a cycle.
+    from job_search_platform.integrations.gateway import default_private_dir, read_private_file
+
     host = os.environ.get("LANGFUSE_HOST", "").strip().rstrip("/")
     private_dir = default_private_dir()
     public = read_private_file(private_dir, "langfuse-public-key")
@@ -78,4 +80,24 @@ def llm_round(*, run_id: Any, model: str | None, latency_ms: int, input_tokens: 
               output_tokens=output_tokens, run_id=run_id, start_time=time.time_ns() - latency_ms * 1_000_000,
               **{"gen_ai.request.model": model, "gen_ai.usage.input_tokens": input_tokens,
                  "gen_ai.usage.output_tokens": output_tokens, "langfuse.observation.type": "generation"}):
+        pass
+
+
+def _count(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def jev_decision(*, model: str, served_model: str | None, latency_ms: int, usage: Any) -> None:
+    """One jev.decide generation with OpenRouter's reported tokens and cost. Never state, questions or answers."""
+    usage = usage if isinstance(usage, dict) else {}
+    input_tokens, output_tokens = _count(usage.get("input_tokens")), _count(usage.get("output_tokens"))
+    cost = usage.get("cost")
+    cost = float(cost) if isinstance(cost, (int, float)) and not isinstance(cost, bool) and cost >= 0 else None
+    with span("jev.decide", model=model, served_model=served_model, latency_ms=latency_ms,
+              input_tokens=input_tokens, output_tokens=output_tokens, cost_usd=cost,
+              start_time=time.time_ns() - latency_ms * 1_000_000,
+              **{"gen_ai.request.model": model, "gen_ai.usage.input_tokens": input_tokens,
+                 "gen_ai.usage.output_tokens": output_tokens, "gen_ai.usage.cost": cost,
+                 "langfuse.observation.cost_details": json.dumps({"total": cost}) if cost is not None else None,
+                 "langfuse.observation.type": "generation"}):
         pass

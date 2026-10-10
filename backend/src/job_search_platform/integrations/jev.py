@@ -6,6 +6,7 @@ import time
 import urllib.error
 import urllib.request
 
+from job_search_platform.integrations import tracing
 from job_search_platform.services.errors import ServiceError
 
 JEV_URL = "https://openrouter.ai/api/alpha/decisions"
@@ -33,6 +34,7 @@ class JevClient:
 
     def decide(self, state: dict, questions: dict) -> dict:
         body = json.dumps({"model": self._model, "state": state, "questions": questions}).encode()
+        began = time.monotonic()
         for attempt in range(self._attempts):
             last = attempt == self._attempts - 1
             request = urllib.request.Request(self._url, data=body, method="POST", headers={
@@ -55,5 +57,8 @@ class JevClient:
             answers = data.get("answers") if isinstance(data, dict) else None
             if not isinstance(answers, dict):
                 raise ServiceError("jev_failed")
+            served = data.get("model")
+            tracing.jev_decision(model=self._model, served_model=served if isinstance(served, str) else None,
+                                 latency_ms=min(int((time.monotonic() - began) * 1000), 3_600_000), usage=data.get("usage"))
             return answers
         raise ServiceError("jev_failed")

@@ -46,3 +46,27 @@ def test_non_retryable_and_exhausted_errors_raise_jev_failed_without_key():
         with pytest.raises(ServiceError) as caught:
             JevClient("sk-secret", opener=opener, sleep=lambda s: None).decide({}, {})
         assert caught.value.code == "jev_failed" and "sk-secret" not in str(caught.value)
+
+
+def test_decide_records_one_jev_span_with_usage_and_no_content(monkeypatch):
+    from job_search_platform.integrations import jev as jev_module
+    calls = []
+    monkeypatch.setattr(jev_module.tracing, "jev_decision", lambda **kw: calls.append(kw))
+    reply = {"answers": {"q": {"type": "noul", "noul": 0.9}}, "model": "typesafe/jev-1.13-20260917",
+             "usage": {"input_tokens": 10, "output_tokens": 2, "cost": 0.000001}}
+    client = JevClient("k", opener=Opener(_http(503), reply), sleep=lambda s: None)
+    client.decide({"cv": "secret cv text"}, {"q": {"type": "noul"}})
+    (call,) = calls
+    assert call["model"] == JEV_MODEL and call["served_model"] == "typesafe/jev-1.13-20260917"
+    assert call["usage"] == reply["usage"] and call["latency_ms"] >= 0
+    assert "secret cv text" not in repr(call)
+
+
+def test_decide_failure_records_no_span(monkeypatch):
+    from job_search_platform.integrations import jev as jev_module
+    calls = []
+    monkeypatch.setattr(jev_module.tracing, "jev_decision", lambda **kw: calls.append(kw))
+    client = JevClient("k", opener=Opener(_http(400)), sleep=lambda s: None)
+    with pytest.raises(ServiceError):
+        client.decide({}, {})
+    assert calls == []
