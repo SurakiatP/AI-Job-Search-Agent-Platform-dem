@@ -336,3 +336,25 @@ def test_migration_0017_upgrades_a_database_that_already_has_runs(postgres_engin
         db.commit()
     with pytest.raises(RuntimeError, match="downgrade_blocked"):
         _migrate(postgres_engine, command.downgrade, "0016_run_result_payload")
+
+
+@pytest.mark.integration
+def test_owner_requests_promote_cv_over_rest_then_approves_and_cv_is_promoted(api_context):
+    from test_rest_api import _owner, _removal_project, _seed_completed_run, _seed_document
+    from job_search_platform.db.models import CVRevision
+    client, csrf = api_context.client, _owner(api_context)
+    headers = _write_headers(csrf)
+    pid, sid = _removal_project(api_context, csrf)
+    _seed_completed_run(api_context, pid, sid)
+    seeded = _seed_document(api_context, pid, "tailored.pdf")
+    with api_context.sessions() as db:
+        cv_id = db.scalar(select(CVRevision.id).where(CVRevision.project_id == UUID(pid)))
+    asked = client.post(f"/api/v1/projects/{pid}/approvals", headers=headers, json={
+        "action": "promote_cv", "revision_id": str(seeded.revision), "expected_cv_revision_id": str(cv_id)})
+    assert asked.status_code == 201, asked.text
+    listed = client.get(f"/api/v1/projects/{pid}/approvals").json()
+    assert [row["id"] for row in listed] == [asked.json()["id"]]
+    done = client.post(f"/api/v1/projects/{pid}/approvals/{asked.json()['id']}/decision", headers=headers, json={"decision": "approve"})
+    assert done.status_code == 200 and done.json()["applied_at"] is not None
+    with api_context.sessions() as db:
+        assert db.scalar(select(CVRevision.id).where(CVRevision.project_id == UUID(pid), CVRevision.file_id == seeded.file)) is not None

@@ -796,7 +796,7 @@ paths:
       responses: {'200': {description: Owner-only pending revision-bound approvals}}
     post:
       tags: [approvals]
-      description: Owner-only request for a typed protected action; service snapshots the proposed change digest and expiry.
+      description: Owner-only request for a typed protected action; service snapshots the proposed change digest and expiry. The approval is anchored on a fresh non-LLM owner run (inherits session, CV, job and provider from the latest run); 404 when the project has no such run.
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/ApprovalRequest'}}}

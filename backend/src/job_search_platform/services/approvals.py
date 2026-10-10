@@ -74,6 +74,39 @@ class ApprovalService:
                 raise ServiceError("run_not_approvable")
             return self._open(db, run, request, now)
 
+    def request_as_owner(self, actor: Actor, project_id: UUID, request: ApprovalRequest, *, now: datetime | None = None) -> ApprovalView:
+        """Owner UI path: no agent run is mid-flight, so anchor the approval on a fresh non-LLM run.
+        The run inherits session/CV/job/provider from the project's latest run (approval approve re-queues it and the
+        executor completes it, exactly like an agent-opened approval)."""
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        now = _utc(now or datetime.now(timezone.utc))
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "request", "approval")
+            if request.action == "submit_application":
+                raise ServiceError("forbidden")
+            if db.scalar(select(Project).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            source = db.scalar(
+                select(Run).where(
+                    Run.project_id == project_id, Run.session_id.is_not(None), Run.job_revision_id.is_not(None),
+                    Run.provider_configuration_id.is_not(None),
+                ).order_by(Run.created_at.desc()).limit(1)
+            )
+            if source is None:
+                raise ServiceError("not_found")
+            key = secrets.token_hex(16)
+            run = Run(
+                project_id=project_id, actor_scope="owner", idempotency_key=key,
+                request_digest=hashlib.sha256(key.encode()).hexdigest(), session_id=source.session_id,
+                operation="export_document", cv_revision_id=source.cv_revision_id, job_revision_id=source.job_revision_id,
+                provider_configuration_id=source.provider_configuration_id, input_snapshot={"approval_anchor": True},
+                config_snapshot={}, output_language=source.output_language, status="running", active_started_at=now,
+            )
+            db.add(run)
+            db.flush()
+            return self._open(db, run, request, now)
+
     def request_submission(self, run_id: UUID, lease_owner: str, *, now: datetime | None = None) -> ApprovalView:
         """Executor side: the running apply_submit run asks the owner to record its pack as applied.
         No run enters waiting_approval on its own elsewhere, so this is the one place that does."""

@@ -1005,7 +1005,7 @@ async def list_approvals(project_id: UUID, actor=Depends(owner_actor), services:
 
 @router.post("/projects/{project_id}/approvals", status_code=201, response_model=ApprovalView)
 async def request_approval(project_id: UUID, body: ApprovalRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await services.approvals.request(actor, project_id, body)
+    return await asyncio.to_thread(services.approvals.request_as_owner, actor, project_id, body)
 
 
 @router.post("/projects/{project_id}/approvals/{approval_id}/decision", response_model=ApprovalView)
