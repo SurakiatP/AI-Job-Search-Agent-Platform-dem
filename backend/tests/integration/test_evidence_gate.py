@@ -43,3 +43,23 @@ def test_missing_unknown_foreign_removed_and_unsupported_number(db_session):
     _fails(db_session, p.id, [EvidencedEdit(text="Cut load time by 60%", evidence_ids=[fact.id])], "edits.0", "unsupported_number")
     experience.remove_item(db_session, p.id, fact.id)
     _fails(db_session, p.id, [EvidencedEdit(text="x", evidence_ids=[fact.id])], "edits.0", "unknown")
+
+
+def test_decimal_fact_does_not_support_its_fraction(db_session):
+    p = project(db_session)
+    fact = experience.add_item(db_session, p.id, kind="skill", text="3.5 years of Python")
+    _fails(db_session, p.id, [EvidencedEdit(text="5 years of Python", evidence_ids=[fact.id])], "edits.0", "unsupported_number")
+    require_evidence(db_session, p.id, [EvidencedEdit(text="3.5 years", evidence_ids=[fact.id])])
+
+
+def test_numbers_may_come_from_the_union_of_cited_facts(db_session):
+    p = project(db_session)
+    a = experience.add_item(db_session, p.id, kind="experience", text="Raised retention 40%")
+    b = experience.add_item(db_session, p.id, kind="experience", text="Launched the app in 2023")
+    require_evidence(db_session, p.id, [EvidencedEdit(text="Raised retention 40% in 2023", evidence_ids=[a.id, b.id])])
+
+
+def test_numbers_may_come_from_the_period_only(db_session):
+    p = project(db_session)
+    fact = experience.add_item(db_session, p.id, kind="experience", text="Led the data team", period="2022–2024")
+    require_evidence(db_session, p.id, [EvidencedEdit(text="Led the data team since 2022", evidence_ids=[fact.id])])

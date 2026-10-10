@@ -11,6 +11,19 @@ def test_normalize_thai_digits_and_bullets():
     assert text_hash("• Built APIs") == text_hash("built apis")
 
 
+def test_leading_decimals_and_signs_are_not_bullets():
+    assert normalize("4.0 GPA") == "4.0 gpa"
+    assert numbers("3.5 years of Python") == {"3.5"}
+    assert text_hash("3.5 years of Python") != text_hash("5 years of Python")
+    assert normalize("-5% churn") == "-5% churn"
+    assert normalize("• x") == normalize("1) x") == normalize("- x") == normalize("1. x") == "x"
+
+
+def test_curly_quotes_and_dashes_fold():
+    assert normalize("Led “Data” team – 2022") == normalize('Led "Data" team - 2022')
+    assert normalize("O’Brien — − ‒ ‘x’") == "o'brien - - - 'x'"
+
+
 def test_verbatim_across_wrapped_lines():
     cv = "Experience\n• Built Airflow pipelines that cut\n  load time by 40%\n• Ran BigQuery"
     assert normalize("Built Airflow pipelines that cut load time by 40%") in normalize(cv)

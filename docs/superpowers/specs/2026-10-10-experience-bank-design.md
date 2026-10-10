@@ -54,7 +54,7 @@ Migration 0015 also widens the run constraints:
 
 ### Normalization
 
-`normalize(text)`: Unicode NFKC, lowercase, strip leading bullet characters (`•`, `-`, `*`, `·`, digits followed by `.` or `)`), collapse all whitespace runs to one space, strip. Thai text passes through NFKC unchanged apart from whitespace. `text_hash = sha256(normalize(text))`.
+`normalize(text)`: Unicode NFKC, Thai digits to Arabic, curly quotes and dashes folded to ASCII (`’‘` to `'`, `“”` to `"`, `–—‒−` to `-`), lowercase, strip leading bullet markers per line (`•`, `*`, `·` and similar; `-` or digits followed by `.` or `)` only when whitespace follows, so `4.0 GPA` and `-5%` keep their numbers), collapse all whitespace runs to one space, strip. Thai text passes through NFKC unchanged apart from whitespace. `text_hash = sha256(normalize(text))`.
 
 ## Extraction run
 
@@ -72,7 +72,7 @@ Executor (`workers/executor.py`), new `_execute_extract` next to `_execute_profi
 1. `_materialize` the CV in the sandbox and get `parsed.text`.
 2. Submit a prompt to Hermes under the existing tool-call cap. The prompt asks for JSON `{"items": [{"kind", "text", "role", "organization", "period"}]}` and says: copy each fact verbatim from the CV, one bullet per item, do not paraphrase, merge or invent.
 3. `parse_experience_items(native_result)` validates the shape with pydantic. Malformed output fails the run with `errors.execution_failed`; no native text or traceback is exposed.
-4. Verify each item: `normalize(item.text)` must be a substring of `normalize(parsed.text)`. Items that fail are dropped and counted as `rejected`. This is the guard against facts invented during extraction.
+4. Verify each item: `normalize(item.text)` must occur in `normalize(parsed.text)` without splitting a Latin word or number (an item edge in `[a-z0-9]` needs a non-`[a-z0-9]` neighbour, so `Java` does not match inside `JavaScript`; Thai edges match as plain substrings). Items that fail are dropped and counted as `rejected`. Role, organization and period are kept only when they occur in the CV the same way; otherwise they are stored as NULL. This is the guard against facts invented during extraction.
 5. Insert with `ON CONFLICT (project_id, text_hash) DO NOTHING`, `source = "cv"`. Conflicts count as `duplicates`. Stop inserting at the 1,000-item cap and count the rest as `rejected`.
 6. Append run event `experience_extracted` with `{added, duplicates, rejected}` and finish `completed`.
 

@@ -21,15 +21,16 @@ MAX_ITEMS = 1000
 MAX_EXTRACTED = 300
 Kind = Literal["experience", "education", "skill", "certification", "project", "other"]
 KINDS = frozenset(Kind.__args__)
-_THAI_DIGITS = str.maketrans("๐๑๒๓๔๕๖๗๘๙", "0123456789")
-_BULLET = re.compile(r"^\s*(?:[•\-*·▪●◦‣]|\d{1,3}[.)])\s*")
+_FOLD = str.maketrans("๐๑๒๓๔๕๖๗๘๙’‘“”–—‒−", "0123456789''\"\"----")
+_BULLET = re.compile(r"^\s*(?:[•*·▪●◦‣]|-(?=\s)|\d{1,3}[.)](?=\s))\s*")
+_WORD = re.compile(r"[a-z0-9]")
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 _FENCE = re.compile(r"\s*```(?:json)?\s*\n(.*)\n\s*```\s*", re.DOTALL)
 
 
 def normalize(text: str) -> str:
-    """NFKC, Thai digits to Arabic, lowercase, no leading bullets, single spaces; wrapped lines join."""
-    text = unicodedata.normalize("NFKC", text.replace("\x00", "")).translate(_THAI_DIGITS).lower()
+    """NFKC, Thai digits to Arabic, curly quotes/dashes folded, lowercase, no leading bullets, single spaces."""
+    text = unicodedata.normalize("NFKC", text.replace("\x00", "")).translate(_FOLD).lower()
     return " ".join(" ".join(_BULLET.sub("", line) for line in text.splitlines()).split())
 
 
@@ -39,6 +40,20 @@ def text_hash(text: str) -> str:
 
 def numbers(text: str) -> set[str]:
     return {token.replace(",", "") for token in _NUMBER.findall(normalize(text))}
+
+
+def _found_in(needle: str, haystack: str) -> bool:
+    """Normalized needle occurs in haystack without splitting a Latin word or number (Thai edges: plain substring)."""
+    if not needle:
+        return False
+    start = haystack.find(needle)
+    while start != -1:
+        end = start + len(needle)
+        if not (_WORD.match(needle[0]) and start and _WORD.match(haystack[start - 1])) and not (
+                _WORD.match(needle[-1]) and end < len(haystack) and _WORD.match(haystack[end])):
+            return True
+        start = haystack.find(needle, start + 1)
+    return False
 
 
 class ExtractedItem(BaseModel):
@@ -112,12 +127,17 @@ def store_extracted(db: Session, project_id: UUID, cv_revision_id: UUID, cv_text
     haystack = normalize(cv_text)
     added = duplicates = rejected = 0
     room = MAX_ITEMS - _live_count(db, project_id)
+
+    def stated(field: str | None) -> str | None:
+        return field if field and _found_in(normalize(field), haystack) else None
+
     for item in items:
-        if not normalize(item.text) or normalize(item.text) not in haystack or room <= 0:
+        if not _found_in(normalize(item.text), haystack) or room <= 0:
             rejected += 1
             continue
-        if _insert(db, project_id, kind=item.kind, text=item.text, role=item.role, organization=item.organization,
-                   period=item.period, source="cv", source_cv_revision_id=cv_revision_id) is None:
+        if _insert(db, project_id, kind=item.kind, text=item.text, role=stated(item.role),
+                   organization=stated(item.organization), period=stated(item.period), source="cv",
+                   source_cv_revision_id=cv_revision_id) is None:
             duplicates += 1
         else:
             added += 1

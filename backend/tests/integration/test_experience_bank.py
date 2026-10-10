@@ -109,3 +109,25 @@ def test_replace_duplicate_leaves_old_item_live(db_session):
     with pytest.raises(ServiceError) as dup:
         experience.replace_item(db_session, p.id, a.id, kind="skill", text="B")
     assert dup.value.code == "duplicate" and db_session.get(ExperienceItem, a.id).removed_at is None
+
+
+def test_verbatim_match_respects_word_edges(db_session):
+    p, revision = _revision(db_session)
+    store = lambda cv, text: experience.store_extracted(db_session, p.id, revision.id, cv, [_item(text)])["added"]
+    assert store("Built JavaScript apps", "Java") == 0
+    assert store("Built JavaScript apps", "JavaScript") == 1
+    assert store("Ran MySQL", "SQL") == 0
+    assert store("Python, Go", "Go") == 1
+    assert store("Java and JavaScript", "java") == 1  # a later whole-word occurrence counts
+    assert store("ใช้ Pythonเป็นหลัก", "Python") == 1  # only Latin letters/digits count as word neighbours
+    assert store("ทักษะ: ใช้งานฐานข้อมูล", "ใช้งาน") == 1  # Thai-edged items stay plain substring
+
+
+def test_context_fields_kept_only_when_in_the_cv(db_session):
+    p, revision = _revision(db_session)
+    items = [_item("Ran BigQuery", role="Data Engineer", organization="Google", period="2018–2024"),
+             _item("Built Airflow pipelines that cut load time by 40%", organization="SCB", period="2022-2024")]
+    experience.store_extracted(db_session, p.id, revision.id, CV, items)
+    stored = {i.text: (i.role, i.organization, i.period) for i in experience.list_items(db_session, p.id)}
+    assert stored["Ran BigQuery"] == ("Data Engineer", None, None)
+    assert stored["Built Airflow pipelines that cut load time by 40%"] == (None, "SCB", "2022-2024")
