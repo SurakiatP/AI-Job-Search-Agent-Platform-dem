@@ -43,6 +43,7 @@ from job_search_platform.services.contracts import (
     RunEventData,
     RunEventView,
     RunRequest,
+    RunRequester,
     RunView,
 )
 from job_search_platform.services.applications import MAX_ANSWER_CHARS
@@ -84,8 +85,10 @@ def actor_scope(actor: Actor) -> str:
     raise ServiceError("unauthorized")
 
 
-def run_view(run: Run, *, result_file_ids: tuple[UUID, ...] = (), job_removed: bool = False) -> RunView:
+def run_view(run: Run, *, result_file_ids: tuple[UUID, ...] = (), job_removed: bool = False,
+             requester: RunRequester | None = None) -> RunView:
     return RunView(
+        requester=requester,
         id=run.id,
         project_id=run.project_id,
         session_id=run.session_id,
@@ -957,13 +960,26 @@ class RunService:
                 self._visible_run(db, project_id, run_id, actor)
             yield event
 
+    @staticmethod
+    def _requester(db: Session, run: Run) -> RunRequester | None:
+        if run.actor_scope == "owner":
+            return RunRequester(kind="owner")
+        try:
+            grant_id = UUID(run.actor_scope.removeprefix("grant:"))
+        except ValueError:
+            return None
+        # One primary-key lookup per grant run; list_runs already loads each run on its own.
+        label = db.scalar(select(Grant.label).where(Grant.id == grant_id))
+        return RunRequester(kind="agent", grant_id=grant_id, label=label)
+
     def _authorized_view(self, db: Session, actor: Actor, run: Run) -> RunView:
+        requester = self._requester(db, run)
         try:
             authorize(db, actor, run.project_id, "results:read", "run")
         except ServiceError as exc:
             if exc.code != "forbidden":
                 raise
-            return run_view(run).model_copy(
+            return run_view(run, requester=requester).model_copy(
                 update={"evaluation_result": None, "result_file_ids": (), "result_payload": None}
             )
         job_removed = db.scalar(
@@ -971,7 +987,8 @@ class RunService:
                 JobRevision.project_id == run.project_id, JobRevision.id == run.job_revision_id
             )
         ) is not None
-        return run_view(run, result_file_ids=self._result_file_ids(db, run), job_removed=job_removed)
+        return run_view(run, result_file_ids=self._result_file_ids(db, run), job_removed=job_removed,
+                        requester=requester)
 
     @staticmethod
     def _visible_run(db: Session, project_id: UUID, run_id: UUID, actor: Actor | None = None) -> Run:

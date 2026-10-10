@@ -1304,6 +1304,15 @@ components:
         finished_at: {type: [string, 'null'], format: date-time}
         retry_of_id: {type: [string, 'null'], format: uuid}
         job_removed: {type: boolean, default: false}
+        requester: {anyOf: [{$ref: '#/components/schemas/RunRequester'}, {type: 'null'}], description: 'Who requested the run, derived from the run actor scope. Agent grants carry the grant label when one was set.'}
+    RunRequester:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: {type: string, enum: [owner, agent]}
+        grant_id: {type: [string, 'null'], format: uuid}
+        label: {type: [string, 'null'], maxLength: 80}
     RunEventView:
       type: object
       additionalProperties: false
@@ -1325,6 +1334,10 @@ components:
         progress_percent: {type: [integer, 'null'], minimum: 0, maximum: 100}
         round: {type: [integer, 'null'], minimum: 1, maximum: 100, description: tailor_cv round number}
         coverage: {type: [number, 'null'], minimum: 0, maximum: 1, description: tailor_cv skill coverage after the round}
+        model: {type: [string, 'null'], maxLength: 120, description: llm_round model name}
+        latency_ms: {type: [integer, 'null'], minimum: 0, maximum: 3600000, description: llm_round wall latency}
+        input_tokens: {type: [integer, 'null'], minimum: 0, maximum: 10000000}
+        output_tokens: {type: [integer, 'null'], minimum: 0, maximum: 10000000}
     ApprovalView:
       type: object
       additionalProperties: false
@@ -1384,6 +1397,7 @@ components:
       properties:
         capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}}
         expires_at: {type: string, format: date-time}
+        label: {type: [string, 'null'], minLength: 1, maxLength: 80, description: Optional name shown as the run requester; trimmed.}
     GrantIssuedView:
       type: object
       additionalProperties: false
@@ -1404,6 +1418,7 @@ components:
         capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}}
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}
+        label: {type: [string, 'null'], maxLength: 80}
     ProviderSettingsUpdate:
       type: object
       additionalProperties: false

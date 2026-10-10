@@ -362,6 +362,12 @@ class EvaluationResult(DTO):
     skill_coverage: SkillCoverage | None = None
 
 
+class RunRequester(DTO):
+    kind: Literal["owner", "agent"]
+    grant_id: UUID | None = None
+    label: str | None = None
+
+
 class RunView(DTO):
     id: UUID
     project_id: UUID
@@ -377,6 +383,7 @@ class RunView(DTO):
     evaluation_result: EvaluationResult | None = None
     job_removed: bool = False
     result_payload: dict[str, Any] | None = None
+    requester: RunRequester | None = None
 
 
 class RunEventData(DTO):
@@ -388,6 +395,10 @@ class RunEventData(DTO):
     progress_percent: Annotated[int, Field(ge=0, le=100)] | None = None
     round: Annotated[int, Field(ge=1, le=100)] | None = None
     coverage: Annotated[float, Field(ge=0, le=1)] | None = None
+    model: Annotated[str, StringConstraints(max_length=120)] | None = None
+    latency_ms: Annotated[int, Field(ge=0, le=3_600_000)] | None = None
+    input_tokens: Annotated[int, Field(ge=0, le=10_000_000)] | None = None
+    output_tokens: Annotated[int, Field(ge=0, le=10_000_000)] | None = None
 
 
 class RunEventView(DTO):
@@ -462,6 +473,7 @@ class OwnerBootstrapView(DTO):
 class GrantIssueRequest(DTO):
     capabilities: frozenset[Capability]
     expires_at: datetime
+    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)] | None = None
 
 
 class GrantIssuedView(DTO):
@@ -478,6 +490,7 @@ class GrantView(DTO):
     capabilities: frozenset[Capability]
     expires_at: datetime
     revoked_at: datetime | None = None
+    label: str | None = None
 
 
 class ProviderSettingsUpdate(DTO):
