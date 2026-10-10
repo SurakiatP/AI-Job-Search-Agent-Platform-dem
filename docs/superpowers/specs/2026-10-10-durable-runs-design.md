@@ -61,7 +61,9 @@ Migration `0018_durable_runs` adds:
 - `runs.resume_count`
 - the `ck_runs_status` rebuild with `needs_input`
 - the active index predicate rebuilt to exclude `needs_input` (it keeps the apply_submit exemption)
-- `grants.label`
+- a data step moving completed interactive `tailor_cv` runs with no later `export_document` for the same job, and completed parked `apply_prepare` runs, to `needs_input` with `finished_at` null (apply keeps no link to its tailor run, so "applied" is matched by job and time)
+
+Migration `0019_grant_label` adds `grants.label`.
 
 The downgrade is blocked while any run is in `needs_input`.
 
