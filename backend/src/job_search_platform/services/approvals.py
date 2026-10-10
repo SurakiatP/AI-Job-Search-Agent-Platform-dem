@@ -197,8 +197,7 @@ class ApprovalService:
                 raise ServiceError("approval_consumed")
             if _utc(approval.expires_at) <= now:
                 approval.consumed_at = now
-                approval.decision = "reject"
-                approval.decided_by = "owner"
+                approval.decision = "reject"  # expiry: nobody decided, decided_by stays NULL
                 approval.applied_at = now
                 self._fail_approval(db, approval, "approval_expired", "errors.approval_expired", now)
                 expired = True

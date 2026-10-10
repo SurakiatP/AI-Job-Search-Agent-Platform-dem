@@ -212,6 +212,29 @@ def test_stale_cv_approval_cannot_promote_and_expiry_fails_run_durably(db_sessio
         assert db.get(Run, run2.id).status == "failed"
 
 
+def test_both_expiry_paths_leave_decided_by_null(db_session):
+    """Nobody decided on an expired approval: owner-triggered and worker-triggered expiry agree."""
+    future = datetime.now(timezone.utc) + timedelta(hours=24, seconds=1)
+    ids = []
+    for via_worker in (False, True):
+        factory, p, creator, owner_actor, _, run = _setup(db_session)
+        revision_id, _ = _document_revision(factory, p.id)
+        service = ApprovalService(factory)
+        pending = service.request(creator, p.id, run.id, ApprovalRequest(
+            action="delete_document_revision", revision_id=revision_id))
+        if via_worker:
+            with factory.begin() as db:
+                PostgresRunQueue._expire_approvals(db, future)
+        else:
+            with pytest.raises(ServiceError, match="approval_expired"):
+                service.resolve(owner_actor, p.id, pending.id, "approve", now=future)
+        ids.append(pending.id)
+    with factory.begin() as db:
+        for approval_id in ids:
+            row = db.get(Approval, approval_id)
+            assert row.decision == "reject" and row.decided_by is None
+
+
 def test_approved_deletion_is_unavailable_before_idempotent_external_callback(db_session):
     factory, p, creator, owner_actor, _, run = _setup(db_session)
     revision_id, file_id = _document_revision(factory, p.id)

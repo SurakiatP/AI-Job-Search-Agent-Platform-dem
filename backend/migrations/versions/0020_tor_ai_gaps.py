@@ -16,7 +16,7 @@ def upgrade() -> None:
                                "submit_autopilot_daily_limit IS NULL OR submit_autopilot_daily_limit BETWEEN 1 AND 20")
     op.add_column("approvals", sa.Column("decided_by", sa.String(16), nullable=True))
     op.create_check_constraint("ck_approval_decided_by", "approvals", "decided_by IS NULL OR decided_by IN ('owner','autopilot')")
-    op.execute("UPDATE approvals SET decided_by = 'owner' WHERE decision IS NOT NULL")
+    op.execute("UPDATE approvals SET decided_by = 'owner' WHERE decision IN ('approve','reject')")
 
 
 def downgrade() -> None:
