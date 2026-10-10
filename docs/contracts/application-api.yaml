@@ -200,6 +200,17 @@ paths:
         '204': {description: Removed}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /public/job-stats:
+    get:
+      tags: [jobs]
+      description: >-
+        Unauthenticated, read-only landing numbers {total, new_7d (int|null), thai_postings, categories (top 8
+        [{value, count}])} built only from the cached Thailand facets. Accepts no query parameters and returns
+        no job items or project data. 502 job_source_unavailable (retryable) on upstream failure.
+      security: []
+      responses:
+        '200': {description: Public job statistics}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -211,15 +222,114 @@ paths:
         Items carry slug, title, company, location, cities, work_mode, skills (max 8), category, posted_at,
         age_days, stale (upstream reality.class other than fresh), source_url (http/https, utm_* stripped)
         and description_markdown (max 50000). Upstream failure returns 502 job_source_unavailable (retryable).
+        Advanced filters (all optional, empty = unset; invalid values give 422): seniority (comma list of
+        intern|junior|middle|senior|lead|staff|principal|c_level), employment_type (full_time|part_time|contract|
+        internship|fellowship), company_type (product|startup|agency|outsource|outstaff|inhouse|government),
+        skills (comma list, max 5, each ^[a-z0-9][a-z0-9.+#-]{0,40}$), posting_language (th), salary_min
+        (1-1000000 THB per month). Comma values mean OR.
       security: [{ownerSession: []}]
       responses:
         '200': {description: 'Job search page {items, total, limit, offset}'}
         '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/job-search/match:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: >-
+        Owner-only "Smart match": the job-search filters (q, cities, work_mode, posted_within_days, category)
+        and the advanced filters below, plus cv_revision_id (a live CV revision of this project) and pool (1-100, default 100, upstream page
+        size) and offset (0-1000, start of the pool chunk). The pool is scored against the revision's stored
+        skill profile (keyword dictionary, no AI) and returned sorted by score descending, ties by recency,
+        jobs naming fewer than two recognisable skills (match null) last. Items are job-search items plus
+        match {score_percent, matched[], missing[], required_count} or null, ai_match (cached Jev score
+        {fit_percent, uncertain, band 1-5, seniority, hard_blocker, skills_evidenced[], must_missing[], nice_missing[]}
+        for the current posting text, or null) and highlight {matched, missing} (skill name to the surface string
+        found in the posting; plain strings, no markup). Jobs hidden for this project (job slug or company) are
+        removed. Scored items come first by fit_percent descending, then keyword order. When q and category are
+        both empty and Jev is available the pool is built from the CV's stored categories; with none stored the
+        list is empty and ai.status is missing. Response {items, total, offset, pool, hidden_count,
+        ai {status: unavailable|missing|partial|ready, categories|null, scored}}; unavailable means no OpenRouter
+        provider is configured (keyword result only).
+        Advanced filters (all optional, empty = unset; invalid values give 422): seniority (comma list of
+        intern|junior|middle|senior|lead|staff|principal|c_level), employment_type (full_time|part_time|contract|
+        internship|fellowship), company_type (product|startup|agency|outsource|outstaff|inhouse|government),
+        skills (comma list, max 5, each ^[a-z0-9][a-z0-9.+#-]{0,40}$), posting_language (th), salary_min
+        (1-1000000 THB per month). Comma values mean OR.
+        409 cv_profile_missing when the revision has no profile yet (POST the CV's /profile first);
+        404 for a foreign or removed CV revision; 502 job_source_unavailable.
+      security: [{ownerSession: []}]
+      parameters:
+        - {name: cv_revision_id, in: query, required: true, schema: {type: string, format: uuid}}
+        - {name: pool, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 100}}
+      responses:
+        '200': {description: 'Scored pool {items, total, offset, pool, hidden_count, ai}'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: CV has no skill profile yet (code cv_profile_missing), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/job-search/match/runs:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [jobs]
+      description: >-
+        Owner-only. Queues (or returns the active) match_jobs run that scores the job pool with Jev and caches
+        scores per CV revision and posting. match_jobs runs are hidden from the run list, grants, MCP and A2A.
+        409 jev_unavailable when no OpenRouter provider is configured.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MatchRunRequest'}}}
+      responses:
+        '202': {description: Match run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: No OpenRouter provider configured (code jev_unavailable), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+  /projects/{project_id}/job-search/hidden:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: 'Owner-only list of jobs and companies hidden from Smart match, newest first: {items: [{id, kind, label, created_at}]}.'
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Hidden entries}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [jobs]
+      description: >-
+        Owner-only. Hides a job (value is the slug) or a company (value is normalised to a case-folded,
+        whitespace-collapsed key). Idempotent: hiding the same entry again returns 201 with the existing id.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/HiddenCreate'}}}
+      responses:
+        '201': {description: 'Hidden entry {id, kind, label, created_at}'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: Invalid body}
+  /projects/{project_id}/job-search/hidden/{hidden_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: hidden_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    delete:
+      tags: [jobs]
+      description: Owner-only. Unhides one entry of this project; another project's id gives 404.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Unhidden}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/job-search/facets:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
       tags: [jobs]
-      description: Owner-only Thailand facets {total, categories (top 12), cities (top 10)} as [{value, count}].
+      description: >-
+        Owner-only Thailand facets {total, categories (top 12), cities (top 10), seniority, employment_type,
+        company_type, skills (top 20)} as [{value, count}], plus thai_postings (int) and new_7d (int|null, postings
+        from the last 7 days; null when that count is unavailable).
       security: [{ownerSession: []}]
       responses:
         '200': {description: Job search facets}
@@ -418,6 +528,24 @@ paths:
               properties: {file: {type: string, format: binary}}
       responses:
         '201': {description: Published CV revision metadata, content: {application/json: {schema: {$ref: '#/components/schemas/CVRevisionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/cvs/{cv_id}/profile:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Queues a non-LLM profile_cv run (no session, job or provider) that parses the latest
+        revision in the sandbox and stores only the canonical skill names found (never CV text). Returns the
+        run (202; an already active run for the revision is returned again) or 200 {status: ready} when the
+        revision already has a profile. profile_cv runs are hidden from the run list, grants, MCP and A2A.
+      responses:
+        '200': {description: 'Already profiled: {status: ready}'}
+        '202': {description: Profile run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/files/{file_id}/download:
     parameters:
@@ -649,6 +777,33 @@ components:
       description: Resource is absent or outside the authorized project scope
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
   schemas:
+    MatchRunRequest:
+      type: object
+      additionalProperties: false
+      required: [cv_revision_id]
+      properties:
+        cv_revision_id: {type: string, format: uuid}
+        q: {type: string, maxLength: 200, default: ''}
+        cities: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 80}, default: []}
+        work_mode: {type: [string, 'null'], enum: [remote, hybrid, onsite, null]}
+        posted_within_days: {type: [integer, 'null'], minimum: 1, maximum: 90}
+        category: {type: [string, 'null'], pattern: '^[a-z0-9_-]{1,60}$'}
+        seniority: {type: array, maxItems: 10, default: [], items: {type: string, enum: [intern, junior, middle, senior, lead, staff, principal, c_level]}}
+        employment_type: {type: array, maxItems: 10, default: [], items: {type: string, enum: [full_time, part_time, contract, internship, fellowship]}}
+        company_type: {type: array, maxItems: 10, default: [], items: {type: string, enum: [product, startup, agency, outsource, outstaff, inhouse, government]}}
+        skills: {type: array, maxItems: 5, default: [], items: {type: string, pattern: '^[a-z0-9][a-z0-9.+#-]{0,40}$'}}
+        posting_language: {type: [string, 'null'], enum: [th, null]}
+        salary_min: {type: [integer, 'null'], minimum: 1, maximum: 1000000, description: THB per month}
+        pool: {type: integer, minimum: 1, maximum: 100, default: 100}
+        offset: {type: integer, minimum: 0, maximum: 1000, default: 0}
+    HiddenCreate:
+      type: object
+      additionalProperties: false
+      required: [kind, value, label]
+      properties:
+        kind: {type: string, enum: [job, company]}
+        value: {type: string, minLength: 1, maxLength: 300}
+        label: {type: string, minLength: 1, maxLength: 300}
     RunRequest:
       type: object
       additionalProperties: false
@@ -753,6 +908,7 @@ components:
         job_title: {type: [string, 'null']}
         job_company: {type: [string, 'null']}
         cv_outdated: {type: boolean, default: false}
+        cv_file_id: {type: [string, 'null'], format: uuid}
         evaluation_run_id: {type: [string, 'null'], format: uuid, description: Set only on the create response.}
     RevisionView:
       type: object
@@ -793,6 +949,9 @@ components:
             original_filename: {type: string}
             mime_type: {type: string}
             size_bytes: {type: integer, minimum: 0}
+            file_id: {type: [string, 'null'], format: uuid}
+            skill_profile_ready: {type: boolean, default: false}
+            skill_count: {type: [integer, 'null'], minimum: 0}
     CVUpdate:
       type: object
       additionalProperties: false
@@ -893,14 +1052,14 @@ components:
     RunView:
       type: object
       additionalProperties: false
-      required: [id, project_id, session_id, operation, status, output_language, result_file_ids, created_at]
+      required: [id, project_id, operation, status, output_language, result_file_ids, created_at]
       properties:
         job_revision_id: {type: [string, 'null'], format: uuid}
         evaluation_result: {anyOf: [{$ref: '#/components/schemas/EvaluationResult'}, {type: 'null'}]}
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
-        session_id: {type: string, format: uuid}
-        operation: {type: string, enum: [evaluate_job, draft_documents, export_document]}
+        session_id: {type: [string, 'null'], format: uuid, description: Null only for profile_cv.}
+        operation: {type: string, enum: [evaluate_job, draft_documents, export_document, profile_cv]}
         status: {type: string, enum: [queued, running, waiting_approval, completed, failed, cancelled, interrupted]}
         output_language: {type: string, enum: [th, en]}
         result_file_ids: {type: array, items: {type: string, format: uuid}}

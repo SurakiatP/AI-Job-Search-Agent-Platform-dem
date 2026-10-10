@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import (
     ConversationSession,
+    CV,
     CVRevision,
     Document,
     DocumentRevision,
@@ -30,10 +31,12 @@ from job_search_platform.db.models import (
 from job_search_platform.db.models import (
     RunEvent as RunEventRow,
 )
+from job_search_platform.integrations.jev import JEV_MODEL
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
     Actor,
     DocumentEdit,
+    MatchRunRequest,
     RunEvent,
     RunEventData,
     RunEventView,
@@ -41,6 +44,7 @@ from job_search_platform.services.contracts import (
     RunView,
 )
 from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD
 
 MAX_QUEUED_PER_PROJECT = 10
 MAX_EXTERNAL_SUBMISSIONS_PER_HOUR = 20
@@ -515,6 +519,102 @@ class RunService:
             append_event(db, run, "run_queued", {"status": "queued"}, now=now)
             return self._authorized_view(db, actor, run)
 
+    async def submit_profile(self, actor: Actor, project_id: UUID, cv_id: UUID) -> RunView | None:
+        """Owner-only: queue a non-LLM run that stores the CV's skill names; None when already profiled."""
+        return await asyncio.to_thread(self._submit_profile_sync, actor, project_id, cv_id)
+
+    def _submit_profile_sync(self, actor: Actor, project_id: UUID, cv_id: UUID) -> RunView | None:
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "cv")
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            if db.scalar(select(CV.id).where(CV.project_id == project_id, CV.id == cv_id,
+                                             CV.removed_at.is_(None))) is None:
+                raise ServiceError("not_found")
+            latest = db.scalar(
+                select(CVRevision)
+                .join(StoredFile, (StoredFile.project_id == CVRevision.project_id) & (StoredFile.id == CVRevision.file_id))
+                .where(CVRevision.project_id == project_id, CVRevision.cv_id == cv_id,
+                       StoredFile.publication_state == "published")
+                .order_by(CVRevision.revision.desc()).limit(1))
+            if latest is None:
+                raise ServiceError("not_found")
+            if (latest.skill_profile or {}).get("method") == SKILL_METHOD:
+                return None
+            active = db.scalar(select(Run).where(
+                Run.project_id == project_id, Run.operation == "profile_cv", Run.cv_revision_id == latest.id,
+                Run.status.in_(("queued", "running"))).limit(1))
+            if active is not None:
+                return self._authorized_view(db, actor, active)
+            queued = db.scalar(select(func.count()).select_from(Run).where(
+                Run.project_id == project_id, Run.status == "queued")) or 0
+            if queued >= MAX_QUEUED_PER_PROJECT:
+                raise ServiceError("queue_full", retryable=True)
+            key = uuid4().hex
+            # No session, job or provider: the run only parses the CV inside the sandbox.
+            run = Run(
+                project_id=project_id, actor_scope="owner", idempotency_key=key,
+                request_digest=hashlib.sha256(json.dumps({"profile_cv": str(latest.id), "key": key}).encode()).hexdigest(),
+                operation="profile_cv", cv_revision_id=latest.id,
+                input_snapshot={"cv_file_id": str(latest.file_id)}, config_snapshot={},
+                output_language="en", status="queued", created_at=now)
+            db.add(run)
+            db.flush()
+            append_event(db, run, "run_queued", {"status": "queued"}, now=now)
+            return self._authorized_view(db, actor, run)
+
+    async def submit_match(self, actor: Actor, project_id: UUID, request: MatchRunRequest) -> RunView:
+        """Owner-only: queue a Jev scoring run for one CV revision and one job-search pool."""
+        return await asyncio.to_thread(self._submit_match_sync, actor, project_id, request)
+
+    def _submit_match_sync(self, actor: Actor, project_id: UUID, request: MatchRunRequest) -> RunView:
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        now = datetime.now(timezone.utc)
+        snapshot = request.model_dump(mode="json")
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "cv")
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            revision = db.scalar(select(CVRevision).join(CV, (CV.project_id == CVRevision.project_id) & (CV.id == CVRevision.cv_id))
+                                 .where(CVRevision.project_id == project_id, CVRevision.id == request.cv_revision_id,
+                                        CV.removed_at.is_(None)))
+            if revision is None:
+                raise ServiceError("not_found")
+            config = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
+                               .order_by(ProviderConfiguration.revision.desc()).limit(1))
+            if config is None or config.provider != "openrouter" or config.secret_reference.startswith("restored-unconfigured:"):
+                raise ServiceError("jev_unavailable")
+            for active in db.scalars(select(Run).where(
+                    Run.project_id == project_id, Run.operation == "match_jobs", Run.cv_revision_id == revision.id,
+                    Run.status.in_(("queued", "running")))).all():
+                if active.input_snapshot == snapshot:
+                    return self._authorized_view(db, actor, active)
+            for stale in db.scalars(select(Run).where(  # superseded filters: running ones are left to the claim watchdog
+                    Run.project_id == project_id, Run.operation == "match_jobs", Run.cv_revision_id == revision.id,
+                    Run.status == "queued").with_for_update()):
+                stale.status = "cancelled"
+                stale.finished_at = now
+                append_event(db, stale, "run_cancelled", {"status": "cancelled"}, now=now)
+            db.flush()
+            queued = db.scalar(select(func.count()).select_from(Run).where(
+                Run.project_id == project_id, Run.status == "queued")) or 0
+            if queued >= MAX_QUEUED_PER_PROJECT:
+                raise ServiceError("queue_full", retryable=True)
+            key = uuid4().hex
+            run = Run(project_id=project_id, actor_scope="owner", idempotency_key=key,
+                      request_digest=hashlib.sha256(json.dumps({"match_jobs": snapshot, "key": key}, sort_keys=True).encode()).hexdigest(),
+                      operation="match_jobs", cv_revision_id=revision.id, provider_configuration_id=config.id,
+                      input_snapshot=snapshot, config_snapshot={"model": JEV_MODEL},
+                      output_language="en", status="queued", created_at=now)
+            db.add(run)
+            db.flush()
+            append_event(db, run, "run_queued", {"status": "queued"}, now=now)
+            return self._authorized_view(db, actor, run)
+
     @staticmethod
     def _retry_source(db: Session, project_id: UUID, retry_of_id: UUID) -> Run:
         source = db.scalar(
@@ -608,7 +708,7 @@ class RunService:
             select(Run).where(Run.project_id == project_id, Run.id == run_id)
         )
         # Manual-edit export runs are owner-only; grants (REST, MCP, A2A) never see them.
-        if run is None or (actor is not None and actor.kind != "owner" and run.operation == "export_document"):
+        if run is None or (actor is not None and actor.kind != "owner" and run.operation in {"export_document", "profile_cv", "match_jobs"}):
             raise ServiceError("not_found")
         return run
 

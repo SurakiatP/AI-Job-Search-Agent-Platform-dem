@@ -3,17 +3,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Annotated, AsyncIterator, Literal, Protocol
+from typing import Annotated, AsyncIterator, Literal, Protocol, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, StringConstraints, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, SecretStr, StringConstraints, model_validator
 
 
 Capability = Literal["results:read", "jobs:evaluate", "documents:draft"]
 RunStatus = Literal["queued", "running", "waiting_approval", "completed", "failed", "cancelled", "interrupted"]
 Operation = Literal["evaluate_job", "draft_documents"]
+# profile_cv (CV skill profile, no LLM) is likewise owner-only and internal.
 # export_document is an owner-only, non-LLM run created by the manual-edit endpoint; never a request operation.
-ViewOperation = Literal["evaluate_job", "draft_documents", "export_document"]
+ViewOperation = Literal["evaluate_job", "draft_documents", "export_document", "profile_cv", "match_jobs"]
 DraftKind = Literal["cover_letter", "application_message"]
 
 
@@ -28,6 +29,35 @@ class Actor:
 
 class DTO(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+T = TypeVar("T")
+# Sorted and de-duplicated so equal filter sets compare equal in run snapshots.
+_Choices = Annotated[list[T], Field(max_length=10), AfterValidator(lambda v: sorted(set(v)))]
+
+
+class MatchRunRequest(DTO):
+    cv_revision_id: UUID
+    q: Annotated[str, StringConstraints(max_length=200)] = ""
+    cities: Annotated[list[Annotated[str, StringConstraints(min_length=1, max_length=80)]], Field(max_length=10)] = []
+    work_mode: Literal["remote", "hybrid", "onsite"] | None = None
+    posted_within_days: Annotated[int, Field(ge=1, le=90)] | None = None
+    category: Annotated[str, StringConstraints(pattern=r"^[a-z0-9_-]{1,60}$")] | None = None
+    seniority: _Choices[Literal["intern", "junior", "middle", "senior", "lead", "staff", "principal", "c_level"]] = []
+    employment_type: _Choices[Literal["full_time", "part_time", "contract", "internship", "fellowship"]] = []
+    company_type: _Choices[Literal["product", "startup", "agency", "outsource", "outstaff", "inhouse", "government"]] = []
+    skills: Annotated[list[Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[a-z0-9][a-z0-9.+#-]{0,40}$")]],
+                      AfterValidator(lambda v: sorted(set(v))), Field(max_length=5)] = []
+    posting_language: Literal["th"] | None = None
+    salary_min: Annotated[int, Field(ge=1, le=1_000_000)] | None = None
+    pool: Annotated[int, Field(ge=1, le=100)] = 100
+    offset: Annotated[int, Field(ge=0, le=1000)] = 0
+
+
+class HiddenCreate(DTO):
+    kind: Literal["job", "company"]
+    value: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
 
 
 class RunRequest(DTO):
@@ -119,6 +149,7 @@ class SessionView(DTO):
     job_title: str | None = None
     job_company: str | None = None
     cv_outdated: bool = False
+    cv_file_id: UUID | None = None
     # Only set on the create response.
     evaluation_run_id: UUID | None = None
 
@@ -173,6 +204,9 @@ class CVRevisionView(RevisionView):
     original_filename: str
     mime_type: str
     size_bytes: int
+    file_id: UUID | None = None
+    skill_profile_ready: bool = False
+    skill_count: int | None = None
 
 
 class CVUpdate(DTO):
@@ -255,7 +289,7 @@ class EvaluationResult(DTO):
 class RunView(DTO):
     id: UUID
     project_id: UUID
-    session_id: UUID
+    session_id: UUID | None = None  # None only for profile_cv
     job_revision_id: UUID | None = None
     operation: ViewOperation
     status: RunStatus

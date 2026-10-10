@@ -7,11 +7,11 @@ from pathlib import PurePath
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import Annotated, Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import StringConstraints
 from sqlalchemy import delete, exists, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -19,13 +19,13 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
 from job_search_platform.db.models import (
     CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
-    ProjectPreference, StoredFile, Run, Grant,
+    ProjectPreference, StoredFile, Run, Grant, JobMatchScore, JobSearchHidden, ProviderConfiguration,
     ToolConnectorConfiguration,
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
     ApprovalDecision, ApprovalRequest, ApprovalView, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
-    GrantIssueRequest, GrantIssuedView, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
+    GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
     PreferencesView, ProjectUpdate, ProjectView, ProviderCatalogView, ProviderConnectionTestView,
@@ -33,9 +33,11 @@ from job_search_platform.services.contracts import (
     ProviderSettingsView, RunRequest, RunView, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
-from job_search_platform.services import job_sources
+from job_search_platform.integrations.jev import JEV_MODEL
+from job_search_platform.services import job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
+from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
 from job_search_platform.services.runs import actor_scope
 from job_search_platform.services.settings import provider_catalog as settings_catalog
 
@@ -56,7 +58,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "unauthorized": 401, "invalid_launch": 401, "invalid_origin": 403,
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
         "project_not_empty": 409, "session_busy": 409, "idempotency_conflict": 409,
-        "retry_not_allowed": 409, "approval_conflict": 409,
+        "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
         "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409,
         "document_busy": 409, "document_source_unavailable": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
@@ -64,7 +66,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "queue_full": 429, "submission_rate_limited": 429,
         "object_store_unavailable": 503, "service_unavailable": 503,
         "secret_store_unavailable": 503, "invalid_base_url": 422, "credential_required": 409,
-        "provider_models_unavailable": 502,
+        "provider_models_unavailable": 502, "jev_unavailable": 409,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
     body = {
@@ -103,7 +105,7 @@ def _session_view(db, row: ConversationSession, evaluation_run_id: UUID | None =
                                                CVRevision.revision > cv_revision.revision)))
     view.update(cv_revision_id=row.cv_revision_id, job_revision_id=row.job_revision_id,
                 cv_name=cv.name, cv_revision=cv_revision.revision, job_title=job.title,
-                job_company=job.company, cv_outdated=bool(outdated))
+                job_company=job.company, cv_outdated=bool(outdated), cv_file_id=cv_revision.file_id)
     return view
 
 
@@ -124,8 +126,11 @@ def _pair_holder(db, row: ConversationSession) -> UUID | None:
 
 
 def _cv_revision_view(revision: CVRevision, file: StoredFile) -> dict[str, Any]:
-    return {"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
-            "original_filename": file.display_name, "mime_type": file.mime_type, "size_bytes": file.size_bytes}
+    profile = revision.skill_profile if (revision.skill_profile or {}).get("method") == SKILL_METHOD else None
+    return {"skill_profile_ready": profile is not None,
+            "skill_count": len(profile["skills"]) if profile else None,"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
+            "original_filename": file.display_name, "mime_type": file.mime_type, "size_bytes": file.size_bytes,
+            "file_id": file.id}
 
 
 def _cv_view(db, cv: CV) -> dict[str, Any]:
@@ -427,6 +432,36 @@ async def list_jobs(project_id: UUID, actor=Depends(owner_actor), services: Serv
         return [_job_view(row, status or "saved") for row, status in rows]
 
 
+def job_filters(
+    seniority: Annotated[str, Query(max_length=200)] = "",
+    employment_type: Annotated[str, Query(max_length=200)] = "",
+    company_type: Annotated[str, Query(max_length=200)] = "",
+    skills: Annotated[str, Query(max_length=400)] = "",
+    posting_language: Annotated[str, Query(pattern="^(th)?$")] = "",
+    salary_min: Annotated[str, Query(pattern=r"^(\d{1,7})?$")] = "",
+) -> dict:
+    """The advanced job-search filters shared by both GET routes; invalid lists give 422."""
+    salary = int(salary_min) if salary_min else None
+    if salary is not None and not 1 <= salary <= 1_000_000:
+        raise RequestValidationError([{"loc": ("query", "salary_min"), "msg": "invalid", "type": "value_error"}])
+    out: dict = {"posting_language": posting_language or None, "salary_min": salary}
+    for name, raw in (("seniority", seniority), ("employment_type", employment_type),
+                      ("company_type", company_type), ("skills", skills)):
+        values = job_sources.parse_choices(raw, name)
+        if values is None:
+            raise RequestValidationError([{"loc": ("query", name), "msg": "invalid", "type": "value_error"}])
+        out[name] = values
+    return out
+
+
+@router.get("/public/job-stats")
+async def public_job_stats():
+    """Unauthenticated, read-only, parameterless landing numbers built from the cached facets only."""
+    facets = await asyncio.to_thread(job_sources.job_facets)
+    return {"total": facets["total"], "new_7d": facets["new_7d"], "thai_postings": facets["thai_postings"],
+            "categories": facets["categories"][:8]}
+
+
 @router.get("/projects/{project_id}/job-search")
 async def search_job_sources(
     project_id: UUID,
@@ -437,6 +472,7 @@ async def search_job_sources(
     category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
     limit: Annotated[int, Query(ge=1, le=20)] = 20,
     offset: Annotated[int, Query(ge=0, le=1000)] = 0,
+    filters: dict = Depends(job_filters),
     actor=Depends(owner_actor),
     services: Services = Depends(get_services),
 ):
@@ -447,7 +483,127 @@ async def search_job_sources(
         raise RequestValidationError([{"loc": ("query", "cities"), "msg": "invalid", "type": "value_error"}])
     return await asyncio.to_thread(
         job_sources.search_jobs, q=q, cities=city_list, work_mode=work_mode,
-        posted_within_days=posted_within_days, category=category, limit=limit, offset=offset)
+        posted_within_days=posted_within_days, category=category, limit=limit, offset=offset, **filters)
+
+
+def _jev_available(db) -> bool:
+    row = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
+                    .order_by(ProviderConfiguration.revision.desc()).limit(1))
+    return row is not None and row.provider == "openrouter" and not row.secret_reference.startswith("restored-unconfigured:")
+
+
+@router.get("/projects/{project_id}/job-search/match")
+async def match_job_sources(
+    project_id: UUID,
+    cv_revision_id: UUID,
+    q: Annotated[str, Query(max_length=200)] = "",
+    cities: Annotated[str, Query(max_length=400)] = "",
+    work_mode: Annotated[str | None, Query(pattern="^(remote|hybrid|onsite)$")] = None,
+    posted_within_days: Annotated[int | None, Query(ge=1, le=90)] = None,
+    category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
+    pool: Annotated[int, Query(ge=1, le=100)] = 100,
+    offset: Annotated[int, Query(ge=0, le=1000)] = 0,
+    filters: dict = Depends(job_filters),
+    actor=Depends(owner_actor),
+    services: Services = Depends(get_services),
+):
+    """One pool of job-source results: keyword match plus cached Jev scores, highlights and hidden filters."""
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        revision = require_scoped_id(db, CVRevision, project_id, cv_revision_id)
+        if db.scalar(select(CV.id).where(CV.project_id == project_id, CV.id == revision.cv_id,
+                                         CV.removed_at.is_(None))) is None:
+            raise ServiceError("not_found")
+        profile = revision.skill_profile or {}
+        if profile.get("method") != SKILL_METHOD:
+            raise ServiceError("cv_profile_missing", fields={"cv_revision_id": str(revision.id)})
+        cv_skills = list(profile["skills"])
+        ai_on = _jev_available(db)
+        stored = profile.get("categories") if profile.get("categories_model") == JEV_MODEL else None
+        hidden = {(kind, value) for kind, value in db.execute(
+            select(JobSearchHidden.kind, JobSearchHidden.value).where(JobSearchHidden.project_id == project_id))}
+    city_list = job_sources.parse_cities(cities)
+    if city_list is None:
+        raise RequestValidationError([{"loc": ("query", "cities"), "msg": "invalid", "type": "value_error"}])
+    auto = not q.strip() and not category
+
+    def run() -> dict:
+        if ai_on and auto and not stored:
+            return {"items": [], "total": 0, "offset": offset, "pool": pool, "hidden_count": 0,
+                    "ai": {"status": "missing", "categories": None, "scored": 0}}
+        page = smart_match.build_pool(q=q, cities=city_list, work_mode=work_mode, posted_within_days=posted_within_days,
+                                      category=category, pool=pool, offset=offset, cv_categories=stored if ai_on else None,
+                                      filters=filters)
+        items = [item for item in page["items"] if not smart_match.is_hidden(item, hidden)]
+        with services.sessions() as db:
+            rows = {(r.job_slug, r.content_hash): r for r in db.scalars(select(JobMatchScore).where(
+                JobMatchScore.cv_revision_id == cv_revision_id, JobMatchScore.model == JEV_MODEL,
+                JobMatchScore.job_slug.in_([item["slug"] for item in items])))} if ai_on else {}
+        for item in items:
+            text = smart_match.job_text(item)
+            found = match_skills(cv_skills, text)
+            item["match"] = None if found is None else {
+                "score_percent": round(found["ratio"] * 100), "matched": found["matched"],
+                "missing": found["missing"], "required_count": len(found["required"])}
+            row = rows.get((item["slug"], smart_match.content_hash(item)))
+            item["ai_match"] = None if row is None else {"fit_percent": row.fit_percent, "uncertain": row.uncertain, **row.details}
+            matched = item["ai_match"]["skills_evidenced"] if row else (found or {}).get("matched", [])
+            missing = (row.details["must_missing"] + row.details["nice_missing"]) if row else (found or {}).get("missing", [])
+            item["highlight"] = smart_match.highlight_terms(text, matched, missing)
+        items.sort(key=lambda i: (i["match"] is None, -(i["match"] or {}).get("score_percent", 0),
+                                  i["age_days"] if i["age_days"] is not None else 10**6))
+        items.sort(key=lambda i: (i["ai_match"] is None, -(i["ai_match"] or {}).get("fit_percent", 0)))  # stable: keyword order inside ties
+        scored = sum(1 for i in items if i["ai_match"])
+        status = "unavailable" if not ai_on else "ready" if scored == len(items) else "partial" if scored else "missing"
+        return {"items": items, "total": page["total"], "offset": offset, "pool": pool,
+                "hidden_count": len(page["items"]) - len(items),
+                "ai": {"status": status, "categories": stored if ai_on and auto else None, "scored": scored}}
+
+    return await asyncio.to_thread(run)
+
+
+@router.post("/projects/{project_id}/job-search/match/runs", status_code=202, response_model=RunView)
+async def start_match_run(project_id: UUID, body: MatchRunRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Queue (or return the active) owner-only Jev scoring run for this CV revision and pool."""
+    return await services.runs.submit_match(actor, project_id, body)
+
+
+def _hidden_view(r: JobSearchHidden) -> dict:
+    return {"id": str(r.id), "kind": r.kind, "label": r.label, "created_at": r.created_at.isoformat()}
+
+
+@router.get("/projects/{project_id}/job-search/hidden")
+async def list_hidden(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        rows = db.scalars(select(JobSearchHidden).where(JobSearchHidden.project_id == project_id)
+                          .order_by(JobSearchHidden.created_at.desc())).all()
+        return {"items": [_hidden_view(r) for r in rows]}
+
+
+@router.post("/projects/{project_id}/job-search/hidden", status_code=201)
+async def hide_job_search_item(project_id: UUID, body: HiddenCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    value = body.value if body.kind == "job" else smart_match.company_key(body.value)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.get(Project, project_id) is None:
+            raise ServiceError("not_found")
+        db.execute(pg_insert(JobSearchHidden).values(id=uuid4(), project_id=project_id, kind=body.kind, value=value,
+                                                     label=body.label).on_conflict_do_nothing(constraint="uq_job_search_hidden_key"))
+        row = db.scalar(select(JobSearchHidden).where(JobSearchHidden.project_id == project_id,
+                                                      JobSearchHidden.kind == body.kind, JobSearchHidden.value == value))
+        return _hidden_view(row)
+
+
+@router.delete("/projects/{project_id}/job-search/hidden/{hidden_id}", status_code=204)
+async def unhide_job_search_item(project_id: UUID, hidden_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        row = db.scalar(select(JobSearchHidden).where(JobSearchHidden.project_id == project_id, JobSearchHidden.id == hidden_id))
+        if row is None:
+            raise ServiceError("not_found")
+        db.delete(row)
+    return Response(status_code=204)
 
 
 @router.get("/projects/{project_id}/job-search/facets")
@@ -601,7 +757,8 @@ async def _upload_cv(services, actor, project_id: UUID, file: UploadFile, **targ
         if revision is None:
             raise ServiceError("file_unavailable")
         return ({"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
-                 "original_filename": view.display_name, "mime_type": view.mime_type, "size_bytes": view.size_bytes},
+                 "original_filename": view.display_name, "mime_type": view.mime_type, "size_bytes": view.size_bytes,
+                 "file_id": view.id},
                 revision.cv_id)
 
 
@@ -631,6 +788,14 @@ async def create_cv(project_id: UUID, file: UploadFile = File(...),
         return _cv_view(db, _live_cv(db, project_id, new_cv_id))
 
 
+@router.post("/projects/{project_id}/cvs/{cv_id}/profile", status_code=202, response_model=RunView,
+             responses={200: {"description": "The latest revision already has a skill profile", "content": {"application/json": {"schema": {"type": "object", "properties": {"status": {"const": "ready"}}}}}}})
+async def profile_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Extract the CV's skill names in the sandbox (no AI); 200 {status: ready} when already done."""
+    run = await services.runs.submit_profile(actor, project_id, cv_id)
+    return JSONResponse({"status": "ready"}, status_code=200) if run is None else run
+
+
 @router.post("/projects/{project_id}/cvs/{cv_id}/revisions", status_code=201, response_model=CVRevisionView)
 async def add_cv_revision(project_id: UUID, cv_id: UUID, file: UploadFile = File(...),
                           actor=Depends(write_actor), services: Services = Depends(get_services)):
@@ -657,15 +822,13 @@ async def update_cv(project_id: UUID, cv_id: UUID, body: CVUpdate, actor=Depends
 
 @router.delete("/projects/{project_id}/cvs/{cv_id}", status_code=204)
 async def delete_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    """Soft-delete a CV no session uses; deleting the primary promotes the newest remaining CV."""
+    """Soft-delete a CV; sessions keep their pinned revision. Deleting the primary promotes the newest remaining CV."""
     _owner_only(actor)
     with services.sessions.begin() as db:
         authorize(db, actor, project_id, "write", "cv")
         if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
             raise ServiceError("not_found")
         cv = _live_cv(db, project_id, cv_id, lock=True)
-        if _cv_view(db, cv)["in_use"]:
-            raise ServiceError("cv_in_use")
         was_primary = cv.is_primary
         cv.is_primary = False
         cv.removed_at = datetime.now(timezone.utc)
@@ -698,6 +861,7 @@ async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Servic
         authorize(db, actor, project_id, "read", "run")
         from job_search_platform.db.models import Run
         query = select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())
+        query = query.where(Run.operation.not_in(("profile_cv", "match_jobs")))
         if actor.kind != "owner":
             query = query.where(Run.operation != "export_document")
         rows = db.scalars(query).all()

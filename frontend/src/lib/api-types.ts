@@ -57,9 +57,9 @@ export type ProjectView = { id: string; name: string; created_at: string };
 export type SessionView = {
   id: string; project_id: string; title: string; created_at: string;
   cv_revision_id?: string | null; job_revision_id?: string | null; cv_name?: string | null; cv_revision?: number | null;
-  job_title?: string | null; job_company?: string | null; cv_outdated?: boolean; evaluation_run_id?: string | null;
+  job_title?: string | null; job_company?: string | null; cv_outdated?: boolean; cv_file_id?: string | null; evaluation_run_id?: string | null;
 };
-export type CVRevisionInfo = { id: string; revision: number; created_at: string; original_filename: string; mime_type: string; size_bytes: number };
+export type CVRevisionInfo = { id: string; revision: number; created_at: string; original_filename: string; mime_type: string; size_bytes: number; file_id?: string | null; skill_profile_ready?: boolean; skill_count?: number | null };
 export type CVView = { id: string; name: string; is_primary: boolean; created_at: string; latest_revision: CVRevisionInfo | null; revision_count: number; in_use: boolean };
 export type MessageView = {
   id: string;
@@ -79,7 +79,7 @@ export type JobRevisionView = {
   application_status?: 'saved' | 'applied';
 };
 export type JobApplicationStatusView = { job_revision_id: string; application_status: 'saved' | 'applied' };
-export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document';
+export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document' | 'profile_cv' | 'match_jobs';
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 export type SkillCoverage = { required: string[]; matched: string[]; missing: string[]; ratio: number; method: string };
 export type EvaluationResult = { report_markdown: string; score: number | null; skill_coverage?: SkillCoverage | null };

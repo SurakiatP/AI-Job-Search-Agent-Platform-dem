@@ -5,7 +5,7 @@ export const copy = {
     copy: 'คัดลอก', copied: 'คัดลอกแล้ว', copyFailed: 'คัดลอกไม่สำเร็จ กรุณาเลือกข้อความแล้วคัดลอกเอง',
     opaction: 'ไม่สามารถดำเนินการได้ ลองโหลดสถานะใหม่',
     // timeline
-    ops: { evaluate_job: 'ประเมินงาน', draft_documents: 'ร่างเอกสาร', export_document: 'สร้างไฟล์เอกสาร' },
+    ops: { evaluate_job: 'ประเมินงาน', draft_documents: 'ร่างเอกสาร', export_document: 'สร้างไฟล์เอกสาร', profile_cv: 'วิเคราะห์ CV', match_jobs: 'จัดอันดับงานด้วย AI' },
     filters: { all: 'ทั้งหมด', active: 'กำลังทำ', waiting: 'รออนุมัติ', done: 'เสร็จ', failed: 'ล้มเหลว' },
     cols: { op: 'งาน', job: 'ตำแหน่ง', status: 'สถานะ', created: 'เริ่มเมื่อ', duration: 'ใช้เวลา', score: 'คะแนน', session: 'เซสชัน' },
     running: 'กำลังทำงาน', untitled: 'งานไม่มีชื่อ', openSession: 'เปิดเซสชัน', retry: 'ลองใหม่', retryOf: 'ลองใหม่จากงานก่อนหน้า',
@@ -32,7 +32,7 @@ export const copy = {
     tabs: { timeline: 'Task timeline', approvals: 'Approval inbox', agents: 'Connected agents', connect: 'Connect MCP / A2A' },
     copy: 'Copy', copied: 'Copied', copyFailed: 'Could not copy. Select the text and copy it manually.',
     opaction: 'Could not complete the action. Status reloaded.',
-    ops: { evaluate_job: 'Evaluate job', draft_documents: 'Draft documents', export_document: 'Generate file' },
+    ops: { evaluate_job: 'Evaluate job', draft_documents: 'Draft documents', export_document: 'Generate file', profile_cv: 'Analyze CV', match_jobs: 'Rank jobs with AI' },
     filters: { all: 'All', active: 'In progress', waiting: 'Needs approval', done: 'Done', failed: 'Failed' },
     cols: { op: 'Task', job: 'Job', status: 'Status', created: 'Started', duration: 'Duration', score: 'Score', session: 'Session' },
     running: 'Running', untitled: 'Untitled job', openSession: 'Open session', retry: 'Retry', retryOf: 'Retry of an earlier run',

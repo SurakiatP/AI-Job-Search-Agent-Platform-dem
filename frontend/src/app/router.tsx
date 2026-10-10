@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router';
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from '../components/AppShell';
 import type { SidebarProject } from '../components/ProjectSidebar';
@@ -65,6 +65,20 @@ function AppStart() {
   return <AppShell><LoadingState /></AppShell>;
 }
 
+// Landing search teaser lands here: pick the first project and carry the query over.
+function AppSearchStart() {
+  const navigate = useNavigate();
+  const { search } = useLocation();
+  const projects = useResource<Project[]>('/projects');
+  const firstProjectId = projects.data?.[0]?.id;
+  useEffect(() => {
+    if (projects.status !== 'ready') return;
+    navigate(firstProjectId ? `/app/projects/${firstProjectId}/search${search}` : '/app/projects', { replace: true });
+  }, [firstProjectId, navigate, projects.status, search]);
+  if (projects.status === 'error') return <AppShell><ErrorState onRetry={projects.reload} /></AppShell>;
+  return <AppShell><LoadingState /></AppShell>;
+}
+
 function ProjectHome() {
   const { projectId } = useParams();
   return <Navigate to={`/app/projects/${projectId}/overview`} replace />;
@@ -86,7 +100,7 @@ function OwnerGate() {
 export function AppRoutes() {
   return <Routes>
     <Route path="/" element={<LandingPage />} />
-    <Route element={<OwnerGate />}><Route path="/app" element={<AppStart />} />
+    <Route element={<OwnerGate />}><Route path="/app" element={<AppStart />} /><Route path="/app/search" element={<AppSearchStart />} />
     <Route path="/app/settings" element={<AppWorkspace />}><Route index element={<SettingsPage />} /></Route>
     <Route path="/app/projects" element={<AppWorkspace />}><Route index element={<ProjectsPage />} /><Route path="new" element={<NewProjectPage />} /></Route>
     <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="overview" element={<OverviewPage />} /><Route path="console" element={<ConsolePage />} /><Route path="search" element={<SearchPage />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions/:sessionId" element={<SessionPage />} /><Route path="jobs" element={<JobsPage />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /></Route>

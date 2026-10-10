@@ -1,4 +1,4 @@
-from job_search_platform.services.skill_coverage import DICTIONARY_SIZE, compute_skill_coverage
+from job_search_platform.services.skill_coverage import DICTIONARY_SIZE, compute_skill_coverage, extract_skills, match_skills
 
 JOB = "Senior engineer: React, Next.js, TypeScript and PostgreSQL. ภาษาอังกฤษ required."
 
@@ -45,3 +45,17 @@ def test_thai_cv_phrasing_counts_as_evidence():
     cv = "รองรับโหมดมืดและภาษาไทย/อังกฤษ ใส่ใจประสิทธิภาพ และ lazy loading"
     result = compute_skill_coverage(cv, "Fluent English and performance optimization required")
     assert result["matched"] == ["English", "Performance Optimization"]
+
+
+def test_extract_skills_names_only_with_thai_alias():
+    skills = extract_skills("Built ReactJS apps on postgres, เขียน ภาษาอังกฤษได้ and golang. Secret: 0812345678")
+    assert skills == ["React", "Go", "PostgreSQL", "English"]
+    assert extract_skills("") == [] and extract_skills("nothing relevant") == []
+
+
+def test_match_skills_semantics_and_refactor_keeps_coverage_identical():
+    cv = "Built apps with ReactJS and nextjs on postgres. อ่านเขียนภาษาอังกฤษได้"
+    assert match_skills(extract_skills(cv), JOB) == compute_skill_coverage(cv, JOB)
+    assert match_skills(["Python"], "We need Python.") is None
+    result = match_skills([], "Docker and Kubernetes")
+    assert result["matched"] == [] and result["missing"] == ["Docker", "Kubernetes"] and result["ratio"] == 0.0

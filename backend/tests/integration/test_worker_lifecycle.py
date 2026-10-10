@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from types import ModuleType, SimpleNamespace
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from helpers import owner, project, provider_config, revisions, run_request, session, primary_cv
@@ -173,6 +174,21 @@ def test_native_json_wrapped_in_one_markdown_fence_is_accepted() -> None:
     assert drafts[0]["path"] == "cv.md"
     with pytest.raises(ValueError, match="native_response_invalid"):
         executor.parse_evaluation_result('Here you go:\n```json\n{"report_markdown":"Synthetic","score":3.5}\n```')
+
+
+def test_unreadable_manifest_falls_back_to_the_newest_staged_markdown(tmp_path: Path) -> None:
+    executor = import_module("job_search_platform.workers.executor")
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    assert executor.staged_draft_manifest(staging, "Synthetic role", "cover_letter") is None
+    (staging / "old.md").write_text("old", encoding="utf-8")
+    newest = staging / "letter.md"
+    newest.write_text("Dear team", encoding="utf-8")
+    import os
+    os.utime(staging / "old.md", (1, 1))
+    (staging / "link.md").symlink_to(newest)
+    drafts = executor.staged_draft_manifest(staging, "Synthetic role", "application_message")
+    assert drafts == ({"path": "letter.md", "document_type": "application_message", "title": "Synthetic role", "format": "pdf"},)
 
 
 def test_draft_manifest_requires_safe_staging_relative_paths() -> None:
@@ -564,6 +580,75 @@ async def test_completed_evaluation_stores_deterministic_skill_coverage(db_sessi
             "method": "keyword_dictionary_v1",
         }
     assert (await RunService(sessions).get(actor, db_project.id, view.id)).evaluation_result.skill_coverage.ratio == 0.67
+    with sessions() as db:  # the parse also left the CV's skill names (only names) on its revision
+        assert db.get(CVRevision, finished.cv_revision_id).skill_profile == {
+            "skills": ["React", "Python", "PostgreSQL"], "method": "keyword_dictionary_v1"}
+
+
+@pytest.mark.asyncio
+async def test_profile_cv_run_stores_skill_names_only_without_provider(db_session, tmp_path: Path) -> None:
+    db_project = project(db_session, "Synthetic profile")
+    actor = owner(db_session)
+    body = b"Synthetic CV: ReactJS, Python. Private phone 0812345678 and secret-marker-xyz."
+    stored = StoredFile(
+        project_id=db_project.id, kind="cv_original", publication_state="published",
+        storage_key="synthetic/profile-cv.txt", checksum_sha256=hashlib.sha256(body).hexdigest(),
+        size_bytes=len(body), mime_type="text/plain", display_name="synthetic-cv.txt",
+    )
+    db_session.add(stored)
+    db_session.flush()
+    cv = primary_cv(db_session, db_project.id)
+    db_session.add(CVRevision(project_id=db_project.id, cv_id=cv.id, revision=1, file_id=stored.id))
+    db_session.commit()  # deliberately no provider configuration and no session
+
+    sessions = sessionmaker(bind=db_session.get_bind(), expire_on_commit=False)
+    view = await RunService(sessions).submit_profile(actor, db_project.id, cv.id)
+    assert view.operation == "profile_cv" and view.session_id is None
+    queue = PostgresRunQueue(sessions)
+    lease_owner = f"executor-{uuid.uuid4()}"
+    claimed = queue.claim_next(lease_owner)
+    assert claimed is not None and claimed.id == view.id
+
+    class FakeRuntime:
+        instance_id = uuid.uuid4()
+
+        def __init__(self) -> None:
+            self.projects: dict = {}
+
+        async def start_project(self, project_id, workspace):
+            self.projects[project_id] = SimpleNamespace(
+                process=SimpleNamespace(pid=os.getpid(), returncode=0), workspace=workspace)
+            return self.projects[project_id]
+
+        async def parse_input(self, _project_id, _path):
+            return SimpleNamespace(text=body.decode())
+
+        async def submit(self, *_args, **_kwargs) -> None:
+            raise AssertionError("profile_cv must not call the model")
+
+        async def stop(self, project_id) -> None:
+            return None
+
+        async def close(self, project_id) -> None:
+            self.projects.pop(project_id, None)
+
+    class SyntheticObjectStore:
+        async def get(self, _key: str) -> bytes:
+            return body
+
+    class NoSettings:
+        async def trusted_provider(self, *_args, **_kwargs):
+            raise AssertionError("profile_cv needs no provider")
+
+    executor = RunExecutor(sessions, queue, FakeRuntime(), NoSettings(), object(), SyntheticObjectStore(),
+                           workspace_root=tmp_path)
+    await executor.execute(claimed, lease_owner)
+    with sessions() as db:
+        assert db.get(Run, view.id).status == "completed"
+        profile = db.scalar(select(CVRevision.skill_profile).where(CVRevision.cv_id == cv.id))
+        assert profile == {"skills": ["React", "Python"], "method": "keyword_dictionary_v1"}
+        assert "secret-marker-xyz" not in json.dumps(profile) and "0812345678" not in json.dumps(profile)
+    assert await RunService(sessions).submit_profile(actor, db_project.id, cv.id) is None
 
 
 @pytest.mark.asyncio

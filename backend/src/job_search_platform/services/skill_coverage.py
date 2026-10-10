@@ -220,27 +220,45 @@ _ENTRIES = _build()
 DICTIONARY_SIZE = len(_ENTRIES)
 
 
-def _first_position(entry: tuple[str, re.Pattern[str] | None, tuple[str, ...]], text: str) -> int | None:
+def _first_span(entry: tuple[str, re.Pattern[str] | None, tuple[str, ...]], text: str) -> tuple[int, int] | None:
     _, pattern, thai = entry
     found = []
     if pattern is not None and (match := pattern.search(text)):
-        found.append(match.start())
-    found.extend(pos for alias in thai if (pos := text.find(alias)) >= 0)
+        found.append((match.start(), match.end()))
+    found.extend((pos, pos + len(alias)) for alias in thai if (pos := text.find(alias)) >= 0)
     return min(found) if found else None
 
 
-def compute_skill_coverage(cv_text: str, job_text: str) -> dict | None:
-    """Return required/matched/missing skills by dictionary lookup, or None when the job names fewer than two."""
-    job, cv = job_text.lower(), cv_text.lower()
+def _first_position(entry: tuple[str, re.Pattern[str] | None, tuple[str, ...]], text: str) -> int | None:
+    span = _first_span(entry, text)
+    return None if span is None else span[0]
+
+
+def skill_mentions(text: str) -> list[tuple[int, str, str]]:
+    """(position, canonical name, surface as written) for each dictionary skill in the text, in text order."""
+    low = text.lower()
+    source = text if len(low) == len(text) else low  # surfaces come from the original casing when lengths agree
+    return sorted((span[0], entry[0], source[span[0]:span[1]]) for entry in _ENTRIES if (span := _first_span(entry, low)))
+
+
+def extract_skills(text: str) -> list[str]:
+    """Canonical dictionary skills named in the text, in dictionary order (names only)."""
+    low = text.lower()
+    return [entry[0] for entry in _ENTRIES if _first_position(entry, low) is not None]
+
+
+def match_skills(cv_skills: list[str], job_text: str) -> dict | None:
+    """Required/matched/missing skills of a job against a CV's extracted skills; None when the job names fewer than two."""
+    job = job_text.lower()
     required = sorted(
-        ((pos, entry[0], entry) for entry in _ENTRIES if (pos := _first_position(entry, job)) is not None),
-        key=lambda item: (item[0], item[1]),
+        ((pos, entry[0]) for entry in _ENTRIES if (pos := _first_position(entry, job)) is not None)
     )
     if len(required) < 2:
         return None
-    names = [name for _, name, _ in required]
-    matched = [name for _, name, entry in required if _first_position(entry, cv) is not None]
-    missing = [name for name in names if name not in matched]
+    have = set(cv_skills)
+    names = [name for _, name in required]
+    matched = [name for name in names if name in have]
+    missing = [name for name in names if name not in have]
     return {
         "required": names[:MAX_ITEMS],
         "matched": matched[:MAX_ITEMS],
@@ -248,3 +266,8 @@ def compute_skill_coverage(cv_text: str, job_text: str) -> dict | None:
         "ratio": round(len(matched) / len(names), 2),
         "method": METHOD,
     }
+
+
+def compute_skill_coverage(cv_text: str, job_text: str) -> dict | None:
+    """Same as match_skills over the skills found in the CV text."""
+    return match_skills(extract_skills(cv_text), job_text)

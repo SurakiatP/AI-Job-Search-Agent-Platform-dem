@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/card';
 import { landingCopy } from './copy';
 import { AgentMini, HeroCards, LocalMini } from './LandingPreview';
 import { Reveal } from './Reveal';
+import { SearchTeaser } from './SearchTeaser';
 import { Tour } from './Tour';
 import './landing.css';
 
@@ -35,6 +36,8 @@ export function LandingPage() {
           <p className="mt-12 hidden text-xs text-muted-foreground lg:block">{c.caption}</p>
         </div>
       </section>
+
+      <SearchTeaser locale={locale} className={wrap} />
 
       <Reveal className={wrap}>
         <p className="mx-auto max-w-4xl text-3xl font-semibold leading-[1.5] not-italic sm:text-4xl lg:text-5xl lg:leading-[1.5]">

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { CvPreviewButton } from '@/components/CvPreview';
 import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,7 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
         : <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
           <Field label={c.cv}><select className={selectClass} value={cv?.id ?? ''} onChange={event => setCvPick(event.target.value)} disabled={busy}>
             {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}</option>)}</select></Field>
+          {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="ghost" className="-mt-2 justify-self-start" />}
           <fieldset className="grid gap-3" disabled={busy}>
             <legend className="mb-1.5 text-sm font-medium">{c.job}</legend>
             {saved.length > 0 && <div className="flex flex-wrap gap-2" role="group">

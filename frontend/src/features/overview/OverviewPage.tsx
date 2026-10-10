@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router';
+import { CvPreviewButton } from '@/components/CvPreview';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import { useResource } from '../projects/useResource';
 import { JobRemoveMenu } from '../jobs/JobRemoveMenu';
 import { latestEvaluations } from './latestEvaluations';
 
-type CvRevision = { id: string; revision: number; original_filename?: string; mime_type?: string; size_bytes?: number; created_at?: string };
+type CvRevision = { id: string; revision: number; original_filename?: string; mime_type?: string; size_bytes?: number; created_at?: string; file_id?: string | null };
 
 const copy = {
   th: {
@@ -126,7 +127,8 @@ export function OverviewPage() {
             {latestCv ? <div className="grid gap-3">
               <div><p className="break-words font-medium">{latestCv.original_filename ?? `${c.revision} ${latestCv.revision}`}</p>
                 <p className="text-sm text-muted-foreground">{c.revision} {latestCv.revision}{latestCv.created_at ? ` · ${date.format(new Date(latestCv.created_at))}` : ''}{latestCv.size_bytes ? ` · ${formatSize(latestCv.size_bytes)}` : ''}</p></div>
-              <Button asChild variant="outline"><Link to={`${base}/profile`}>{c.updateCv}</Link></Button>
+              <div className="grid gap-2 sm:grid-cols-2"><CvPreviewButton projectId={projectId} fileId={latestCv.file_id} name={latestCv.original_filename ?? c.cvTitle} revision={latestCv.revision} filename={latestCv.original_filename} mimeType={latestCv.mime_type} size="default" />
+              <Button asChild variant="outline"><Link to={`${base}/profile`}>{c.updateCv}</Link></Button></div>
             </div> : <Empty title={c.noCv} next={c.noCvNext}><Button asChild size="sm"><Link to={`${base}/profile`}>{c.addCv}</Link></Button></Empty>}
           </CardContent>
         </Card>

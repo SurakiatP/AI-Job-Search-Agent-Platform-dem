@@ -1,69 +1,120 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Building2, ExternalLink, Loader2, MapPin, Search } from 'lucide-react';
+import { AlertTriangle, Bookmark, BookmarkCheck, Building2, ExternalLink, EyeOff, Loader2, MapPin, RotateCcw, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { ItemMenu } from '@/components/ItemMenu';
 import { apiRequest } from '../../lib/api';
+import { ApiError, type CVView } from '../../lib/api-types';
+import { CvPreviewButton } from '@/components/CvPreview';
 import { NewSessionButton } from '../sessions/NewSessionDialog';
-import { safeHttpUrl, useResource } from '../projects/useResource';
+import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 import { Markdown } from '@/components/Markdown';
 import { PageBack } from '@/components/PageBack';
 import { sampleJobs } from './sampleJobs';
+import { highlightSegments } from './highlight';
+import { categoryLabel } from './categories';
+import { ADV_KEYS, AdvancedFilters, Presets, splitList, type Facet } from './AdvancedFilters';
 
 type JobSearchItem = {
   slug: string; title: string; company: string | null; location: string | null; cities: string[];
   work_mode: string | null; skills: string[]; category: string | null; posted_at: string | null;
   age_days: number | null; stale: boolean; source_url: string | null; description_markdown: string;
+  match?: Match | null; ai_match?: AiMatch | null; highlight?: Highlight;
 };
-type Facet = { value: string; count: number };
-type Facets = { total: number; categories: Facet[]; cities: Facet[] };
-type Page = { items: JobSearchItem[]; total: number; limit: number; offset: number };
+type AiMatch = {
+  fit_percent: number; band: 1 | 2 | 3 | 4 | 5; uncertain: boolean; seniority: 'far_below' | 'below' | 'meets' | 'above';
+  hard_blocker: boolean; skills_evidenced: string[]; must_missing: string[]; nice_missing: string[];
+};
+type Highlight = { matched: Record<string, string>; missing: Record<string, string> };
+type AiState = { status: 'ready' | 'partial' | 'missing' | 'unavailable'; categories: string[] | null; scored: number };
+type HiddenItem = { id: string; kind: 'job' | 'company'; label: string; created_at?: string };
+type Match = { score_percent: number; matched: string[]; missing: string[]; required_count: number };
+type Facets = { total: number; categories: Facet[]; cities: Facet[]; seniority?: Facet[]; employment_type?: Facet[]; company_type?: Facet[]; skills?: Facet[]; thai_postings?: number; new_7d?: number };
+type Page = { items: JobSearchItem[]; total: number; limit?: number; pool?: number; offset: number; ai?: AiState; hidden_count?: number };
 
 const PAGE_SIZE = 20;
-const FILTER_KEYS = ['q', 'cities', 'work_mode', 'posted_within_days', 'category'] as const;
+const POOL_SIZE = 100;
+// Best match first, then newest; postings with too few recognisable skills (match null) go last.
+const byMatch = (a: JobSearchItem, b: JobSearchItem) =>
+  Number(!a.ai_match) - Number(!b.ai_match) || (b.ai_match?.fit_percent ?? 0) - (a.ai_match?.fit_percent ?? 0) || Number(!a.match) - Number(!b.match) || (b.match?.score_percent ?? 0) - (a.match?.score_percent ?? 0) || (a.age_days ?? 1e6) - (b.age_days ?? 1e6);
+const sleep = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
+  const timer = setTimeout(resolve, ms);
+  signal.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('aborted', 'AbortError')); }, { once: true });
+});
+const RUN_DONE = ['completed', 'failed', 'cancelled', 'interrupted'];
+const FILTER_KEYS = ['q', 'cities', 'work_mode', 'posted_within_days', 'category', ...ADV_KEYS] as const;
 
 const copy = {
   th: {
-    title: 'ค้นหางาน', subtitle: (n: string) => `งานในประเทศไทย ${n} ตำแหน่ง`,
+    title: 'ค้นหางาน', subtitle: (n: string) => `งานในประเทศไทย ${n} ตำแหน่ง`, stats: (t: string, n: string, th: string) => `งานในไทย ${t} · ใหม่ 7 วัน ${n} · ประกาศภาษาไทย ${th}`,
     searchLabel: 'ค้นหาตำแหน่ง บริษัท หรือทักษะ', searchPlaceholder: 'เช่น Frontend, Data analyst หรือชื่อบริษัท',
     mode: 'รูปแบบการทำงาน', anyMode: 'ทุกแบบ', posted: 'ช่วงเวลาที่ลงประกาศ', anyPosted: 'ทุกช่วง',
     days: (n: number) => `${n} วันที่ผ่านมา`, city: 'จังหวัด/เมือง', anyCity: 'ทุกเมือง', categories: 'หมวดงาน',
     remote: 'ทำงานทางไกล', hybrid: 'ไฮบริด', onsite: 'ทำงานที่ออฟฟิศ',
     found: (n: string) => `พบ ${n} ตำแหน่ง`, age: (n: number) => (n <= 0 ? 'ลงประกาศวันนี้' : `ลงประกาศ ${n} วันที่แล้ว`),
-    stale: 'ประกาศเก่า · อาจปิดรับแล้ว', evaluate: 'ประเมินงานนี้', saving: 'กำลังบันทึก…',
+    stale: 'ประกาศเก่า · อาจปิดรับแล้ว', evaluate: 'ประเมินงานนี้', save: 'บันทึกงาน', saved: 'บันทึกแล้ว', saving: 'กำลังบันทึก…',
     original: 'เปิดประกาศต้นฉบับ', saveError: 'บันทึกงานไม่สำเร็จ ลองอีกครั้ง', loadMore: 'โหลดเพิ่ม', loading: 'กำลังโหลด…',
     none: 'ไม่พบตำแหน่งที่ตรงกับตัวกรอง', noneNext: 'ลองเปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูทั้งหมด', clear: 'ล้างตัวกรอง',
     errTitle: 'ไม่สามารถเชื่อมต่อแหล่งข้อมูลงานได้', errBody: 'แหล่งข้อมูลอาจไม่พร้อมใช้งานชั่วคราว ลองใหม่อีกครั้ง หรือดูข้อมูลตัวอย่างเพื่อสำรวจหน้านี้',
     retry: 'ลองอีกครั้ง', viewSample: 'ดูข้อมูลตัวอย่าง', backLive: 'กลับไปข้อมูลจริง',
     sampleBanner: 'ข้อมูลตัวอย่าง', sampleBody: 'ข้อมูลทั้งหมดในมุมมองนี้เป็นข้อมูลสมมติ ไม่ใช่ประกาศงานจริง',
     description: 'รายละเอียดงาน', credit: 'แหล่งข้อมูลงานโอเพนซอร์ส (MIT)', untitled: 'ไม่ระบุบริษัท',
-    cats: { frontend: 'Frontend', backend: 'Backend', fullstack: 'Fullstack', design: 'ดีไซน์', devops: 'DevOps', data_analytics: 'วิเคราะห์ข้อมูล', finance: 'การเงิน' } as Record<string, string>,
+    modeSearch: 'ค้นหาทั่วไป', modeMatch: 'Smart match', modeLabel: 'โหมดการค้นหา',
+    cvLabel: 'CV ที่ใช้จับคู่', noCv: 'ยังไม่มี CV ในโปรเจกต์นี้', noCvBody: 'เพิ่ม CV ก่อน เพื่อให้ระบบเทียบทักษะกับประกาศงานได้', addCv: 'ไปที่หน้า CV',
+    analyzing: 'กำลังวิเคราะห์ CV…', analyzeError: 'วิเคราะห์ CV ไม่สำเร็จ ลองอีกครั้ง',
+    poolNote: (n: string) => `จัดอันดับจาก ${n} ตำแหน่งล่าสุดที่ตรงกับตัวกรอง`,
+    matchBadge: (p: number, m: number, n: number) => `ตรงกับ CV ${p}% · ${m}/${n} ทักษะ`, noSkills: 'ข้อมูลทักษะไม่พอ',
+    matchedSkills: 'ทักษะที่ตรงกับ CV', missingSkills: 'ทักษะที่ยังขาด', noneMatched: 'ไม่มี', matchNote: 'คำนวณจากคำสำคัญในประกาศและ CV โดยไม่ใช้ AI',
+    sampleMatch: 'Smart match ใช้กับข้อมูลตัวอย่างไม่ได้ จึงแสดงรายการโดยไม่มีคะแนน', loadMorePool: 'โหลดเพิ่ม',
+    bands: { 5: 'เหมาะมาก', 4: 'เหมาะ', 3: 'พอได้', 2: 'น้อย', 1: 'ไม่เหมาะ' } as Record<number, string>, ats: (p: number) => `ATS ${p}%`,
+    unsure: 'ไม่แน่ใจ', blocker: 'ขาดคุณสมบัติบังคับ', seniorityLabel: 'ระดับประสบการณ์', seniority: { far_below: 'ต่ำกว่ามาก', below: 'ต่ำกว่าเล็กน้อย', meets: 'ตรง', above: 'สูงกว่า' } as Record<string, string>,
+    evidenced: 'มีหลักฐานใน CV', mustMissing: 'ขาด (บังคับ)', niceMissing: 'ขาด (มีก็ดี)', inCv: '(มีใน CV)', notInCv: '(ขาด)',
+    ranking: (n: number, t: number) => `กำลังจัดอันดับด้วย AI… ${n}/${t}`, finding: 'กำลังหางานที่เหมาะกับ CV…', rankFailed: 'จัดอันดับด้วย AI ไม่สำเร็จ',
+    autoCats: 'หมวดที่ AI เลือกจาก CV:', unavailable: 'เปิดการจัดอันดับด้วย AI โดยตั้งผู้ให้บริการเป็น OpenRouter', toSettings: 'ไปที่การตั้งค่า',
+    privacy: 'ระบบส่งเนื้อหา CV ไปยัง OpenRouter/TypeSafe เพื่อจัดอันดับ', menuLabel: 'ตัวเลือกของงานนี้', hideJob: 'ซ่อนงานนี้', hideCompany: 'ซ่อนบริษัทนี้',
+    hiddenDone: 'ซ่อนแล้ว', undo: 'เลิกทำ', hideFailed: 'ซ่อนไม่สำเร็จ ลองอีกครั้ง', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง',
+    hiddenLink: (n: number) => `ที่ซ่อนไว้ (${n})`, hiddenTitle: 'งานและบริษัทที่ซ่อนไว้', hiddenEmpty: 'ไม่มีรายการที่ซ่อนไว้', kindWord: { job: 'งาน', company: 'บริษัท' } as Record<string, string>, unhide: 'เลิกซ่อน',
   },
   en: {
-    title: 'Job search', subtitle: (n: string) => `${n} jobs in Thailand`,
+    title: 'Job search', subtitle: (n: string) => `${n} jobs in Thailand`, stats: (t: string, n: string, th: string) => `Jobs in Thailand ${t} · New in 7 days ${n} · Thai postings ${th}`,
     searchLabel: 'Search title, company or skill', searchPlaceholder: 'e.g. Frontend, Data analyst or a company',
     mode: 'Work mode', anyMode: 'Any', posted: 'Posted within', anyPosted: 'Any time',
     days: (n: number) => `${n} days`, city: 'City', anyCity: 'All cities', categories: 'Categories',
     remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site',
     found: (n: string) => `${n} ${n === '1' ? 'job' : 'jobs'} found`, age: (n: number) => (n <= 0 ? 'Posted today' : `${n} ${n === 1 ? 'day' : 'days'} ago`),
-    stale: 'Stale listing', evaluate: 'Evaluate this job', saving: 'Saving…',
+    stale: 'Stale listing', evaluate: 'Evaluate this job', save: 'Save job', saved: 'Saved', saving: 'Saving…',
     original: 'Open original posting', saveError: 'Could not save this job. Try again.', loadMore: 'Load more', loading: 'Loading…',
     none: 'No jobs match these filters', noneNext: 'Change the search or clear the filters to see everything.', clear: 'Clear filters',
     errTitle: "Couldn't reach the job source", errBody: 'The job source may be temporarily unavailable. Try again, or view sample data to explore this page.',
     retry: 'Retry', viewSample: 'View sample data', backLive: 'Back to live data',
     sampleBanner: 'Sample', sampleBody: 'Everything in this view is fictional sample data, not real postings.',
     description: 'Job description', credit: 'Open-source job data source (MIT)', untitled: 'Company not listed',
-    cats: { frontend: 'Frontend', backend: 'Backend', fullstack: 'Fullstack', design: 'Design', devops: 'DevOps', data_analytics: 'Data analytics', finance: 'Finance' } as Record<string, string>,
+    modeSearch: 'Search', modeMatch: 'Smart match', modeLabel: 'Search mode',
+    cvLabel: 'CV to match against', noCv: 'This project has no CV yet', noCvBody: 'Add a CV first so skills can be compared with each posting.', addCv: 'Go to the CV page',
+    analyzing: 'Analyzing your CV…', analyzeError: 'Could not analyze the CV. Try again.',
+    poolNote: (n: string) => `Ranked from the ${n} latest jobs matching your filters`,
+    matchBadge: (p: number, m: number, n: number) => `${p}% CV match · ${m}/${n} skills`, noSkills: 'Not enough skill data',
+    matchedSkills: 'Skills matching your CV', missingSkills: 'Skills missing from your CV', noneMatched: 'None', matchNote: 'Calculated from keywords in the posting and your CV, without AI',
+    sampleMatch: 'Smart match does not work on sample data, so jobs are shown without scores', loadMorePool: 'Load more',
+    bands: { 5: 'Great fit', 4: 'Good fit', 3: 'Fair', 2: 'Weak', 1: 'Poor fit' } as Record<number, string>, ats: (p: number) => `ATS ${p}%`,
+    unsure: 'Unsure', blocker: 'Missing a must-have', seniorityLabel: 'Seniority', seniority: { far_below: 'Well below', below: 'Slightly below', meets: 'Meets', above: 'Above' } as Record<string, string>,
+    evidenced: 'Evidenced in your CV', mustMissing: 'Missing (must-have)', niceMissing: 'Missing (nice-to-have)', inCv: '(in your CV)', notInCv: '(missing)',
+    ranking: (n: number, t: number) => `Ranking with AI… ${n}/${t}`, finding: 'Finding jobs that fit this CV…', rankFailed: 'AI ranking failed',
+    autoCats: 'Categories picked from the CV:', unavailable: 'Turn on AI ranking by setting the provider to OpenRouter', toSettings: 'Open settings',
+    privacy: 'Your CV text is sent to OpenRouter/TypeSafe for ranking', menuLabel: 'Options for this job', hideJob: 'Hide this job', hideCompany: 'Hide this company',
+    hiddenDone: 'Hidden', undo: 'Undo', hideFailed: 'Could not hide. Try again.', undoFailed: 'Could not restore. Try again.',
+    hiddenLink: (n: number) => `Hidden (${n})`, hiddenTitle: 'Hidden jobs and companies', hiddenEmpty: 'Nothing is hidden', kindWord: { job: 'Job', company: 'Company' } as Record<string, string>, unhide: 'Unhide',
   },
 };
 type Copy = typeof copy.th;
 
-const humanize = (slug: string) => { const s = slug.replace(/[_-]+/g, ' ').trim(); return s.charAt(0).toUpperCase() + s.slice(1); };
 
 const sampleItems: JobSearchItem[] = sampleJobs.map(j => ({
   slug: j.id, title: j.title, company: j.company, location: j.province, cities: [j.province], work_mode: j.remote,
@@ -84,7 +135,67 @@ function useWide() {
 
 const selectClass = 'min-h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
-function JobDetail({ job, c, projectId }: { job: JobSearchItem; c: Copy; projectId: string }) {
+const matchVariant = (p: number) => (p >= 70 ? 'success' : p >= 40 ? 'warning' : 'secondary') as 'success' | 'warning' | 'secondary';
+
+function MatchBadge({ match, c, ats = false }: { match: Match | null | undefined; c: Copy; ats?: boolean }) {
+  if (!match) return <Badge variant="secondary">{c.noSkills}</Badge>;
+  if (ats) return <Badge variant="outline">{c.ats(match.score_percent)}</Badge>;
+  return <Badge variant={matchVariant(match.score_percent)}>{c.matchBadge(match.score_percent, match.matched.length, match.required_count)}</Badge>;
+}
+
+const bandVariant = { 5: 'success', 4: 'success', 3: 'warning', 2: 'secondary', 1: 'outline' } as const;
+
+function BandBadge({ ai, c }: { ai: AiMatch; c: Copy }) {
+  return <Badge variant={bandVariant[ai.band]}>{c.bands[ai.band]} · {ai.fit_percent}%</Badge>;
+}
+
+function Chips({ title, items, variant, c }: { title: string; items: string[]; variant: 'success' | 'outline' | 'destructive'; c: Copy }) {
+  return <div className="grid gap-1.5"><h3 className="text-sm font-semibold">{title}</h3>
+    <div className="flex flex-wrap gap-1.5">{items.length ? items.map(s => <Badge key={s} variant={variant === 'destructive' ? 'outline' : variant} className={`break-words ${variant === 'destructive' ? 'border-destructive text-destructive' : ''}`}>{s}</Badge>) : <span className="text-sm text-muted-foreground">{c.noneMatched}</span>}</div></div>;
+}
+
+function MatchSummary({ job, c }: { job: JobSearchItem; c: Copy }) {
+  const { match, ai_match: ai } = job;
+  return <div className="grid gap-3 rounded-lg border bg-muted/40 p-4">
+    <div className="flex flex-wrap gap-2">{ai && <BandBadge ai={ai} c={c} />}<MatchBadge match={match} c={c} ats={Boolean(ai)} /></div>
+    {ai ? <>
+      <p className="text-sm"><span className="text-muted-foreground">{c.seniorityLabel}: </span>{c.seniority[ai.seniority] ?? ai.seniority}</p>
+      <Chips title={c.evidenced} items={ai.skills_evidenced} variant="success" c={c} />
+      <Chips title={c.mustMissing} items={ai.must_missing} variant="destructive" c={c} />
+      <Chips title={c.niceMissing} items={ai.nice_missing} variant="outline" c={c} />
+    </> : match && <>
+      <Chips title={c.matchedSkills} items={match.matched} variant="success" c={c} />
+      <Chips title={c.missingSkills} items={match.missing} variant="outline" c={c} />
+    </>}
+    {!ai && <p className="text-xs text-muted-foreground">{c.matchNote}</p>}
+  </div>;
+}
+
+type SavedJob = { id: string; title: string; company?: string | null; source_url?: string | null };
+
+// Saves the posting to this project's saved jobs; a posting already saved (same link, or same title and company) links to it instead.
+function SaveJobButton({ job, c, projectId }: { job: JobSearchItem; c: Copy; projectId: string }) {
+  const saved = useResource<SavedJob[]>(`/projects/${projectId}/jobs`);
+  const [state, setState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const source = safeHttpUrl(job.source_url);
+  const match = (saved.data ?? []).find(item => (source && item.source_url === source) || (item.title === job.title && (item.company ?? '') === (job.company ?? '')));
+  if (match) return <Button asChild variant="outline" className="h-auto whitespace-normal text-left"><Link to={`/app/projects/${projectId}/jobs/${match.id}`}><BookmarkCheck className="size-4 text-primary" aria-hidden="true" />{c.saved}</Link></Button>;
+  async function save() {
+    setState('saving');
+    try {
+      await sendJson(`/projects/${projectId}/jobs`, 'POST', { title: job.title.slice(0, 300), company: job.company?.slice(0, 300) || null, source_url: source ?? null, description: job.description_markdown.slice(0, 50000) || job.title });
+      setState('idle'); saved.reload();
+    } catch { setState('error'); }
+  }
+  return <>
+    <Button type="button" variant="outline" className="h-auto whitespace-normal text-left" disabled={state === 'saving' || saved.status === 'loading'} onClick={() => void save()}>
+      {state === 'saving' ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Bookmark className="size-4" aria-hidden="true" />}{state === 'saving' ? c.saving : c.save}
+    </Button>
+    {state === 'error' && <p role="alert" className="basis-full text-sm text-destructive">{c.saveError}</p>}
+  </>;
+}
+
+function JobDetail({ job, c, projectId, scored }: { job: JobSearchItem; c: Copy; projectId: string; scored: boolean }) {
   const source = safeHttpUrl(job.source_url);
   const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
   return <div className="grid gap-4">
@@ -93,6 +204,7 @@ function JobDetail({ job, c, projectId }: { job: JobSearchItem; c: Copy; project
       <p className="mt-1 flex items-start gap-1 break-words text-sm text-muted-foreground"><Building2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{job.company ?? c.untitled}</span></p>
       {job.location && <p className="flex items-start gap-1 break-words text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{job.location}</span></p>}
     </div>
+    {scored && <MatchSummary job={job} c={c} />}
     <div className="flex flex-wrap gap-2">
       {modeLabel && <Badge variant="secondary">{modeLabel}</Badge>}
       {job.age_days != null && <Badge variant="outline">{c.age(job.age_days)}</Badge>}
@@ -103,13 +215,19 @@ function JobDetail({ job, c, projectId }: { job: JobSearchItem; c: Copy; project
       <NewSessionButton projectId={projectId} className="h-auto whitespace-normal text-left" job={{ inline: { title: job.title, company: job.company, description: job.description_markdown.slice(0, 50000), source_url: safeHttpUrl(job.source_url) } }}>
         {c.evaluate}
       </NewSessionButton>
+      <SaveJobButton key={job.slug} job={job} c={c} projectId={projectId} />
       {source && <Button asChild variant="outline" className="h-auto whitespace-normal text-left">
         <a href={source} target="_blank" rel="noreferrer">{c.original}<ExternalLink className="size-4" aria-hidden="true" /></a>
       </Button>}
     </div>
     <div className="grid gap-2 border-t pt-4">
       <h3 className="text-sm font-semibold">{c.description}</h3>
-      <Markdown className="text-sm">{job.description_markdown}</Markdown>
+      {job.highlight && (Object.keys(job.highlight.matched).length || Object.keys(job.highlight.missing).length)
+        ? <div className="grid gap-3 break-words text-sm leading-relaxed">{job.description_markdown.split(/\n{2,}/).map((para, i) => <p key={i} className="whitespace-pre-wrap">
+          {highlightSegments(para, job.highlight!).map((seg, j) => seg.kind === 'plain' ? seg.text
+            : <mark key={j} className={seg.kind === 'matched' ? 'rounded bg-success/15 px-0.5 text-success' : 'rounded bg-destructive/12 px-0.5 text-destructive'}>{seg.text}<span className="sr-only"> {seg.kind === 'matched' ? c.inCv : c.notInCv}</span></mark>)}
+        </p>)}</div>
+        : <Markdown className="text-sm">{job.description_markdown}</Markdown>}
     </div>
   </div>;
 }
@@ -128,12 +246,21 @@ export function SearchPage() {
   const mode = params.get('work_mode') ?? '';
   const posted = params.get('posted_within_days') ?? '';
   const category = params.get('category') ?? '';
-  const filtered = Boolean(q || city || mode || posted || category);
+  const advKey = ADV_KEYS.map(k => params.get(k) ?? '').join('|');
+  const filtered = Boolean(q || city || mode || posted || category || advKey.replace(/\|/g, ''));
+  const get = (k: string) => params.get(k) ?? '';
+  const smart = params.get('mode') === 'match';
+  const setSearchMode = (next: 'search' | 'match') => setParams(prev => {
+    const out = new URLSearchParams(prev);
+    if (next === 'match') out.set('mode', 'match'); else out.delete('mode');
+    return out;
+  }, { replace: true });
 
-  const setFilter = useCallback((key: typeof FILTER_KEYS[number], value: string) => {
-    setParams(prev => { const next = new URLSearchParams(prev); if (value) next.set(key, value); else next.delete(key); return next; }, { replace: true });
+  const setMany = useCallback((changes: Record<string, string>) => {
+    setParams(prev => { const next = new URLSearchParams(prev); for (const [key, value] of Object.entries(changes)) { if (value) next.set(key, value); else next.delete(key); } return next; }, { replace: true });
   }, [setParams]);
-  const clear = () => { setQInput(''); setParams(new URLSearchParams(), { replace: true }); };
+  const setFilter = useCallback((key: typeof FILTER_KEYS[number], value: string) => setMany({ [key]: value }), [setMany]);
+  const clear = () => { setQInput(''); setParams(smart ? new URLSearchParams({ mode: 'match' }) : new URLSearchParams(), { replace: true }); };
 
   // Debounced search box -> URL.
   const [qInput, setQInput] = useState(q);
@@ -147,45 +274,153 @@ export function SearchPage() {
   const [sample, setSample] = useState(false);
   const facetsRes = useResource<Facets>(sample ? null : `/projects/${projectId}/job-search/facets`);
 
-  const filterKey = useMemo(() => new URLSearchParams({ q, cities: city, work_mode: mode, posted_within_days: posted, category }).toString(), [q, city, mode, posted, category]);
+  const smartActive = smart && !sample;
+  const cvs = useResource<CVView[]>(smartActive ? `/projects/${projectId}/cvs` : null);
+  const usable = (cvs.data ?? []).filter(item => item.latest_revision);
+  const [cvPick, setCvPick] = useState('');
+  const cv = usable.find(item => item.id === cvPick) ?? usable.find(item => item.is_primary) ?? usable[0];
+  const cvId = cv?.id ?? '';
+  const revisionId = cv?.latest_revision?.id ?? '';
+  const needsCv = smartActive && cvs.status === 'ready' && usable.length === 0;
+  const [profiling, setProfiling] = useState(false);
+  const [profileFailed, setProfileFailed] = useState(false);
+  const profiled = useRef('');
+  const [nextOffset, setNextOffset] = useState(POOL_SIZE);
+
+  const filterKey = useMemo(() => new URLSearchParams({ q, cities: city, work_mode: mode, posted_within_days: posted, category, adv: advKey, smart: smartActive ? revisionId : '' }).toString(), [q, city, mode, posted, category, advKey, smartActive, revisionId]);
   const [items, setItems] = useState<JobSearchItem[]>([]);
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState(false);
   const [version, setVersion] = useState(0);
+  const [ai, setAi] = useState<AiState | null>(null);
+  const [hiddenCount, setHiddenCount] = useState(0);
+  const [ranking, setRanking] = useState(false);
+  const [rankFailed, setRankFailed] = useState(false);
+  const [undo, setUndo] = useState<{ id: string; message: string; retry: boolean } | null>(null);
+  const [hiddenOpen, setHiddenOpen] = useState(false);
+  const hiddenRes = useResource<{ items: HiddenItem[] }>(hiddenOpen ? `/projects/${projectId}/job-search/hidden` : null);
   const keyRef = useRef(filterKey);
   keyRef.current = filterKey;
 
   const buildPath = useCallback((offset: number) => {
     const search = new URLSearchParams();
+    if (smartActive) { search.set('cv_revision_id', revisionId); search.set('pool', String(POOL_SIZE)); }
     if (q) search.set('q', q);
     if (mode) search.set('work_mode', mode);
     if (posted) search.set('posted_within_days', posted);
     if (category) search.set('category', category);
-    search.set('limit', String(PAGE_SIZE)); search.set('offset', String(offset));
-    return `/projects/${projectId}/job-search?${search.toString()}`;
-  }, [projectId, q, city, mode, posted, category]);
+    if (smartActive && city) search.set('cities', city);
+    ADV_KEYS.forEach((key, i) => { const v = advKey.split('|')[i]; if (v) search.set(key, v); });
+    if (!smartActive) search.set('limit', String(PAGE_SIZE));
+    search.set('offset', String(offset));
+    return `/projects/${projectId}/job-search${smartActive ? '/match' : ''}?${search.toString()}`;
+  }, [projectId, q, city, mode, posted, category, advKey, smartActive, revisionId]);
+
+  // Extracts the CV's skill names in the sandbox (no AI), then waits for the run to finish.
+  async function profileCv(id: string, signal: AbortSignal) {
+    const first = await apiRequest<{ status?: string; id?: string }>(`/projects/${projectId}/cvs/${id}/profile`, { method: 'POST', signal });
+    if (first.status === 'ready' || !first.id) return;
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await sleep(1500, signal);
+      const run = await apiRequest<{ status: string }>(`/projects/${projectId}/runs/${first.id}`, { signal });
+      if (run.status === 'completed') return;
+      if (['failed', 'cancelled', 'interrupted'].includes(run.status)) throw new Error('profile_failed');
+    }
+    throw new Error('profile_timeout');
+  }
+
+  // Starts the AI scoring run, then polls the list and run until it ends (or ~3 minutes).
+  async function rankJobs(signal: AbortSignal) {
+    setRanking(true);
+    try {
+      const run = await apiRequest<{ id: string }>(`/projects/${projectId}/job-search/match/runs`, { method: 'POST', signal, body: JSON.stringify({
+        cv_revision_id: revisionId, q, cities: city ? [city] : [], work_mode: mode || null, posted_within_days: posted ? Number(posted) : null, category: category || null,
+        seniority: splitList(get('seniority')), employment_type: splitList(get('employment_type')), company_type: splitList(get('company_type')), skills: splitList(get('skills')),
+        posting_language: get('posting_language') || null, salary_min: get('salary_min') ? Number(get('salary_min')) : null, pool: POOL_SIZE, offset: 0 }) });
+      let finished = false;
+      for (let attempt = 0; attempt < 90 && !finished; attempt += 1) {
+        await sleep(2000, signal);
+        const [page, state] = await Promise.all([apiRequest<Page>(buildPath(0), { signal }), apiRequest<{ status: string }>(`/projects/${projectId}/runs/${run.id}`, { signal })]);
+        setItems(page.items); setTotal(page.total); setAi(page.ai ?? null); setHiddenCount(page.hidden_count ?? 0);
+        if (RUN_DONE.includes(state.status)) {
+          finished = true;
+          if (state.status !== 'completed') setRankFailed(true);
+          const last = await apiRequest<Page>(buildPath(0), { signal }); // the run may have ended after the page fetch above
+          setItems(last.items); setTotal(last.total); setAi(last.ai ?? null); setHiddenCount(last.hidden_count ?? 0);
+        }
+      }
+      if (!finished) setRankFailed(true);
+      setRanking(false);
+    } catch (error) {
+      if (signal.aborted) return;
+      setRanking(false);
+      if (error instanceof ApiError && error.code === 'jev_unavailable') setAi(prev => (prev ? { ...prev, status: 'unavailable' } : prev)); else setRankFailed(true);
+    }
+  }
 
   useEffect(() => {
     if (sample) return;
+    setStatus('loading'); setItems([]); setAi(null); setRanking(false); setRankFailed(false); setMoreError(false); setProfiling(false); setProfileFailed(false); setNextOffset(POOL_SIZE);
+    if (smart && !revisionId) return;
     const controller = new AbortController();
-    setStatus('loading'); setItems([]); setMoreError(false);
     apiRequest<Page>(buildPath(0), { signal: controller.signal })
-      .then(page => { if (!controller.signal.aborted) { setItems(page.items); setTotal(page.total); setStatus('ready'); } })
-      .catch(() => { if (!controller.signal.aborted) setStatus('error'); });
+      .then(page => {
+        if (controller.signal.aborted) return;
+        setItems(page.items); setTotal(page.total); setStatus('ready'); setAi(page.ai ?? null); setHiddenCount(page.hidden_count ?? 0);
+        if (smart && (page.ai?.status === 'missing' || page.ai?.status === 'partial')) void rankJobs(controller.signal);
+      })
+      .catch(error => {
+        if (controller.signal.aborted) return;
+        if (smart && error instanceof ApiError && error.code === 'cv_profile_missing' && profiled.current !== revisionId) {
+          profiled.current = revisionId; setProfiling(true);
+          profileCv(cvId, controller.signal)
+            .then(() => { if (!controller.signal.aborted) setVersion(v => v + 1); })
+            .catch(() => { if (!controller.signal.aborted) { setProfiling(false); setProfileFailed(true); setStatus('error'); } });
+          return;
+        }
+        setStatus('error');
+      });
     return () => controller.abort();
-  }, [buildPath, sample, version]);
+  }, [buildPath, sample, version, smart, revisionId, cvId]);
+
+  const hideTimer = useRef(0);
+  useEffect(() => {
+    if (!undo) return;
+    window.clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => setUndo(null), 8000);
+    return () => window.clearTimeout(hideTimer.current);
+  }, [undo]);
+  async function hide(job: JobSearchItem, kind: 'job' | 'company') {
+    const value = kind === 'job' ? job.slug : job.company;
+    if (!value) return;
+    try {
+      const row = await sendJson<HiddenItem>(`/projects/${projectId}/job-search/hidden`, 'POST', { kind, value: value.slice(0, 300), label: (kind === 'job' ? job.title : value).slice(0, 300) });
+      setItems(prev => prev.filter(i => (kind === 'job' ? i.slug !== job.slug : i.company !== job.company)));
+      setHiddenCount(n => n + 1); setUndo({ id: row.id, message: c.hiddenDone, retry: true });
+    } catch { setUndo({ id: '', message: c.hideFailed, retry: false }); }
+  }
+  async function unhide(id: string, fromDialog = false) {
+    try {
+      await apiRequest(`/projects/${projectId}/job-search/hidden/${id}`, { method: 'DELETE' });
+      setUndo(null); setVersion(v => v + 1); if (fromDialog) hiddenRes.reload();
+    } catch { setUndo({ id, message: c.undoFailed, retry: false }); }
+  }
 
   async function loadMore() {
     if (loadingMore) return;
     const key = filterKey;
     setLoadingMore(true); setMoreError(false);
     try {
-      const page = await apiRequest<Page>(buildPath(items.length));
+      const page = await apiRequest<Page>(buildPath(smartActive ? nextOffset : items.length));
       if (keyRef.current !== key) return;
-      setItems(prev => { const seen = new Set(prev.map(i => i.slug)); return [...prev, ...page.items.filter(i => !seen.has(i.slug))]; });
-      setTotal(page.total);
+      setItems(prev => {
+        const seen = new Set(prev.map(i => i.slug));
+        const merged = [...prev, ...page.items.filter(i => !seen.has(i.slug))];
+        return smartActive ? merged.sort(byMatch) : merged;
+      });
+      setTotal(page.total); setNextOffset(n => n + POOL_SIZE);
     } catch { if (keyRef.current === key) setMoreError(true); }
     finally { setLoadingMore(false); }
   }
@@ -212,24 +447,33 @@ export function SearchPage() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const selected = visible.find(j => j.slug === selectedSlug) ?? (wide ? visible[0] : undefined);
 
-  const catLabel = (slug: string) => c.cats[slug] ?? humanize(slug);
-  const detail = (job: JobSearchItem) => <JobDetail job={job} c={c} projectId={projectId} />;
+  const catLabel = (slug: string) => categoryLabel(locale, slug);
+  const detail = (job: JobSearchItem) => <JobDetail job={job} c={c} projectId={projectId} scored={smartActive} />;
 
   const list = <ul className="grid gap-3 [&>li]:min-w-0">
     {visible.map(job => {
       const isSel = selected?.slug === job.slug;
-      return <li key={job.slug}>
+      const ai = job.ai_match;
+      return <li key={job.slug} className="relative">
         <button type="button" aria-pressed={isSel} aria-current={isSel ? 'true' : undefined} onClick={() => setSelectedSlug(wide || !isSel ? job.slug : null)}
-          className={`grid w-full min-w-0 gap-2 rounded-xl border p-4 text-left shadow-sm transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isSel ? 'border-primary bg-accent' : 'bg-card'}`}>
+          className={`grid w-full min-w-0 gap-2 rounded-xl border p-4 ${smartActive ? 'pr-12' : ''} text-left shadow-sm transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isSel ? 'border-primary bg-accent' : 'bg-card'}`}>
           <span className="break-words font-semibold leading-snug">{job.title}</span>
           <span className="break-words text-sm text-muted-foreground">{job.company ?? c.untitled}{job.location ? ` · ${job.location}` : ''}</span>
           <span className="flex flex-wrap gap-2">
+            {smartActive && ai && <BandBadge ai={ai} c={c} />}
+            {smartActive && <MatchBadge match={job.match} c={c} ats={Boolean(ai)} />}
+            {ai?.uncertain && <Badge variant="outline">{c.unsure}</Badge>}
+            {ai?.hard_blocker && <Badge variant="warning" className="gap-1"><AlertTriangle className="size-3" aria-hidden="true" />{c.blocker}</Badge>}
             {job.work_mode && <Badge variant="secondary">{(c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode}</Badge>}
             {job.age_days != null && <Badge variant="outline">{c.age(job.age_days)}</Badge>}
             {job.stale && <Badge variant="warning" className="gap-1"><AlertTriangle className="size-3" aria-hidden="true" />{c.stale}</Badge>}
           </span>
           {job.skills.length > 0 && <span className="flex flex-wrap gap-1.5">{job.skills.slice(0, 4).map(s => <Badge key={s} variant="outline" className="break-words font-normal">{s}</Badge>)}</span>}
         </button>
+        {smartActive && <ItemMenu label={c.menuLabel} className="absolute right-2 top-2" actions={[
+          { label: c.hideJob, icon: <EyeOff className="size-4" aria-hidden="true" />, onSelect: () => void hide(job, 'job') },
+          ...(job.company ? [{ label: c.hideCompany, icon: <Building2 className="size-4" aria-hidden="true" />, onSelect: () => void hide(job, 'company') }] : []),
+        ]} />}
         {!wide && isSel && <div className="mt-2 rounded-xl border bg-card p-4">{detail(job)}</div>}
       </li>;
     })}
@@ -240,14 +484,37 @@ export function SearchPage() {
     {[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
   </div>;
 
-  const failed = !sample && status === 'error';
+  const failed = (!sample && status === 'error') || (smartActive && cvs.status === 'error');
+  const waiting = !sample && (status === 'loading' || (smartActive && cvs.status === 'loading'));
+  const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < total;
 
   return <section className="grid gap-6">
     <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
     <div className="grid gap-1">
       <h1 className="min-w-0 break-words text-2xl font-semibold">{c.title}</h1>
-      {grandTotal != null && <p className="text-sm text-muted-foreground">{c.subtitle(number.format(grandTotal))}</p>}
+      {grandTotal != null && <p className="text-sm text-muted-foreground">{!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
+        ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))}</p>}
     </div>
+
+    <div role="group" aria-label={c.modeLabel} className="inline-flex w-fit max-w-full rounded-lg border bg-muted p-1">
+      {([['search', c.modeSearch], ['match', c.modeMatch]] as const).map(([key, label]) => {
+        const on = (key === 'match') === smart;
+        return <button key={key} type="button" aria-pressed={on} onClick={() => setSearchMode(key)}
+          className={`min-h-11 rounded-md px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>;
+      })}
+    </div>
+
+    {smartActive && ai?.status !== 'unavailable' && <p className="-mt-3 text-xs text-muted-foreground">{c.privacy}</p>}
+
+    {smartActive && usable.length > 0 && <div className="flex flex-wrap items-end gap-3">
+      <div className="grid min-w-0 gap-2 sm:w-72">
+        <Label htmlFor="match-cv">{c.cvLabel}</Label>
+        <select id="match-cv" className={selectClass} value={cv?.id ?? ''} onChange={e => setCvPick(e.target.value)}>
+          {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}</option>)}
+        </select>
+      </div>
+      {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="outline" />}
+    </div>}
 
     {sample && <Card className="border-transparent bg-accent text-accent-foreground">
       <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
@@ -287,6 +554,9 @@ export function SearchPage() {
       </div>}
     </div>
 
+    {!sample && <AdvancedFilters locale={locale} get={get} setMany={setMany} facets={facetsRes.data ?? undefined} number={number} />}
+    {!sample && <Presets locale={locale} get={get} setMany={setMany} />}
+
     {categories.length > 0 && <div role="group" aria-label={c.categories} className="flex flex-wrap gap-2">
       {categories.map(f => <Button key={f.value} type="button" variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal rounded-full text-left" aria-pressed={category === f.value}
         onClick={() => setFilter('category', category === f.value ? '' : f.value)}>
@@ -295,22 +565,41 @@ export function SearchPage() {
     </div>}
 
     {failed ? <Card role="alert"><CardContent className="grid gap-3 p-6">
-      <h2 className="break-words font-semibold">{c.errTitle}</h2>
+      <h2 className="break-words font-semibold">{profileFailed ? c.analyzeError : c.errTitle}</h2>
       <p className="text-sm text-muted-foreground">{c.errBody}</p>
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => setVersion(v => v + 1)}>{c.retry}</Button>
+        <Button onClick={() => { profiled.current = ''; setVersion(v => v + 1); if (smartActive) cvs.reload(); }}>{c.retry}</Button>
         <Button variant="outline" onClick={() => { setSample(true); setSelectedSlug(null); }}>{c.viewSample}</Button>
       </div>
-    </CardContent></Card> : <div className="grid gap-3">
-      {(sample || status === 'ready') && <p role="status" className="text-sm text-muted-foreground">{c.found(number.format(shownTotal))}</p>}
-      {!sample && status === 'loading' ? loadingList : visible.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
+    </CardContent></Card> : needsCv ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
+      <p className="font-medium">{c.noCv}</p>
+      <p className="text-sm text-muted-foreground">{c.noCvBody}</p>
+      <Button asChild><Link to={`/app/projects/${projectId}/profile`}>{c.addCv}</Link></Button>
+    </div> : <div className="grid gap-3">
+      {sample && smart && <p className="text-sm text-muted-foreground">{c.sampleMatch}</p>}
+      {(sample || !waiting) && <p role="status" className="text-sm text-muted-foreground">{c.found(number.format(shownTotal))}{smartActive ? ` · ${c.poolNote(number.format(items.length))}` : ''}</p>}
+      {smartActive && ai?.status === 'unavailable' && <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">{c.unavailable}<Link className="text-primary hover:underline" to="/app/settings">{c.toSettings}</Link></p>}
+      {smartActive && ranking && <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />{c.ranking(ai?.scored ?? 0, items.length)}</div>}
+      {smartActive && rankFailed && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/40 p-3 text-sm text-destructive">
+        <span className="min-w-0 [overflow-wrap:anywhere]">{c.rankFailed}</span>
+        <Button type="button" size="sm" variant="outline" onClick={() => setVersion(v => v + 1)}>{c.retry}</Button>
+      </div>}
+      {smartActive && !category && !q && ai?.categories && ai.categories.length > 0 && <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">{c.autoCats}</span>
+        {ai.categories.map(slug => <Button key={slug} type="button" variant="outline" size="sm" className="h-auto min-h-9 rounded-full" onClick={() => setFilter('category', slug)}>{catLabel(slug)}</Button>)}
+      </div>}
+      {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-3 py-2 text-sm">
+        <span className="[overflow-wrap:anywhere]">{undo.message}</span>
+        {undo.retry && <Button type="button" size="sm" variant="outline" onClick={() => void unhide(undo.id)}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
+      </div>}
+      {profiling ? <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.analyzing}</div> : waiting ? loadingList : visible.length === 0 && smartActive && ranking && !q && !category && ai?.status === 'missing' ? <div role="status" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.finding}</div> : visible.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
         <p className="font-medium">{c.none}</p>
         <p className="text-sm text-muted-foreground">{c.noneNext}</p>
         <Button variant="outline" size="sm" onClick={clear} disabled={!filtered}>{c.clear}</Button>
       </div> : <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
         <div className="grid min-w-0 gap-3 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-1">
           {list}
-          {!sample && items.length < total && <div className="grid justify-items-start gap-2">
+          {!sample && hasMore && <div className="grid justify-items-start gap-2">
             {moreError && <p role="alert" className="text-sm text-destructive">{c.errTitle}</p>}
             <Button variant="outline" disabled={loadingMore} aria-busy={loadingMore} onClick={() => void loadMore()}>
               {loadingMore ? <><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.loading}</> : c.loadMore}
@@ -319,7 +608,20 @@ export function SearchPage() {
         </div>
         {wide && selected && <Card className="sticky top-4 min-w-0 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"><CardContent className="p-6">{detail(selected)}</CardContent></Card>}
       </div>}
+      {smartActive && hiddenCount > 0 && <div><Button type="button" variant="link" className="h-auto p-0" onClick={() => setHiddenOpen(true)}>{c.hiddenLink(hiddenCount)}</Button></div>}
     </div>}
+
+    <Dialog open={hiddenOpen} onOpenChange={setHiddenOpen}>
+      <DialogContent>
+        <DialogTitle>{c.hiddenTitle}</DialogTitle>
+        <DialogDescription className="sr-only">{c.hiddenTitle}</DialogDescription>
+        {hiddenRes.status === 'loading' ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : (hiddenRes.data?.items ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.hiddenEmpty}</p>
+          : <ul className="grid max-h-[60vh] gap-2 overflow-y-auto">{(hiddenRes.data?.items ?? []).map(h => <li key={h.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 text-sm">
+            <span className="min-w-0 [overflow-wrap:anywhere]"><Badge variant="secondary" className="mr-2">{c.kindWord[h.kind]}</Badge>{h.label}</span>
+            <Button type="button" size="sm" variant="outline" className="shrink-0 whitespace-nowrap" onClick={() => void unhide(h.id, true)}>{c.unhide}</Button>
+          </li>)}</ul>}
+      </DialogContent>
+    </Dialog>
 
     <p className="text-xs text-muted-foreground"><a className="text-primary hover:underline" href="https://freehire.me" target="_blank" rel="noreferrer">{c.credit}</a></p>
   </section>;

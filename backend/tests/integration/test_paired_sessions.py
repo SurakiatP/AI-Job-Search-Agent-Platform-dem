@@ -69,14 +69,17 @@ def test_cv_lifecycle_primary_promotion_revisions_and_in_use(api_context):
 
     session = _session(api_context, csrf, pid, row["latest_revision"]["id"], job=JOB)
     assert session.status_code == 201, session.text
-    blocked = client.delete(f"{PREFIX}/{pid}/cvs/{a}", headers=headers)
-    assert blocked.status_code == 409 and blocked.json()["code"] == "cv_in_use"
     assert next(c for c in client.get(f"{PREFIX}/{pid}/cvs").json() if c["id"] == a)["in_use"] is True
 
     # Deleting the primary promotes the newest remaining CV.
     assert client.delete(f"{PREFIX}/{pid}/cvs/{b}", headers=headers).status_code == 204
     left = client.get(f"{PREFIX}/{pid}/cvs").json()
     assert [(c["id"], c["is_primary"]) for c in left] == [(a, True)]
+    # A CV used by a session can still be deleted; the session keeps its pinned revision.
+    assert client.delete(f"{PREFIX}/{pid}/cvs/{a}", headers=headers).status_code == 204
+    assert client.get(f"{PREFIX}/{pid}/cvs").json() == []
+    kept = client.get(f"{PREFIX}/{pid}/sessions/{session.json()['id']}")
+    assert kept.status_code == 200 and kept.json()["cv_name"] == "Renamed"
 
 
 @pytest.mark.integration
@@ -322,7 +325,6 @@ def test_delete_session_hard_without_runs_hides_with_runs_and_restores(api_conte
     assert [r["id"] for r in client.get(f"{PREFIX}/{pid}/runs").json()] == [run_id]
     cvs = client.get(f"{PREFIX}/{pid}/cvs").json()
     assert cvs[0]["in_use"] is True
-    assert client.delete(f"{PREFIX}/{pid}/cvs/{cv['id']}", headers=headers).status_code == 409
 
     # Restore brings it back; restoring a visible session is idempotent.
     restored = client.post(f"{base}/{sid}/restore", headers=headers)
