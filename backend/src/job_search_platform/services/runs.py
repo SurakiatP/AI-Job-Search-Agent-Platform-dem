@@ -844,7 +844,7 @@ class RunService:
             if exc.code != "forbidden":
                 raise
             return run_view(run).model_copy(
-                update={"evaluation_result": None, "result_file_ids": ()}
+                update={"evaluation_result": None, "result_file_ids": (), "result_payload": None}
             )
         job_removed = db.scalar(
             select(JobRevision.removed_at).where(

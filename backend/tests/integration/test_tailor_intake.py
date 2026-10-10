@@ -89,3 +89,14 @@ def test_tailor_mode_rejected_on_other_operations():
     with pytest.raises(ValidationError, match="tailor_mode_requires_tailor_cv"):
         RunRequest(session_id="00000000-0000-0000-0000-000000000001", operation="evaluate_job",
                    output_language="en", idempotency_key="k", tailor_mode="autopilot")
+
+
+def test_result_payload_hidden_without_results_read(db_session):
+    factory, _, actor, p, *_ = _ctx(db_session, capabilities=("cv:tailor",))
+    view = asyncio.run(ProtocolRuns(factory).submit(actor, "tailor_cv", _job_input("leak")))
+    run = db_session.get(Run, view.id)
+    run.result_payload = {"kind": "tailor", "proposals": [{"text": "SECRET CV TEXT"}]}
+    db_session.commit()
+    replay = asyncio.run(ProtocolRuns(factory).submit(actor, "tailor_cv", _job_input("leak")))
+    cancelled = asyncio.run(RunService(factory).cancel(actor, p.id, view.id))
+    assert replay.result_payload is None and cancelled.result_payload is None
