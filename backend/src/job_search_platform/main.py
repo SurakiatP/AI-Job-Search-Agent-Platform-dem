@@ -22,12 +22,14 @@ from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
 
+from job_search_platform import config
 from job_search_platform.api.dependencies import Services
 from job_search_platform.api.rest import _http_error, router as rest_router
 from job_search_platform.api.sse import router as sse_router
 from job_search_platform.db.session import make_engine
 from job_search_platform.integrations.hermes_runtime import HermesRuntime
 from job_search_platform.integrations import tracing
+from job_search_platform.integrations.logging import RequestLogMiddleware, configure_logging
 from job_search_platform.integrations.object_store import S3ObjectStore
 from job_search_platform.integrations.secrets import MacOSKeychain
 from job_search_platform.services.approvals import ApprovalService
@@ -90,20 +92,20 @@ def build_services() -> Services:
     user = _private_text("postgres-user")
     password = _private_text("postgres-password")
     db_url = URL.create("postgresql+psycopg", username=user, password=password,
-                        host="127.0.0.1", port=int(os.environ.get("CORE02_POSTGRES_PORT", "55432")),
-                        database=os.environ.get("JSP_DATABASE", "jobsearch_platform_core02"))
+                        host=config.postgres_host(), port=config.postgres_port(),
+                        database=config.database_name())
     engine = make_engine(db_url)
     sessions = sessionmaker(engine, expire_on_commit=False)
 
     access = _private_text("minio-access-key")
     secret = _private_text("minio-secret-key")
     client = boto3.client(
-        "s3", endpoint_url=f"http://127.0.0.1:{os.environ.get('CORE02_MINIO_PORT', '59000')}",
+        "s3", endpoint_url=config.minio_endpoint(),
         aws_access_key_id=access, aws_secret_access_key=secret, region_name="us-east-1",
         config=__import__("botocore.config", fromlist=["Config"]).Config(
             signature_version="s3v4", s3={"addressing_style": "path"}, retries={"max_attempts": 2}),
     )
-    bucket = os.environ.get("JSP_PRIVATE_BUCKET", "job-search-platform-private")
+    bucket = config.private_bucket()
     try:
         client.head_bucket(Bucket=bucket)
     except Exception as exc:
@@ -183,6 +185,7 @@ def create_app(
     service_factory: Callable[[], Services] = build_services,
     frontend_dist: Path | None = None,
 ) -> FastAPI:
+    configure_logging()
     tracing.configure()
 
     @asynccontextmanager
@@ -230,6 +233,8 @@ def create_app(
             response.headers["Cache-Control"] = "no-store"
         return response
 
+    app.add_middleware(RequestLogMiddleware)  # added last, so it wraps everything
+
     @app.exception_handler(ServiceError)
     async def service_error_handler(_request: Request, exc: ServiceError):
         return _http_error(exc)
@@ -266,7 +271,7 @@ def create_app(
         "DocumentRevisionView", "DocumentView", "ErrorView", "EvaluationResult", "FileView", "GatewayStatusView",
         "GrantIssueRequest", "GrantIssuedView", "GrantView", "JobCreate", "JobRevisionView",
         "MessageCreate", "OwnerBootstrapRequest", "OwnerBootstrapView", "PreferencesUpdate",
-        "PreferencesView", "ProjectCreate", "ProjectUpdate", "ProjectView",
+        "PreferencesView", "ReadinessView", "ProjectCreate", "ProjectUpdate", "ProjectView",
         "RevisionView", "RunEventData", "RunEventView", "RunRequest", "RunRequester", "RunView",
         "SessionCreate", "SessionView", "SkillCoverage", "ToolConnectorSettingsView", "ToolConnectorUpdate",
         "ToolConnectorView", "ToolDescriptor", "ToolsView", "UploadRequest",
@@ -318,7 +323,7 @@ def create_app(
             for method, operation in operations.items():
                 if not isinstance(operation, dict):
                     continue
-                if path == "/owner/bootstrap":
+                if path in {"/owner/bootstrap", "/health", "/health/ready"}:
                     operation["security"] = []
                 elif method in grant_routes.get(path, set()):
                     operation["security"] = [{"ownerSession": []}, {"projectGrant": []}]

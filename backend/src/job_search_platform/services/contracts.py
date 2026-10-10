@@ -505,6 +505,11 @@ class GatewayStatusView(DTO):
     models: list[str]
 
 
+class ReadinessView(DTO):
+    status: Literal["ok", "degraded"]
+    components: dict[str, Literal["ok", "down"]]
+
+
 class ToolConnectorUpdate(DTO):
     enabled: bool
 

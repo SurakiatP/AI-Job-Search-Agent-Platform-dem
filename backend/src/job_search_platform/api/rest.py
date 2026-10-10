@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import re
+import subprocess
 from pathlib import PurePath
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
@@ -12,9 +13,10 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
+from urllib.request import Request as _UrlRequest
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import StringConstraints
-from sqlalchemy import delete, exists, func, select
+from sqlalchemy import delete, exists, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
@@ -1022,6 +1024,52 @@ async def issue_grant(project_id: UUID, body: GrantIssueRequest, actor=Depends(w
 @router.delete("/projects/{project_id}/grants/{grant_id}", status_code=204)
 async def revoke_grant(project_id: UUID, grant_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     await services.grants.revoke(actor, project_id, grant_id)
+
+
+@router.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+READY_TIMEOUT_SECONDS = 2
+
+
+def _gateway_alive() -> None:
+    gateway = GatewaySettings.from_env()
+    with gateway.opener.open(_UrlRequest(gateway.base_url + "/health/liveliness"), timeout=READY_TIMEOUT_SECONDS) as response:
+        if response.status != 200:
+            raise ValueError
+
+
+def _image_present(image: str) -> None:
+    subprocess.run(["docker", "image", "inspect", image], check=True, capture_output=True, timeout=READY_TIMEOUT_SECONDS)
+
+
+async def _probe(check) -> str:
+    try:
+        await asyncio.wait_for(check(), READY_TIMEOUT_SECONDS)
+        return "ok"
+    except Exception:  # the reason is deliberately dropped: readiness leaks no addresses or errors
+        return "down"
+
+
+@router.get("/health/ready")
+async def health_ready(services: Services = Depends(get_services)):
+    def postgres():
+        with services.sessions() as session:
+            session.execute(text("SELECT 1"))
+
+    async def sandbox():
+        await asyncio.to_thread(_image_present, services.runtime.image)
+
+    names = ("postgres", "object_store", "llm_gateway", "sandbox_image")
+    results = await asyncio.gather(
+        _probe(lambda: asyncio.to_thread(postgres)), _probe(services.files.object_store.ping),
+        _probe(lambda: asyncio.to_thread(_gateway_alive)), _probe(sandbox))
+    components = dict(zip(names, results))
+    ok = all(value == "ok" for value in components.values())
+    return JSONResponse({"status": "ok" if ok else "degraded", "components": components},
+                        status_code=200 if ok else 503)
 
 
 @router.get("/gateway", response_model=GatewayStatusView)

@@ -71,6 +71,36 @@ Create a project, add a CV and a job posting you supplied, and start the evaluat
 - `/jev/decisions` forwards to the OpenRouter decisions API with the server-side key. The app uses `AI_DECISION_MODEL` (default `typesafe/jev-1.13`) in the request body.
 - `status` lists `litellm`, `litellm-db` and `litellm-seed` with their health.
 
+## Configuration and multi-host
+
+Every address the app uses comes from the environment, with the local-stack default. Put them in `.env` (see `.env.example`). Secret values stay out of git and logs; generated infrastructure secrets (Postgres/MinIO passwords, LiteLLM master and salt keys, LiteLLM DB and UI passwords) live only in `CORE02_PRIVATE_DIR` and are never set in `.env`.
+
+| Key | Default | Secret |
+| --- | --- | --- |
+| `JSP_POSTGRES_HOST` | `127.0.0.1` | no |
+| `JSP_POSTGRES_PORT` (legacy `CORE02_POSTGRES_PORT` still honoured) | `55432` | no |
+| `JSP_DATABASE` | `jobsearch_platform_core02` | no |
+| `JSP_MINIO_ENDPOINT` | `http://127.0.0.1:59000` (or `CORE02_MINIO_PORT`) | no |
+| `JSP_PRIVATE_BUCKET` | `job-search-platform-private` | no |
+| `LITELLM_BASE_URL` | `http://127.0.0.1:4000` | no |
+| `LITELLM_API_KEY` | empty, falls back to `CORE02_PRIVATE_DIR/litellm_app_key` | yes |
+| `OPENROUTER_API_KEY` | empty; read only by `local_infra.py start`, reaches only LiteLLM | yes |
+| `AI_ANALYZE_MODEL` / `AI_DECISION_MODEL` | `ai-analyze` / `typesafe/jev-1.13` | no |
+| `LANGFUSE_HOST` | empty; reserved for the Langfuse branch | no |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | unset (tracing off) | no |
+| `JSP_LOG_LEVEL` | `INFO` | no |
+| `JSP_ALLOWED_ORIGINS` / `JSP_DEV_ORIGIN` | owner loopback origin / unset | no |
+| `CORE02_PRIVATE_DIR` | `~/.cache/job-search-platform/core02-runtime-20261003` | no (the directory holds secrets) |
+| `MINIO_SOURCE_DIR` / `GOSU_SOURCE_DIR` | `~/.cache/job-search-platform/upstream/{minio,gosu}` | no |
+| `CORE02_POSTGRES_PORT` / `CORE02_MINIO_PORT` / `CORE02_LITELLM_PORT` | `55432` / `59000` / `4000` (host ports published by compose) | no |
+
+`CORE02_PRIVATE_DIR`, `MINIO_SOURCE_DIR` and `GOSU_SOURCE_DIR` are optional overrides: `local_infra.py`, the app, backup and restore share one default. To run the app on another host, point `JSP_POSTGRES_*`, `JSP_MINIO_ENDPOINT` and `LITELLM_BASE_URL` at the service host and copy the credential files into that host's `CORE02_PRIVATE_DIR`.
+
+Health and logs:
+
+- `GET /api/v1/health` is liveness. `GET /api/v1/health/ready` checks `postgres`, `object_store`, `llm_gateway` and `sandbox_image` concurrently (about 2 s each) and returns 200 with `status: ok` or 503 with `status: degraded` and the failing component `down`. It is unauthenticated and returns no addresses, versions or error text.
+- The app logs one JSON line per record on stdout (`ts`, `level`, `logger`, `msg`, `request_id`). Each request logs method, route template, status and `duration_ms` only: no headers, bodies, query strings, tokens or CV text. `X-Request-ID` is propagated when it is a uuid or 1-64 characters of `A-Za-z0-9._-`, otherwise a new one is generated and returned.
+
 ## Optional LAN project sharing
 
 Sharing is opt-in and starts a second listener on port `8001`. Bind it to a concrete LAN IP on the owner's machine; do not use `0.0.0.0` or `::`. The owner app remains on loopback port `8000`.

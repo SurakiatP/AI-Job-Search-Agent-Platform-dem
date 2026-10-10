@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import io
 import json
+import logging
 import os
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
@@ -20,6 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import sessionmaker
 
 from job_search_platform.api.dependencies import Services
+from job_search_platform.integrations import logging as jsp_logging
 from job_search_platform.db.models import (
     Approval, CVRevision, ConversationSession, Document, DocumentRevision, Grant, JobRevision, Message, Project, Run, RunArtifact, StoredFile,
 )
@@ -728,3 +732,45 @@ def test_provider_routes_are_gone_and_gateway_status_is_owner_only(api_context):
         "capabilities": ["results:read", "jobs:evaluate"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
     client.cookies.clear()
     assert client.get("/api/v1/gateway", headers={"Authorization": f"Bearer {token}"}).status_code in (401, 403)
+
+
+def test_health_is_liveness_and_ready_reports_components(api_context, monkeypatch):
+    from job_search_platform.api import rest
+    client = api_context.client
+    client.cookies.clear()
+    assert client.get("/api/v1/health").json() == {"status": "ok"}
+    monkeypatch.setattr(rest, "_gateway_alive", lambda: None)
+    monkeypatch.setattr(rest, "_image_present", lambda image: None)
+    api_context.client.app.state.services.runtime.image = "sandbox@sha256:" + "0" * 64
+    ready = client.get("/api/v1/health/ready")
+    assert ready.status_code == 200
+    assert ready.json() == {"status": "ok", "components": {
+        "postgres": "ok", "object_store": "ok", "llm_gateway": "ok", "sandbox_image": "ok"}}
+
+    def down():
+        raise OSError("http://10.9.8.7:4000 refused")
+    monkeypatch.setattr(rest, "_gateway_alive", down)
+    degraded = client.get("/api/v1/health/ready")
+    assert degraded.status_code == 503
+    assert degraded.json()["status"] == "degraded" and degraded.json()["components"]["llm_gateway"] == "down"
+    assert "10.9.8.7" not in degraded.text and "4000" not in degraded.text
+
+
+def test_request_log_has_id_and_route_template_but_no_query(api_context):
+    stream = io.StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.setFormatter(jsp_logging.JsonFormatter())
+    logger = logging.getLogger("jsp.request")
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    try:
+        pid = "11111111-1111-4111-8111-111111111111"
+        response = api_context.client.get(f"/api/v1/projects/{pid}?token=s3cr3t-value", headers={"X-Request-ID": "req-abc_1"})
+        bad = api_context.client.get("/api/v1/health", headers={"X-Request-ID": "bad id\x7f!"})
+    finally:
+        logger.removeHandler(handler)
+    first, second = [json.loads(line) for line in stream.getvalue().splitlines()]
+    assert first["request_id"] == "req-abc_1" and response.headers["X-Request-ID"] == "req-abc_1"
+    assert (first["method"], first["route"], first["status"]) == ("GET", "/projects/{project_id}", response.status_code)
+    assert "duration_ms" in first and "s3cr3t" not in stream.getvalue() and pid not in stream.getvalue()
+    assert re.fullmatch(r"[0-9a-f-]{36}", second["request_id"]) and second["request_id"] == bad.headers["X-Request-ID"]
