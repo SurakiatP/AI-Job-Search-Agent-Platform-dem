@@ -70,3 +70,16 @@ def test_round_prompt():
     prompt, instructions = round_prompt("# CV", "Dev", "job text", ["docker", "k8s"], [{"id": ID, "text": "Built X", "context": "Eng, Acme"}], "en")
     assert ID in prompt and "docker" in prompt and "k8s" in prompt and "Built X" in prompt
     assert "JSON" in instructions and "untrusted" in instructions
+
+
+def test_apply_gated_blocks_digit_splicing():
+    from job_search_platform.services.evidence import apply_gated
+
+    fact = uuid4()
+    cv = "Led a team of 5 engineers."
+    splice = {"find": "Led a team of ", "text": "Led a team of 1", "evidence_ids": [str(fact)]}
+    text, applied, rejected = apply_gated(cv, [splice], {fact: {"1"}})
+    assert (text, applied, rejected) == (cv, [], [splice])
+    ok = {"find": "engineers", "text": "engineers in 2024", "evidence_ids": [str(fact)]}
+    assert apply_gated(cv, [ok], {fact: {"2024"}})[0] == "Led a team of 5 engineers in 2024."
+    assert apply_gated(cv, [ok], {fact: set()})[2] == [ok]

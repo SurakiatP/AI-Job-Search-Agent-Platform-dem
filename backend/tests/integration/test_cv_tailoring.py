@@ -233,3 +233,25 @@ def test_grant_cannot_apply_or_restore(api_context):
     apply = ctx.client.post(f"{PREFIX}/{pid}/runs/{uuid4()}/tailor/apply", headers=bearer, json={"proposal_ids": [0]})
     restore = ctx.client.post(f"{PREFIX}/{pid}/documents/{uuid4()}/revisions/{uuid4()}/restore", headers=bearer)
     assert apply.status_code in (401, 403) and restore.status_code in (401, 403)
+
+
+@pytest.mark.integration
+def test_digit_splice_rejected_in_autopilot_and_apply(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, _ = _setup(ctx, [])
+    one = ctx.client.post(f"{PREFIX}/{pid}/experience", headers=_write_headers(csrf),
+                          json={"kind": "skill", "text": "Led 1 project"}).json()["id"]
+    splice = _edit("sentinel-zq1", one, find="sentinel-zq")  # CV has "zq9": would become "zq19"
+    runtime = _Runtime(ctx.tmp_path / "ws", [[splice], []])
+    run_id = _tailor(ctx, csrf, pid, session, "s1").json()["id"]
+    _execute_next(ctx, runtime)
+    assert [p["status"] for p in _run(ctx, run_id).result_payload["proposals"]] == ["rejected_by_gate"]
+    assert "zq19" not in _revisions(ctx, pid)[0].content_markdown
+
+    runtime.script = [[splice]]
+    inter = _tailor(ctx, csrf, pid, session, "s2", tailor_mode="interactive").json()["id"]
+    _execute_next(ctx, runtime)
+    assert _run(ctx, inter).result_payload["proposals"][0]["status"] == "proposed"
+    response = ctx.client.post(f"{PREFIX}/{pid}/runs/{inter}/tailor/apply", headers=_write_headers(csrf),
+                               json={"proposal_ids": [0]})
+    assert response.status_code == 400 and response.json()["code"] == "evidence_required"
