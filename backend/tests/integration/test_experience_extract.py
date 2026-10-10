@@ -178,3 +178,14 @@ async def test_malformed_answer_fails_without_native_text(db_session, tmp_path):
         assert db.get(Run, view.id).status == "failed"
     events = _events(sessions, view.id)
     assert "errors.execution_failed" in events and "secret-marker-xyz" not in events
+
+
+def test_draft_prompt_lists_bank_facts_only_for_drafts():
+    run = SimpleNamespace(operation="draft_documents", output_language="en",
+                          input_snapshot={"job": {"title": "DE", "company": "X", "description": "D"}, "draft_kind": "cover_letter"})
+    prompt, instructions = RunExecutor._prompt(run, "CV", facts=["Ran BigQuery (SCB, 2023)"])
+    assert "- Ran BigQuery (SCB, 2023)" in prompt and "do not add" in prompt.lower()
+    plain, _ = RunExecutor._prompt(run, "CV")
+    assert "Candidate facts" not in plain
+    evaluation = SimpleNamespace(operation="evaluate_job", output_language="en", input_snapshot=run.input_snapshot)
+    assert "Candidate facts" not in RunExecutor._prompt(evaluation, "CV", facts=["x"])[0]
