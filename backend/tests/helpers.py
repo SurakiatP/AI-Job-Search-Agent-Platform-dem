@@ -86,3 +86,13 @@ def provider_config(db, project_id=None):
 def run_request(session_id, job_revision_id, *, cv_revision_id=None, key="synthetic-run"):
     return RunRequest(session_id=session_id, operation="evaluate_job", cv_revision_id=cv_revision_id,
                       job_revision_id=job_revision_id, output_language="en", idempotency_key=key)
+
+
+def cancel_queued_extract_runs(sessions) -> None:
+    """Uploads now queue extract_experience; tests that claim the next run cancel it first."""
+    from datetime import datetime, timezone
+    from sqlalchemy import update
+    from job_search_platform.db.models import Run
+    with sessions.begin() as db:
+        db.execute(update(Run).where(Run.operation == "extract_experience", Run.status == "queued")
+                   .values(status="cancelled", finished_at=datetime.now(timezone.utc)))
