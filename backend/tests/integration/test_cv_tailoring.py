@@ -340,3 +340,17 @@ def test_tailor_tool_gate_denies_every_call_but_counts_it(api_context):
     _execute_next(ctx, runtime)
     assert verdicts and not any(verdicts)
     assert _run(ctx, run_id).tool_calls >= 1
+
+
+@pytest.mark.integration
+def test_key_lost_after_admission_fails_run_with_gateway_message(api_context, monkeypatch, tmp_path):
+    ctx = api_context
+    csrf, pid, session, facts, runtime = _setup(ctx, [])
+    run_id = _tailor(ctx, csrf, pid, session, "lost-key").json()["id"]
+    monkeypatch.delenv("LITELLM_API_KEY")
+    monkeypatch.setenv("CORE02_PRIVATE_DIR", str(tmp_path))
+    _execute_next(ctx, runtime)
+    assert _run(ctx, run_id).status == "failed"
+    with ctx.sessions() as db:
+        events = [e.public_data for e in db.scalars(select(RunEvent).where(RunEvent.run_id == UUID(run_id)))]
+    assert any(e["status"] == "failed" and e.get("message_key") == "errors.gateway_unconfigured" for e in events)

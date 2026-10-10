@@ -7,6 +7,7 @@ import os
 import stat
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from job_search_platform.integrations.hermes_runtime import ProviderConfig
@@ -29,6 +30,11 @@ _OPENER = build_opener(_NoRedirect(), ProxyHandler({}))
 
 def default_private_dir() -> Path:
     return Path(os.environ.get("CORE02_PRIVATE_DIR", str(Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003")))
+
+
+def _without_userinfo(url: str) -> str:
+    parts = urlsplit(url)
+    return parts._replace(netloc=parts.netloc.rpartition("@")[2]).geturl()
 
 
 def _key_file(private_dir: Path) -> str | None:
@@ -88,5 +94,5 @@ class GatewaySettings:
             except Exception:
                 pass
         return GatewayStatusView(configured=configured, reachable=reachable,
-                                 base_url=self.base_url if configured else None,
+                                 base_url=_without_userinfo(self.base_url) if configured else None,
                                  analyze_model=self.analyze_model, decision_model=self.decision_model, models=models)

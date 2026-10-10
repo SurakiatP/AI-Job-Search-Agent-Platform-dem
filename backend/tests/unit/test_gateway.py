@@ -87,3 +87,17 @@ def test_jev_posts_to_gateway_passthrough_with_app_key(stub):
     path, auth, body = _Stub.seen[0]
     assert (path, auth) == ("/jev/decisions", f"Bearer {KEY}")
     assert body["model"] == "typesafe/jev-1.13"
+
+
+def test_jev_default_opener_ignores_env_proxy(monkeypatch):
+    import urllib.request
+    from job_search_platform.integrations import jev
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:1")
+    proxies = [h for h in jev._OPENER.handlers if isinstance(h, urllib.request.ProxyHandler)]
+    assert all(h.proxies == {} for h in proxies)  # an env-derived ProxyHandler would carry the proxy
+
+
+async def test_status_base_url_has_no_userinfo(monkeypatch):
+    monkeypatch.setenv("LITELLM_BASE_URL", "http://user:pass@127.0.0.1:9/")
+    view = await GatewaySettings.from_env().status()
+    assert view.base_url == "http://127.0.0.1:9" and "pass" not in view.model_dump_json()

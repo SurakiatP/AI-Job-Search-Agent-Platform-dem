@@ -548,9 +548,6 @@ async def match_job_sources(
     auto = not q.strip() and not category
 
     def run() -> dict:
-        if ai_on and auto and not stored:
-            return {"items": [], "total": 0, "offset": offset, "pool": pool, "hidden_count": 0,
-                    "ai": {"status": "missing", "categories": None, "scored": 0}}
         page = smart_match.build_pool(q=q, cities=city_list, work_mode=work_mode, posted_within_days=posted_within_days,
                                       category=category, pool=pool, offset=offset, cv_categories=stored if ai_on else None,
                                       filters=filters)

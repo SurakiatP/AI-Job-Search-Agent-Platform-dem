@@ -1060,6 +1060,7 @@ def _safe_message(code: str) -> str:
         "provider_not_configured": "errors.provider_not_configured",
         "connector_disabled": "errors.connector_disabled",
         "export_failed": "errors.export_failed",
+        "gateway_unconfigured": "errors.gateway_unconfigured",
         "jev_unavailable": "errors.jev_unavailable",
         "jev_failed": "errors.jev_failed",
         "cv_text_empty": "errors.cv_text_empty",

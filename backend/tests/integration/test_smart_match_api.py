@@ -95,12 +95,13 @@ def test_ai_status_missing_partial_ready_and_stale_hash_ignored(api_context, mon
 
 
 @pytest.mark.integration
-def test_auto_mode_uses_stored_categories_only(api_context, monkeypatch):
+def test_auto_mode_without_categories_falls_back_to_keyword_pool(api_context, monkeypatch):
     seen = _serve(monkeypatch, [_raw("a")])
     csrf, pid, rev = _setup(api_context)
     body = api_context.client.get(_url(pid, rev)).json()
-    assert body["items"] == [] and body["ai"] == {"status": "missing", "categories": None, "scored": 0}
-    assert seen == []
+    assert [i["slug"] for i in body["items"]] == ["a"]  # keyword pool, not an empty list
+    assert body["ai"] == {"status": "missing", "categories": None, "scored": 0}
+    assert seen
     _profile(api_context, rev, categories=["it"], categories_model=JEV_MODEL)
     body = api_context.client.get(_url(pid, rev)).json()
     assert any("category=it" in u for u in seen)
