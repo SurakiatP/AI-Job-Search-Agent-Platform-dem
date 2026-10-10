@@ -35,6 +35,11 @@ SYNTHETIC_KEY = "OFFLINE_SYNTHETIC_KEY_NEVER_SENT_TO_A_PROVIDER"
                 ),
                 ("# Mode: job — Full A-H Evaluation",),
             ),
+        (
+            "extract_experience",
+            ("## Mode Routing",),
+            ("## Scoring System", "# Mode: job — Full A-H Evaluation", "# Mode: cover — Cover Letter Generator"),
+        ),
     ],
 )
 def test_pinned_hermes_request_contains_router_and_mode(

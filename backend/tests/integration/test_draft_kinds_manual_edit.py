@@ -15,7 +15,7 @@ from sqlalchemy import select, text
 from job_search_platform.db.models import Document, DocumentRevision, Run
 from job_search_platform.integrations.object_store import S3ObjectStore
 from job_search_platform.services.documents import Artifacts
-from helpers import grant
+from helpers import cancel_queued_extract_runs, grant
 from job_search_platform.services.contracts import DocumentEdit
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.workers.executor import RunExecutor
@@ -99,6 +99,7 @@ def _setup(ctx, tmp_declared="cover_letter"):
     csrf = _owner(ctx)
     pid = _project(ctx, csrf)
     cv = _upload(ctx, csrf, pid).json()
+    cancel_queued_extract_runs(ctx.sessions)
     session = _session(ctx, csrf, pid, cv["latest_revision"]["id"], job=JOB).json()
     # Creating a paired session queues its evaluation; drop it so the next claim is ours.
     ctx.client.post(f"{PREFIX}/{pid}/runs/{session['evaluation_run_id']}/cancel", headers=_write_headers(csrf))

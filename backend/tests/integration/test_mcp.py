@@ -26,7 +26,7 @@ from job_search_platform.api.shared import create_shared_app
 from job_search_platform.db.models import DocumentRevision, Grant, Project, Run
 
 from test_rest_api import _owner, _write_headers, api_context as _api_context_fixture
-from helpers import provider_config, revisions
+from helpers import completed_extract_run, provider_config, revisions
 
 
 def test_mcp_transport_rejects_wildcard_host_or_origin():
@@ -382,6 +382,12 @@ async def test_mcp_http_rechecks_capabilities_and_project_scope(api_context, unu
                 run_id = submitted.structured_content["run_id"]
                 with pytest.raises(MCPError):
                     await second.call_tool("get_run", {"run_id": run_id})
+                # Owner-only experience-bank extraction is invisible to grants, even in their own project.
+                assert "extract_experience" not in {tool.name for tool in (await first.list_tools()).tools}
+                with api_context.sessions.begin() as db:
+                    extract_id = completed_extract_run(db, project_ids[0])
+                with pytest.raises(MCPError, match="not_found"):
+                    await first.call_tool("get_run", {"run_id": str(extract_id)})
                 with pytest.raises(MCPError, match="forbidden"):
                     await second.call_tool("evaluate_job", {
                         "request": {

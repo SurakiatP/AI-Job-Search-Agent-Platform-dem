@@ -566,6 +566,57 @@ class RunService:
             append_event(db, run, "run_queued", {"status": "queued"}, now=now)
             return self._authorized_view(db, actor, run)
 
+    async def submit_extract(self, actor: Actor, project_id: UUID, cv_id: UUID, *, automatic: bool = False) -> RunView | None:
+        """Owner-only: queue LLM extraction of the CV's latest revision into the experience bank.
+        Automatic (upload) triggers skip revisions already extracted; None then."""
+        return await asyncio.to_thread(self._submit_extract_sync, actor, project_id, cv_id, automatic)
+
+    def _submit_extract_sync(self, actor: Actor, project_id: UUID, cv_id: UUID, automatic: bool) -> RunView | None:
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "cv")
+            if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+                raise ServiceError("not_found")
+            latest = db.scalar(
+                select(CVRevision)
+                .join(CV, (CV.project_id == CVRevision.project_id) & (CV.id == CVRevision.cv_id))
+                .join(StoredFile, (StoredFile.project_id == CVRevision.project_id) & (StoredFile.id == CVRevision.file_id))
+                .where(CVRevision.project_id == project_id, CVRevision.cv_id == cv_id, CV.removed_at.is_(None),
+                       StoredFile.publication_state == "published")
+                .order_by(CVRevision.revision.desc()).limit(1))
+            if latest is None:
+                raise ServiceError("not_found")
+            existing = db.scalars(select(Run).where(
+                Run.project_id == project_id, Run.operation == "extract_experience", Run.cv_revision_id == latest.id,
+                Run.status.in_(("queued", "running", "completed")))).all()
+            active = next((run for run in existing if run.status != "completed"), None)
+            if active is not None:
+                return self._authorized_view(db, actor, active)
+            if automatic and existing:
+                return None
+            queued = db.scalar(select(func.count()).select_from(Run).where(
+                Run.project_id == project_id, Run.status == "queued")) or 0
+            if queued >= MAX_QUEUED_PER_PROJECT:
+                raise ServiceError("queue_full", retryable=True)
+            config = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
+                               .order_by(ProviderConfiguration.revision.desc()).limit(1))
+            if config is None or config.secret_reference.startswith("restored-unconfigured:"):
+                raise ServiceError("provider_configuration_required")
+            key = uuid4().hex
+            run = Run(
+                project_id=project_id, actor_scope="owner", idempotency_key=key,
+                request_digest=hashlib.sha256(json.dumps({"extract_experience": str(latest.id), "key": key}).encode()).hexdigest(),
+                operation="extract_experience", cv_revision_id=latest.id, provider_configuration_id=config.id,
+                input_snapshot={"cv_file_id": str(latest.file_id)},
+                config_snapshot={"provider_configuration_id": str(config.id)},
+                output_language="en", status="queued", created_at=now)
+            db.add(run)
+            db.flush()
+            append_event(db, run, "run_queued", {"status": "queued"}, now=now)
+            return self._authorized_view(db, actor, run)
+
     async def submit_match(self, actor: Actor, project_id: UUID, request: MatchRunRequest) -> RunView:
         """Owner-only: queue a Jev scoring run for one CV revision and one job-search pool."""
         return await asyncio.to_thread(self._submit_match_sync, actor, project_id, request)
@@ -708,7 +759,7 @@ class RunService:
             select(Run).where(Run.project_id == project_id, Run.id == run_id)
         )
         # Manual-edit export runs are owner-only; grants (REST, MCP, A2A) never see them.
-        if run is None or (actor is not None and actor.kind != "owner" and run.operation in {"export_document", "profile_cv", "match_jobs"}):
+        if run is None or (actor is not None and actor.kind != "owner" and run.operation in {"export_document", "profile_cv", "match_jobs", "extract_experience"}):
             raise ServiceError("not_found")
         return run
 

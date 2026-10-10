@@ -12,9 +12,9 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, SecretStr, St
 Capability = Literal["results:read", "jobs:evaluate", "documents:draft"]
 RunStatus = Literal["queued", "running", "waiting_approval", "completed", "failed", "cancelled", "interrupted"]
 Operation = Literal["evaluate_job", "draft_documents"]
-# profile_cv (CV skill profile, no LLM) is likewise owner-only and internal.
+# profile_cv (CV skill profile, no LLM) and extract_experience (LLM experience-bank extraction) are likewise owner-only and internal.
 # export_document is an owner-only, non-LLM run created by the manual-edit endpoint; never a request operation.
-ViewOperation = Literal["evaluate_job", "draft_documents", "export_document", "profile_cv", "match_jobs"]
+ViewOperation = Literal["evaluate_job", "draft_documents", "export_document", "profile_cv", "match_jobs", "extract_experience"]
 DraftKind = Literal["cover_letter", "application_message"]
 
 
@@ -58,6 +58,14 @@ class HiddenCreate(DTO):
     kind: Literal["job", "company"]
     value: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
     label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+
+
+class ExperienceItemCreate(DTO):
+    kind: Literal["experience", "education", "skill", "certification", "project", "other"]
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+    role: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    organization: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    period: Annotated[str, StringConstraints(strip_whitespace=True, max_length=60)] | None = None
 
 
 class RunRequest(DTO):

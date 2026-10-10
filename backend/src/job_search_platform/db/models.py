@@ -106,6 +106,33 @@ class CVRevisionText(Base):
                       CheckConstraint("char_length(text) BETWEEN 1 AND 200000", name="ck_cv_revision_text_length"))
 
 
+class ExperienceItem(Base):
+    """One candidate fact; its id is the evidence_id AI edits cite. Text is immutable; removal is soft."""
+    __tablename__ = "experience_items"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str | None] = mapped_column(String(200))
+    organization: Mapped[str | None] = mapped_column(String(200))
+    period: Mapped[str | None] = mapped_column(String(60))
+    source: Mapped[str] = mapped_column(String(10), nullable=False)
+    source_cv_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    text_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "source_cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"], ondelete="CASCADE"),
+        UniqueConstraint("project_id", "text_hash", name="uq_experience_items_hash"),
+        UniqueConstraint("project_id", "id", name="uq_experience_items_project_id"),
+        CheckConstraint("kind IN ('experience','education','skill','certification','project','other')", name="ck_experience_items_kind"),
+        CheckConstraint("char_length(text) BETWEEN 1 AND 1000", name="ck_experience_items_text_length"),
+        CheckConstraint("source IN ('cv','owner')", name="ck_experience_items_source"),
+        CheckConstraint("(source = 'owner') = (source_cv_revision_id IS NULL)", name="ck_experience_items_source_revision"),
+        CheckConstraint("length(text_hash) = 64", name="ck_experience_items_hash_length"),
+    )
+
+
 class JobMatchScore(Base):
     """One Jev score of a job-board posting (slug + content hash) against a CV revision."""
     __tablename__ = "job_match_scores"
@@ -300,7 +327,7 @@ class Run(Base):
     actor_scope: Mapped[str] = mapped_column(String(80), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
-    # session / job / provider are NULL only for the internal profile_cv operation (no LLM, no job).
+    # session / job are NULL for profile_cv, match_jobs and extract_experience; provider only for profile_cv.
     session_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     operation: Mapped[str] = mapped_column(String(32), nullable=False)
     cv_revision_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
@@ -335,8 +362,8 @@ class Run(Base):
         UniqueConstraint("project_id", "id", name="uq_runs_project_id"),
         CheckConstraint("status IN ('queued','running','waiting_approval','completed','failed','cancelled','interrupted')", name="ck_runs_status"),
         CheckConstraint("length(idempotency_key) BETWEEN 1 AND 128", name="ck_runs_idempotency_key_length"),
-        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs')", name="ck_runs_operation"),
-        CheckConstraint("operation IN ('profile_cv','match_jobs') OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL AND provider_configuration_id IS NOT NULL)", name="ck_runs_context_required"),
+        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs','extract_experience')", name="ck_runs_operation"),
+        CheckConstraint("operation IN ('profile_cv','match_jobs') OR (operation = 'extract_experience' AND provider_configuration_id IS NOT NULL) OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL AND provider_configuration_id IS NOT NULL)", name="ck_runs_context_required"),
         CheckConstraint("output_language IN ('th','en')", name="ck_runs_language"),
         CheckConstraint("length(request_digest) = 64", name="ck_runs_digest_length"),
         CheckConstraint("active_seconds >= 0", name="ck_runs_active_seconds"),

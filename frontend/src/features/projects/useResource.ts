@@ -26,7 +26,7 @@ export function useResource<T>(path: string | null): { status: 'loading' | 'read
   return { ...current, reload };
 }
 
-export async function sendJson<T>(path: string, method: 'POST' | 'PATCH', body: unknown): Promise<T> {
+export async function sendJson<T>(path: string, method: 'POST' | 'PATCH' | 'PUT', body: unknown): Promise<T> {
   return apiRequest<T>(path, { method, body: JSON.stringify(body) });
 }
 

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CvPreviewButton } from '@/components/CvPreview';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -13,14 +13,15 @@ import { PageBack } from '../../components/PageBack';
 import { useDraft } from '../../app/drafts';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { apiRequest } from '../../lib/api';
-import { ApiError, type CVView } from '../../lib/api-types';
+import { ApiError, type CVView, type ExperienceView } from '../../lib/api-types';
+import { ExperienceBank } from './ExperienceBank';
 import { sendJson, useResource } from '../projects/useResource';
 
 type Preferences = { project_id: string; output_language: 'th' | 'en'; notifications_enabled: boolean };
 
 const copy = {
-  th: { subtitle: 'จัดการ CV หลายฉบับและค่ากำหนดของเอกสาร', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', empty: 'ยังไม่มี CV', emptyBody: 'เลือกไฟล์ PDF, DOCX หรือ TXT (ไม่เกิน 20 MB) เพื่อเพิ่ม CV ชื่อจะตั้งจากชื่อไฟล์ แก้ไขได้ภายหลัง', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ลบ CV “${n}”?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้อีก เซสชันที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง', docSettings: 'การตั้งค่าเอกสาร', notifyHint: 'แจ้งเตือนเมื่องานของเอเจนต์เสร็จหรือรออนุมัติ' },
-  en: { subtitle: 'Manage several CVs and document preferences', cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Set as primary', rename: 'Rename', delete: 'Delete', empty: 'No CV yet', emptyBody: 'Choose a PDF, DOCX or TXT file (up to 20 MB) to add a CV. The name comes from the file name and can be changed later.', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Delete CV “${n}”?`, delBody: 'This CV leaves the list and can no longer be paired. Sessions that used it keep their results and documents.', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.', docSettings: 'Document settings', notifyHint: 'Tell me when an agent task finishes or needs approval' },
+  th: { subtitle: 'จัดการ CV หลายฉบับและค่ากำหนดของเอกสาร', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', empty: 'ยังไม่มี CV', emptyBody: 'เลือกไฟล์ PDF, DOCX หรือ TXT (ไม่เกิน 20 MB) เพื่อเพิ่ม CV ชื่อจะตั้งจากชื่อไฟล์ แก้ไขได้ภายหลัง', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ลบ CV “${n}”?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้อีก เซสชันที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง', extract: 'ดึงประสบการณ์', docSettings: 'การตั้งค่าเอกสาร', notifyHint: 'แจ้งเตือนเมื่องานของเอเจนต์เสร็จหรือรออนุมัติ' },
+  en: { subtitle: 'Manage several CVs and document preferences', cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Set as primary', rename: 'Rename', delete: 'Delete', empty: 'No CV yet', emptyBody: 'Choose a PDF, DOCX or TXT file (up to 20 MB) to add a CV. The name comes from the file name and can be changed later.', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Delete CV “${n}”?`, delBody: 'This CV leaves the list and can no longer be paired. Sessions that used it keep their results and documents.', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.', extract: 'Extract experience', docSettings: 'Document settings', notifyHint: 'Tell me when an agent task finishes or needs approval' },
 };
 const selectClass = 'flex min-h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 const formatSize = (bytes: number) => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -71,6 +72,17 @@ export function ProfilePage() {
   const language: 'th' | 'en' = languageDraft === 'th' || languageDraft === 'en' ? languageDraft : preferences.data?.output_language ?? 'th';
   const notifications = notificationsDraft ? notificationsDraft === 'true' : preferences.data?.notifications_enabled ?? true;
   const [saveError, setSaveError] = useState(false);
+  const [extractError, setExtractError] = useState(false);
+  const bank = useResource<ExperienceView>(`/projects/${projectId}/experience`);
+  // A new CV revision queues an extraction server-side; refresh the bank whenever the revisions change.
+  const revisionKey = cvs.data?.map(cv => cv.latest_revision?.id ?? '').join() ?? null;
+  const seenRevisionKey = useRef<string | null>(null);
+  const reloadBank = bank.reload;
+  useEffect(() => {
+    if (revisionKey === null) return;
+    if (seenRevisionKey.current !== null && seenRevisionKey.current !== revisionKey) reloadBank();
+    seenRevisionKey.current = revisionKey;
+  }, [revisionKey, reloadBank]);
   if (cvs.status === 'loading' && !cvs.data || preferences.status === 'loading' && !preferences.data) return <LoadingState />;
   if (cvs.status === 'error' || preferences.status === 'error') return <ErrorState onRetry={() => { cvs.reload(); preferences.reload(); }} />;
 
@@ -91,6 +103,10 @@ export function ProfilePage() {
     setUploadError(null);
     try { await sendJson(`/projects/${projectId}/cvs/${cv.id}`, 'PATCH', { is_primary: true }); cvs.reload(); } catch { setUploadError('pages.loadError'); }
   }
+  async function extract(cv: CVView) {
+    setExtractError(false);
+    try { await apiRequest(`/projects/${projectId}/cvs/${cv.id}/experience-runs`, { method: 'POST' }); bank.reload(); } catch { setExtractError(true); }
+  }
   async function savePreferences() {
     setSaveError(false);
     try { await sendJson(`/projects/${projectId}/preferences`, 'PATCH', { output_language: language, notifications_enabled: notifications }); setLanguageDraft(''); setNotificationsDraft(''); preferences.reload(); }
@@ -108,6 +124,7 @@ export function ProfilePage() {
       <input ref={versionInput} className="sr-only" tabIndex={-1} aria-label={c.upload} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], `/cvs/${versionTarget.current}/revisions`); event.target.value = ''; }} />
     </div>
     {uploadError && <p className="text-sm text-destructive" role="alert">{t(uploadError)}</p>}
+    {extractError && <p className="text-sm text-destructive" role="alert">{c.failed}</p>}
     <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <div className="grid content-start gap-4">
         <h2 className="text-lg font-semibold">{c.cvs}</h2>
@@ -123,9 +140,11 @@ export function ProfilePage() {
             <div className="flex flex-wrap gap-2">
               {cv.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="default" />}
               <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>
+              {cv.latest_revision && bank.data?.provider_configured && <Button type="button" variant="outline" aria-label={`${c.extract}: ${cv.name}`} onClick={() => void extract(cv)}>{c.extract}</Button>}
               {!cv.is_primary && <Button type="button" size="sm" variant="ghost" onClick={() => void makePrimary(cv)}>{c.makePrimary}</Button>}
             </div>
           </CardContent></Card></li>)}</ul>}
+        <ExperienceBank projectId={projectId} locale={locale} bank={bank} primaryCvId={list.find(cv => cv.is_primary)?.id ?? list[0]?.id ?? null} />
       </div>
       <Card className="lg:self-start">
         <CardHeader><CardTitle className="text-lg">{c.docSettings}</CardTitle></CardHeader>
