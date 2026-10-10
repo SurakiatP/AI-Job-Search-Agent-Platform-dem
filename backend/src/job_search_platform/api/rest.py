@@ -496,33 +496,19 @@ def _jev_available(db) -> bool:
     return row is not None and row.provider == "openrouter" and not row.secret_reference.startswith("restored-unconfigured:")
 
 
-@router.get("/projects/{project_id}/agent/jobs/search", response_model=AgentJobSearchResult)
-async def agent_jobs_search(
-    project_id: UUID,
-    q: Annotated[str, Query(max_length=200)] = "",
-    cities: Annotated[str, Query(max_length=400)] = "",
-    work_mode: Annotated[str | None, Query(pattern="^(remote|hybrid|onsite)$")] = None,
-    posted_within_days: Annotated[int | None, Query(ge=1, le=90)] = None,
-    category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
-    limit: Annotated[int, Query(ge=1, le=50)] = 20,
-    description_format: Annotated[str, Query(pattern="^(markdown|text)$")] = "markdown",
-    actor=Depends(run_actor),
-    services: Services = Depends(get_services),
-):
-    """Direct read for owners and grants holding jobs:search; full descriptions, no Task."""
-    city_list = job_sources.parse_cities(cities)
-    if city_list is None:
-        raise RequestValidationError([{"loc": ("query", "cities"), "msg": "invalid", "type": "value_error"}])
-    request = AgentJobSearch(q=q, cities=city_list, work_mode=work_mode, posted_within_days=posted_within_days,
-                             category=category, limit=limit, description_format=description_format)
-    return await SKILL_BY_ID["jobs_search"].handler(services, actor, request, project_id)
+def _direct_skill_route(skill):
+    async def endpoint(project_id: UUID, body, actor=Depends(run_write_actor), services: Services = Depends(get_services)):
+        return await skill.handler(services, actor, body, project_id=project_id)
+    endpoint.__annotations__["body"] = skill.input_model
+    return endpoint
 
 
-@router.post("/projects/{project_id}/agent/jobs/fit", response_model=AgentJobFitResult)
-async def agent_jobs_fit(project_id: UUID, body: AgentJobFit, actor=Depends(run_write_actor),
-                         services: Services = Depends(get_services)):
-    """Deterministic keyword coverage of the current CV against one job; no model, no Run."""
-    return await SKILL_BY_ID["jobs_fit"].handler(services, actor, body, project_id)
+for _skill in SKILLS:  # direct skills: one generated REST route each, in registry order
+    if _skill.kind == "direct":
+        router.add_api_route(
+            f"/projects/{{project_id}}/agent/{_skill.id.replace('_', '/')}", _direct_skill_route(_skill),
+            methods=["POST"], operation_id=_skill.id, response_model=_skill.output_model,
+            summary=_skill.name, description=_skill.description)
 
 
 @router.get("/projects/{project_id}/job-search/match")

@@ -233,14 +233,17 @@ paths:
         '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/agent/jobs/search:
     parameters: [{$ref: '#/components/parameters/project_id'}]
-    get:
+    post:
       tags: [jobs]
       description: >-
         Direct agent read (skill jobs_search, capability jobs:search; owner session also allowed). Creates no Run.
-        Query: q (max 200), cities (comma list, max 5 x 60), work_mode (remote|hybrid|onsite), posted_within_days (1-90),
+        JSON body AgentJobSearch: q (max 200), cities (list, max 5 x 60), work_mode (remote|hybrid|onsite), posted_within_days (1-90),
         category (slug), limit (1-50, default 20), description_format (markdown|text, default markdown).
         Each job carries the full description, posting_age_days and stale. Upstream failure returns 502 job_source_unavailable.
       security: [{ownerSession: []}, {projectGrant: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobSearch'}}}
       responses:
         '200': {description: Jobs, content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobSearchResult'}}}}
         '403': {description: Grant lacks jobs:search}
@@ -1541,6 +1544,17 @@ components:
         source_url: {type: [string, 'null']}
         description: {type: string}
         description_format: {type: string, enum: [markdown, text]}
+    AgentJobSearch:
+      type: object
+      additionalProperties: false
+      properties:
+        q: {type: string, maxLength: 200, default: ''}
+        cities: {type: array, maxItems: 5, default: [], items: {type: string, minLength: 1, maxLength: 60}}
+        work_mode: {type: [string, 'null'], enum: [remote, hybrid, onsite, null]}
+        posted_within_days: {type: [integer, 'null'], minimum: 1, maximum: 90}
+        category: {type: [string, 'null'], pattern: '^[a-z0-9_-]{1,60}$'}
+        limit: {type: integer, minimum: 1, maximum: 50, default: 20}
+        description_format: {type: string, enum: [markdown, text], default: markdown}
     AgentJobSearchResult:
       type: object
       additionalProperties: false
