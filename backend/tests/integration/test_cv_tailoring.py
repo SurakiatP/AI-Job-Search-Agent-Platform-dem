@@ -295,3 +295,20 @@ def test_full_starting_coverage_skips_rounds(api_context):
     inter = _tailor(ctx, csrf, pid, session, "f2", tailor_mode="interactive").json()["id"]
     _execute_next(ctx, runtime)
     assert _run(ctx, inter).result_payload["proposals"] == [] and runtime.submits == []
+
+
+@pytest.mark.integration
+def test_tailor_tool_gate_denies_every_call_but_counts_it(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, _ = _setup(ctx, [])
+    runtime = _Runtime(ctx.tmp_path / "ws", [[_edit("Wrote Python services", facts["py"])]])
+    verdicts = []
+
+    async def submit(project_id, session_id, prompt, instructions, provider, **kwargs):
+        verdicts.append(await kwargs["tool_gate"]("call-1", "terminal"))
+
+    runtime.submit = submit
+    run_id = _tailor(ctx, csrf, pid, session, "g1").json()["id"]
+    _execute_next(ctx, runtime)
+    assert verdicts and not any(verdicts)
+    assert _run(ctx, run_id).tool_calls >= 1

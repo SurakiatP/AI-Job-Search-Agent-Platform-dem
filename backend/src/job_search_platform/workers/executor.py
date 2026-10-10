@@ -492,9 +492,13 @@ class RunExecutor:
                     gate_failure.set()
                     return False
 
+            async def deny_tool(call_id: str, tool_name: str) -> bool:
+                await reserve_tool(call_id, tool_name)  # still counts against MAX_TOOL_CALLS so a tool loop stops
+                return False  # tailoring needs no tools
+
             project = await self.runtime.start_project(run.project_id, sandbox.workspace)
             started = True
-            self.runtime.projects[run.project_id].tool_gate = reserve_tool
+            self.runtime.projects[run.project_id].tool_gate = deny_tool
             self._record_process(run.id, lease_owner, project)
             if text is None:
                 text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
@@ -520,7 +524,7 @@ class RunExecutor:
                 prompt, instructions = tailoring.round_prompt(
                     text, job["title"], job_text, coverage["missing"] if coverage else [], facts, run.output_language)
                 await self.runtime.submit(run.project_id, uuid.uuid5(run.id, f"round-{round_no}"), prompt, instructions,
-                                          provider, operation="tailor_cv", tool_gate=reserve_tool)
+                                          provider, operation="tailor_cv", tool_gate=deny_tool)
                 self._public_event(run.id, "run_progress", {"step": "agent_running"})
                 edits = tailoring.parse_edits(await self._await_result(run, lease_owner, gate_failure))
                 verdicts = await asyncio.to_thread(self._gate_edits, run.project_id, edits)
