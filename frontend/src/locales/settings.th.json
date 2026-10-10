@@ -1,14 +1,10 @@
 {
-  "projectScope": "ตั้งค่าของโปรเจกต์", "appearance": "ลักษณะที่แสดง",
+  "projectScope": "ตั้งค่าของโปรเจกต์",
+  "appearance": "ลักษณะที่แสดง",
   "appearanceDescription": "เลือกธีมและภาษาที่ใช้บนอุปกรณ์นี้",
   "light": "สว่าง",
   "dark": "มืด",
   "system": "ตามระบบ",
-  "provider": {
-    "description": "เลือกผู้ให้บริการ AI และโมเดล ใช้กับทุกโปรเจกต์",
-    "configured": "ตั้งค่าแล้ว: {{provider}} · {{model}} · คีย์ {{secret}}",
-    "notConfigured": "ยังไม่ได้ตั้งค่าผู้ให้บริการ AI"
-  },
   "sharing": {
     "description": "สร้างโทเค็นที่หมดอายุตามเวลาสำหรับโปรเจกต์นี้ ผู้ถือโทเค็นอ่านเอกสารที่สร้างขึ้นได้เมื่ออนุญาต results:read แต่เข้าถึงไฟล์ CV ต้นฉบับหรือประวัติการสนทนาส่วนตัวไม่ได้",
     "defaultOff": "การแชร์ปิดอยู่จนกว่าคุณจะสร้างโทเค็น",
@@ -17,20 +13,6 @@
   "loading": "กำลังโหลด…",
   "loadError": "โหลดการตั้งค่าไม่สำเร็จ",
   "retry": "ลองอีกครั้ง",
-  "providerLabel": "ผู้ให้บริการ",
-  "modelLabel": "โมเดล",
-  "apiKey": "คีย์ API",
-  "keyHint": "ใส่คีย์ใหม่ทุกครั้งที่บันทึก คีย์จะเก็บในคลังข้อมูลรับรองของระบบปฏิบัติการ ล้างออกจากแบบฟอร์มหลังบันทึก และไม่แสดงอีก",
-  "saveProvider": "บันทึกผู้ให้บริการและคีย์",
-  "testConnection": "ทดสอบการเชื่อมต่อที่บันทึกไว้",
-  "configured": "ตั้งค่าแล้ว: {{provider}} · {{model}} · คีย์ {{secret}}",
-  "notConfigured": "ยังไม่ได้ตั้งค่าผู้ให้บริการสำหรับโปรเจกต์นี้",
-  "saveFailed": "บันทึกการตั้งค่าไม่สำเร็จ โปรดตรวจสอบข้อมูลแล้วลองอีกครั้ง",
-  "connection": {
-    "succeeded": "เชื่อมต่อผู้ให้บริการที่บันทึกไว้สำเร็จ",
-    "failed": "เชื่อมต่อผู้ให้บริการไม่สำเร็จ โปรดตรวจสอบการตั้งค่าแล้วลองอีกครั้ง",
-    "unavailable": "ขณะนี้ยังไม่สามารถเชื่อมต่อผู้ให้บริการได้"
-  },
   "tools": {
     "description": "เปิดใช้เฉพาะตัวเชื่อมต่อ Career Ops ที่รองรับสำหรับโปรเจกต์นี้ ความพร้อมใช้งานขึ้นกับการติดตั้งในเครื่อง"
   },
@@ -69,48 +51,28 @@
   "navLabel": "หมวดการตั้งค่า",
   "nav": {
     "appearance": "ลักษณะการแสดงผล",
-    "provider": "ผู้ให้บริการ AI",
     "tools": "เครื่องมือ",
-    "sharing": "การแชร์โปรเจกต์"
+    "sharing": "การแชร์โปรเจกต์",
+    "gateway": "AI gateway"
   },
   "themeHeading": "ธีม",
   "languageHeading": "ภาษา",
   "themeTile": "ธีม{{name}}",
   "appliesNow": "มีผลทันทีและเก็บไว้บนอุปกรณ์นี้เท่านั้น",
-  "group": {
-    "popular": "ยอดนิยม",
-    "other": "ผู้ให้บริการอื่น",
-    "local": "บนเครื่อง / Local",
-    "custom": "กำหนดเอง / Custom"
-  },
-  "baseUrl": "Base URL",
-  "advancedBaseUrl": "ขั้นสูง: เปลี่ยน Base URL",
-  "baseUrlHint": "ต้องเป็น https ยกเว้น localhost",
-  "baseUrlHttps": "ใช้ URL แบบ https (อนุญาต http เฉพาะ localhost)",
-  "baseUrlInvalid": "กรอก URL ให้ถูกต้อง เช่น https://api.example.com/v1",
-  "keyNotNeeded": "ไม่ต้องใช้คีย์สำหรับ {{provider}}",
-  "modelHint": "เลือกโมเดลจากรายการหรือพิมพ์ชื่อโมเดลเอง",
-  "loadModels": "โหลดรายชื่อโมเดล",
-  "modelsFound_other": "พบ {{count}} โมเดล",
-  "needKeyForModels": "ใส่คีย์ก่อนเพื่อโหลดรายชื่อ",
-  "curlSummary": "วางคำสั่ง curl / Paste a curl command",
-  "curlLabel": "คำสั่ง curl",
-  "curlHint": "อ่านในเบราว์เซอร์เท่านั้น ข้อความจะไม่ถูกส่งหรือเก็บ และจะล้างหลังดึงค่า",
-  "curlPlaceholder": "curl https://api.example.com/v1/chat/completions -H \"Authorization: Bearer …\" -d '{\"model\":\"…\"}'",
-  "curlExtract": "ดึงค่า",
-  "curlFilled": "กรอกแล้ว: {{fields}}",
-  "curlNothing": "ไม่พบ URL คีย์ หรือโมเดลในข้อความนี้",
-  "fieldUrl": "Base URL",
-  "privacyNote": "ข้อมูล CV ที่จำเป็นจะถูกส่งไปยังผู้ให้บริการที่เลือก",
-  "customKeyNote": "คีย์จะถูกส่งไปยัง Base URL ที่คุณกำหนด",
-  "saved": "บันทึกแล้ว",
-  "error": {
-    "invalid_base_url": "Base URL ไม่ถูกต้องหรือไม่ได้รับอนุญาต ใช้ https หรือ http เฉพาะ localhost",
-    "credential_required": "ต้องระบุคีย์ API",
-    "provider_models_unavailable": "ผู้ให้บริการไม่ส่งรายชื่อโมเดลกลับมา พิมพ์ชื่อโมเดลเอง",
-    "secret_store_unavailable": "คลังข้อมูลรับรองของระบบใช้งานไม่ได้ จึงบันทึกคีย์ไม่ได้",
-    "unsupported_provider": "ไม่รองรับผู้ให้บริการนี้"
-  },
   "activeGrantsHint": "โทเค็นที่ออกให้โปรเจกต์นี้และสถานะ",
-  "noGrants": "ยังไม่มีโทเค็น"
+  "noGrants": "ยังไม่มีโทเค็น",
+  "gateway": {
+    "description": "โมเดลให้บริการผ่าน LiteLLM gateway ในเครื่อง การ์ดนี้อ่านได้อย่างเดียว",
+    "analyzeModel": "โมเดลวิเคราะห์",
+    "decisionModel": "โมเดลตัดสินใจ",
+    "models": "โมเดลที่ใช้ได้",
+    "noModels": "ยังไม่มีโมเดลที่ใช้ได้",
+    "manage": "จัดการโมเดลใน LiteLLM",
+    "hint": "ตั้งค่า OPENROUTER_API_KEY ใน .env แล้วรีสตาร์ทโครงสร้างพื้นฐาน",
+    "status": {
+      "notConfigured": "ยังไม่ได้ตั้งค่า AI gateway",
+      "reachable": "ตั้งค่า AI gateway แล้วและเชื่อมต่อได้",
+      "unreachable": "ตั้งค่า AI gateway แล้วแต่ขณะนี้เชื่อมต่อไม่ได้"
+    }
+  }
 }

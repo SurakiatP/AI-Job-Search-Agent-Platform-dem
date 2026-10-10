@@ -9,11 +9,11 @@ import { useResource } from '../projects/useResource';
 import { useState } from 'react';
 import { AppearanceSettings } from './AppearanceSettings';
 import { selectClass } from './Field';
+import { GatewaySettings } from './GatewaySettings';
 import { ProjectSharing } from './ProjectSharing';
-import { ProviderSettings } from './ProviderSettings';
 import { ToolSettings } from './ToolSettings';
 
-const sections = [['appearance', Brush], ['provider', Sparkles], ['tools', Wrench], ['sharing', Share2]] as const;
+const sections = [['appearance', Brush], ['gateway', Sparkles], ['tools', Wrench], ['sharing', Share2]] as const;
 type Section = (typeof sections)[number][0];
 
 export function SettingsPage() {
@@ -51,7 +51,7 @@ export function SettingsPage() {
           {!projectId && <Link className="text-sm text-primary hover:underline" to="/app/projects/new">{t('pages.createProject', { defaultValue: 'Create a project' })}</Link>}
         </div>}
         {section === 'appearance' && <AppearanceSettings />}
-        {section === 'provider' && <ProviderSettings />}
+        {section === 'gateway' && <GatewaySettings />}
         {(section === 'tools' || section === 'sharing') && projectId && (section === 'tools' ? <ToolSettings key={`tools:${projectId}`} projectId={projectId} /> : <ProjectSharing key={`sharing:${projectId}`} projectId={projectId} />)}
       </div>
     </div>
