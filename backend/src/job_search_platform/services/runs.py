@@ -583,7 +583,7 @@ class RunService:
         return await asyncio.to_thread(self._tailor_apply_sync, actor, project_id, run_id, proposal_ids)
 
     def _tailor_apply_sync(self, actor: Actor, project_id: UUID, run_id: UUID, proposal_ids: list[int]) -> RunView:
-        from job_search_platform.services.evidence import EvidencedEdit, apply_gated, fact_numbers, require_evidence
+        from job_search_platform.services.evidence import EvidencedEdit, apply_gated, fact_claims, require_evidence
 
         if actor.kind != "owner":
             raise ServiceError("forbidden")
@@ -612,7 +612,7 @@ class RunService:
             if base is None:
                 raise ServiceError("document_source_unavailable")
             text, applied, spliced = apply_gated(
-                base, edits, fact_numbers(db, project_id, {UUID(i) for e in edits for i in e["evidence_ids"]}))
+                base, edits, fact_claims(db, project_id, {UUID(i) for e in edits for i in e["evidence_ids"]}))
             if spliced:
                 raise ServiceError("evidence_required")
             if not applied:

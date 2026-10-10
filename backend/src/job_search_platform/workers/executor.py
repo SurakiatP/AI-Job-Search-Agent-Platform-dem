@@ -25,7 +25,7 @@ from job_search_platform.services.contracts import EvaluationResult, SkillCovera
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
 from job_search_platform.integrations.jev import JEV_MODEL, JevClient
 from job_search_platform.services import experience, job_sources, smart_match, tailoring
-from job_search_platform.services.evidence import EvidencedEdit, apply_gated, fact_numbers, require_evidence
+from job_search_platform.services.evidence import EvidencedEdit, apply_gated, fact_claims, require_evidence
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.runs import MAX_ACTIVE_SECONDS, append_event
@@ -460,9 +460,9 @@ class RunExecutor:
                     verdicts.append(False)
         return verdicts
 
-    def _fact_numbers(self, project_id: uuid.UUID, edits: list[dict]) -> dict:
+    def _fact_claims(self, project_id: uuid.UUID, edits: list[dict]) -> dict:
         with self.sessions() as db:
-            return fact_numbers(db, project_id, {uuid.UUID(i) for edit in edits for i in edit["evidence_ids"]})
+            return fact_claims(db, project_id, {uuid.UUID(i) for edit in edits for i in edit["evidence_ids"]})
 
     def _facts(self, project_id: uuid.UUID) -> list[dict]:
         with self.sessions() as db:
@@ -536,7 +536,7 @@ class RunExecutor:
                     rounds.append({"round": 1, "accepted": len(accepted), "rejected": len(rejected), "coverage": coverages[0]})
                     break
                 text, applied, spliced = apply_gated(
-                    text, accepted, await asyncio.to_thread(self._fact_numbers, run.project_id, accepted))
+                    text, accepted, await asyncio.to_thread(self._fact_claims, run.project_id, accepted))
                 rejected += spliced
                 proposals += [{"id": len(proposals) + i, **edit, "status": "applied"} for i, edit in enumerate(applied)]
                 proposals += [{"id": len(proposals) + i, **edit, "status": "rejected_by_gate"} for i, edit in enumerate(rejected)]

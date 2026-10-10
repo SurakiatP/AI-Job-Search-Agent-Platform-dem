@@ -85,6 +85,16 @@ def test_apply_gated_blocks_digit_splicing():
     assert apply_gated(cv, [ok], {fact: set()})[2] == [ok]
 
 
+def test_apply_gated_blocks_skills_the_cited_facts_do_not_name():
+    from job_search_platform.services.evidence import apply_gated, claims
+
+    fact = uuid4()
+    cv = "Built APIs."
+    edit = {"find": "", "text": "Expert in Terraform and Kafka", "evidence_ids": [str(fact)]}
+    assert apply_gated(cv, [edit], {fact: claims("Wrote Python services")})[2] == [edit]
+    assert apply_gated(cv, [edit], {fact: claims("Wrote Terraform modules feeding Kafka")})[0].endswith("Kafka")
+
+
 def test_stop_when_next_round_would_exceed_budget():
     assert should_stop([0.5, 0.6], [1], 1, 60, 100, longest_round_s=40) == "time_budget"
     assert should_stop([0.5, 0.6], [1], 1, 60, 100, longest_round_s=39) is None
