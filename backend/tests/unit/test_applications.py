@@ -6,7 +6,7 @@ from job_search_platform.services.applications import gate_answers, pack_prompt,
 from job_search_platform.services.evidence import claims
 
 F1, F2 = uuid4(), uuid4()
-FACTS = {F1: claims("Packaged services with Docker, 5 years"), F2: claims("Wrote Python services")}
+FACTS = {F1: claims("Packaged services with Docker, 5 years", strict=True), F2: claims("Wrote Python services", strict=True)}
 QUESTIONS = [
     {"id": "why", "label": "Why us?", "required": True, "kind": "text"},
     {"id": "auth", "label": "Authorised?", "required": True, "kind": "boolean"},

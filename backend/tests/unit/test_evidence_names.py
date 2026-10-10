@@ -78,7 +78,7 @@ def _answer(text, fact_text):
     fid = uuid4()
     q = [{"id": "q", "label": "Q", "required": True, "kind": "text"}]
     entry = gate_answers([{"question_id": "q", "answer": text, "evidence_ids": [str(fid)]}], q,
-                         {fid: claims(fact_text)})[0][0]
+                         {fid: claims(fact_text, strict=True)})[0][0]
     return entry["answer"] is not None
 
 
