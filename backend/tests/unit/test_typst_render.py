@@ -38,3 +38,30 @@ def test_thai_preserved_and_lang_set():
 
 def test_font_list_is_installed_latin_then_thai():
     assert '#set text(font: ("Open Sans", "Noto Sans Thai")' in render("hello")
+
+
+def _outside_literals(src):
+    """Source with every "..." string literal (honouring backslash escapes) blanked out."""
+    out, i, inside = [], 0, False
+    while i < len(src):
+        ch = src[i]
+        if inside and ch == "\\":
+            i += 2
+            continue
+        if ch == '"':
+            inside = not inside
+            out.append('"')
+        elif not inside:
+            out.append(ch)
+        i += 1
+    assert not inside, "unterminated string literal"
+    return "".join(out)
+
+
+def test_hostile_input_stays_inside_string_literals():
+    hostile = ['x]#read("/etc/passwd")[', '#image("x")', '\\u{41}', 'a\x00b', 'a‮b', 'a #import "x"', "#include \"y\" " + "A" * 50_000]
+    src = render("\n".join(hostile) + "\n# #read(\"h\")\n- #image(\"z\")")
+    rest = _outside_literals(src)
+    for bad in ("#read", "#image", "#import", "#include", "passwd", "u{41}", "\x00", "‮"):
+        assert bad not in rest
+    assert all(line.startswith(("#set", "#heading", "#list", "#par")) for line in src.splitlines())

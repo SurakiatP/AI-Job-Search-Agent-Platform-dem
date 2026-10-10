@@ -209,6 +209,12 @@ def test_interactive_proposals_then_apply_and_restore(api_context):
     _execute_next(ctx, runtime)
     revisions = _revisions(ctx, pid)
     assert len(revisions) == 3 and revisions[2].content_markdown == first.content_markdown
+    assert runtime.engines == ["typst"] * 3  # apply, apply, restore all render CVs with typst
+    edit = ctx.client.post(f"{PREFIX}/{pid}/documents/{first.document_id}/revisions", headers=headers,
+                           json={"content_markdown": "# Hand edited CV"})
+    assert edit.status_code == 202
+    _execute_next(ctx, runtime)
+    assert runtime.engines[-1] == "typst" and len(runtime.engines) == 4  # manual edit too
     assert ctx.client.post(f"{PREFIX}/{pid}/documents/{first.document_id}/revisions/{uuid4()}/restore",
                            headers=headers).status_code == 404
 

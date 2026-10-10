@@ -37,6 +37,7 @@ class _FakeRuntime:
         self.declared_type = declared_type
         self.submits: list[tuple] = []
         self.exports: list[tuple] = []
+        self.engines: list[str] = []
         self.parsed = 0
 
     async def start_project(self, project_id, workspace):
@@ -60,6 +61,7 @@ class _FakeRuntime:
 
     async def export_document(self, project_id, fmt, source, output, engine="chromium"):
         self.exports.append((fmt, source, output))
+        self.engines.append(engine)
         (self.projects[project_id].workspace / output).write_bytes(PDF)
         return output
 
@@ -187,6 +189,7 @@ def test_manual_edit_exports_without_llm_and_appends_manual_revision(api_context
     _execute_next(api_context, runtime)
     assert len(runtime.submits) == submits and runtime.parsed == parsed  # no LLM, no CV parse
     assert runtime.exports[-1][0] == "pdf"
+    assert runtime.engines == ["chromium", "chromium"]  # cover letters never use typst: draft, then manual edit
     finished = api_context.client.get(f"{PREFIX}/{pid}/runs/{run['id']}").json()
     assert finished["status"] == "completed" and len(finished["result_file_ids"]) == 1
 
