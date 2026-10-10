@@ -9,7 +9,7 @@ def _lit(text: str) -> str:
 def markdown_to_typst(text: str) -> str:
     lang = "th" if any("฀" <= ch <= "๿" for ch in text) else "en"
     out = ['#set page(paper: "a4", margin: 2cm)',
-           f'#set text(font: ("Noto Sans Thai", "Noto Sans"), size: 10.5pt, lang: "{lang}")',
+           f'#set text(font: ("Open Sans", "Noto Sans Thai"), size: 10.5pt, lang: "{lang}")',
            "#set par(justify: false)"]
     for raw in text.splitlines():
         line = raw.strip()

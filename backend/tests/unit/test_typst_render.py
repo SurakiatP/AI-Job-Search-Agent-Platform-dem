@@ -34,3 +34,7 @@ def test_thai_preserved_and_lang_set():
     out = render("# สวัสดี\nประสบการณ์")
     assert '"สวัสดี"' in out and '"ประสบการณ์"' in out and 'lang: "th"' in out
     assert 'lang: "en"' in render("hello")
+
+
+def test_font_list_is_installed_latin_then_thai():
+    assert '#set text(font: ("Open Sans", "Noto Sans Thai")' in render("hello")
