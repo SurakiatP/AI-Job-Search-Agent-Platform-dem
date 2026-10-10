@@ -578,7 +578,7 @@ class RunExecutor:
                 artifact_ids = tuple(item.id for item in published)
             await self._stop(run.project_id, started)
             started = False
-            await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed",
+            await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "needs_input" if interactive else "completed",
                                     artifact_ids=artifact_ids, result_payload=payload)
         except ServiceError as exc:
             await self._stop(run.project_id, started)
@@ -640,7 +640,8 @@ class RunExecutor:
                        "answers": entries, "missing_required": missing}
             await self._stop(run.project_id, started)
             started = False
-            await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed", result_payload=payload)
+            await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "needs_input" if missing else "completed",
+                                    result_payload=payload)
         except ServiceError as exc:
             await self._stop(run.project_id, started)
             status = "cancelled" if exc.code == "cancellation_requested" else "failed"

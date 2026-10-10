@@ -149,7 +149,7 @@ class PostgresRunQueue:
         now: datetime | None = None,
     ) -> Run:
         """Atomically publish a validated report and terminal event after real stop."""
-        if status not in {"completed", "failed", "cancelled", "interrupted"}:
+        if status not in {"completed", "failed", "cancelled", "interrupted", "needs_input"}:
             raise ValueError("invalid_terminal_status")
         report = None
         if evaluation_result is not None:
@@ -162,7 +162,7 @@ class PostgresRunQueue:
         now = _utc(now or datetime.now(timezone.utc))
         denied: str | None = None
         with self.sessions.begin() as db:
-            if status == "completed":
+            if status in ("completed", "needs_input"):
                 run, creator_current = self._execution_run(db, run_id, lease_owner, now)
                 if run.cancellation_requested_at is not None:
                     denied = "cancellation_requested"
@@ -177,10 +177,11 @@ class PostgresRunQueue:
                 accrue_active_time(run, now)
                 if report is not None:
                     run.evaluation_result = report
-                if result_payload is not None and status == "completed":
+                if result_payload is not None and status in ("completed", "needs_input"):
                     run.result_payload = result_payload
                 run.status = status
-                run.finished_at = now
+                # needs_input rests without finishing: the input or apply step completes it.
+                run.finished_at = None if status == "needs_input" else now
                 self._clear_lease(run)
                 data: dict[str, object] = {"status": status, "artifact_ids": artifact_ids}
                 if message_key:
@@ -189,6 +190,29 @@ class PostgresRunQueue:
         if denied:
             raise ServiceError(denied)
         return run
+    def interrupt_or_resume(self, run_id: UUID, *, message_key: str) -> str | None:
+        """A stopped worker's run resumes once (back to queued); otherwise it is interrupted.
+
+        Returns the new status, or None when the run is not queued/running (waiting_approval and needs_input are
+        untouched: they hold no sandbox and stay valid). Never resumes after a cancellation request."""
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            run = db.scalar(select(Run).where(Run.id == run_id).with_for_update())
+            if run is None or run.status not in ("queued", "running"):
+                return None
+            # Accrue only to the last heartbeat: downtime after a crash is not execution time.
+            accrue_active_time(run, _utc(run.heartbeat_at) if run.heartbeat_at else now)
+            self._clear_lease(run)
+            if run.cancellation_requested_at is None and run.resume_count == 0:
+                run.status = "queued"
+                run.resume_count = 1
+                append_event(db, run, "run_resumed", {"status": "queued", "message_key": "events.run_resumed"}, now=now)
+                return "queued"
+            run.status = "interrupted"
+            run.finished_at = now
+            append_event(db, run, "run_interrupted", {"status": "interrupted", "message_key": message_key}, now=now)
+            return "interrupted"
+
     def _execution_run(self, db: Session, run_id: UUID, lease_owner: str,
                        now: datetime) -> tuple[Run, bool]:
         identity = db.execute(select(Run.project_id, Run.actor_scope, Run.operation)

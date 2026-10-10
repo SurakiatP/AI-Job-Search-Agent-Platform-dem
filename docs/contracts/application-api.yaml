@@ -593,9 +593,9 @@ paths:
     post:
       tags: [runs]
       description: >-
-        Owner-only. Applies chosen proposals of a completed interactive tailor_cv run to its base text,
+        Owner-only. Applies chosen proposals of a needs_input interactive tailor_cv run to its base text,
         re-checking evidence for the whole selection, and queues an export_document run that publishes
-        one revision of the tailored CV. Any failed check rejects the call with evidence_required.
+        one revision of the tailored CV, and the interactive run becomes completed. Any failed check rejects the call with evidence_required.
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/TailorApply'}}}
@@ -604,7 +604,30 @@ paths:
         '400': {description: Evidence check failed (evidence_required) or no chosen edit matched the base text (tailor_nothing_to_apply)}
         '403': {description: Not an owner}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: Another export for the tailored CV is queued or running (document_busy)}
+        '409': {description: Another export for the tailored CV is queued or running (document_busy), or the run was already applied (tailor_already_applied)}
+  /projects/{project_id}/runs/{run_id}/input:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [runs]
+      description: >-
+        Owner-only. Fills the null answers of a parked apply_prepare pack (run status needs_input). Answers are the
+        candidate's own, so they need no evidence; each is validated against its question kind and choices and is
+        stored with source owner. When every required answer is filled the run becomes completed with state ready;
+        otherwise it stays needs_input and result_payload.missing_required lists what remains.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/RunInput'}}}
+      responses:
+        '200': {description: The updated run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: Not an owner}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: The run is not waiting for input (run_not_awaiting_input)}
+        '422': {description: Unknown or already answered question, or an answer invalid for its kind (invalid_answer)}
   /projects/{project_id}/cv:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -1021,6 +1044,18 @@ components:
       required: [proposal_ids]
       properties:
         proposal_ids: {type: array, minItems: 1, maxItems: 50, items: {type: integer}}
+    RunInput:
+      type: object
+      additionalProperties: false
+      required: [answers]
+      properties:
+        answers:
+          type: object
+          minProperties: 1
+          maxProperties: 50
+          description: Question id to answer (text, true or false, or one of the choices).
+          additionalProperties:
+            oneOf: [{type: string}, {type: boolean}]
     DocumentEdit:
       type: object
       additionalProperties: false
@@ -1262,7 +1297,7 @@ components:
         project_id: {type: string, format: uuid}
         session_id: {type: [string, 'null'], format: uuid, description: Null only for profile_cv.}
         operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, export_document, profile_cv, match_jobs, extract_experience, apply_prepare, apply_submit, draft_follow_up]}
-        status: {type: string, enum: [queued, running, waiting_approval, completed, failed, cancelled, interrupted]}
+        status: {type: string, enum: [queued, running, waiting_approval, needs_input, completed, failed, cancelled, interrupted]}
         output_language: {type: string, enum: [th, en]}
         result_file_ids: {type: array, items: {type: string, format: uuid}}
         created_at: {type: string, format: date-time}
@@ -1284,7 +1319,7 @@ components:
       properties:
         approval_id: {type: [string, 'null'], format: uuid}
         step: {type: [string, 'null'], maxLength: 80}
-        status: {type: [string, 'null'], enum: [queued, running, waiting_approval, completed, failed, cancelled, interrupted]}
+        status: {type: [string, 'null'], enum: [queued, running, waiting_approval, needs_input, completed, failed, cancelled, interrupted]}
         artifact_ids: {type: array, items: {type: string, format: uuid}}
         message_key: {type: [string, 'null'], maxLength: 120}
         progress_percent: {type: [integer, 'null'], minimum: 0, maximum: 100}

@@ -45,6 +45,7 @@ from job_search_platform.services.contracts import (
     RunRequest,
     RunView,
 )
+from job_search_platform.services.applications import MAX_ANSWER_CHARS
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD
 
@@ -64,6 +65,7 @@ EVENT_TYPES = frozenset(
         "run_completed",
         "run_failed",
         "run_interrupted",
+        "run_needs_input",
         "approval_requested",
         "approval_approved",
         "approval_rejected",
@@ -177,8 +179,21 @@ def latest_ready_pack(db: Session, project_id: UUID, job_revision_id: UUID) -> R
     """The newest completed apply_prepare run of the job, only when its pack is ready (a newer parked one blocks)."""
     run = db.scalar(select(Run).where(
         Run.project_id == project_id, Run.job_revision_id == job_revision_id, Run.operation == "apply_prepare",
-        Run.status == "completed").order_by(Run.finished_at.desc(), Run.created_at.desc()).limit(1))
-    return run if run is not None and (run.result_payload or {}).get("state") == "ready" else None
+        Run.status.in_(("completed", "needs_input")))
+        .order_by(func.coalesce(Run.finished_at, Run.created_at).desc(), Run.created_at.desc()).limit(1))
+    return run if run is not None and run.status == "completed" and (run.result_payload or {}).get("state") == "ready" else None
+
+
+def _owner_answer(question: dict, raw: object) -> str | bool | None:
+    """The owner's answer checked against the question kind, or None when invalid."""
+    kind = question["kind"]
+    if kind == "boolean":
+        return raw if isinstance(raw, bool) else {"true": True, "false": False}.get(raw) if isinstance(raw, str) else None
+    if not isinstance(raw, str) or not 0 < len(raw.strip()) <= MAX_ANSWER_CHARS:
+        return None
+    if kind == "choice":
+        return raw if raw in (question.get("choices") or ()) else None
+    return raw.strip()
 
 
 class RunService:
@@ -635,9 +650,11 @@ class RunService:
             authorize(db, actor, project_id, "write", "document")
             run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id))
             payload = None if run is None else run.result_payload
-            if (run is None or run.operation != "tailor_cv" or run.status != "completed"
+            if (run is None or run.operation != "tailor_cv" or run.status not in ("needs_input", "completed")
                     or not isinstance(payload, dict) or payload.get("mode") != "interactive"):
                 raise ServiceError("not_found")
+            if run.status == "completed":
+                raise ServiceError("tailor_already_applied")
             by_id = {item["id"]: item for item in payload.get("proposals", [])}
             chosen = [by_id.get(pid) for pid in dict.fromkeys(proposal_ids)]
             if any(item is None or item.get("status") != "proposed" for item in chosen):
@@ -670,9 +687,57 @@ class RunService:
                         & (Run.input_snapshot["export_document_type"].as_string() == "cv"))))
                 if busy:
                     raise ServiceError("document_busy")
-                return self._queue_export(db, actor, run, None, "pdf", text, now, title=title)
+                view = self._queue_export(db, actor, run, None, "pdf", text, now, title=title)
+                self._complete_resting(db, run, now)
+                return view
             document_id = document.id
-        return self._submit_export_sync(actor, project_id, document_id, DocumentEdit(content_markdown=text, format="pdf"))
+        view = self._submit_export_sync(actor, project_id, document_id, DocumentEdit(content_markdown=text, format="pdf"))
+        with self.sessions.begin() as db:
+            done = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id).with_for_update())
+            if done is not None and done.status == "needs_input":
+                self._complete_resting(db, done, datetime.now(timezone.utc))
+        return view
+
+    @staticmethod
+    def _complete_resting(db: Session, run: Run, now: datetime) -> None:
+        """A needs_input run whose owner step is done becomes completed."""
+        run.status = "completed"
+        run.finished_at = now
+        append_event(db, run, "run_completed", {"status": "completed"}, now=now)
+
+    async def submit_input(self, actor: Actor, project_id: UUID, run_id: UUID, answers: dict[str, str | bool]) -> RunView:
+        """Owner-only: fill the null answers of a parked apply pack; a ready pack completes the run."""
+        return await asyncio.to_thread(self._input_sync, actor, project_id, run_id, answers)
+
+    def _input_sync(self, actor: Actor, project_id: UUID, run_id: UUID, answers: dict[str, str | bool]) -> RunView:
+        if actor.kind != "owner":
+            raise ServiceError("forbidden")
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "run")
+            run = db.scalar(select(Run).where(Run.project_id == project_id, Run.id == run_id).with_for_update())
+            if run is None or run.operation != "apply_prepare":
+                raise ServiceError("not_found")
+            payload = run.result_payload
+            if run.status != "needs_input" or not isinstance(payload, dict):
+                raise ServiceError("run_not_awaiting_input")
+            questions = {q["id"]: q for q in run.input_snapshot["questions"]}
+            entries = [dict(entry) for entry in payload["answers"]]
+            by_id = {entry["question_id"]: entry for entry in entries}
+            for qid, raw in answers.items():
+                entry, question = by_id.get(qid), questions.get(qid)
+                value = _owner_answer(question, raw) if question is not None else None
+                if entry is None or entry["answer"] is not None or value is None:
+                    raise ServiceError("invalid_answer")
+                entry.update(answer=value, evidence_ids=[], source="owner")
+                entry.pop("reason", None)
+            missing = [qid for qid, q in questions.items() if q["required"] and by_id[qid]["answer"] is None]
+            ready = not missing
+            run.result_payload = {**payload, "answers": entries, "missing_required": missing,
+                                  "state": "ready" if ready else "parked"}
+            if ready:
+                self._complete_resting(db, run, now)
+            return self._authorized_view(db, actor, run)
 
     async def submit_profile(self, actor: Actor, project_id: UUID, cv_id: UUID) -> RunView | None:
         """Owner-only: queue a non-LLM run that stores the CV's skill names; None when already profiled."""
@@ -857,7 +922,7 @@ class RunService:
                 raise ServiceError("forbidden")
             if run.status in {"completed", "failed", "cancelled", "interrupted"}:
                 return self._authorized_view(db, actor, run)
-            if run.status == "queued":
+            if run.status in ("queued", "needs_input"):  # neither holds a sandbox
                 run.status = "cancelled"
                 run.finished_at = now
                 append_event(db, run, "run_cancelled", {"status": "cancelled"}, now=now)

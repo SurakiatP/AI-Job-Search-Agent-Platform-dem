@@ -179,7 +179,7 @@ def test_interactive_proposals_then_apply_and_restore(api_context):
     csrf, pid, session, facts, _ = _setup(ctx, [])
     run_id, runtime = _interactive(ctx, csrf, pid, session, facts)
     run = _run(ctx, run_id)
-    assert run.status == "completed" and run.result_payload["mode"] == "interactive"
+    assert run.status == "needs_input" and run.result_payload["mode"] == "interactive"
     assert [p["status"] for p in run.result_payload["proposals"]] == ["proposed", "proposed", "rejected_by_gate"]
     assert _revisions(ctx, pid) == []
     url = f"{PREFIX}/{pid}/runs/{run_id}/tailor/apply"
@@ -188,6 +188,8 @@ def test_interactive_proposals_then_apply_and_restore(api_context):
     assert ctx.client.post(url, headers=headers, json={"proposal_ids": []}).status_code == 422
     applied = ctx.client.post(url, headers=headers, json={"proposal_ids": [0, 1]})
     assert applied.status_code == 202 and applied.json()["operation"] == "export_document"
+    assert _run(ctx, run_id).status == "completed"
+    assert ctx.client.post(url, headers=headers, json={"proposal_ids": [0]}).json()["code"] == "tailor_already_applied"
     _execute_next(ctx, runtime)
     (first,) = _revisions(ctx, pid)
     assert CV_TEXT in first.content_markdown and "Docker" in first.content_markdown and "Terraform" in first.content_markdown

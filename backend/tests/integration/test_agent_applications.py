@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import sessionmaker
 
 from helpers import grant as make_grant, project as make_project, provider_config, revisions, session as make_session
@@ -111,7 +111,7 @@ def test_prepare_parks_when_a_required_answer_is_unanswerable(api_context):
     run_id = _prepare(ctx, csrf, pid, session).json()["id"]
     _execute_next(ctx, runtime)
     run = _run(ctx, run_id)
-    assert run.status == "completed"
+    assert run.status == "needs_input" and run.finished_at is None
     assert run.result_payload["state"] == "parked" and run.result_payload["missing_required"] == ["why"]
     assert run.result_payload["answers"][0] == {"question_id": "why", "label": "Why do you want this job?", "answer": None, "evidence_ids": [],
                                                "reason": "not_answerable"}
@@ -349,9 +349,11 @@ def test_migration_0017_upgrades_a_database_that_already_has_runs(postgres_engin
     with factory() as db:
         p = make_project(db)
         old_cv, _ = revisions(db, p.id)
-        db.add(Run(project_id=p.id, actor_scope="owner", idempotency_key="old", request_digest="d" * 64,
-                   operation="profile_cv", cv_revision_id=old_cv.id, input_snapshot={}, config_snapshot={}, output_language="en",
-                   status="completed"))
+        # Raw SQL: the ORM model already has columns (resume_count) that revision 0016 lacks.
+        db.execute(text("INSERT INTO runs (id, project_id, actor_scope, idempotency_key, request_digest, operation, "
+                        "cv_revision_id, input_snapshot, config_snapshot, output_language, status, active_seconds, tool_calls) "
+                        "VALUES (:id, :p, 'owner', 'old', :d, 'profile_cv', :cv, '{}', '{}', 'en', 'completed', 0, 0)"),
+                   {"id": uuid4(), "p": p.id, "d": "d" * 64, "cv": old_cv.id})
         db.commit()
     _migrate(postgres_engine, command.upgrade, "head")
     with factory() as db:

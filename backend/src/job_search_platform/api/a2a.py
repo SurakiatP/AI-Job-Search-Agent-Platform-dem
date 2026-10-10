@@ -56,6 +56,7 @@ from job_search_platform.services.skills import SKILL_BY_ID, SKILLS, Skill
 
 _CARD_PATH = "/.well-known/agent-card.json"
 _MAX_ARTIFACT_BYTES = 200_000
+_TERMINAL = frozenset({"cancelled", "completed", "failed", "interrupted"})  # needs_input is resting, not terminal
 
 
 def _protobuf(message_type: type, value: dict[str, Any]):
@@ -239,6 +240,7 @@ class _PlatformRequestHandler(RequestHandler):
             "queued": "TASK_STATE_SUBMITTED",
             "running": "TASK_STATE_WORKING",
             "waiting_approval": "TASK_STATE_INPUT_REQUIRED",
+            "needs_input": "TASK_STATE_INPUT_REQUIRED",
             "completed": "TASK_STATE_COMPLETED",
             "failed": "TASK_STATE_FAILED",
             "cancelled": "TASK_STATE_CANCELED",
@@ -260,6 +262,11 @@ class _PlatformRequestHandler(RequestHandler):
             status["message"] = {
                 "role": "ROLE_AGENT",
                 "parts": [{"text": "Owner approval is required in the platform."}],
+            }
+        elif run.status == "needs_input":
+            status["message"] = {
+                "role": "ROLE_AGENT",
+                "parts": [{"text": "Owner input is required in the platform."}],
             }
         elif run.status == "interrupted":
             status["message"] = {"role": "ROLE_AGENT", "parts": [{"text": "Run interrupted."}]}
@@ -382,7 +389,7 @@ class _PlatformRequestHandler(RequestHandler):
             raise self._not_found() from None
         except Exception as exc:
             raise A2AError("request_rejected") from None
-        if run.status not in {"cancelled", "completed", "failed", "interrupted"}:
+        if run.status not in _TERMINAL:
             deadline = asyncio.get_running_loop().time() + 1.0
             while asyncio.get_running_loop().time() < deadline:
                 await asyncio.sleep(0.05)
@@ -391,9 +398,9 @@ class _PlatformRequestHandler(RequestHandler):
                     run = await self.services.runs.cancel(actor, actor.project_id, run_id)
                 except ServiceError as exc:
                     raise self._not_found() from None
-                if run.status in {"cancelled", "completed", "failed", "interrupted"}:
+                if run.status in _TERMINAL:
                     break
-        return self._task(run, cancellation_requested=run.status not in {"cancelled", "completed", "failed", "interrupted"})
+        return self._task(run, cancellation_requested=run.status not in _TERMINAL)
 
     async def on_subscribe_to_task(self, params: SubscribeToTaskRequest, context: ServerCallContext) -> AsyncIterator[Any]:
         raise UnsupportedOperationError("Task subscriptions are not supported")

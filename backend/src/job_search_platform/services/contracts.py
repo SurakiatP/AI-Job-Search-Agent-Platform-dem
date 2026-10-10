@@ -10,7 +10,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, SecretStr, St
 
 
 Capability = Literal["results:read", "jobs:evaluate", "documents:draft", "cv:tailor", "jobs:search", "applications:apply"]
-RunStatus = Literal["queued", "running", "waiting_approval", "completed", "failed", "cancelled", "interrupted"]
+RunStatus = Literal["queued", "running", "waiting_approval", "needs_input", "completed", "failed", "cancelled", "interrupted"]
 Operation = Literal["evaluate_job", "draft_documents", "tailor_cv", "apply_prepare", "apply_submit", "draft_follow_up"]
 # profile_cv (CV skill profile, no LLM) and extract_experience (LLM experience-bank extraction) are likewise owner-only and internal.
 # export_document is an owner-only, non-LLM run created by the manual-edit endpoint; never a request operation.
@@ -316,6 +316,11 @@ class DocumentRevisionView(RevisionView):
 class DocumentEdit(DTO):
     content_markdown: Annotated[str, StringConstraints(min_length=1, max_length=200000)]
     format: Literal["pdf", "docx"] | None = None
+
+
+class RunInput(DTO):
+    """Owner answers for a parked apply pack, keyed by question id."""
+    answers: Annotated[dict[Annotated[str, StringConstraints(min_length=1, max_length=64)], str | bool], Field(min_length=1, max_length=50)]
 
 
 class TailorApply(DTO):

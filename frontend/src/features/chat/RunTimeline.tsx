@@ -7,8 +7,8 @@ import { relativeTime } from '../console/shared';
 import type { Locale, RunEvent, RunStatus, RunView } from '../../lib/api-types';
 
 const statuses: Record<Locale, Record<RunStatus, string>> = {
-  th: { queued: 'เข้าคิวแล้ว', running: 'กำลังทำงาน', waiting_approval: 'รอการอนุมัติ', completed: 'เสร็จแล้ว', failed: 'ทำไม่สำเร็จ', cancelled: 'ยกเลิกแล้ว', interrupted: 'หยุดกลางคัน' },
-  en: { queued: 'Queued', running: 'Running', waiting_approval: 'Waiting for approval', completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled', interrupted: 'Interrupted' },
+  th: { queued: 'เข้าคิวแล้ว', running: 'กำลังทำงาน', waiting_approval: 'รอการอนุมัติ', needs_input: 'รอข้อมูลจากคุณ', completed: 'เสร็จแล้ว', failed: 'ทำไม่สำเร็จ', cancelled: 'ยกเลิกแล้ว', interrupted: 'หยุดกลางคัน' },
+  en: { queued: 'Queued', running: 'Running', waiting_approval: 'Waiting for approval', needs_input: 'Needs input', completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled', interrupted: 'Interrupted' },
 };
 
 export function RunTimeline({ locale, run, events, cancellationPending }: { locale: Locale; run: RunView | null; events: RunEvent[]; cancellationPending?: boolean }) {

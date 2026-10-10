@@ -270,8 +270,8 @@ async def test_backend_bridge_loss_interrupts_native_run_preserves_completed_out
         await supervisor.reconcile_startup()
         with sessions() as db:
             interrupted = db.get(Run, active.id)
-            assert interrupted.status == "interrupted"
-            assert interrupted.finished_at is not None
+            assert interrupted.status == "queued" and interrupted.resume_count == 1  # resumed once
+            assert interrupted.finished_at is None
             assert db.get(Run, completed.id).status == "completed"
             assert db.get(StoredFile, file_id).publication_state == "published"
             assert db.get(RunArtifact, (completed.id, file_id)) is not None
@@ -280,7 +280,9 @@ async def test_backend_bridge_loss_interrupts_native_run_preserves_completed_out
         assert not (workspace / "native-finished.txt").exists()
         assert not (await runtime._docker(*container_filters)).strip()
         with sessions() as db:
-            assert db.scalar(select(Run.id).where(Run.status == "queued")) is None
+            assert set(db.scalars(select(Run.id).where(Run.status == "queued"))) == {active.id}  # the resume
+        # A second interruption is final, and only then is a manual retry allowed.
+        assert queue.interrupt_or_resume(active.id, message_key="errors.worker_interrupted") == "interrupted"
 
         manual_retry = await service.submit(
             actor, db_project.id,
