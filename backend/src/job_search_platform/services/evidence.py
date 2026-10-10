@@ -24,7 +24,7 @@ class EvidencedEdit(BaseModel):
 
 _NAME = re.compile(r"(?<![A-Za-z])[A-Z][A-Za-z]+")
 _BULLET_LEAD = re.compile(r"^[\s\-*\u2022\u2013\u2014>#\d.)]*")
-_SENTENCE_END = re.compile(r"[.!?:]\s*$")
+_SENTENCE_END = re.compile(r"[.!?:;]\s*$")
 _HEADING_DELIMITERS = ("\u2014", "\u2013", "|", ",", ":", "(", "**", "__")
 _ACRONYMS = frozenset(  # technical acronyms that are not names; other 2-4 letter all-caps tokens are
     "AI ML API APIS UI UX QA CI CD IT HR BI ETL SQL AWS GCP CEO CTO CFO COO VP PM MBA BSC MSC PHD GPA CV KPI OKR SLA "

@@ -104,3 +104,7 @@ def test_heading_lines_starting_with_a_name_are_checked():  # I3
     for line in ("**Google** — Senior Engineer", "### Google, Bangkok", "Google | Remote", "Google", "Google (2020)"):
         assert "name:google" in _names(line), line
     assert _names("Led a team") == set() and _names("Built APIs") == set()
+
+
+def test_semicolon_ends_a_sentence():  # M1
+    assert _names("Built APIs; Led migration") == set()
