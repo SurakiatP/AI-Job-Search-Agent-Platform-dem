@@ -7,7 +7,7 @@ async function open(page: Page, locale: 'en' | 'th', body: unknown, calls: strin
   await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
   await useSyntheticApplication(page);
   await page.route('**/api/v1/gateway', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }));
-  page.on('request', r => { const p = new URL(r.url()).pathname; if (/\/(providers|settings\/provider)/.test(p)) calls.push(p); });
+  page.on('request', r => { const p = new URL(r.url()).pathname; if (/^\/api\/v1\/(providers|settings\/provider)/.test(p)) calls.push(p); });
   await page.goto('/app/settings?section=gateway');
 }
 
