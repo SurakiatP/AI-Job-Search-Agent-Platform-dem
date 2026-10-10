@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import Any, Literal
+from typing import Any
 from uuid import UUID
 
 from mcp.server.mcpserver import Context, MCPServer
@@ -17,9 +17,10 @@ from starlette.responses import JSONResponse
 
 from job_search_platform.db.models import Run
 from job_search_platform.services.authorization import authorize
-from job_search_platform.services.contracts import Actor, RunView
+from job_search_platform.services.contracts import Actor, Operation, RunView
 from job_search_platform.services.errors import ServiceError
-from job_search_platform.services.protocol_runs import ProtocolJobInput, ProtocolRuns
+from job_search_platform.services.protocol_runs import ProtocolRuns
+from job_search_platform.services.skills import SKILL_BY_ID, SKILLS, Skill
 
 _DEFAULT_HOSTS = ["127.0.0.1", "localhost"]
 _MAX_RESOURCE_BYTES = 200_000
@@ -133,10 +134,11 @@ def create_mcp_server(services: Any) -> MCPServer:
             arguments = params.get("arguments") or {}
             invalid = False
             try:
-                if name in {"evaluate_job", "draft_documents"}:
+                skill = SKILL_BY_ID.get(name)
+                if skill is not None:
                     invalid = set(arguments) != {"request"}
                     if not invalid:
-                        ProtocolJobInput.model_validate(arguments["request"])
+                        skill.input_model.model_validate(arguments["request"])
                 elif name in {"get_run", "cancel_run"}:
                     invalid = set(arguments) != {"run_id"}
                     if not invalid:
@@ -163,8 +165,8 @@ def create_mcp_server(services: Any) -> MCPServer:
             raise MCPError(-32602, "invalid_parameters")
 
     async def submit(
-        operation: Literal["evaluate_job", "draft_documents"],
-        request: ProtocolJobInput,
+        operation: Operation,
+        request: Any,
         ctx: Context[Any, Any],
     ) -> dict[str, Any]:
         actor = await _authenticate(ctx, services.grants)
@@ -176,23 +178,17 @@ def create_mcp_server(services: Any) -> MCPServer:
             raise MCPError(-32000, "request_failed") from None
         return _run_result(run)
 
-    @server.tool(
-        name="evaluate_job",
-        description="Evaluate one supplied job posting or same-Project job revision against the current CV.",
-        structured_output=True,
-    )
-    async def evaluate_job(request: ProtocolJobInput, ctx: Context[Any, Any]) -> dict[str, Any]:
-        require_arguments(ctx, {"request"})
-        return await submit("evaluate_job", request, ctx)
+    def skill_tool(skill: Skill):
+        async def tool(request, ctx: Context[Any, Any]) -> dict[str, Any]:
+            require_arguments(ctx, {"request"})
+            return await submit(skill.id, request, ctx)
+        # The SDK derives the input schema from the signature, so bind the declared model.
+        tool.__annotations__["request"] = skill.input_model
+        tool.__name__ = tool.__qualname__ = skill.id
+        return tool
 
-    @server.tool(
-        name="draft_documents",
-        description="Draft application documents for one supplied job posting or same-Project job revision.",
-        structured_output=True,
-    )
-    async def draft_documents(request: ProtocolJobInput, ctx: Context[Any, Any]) -> dict[str, Any]:
-        require_arguments(ctx, {"request"})
-        return await submit("draft_documents", request, ctx)
+    for skill in SKILLS:
+        server.add_tool(skill_tool(skill), name=skill.id, description=skill.description, structured_output=True)
 
     @server.tool(
         name="get_run",
