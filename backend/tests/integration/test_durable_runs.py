@@ -238,3 +238,36 @@ def test_interactive_tailor_rests_in_needs_input_and_can_be_cancelled(api_contex
 
 def test_a2a_maps_needs_input_to_input_required():
     assert _PlatformRequestHandler._task_state("needs_input") == ("TASK_STATE_INPUT_REQUIRED", {})
+
+
+def _publish_artifact(sessions, run_id):
+    from job_search_platform.db.models import Document, DocumentRevision, RunArtifact, StoredFile
+    with sessions.begin() as db:
+        run = db.get(Run, run_id)
+        pid = run.project_id
+        cv_id, job_id = run.cv_revision_id, run.job_revision_id
+        file_id = uuid.uuid4()
+        db.add(StoredFile(id=file_id, project_id=pid, kind="generated_document", publication_state="published",
+                          storage_key=f"k/{file_id}", checksum_sha256="a" * 64, size_bytes=1,
+                          mime_type="application/pdf", display_name="x.pdf"))
+        doc = Document(project_id=pid, document_type="cover_letter", title="t")
+        db.add(doc)
+        db.flush()
+        rev = DocumentRevision(project_id=pid, document_id=doc.id, revision=1, file_id=file_id,
+                               source_cv_revision_id=cv_id, source_job_revision_id=job_id, content_markdown="m")
+        db.add(rev)
+        db.flush()
+        db.add(RunArtifact(project_id=pid, run_id=run_id, file_id=file_id, document_revision_id=rev.id))
+
+
+@pytest.mark.asyncio
+async def test_run_with_published_artifact_is_interrupted_not_resumed(db_session, tmp_path):
+    sessions, queue, run_id = await _queued_run(db_session)
+    assert queue.claim_next("old-worker").id == run_id
+    _publish_artifact(sessions, run_id)
+    supervisor = WorkerSupervisor(sessions, queue, object(), _FakeRuntime(tmp_path))
+    await supervisor.reconcile_startup()
+    with sessions() as db:
+        run = db.get(Run, run_id)
+        assert run.status == "interrupted" and run.resume_count == 0
+    assert "run_resumed" not in [e.event_type for e in _events(sessions, run_id)]

@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import Approval, Grant, OwnerSession, Project, Run
+from job_search_platform.db.models import Approval, Grant, OwnerSession, Project, Run, RunArtifact
 from job_search_platform.services.contracts import EvaluationResult
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import MAX_ACTIVE_SECONDS, MAX_TOOL_CALLS, accrue_active_time, append_event
@@ -203,7 +203,10 @@ class PostgresRunQueue:
             # Accrue only to the last heartbeat: downtime after a crash is not execution time.
             accrue_active_time(run, _utc(run.heartbeat_at) if run.heartbeat_at else now)
             self._clear_lease(run)
-            if run.cancellation_requested_at is None and run.resume_count == 0:
+            # Published artifacts mean a re-run would publish twice; extract_experience's store is additive and
+            # hash-unique (_insert dedupes), so other partial effects stay safe to resume.
+            published = db.scalar(select(RunArtifact.run_id).where(RunArtifact.run_id == run_id).limit(1)) is not None
+            if run.cancellation_requested_at is None and run.resume_count == 0 and not published:
                 run.status = "queued"
                 run.resume_count = 1
                 append_event(db, run, "run_resumed", {"status": "queued", "message_key": "events.run_resumed"}, now=now)
