@@ -1,4 +1,4 @@
-"""TypeSafe Jev typed decisions over OpenRouter. Answers only; the key never leaves this object."""
+"""TypeSafe Jev typed decisions, via the LiteLLM pass-through by default. Answers only; the key never leaves this object."""
 from __future__ import annotations
 
 import json
@@ -20,21 +20,22 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-_OPENER = urllib.request.build_opener(_NoRedirect)
+_OPENER = urllib.request.build_opener(_NoRedirect, urllib.request.ProxyHandler({}))  # env proxies must never see the app key
 
 
 class JevClient:
-    def __init__(self, api_key: str, *, opener=None, sleep=time.sleep, attempts: int = 4) -> None:
+    def __init__(self, api_key: str, *, url: str = JEV_URL, model: str = JEV_MODEL, opener=None, sleep=time.sleep, attempts: int = 4) -> None:
         self._key, self._opener, self._sleep, self._attempts = api_key, opener or _OPENER, sleep, attempts
+        self._url, self._model = url, model
 
     def __repr__(self) -> str:
         return "JevClient(<redacted>)"
 
     def decide(self, state: dict, questions: dict) -> dict:
-        body = json.dumps({"model": JEV_MODEL, "state": state, "questions": questions}).encode()
+        body = json.dumps({"model": self._model, "state": state, "questions": questions}).encode()
         for attempt in range(self._attempts):
             last = attempt == self._attempts - 1
-            request = urllib.request.Request(JEV_URL, data=body, method="POST", headers={
+            request = urllib.request.Request(self._url, data=body, method="POST", headers={
                 "Authorization": f"Bearer {self._key}", "Content-Type": "application/json"})
             try:
                 with self._opener.open(request, timeout=TIMEOUT_SECONDS) as response:

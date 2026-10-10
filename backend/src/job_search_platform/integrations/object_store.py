@@ -27,6 +27,9 @@ class S3ObjectStore:
         self._client = client
         self.bucket = bucket
 
+    async def ping(self) -> None:
+        await asyncio.to_thread(self._client.head_bucket, Bucket=self.bucket)
+
     async def put(self, key: str, body: bytes, checksum: str) -> None:
         if len(body) > MAX_OBJECT_BYTES or hashlib.sha256(body).hexdigest() != checksum:
             raise ValueError("object_checksum_mismatch")

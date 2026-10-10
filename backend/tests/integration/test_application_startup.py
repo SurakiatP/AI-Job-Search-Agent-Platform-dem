@@ -34,11 +34,11 @@ def production_factory(migrated_engine, monkeypatch):
 
     monkeypatch.setattr(main.boto3, "client", tracked_client)
 
-    def isolated_engine(url):
+    def isolated_engine(url, **kwargs):
         # Keep credentials inside the adapter; never include them in assertions.
         if not isinstance(url, URL) or url.password in (None, "***"):
             raise AssertionError("production_connection_identity_redacted")
-        return native_make_engine(url.set(database=migrated_engine.url.database))
+        return native_make_engine(url.set(database=migrated_engine.url.database), **kwargs)
 
     monkeypatch.setattr(main, "make_engine", isolated_engine)
 

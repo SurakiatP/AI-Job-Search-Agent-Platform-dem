@@ -320,7 +320,7 @@ async def test_native_tool_budget_is_reserved_before_the_actual_side_effect(db_s
         with sessions() as db:
             assert db.get(Run, retry.id).cancellation_requested_at is not None
         cancel_executor = RunExecutor(
-            sessions, queue, runtime, object(), object(), object(), workspace_root=runtime_root
+            sessions, queue, runtime, object(), object(), workspace_root=runtime_root
         )
         await cancel_executor._stop(db_project.id, started=True)
         await asyncio.wait_for(running_tool, timeout=5)
@@ -472,15 +472,11 @@ async def test_executor_parses_supplied_cv_before_offline_provider_failure(db_se
         async def get(self, _key: str) -> bytes:
             return body
 
-    class OfflineSettings:
-        async def trusted_provider(self, *_args, **_kwargs):
-            return None
 
     executor = RunExecutor(
         sessions,
         queue,
         runtime,
-        OfflineSettings(),
         object(),
         SyntheticObjectStore(),
         workspace_root=runtime_root,
@@ -559,12 +555,9 @@ async def test_completed_evaluation_stores_deterministic_skill_coverage(db_sessi
         async def get(self, _key: str) -> bytes:
             return body
 
-    class FakeSettings:
-        async def trusted_provider(self, *_args, **_kwargs):
-            return None
 
     executor = RunExecutor(
-        sessions, queue, FakeRuntime(), FakeSettings(), object(), SyntheticObjectStore(),
+        sessions, queue, FakeRuntime(), object(), SyntheticObjectStore(),
         workspace_root=tmp_path,
     )
     await executor.execute(claimed, lease_owner)
@@ -636,11 +629,8 @@ async def test_profile_cv_run_stores_skill_names_only_without_provider(db_sessio
         async def get(self, _key: str) -> bytes:
             return body
 
-    class NoSettings:
-        async def trusted_provider(self, *_args, **_kwargs):
-            raise AssertionError("profile_cv needs no provider")
 
-    executor = RunExecutor(sessions, queue, FakeRuntime(), NoSettings(), object(), SyntheticObjectStore(),
+    executor = RunExecutor(sessions, queue, FakeRuntime(), object(), SyntheticObjectStore(),
                            workspace_root=tmp_path)
     await executor.execute(claimed, lease_owner)
     with sessions() as db:

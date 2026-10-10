@@ -64,26 +64,6 @@ async function openSettings(page: import('@playwright/test').Page, tab: 'Provide
   await expect(page.getByLabel('Project', { exact: true })).toBeVisible();
 }
 
-test('provider key is cleared after save and never appears in browser storage or readback', async ({ page }) => {
-  await openSettings(page, 'Providers and tools');
-  await page.getByLabel('API key').fill('synthetic-secret-sentinel');
-  await page.getByRole('tab', { name: 'Appearance' }).click();
-  await page.getByRole('tab', { name: 'Providers and tools' }).click();
-  await expect(page.getByLabel('API key')).toHaveValue('');
-  await page.getByLabel('Model').fill('synthetic-model');
-  await page.getByLabel('API key').fill('synthetic-secret-sentinel');
-  await page.getByRole('button', { name: 'Save provider and key' }).click();
-  await expect(page.getByLabel('API key')).toHaveValue('');
-  await expect(page.getByRole('status').filter({ hasText: 'Configured' })).toContainText('synthetic-model');
-  const stores = await page.evaluate(() => [JSON.stringify(localStorage), JSON.stringify(sessionStorage)]);
-  expect(stores.join('')).not.toContain('synthetic-secret-sentinel');
-  await page.reload();
-  await page.getByRole('tab', { name: 'Providers and tools' }).click();
-  await expect(page.getByLabel('API key')).toHaveValue('');
-  await expect(page.getByText('••••••••')).toBeVisible();
-  await page.getByRole('button', { name: 'Test saved connection' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'saved provider connection succeeded' })).toBeVisible();
-});
 
 test('project sharing shows a token once, lists metadata only, and revokes the grant', async ({ page }) => {
   await openSettings(page, 'Project sharing');
@@ -106,36 +86,5 @@ test('project sharing shows a token once, lists metadata only, and revokes the g
   await expect(page.getByText('Revoked')).toBeVisible();
 });
 
-test('appearance and provider draft survive language changes; only supported tools are controllable', async ({ page }) => {
-  await page.goto('/app/settings');
-  await page.getByRole('button', { name: 'EN' }).click();
-  await page.getByRole('button', { name: 'Dark' }).click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('tab', { name: /Providers/ }).click();
-  await page.getByLabel('Model').fill('draft-model');
-  await page.getByRole('button', { name: 'ไทย' }).click();
-  await expect(page.getByLabel('โมเดล')).toHaveValue('draft-model');
-  await page.getByRole('checkbox', { name: 'ตัวเชื่อมต่อ Career Ops' }).uncheck();
-  await expect(page.getByText('ปิดใช้งาน')).toBeVisible();
-  await expect(page.getByLabel('Dark')).toHaveCount(0);
-  await page.getByRole('tab', { name: 'ลักษณะที่แสดง' }).click();
-  await expect(page.getByRole('button', { name: 'มืด' })).toHaveAttribute('aria-pressed', 'true');
-});
 
 
-test('current supported OpenRouter provider remains selected when editing configuration', async ({ page }) => {
-  await page.route(`**/api/v1/settings/provider`, async route => {
-    const value = { provider: 'openrouter', model: 'synthetic/model', configured: true, revision: 1, masked_secret: '••••••••' };
-    if (route.request().method() === 'PUT') {
-      expect(route.request().postDataJSON().provider).toBe('openrouter');
-      expect(route.request().headers()['x-csrf-token']).toBe('synthetic-test-csrf');
-    }
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) });
-  });
-  await openSettings(page, 'Providers and tools');
-  await expect(page.locator('#provider-name')).toHaveValue('openrouter');
-  await expect(page.locator('#provider-model')).toHaveValue('synthetic/model');
-  await page.locator('#provider-key').fill('synthetic-secret-sentinel');
-  await page.getByRole('button', { name: 'Save provider and key', exact: true }).click();
-  await expect(page.locator('#provider-key')).toHaveValue('');
-});

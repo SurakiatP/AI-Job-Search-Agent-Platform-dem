@@ -24,7 +24,7 @@ from job_search_platform.db.models import Approval, CVRevision, CVRevisionText, 
 from job_search_platform.services.contracts import EvaluationResult, SkillCoverage
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
 from job_search_platform.integrations import tracing
-from job_search_platform.integrations.jev import JEV_MODEL, JevClient
+from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.services import applications, experience, job_sources, smart_match, tailoring
 from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, fact_claims, require_evidence
 from job_search_platform.services.errors import ServiceError
@@ -123,21 +123,20 @@ class RunExecutor:
         sessions: sessionmaker[Session],
         queue,
         runtime,
-        settings,
         artifacts,
         object_store,
         *,
         workspace_root: Path,
-        jev_factory=JevClient,
+        gateway=GatewaySettings.from_env,
+        jev_factory=GatewaySettings.jev_client,
     ) -> None:
         self.sessions = sessions
         self.queue = queue
         self.runtime = runtime
-        self.settings = settings
         self.artifacts = artifacts
         self.object_store = object_store
         self.workspace_root = workspace_root
-        self.jev_factory = jev_factory
+        self.gateway, self.jev_factory = gateway, jev_factory
 
     async def execute(self, run: Run, lease_owner: str) -> None:
         execution = asyncio.current_task()
@@ -230,9 +229,7 @@ class RunExecutor:
             connector = run.config_snapshot.get("connector", {})
             if connector.get("enabled") is not True or connector.get("adapter_key") != "career_ops":
                 raise ServiceError("connector_disabled")
-            provider = await self.settings.trusted_provider(
-                configuration_id=uuid.UUID(run.config_snapshot["provider_configuration_id"]),
-            )
+            provider = self.gateway().provider_config()
 
             gate_failure = asyncio.Event()
 
@@ -402,8 +399,7 @@ class RunExecutor:
         """LLM extraction of candidate facts; only text found verbatim in the CV is stored (additive)."""
         started = False
         try:
-            provider = await self.settings.trusted_provider(
-                configuration_id=uuid.UUID(run.config_snapshot["provider_configuration_id"]))
+            provider = self.gateway().provider_config()
             text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
             cv_path = None if text is not None else await self._materialize(run, sandbox)
             gate_failure = asyncio.Event()
@@ -491,8 +487,7 @@ class RunExecutor:
             interactive = run.input_snapshot.get("tailor_mode") == "interactive"
             job = run.input_snapshot["job"]
             job_text = f"{job['title']}\n{job['description']}"
-            provider = await self.settings.trusted_provider(
-                configuration_id=uuid.UUID(run.config_snapshot["provider_configuration_id"]))
+            provider = self.gateway().provider_config()
             base_revision_id, text = await asyncio.to_thread(self._tailor_base, run)
             cv_path = None if text is not None else await self._materialize(run, sandbox)
             facts = await asyncio.to_thread(self._facts, run.project_id)
@@ -614,8 +609,7 @@ class RunExecutor:
         try:
             job = run.input_snapshot["job"]
             questions = run.input_snapshot["questions"]
-            provider = await self.settings.trusted_provider(
-                configuration_id=uuid.UUID(run.config_snapshot["provider_configuration_id"]))
+            provider = self.gateway().provider_config()
             text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
             cv_path = None if text is not None else await self._materialize(run, sandbox)
             facts = await asyncio.to_thread(self._facts, run.project_id)
@@ -673,19 +667,17 @@ class RunExecutor:
     async def _execute_match(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
         """Score the run's job pool with Jev; each finished score is committed at once, so cancel keeps them."""
         try:
-            provider = await self.settings.trusted_provider()
-            if provider is None or provider.provider != "openrouter":
-                raise ServiceError("jev_unavailable")
+            gateway = self.gateway()
             text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
             if text is None:
                 text = (await self._parse_cv_text(run, lease_owner, sandbox)).replace("\x00", "")
                 await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
             if not text.strip():
                 raise ServiceError("cv_text_empty")
-            client = self.jev_factory(provider.api_key)
+            client = self.jev_factory(gateway)
             snap = run.input_snapshot
             auto = not (snap.get("q") or "").strip() and not snap.get("category")
-            categories = await asyncio.to_thread(self._match_categories, run.cv_revision_id, client, text) if auto else None
+            categories = await asyncio.to_thread(self._match_categories, run.cv_revision_id, client, text, gateway.decision_model) if auto else None
             hidden = await asyncio.to_thread(self._hidden_keys, run.project_id)
             page = await asyncio.to_thread(functools.partial(
                 smart_match.build_pool, q=snap.get("q") or "", cities=snap.get("cities") or [],
@@ -694,7 +686,7 @@ class RunExecutor:
                 filters={k: snap.get(k) for k in job_sources.FILTER_KEYS}))
             jobs = [job for job in page["items"] if not smart_match.is_hidden(job, hidden)]
             jobs = [job for job in jobs if len(job["slug"]) <= 200]  # longer slugs do not fit the score column
-            todo = (await asyncio.to_thread(self._unscored, run.cv_revision_id, jobs))[: MAX_JEV_CALLS - 1]
+            todo = (await asyncio.to_thread(self._unscored, run.cv_revision_id, jobs, gateway.decision_model))[: MAX_JEV_CALLS - 1]
             limit = asyncio.Semaphore(JEV_CONCURRENCY)
 
             async def score(job: dict) -> bool:
@@ -705,7 +697,7 @@ class RunExecutor:
                         result = smart_match.combine(answers, skills)
                     except Exception:  # malformed answer or provider error: skip this job, keep the run alive
                         return False
-                    await asyncio.to_thread(self._store_score, run, job, result)
+                    await asyncio.to_thread(self._store_score, run, job, result, gateway.decision_model)
                     return True
 
             results = await asyncio.gather(*(score(job) for job in todo))
@@ -728,27 +720,27 @@ class RunExecutor:
             return {(kind, value) for kind, value in db.execute(
                 select(JobSearchHidden.kind, JobSearchHidden.value).where(JobSearchHidden.project_id == project_id))}
 
-    def _unscored(self, cv_revision_id: uuid.UUID, jobs: list[dict]) -> list[dict]:
+    def _unscored(self, cv_revision_id: uuid.UUID, jobs: list[dict], model: str) -> list[dict]:
         with self.sessions() as db:
             done = set(db.execute(select(JobMatchScore.job_slug, JobMatchScore.content_hash).where(
-                JobMatchScore.cv_revision_id == cv_revision_id, JobMatchScore.model == JEV_MODEL,
+                JobMatchScore.cv_revision_id == cv_revision_id, JobMatchScore.model == model,
                 JobMatchScore.job_slug.in_([job["slug"] for job in jobs]))).all())
         return [job for job in jobs if (job["slug"], smart_match.content_hash(job)) not in done]
 
-    def _store_score(self, run: Run, job: dict, result: dict) -> None:
+    def _store_score(self, run: Run, job: dict, result: dict, model: str) -> None:
         details = {k: v for k, v in result.items() if k not in ("fit_percent", "uncertain")}
         statement = pg_insert(JobMatchScore).values(
             id=uuid.uuid4(), project_id=run.project_id, cv_revision_id=run.cv_revision_id, job_slug=job["slug"],
-            content_hash=smart_match.content_hash(job), model=JEV_MODEL, fit_percent=result["fit_percent"],
+            content_hash=smart_match.content_hash(job), model=model, fit_percent=result["fit_percent"],
             uncertain=result["uncertain"], details=details,
         ).on_conflict_do_nothing(constraint="uq_job_match_scores_key")
         with self.sessions.begin() as db:
             db.execute(statement)
 
-    def _match_categories(self, cv_revision_id: uuid.UUID, client, text: str) -> list[str] | None:
+    def _match_categories(self, cv_revision_id: uuid.UUID, client, text: str, model: str) -> list[str] | None:
         with self.sessions() as db:
             profile = (db.get(CVRevision, cv_revision_id).skill_profile or {})
-        if profile.get("categories_model") == JEV_MODEL and profile.get("categories"):
+        if profile.get("categories_model") == model and profile.get("categories"):
             return list(profile["categories"])
         options = [facet["value"] for facet in job_sources.job_facets()["categories"]]
         if not options:
@@ -759,7 +751,7 @@ class RunExecutor:
             raise ServiceError("jev_failed") from None
         with self.sessions.begin() as db:
             revision = db.scalar(select(CVRevision).where(CVRevision.id == cv_revision_id).with_for_update())
-            revision.skill_profile = {**(revision.skill_profile or {}), "categories": chosen, "categories_model": JEV_MODEL}
+            revision.skill_profile = {**(revision.skill_profile or {}), "categories": chosen, "categories_model": model}
         return chosen
 
     async def _materialize(self, run: Run, sandbox: RunSandbox) -> str:
@@ -1067,6 +1059,7 @@ def _safe_message(code: str) -> str:
         "provider_not_configured": "errors.provider_not_configured",
         "connector_disabled": "errors.connector_disabled",
         "export_failed": "errors.export_failed",
+        "gateway_unconfigured": "errors.gateway_unconfigured",
         "jev_unavailable": "errors.jev_unavailable",
         "jev_failed": "errors.jev_failed",
         "cv_text_empty": "errors.cv_text_empty",

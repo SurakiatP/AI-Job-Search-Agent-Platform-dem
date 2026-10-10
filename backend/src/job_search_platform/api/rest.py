@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import re
+import subprocess
 from pathlib import PurePath
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
@@ -12,15 +13,16 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
+from urllib.request import Request as _UrlRequest
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import StringConstraints
-from sqlalchemy import delete, exists, func, select
+from sqlalchemy import delete, exists, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
 from job_search_platform.db.models import (
     CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
-    ProjectPreference, StoredFile, Run, Grant, JobMatchScore, JobSearchHidden, ProviderConfiguration,
+    ProjectPreference, StoredFile, Run, Grant, JobMatchScore, JobSearchHidden,
     ToolConnectorConfiguration,
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
@@ -29,19 +31,16 @@ from job_search_platform.services.contracts import (
     ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
-    PreferencesView, ProjectUpdate, ProjectView, ProviderCatalogView, ProviderConnectionTestView,
-    ProviderModelsRequest, ProviderModelsView, ProviderSettingsUpdate,
-    ProviderSettingsView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
+    GatewayStatusView, PreferencesView, ProjectUpdate, ProjectView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
-from job_search_platform.integrations.jev import JEV_MODEL
 from job_search_platform.services import experience, job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
 from job_search_platform.services.runs import actor_scope
 from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
-from job_search_platform.services.settings import provider_catalog as settings_catalog
+from job_search_platform.integrations.gateway import GatewaySettings
 
 router = APIRouter()
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -68,9 +67,9 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
         "object_store_unavailable": 503, "service_unavailable": 503,
-        "secret_store_unavailable": 503, "invalid_base_url": 422, "credential_required": 409,
-        "provider_models_unavailable": 502, "jev_unavailable": 409,
-        "duplicate": 409, "bank_full": 409, "provider_configuration_required": 409,
+        "secret_store_unavailable": 503,
+        "jev_unavailable": 409, "gateway_unconfigured": 409,
+        "duplicate": 409, "bank_full": 409,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
     body = {
@@ -495,12 +494,6 @@ async def search_job_sources(
         posted_within_days=posted_within_days, category=category, limit=limit, offset=offset, **filters)
 
 
-def _jev_available(db) -> bool:
-    row = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
-                    .order_by(ProviderConfiguration.revision.desc()).limit(1))
-    return row is not None and row.provider == "openrouter" and not row.secret_reference.startswith("restored-unconfigured:")
-
-
 def _direct_skill_route(skill):
     async def endpoint(project_id: UUID, body, actor=Depends(run_write_actor), services: Services = Depends(get_services)):
         return await skill.handler(services, actor, body, project_id=project_id)
@@ -542,8 +535,9 @@ async def match_job_sources(
         if profile.get("method") != SKILL_METHOD:
             raise ServiceError("cv_profile_missing", fields={"cv_revision_id": str(revision.id)})
         cv_skills = list(profile["skills"])
-        ai_on = _jev_available(db)
-        stored = profile.get("categories") if profile.get("categories_model") == JEV_MODEL else None
+        gateway = GatewaySettings.from_env()
+        model, ai_on = gateway.decision_model, bool(gateway.api_key)
+        stored = profile.get("categories") if profile.get("categories_model") == model else None
         hidden = {(kind, value) for kind, value in db.execute(
             select(JobSearchHidden.kind, JobSearchHidden.value).where(JobSearchHidden.project_id == project_id))}
     city_list = job_sources.parse_cities(cities)
@@ -552,16 +546,13 @@ async def match_job_sources(
     auto = not q.strip() and not category
 
     def run() -> dict:
-        if ai_on and auto and not stored:
-            return {"items": [], "total": 0, "offset": offset, "pool": pool, "hidden_count": 0,
-                    "ai": {"status": "missing", "categories": None, "scored": 0}}
         page = smart_match.build_pool(q=q, cities=city_list, work_mode=work_mode, posted_within_days=posted_within_days,
                                       category=category, pool=pool, offset=offset, cv_categories=stored if ai_on else None,
                                       filters=filters)
         items = [item for item in page["items"] if not smart_match.is_hidden(item, hidden)]
         with services.sessions() as db:
             rows = {(r.job_slug, r.content_hash): r for r in db.scalars(select(JobMatchScore).where(
-                JobMatchScore.cv_revision_id == cv_revision_id, JobMatchScore.model == JEV_MODEL,
+                JobMatchScore.cv_revision_id == cv_revision_id, JobMatchScore.model == model,
                 JobMatchScore.job_slug.in_([item["slug"] for item in items])))} if ai_on else {}
         for item in items:
             text = smart_match.job_text(item)
@@ -644,11 +635,9 @@ def _extraction(db, project_id: UUID) -> dict | None:
 async def list_experience(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "cv")
-        provider = db.scalar(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))
-                             .order_by(ProviderConfiguration.revision.desc()).limit(1))
         return {"items": [experience.item_view(db, item) for item in experience.list_items(db, project_id)],
                 "extraction": _extraction(db, project_id),
-                "provider_configured": provider is not None and not provider.secret_reference.startswith("restored-unconfigured:")}
+                "provider_configured": bool(GatewaySettings.from_env().api_key)}
 
 
 @router.post("/projects/{project_id}/experience", status_code=201)
@@ -1033,29 +1022,70 @@ async def revoke_grant(project_id: UUID, grant_id: UUID, actor=Depends(write_act
     await services.grants.revoke(actor, project_id, grant_id)
 
 
-@router.get("/providers", response_model=ProviderCatalogView)
-async def provider_catalog(actor=Depends(owner_actor)):
-    return {"providers": settings_catalog()}
+@router.get("/health")
+async def health():
+    return {"status": "ok"}
 
 
-@router.get("/settings/provider", response_model=ProviderSettingsView)
-async def get_provider(actor=Depends(owner_actor), services: Services = Depends(get_services)):
-    return await services.settings.get_provider(actor)
+READY_TIMEOUT_SECONDS = 2
+READY_MAX_BODY_BYTES = 4096
+READY_CACHE_SECONDS = 5
 
 
-@router.put("/settings/provider", response_model=ProviderSettingsView)
-async def set_provider(body: ProviderSettingsUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await services.settings.save_provider(actor, body)
+def _gateway_alive() -> None:
+    gateway = GatewaySettings.from_env()
+    with gateway.opener.open(_UrlRequest(gateway.base_url + "/health/liveliness"), timeout=READY_TIMEOUT_SECONDS) as response:
+        if response.status != 200:
+            raise ValueError
+        response.read(READY_MAX_BODY_BYTES)  # bounded; urllib's timeout is per socket operation, not total
 
 
-@router.post("/settings/provider/models", response_model=ProviderModelsView)
-async def provider_models(body: ProviderModelsRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return {"models": await services.settings.list_models(actor, body)}
+def _image_present(image: str) -> None:
+    subprocess.run(["docker", "image", "inspect", image], check=True, capture_output=True, timeout=READY_TIMEOUT_SECONDS)
 
 
-@router.post("/settings/provider/test", response_model=ProviderConnectionTestView)
-async def test_provider(actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await services.settings.test_provider(actor)
+async def _probe(check) -> str:
+    try:
+        await asyncio.wait_for(check(), READY_TIMEOUT_SECONDS)
+        return "ok"
+    except Exception:  # the reason is deliberately dropped: readiness leaks no addresses or errors
+        return "down"
+
+
+async def _check_components(services: Services) -> tuple[int, dict]:
+    def postgres():
+        with services.sessions() as session:
+            session.execute(text("SET LOCAL statement_timeout = 2000"))
+            session.execute(text("SELECT 1"))
+
+    async def sandbox():
+        await asyncio.to_thread(_image_present, services.runtime.image)
+
+    names = ("postgres", "object_store", "llm_gateway", "sandbox_image")
+    results = await asyncio.gather(
+        _probe(lambda: asyncio.to_thread(postgres)), _probe(services.files.object_store.ping),
+        _probe(lambda: asyncio.to_thread(_gateway_alive)), _probe(sandbox))
+    ok = all(value == "ok" for value in results)
+    return (200 if ok else 503), {"status": "ok" if ok else "degraded", "components": dict(zip(names, results))}
+
+
+@router.get("/health/ready")
+async def health_ready(request: Request, services: Services = Depends(get_services)):
+    """Cached for a few seconds and single-flight: an unauthenticated caller cannot multiply probes."""
+    state = request.app.state.__dict__.setdefault("readiness", {"at": -1e9, "result": None, "task": None})
+    now = asyncio.get_running_loop().time()
+    if state["result"] is None or now - state["at"] >= READY_CACHE_SECONDS:
+        if state["task"] is None or state["task"].done():
+            state["task"] = asyncio.ensure_future(_check_components(services))
+        state["result"] = await asyncio.shield(state["task"])
+        state["at"] = asyncio.get_running_loop().time()
+    code, body = state["result"]
+    return JSONResponse(body, status_code=code)
+
+
+@router.get("/gateway", response_model=GatewayStatusView)
+async def gateway_status(actor=Depends(owner_actor)):
+    return await GatewaySettings.from_env().status()
 
 
 @router.get("/projects/{project_id}/settings/tools", response_model=ToolConnectorSettingsView)

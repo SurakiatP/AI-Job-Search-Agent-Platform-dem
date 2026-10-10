@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import sessionmaker
 
 from helpers import grant, owner, primary_cv, project
-from job_search_platform.db.models import CVRevision, ExperienceItem, ProviderConfiguration, Run, RunEvent, StoredFile
+from job_search_platform.db.models import CVRevision, ExperienceItem, Run, RunEvent, StoredFile
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import RunService
 from job_search_platform.workers.executor import RunExecutor
@@ -20,13 +20,7 @@ from job_search_platform.workers.queue import PostgresRunQueue
 CV_BODY = "Data Engineer, SCB (2022–2024)\n• Built Airflow pipelines that cut load time by 40%\n• Ran BigQuery secret-marker-xyz"
 
 
-def _provider(db) -> None:
-    revision = (db.scalar(select(func.max(ProviderConfiguration.revision)).where(ProviderConfiguration.project_id.is_(None))) or 0) + 1
-    db.add(ProviderConfiguration(project_id=None, provider="openrouter", model="m",
-                                 secret_reference=f"keychain:{uuid.uuid4()}", revision=revision))
-
-
-def _arrange(db_session, *, with_provider=True):
+def _arrange(db_session):
     p = project(db_session, "Synthetic extract")
     actor = owner(db_session)
     body = CV_BODY.encode()
@@ -38,8 +32,6 @@ def _arrange(db_session, *, with_provider=True):
     cv = primary_cv(db_session, p.id)
     revision = CVRevision(project_id=p.id, cv_id=cv.id, revision=1, file_id=stored.id)
     db_session.add(revision)
-    if with_provider:
-        _provider(db_session)
     db_session.commit()
     return p, actor, cv, revision, sessionmaker(bind=db_session.get_bind(), expire_on_commit=False)
 
@@ -68,11 +60,13 @@ async def test_submit_extract_dedups_skips_completed_and_hides_from_grants(db_se
 
 
 @pytest.mark.asyncio
-async def test_submit_extract_requires_provider(db_session):
-    p, actor, cv, _, sessions = _arrange(db_session, with_provider=False)
+async def test_submit_extract_requires_gateway_key(db_session, tmp_path, monkeypatch):
+    p, actor, cv, _, sessions = _arrange(db_session)
+    monkeypatch.delenv("LITELLM_API_KEY")
+    monkeypatch.setenv("CORE02_PRIVATE_DIR", str(tmp_path))
     with pytest.raises(ServiceError) as missing:
         await RunService(sessions).submit_extract(actor, p.id, cv.id)
-    assert missing.value.code == "provider_configuration_required"
+    assert missing.value.code == "gateway_unconfigured"
 
 
 class SyntheticObjectStore:
@@ -80,9 +74,6 @@ class SyntheticObjectStore:
         return CV_BODY.encode()
 
 
-class FakeSettings:
-    async def trusted_provider(self, *_args, **_kwargs):
-        return SimpleNamespace(provider="openrouter", api_key="sk-test", model="m", base_url="")
 
 
 class FakeRuntime:
@@ -123,7 +114,7 @@ async def _run(sessions, tmp_path, actor, p, cv, runtime):
     lease = f"executor-{uuid.uuid4()}"
     claimed = queue.claim_next(lease)
     assert claimed is not None and claimed.id == view.id
-    await RunExecutor(sessions, queue, runtime, FakeSettings(), object(), SyntheticObjectStore(),
+    await RunExecutor(sessions, queue, runtime, object(), SyntheticObjectStore(),
                       workspace_root=tmp_path).execute(claimed, lease)
     return view
 

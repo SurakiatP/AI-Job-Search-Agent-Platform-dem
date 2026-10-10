@@ -29,7 +29,7 @@ _SAFE_SERVICE_ERRORS = {
     "idempotency_conflict",
     "not_found",
     "unauthorized",
-    "provider_configuration_required",
+    "gateway_unconfigured",
     "cv_required",
     "cv_unavailable",
     "connector_disabled",

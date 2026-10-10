@@ -20,10 +20,20 @@ POSTGRES_IMAGE = "job-search-platform/postgres:17.11-alpine-gosu-1.19-6456aaa0f3
 POSTGRES_BASE_IMAGE = "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24"
 GOSU_BUILDER_IMAGE = "golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61"
 GOSU_COMMIT = "6456aaa0f3c854d199d0f037f068eb97515b7513"
-DEFAULT_PRIVATE_DIR = Path.home() / ".local" / "share" / "job-search-platform" / "core02"
+DEFAULT_PRIVATE_DIR = Path(os.environ.get("CORE02_PRIVATE_DIR") or Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003")
 DEFAULT_MINIO_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "minio"
 DEFAULT_GOSU_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "gosu"
-SECRET_NAMES = ("postgres-user", "postgres-password", "minio-access-key", "minio-secret-key")
+SECRET_NAMES = (
+    "postgres-user",
+    "postgres-password",
+    "minio-access-key",
+    "minio-secret-key",
+    "litellm-master-key",
+    "litellm-salt-key",
+    "litellm-db-password",
+    "litellm-ui-password",
+)
+APP_KEY_FILE = "litellm_app_key"
 
 
 class ConfigurationError(ValueError):
@@ -144,6 +154,10 @@ def ensure_credentials(private_dir: Path) -> None:
             secrets.token_urlsafe(40),
             secrets.token_hex(20),
             secrets.token_urlsafe(40),
+            "sk-" + secrets.token_hex(24),
+            secrets.token_hex(32),
+            secrets.token_urlsafe(40),
+            secrets.token_urlsafe(24),
         ),
     ):
         path = private_dir / name
@@ -155,6 +169,12 @@ def ensure_credentials(private_dir: Path) -> None:
             output.write("\n")
             output.flush()
             os.fsync(output.fileno())
+    # The seed container writes the app key into this bind-mounted file; it must exist first.
+    app_key = private_dir / APP_KEY_FILE
+    if app_key.exists() or app_key.is_symlink():
+        _check_secret_file(app_key)
+    else:
+        os.close(os.open(app_key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600))
 
 
 def validate_minio_source(path: Path) -> Path:
@@ -200,6 +220,9 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     environment["GOSU_SOURCE_COMMIT"] = GOSU_COMMIT
     environment.setdefault("CORE02_POSTGRES_PORT", "55432")
     environment.setdefault("CORE02_MINIO_PORT", "59000")
+    environment.setdefault("CORE02_LITELLM_PORT", "54000")
+    environment["OPENROUTER_API_KEY"] = os.environ.get("OPENROUTER_API_KEY", "")  # reaches only litellm
+    environment["OPENROUTER_KEY_PRESENT"] = "1" if environment["OPENROUTER_API_KEY"] else ""  # flag for the seed
     return environment
 
 
@@ -210,7 +233,7 @@ def _compose(
     *,
     timeout: int = 120,
 ) -> subprocess.CompletedProcess[str]:
-    command = [
+    command = [  # callers put global flags (--profile) first in `action`
         "docker",
         "compose",
         "--project-name",
@@ -235,7 +258,7 @@ def _compose(
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ConfigurationError("compose_command_unavailable_or_timed_out") from exc
     if result.returncode:
-        raise ConfigurationError(f"compose_{action[0]}_failed")
+        raise ConfigurationError(f"compose_{action[2] if action[0] == '--profile' else action[0]}_failed")
     return result
 
 
@@ -243,7 +266,13 @@ def start(private_dir: Path, source_dir: Path) -> dict[str, str]:
     private_dir = prepare_private_directory(private_dir)
     source_dir = validate_minio_source(source_dir)
     ensure_credentials(private_dir)
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        print("warning: OPENROUTER_API_KEY not set; LiteLLM has no provider key and model calls will fail", file=sys.stderr)
     _compose(["up", "--detach", "--build", "--wait", "--wait-timeout", "300"], private_dir, source_dir, timeout=1800)
+    try:  # one-shot seed is profiled out of `up --wait`, which treats its exit as failure
+        _compose(["--profile", "seed", "run", "--rm", "litellm-seed"], private_dir, source_dir, timeout=300)
+    except ConfigurationError as exc:
+        raise ConfigurationError("litellm_seed_failed") from exc
     return {"status": "started", "private_directory": str(private_dir), "minio_source_commit": MINIO_COMMIT}
 
 

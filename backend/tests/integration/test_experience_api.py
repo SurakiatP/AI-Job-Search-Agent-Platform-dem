@@ -69,12 +69,9 @@ def test_grant_cannot_reach_bank(api_context):
 
 
 @pytest.mark.integration
-def test_no_provider_skips_queue_and_reports_it(api_context):
+def test_no_gateway_key_skips_queue_and_reports_it(api_context, no_gateway_key):
     csrf = _owner(api_context)
     pid = _project(api_context, csrf)
-    with api_context.sessions.begin() as db:
-        for row in db.scalars(select(ProviderConfiguration).where(ProviderConfiguration.project_id.is_(None))):
-            db.delete(row)
     assert _upload(api_context, csrf, pid).status_code == 201
     view = api_context.client.get(f"{PREFIX}/{pid}/experience").json()
     assert view["provider_configured"] is False and view["extraction"] is None

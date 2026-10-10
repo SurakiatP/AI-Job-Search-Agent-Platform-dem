@@ -17,13 +17,6 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await useSyntheticApplication(page);
 
-  await page.route(`**/api/v1/settings/provider`, async route => {
-    if (route.request().method() === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ provider: 'synthetic', configured: true, model: 'synthetic-model' }) });
-      return;
-    }
-    await route.fallback();
-  });
   await page.route(`**/api/v1/projects/${projectId}/cv`, async route => {
     if (route.request().method() === 'GET') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: '66666666-6666-4666-8666-666666666666', revision: 1 }]) });
@@ -182,13 +175,6 @@ test('expired approval is visible but cannot be approved from a stale request', 
     evaluation_result: null,
   };
   let submitted = false;
-  await page.route(`**/api/v1/settings/provider`, async route => {
-    if (route.request().method() === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ provider: 'synthetic', configured: true, model: 'synthetic-model' }) });
-      return;
-    }
-    await route.fallback();
-  });
   await page.route(`**/api/v1/projects/${projectId}/cv`, async route => {
     if (route.request().method() === 'GET') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: '66666666-6666-4666-8666-666666666666', revision: 1 }]) });

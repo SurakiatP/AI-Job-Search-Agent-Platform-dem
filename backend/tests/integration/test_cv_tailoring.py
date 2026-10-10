@@ -45,6 +45,7 @@ class _Runtime:
         return SimpleNamespace(text=CV_TEXT)
 
     async def submit(self, project_id, session_id, prompt, instructions, provider, **kwargs):
+        assert (provider.provider, provider.model, provider.base_url) == ("custom", "ai-analyze", "http://127.0.0.1:54000/v1")
         self.submits.append((session_id, prompt, kwargs))
 
     async def events(self, project_id):
@@ -67,9 +68,6 @@ class _Runtime:
         self.projects.pop(project_id, None)
 
 
-class _Settings:
-    async def trusted_provider(self, *_args, **_kwargs):
-        return SimpleNamespace(provider="openrouter", api_key="sk-test", model="m", base_url="")
 
 
 def _execute_next(ctx, runtime):
@@ -77,7 +75,7 @@ def _execute_next(ctx, runtime):
     queue = PostgresRunQueue(ctx.sessions)
     root = ctx.tmp_path / "ws"
     artifacts = Artifacts(ctx.sessions, store, lambda p, r: root / str(p) / str(r) / "staging")
-    executor = RunExecutor(ctx.sessions, queue, runtime, _Settings(), artifacts, store, workspace_root=root)
+    executor = RunExecutor(ctx.sessions, queue, runtime, artifacts, store, workspace_root=root)
     lease = f"test-{uuid4()}"
     claimed = queue.claim_next(lease)
     assert claimed is not None
@@ -342,3 +340,17 @@ def test_tailor_tool_gate_denies_every_call_but_counts_it(api_context):
     _execute_next(ctx, runtime)
     assert verdicts and not any(verdicts)
     assert _run(ctx, run_id).tool_calls >= 1
+
+
+@pytest.mark.integration
+def test_key_lost_after_admission_fails_run_with_gateway_message(api_context, monkeypatch, tmp_path):
+    ctx = api_context
+    csrf, pid, session, facts, runtime = _setup(ctx, [])
+    run_id = _tailor(ctx, csrf, pid, session, "lost-key").json()["id"]
+    monkeypatch.delenv("LITELLM_API_KEY")
+    monkeypatch.setenv("CORE02_PRIVATE_DIR", str(tmp_path))
+    _execute_next(ctx, runtime)
+    assert _run(ctx, run_id).status == "failed"
+    with ctx.sessions() as db:
+        events = [e.public_data for e in db.scalars(select(RunEvent).where(RunEvent.run_id == UUID(run_id)))]
+    assert any(e["status"] == "failed" and e.get("message_key") == "errors.gateway_unconfigured" for e in events)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 from pathlib import Path
 import sys
@@ -140,3 +141,172 @@ def test_real_postgres_minio_checksum_and_restart_proof() -> None:
     assert '"object_checksum": "verified"' in result.stdout
     assert '"restart_persistence": "verified"' in result.stdout
     assert '"anonymous_access": "denied"' in result.stdout
+
+
+def test_ensure_credentials_generates_litellm_secrets_and_app_key_file(tmp_path: Path) -> None:
+    local_infra = _load_local_infra()
+    private_dir = tmp_path / "private"
+    private_dir.mkdir(mode=0o700)
+
+    local_infra.ensure_credentials(private_dir)
+    master = (private_dir / "litellm-master-key").read_text().strip()
+    for name in (*local_infra.SECRET_NAMES, local_infra.APP_KEY_FILE):
+        assert (private_dir / name).stat().st_mode & 0o777 == 0o600
+    assert master.startswith("sk-")
+    assert (private_dir / local_infra.APP_KEY_FILE).read_text() == ""
+
+    local_infra.ensure_credentials(private_dir)  # idempotent: nothing is regenerated
+    assert (private_dir / "litellm-master-key").read_text().strip() == master
+
+
+def test_compose_environment_passes_openrouter_key_only_when_set(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    local_infra = _load_local_infra()
+    monkeypatch.setenv("OPENROUTER_API_KEY", "fake-key")
+    assert local_infra.compose_environment(tmp_path, tmp_path)["OPENROUTER_API_KEY"] == "fake-key"
+    monkeypatch.delenv("OPENROUTER_API_KEY")
+    assert local_infra.compose_environment(tmp_path, tmp_path)["OPENROUTER_API_KEY"] == ""
+    assert local_infra.compose_environment(tmp_path, tmp_path)["OPENROUTER_KEY_PRESENT"] == ""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "fake-key")
+    assert local_infra.compose_environment(tmp_path, tmp_path)["OPENROUTER_KEY_PRESENT"] == "1"
+
+
+def _load_seed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, handler):
+    import http.server
+    import threading
+
+    class Stub(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def _serve(self):
+            body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            status, payload = handler(self.command, self.path, self.headers.get("Authorization", ""), body)
+            data = json.dumps(payload).encode()
+            self.send_response(status)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        do_GET = do_POST = _serve
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Stub)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    master = tmp_path / "master"
+    master.write_text("sk-master\n")
+    key_file = tmp_path / "app_key"
+    monkeypatch.setenv("LITELLM_URL", f"http://127.0.0.1:{server.server_port}")
+    monkeypatch.setenv("LITELLM_MASTER_KEY_FILE", str(master))
+    monkeypatch.setenv("LITELLM_APP_KEY_FILE", str(key_file))
+    monkeypatch.setenv("OPENROUTER_KEY_PRESENT", "1")
+    spec = importlib.util.spec_from_file_location("litellm_seed", ROOT / "infra" / "litellm" / "seed.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module, key_file, server
+
+
+def test_seed_does_not_create_model_when_check_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    calls: list[tuple[str, str]] = []
+
+    def handler(method, path, auth, body):
+        calls.append((method, path))
+        if path == "/model/info":
+            return 500, {}
+        return 200, {"key": "sk-new"}
+
+    seed, key_file, server = _load_seed(tmp_path, monkeypatch, handler)
+    try:
+        assert seed.seed_model() is False
+    finally:
+        server.shutdown()
+    assert "model_check_failed" in capsys.readouterr().out
+    assert ("POST", "/model/new") not in calls
+
+
+def test_seed_reports_create_failure_and_missing_key_is_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def handler(method, path, auth, body):
+        if path == "/model/info":
+            return 200, {"data": []}
+        return 500, {}
+
+    seed, key_file, server = _load_seed(tmp_path, monkeypatch, handler)
+    try:
+        assert seed.seed_model() is False
+        assert seed.seed_key() is False
+        monkeypatch.delenv("OPENROUTER_KEY_PRESENT")
+        assert seed.seed_model() is True  # the only allowed skip
+    finally:
+        server.shutdown()
+
+
+def test_seed_keeps_working_key_on_transient_check_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def handler(method, path, auth, body):
+        calls.append(path)
+        return (503, {}) if path == "/v1/models" else (200, {"key": "sk-new"})
+
+    seed, key_file, server = _load_seed(tmp_path, monkeypatch, handler)
+    key_file.write_text("sk-existing\n")
+    try:
+        assert seed.seed_key() is False
+        assert key_file.read_text() == "sk-existing\n"
+        assert "/key/delete" not in calls
+    finally:
+        server.shutdown()
+
+
+def test_seed_regenerates_key_only_when_rejected_or_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def handler(method, path, auth, body):
+        return (401, {}) if path == "/v1/models" else (200, {"key": "sk-new"})
+
+    seed, key_file, server = _load_seed(tmp_path, monkeypatch, handler)
+    key_file.write_text("sk-stale\n")
+    try:
+        assert seed.seed_key() is True
+        assert key_file.read_text() == "sk-new\n"
+    finally:
+        server.shutdown()
+
+
+@pytest.mark.parametrize("key,warns", [("", True), ("fake-key", False)])
+def test_start_warns_on_stderr_when_openrouter_key_missing(tmp_path, monkeypatch, capsys, key, warns) -> None:
+    local_infra = _load_local_infra()
+    monkeypatch.setattr(local_infra, "prepare_private_directory", lambda p: p)
+    monkeypatch.setattr(local_infra, "validate_minio_source", lambda p: p)
+    monkeypatch.setattr(local_infra, "ensure_credentials", lambda p: None)
+    monkeypatch.setattr(local_infra, "_compose", lambda *a, **k: None)
+    monkeypatch.setenv("OPENROUTER_API_KEY", key)
+    assert local_infra.start(tmp_path, tmp_path)["status"] == "started"
+    err = capsys.readouterr().err
+    assert ("warning: OPENROUTER_API_KEY not set" in err) is warns
+    assert "fake-key" not in err
+
+
+@pytest.mark.parametrize("seed_rc,expected", [(0, "started"), (1, "litellm_seed_failed")])
+def test_start_runs_seed_after_up_and_maps_failure(tmp_path, monkeypatch, seed_rc, expected) -> None:
+    import subprocess
+
+    local_infra = _load_local_infra()
+    monkeypatch.setattr(local_infra, "prepare_private_directory", lambda p: p)
+    monkeypatch.setattr(local_infra, "validate_minio_source", lambda p: p)
+    monkeypatch.setattr(local_infra, "ensure_credentials", lambda p: None)
+    monkeypatch.setattr(local_infra, "validate_gosu_source", lambda p: None)
+    monkeypatch.setattr(local_infra, "validate_postgres_overlay", lambda: None)
+    monkeypatch.setattr(local_infra, "validate_dependency_overlay", lambda: None)
+    monkeypatch.setattr(local_infra, "compose_environment", lambda *a: {})
+    commands: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        commands.append(command)
+        return subprocess.CompletedProcess(command, seed_rc if "run" in command else 0, "", "")
+
+    monkeypatch.setattr(local_infra.subprocess, "run", fake_run)
+    if expected == "started":
+        assert local_infra.start(tmp_path, tmp_path)["status"] == "started"
+    else:
+        with pytest.raises(local_infra.ConfigurationError, match="litellm_seed_failed"):
+            local_infra.start(tmp_path, tmp_path)
+    up, seed = commands
+    assert "up" in up and "--wait" in up and "litellm-seed" not in up and "--profile" not in up
+    assert seed[seed.index("--file") + 2 :][:2] == ["--profile", "seed"]
+    assert seed[-3:] == ["run", "--rm", "litellm-seed"]

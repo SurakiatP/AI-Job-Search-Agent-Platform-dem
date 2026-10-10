@@ -71,3 +71,19 @@ def db_session(migrated_engine):
     with factory() as db:
         yield db
         db.rollback()
+
+
+@pytest.fixture(autouse=True)
+def gateway_env(monkeypatch):
+    """Every test sees a configured LiteLLM gateway with a fake key; nothing real is contacted."""
+    monkeypatch.setenv("LITELLM_BASE_URL", "http://127.0.0.1:54000")
+    monkeypatch.setenv("LITELLM_API_KEY", "sk-test-gateway")
+    monkeypatch.setenv("AI_ANALYZE_MODEL", "ai-analyze")
+    monkeypatch.setenv("AI_DECISION_MODEL", "typesafe/jev-1.13")
+
+
+@pytest.fixture
+def no_gateway_key(monkeypatch, tmp_path):
+    """Gateway without an app key: no env key and an empty private dir."""
+    monkeypatch.delenv("LITELLM_API_KEY")
+    monkeypatch.setenv("CORE02_PRIVATE_DIR", str(tmp_path))

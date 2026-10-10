@@ -369,7 +369,7 @@ class Run(Base):
         CheckConstraint("status IN ('queued','running','waiting_approval','needs_input','completed','failed','cancelled','interrupted')", name="ck_runs_status"),
         CheckConstraint("length(idempotency_key) BETWEEN 1 AND 128", name="ck_runs_idempotency_key_length"),
         CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs','extract_experience','tailor_cv','apply_prepare','apply_submit','draft_follow_up')", name="ck_runs_operation"),
-        CheckConstraint("operation IN ('profile_cv','match_jobs') OR (operation = 'extract_experience' AND provider_configuration_id IS NOT NULL) OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL AND provider_configuration_id IS NOT NULL)", name="ck_runs_context_required"),
+        CheckConstraint("operation IN ('profile_cv','match_jobs','extract_experience') OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL)", name="ck_runs_context_required"),
         CheckConstraint("output_language IN ('th','en')", name="ck_runs_language"),
         CheckConstraint("length(request_digest) = 64", name="ck_runs_digest_length"),
         CheckConstraint("active_seconds >= 0", name="ck_runs_active_seconds"),

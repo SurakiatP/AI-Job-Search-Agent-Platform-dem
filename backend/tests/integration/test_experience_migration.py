@@ -34,19 +34,29 @@ def test_migration_0015_up_down(postgres_engine):
     _migrate(postgres_engine, command.upgrade, "head")
 
 
-def test_extract_run_needs_provider_but_no_session_or_job(migrated_engine):
+def test_extract_run_needs_no_provider_session_or_job_but_llm_ops_need_session_and_job(migrated_engine):
     with sessionmaker(bind=migrated_engine)() as db:
         project_row, revision = _revision(db)
-        config = provider_config(db, project_row.id)
         db.add(Run(project_id=project_row.id, actor_scope="owner", idempotency_key="k", request_digest="d" * 64,
-                   operation="extract_experience", cv_revision_id=revision.id, provider_configuration_id=config.id,
+                   operation="extract_experience", cv_revision_id=revision.id,
                    input_snapshot={}, config_snapshot={}, output_language="en", status="queued"))
         db.flush()
         db.add(Run(project_id=project_row.id, actor_scope="owner", idempotency_key="k2", request_digest="e" * 64,
-                   operation="extract_experience", cv_revision_id=revision.id,
+                   operation="evaluate_job", cv_revision_id=revision.id,
                    input_snapshot={}, config_snapshot={}, output_language="en", status="queued"))
         with pytest.raises(IntegrityError):
             db.flush()
+
+
+def test_migration_0021_downgrade_blocked_by_gateway_runs(migrated_engine):
+    with sessionmaker(bind=migrated_engine)() as db:
+        project_row, revision = _revision(db)
+        db.add(Run(project_id=project_row.id, actor_scope="owner", idempotency_key="k", request_digest="d" * 64,
+                   operation="extract_experience", cv_revision_id=revision.id,
+                   input_snapshot={}, config_snapshot={}, output_language="en", status="queued"))
+        db.commit()
+    with pytest.raises(RuntimeError, match="cannot downgrade"):
+        _migrate(migrated_engine, command.downgrade, "0020_tor_ai_gaps")
 
 
 def test_item_constraints(migrated_engine):

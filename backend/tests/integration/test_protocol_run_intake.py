@@ -16,15 +16,13 @@ from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.protocol_runs import ProtocolJobInput, ProtocolRuns
 
 
-def _context(db, *, cv=True, provider=True):
+def _context(db, *, cv=True):
     local_owner = owner(db)
     p = project(db)
     actor, token = grant(db, p.id, capabilities=("jobs:evaluate", "documents:draft", "results:read"))
     private_chat = session(db, p.id, "Private owner conversation")
     db.add(Message(project_id=p.id, session_id=private_chat.id, role="user", content="SYNTHETIC_OWNER_HISTORY_ONLY"))
     job = revisions(db, p.id)[1] if cv else None
-    if provider:
-        provider_config(db, p.id)
     db.commit()
     return ProtocolRuns(sessionmaker(bind=db.get_bind(), expire_on_commit=False)), actor, token, p, private_chat, job, local_owner
 
@@ -71,8 +69,11 @@ def test_reused_key_with_changed_intent_is_conflict_without_new_rows(db_session,
 
 
 @pytest.mark.parametrize("missing", ["cv", "provider"])
-def test_failed_admission_rolls_back_job_reservation_and_session(db_session, missing):
-    service, actor, *_ = _context(db_session, cv=missing != "cv", provider=missing != "provider")
+def test_failed_admission_rolls_back_job_reservation_and_session(db_session, missing, monkeypatch, tmp_path):
+    service, actor, *_ = _context(db_session, cv=missing != "cv")
+    if missing == "provider":
+        monkeypatch.delenv("LITELLM_API_KEY")
+        monkeypatch.setenv("CORE02_PRIVATE_DIR", str(tmp_path))
     before = _counts(db_session)
     with pytest.raises(ServiceError):
         asyncio.run(service.submit(actor, "evaluate_job", _input()))

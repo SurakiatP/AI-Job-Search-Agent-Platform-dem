@@ -21,6 +21,7 @@ tags:
   - name: approvals
   - name: sharing
   - name: settings
+  - name: system
 paths:
   /owner/session:
     post:
@@ -281,8 +282,8 @@ paths:
         removed. Scored items come first by fit_percent descending, then keyword order. When q and category are
         both empty and Jev is available the pool is built from the CV's stored categories; with none stored the
         list is empty and ai.status is missing. Response {items, total, offset, pool, hidden_count,
-        ai {status: unavailable|missing|partial|ready, categories|null, scored}}; unavailable means no OpenRouter
-        provider is configured (keyword result only).
+        ai {status: unavailable|missing|partial|ready, categories|null, scored}}; unavailable means no gateway app key
+        is available (keyword result only).
         Advanced filters (all optional, empty = unset; invalid values give 422): seniority (comma list of
         intern|junior|middle|senior|lead|staff|principal|c_level), employment_type (full_time|part_time|contract|
         internship|fellowship), company_type (product|startup|agency|outsource|outstaff|inhouse|government),
@@ -306,7 +307,7 @@ paths:
       description: >-
         Owner-only. Queues (or returns the active) match_jobs run that scores the job pool with Jev and caches
         scores per CV revision and posting. match_jobs runs are hidden from the run list, grants, MCP and A2A.
-        409 jev_unavailable when no OpenRouter provider is configured.
+        409 gateway_unconfigured when no gateway app key is available.
       security: [{ownerSession: []}]
       requestBody:
         required: true
@@ -315,7 +316,7 @@ paths:
         '202': {description: Match run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: No OpenRouter provider configured (code jev_unavailable), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '409': {description: No gateway app key (code gateway_unconfigured), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '422': {description: Invalid body}
   /projects/{project_id}/job-search/hidden:
     parameters: [{$ref: '#/components/parameters/project_id'}]
@@ -429,14 +430,14 @@ paths:
       description: >-
         Owner-only. Queues (or returns the active) extract_experience run that reads the CV's latest revision and
         adds its verbatim facts to the experience bank. Every CV upload also queues one automatically when a
-        provider is configured. extract_experience runs are hidden from the run list, grants, MCP and A2A.
+        gateway app key is available. extract_experience runs are hidden from the run list, grants, MCP and A2A.
       security: [{ownerSession: []}]
       responses:
         '202': {description: Extraction run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: No provider configured (code provider_configuration_required), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '409': {description: No gateway app key (code gateway_unconfigured), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '429': {description: Project run queue is full (code queue_full), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search/facets:
     parameters: [{$ref: '#/components/parameters/project_id'}]
@@ -874,45 +875,29 @@ paths:
     delete:
       tags: [sharing]
       responses: {'204': {description: Revoked}}
-  /providers:
+  /health:
     get:
-      tags: [settings]
-      description: Owner-only catalog of supported LLM providers (API-key providers, LM Studio and a custom OpenAI-compatible endpoint).
+      tags: [system]
+      description: Liveness. Unauthenticated.
       responses:
-        '200': {description: Provider catalog, content: {application/json: {schema: {$ref: '#/components/schemas/ProviderCatalogView'}}}}
-  /settings/provider:
+        '200': {description: Process is up, content: {application/json: {schema: {type: object, required: [status], properties: {status: {type: string, enum: [ok]}}}}}}
+  /health/ready:
     get:
-      tags: [settings]
-      description: Owner-only system-wide AI provider configuration (applies to all projects; grants are rejected).
-      responses: {'200': {description: Provider name, model and masked credential status}}
-    put:
-      tags: [settings]
-      requestBody:
-        required: true
-        content: {application/json: {schema: {$ref: '#/components/schemas/ProviderSettingsUpdate'}}}
-      responses: {'200': {description: Credential stored by secret adapter; secret value is not returned}}
-  /settings/provider/models:
-    post:
+      tags: [system]
+      description: >-
+        Readiness. Unauthenticated; each component check is bounded to about 2 s and they run concurrently.
+        Returns no addresses, versions or error text. 200 when all components are ok, 503 when degraded.
+      responses:
+        '200': {description: All components ok, content: {application/json: {schema: {$ref: '#/components/schemas/ReadinessView'}}}}
+        '503': {description: At least one component is down, content: {application/json: {schema: {$ref: '#/components/schemas/ReadinessView'}}}}
+  /gateway:
+    get:
       tags: [settings]
       description: >-
-        List models from the provider endpoint. A null credential reuses the stored key only when the stored
-        provider and effective base URL match the request, otherwise 409 credential_required. Upstream failure
-        is a retryable 502 provider_models_unavailable; invalid base URL is 422 invalid_base_url. Keys are never returned.
-      requestBody:
-        required: true
-        content: {application/json: {schema: {$ref: '#/components/schemas/ProviderModelsRequest'}}}
+        Owner-only read-only status of the LiteLLM gateway that carries all LLM traffic. Calls the gateway
+        GET /v1/models with the app key (3 s timeout); the key is never returned.
       responses:
-        '200': {description: Sorted model list (at most 500), content: {application/json: {schema: {$ref: '#/components/schemas/ProviderModelsView'}}}}
-        '409': {$ref: '#/components/responses/Unavailable'}
-        '422': {$ref: '#/components/responses/Unavailable'}
-        '502': {$ref: '#/components/responses/Unavailable'}
-  /settings/provider/test:
-    post:
-      tags: [settings]
-      description: Bounded test of the saved provider configuration; never accepts or returns a key.
-      responses:
-        '200': {description: Sanitized connection result, content: {application/json: {schema: {$ref: '#/components/schemas/ProviderConnectionTestView'}}}}
-        '503': {$ref: '#/components/responses/Unavailable'}
+        '200': {description: Gateway status, content: {application/json: {schema: {$ref: '#/components/schemas/GatewayStatusView'}}}}
   /projects/{project_id}/settings/tools:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -1425,74 +1410,26 @@ components:
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}
         label: {type: [string, 'null'], maxLength: 80}
-    ProviderSettingsUpdate:
+    GatewayStatusView:
       type: object
       additionalProperties: false
-      required: [provider, model]
+      required: [configured, reachable, analyze_model, decision_model, models]
       properties:
-        provider: {type: string, maxLength: 80}
-        model: {type: string, maxLength: 160}
-        credential: {type: [string, 'null'], writeOnly: true, description: Required unless the provider is key_optional}
-        base_url: {type: [string, 'null'], maxLength: 512, description: Required for custom; https, or http only for loopback hosts}
-    ProviderCatalogEntry:
-      type: object
-      additionalProperties: false
-      required: [id, label, default_base_url, requires_base_url, local, key_optional]
-      properties:
-        id: {type: string}
-        label: {type: string}
-        default_base_url: {type: string}
-        requires_base_url: {type: boolean}
-        local: {type: boolean}
-        key_optional: {type: boolean}
-    ProviderCatalogView:
-      type: object
-      additionalProperties: false
-      required: [providers]
-      properties:
-        providers: {type: array, items: {$ref: '#/components/schemas/ProviderCatalogEntry'}}
-    ProviderModelsRequest:
-      type: object
-      additionalProperties: false
-      required: [provider]
-      properties:
-        provider: {type: string, maxLength: 80}
-        base_url: {type: [string, 'null'], maxLength: 512}
-        credential: {type: [string, 'null'], writeOnly: true}
-    ProviderModelView:
-      type: object
-      additionalProperties: false
-      required: [id]
-      properties:
-        id: {type: string}
-        name: {type: [string, 'null']}
-    ProviderModelsView:
-      type: object
-      additionalProperties: false
-      required: [models]
-      properties:
-        models: {type: array, items: {$ref: '#/components/schemas/ProviderModelView'}}
-    ProviderSettingsView:
-      type: object
-      additionalProperties: false
-      required: [configured]
-      properties:
-        provider: {type: [string, 'null']}
-        provider_label: {type: [string, 'null']}
-        base_url: {type: [string, 'null']}
-        model: {type: [string, 'null']}
         configured: {type: boolean}
-        revision: {type: [integer, 'null'], minimum: 1}
-        masked_secret: {type: [string, 'null']}
-    ProviderConnectionTestView:
+        reachable: {type: boolean}
+        base_url: {type: [string, 'null']}
+        analyze_model: {type: string}
+        decision_model: {type: string}
+        models: {type: array, items: {type: string}}
+    ReadinessView:
       type: object
       additionalProperties: false
-      required: [status, message_key, checked_at, duration_ms]
+      required: [status, components]
       properties:
-        status: {type: string, enum: [succeeded, failed, unavailable]}
-        message_key: {type: string}
-        checked_at: {type: string, format: date-time}
-        duration_ms: {type: integer, minimum: 0, maximum: 30000}
+        status: {type: string, enum: [ok, degraded]}
+        components:
+          type: object
+          additionalProperties: {type: string, enum: [ok, down]}
     ToolConnectorUpdate:
       type: object
       additionalProperties: false

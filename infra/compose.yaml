@@ -73,7 +73,91 @@ services:
     labels:
       com.job-search-platform.task: core02-storage
 
+  litellm-db:
+    image: job-search-platform/postgres:17.11-alpine-gosu-1.19-6456aaa0f3c8
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD_FILE: /run/secrets/litellm-db-password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets:
+      - litellm-db-password
+    volumes:
+      - litellm_db_data:/var/lib/postgresql/data
+    networks:
+      - litellm_private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U litellm"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    labels:
+      com.job-search-platform.task: litellm-gateway
+
+  litellm:
+    image: ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a
+    restart: unless-stopped
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export LITELLM_MASTER_KEY="$$(cat /run/secrets/litellm-master-key)"
+        LITELLM_SALT_KEY="$$(cat /run/secrets/litellm-salt-key)"
+        UI_PASSWORD="$$(cat /run/secrets/litellm-ui-password)"
+        DATABASE_URL="postgresql://litellm:$$(cat /run/secrets/litellm-db-password)@litellm-db:5432/litellm"
+        && exec docker/prod_entrypoint.sh --config /app/config.yaml --port 4000
+    environment:
+      STORE_MODEL_IN_DB: "True"
+      UI_USERNAME: owner
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    secrets:
+      - litellm-master-key
+      - litellm-salt-key
+      - litellm-ui-password
+      - litellm-db-password
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    ports:
+      - "127.0.0.1:${CORE02_LITELLM_PORT:-54000}:4000"
+    networks:
+      - litellm_private
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+    labels:
+      com.job-search-platform.task: litellm-gateway
+
+  litellm-seed:
+    profiles: ["seed"]
+    image: ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a
+    restart: "no"
+    depends_on:
+      litellm:
+        condition: service_healthy
+    entrypoint: ["python", "/seed/seed.py", "/out/litellm_app_key"]
+    environment:
+      OPENROUTER_KEY_PRESENT: ${OPENROUTER_KEY_PRESENT:-}
+    secrets:
+      - litellm-master-key
+    volumes:
+      - ./litellm/seed.py:/seed/seed.py:ro
+      - ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/litellm_app_key:/out/litellm_app_key
+    networks:
+      - litellm_private
+    labels:
+      com.job-search-platform.task: litellm-gateway
+
 networks:
+  litellm_private:
+    driver: bridge
   storage_private:
     driver: bridge
 
@@ -85,6 +169,10 @@ volumes:
   minio_data:
     labels:
       com.job-search-platform.task: core02-storage
+  litellm_db_data:
+    name: jobsearch-core02-litellm-db-data
+    labels:
+      com.job-search-platform.task: litellm-gateway
 
 secrets:
   postgres_user:
@@ -95,3 +183,11 @@ secrets:
     file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/minio-access-key
   minio_secret_key:
     file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/minio-secret-key
+  litellm-master-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/litellm-master-key
+  litellm-salt-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/litellm-salt-key
+  litellm-db-password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/litellm-db-password
+  litellm-ui-password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/litellm-ui-password
