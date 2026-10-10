@@ -55,3 +55,9 @@ MinIO `GO-2026-5932` remains UNKNOWN in both Go inventory and image reports. Par
 
 - Added to the pinned Alpine 3.24 `apk add`: `typst=0.14.2-r0` (CV PDF renderer, no packages, network disabled) and `font-noto-thai=2026.06.01-r0`. Rebuilt image `sha256:ffbda4c7911b7bcaff52ebc259bc2a77425d32685d10542c8ed14c0a6a3cee6a` (previous `sha256:f132adc318b2...`).
 - `trivy image --scanners vuln` on the rebuilt image: 0 findings at every severity (0 High/Critical, none in typst or fonts). The previous image had 0 High/Critical and 1 Medium. Full `security_scan.py` was not re-run for this change.
+
+2026-10-10 Go toolchain remediation:
+- The PostgreSQL gosu and MinIO builders moved from `golang:1.27.1-bookworm` to `golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61`. This fixes stdlib CVE-2026-78667, CVE-2026-78669 and CVE-2026-97031.
+- The MinIO module overlay gains `golang.org/x/net` v0.60.0 (CVE-2026-78669), together with the x/crypto, x/sync, x/sys, x/term, x/mod and x/text releases it requires. The provenance hashes are refreshed.
+- A full `security_scan.py` run found 0 High/Critical across all 11 scopes. Evidence: `~/.cache/job-search-platform/security/20261010T133017.497342Z`.
+- One UNKNOWN finding remains visible: GO-2026-5932. It covers the unmaintained `golang.org/x/crypto/openpgp` package inside MinIO, and there is no fix version.
