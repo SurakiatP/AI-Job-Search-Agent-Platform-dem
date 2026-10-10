@@ -31,7 +31,7 @@ _STOPWORDS = frozenset(
     "present current".split())
 
 
-def _latin_names(text: str) -> set[str]:
+def _latin_names(text: str, strict: bool = False) -> set[str]:
     """Capitalized Latin words that are not at a line/bullet/sentence start, not short acronyms, stopwords or skills."""
     found = set()
     for line in text.replace("\x00", "").splitlines():
@@ -39,7 +39,7 @@ def _latin_names(text: str) -> set[str]:
         for match in _NAME.finditer(line, lead):
             word = match.group()
             before = line[lead:match.start()]
-            if (not before.strip() or _SENTENCE_END.search(before) or (word.isupper() and len(word) <= 4)
+            if (not strict and (not before.strip() or _SENTENCE_END.search(before)) or (word.isupper() and len(word) <= 4)
                     or word.lower() in _STOPWORDS or extract_skills(word)):
                 continue
             found.add(f"name:{word.lower()}")
@@ -53,11 +53,12 @@ def bank_vocabulary(db: Session, project_id: UUID) -> set[str]:
     return {normalize(value) for row in rows for value in row if value and normalize(value)}
 
 
-def claims(text: str, vocabulary: Collection[str] | None = None) -> set[str]:
-    """Checkable claims in text: numbers, dictionary skills and names (capitalized Latin words, bank vocabulary)."""
+def claims(text: str, vocabulary: Collection[str] | None = None, strict: bool = False) -> set[str]:
+    """Checkable claims in text: numbers, dictionary skills and names (capitalized Latin words, bank vocabulary).
+    strict (form answers) also checks the first word of every line and sentence."""
     haystack = normalize(text)
     names = {f"name:{term}" for term in vocabulary or () if _found_in(term, haystack)}
-    return numbers(text) | {f"skill:{name}" for name in extract_skills(text)} | _latin_names(text) | names
+    return numbers(text) | {f"skill:{name}" for name in extract_skills(text)} | _latin_names(text, strict) | names
 
 
 def fact_claims(db: Session, project_id: UUID, ids, vocabulary: Collection[str] | None = None) -> dict[UUID, set[str]]:
@@ -69,7 +70,7 @@ def fact_claims(db: Session, project_id: UUID, ids, vocabulary: Collection[str] 
     rows = db.execute(select(ExperienceItem.id, ExperienceItem.text, ExperienceItem.role, ExperienceItem.organization,
                              ExperienceItem.period).where(
         ExperienceItem.project_id == project_id, ExperienceItem.id.in_(wanted), ExperienceItem.removed_at.is_(None)))
-    return {row.id: claims(" . ".join(v for v in (row.text, row.role, row.organization, row.period) if v), vocabulary)
+    return {row.id: claims(" . ".join(v for v in (row.text, row.role, row.organization, row.period) if v), vocabulary, True)
             for row in rows}
 
 

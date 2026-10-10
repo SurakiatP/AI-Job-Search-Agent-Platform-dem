@@ -75,7 +75,7 @@ def _check(question: Mapping, answer: object, ids: list[str], facts: Mapping[UUI
         return "invalid_answer"
     if not ids or any(UUID(i) not in facts for i in ids):
         return "evidence_required"
-    if isinstance(answer, str) and not claims(answer, vocabulary) <= set().union(*(facts[UUID(i)] for i in ids)):
+    if isinstance(answer, str) and not claims(answer, vocabulary, True) <= set().union(*(facts[UUID(i)] for i in ids)):
         return "unsupported_claim"
     return None
 

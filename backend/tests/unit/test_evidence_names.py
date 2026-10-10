@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from job_search_platform.services.applications import gate_answers
 from job_search_platform.services.evidence import apply_gated, claims
+from job_search_platform.services.skill_coverage import extract_skills
 
 
 def _names(text, vocabulary=None):
@@ -14,7 +15,7 @@ def test_mid_sentence_capitalized_words_are_names():
 
 
 def test_sentence_line_and_bullet_starts_are_exempt():
-    assert _names("Built tools. Shipped fast! Why? Because: Reasons") == set()
+    assert _names("Built tools. Shipped fast! Why? Because it works") == set()
     assert _names("Led the team\n- Managed budgets\n* Hired people\n• Mentored staff") == set()
 
 
@@ -71,3 +72,17 @@ def test_gate_answers_rejects_invented_name_in_text():
     assert bad[0]["reason"] == "unsupported_claim"
     good = gate_answers([{"question_id": "why", "answer": "I wrote services at Acme", "evidence_ids": [str(fid)]}], q, facts)[0]
     assert good[0]["answer"] is not None
+
+
+def _answer(text, fact_text):
+    fid = uuid4()
+    q = [{"id": "q", "label": "Q", "required": True, "kind": "text"}]
+    entry = gate_answers([{"question_id": "q", "answer": text, "evidence_ids": [str(fid)]}], q,
+                         {fid: claims(fact_text)})[0][0]
+    return entry["answer"] is not None
+
+
+def test_one_word_answers_are_checked_against_cited_facts():  # I1
+    for text in ("Google", "Current employer: Google"):
+        assert not _answer(text, "Wrote services at Acme")
+    assert _answer("Google", "Worked at Google") and _answer("Current employer: Google", "Worked at Google")
