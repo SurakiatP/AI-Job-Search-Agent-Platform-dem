@@ -22,7 +22,7 @@ All six services join a new bridge network, `langfuse_private`. Only `langfuse-w
 | `langfuse-web` | `langfuse/langfuse:4.56.0@sha256:b1948c7c0931f277975b985e30e73536b1bca5822705ddd9a89ba7c1ed79b3ee` | `127.0.0.1:${CORE02_LANGFUSE_PORT:-53000}:3000` | Headless init, signup disabled, `TELEMETRY_ENABLED=false` |
 | `langfuse-worker` | `langfuse/langfuse-worker:4.56.0@sha256:3f7571ff3a725ebdcdf4c35e06bdf8c3f8325770691c673793ad61b328265e13` | none | Same env as web, minus init |
 | `langfuse-db` | `job-search-platform/postgres:17.11-alpine-gosu-1.19-6456aaa0f3c8` (project image) | none | Own volume `jobsearch-core02-langfuse-db-data` |
-| `langfuse-clickhouse` | `clickhouse/clickhouse-server:25.8.33.6-distroless@sha256:92d5f0e91496337d57b9666a6ea558c339af471681828a3bb2ae1e2d5849e6f9` | none | Trivy 0 High/Critical (2026-10-11). Own data and log volumes |
+| `langfuse-clickhouse` | `clickhouse/clickhouse-server:25.12.11.4-distroless@sha256:f72a88eba5b89e80faea55f048bc0827d4a8a09c4f62701bf9dc802c9e049f53` | none | Trivy 0 High/Critical (2026-10-11). Own data and log volumes |
 | `langfuse-valkey` | `valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507` | none | `--requirepass` read from the secret file, `--maxmemory-policy noeviction` |
 | `langfuse-minio` | `job-search-platform/minio-oss:7aac2a2c…` (project image) | none | Separate instance and volume from the CV store. Before `server` starts, the bucket `langfuse` is created with `mkdir -p /data/langfuse`, as in Langfuse's official compose |
 
@@ -42,7 +42,7 @@ Langfuse does not read `*_FILE` variables. As with LiteLLM, both Langfuse servic
 
 The distroless image may skip the env-processing entrypoint. `local_infra.py` therefore writes a `users.d` XML that holds only the SHA-256 hash of the password (`password_sha256_hex`), and mounts it read-only.
 
-The fallback must be proven in the plan's first infra task. If the distroless image cannot be configured or health-checked, use `25.8.33.6` (non-distroless) and record its 2 openssl findings in ADR-014.
+Proven on 2026-10-11: the `users.d` hash file and the `clickhouse local … url()` healthcheck work on the distroless image. 25.8 was replaced by 25.12 (the version in Langfuse's own compose) because Langfuse 4.56.0 ClickHouse migration 39 uses a text index that 25.8 rejects (`Code: 80 Expected literal`); 25.12.11.4-distroless runs it and scans 0 High/Critical.
 
 ### Headless init
 
