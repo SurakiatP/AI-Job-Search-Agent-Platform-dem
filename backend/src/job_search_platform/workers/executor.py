@@ -8,6 +8,7 @@ import re
 import asyncio
 import hashlib
 import io
+import time
 import mimetypes
 import uuid
 import zipfile
@@ -19,14 +20,15 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import Approval, CVRevision, CVRevisionText, JobMatchScore, JobSearchHidden, Run, RunArtifact, StoredFile
+from job_search_platform.db.models import Approval, CVRevision, CVRevisionText, DocumentRevision, JobMatchScore, JobSearchHidden, Run, RunArtifact, StoredFile
 from job_search_platform.services.contracts import EvaluationResult, SkillCoverage
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
 from job_search_platform.integrations.jev import JEV_MODEL, JevClient
-from job_search_platform.services import experience, job_sources, smart_match
+from job_search_platform.services import experience, job_sources, smart_match, tailoring
+from job_search_platform.services.evidence import EvidencedEdit, require_evidence
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.approvals import ApprovalService
-from job_search_platform.services.runs import append_event
+from job_search_platform.services.runs import MAX_ACTIVE_SECONDS, append_event
 from job_search_platform.workers.sandbox import RunSandbox
 from job_search_platform.workers.supervisor import process_birth
 
@@ -212,6 +214,9 @@ class RunExecutor:
                 return
             if run.operation == "extract_experience":
                 await self._execute_extract(run, lease_owner, sandbox)
+                return
+            if run.operation == "tailor_cv":
+                await self._execute_tailor(run, lease_owner, sandbox)
                 return
             cv_path = await self._materialize(run, sandbox)
             connector = run.config_snapshot.get("connector", {})
@@ -421,6 +426,137 @@ class RunExecutor:
             started = False
             await asyncio.to_thread(self._store_experience, run, text, items)
             await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed")
+        except ServiceError as exc:
+            await self._stop(run.project_id, started)
+            status = "cancelled" if exc.code == "cancellation_requested" else "failed"
+            await self._finish_after_stop(run, lease_owner, status, None if status == "cancelled" else _safe_message(exc.code))
+        except Exception:
+            await self._stop(run.project_id, started)
+            await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
+
+    def _tailor_base(self, run: Run) -> tuple[uuid.UUID | None, str | None]:
+        """Latest tailored-document Markdown (and its revision id) when the run revises one, else the stored CV text."""
+        document_id = run.input_snapshot.get("document_id")
+        if document_id:
+            with self.sessions() as db:
+                row = db.execute(select(DocumentRevision.id, DocumentRevision.content_markdown).where(
+                    DocumentRevision.project_id == run.project_id, DocumentRevision.document_id == uuid.UUID(document_id),
+                    DocumentRevision.content_markdown.is_not(None)).order_by(DocumentRevision.revision.desc()).limit(1)).first()
+            if row is not None:
+                return row[0], row[1]
+        return None, self._stored_cv_text(run.cv_revision_id)
+
+    def _gate_edits(self, project_id: uuid.UUID, edits: list[dict]) -> list[bool]:
+        """Each edit is checked on its own; True means it cites live facts and invents no numbers."""
+        verdicts = []
+        with self.sessions() as db:
+            for edit in edits:
+                try:
+                    require_evidence(db, project_id, [EvidencedEdit(text=edit["text"], evidence_ids=edit["evidence_ids"])])
+                    verdicts.append(True)
+                except ServiceError as exc:
+                    if exc.code != "evidence_required":
+                        raise
+                    verdicts.append(False)
+        return verdicts
+
+    def _facts(self, project_id: uuid.UUID) -> list[dict]:
+        with self.sessions() as db:
+            return experience.fact_records(db, project_id)
+
+    async def _execute_tailor(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
+        """Evidence-gated CV tailoring: autopilot rounds publish one revision; interactive stores proposals only."""
+        started = False
+        try:
+            began = time.monotonic()
+            budget = MAX_ACTIVE_SECONDS - tailoring.TIME_MARGIN_S
+            interactive = run.input_snapshot.get("tailor_mode") == "interactive"
+            job = run.input_snapshot["job"]
+            job_text = f"{job['title']}\n{job['description']}"
+            provider = await self.settings.trusted_provider(
+                configuration_id=uuid.UUID(run.config_snapshot["provider_configuration_id"]))
+            base_revision_id, text = await asyncio.to_thread(self._tailor_base, run)
+            cv_path = None if text is not None else await self._materialize(run, sandbox)
+            facts = await asyncio.to_thread(self._facts, run.project_id)
+            gate_failure = asyncio.Event()
+
+            async def reserve_tool(_call_id: str, _tool_name: str) -> bool:
+                try:
+                    await asyncio.to_thread(self.queue.reserve_tool_call, run.id, lease_owner)
+                    return True
+                except ServiceError:
+                    gate_failure.set()
+                    return False
+
+            project = await self.runtime.start_project(run.project_id, sandbox.workspace)
+            started = True
+            self.runtime.projects[run.project_id].tool_gate = reserve_tool
+            self._record_process(run.id, lease_owner, project)
+            if text is None:
+                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+                with contextlib.suppress(Exception):
+                    await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
+            if not text.strip():
+                raise ServiceError("cv_text_empty")
+
+            def score(value: str) -> dict | None:
+                return compute_skill_coverage(value, job_text)
+
+            coverage = score(text)
+            coverages = [coverage["ratio"] if coverage else None]
+            accepted_counts: list[int] = []
+            rounds: list[dict] = []
+            proposals: list[dict] = []
+            stop_reason = "interactive"
+            for round_no in range(1, 2 if interactive else tailoring.MAX_ROUNDS + 1):
+                # One fresh Hermes session per round (the bridge builds a new agent on every submit).
+                prompt, instructions = tailoring.round_prompt(
+                    text, job["title"], job_text, coverage["missing"] if coverage else [], facts, run.output_language)
+                await self.runtime.submit(run.project_id, uuid.uuid5(run.id, f"round-{round_no}"), prompt, instructions,
+                                          provider, operation="tailor_cv", tool_gate=reserve_tool)
+                self._public_event(run.id, "run_progress", {"step": "agent_running"})
+                edits = tailoring.parse_edits(await self._await_result(run, lease_owner, gate_failure))
+                verdicts = await asyncio.to_thread(self._gate_edits, run.project_id, edits)
+                accepted = [edit for edit, ok in zip(edits, verdicts) if ok]
+                rejected = [edit for edit, ok in zip(edits, verdicts) if not ok]
+                if interactive:
+                    for edit, ok in zip(edits, verdicts):
+                        proposals.append({"id": len(proposals), **edit, "status": "proposed" if ok else "rejected_by_gate"})
+                    rounds.append({"round": 1, "accepted": len(accepted), "rejected": len(rejected), "coverage": coverages[0]})
+                    break
+                text, applied = tailoring.apply_edits(text, accepted)
+                proposals += [{"id": len(proposals) + i, **edit, "status": "applied"} for i, edit in enumerate(applied)]
+                proposals += [{"id": len(proposals) + i, **edit, "status": "rejected_by_gate"} for i, edit in enumerate(rejected)]
+                coverage = score(text)
+                coverages.append(coverage["ratio"] if coverage else None)
+                accepted_counts.append(len(applied))
+                rounds.append({"round": round_no, "accepted": len(applied), "rejected": len(rejected), "coverage": coverages[-1]})
+                self._public_event(run.id, "run_progress",
+                                   {"step": "tailor_round", "round": round_no, "coverage": coverages[-1]})
+                stop_reason = tailoring.should_stop(coverages, accepted_counts, round_no, time.monotonic() - began, budget)
+                if stop_reason:
+                    break
+            payload = {
+                "kind": "tailor", "mode": "interactive" if interactive else "autopilot",
+                "base_revision_id": None if base_revision_id is None else str(base_revision_id),
+                "stop_reason": stop_reason, "rounds": rounds, "proposals": proposals,
+                "coverage_before": coverages[0], "coverage_after": coverages[0] if interactive else coverages[-1],
+            }
+            artifact_ids: tuple[uuid.UUID, ...] = ()
+            if not interactive:
+                sandbox.staging_path("tailored-cv.md").write_text(text, encoding="utf-8")
+                manifest = json.dumps({"drafts": [{
+                    "path": "tailored-cv.md", "document_type": "cv",
+                    "title": f"CV — {job['title']}"[:300], "format": "pdf"}]})
+                files = await self._export_drafts(run, sandbox, manifest)
+                published = await self.artifacts.publish(
+                    run.project_id, run.id,
+                    {"staging_dir": str(sandbox.staging), "lease_owner": lease_owner, "files": files})
+                artifact_ids = tuple(item.id for item in published)
+            await self._stop(run.project_id, started)
+            started = False
+            await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed",
+                                    artifact_ids=artifact_ids, result_payload=payload)
         except ServiceError as exc:
             await self._stop(run.project_id, started)
             status = "cancelled" if exc.code == "cancellation_requested" else "failed"

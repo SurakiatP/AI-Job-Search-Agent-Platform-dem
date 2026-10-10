@@ -31,7 +31,7 @@ from job_search_platform.services.contracts import (
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
     PreferencesView, ProjectUpdate, ProjectView, ProviderCatalogView, ProviderConnectionTestView,
     ProviderModelsRequest, ProviderModelsView, ProviderSettingsUpdate,
-    ProviderSettingsView, RunRequest, RunView, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
+    ProviderSettingsView, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
 from job_search_platform.integrations.jev import JEV_MODEL
@@ -782,6 +782,20 @@ async def edit_document(project_id: UUID, document_id: UUID, body: DocumentEdit,
     """Owner manual edit: queue a non-LLM export run that appends a revision."""
     _owner_only(actor)
     return await services.runs.submit_export(actor, project_id, document_id, body)
+
+
+@router.post("/projects/{project_id}/documents/{document_id}/revisions/{revision_id}/restore", status_code=202, response_model=RunView)
+async def restore_revision(project_id: UUID, document_id: UUID, revision_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Owner undo: queue an export run that re-publishes an earlier revision's Markdown."""
+    _owner_only(actor)
+    return await services.runs.submit_restore(actor, project_id, document_id, revision_id)
+
+
+@router.post("/projects/{project_id}/runs/{run_id}/tailor/apply", status_code=202, response_model=RunView)
+async def apply_tailor(project_id: UUID, run_id: UUID, body: TailorApply, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Owner applies chosen interactive tailoring proposals; evidence is re-checked server-side."""
+    _owner_only(actor)
+    return await services.runs.submit_tailor_apply(actor, project_id, run_id, body.proposal_ids)
 
 
 @router.get("/projects/{project_id}/cv", response_model=list[CVRevisionView])

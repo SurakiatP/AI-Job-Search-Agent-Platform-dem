@@ -281,6 +281,10 @@ class DocumentEdit(DTO):
     format: Literal["pdf", "docx"] | None = None
 
 
+class TailorApply(DTO):
+    proposal_ids: Annotated[list[int], Field(min_length=1, max_length=50)]
+
+
 class FileView(DTO):
     id: UUID
     kind: Literal["cv_original", "job_source", "generated_document", "chat_attachment"]
@@ -340,6 +344,8 @@ class RunEventData(DTO):
     artifact_ids: tuple[UUID, ...] = ()
     message_key: Annotated[str, StringConstraints(max_length=120)] | None = None
     progress_percent: Annotated[int, Field(ge=0, le=100)] | None = None
+    round: Annotated[int, Field(ge=1, le=100)] | None = None
+    coverage: Annotated[float, Field(ge=0, le=1)] | None = None
 
 
 class RunEventView(DTO):
