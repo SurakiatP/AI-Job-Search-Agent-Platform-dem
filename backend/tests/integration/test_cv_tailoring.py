@@ -164,6 +164,22 @@ def test_autopilot_gates_edits_stops_and_appends_one_revision(api_context):
     assert _run(ctx, second).result_payload["base_revision_id"] == str(revisions[0].id)
 
 
+@pytest.mark.integration
+def test_autopilot_rejects_an_edit_that_invents_an_employer(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, _ = _setup(ctx, [])
+    runtime = _Runtime(ctx.tmp_path / "ws", [[
+        _edit("Packaged services with Docker at Google", facts["docker"]),
+        _edit("Operated Kubernetes clusters", facts["k8s"])]])
+    run_id = _tailor(ctx, csrf, pid, session, "t-name").json()["id"]
+    _execute_next(ctx, runtime)
+    proposals = _run(ctx, run_id).result_payload["proposals"]
+    assert {p["text"]: p["status"] for p in proposals} == {
+        "Operated Kubernetes clusters": "applied", "Packaged services with Docker at Google": "rejected_by_gate"}
+    (revision,) = _revisions(ctx, pid)
+    assert "Google" not in revision.content_markdown and "Kubernetes" in revision.content_markdown
+
+
 def _interactive(ctx, csrf, pid, session, facts, key="i1"):
     runtime = _Runtime(ctx.tmp_path / "ws", [[
         _edit("Packaged services with Docker", facts["docker"]),

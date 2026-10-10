@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from uuid import UUID
 
 from job_search_platform.services.evidence import claims
@@ -61,7 +61,8 @@ def parse_answers(raw: str) -> list[dict]:
     return answers
 
 
-def _check(question: Mapping, answer: object, ids: list[str], facts: Mapping[UUID, set[str]]) -> str | None:
+def _check(question: Mapping, answer: object, ids: list[str], facts: Mapping[UUID, set[str]],
+           vocabulary: Collection[str] | None = None) -> str | None:
     """None when the answer may stand, else the reason it becomes null."""
     kind = question["kind"]
     if kind == "boolean":
@@ -74,14 +75,15 @@ def _check(question: Mapping, answer: object, ids: list[str], facts: Mapping[UUI
         return "invalid_answer"
     if not ids or any(UUID(i) not in facts for i in ids):
         return "evidence_required"
-    if isinstance(answer, str) and not claims(answer) <= set().union(*(facts[UUID(i)] for i in ids)):
+    if isinstance(answer, str) and not claims(answer, vocabulary) <= set().union(*(facts[UUID(i)] for i in ids)):
         return "unsupported_claim"
     return None
 
 
-def gate_answers(answers: Sequence[Mapping], questions: Sequence[Mapping], facts_claims: Mapping[UUID, set[str]]) -> tuple[list[dict], list[str]]:
+def gate_answers(answers: Sequence[Mapping], questions: Sequence[Mapping], facts_claims: Mapping[UUID, set[str]],
+                 vocabulary: Collection[str] | None = None) -> tuple[list[dict], list[str]]:
     """One entry per question, in order. A text answer that is invalid, uncited, cites unknown facts, or states a
-    number or skill its cited facts do not, becomes null with a reason. A valid boolean or choice proposal is
+    number, skill or name its cited facts do not, becomes null with a reason. A valid boolean or choice proposal is
     never an answer: it is kept as `suggestion` (reason needs_confirmation) for the owner. Returns (entries, missing)."""
     by_id = {}
     for answer in answers:
@@ -93,7 +95,7 @@ def gate_answers(answers: Sequence[Mapping], questions: Sequence[Mapping], facts
         given = by_id.get(question["id"])
         reason = "not_answerable"
         if given is not None and given["answer"] is not None:
-            reason = _check(question, given["answer"], given["evidence_ids"], facts_claims)
+            reason = _check(question, given["answer"], given["evidence_ids"], facts_claims, vocabulary)
         if reason is None and question["kind"] in ("boolean", "choice"):
             entries.append({"question_id": question["id"], "label": question["label"], "answer": None,
                             "suggestion": given["answer"],

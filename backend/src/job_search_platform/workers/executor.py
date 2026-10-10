@@ -26,7 +26,7 @@ from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, 
 from job_search_platform.integrations import tracing
 from job_search_platform.integrations.jev import JEV_MODEL, JevClient
 from job_search_platform.services import applications, experience, job_sources, smart_match, tailoring
-from job_search_platform.services.evidence import EvidencedEdit, apply_gated, fact_claims, require_evidence
+from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, fact_claims, require_evidence
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.runs import MAX_ACTIVE_SECONDS, append_event
@@ -456,13 +456,13 @@ class RunExecutor:
                 return row[0], row[1]
         return None, self._stored_cv_text(run.cv_revision_id)
 
-    def _gate_edits(self, project_id: uuid.UUID, edits: list[dict]) -> list[bool]:
-        """Each edit is checked on its own; True means it cites live facts and invents no numbers."""
+    def _gate_edits(self, project_id: uuid.UUID, edits: list[dict], base: str = "") -> list[bool]:
+        """Each edit is checked on its own; True means it cites live facts and invents no numbers or names."""
         verdicts = []
         with self.sessions() as db:
             for edit in edits:
                 try:
-                    require_evidence(db, project_id, [EvidencedEdit(text=edit["text"], evidence_ids=edit["evidence_ids"])])
+                    require_evidence(db, project_id, [EvidencedEdit(text=edit["text"], evidence_ids=edit["evidence_ids"])], base)
                     verdicts.append(True)
                 except ServiceError as exc:
                     if exc.code != "evidence_required":
@@ -473,6 +473,10 @@ class RunExecutor:
     def _fact_claims(self, project_id: uuid.UUID, edits: list[dict]) -> dict:
         with self.sessions() as db:
             return fact_claims(db, project_id, {uuid.UUID(i) for edit in edits for i in edit["evidence_ids"]})
+
+    def _vocabulary(self, project_id: uuid.UUID) -> set[str]:
+        with self.sessions() as db:
+            return bank_vocabulary(db, project_id)
 
     def _facts(self, project_id: uuid.UUID) -> list[dict]:
         with self.sessions() as db:
@@ -538,7 +542,7 @@ class RunExecutor:
                                           provider, operation="tailor_cv", tool_gate=deny_tool)
                 self._public_event(run.id, "run_progress", {"step": "agent_running"})
                 edits = tailoring.parse_edits(await self._await_result(run, lease_owner, gate_failure, began))
-                verdicts = await asyncio.to_thread(self._gate_edits, run.project_id, edits)
+                verdicts = await asyncio.to_thread(self._gate_edits, run.project_id, edits, text)
                 accepted = [edit for edit, ok in zip(edits, verdicts) if ok]
                 rejected = [edit for edit, ok in zip(edits, verdicts) if not ok]
                 if interactive:
@@ -546,8 +550,9 @@ class RunExecutor:
                         proposals.append({"id": len(proposals), **edit, "status": "proposed" if ok else "rejected_by_gate"})
                     rounds.append({"round": 1, "accepted": len(accepted), "rejected": len(rejected), "coverage": coverages[0]})
                     break
+                vocabulary = await asyncio.to_thread(self._vocabulary, run.project_id)
                 text, applied, spliced = apply_gated(
-                    text, accepted, await asyncio.to_thread(self._fact_claims, run.project_id, accepted))
+                    text, accepted, await asyncio.to_thread(self._fact_claims, run.project_id, accepted), vocabulary)
                 rejected += spliced
                 proposals += [{"id": len(proposals) + i, **edit, "status": "applied"} for i, edit in enumerate(applied)]
                 proposals += [{"id": len(proposals) + i, **edit, "status": "rejected_by_gate"} for i, edit in enumerate(rejected)]
@@ -641,7 +646,8 @@ class RunExecutor:
             self._public_event(run.id, "run_progress", {"step": "agent_running"})
             answers = applications.parse_answers(await self._await_result(run, lease_owner, gate_failure, began))
             entries, missing = applications.gate_answers(
-                answers, questions, await asyncio.to_thread(self._fact_claims, run.project_id, answers))
+                answers, questions, await asyncio.to_thread(self._fact_claims, run.project_id, answers),
+                await asyncio.to_thread(self._vocabulary, run.project_id))
             payload = {"kind": "apply_pack", "state": "parked" if missing else "ready",
                        "answers": entries, "missing_required": missing}
             await self._stop(run.project_id, started)
