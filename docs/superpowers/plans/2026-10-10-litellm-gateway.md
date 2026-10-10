@@ -162,3 +162,4 @@
 - Readiness test: all ok gives 200; LiteLLM down gives 503 with `llm_gateway: down` and no leaked address.
 - Log test: a request produces one JSON line with `request_id` and the route template, and contains no token or query values.
 - Full backend suite and the contract test pass.
+- **One private-dir default.** `scripts/local_infra.py` reads `CORE02_PRIVATE_DIR` from the environment and falls back to the same default as `main.py`: `~/.cache/job-search-platform/core02-runtime-20261003`. Today it defaults to `~/.local/share/job-search-platform/core02`, so the private dir must be set in `.env`. After this change `CORE02_PRIVATE_DIR`, `MINIO_SOURCE_DIR` and `GOSU_SOURCE_DIR` are all optional overrides. In `.env.example` they are commented, with a note explaining that. Existing values in the owner's `.env` stay as they are, because they equal the defaults.
