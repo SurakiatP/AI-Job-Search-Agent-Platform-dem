@@ -1,12 +1,12 @@
 # MinIO OSS source pinned by FILE-001. Go 1.26.3 is newer than the
-# source's go1.24.8 minimum and includes maintained toolchain fixes.
-FROM golang:1.27.1-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195 AS build
+# source's go1.24.8 minimum and includes maintained toolchain fixes (go1.27.2: CVE-2026-78667/78669/97031).
+FROM golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61 AS build
 WORKDIR /src
 COPY --from=minio_source / /src/
 COPY go.mod go.sum provenance.json /src/
 ARG MINIO_SOURCE_COMMIT
 RUN test "$MINIO_SOURCE_COMMIT" = "7aac2a2c5b7c882e68c1ce017d8256be2feea27f" \
-    && test "$(go version | awk '{ print $3 }')" = "go1.27.1" \
+    && test "$(go version | awk '{ print $3 }')" = "go1.27.2" \
     && grep -F '"source_commit": "7aac2a2c5b7c882e68c1ce017d8256be2feea27f"' provenance.json \
     && test "$(sha256sum go.mod | awk '{ print $1 }')" = "$(sed -n 's/.*"go_mod_sha256": "\([0-9a-f]*\)".*/\1/p' provenance.json)" \
     && test "$(sha256sum go.sum | awk '{ print $1 }')" = "$(sed -n 's/.*"go_sum_sha256": "\([0-9a-f]*\)".*/\1/p' provenance.json)" \

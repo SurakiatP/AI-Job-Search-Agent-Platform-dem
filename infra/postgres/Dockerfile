@@ -1,12 +1,12 @@
 # Keep PostgreSQL 17's upstream Alpine runtime and replace only its outdated gosu binary.
-FROM golang:1.27.1-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195 AS gosu-build
+FROM golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61 AS gosu-build
 WORKDIR /src
 COPY --from=gosu_source / /src/
 COPY go.mod go.sum provenance.json /src/
 ARG GOSU_SOURCE_COMMIT
 RUN mkdir -p /out \
     && test "$GOSU_SOURCE_COMMIT" = "6456aaa0f3c854d199d0f037f068eb97515b7513" \
-    && test "$(go version | awk '{ print $3 }')" = "go1.27.1" \
+    && test "$(go version | awk '{ print $3 }')" = "go1.27.2" \
     && grep -F '"source_commit": "6456aaa0f3c854d199d0f037f068eb97515b7513"' provenance.json \
     && grep -F '"base_image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24"' provenance.json \
     && test "$(sha256sum go.mod | awk '{ print $1 }')" = "$(sed -n 's/.*"go_mod_sha256": "\([0-9a-f]*\)".*/\1/p' provenance.json)" \

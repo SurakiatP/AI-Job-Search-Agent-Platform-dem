@@ -5,7 +5,7 @@
   "gosu_version": "1.19",
   "license": "Apache-2.0",
   "base_image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
-  "builder_image": "golang:1.27.1-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195",
+  "builder_image": "golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61",
   "go_mod_sha256": "ae1fa03558b80bd57cf329cddab1643dbac3f8584388251f473f0f91c1a3be26",
   "go_sum_sha256": "6c4017ca7c25303172cdca4e7e0438c6c8d594904a6c69297843ecb9b7bf0886"
 }
