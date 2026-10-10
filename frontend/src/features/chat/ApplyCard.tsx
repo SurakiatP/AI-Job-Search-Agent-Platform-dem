@@ -14,10 +14,6 @@ const copy = {
 type Row = { label: string; required: boolean; kind: ApplyQuestion['kind']; choices: string };
 const blank = (): Row => ({ label: '', required: true, kind: 'text', choices: '' });
 const field = 'min-h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50';
-const qKey = (sessionId: string) => `apply-questions:${sessionId}`;
-function loadQuestions(sessionId: string): Record<string, ApplyQuestion> {
-  try { return Object.fromEntries((JSON.parse(sessionStorage.getItem(qKey(sessionId)) ?? '[]') as ApplyQuestion[]).map(q => [q.id, q])); } catch { return {}; }
-}
 const isPack = (payload: RunView['result_payload']): payload is ApplyPack => (payload as ApplyPack | null | undefined)?.kind === 'apply_pack';
 
 function CopyAnswer({ text, c }: { text: string; c: (typeof copy)['en'] }) {
@@ -32,7 +28,6 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
   const [rows, setRows] = useState<Row[]>([blank()]);
   const [working, setWorking] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string | boolean>>({});
-  const [questionMap, setQuestionMap] = useState(() => loadQuestions(sessionId));
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const { reload } = jobs;
@@ -63,8 +58,6 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
       const choices = row.choices.split(',').map(item => item.trim()).filter(Boolean);
       return { id: `q${index + 1}`, label, required: row.required, kind: row.kind, ...(row.kind === 'choice' ? { choices: choices.length ? choices : ['-'] } : {}) };
     });
-    try { sessionStorage.setItem(qKey(sessionId), JSON.stringify(questions)); } catch { /* optional */ }
-    setQuestionMap(Object.fromEntries(questions.map(q => [q.id, q])));
     void send('apply_prepare', { questions });
   }
 
@@ -78,8 +71,8 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
       setDrafts({}); setMessage({ ok: true, text: next.status === 'completed' ? c.savedReady : c.savedMore }); onChanged();
     } catch (caught) { setMessage({ ok: false, text: errorText(caught) }); } finally { setWorking(false); }
   }
-  function answerInput(id: string, label: string) {
-    const q = questionMap[id]; const value = drafts[id];
+  function answerInput(q: ApplyPack['answers'][number], label: string) {
+    const id = q.question_id; const value = drafts[id];
     const set = (v: string | boolean) => setDrafts(current => ({ ...current, [id]: v }));
     if (q?.kind === 'boolean') return <fieldset className="flex flex-wrap gap-4"><legend className="sr-only">{label}</legend>
       {([true, false] as const).map(v => <label key={String(v)} className="flex min-h-11 items-center gap-2"><input type="radio" className="size-4 accent-primary" name={`answer-${id}`} checked={value === v} onChange={() => set(v)} />{v ? c.yes : c.no}</label>)}</fieldset>;
@@ -96,7 +89,7 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
       <ul className="grid gap-3">{pack.answers.map(answer => <li key={answer.question_id} className="grid gap-1 rounded-lg border p-3 text-sm">
         <span className="text-muted-foreground [overflow-wrap:anywhere]">{answer.label ?? answer.question_id}</span>
         {answer.answer === null && waiting
-          ? <>{answerInput(answer.question_id, answer.label ?? answer.question_id)}</>
+          ? <>{answerInput(answer, answer.label ?? answer.question_id)}</>
           : answer.answer === null
           ? <><Badge variant="warning" className="justify-self-start">{c.notAnswerable}</Badge><span>{c.reasonLabel}: {c.reasons[answer.reason ?? 'not_answerable'] ?? answer.reason}</span></>
           : <><span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{String(answer.answer)}</span>{answer.source === 'owner' ? <Badge variant="secondary" className="justify-self-start">{c.yourAnswer}</Badge> : <span className="text-xs text-muted-foreground">{answer.evidence_ids.length} {c.evidence}</span>}<CopyAnswer text={String(answer.answer)} c={c} /></>}

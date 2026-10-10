@@ -4,15 +4,10 @@ import { jobId, projectId, sessionId, useSyntheticApplication } from '../fixture
 const runId = 'cccccccc-0000-4000-8000-000000000001';
 const grantId = 'eeeeeeee-0000-4000-8000-000000000001';
 const json = (body: unknown, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body) });
-const questions = [
-  { id: 'q1', label: 'Why this job?', required: true, kind: 'text' },
-  { id: 'q2', label: 'Authorised to work?', required: true, kind: 'boolean' },
-  { id: 'q3', label: 'Notice period?', required: true, kind: 'choice', choices: ['Immediate', '30 days'] },
-];
 const pack = { kind: 'apply_pack', state: 'parked', missing_required: ['q2', 'q3'], answers: [
-  { question_id: 'q1', label: 'Why this job?', answer: 'Docker services', evidence_ids: ['f1'] },
-  { question_id: 'q2', label: 'Authorised to work?', answer: null, evidence_ids: [], reason: 'not_answerable' },
-  { question_id: 'q3', label: 'Notice period?', answer: null, evidence_ids: [], reason: 'not_answerable' },
+  { question_id: 'q1', label: 'Why this job?', answer: 'Docker services', evidence_ids: ['f1'], kind: 'text', choices: null, required: true },
+  { question_id: 'q2', label: 'Authorised to work?', answer: null, evidence_ids: [], reason: 'not_answerable', kind: 'boolean', choices: null, required: true },
+  { question_id: 'q3', label: 'Notice period?', answer: null, evidence_ids: [], reason: 'not_answerable', kind: 'choice', choices: ['Immediate', '30 days'], required: true },
 ] };
 const run = (extra: Record<string, unknown> = {}) => ({ id: runId, project_id: projectId, session_id: sessionId, operation: 'apply_prepare', status: 'needs_input', job_revision_id: jobId, output_language: 'en', result_file_ids: [], created_at: '2026-10-10T00:00:00Z', finished_at: null, retry_of_id: null, evaluation_result: null, result_payload: pack, requester: { kind: 'agent', grant_id: grantId, label: null }, ...extra });
 const ev = (sequence: number, event_type: string, data: Record<string, unknown>) => `data: ${JSON.stringify({ sequence, event_type, created_at: '2026-10-10T00:00:00Z', data: { approval_id: null, step: null, status: null, artifact_ids: [], message_key: null, progress_percent: null, ...data } })}\n\n`;
@@ -21,7 +16,7 @@ const stream = ev(1, 'run_progress', { step: 'llm_round', model: 'hermes-x', lat
   + ev(3, 'run_progress', { step: 'llm_round', model: 'hermes-x', latency_ms: 2500, input_tokens: null, output_tokens: null });
 
 async function mock(page: Page, locale: 'en' | 'th') {
-  await page.addInitScript(([l, key, q]) => { localStorage.setItem('ui.locale', l); sessionStorage.setItem(key, q); }, [locale, `apply-questions:${sessionId}`, JSON.stringify(questions)]);
+  await page.addInitScript(l => { localStorage.setItem('ui.locale', l); }, locale);
   await useSyntheticApplication(page);
   const seen = { input: null as unknown, grant: null as unknown };
   let current = run();
@@ -55,6 +50,9 @@ test('needs_input pack renders per-kind inputs and saving POSTs the answers', as
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByRole('button', { name: 'Request submit' })).toBeDisabled();
   await expect(page.getByText('Still missing required answers: Authorised to work?, Notice period?')).toBeVisible();
+  expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
+  await expect(page.getByRole('radio', { name: 'No' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Notice period?' })).toBeVisible();
   await page.getByRole('radio', { name: 'Yes' }).check();
   await page.getByLabel('Notice period?').selectOption('30 days');
   await page.getByRole('button', { name: 'Save answers' }).click();

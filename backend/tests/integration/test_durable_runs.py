@@ -211,6 +211,25 @@ def test_partial_input_stays_needs_input_and_validates_kinds(api_context):
 
 
 @pytest.mark.integration
+def test_pack_entries_own_kind_and_choices_drive_input(api_context):
+    ctx = api_context
+    csrf, pid, session_, facts, _ = _setup(ctx, [])
+    runtime = _PackRuntime(ctx.tmp_path / "ws", [[]])
+    run_id = _prepare(ctx, csrf, pid, session_).json()["id"]
+    _execute_next(ctx, runtime)
+    with ctx.sessions.begin() as db:  # the entry's own choices, not the snapshot's, are the authority
+        run = db.get(Run, UUID(run_id))
+        run.result_payload = {**run.result_payload, "answers": [
+            {**a, "choices": ["alpha"]} if a["question_id"] == "level" else a for a in run.result_payload["answers"]]}
+    assert _input(ctx, csrf, pid, run_id, {"level": "senior"}).json()["code"] == "invalid_answer"
+    assert _input(ctx, csrf, pid, run_id, {"auth": "maybe"}).json()["code"] == "invalid_answer"
+    partial = _input(ctx, csrf, pid, run_id, {"auth": True, "level": "alpha"})
+    assert partial.status_code == 200 and partial.json()["result_payload"]["missing_required"] == ["why"]
+    assert [a["answer"] for a in partial.json()["result_payload"]["answers"]] == [None, True, "alpha"]
+    assert _input(ctx, csrf, pid, run_id, {"why": "Because"}).json()["status"] == "completed"
+
+
+@pytest.mark.integration
 def test_cancel_works_from_needs_input_and_input_is_owner_only(api_context):
     ctx = api_context
     csrf, pid, session_, facts, run_id = _parked(ctx)

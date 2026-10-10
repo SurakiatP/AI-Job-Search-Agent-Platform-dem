@@ -724,9 +724,11 @@ class RunService:
             payload = run.result_payload
             if run.status != "needs_input" or not isinstance(payload, dict):
                 raise ServiceError("run_not_awaiting_input")
-            questions = {q["id"]: q for q in run.input_snapshot["questions"]}
             entries = [dict(entry) for entry in payload["answers"]]
             by_id = {entry["question_id"]: entry for entry in entries}
+            # Each entry carries its own kind/choices/required; the snapshot only serves packs stored before that.
+            legacy = {q["id"]: q for q in run.input_snapshot.get("questions") or []}
+            questions = {qid: e if "kind" in e else legacy[qid] for qid, e in by_id.items() if "kind" in e or qid in legacy}
             for qid, raw in answers.items():
                 entry, question = by_id.get(qid), questions.get(qid)
                 value = _owner_answer(question, raw) if question is not None else None
