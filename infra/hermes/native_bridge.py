@@ -357,42 +357,44 @@ def main():
                     raise RuntimeError("unsupported_export")
                 rendered = None
                 source_path = "/workspace/" + str(source)
-                if engine == "typst":
-                    rendered = output.with_name(output.stem + ".render.typ")
-                    prepared = json.loads(terminal.terminal_tool(
-                        "python /opt/runtime/typst_render.py " + shlex.quote(source_path)
-                        + " " + shlex.quote("/workspace/" + str(rendered)), task_id=task_id, timeout=30))
-                    if prepared.get("exit_code") != 0:
-                        raise RuntimeError("export_failed")
-                elif format == "pdf" and source.suffix.lower() == ".md":
-                    rendered = output.with_name(output.stem + ".render.html")
-                    source_path = "/workspace/" + str(rendered)
-                    render_script = (
-                        "from pathlib import Path; import base64,html; "
-                        f"src=Path({('/workspace/' + str(source))!r}); dst=Path({source_path!r}); "
-                        "text=src.read_text(encoding='utf-8'); "
-                        "font=next(Path('/opt/runtime/node_modules/@fontsource/noto-sans-thai/files').glob('*thai-400-normal.woff2')); "
-                        "data=base64.b64encode(font.read_bytes()).decode('ascii'); "
-                        "blocks=[]; "
-                        "[(blocks.append('<h'+str(min(len(line)-len(line.lstrip('#')),6))+'>'+html.escape(line.lstrip('# ').strip())+'</h'+str(min(len(line)-len(line.lstrip('#')),6))+'>') if line.lstrip().startswith('#') else blocks.append('<p>'+html.escape(line.strip())+'</p>')) for line in text.splitlines() if line.strip()]; "
-                        "lang='th' if any('\\u0e00' <= ch <= '\\u0e7f' for ch in text) else 'en'; "
-                        "dst.write_text('<!doctype html><html lang=\"'+lang+'\"><meta charset=\"utf-8\"><style>@font-face{font-family:Noto;src:url(data:font/woff2;base64,'+data+')}body{font-family:Noto,sans-serif}</style><body>'+''.join(blocks)+'</body></html>',encoding='utf-8')"
-                    )
-                    prepared = json.loads(terminal.terminal_tool(
-                        "python -c " + shlex.quote(render_script), task_id=task_id, timeout=30
-                    ))
-                    if prepared.get("exit_code") != 0:
-                        raise RuntimeError("export_failed")
-                if engine == "typst":
-                    command = ("typst compile --font-path /usr/share/fonts " + shlex.quote("/workspace/" + str(rendered))
-                               + " " + shlex.quote("/workspace/" + str(output)))
-                else:
-                    command = "node " + scripts[format] + " " + shlex.quote(source_path) + " " + shlex.quote("/workspace/" + str(output))
-                execution = json.loads(terminal.terminal_tool(command, task_id=task_id, timeout=60))
-                if rendered is not None:
-                    terminal.terminal_tool(
-                        "rm -f " + shlex.quote("/workspace/" + str(rendered)), task_id=task_id, timeout=10
-                    )
+                try:
+                    if engine == "typst":
+                        rendered = output.with_name(output.stem + ".render.typ")
+                        prepared = json.loads(terminal.terminal_tool(
+                            "python /opt/runtime/typst_render.py " + shlex.quote(source_path)
+                            + " " + shlex.quote("/workspace/" + str(rendered)), task_id=task_id, timeout=30))
+                        if prepared.get("exit_code") != 0:
+                            raise RuntimeError("export_failed")
+                    elif format == "pdf" and source.suffix.lower() == ".md":
+                        rendered = output.with_name(output.stem + ".render.html")
+                        source_path = "/workspace/" + str(rendered)
+                        render_script = (
+                            "from pathlib import Path; import base64,html; "
+                            f"src=Path({('/workspace/' + str(source))!r}); dst=Path({source_path!r}); "
+                            "text=src.read_text(encoding='utf-8'); "
+                            "font=next(Path('/opt/runtime/node_modules/@fontsource/noto-sans-thai/files').glob('*thai-400-normal.woff2')); "
+                            "data=base64.b64encode(font.read_bytes()).decode('ascii'); "
+                            "blocks=[]; "
+                            "[(blocks.append('<h'+str(min(len(line)-len(line.lstrip('#')),6))+'>'+html.escape(line.lstrip('# ').strip())+'</h'+str(min(len(line)-len(line.lstrip('#')),6))+'>') if line.lstrip().startswith('#') else blocks.append('<p>'+html.escape(line.strip())+'</p>')) for line in text.splitlines() if line.strip()]; "
+                            "lang='th' if any('\\u0e00' <= ch <= '\\u0e7f' for ch in text) else 'en'; "
+                            "dst.write_text('<!doctype html><html lang=\"'+lang+'\"><meta charset=\"utf-8\"><style>@font-face{font-family:Noto;src:url(data:font/woff2;base64,'+data+')}body{font-family:Noto,sans-serif}</style><body>'+''.join(blocks)+'</body></html>',encoding='utf-8')"
+                        )
+                        prepared = json.loads(terminal.terminal_tool(
+                            "python -c " + shlex.quote(render_script), task_id=task_id, timeout=30
+                        ))
+                        if prepared.get("exit_code") != 0:
+                            raise RuntimeError("export_failed")
+                    if engine == "typst":
+                        command = ("typst compile --font-path /usr/share/fonts " + shlex.quote("/workspace/" + str(rendered))
+                                   + " " + shlex.quote("/workspace/" + str(output)))
+                    else:
+                        command = "node " + scripts[format] + " " + shlex.quote(source_path) + " " + shlex.quote("/workspace/" + str(output))
+                    execution = json.loads(terminal.terminal_tool(command, task_id=task_id, timeout=60))
+                finally:
+                    if rendered is not None:
+                        terminal.terminal_tool(
+                            "rm -f " + shlex.quote("/workspace/" + str(rendered)), task_id=task_id, timeout=10
+                        )
                 if execution.get("exit_code") != 0:
                     raise RuntimeError("export_failed")
                 result = {"output": str(output), "format": format}
