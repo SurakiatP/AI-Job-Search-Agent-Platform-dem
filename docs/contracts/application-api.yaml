@@ -1152,7 +1152,7 @@ components:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
         session_id: {type: [string, 'null'], format: uuid, description: Null only for profile_cv.}
-        operation: {type: string, enum: [evaluate_job, draft_documents, export_document, profile_cv]}
+        operation: {type: string, enum: [evaluate_job, draft_documents, export_document, profile_cv, match_jobs, extract_experience]}
         status: {type: string, enum: [queued, running, waiting_approval, completed, failed, cancelled, interrupted]}
         output_language: {type: string, enum: [th, en]}
         result_file_ids: {type: array, items: {type: string, format: uuid}}
