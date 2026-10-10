@@ -143,7 +143,7 @@ services:
         condition: service_healthy
     entrypoint: ["python", "/seed/seed.py", "/out/litellm_app_key"]
     environment:
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_KEY_PRESENT: ${OPENROUTER_KEY_PRESENT:-}
     secrets:
       - litellm-master-key
     volumes:

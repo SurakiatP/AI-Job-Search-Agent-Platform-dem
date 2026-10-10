@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 from pathlib import Path
 import sys
@@ -164,3 +165,104 @@ def test_compose_environment_passes_openrouter_key_only_when_set(tmp_path: Path,
     assert local_infra.compose_environment(tmp_path, tmp_path)["OPENROUTER_API_KEY"] == "fake-key"
     monkeypatch.delenv("OPENROUTER_API_KEY")
     assert local_infra.compose_environment(tmp_path, tmp_path)["OPENROUTER_API_KEY"] == ""
+    assert local_infra.compose_environment(tmp_path, tmp_path)["OPENROUTER_KEY_PRESENT"] == ""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "fake-key")
+    assert local_infra.compose_environment(tmp_path, tmp_path)["OPENROUTER_KEY_PRESENT"] == "1"
+
+
+def _load_seed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, handler):
+    import http.server
+    import threading
+
+    class Stub(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def _serve(self):
+            body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            status, payload = handler(self.command, self.path, self.headers.get("Authorization", ""), body)
+            data = json.dumps(payload).encode()
+            self.send_response(status)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        do_GET = do_POST = _serve
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Stub)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    master = tmp_path / "master"
+    master.write_text("sk-master\n")
+    key_file = tmp_path / "app_key"
+    monkeypatch.setenv("LITELLM_URL", f"http://127.0.0.1:{server.server_port}")
+    monkeypatch.setenv("LITELLM_MASTER_KEY_FILE", str(master))
+    monkeypatch.setenv("LITELLM_APP_KEY_FILE", str(key_file))
+    monkeypatch.setenv("OPENROUTER_KEY_PRESENT", "1")
+    spec = importlib.util.spec_from_file_location("litellm_seed", ROOT / "infra" / "litellm" / "seed.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module, key_file, server
+
+
+def test_seed_does_not_create_model_when_check_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    calls: list[tuple[str, str]] = []
+
+    def handler(method, path, auth, body):
+        calls.append((method, path))
+        if path == "/model/info":
+            return 500, {}
+        return 200, {"key": "sk-new"}
+
+    seed, key_file, server = _load_seed(tmp_path, monkeypatch, handler)
+    try:
+        assert seed.seed_model() is False
+    finally:
+        server.shutdown()
+    assert "model_check_failed" in capsys.readouterr().out
+    assert ("POST", "/model/new") not in calls
+
+
+def test_seed_reports_create_failure_and_missing_key_is_ok(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def handler(method, path, auth, body):
+        if path == "/model/info":
+            return 200, {"data": []}
+        return 500, {}
+
+    seed, key_file, server = _load_seed(tmp_path, monkeypatch, handler)
+    try:
+        assert seed.seed_model() is False
+        assert seed.seed_key() is False
+        monkeypatch.delenv("OPENROUTER_KEY_PRESENT")
+        assert seed.seed_model() is True  # the only allowed skip
+    finally:
+        server.shutdown()
+
+
+def test_seed_keeps_working_key_on_transient_check_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def handler(method, path, auth, body):
+        calls.append(path)
+        return (503, {}) if path == "/v1/models" else (200, {"key": "sk-new"})
+
+    seed, key_file, server = _load_seed(tmp_path, monkeypatch, handler)
+    key_file.write_text("sk-existing\n")
+    try:
+        assert seed.seed_key() is False
+        assert key_file.read_text() == "sk-existing\n"
+        assert "/key/delete" not in calls
+    finally:
+        server.shutdown()
+
+
+def test_seed_regenerates_key_only_when_rejected_or_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def handler(method, path, auth, body):
+        return (401, {}) if path == "/v1/models" else (200, {"key": "sk-new"})
+
+    seed, key_file, server = _load_seed(tmp_path, monkeypatch, handler)
+    key_file.write_text("sk-stale\n")
+    try:
+        assert seed.seed_key() is True
+        assert key_file.read_text() == "sk-new\n"
+    finally:
+        server.shutdown()
