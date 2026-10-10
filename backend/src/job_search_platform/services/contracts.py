@@ -410,6 +410,11 @@ class ApprovalView(DTO):
     applied_at: datetime | None = None
 
 
+class CVPromoteRequest(DTO):
+    revision_id: UUID
+    expected_cv_revision_id: UUID
+
+
 class ApprovalRequest(DTO):
     action: Literal["promote_cv", "delete_document_revision", "delete_file", "submit_application"]
     revision_id: UUID | None = None

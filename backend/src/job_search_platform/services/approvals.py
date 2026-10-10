@@ -74,38 +74,17 @@ class ApprovalService:
                 raise ServiceError("run_not_approvable")
             return self._open(db, run, request, now)
 
-    def request_as_owner(self, actor: Actor, project_id: UUID, request: ApprovalRequest, *, now: datetime | None = None) -> ApprovalView:
-        """Owner UI path: no agent run is mid-flight, so anchor the approval on a fresh non-LLM run.
-        The run inherits session/CV/job/provider from the project's latest run (approval approve re-queues it and the
-        executor completes it, exactly like an agent-opened approval)."""
-        if actor.kind != "owner":
-            raise ServiceError("forbidden")
-        now = _utc(now or datetime.now(timezone.utc))
+    def promote_cv_direct(self, actor: Actor, project_id: UUID, revision_id: UUID, expected_cv_revision_id: UUID) -> None:
+        """Owner is the approver: apply the promote_cv change at once, with the same checks as an approved request."""
         with self.sessions.begin() as db:
-            authorize(db, actor, project_id, "request", "approval")
-            if request.action == "submit_application":
+            authorize(db, actor, project_id, "resolve", "approval")
+            if actor.kind != "owner":
                 raise ServiceError("forbidden")
             if db.scalar(select(Project).where(Project.id == project_id).with_for_update()) is None:
                 raise ServiceError("not_found")
-            source = db.scalar(
-                select(Run).where(
-                    Run.project_id == project_id, Run.session_id.is_not(None), Run.job_revision_id.is_not(None),
-                    Run.provider_configuration_id.is_not(None),
-                ).order_by(Run.created_at.desc()).limit(1)
-            )
-            if source is None:
-                raise ServiceError("not_found")
-            key = secrets.token_hex(16)
-            run = Run(
-                project_id=project_id, actor_scope="owner", idempotency_key=key,
-                request_digest=hashlib.sha256(key.encode()).hexdigest(), session_id=source.session_id,
-                operation="export_document", cv_revision_id=source.cv_revision_id, job_revision_id=source.job_revision_id,
-                provider_configuration_id=source.provider_configuration_id, input_snapshot={"approval_anchor": True},
-                config_snapshot={}, output_language=source.output_language, status="running", active_started_at=now,
-            )
-            db.add(run)
-            db.flush()
-            return self._open(db, run, request, now)
+            _, file_id = self._resolve_change(db, project_id, ApprovalRequest(
+                action="promote_cv", revision_id=revision_id, expected_cv_revision_id=expected_cv_revision_id))
+            _append_cv_revision(db, project_id, expected_cv_revision_id, file_id)
 
     def request_submission(self, run_id: UUID, lease_owner: str, *, now: datetime | None = None) -> ApprovalView:
         """Executor side: the running apply_submit run asks the owner to record its pack as applied.
@@ -223,21 +202,7 @@ class ApprovalService:
                 if _digest(change) != approval.change_digest:
                     raise ServiceError("approval_stale")
                 if decision == "approve" and approval.action == "promote_cv":
-                    current = _latest_in_cv_of(db, project_id, approval.expected_cv_revision_id, lock=True)
-                    if current is None or current.id != approval.expected_cv_revision_id:
-                        raise ServiceError("approval_stale")
-                    next_revision = db.scalar(
-                        select(func.coalesce(func.max(CVRevision.revision), 0) + 1)
-                        .where(CVRevision.cv_id == current.cv_id)
-                    ) or 1
-                    db.add(
-                        CVRevision(
-                            project_id=project_id,
-                            cv_id=current.cv_id,
-                            revision=next_revision,
-                            file_id=target_file_id,
-                        )
-                    )
+                    _append_cv_revision(db, project_id, approval.expected_cv_revision_id, target_file_id)
 
                 approval.consumed_at = now
                 approval.decision = decision
@@ -584,3 +549,13 @@ def _latest_in_cv_of(db: Session, project_id: UUID, revision_id: UUID | None, *,
         return None
     query = select(CVRevision).where(CVRevision.cv_id == cv_id).order_by(CVRevision.revision.desc()).limit(1)
     return db.scalar(query.with_for_update() if lock else query)
+
+
+def _append_cv_revision(db: Session, project_id: UUID, expected_id: UUID, file_id: UUID) -> None:
+    """Add file_id as the next revision of the CV, only if expected_id is still that CV's newest revision."""
+    current = _latest_in_cv_of(db, project_id, expected_id, lock=True)
+    if current is None or current.id != expected_id:
+        raise ServiceError("approval_stale")
+    next_revision = db.scalar(
+        select(func.coalesce(func.max(CVRevision.revision), 0) + 1).where(CVRevision.cv_id == current.cv_id)) or 1
+    db.add(CVRevision(project_id=project_id, cv_id=current.cv_id, revision=next_revision, file_id=file_id))

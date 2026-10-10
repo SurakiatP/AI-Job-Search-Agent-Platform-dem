@@ -796,12 +796,24 @@ paths:
       responses: {'200': {description: Owner-only pending revision-bound approvals}}
     post:
       tags: [approvals]
-      description: Owner-only request for a typed protected action; service snapshots the proposed change digest and expiry. The approval is anchored on a fresh non-LLM owner run (inherits session, CV, job and provider from the latest run); 404 when the project has no such run.
+      description: Agents open approvals from inside their own run, so an owner REST request always fails with 409 approval_requires_run. The owner applies a CV promotion directly with POST /projects/{project_id}/cv/promote.
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/ApprovalRequest'}}}
       responses:
-        '201': {description: Created approval, content: {application/json: {schema: {$ref: '#/components/schemas/ApprovalView'}}}}
+        '409': {description: approval_requires_run}
+  /projects/{project_id}/cv/promote:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [approvals]
+      description: Owner-only, owner CSRF auth. Makes the document revision's file the next revision of the CV in one transaction (the owner is the approver); works while another run is active.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, required: [revision_id, expected_cv_revision_id], properties: {revision_id: {type: string, format: uuid}, expected_cv_revision_id: {type: string, format: uuid}}}}}
+      responses:
+        '200': {description: Promoted}
+        '404': {description: Unknown or file-less document revision (not_found)}
+        '409': {description: expected_cv_revision_id is no longer the newest revision of its CV (approval_stale)}
   /projects/{project_id}/approvals/{approval_id}/decision:
     parameters:
       - {$ref: '#/components/parameters/project_id'}

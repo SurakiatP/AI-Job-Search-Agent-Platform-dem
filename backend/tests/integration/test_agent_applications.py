@@ -338,23 +338,54 @@ def test_migration_0017_upgrades_a_database_that_already_has_runs(postgres_engin
         _migrate(postgres_engine, command.downgrade, "0016_run_result_payload")
 
 
-@pytest.mark.integration
-def test_owner_requests_promote_cv_over_rest_then_approves_and_cv_is_promoted(api_context):
+def _promote_setup(ctx):
     from test_rest_api import _owner, _removal_project, _seed_completed_run, _seed_document
     from job_search_platform.db.models import CVRevision
-    client, csrf = api_context.client, _owner(api_context)
-    headers = _write_headers(csrf)
-    pid, sid = _removal_project(api_context, csrf)
-    _seed_completed_run(api_context, pid, sid)
-    seeded = _seed_document(api_context, pid, "tailored.pdf")
-    with api_context.sessions() as db:
+    csrf = _owner(ctx)
+    pid, sid = _removal_project(ctx, csrf)
+    _seed_completed_run(ctx, pid, sid)
+    seeded = _seed_document(ctx, pid, "tailored.pdf")
+    with ctx.sessions() as db:
         cv_id = db.scalar(select(CVRevision.id).where(CVRevision.project_id == UUID(pid)))
-    asked = client.post(f"/api/v1/projects/{pid}/approvals", headers=headers, json={
-        "action": "promote_cv", "revision_id": str(seeded.revision), "expected_cv_revision_id": str(cv_id)})
-    assert asked.status_code == 201, asked.text
-    listed = client.get(f"/api/v1/projects/{pid}/approvals").json()
-    assert [row["id"] for row in listed] == [asked.json()["id"]]
-    done = client.post(f"/api/v1/projects/{pid}/approvals/{asked.json()['id']}/decision", headers=headers, json={"decision": "approve"})
-    assert done.status_code == 200 and done.json()["applied_at"] is not None
-    with api_context.sessions() as db:
+    return csrf, pid, sid, seeded, cv_id
+
+
+@pytest.mark.integration
+def test_owner_promotes_cv_directly_even_while_another_run_is_active(api_context):
+    from job_search_platform.db.models import CVRevision
+    ctx = api_context
+    csrf, pid, sid, seeded, cv_id = _promote_setup(ctx)
+    with ctx.sessions.begin() as db:
+        done = db.scalar(select(Run).where(Run.project_id == UUID(pid)))
+        db.add(Run(project_id=done.project_id, actor_scope="owner", idempotency_key="active", request_digest="c" * 64,
+                   session_id=done.session_id, operation="draft_documents", cv_revision_id=done.cv_revision_id,
+                   job_revision_id=done.job_revision_id, provider_configuration_id=done.provider_configuration_id,
+                   input_snapshot={}, config_snapshot={}, output_language="en", status="running"))
+    body = {"revision_id": str(seeded.revision), "expected_cv_revision_id": str(cv_id)}
+    done = ctx.client.post(f"/api/v1/projects/{pid}/cv/promote", headers=_write_headers(csrf), json=body)
+    assert done.status_code == 200, done.text
+    with ctx.sessions() as db:
         assert db.scalar(select(CVRevision.id).where(CVRevision.project_id == UUID(pid), CVRevision.file_id == seeded.file)) is not None
+    # The CV moved on: the same expected revision is now stale.
+    stale = ctx.client.post(f"/api/v1/projects/{pid}/cv/promote", headers=_write_headers(csrf), json=body)
+    assert stale.status_code == 409 and stale.json()["code"] == "approval_stale"
+
+
+@pytest.mark.integration
+def test_promote_is_owner_only_and_approval_post_needs_a_run(api_context):
+    ctx = api_context
+    csrf, pid, sid, seeded, cv_id = _promote_setup(ctx)
+    token = ctx.client.post(f"/api/v1/projects/{pid}/grants", headers=_write_headers(csrf), json={
+        "capabilities": ["documents:draft"], "expires_at": "2099-01-01T00:00:00+00:00"}).json()["token"]
+    body = {"revision_id": str(seeded.revision), "expected_cv_revision_id": str(cv_id)}
+    saved = dict(ctx.client.cookies)
+    ctx.client.cookies.clear()
+    denied = ctx.client.post(f"/api/v1/projects/{pid}/cv/promote", headers={"Authorization": f"Bearer {token}"}, json=body)
+    ctx.client.cookies.update(saved)
+    assert denied.status_code in (401, 403)  # like every owner write, a bearer grant never passes CSRF auth
+    with pytest.raises(ServiceError) as forbidden:  # and the service itself refuses a grant actor
+        ctx.client.app.state.services.approvals.promote_cv_direct(
+            _actor(ctx, pid, "documents:draft"), UUID(pid), seeded.revision, cv_id)
+    assert forbidden.value.code == "forbidden"
+    asked = ctx.client.post(f"/api/v1/projects/{pid}/approvals", headers=_write_headers(csrf), json={"action": "promote_cv", **body})
+    assert asked.status_code == 409 and asked.json()["code"] == "approval_requires_run"

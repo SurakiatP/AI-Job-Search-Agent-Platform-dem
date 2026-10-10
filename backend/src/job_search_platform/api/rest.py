@@ -25,7 +25,7 @@ from job_search_platform.db.models import (
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
-    AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
+    AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVPromoteRequest, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
     ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
@@ -63,7 +63,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
         "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409,
         "document_busy": 409, "document_source_unavailable": 409,
-        "apply_pack_required": 409, "already_applied": 409, "application_not_applied": 409,
+        "apply_pack_required": 409, "approval_requires_run": 409, "approval_stale": 409, "already_applied": 409, "application_not_applied": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
@@ -1003,9 +1003,16 @@ async def list_approvals(project_id: UUID, actor=Depends(owner_actor), services:
     return [await asyncio.to_thread(services.approvals.get, actor, project_id, approval_id) for approval_id in ids]
 
 
+@router.post("/projects/{project_id}/cv/promote", status_code=200)
+async def promote_cv(project_id: UUID, body: CVPromoteRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.approvals.promote_cv_direct, actor, project_id, body.revision_id, body.expected_cv_revision_id)
+    return {"status": "promoted"}
+
+
 @router.post("/projects/{project_id}/approvals", status_code=201, response_model=ApprovalView)
 async def request_approval(project_id: UUID, body: ApprovalRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return await asyncio.to_thread(services.approvals.request_as_owner, actor, project_id, body)
+    # Agents open approvals from inside their own run; the owner applies a change directly (e.g. /cv/promote).
+    raise ServiceError("approval_requires_run")
 
 
 @router.post("/projects/{project_id}/approvals/{approval_id}/decision", response_model=ApprovalView)
