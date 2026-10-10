@@ -650,7 +650,7 @@ class RunService:
         return await asyncio.to_thread(self._tailor_apply_sync, actor, project_id, run_id, proposal_ids)
 
     def _tailor_apply_sync(self, actor: Actor, project_id: UUID, run_id: UUID, proposal_ids: list[int]) -> RunView:
-        from job_search_platform.services.evidence import EvidencedEdit, apply_gated, fact_claims, require_evidence
+        from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, fact_claims, require_evidence
 
         if actor.kind != "owner":
             raise ServiceError("forbidden")
@@ -672,10 +672,6 @@ class RunService:
             if any(item is None or item.get("status") != "proposed" for item in chosen):
                 raise ServiceError("evidence_required")
             edits = [{"find": item["find"], "text": item["text"], "evidence_ids": item["evidence_ids"]} for item in chosen]
-            try:
-                require_evidence(db, project_id, [EvidencedEdit(text=e["text"], evidence_ids=e["evidence_ids"]) for e in edits])
-            except ValueError:
-                raise ServiceError("evidence_required") from None
             base_id = payload.get("base_revision_id")
             base = db.scalar(select(DocumentRevision.content_markdown).where(
                 DocumentRevision.project_id == project_id, DocumentRevision.id == UUID(base_id))) if base_id else None
@@ -683,8 +679,14 @@ class RunService:
                 base = db.scalar(select(CVRevisionText.text).where(CVRevisionText.cv_revision_id == run.cv_revision_id))
             if base is None:
                 raise ServiceError("document_source_unavailable")
+            vocabulary = bank_vocabulary(db, project_id)
+            try:
+                require_evidence(db, project_id, [EvidencedEdit(text=e["text"], evidence_ids=e["evidence_ids"]) for e in edits], base)
+            except ValueError:
+                raise ServiceError("evidence_required") from None
             text, applied, spliced = apply_gated(
-                base, edits, fact_claims(db, project_id, {UUID(i) for e in edits for i in e["evidence_ids"]}))
+                base, edits, fact_claims(db, project_id, {UUID(i) for e in edits for i in e["evidence_ids"]}, vocabulary),
+                vocabulary)
             if spliced:
                 raise ServiceError("evidence_required")
             if not applied:
@@ -744,6 +746,7 @@ class RunService:
                     raise ServiceError("invalid_answer")
                 entry.update(answer=value, evidence_ids=[], source="owner")
                 entry.pop("reason", None)
+                entry.pop("suggestion", None)
             missing = [qid for qid, q in questions.items() if q["required"] and by_id[qid]["answer"] is None]
             ready = not missing
             run.result_payload = {**payload, "answers": entries, "missing_required": missing,
