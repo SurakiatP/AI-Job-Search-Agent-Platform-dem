@@ -266,6 +266,7 @@ async def get_preferences(project_id: UUID, actor=Depends(owner_actor), services
         return {"project_id": project_id, "locale": values.get("locale", "th"),
                 "output_language": values.get("output_language", "th"),
                 "notifications_enabled": values.get("notifications_enabled", True),
+                "submit_autopilot_daily_limit": row.submit_autopilot_daily_limit if row else None,
                 "updated_at": row.updated_at if row else datetime.now(timezone.utc)}
 
 
@@ -281,11 +282,15 @@ async def set_preferences(project_id: UUID, body: PreferencesUpdate, actor=Depen
             row = ProjectPreference(project_id=project_id, values={})
             db.add(row)
         values = {"locale": "th", "output_language": "th", "notifications_enabled": True, **(row.values or {})}
-        values.update(body.model_dump(exclude_unset=True))
+        changes = body.model_dump(exclude_unset=True)
+        if "submit_autopilot_daily_limit" in changes:  # null clears it (autopilot off)
+            row.submit_autopilot_daily_limit = changes.pop("submit_autopilot_daily_limit")
+        values.update(changes)
         row.values = values
         row.updated_at = datetime.now(timezone.utc)
         db.flush()
-        return {"project_id": project_id, **values, "updated_at": row.updated_at}
+        return {"project_id": project_id, **values, "submit_autopilot_daily_limit": row.submit_autopilot_daily_limit,
+                "updated_at": row.updated_at}
 
 
 @router.get("/projects/{project_id}/sessions", response_model=list[SessionView])

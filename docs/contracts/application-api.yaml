@@ -1091,6 +1091,7 @@ components:
         locale: {type: string, enum: [th, en]}
         output_language: {type: string, enum: [th, en]}
         notifications_enabled: {type: boolean}
+        submit_autopilot_daily_limit: {type: [integer, 'null'], minimum: 1, maximum: 20, description: 'Owner-only. Auto-approve up to N apply_submit approvals per Asia/Bangkok day (records applied only; never sends). null = off.'}
     PreferencesView:
       type: object
       additionalProperties: false
@@ -1100,6 +1101,7 @@ components:
         locale: {type: string, enum: [th, en]}
         output_language: {type: string, enum: [th, en]}
         notifications_enabled: {type: boolean}
+        submit_autopilot_daily_limit: {type: [integer, 'null'], minimum: 1, maximum: 20}
         updated_at: {type: string, format: date-time}
     InlineJob:
       type: object
@@ -1358,6 +1360,7 @@ components:
         change_digest: {type: string, pattern: '^[a-f0-9]{64}$'}
         expires_at: {type: string, format: date-time}
         consumed_at: {type: [string, 'null'], format: date-time}
+        decided_by: {type: [string, 'null'], enum: [owner, autopilot, null]}
     CVPromoteRequest:
       type: object
       additionalProperties: false

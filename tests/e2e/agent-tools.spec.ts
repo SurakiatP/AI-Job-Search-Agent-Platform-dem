@@ -97,3 +97,25 @@ test('every parked-pack reason the backend emits is translated, never shown as a
     await page.unrouteAll({ behavior: 'ignoreErrors' });
   }
 });
+
+test('settings field saves the autopilot limit and the approvals tab badges auto-approved decisions', async ({ page }) => {
+  await page.addInitScript(l => localStorage.setItem('ui.locale', l), 'en');
+  await useSyntheticApplication(page);
+  await page.route(`**/api/v1/projects/${projectId}/cvs`, r => r.fulfill(json([])));
+  await page.route(`**/api/v1/projects/${projectId}/experience**`, r => r.fulfill(json({ items: [], extraction: null, provider_configured: true })));
+  const patches: unknown[] = [];
+  page.on('request', r => { if (r.method() === 'PATCH' && r.url().endsWith('/preferences')) patches.push(r.postDataJSON()); });
+  await page.goto(`/app/projects/${projectId}/profile`);
+  const field = page.getByLabel('Auto-approve up to N submissions per day (empty = off)');
+  await expect(field).toHaveValue('');
+  await expect(page.getByText(/nothing is ever sent/)).toBeVisible();
+  await field.fill('25');
+  await expect(page.getByText('Enter a whole number from 1 to 20, or leave empty')).toBeVisible();
+  await field.fill('3');
+  await page.getByRole('button', { name: 'Save preferences' }).click();
+  await expect.poll(() => patches[0]).toMatchObject({ submit_autopilot_daily_limit: 3 });
+
+  await page.route(`**/api/v1/projects/${projectId}/approvals`, r => r.fulfill(json([{ id: approvalId, run_id: 'cccccccc-0000-4000-8000-000000000002', action: 'submit_application', revision_id: null, expected_cv_revision_id: null, target_file_id: null, target_run_id: prepareRunId, change_digest: 'd', expires_at: '2030-01-01T00:00:00Z', consumed_at: '2026-10-10T01:00:00Z', decision: 'approve', applied_at: '2026-10-10T01:00:00Z', decided_by: 'autopilot' }])));
+  await page.goto(`/app/projects/${projectId}/console?tab=approvals`);
+  await expect(page.getByText('Auto-approved', { exact: true })).toBeVisible();
+});
