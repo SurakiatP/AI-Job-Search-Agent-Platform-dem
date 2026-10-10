@@ -83,6 +83,19 @@ test('needs_input pack renders per-kind inputs and saving POSTs the answers', as
   await expect(page.getByRole('button', { name: 'Request submit' })).toBeEnabled();
 });
 
+for (const [locale, label] of [['en', 'Suggested from your facts — confirm'], ['th', 'แนะนำจากข้อเท็จจริงของคุณ — โปรดยืนยัน']] as const) {
+  test(`a model-suggested answer is prefilled with the confirm label and saved through input (${locale})`, async ({ page }) => {
+    const seen = await mock(page, locale);
+    const suggested = { ...pack, missing_required: ['q2'], answers: [pack.answers[0], { ...pack.answers[1], suggestion: true, evidence_ids: ['f1'], reason: 'needs_confirmation' }] };
+    await page.route(`**/api/v1/projects/${projectId}/runs`, r => r.fulfill(json([run({ result_payload: suggested })])));
+    await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+    await expect(page.getByText(label)).toBeVisible();
+    await expect(page.getByRole('radio', { name: locale === 'en' ? 'Yes' : 'ใช่', exact: true })).toBeChecked();
+    await page.getByRole('button', { name: locale === 'en' ? 'Save answers' : 'บันทึกคำตอบ' }).click();
+    await expect.poll(() => seen.input).toEqual({ answers: { q2: true } });
+  });
+}
+
 test('grant issue form has an optional name sent as label, shown in the list (Thai)', async ({ page }) => {
   const seen = await mock(page, 'th');
   await page.goto(`/app/projects/${projectId}/console?tab=agents`);

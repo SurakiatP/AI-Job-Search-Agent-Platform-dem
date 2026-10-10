@@ -79,10 +79,10 @@ def _check(question: Mapping, answer: object, ids: list[str], facts: Mapping[UUI
     return None
 
 
-def gate_answers(answers: Sequence[Mapping], questions: Sequence[Mapping],
-                 facts_claims: Mapping[UUID, set[str]]) -> tuple[list[dict], list[str]]:
-    """One entry per question, in order. An answer that is invalid, uncited, cites unknown facts, or states a
-    number or skill its cited facts do not, becomes null with a reason. Returns (entries, missing_required ids)."""
+def gate_answers(answers: Sequence[Mapping], questions: Sequence[Mapping], facts_claims: Mapping[UUID, set[str]]) -> tuple[list[dict], list[str]]:
+    """One entry per question, in order. A text answer that is invalid, uncited, cites unknown facts, or states a
+    number or skill its cited facts do not, becomes null with a reason. A valid boolean or choice proposal is
+    never an answer: it is kept as `suggestion` (reason needs_confirmation) for the owner. Returns (entries, missing)."""
     by_id = {}
     for answer in answers:
         by_id.setdefault(answer["question_id"], answer)  # first answer per question wins
@@ -94,6 +94,14 @@ def gate_answers(answers: Sequence[Mapping], questions: Sequence[Mapping],
         reason = "not_answerable"
         if given is not None and given["answer"] is not None:
             reason = _check(question, given["answer"], given["evidence_ids"], facts_claims)
+        if reason is None and question["kind"] in ("boolean", "choice"):
+            entries.append({"question_id": question["id"], "label": question["label"], "answer": None,
+                            "suggestion": given["answer"],
+                            "evidence_ids": [i for i in given["evidence_ids"] if UUID(i) in facts_claims],
+                            "reason": "needs_confirmation", **shape})
+            if question["required"]:
+                missing.append(question["id"])
+            continue
         if reason is None:
             entries.append({"question_id": question["id"], "label": question["label"], "answer": given["answer"],
                             "evidence_ids": given["evidence_ids"], **shape})

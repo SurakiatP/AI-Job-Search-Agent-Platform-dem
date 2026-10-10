@@ -27,11 +27,14 @@ def test_parse_is_tolerant_and_keeps_only_well_formed_items():
     assert parse_answers("nope") == [] and parse_answers('{"answers": 3}') == []
 
 
-def test_gate_keeps_supported_answers_in_question_order():
+def test_gate_keeps_supported_text_answers_and_suggests_boolean_and_choice():
     entries, missing = gate_answers(
         _answers(level=("senior", [F2]), auth=(True, [F2]), why=("Packaged services with Docker", [F1])), QUESTIONS, FACTS)
     assert [e["question_id"] for e in entries] == ["why", "auth", "level"]
-    assert all(e["answer"] is not None and "reason" not in e for e in entries) and missing == []
+    assert entries[0]["answer"] is not None and "reason" not in entries[0]
+    assert [(e["answer"], e["suggestion"], e["reason"]) for e in entries[1:]] == [
+        (None, True, "needs_confirmation"), (None, "senior", "needs_confirmation")]
+    assert missing == ["auth"]  # level is optional
     assert [e["label"] for e in entries] == ["Why us?", "Authorised?", "Level"]
 
 

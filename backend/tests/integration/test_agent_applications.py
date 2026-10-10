@@ -52,7 +52,10 @@ def _post(ctx, csrf, pid, session, operation, key, **extra):
         "session_id": session["id"], "operation": operation, "output_language": "en", "idempotency_key": key, **extra})
 
 
-def _prepare(ctx, csrf, pid, session, key="p1", questions=QUESTIONS):
+TEXT_QUESTIONS = QUESTIONS[:1]  # a boolean/choice answer needs owner confirmation, so a ready pack is text-only
+
+
+def _prepare(ctx, csrf, pid, session, key="p1", questions=TEXT_QUESTIONS):
     return _post(ctx, csrf, pid, session, "apply_prepare", key, questions=questions)
 
 
@@ -95,16 +98,12 @@ def test_prepare_ready_pack_cites_evidence_and_events_hold_no_answers(api_contex
     assert run.result_payload == {
         "kind": "apply_pack", "state": "ready", "missing_required": [],
         "answers": [{"question_id": "why", "label": "Why do you want this job?", "answer": "Packaged services with Docker", "evidence_ids": [facts["docker"]],
-                         "kind": "text", "choices": None, "required": True},
-                    {"question_id": "auth", "label": "Authorised to work in Thailand?", "answer": True, "evidence_ids": [facts["py"]],
-                         "kind": "boolean", "choices": None, "required": True},
-                    {"question_id": "level", "label": "Seniority", "answer": "senior", "evidence_ids": [facts["py"]],
-                         "kind": "choice", "choices": ["junior", "senior"], "required": False}]}
+                         "kind": "text", "choices": None, "required": True}]}
     (_, prompt, kwargs), = runtime.submits
     assert kwargs["operation"] == "apply_prepare" and "Why do you want this job?" in prompt
     with ctx.sessions() as db:
         events = json.dumps(list(db.scalars(select(RunEvent.public_data).where(RunEvent.run_id == UUID(run_id)))))
-    assert "Docker" not in events and "senior" not in events
+    assert "Docker" not in events
 
 
 @pytest.mark.integration
@@ -130,7 +129,7 @@ def test_unsupported_number_and_bad_option_are_nulled(api_context):
     runtime = _PackRuntime(ctx.tmp_path / "ws", [[
         _ans("why", "Cut Docker costs by 90%", facts["docker"]),
         _ans("auth", "yes", facts["py"]), _ans("level", "principal", facts["py"])]])
-    run_id = _prepare(ctx, csrf, pid, session).json()["id"]
+    run_id = _prepare(ctx, csrf, pid, session, questions=QUESTIONS).json()["id"]
     _execute_next(ctx, runtime)
     payload = _run(ctx, run_id).result_payload
     assert [a["answer"] for a in payload["answers"]] == [None, None, None]
@@ -162,8 +161,8 @@ def test_prepare_questions_are_validated_and_part_of_idempotency(api_context):
         assert _prepare(ctx, csrf, pid, session, "bad", questions=questions).status_code == 422
     assert _post(ctx, csrf, pid, session, "draft_documents", "bad", questions=QUESTIONS).status_code == 422
     assert _post(ctx, csrf, pid, session, "apply_prepare", "bad").status_code == 422
-    first = _prepare(ctx, csrf, pid, session, "same")
-    assert _prepare(ctx, csrf, pid, session, "same").json()["id"] == first.json()["id"]
+    first = _prepare(ctx, csrf, pid, session, "same", questions=QUESTIONS)
+    assert _prepare(ctx, csrf, pid, session, "same", questions=QUESTIONS).json()["id"] == first.json()["id"]
     assert _prepare(ctx, csrf, pid, session, "same", questions=QUESTIONS[:1]).json()["code"] == "idempotency_conflict"
 
 
@@ -270,7 +269,7 @@ def test_grant_scopes_cannot_approve_request_the_action_or_read_the_pack(api_con
     csrf, pid, session, facts, runtime, pack_id = _ready_pack(ctx)
     protocol = ProtocolRuns(ctx.sessions)
     job_id = UUID(session["job_revision_id"])
-    prepare = ApplyPrepareInput(job_revision_id=job_id, output_language="en", idempotency_key="g1", questions=QUESTIONS)
+    prepare = ApplyPrepareInput(job_revision_id=job_id, output_language="en", idempotency_key="g1", questions=TEXT_QUESTIONS)
     drafter = _actor(ctx, pid, "documents:draft", "results:read")
     for operation, request in (("apply_prepare", prepare),
                                ("apply_submit", ApplySubmitInput(job_revision_id=job_id, idempotency_key="g2"))):
@@ -311,7 +310,7 @@ def test_grant_with_results_read_sees_its_own_pack(api_context):
     csrf, pid, session, facts, _ = _setup(ctx, [])
     reader = _actor(ctx, pid, "applications:apply", "results:read")
     request = ApplyPrepareInput(job_revision_id=UUID(session["job_revision_id"]), output_language="en",
-                                idempotency_key="r1", questions=QUESTIONS)
+                                idempotency_key="r1", questions=TEXT_QUESTIONS)
     run = asyncio.run(ProtocolRuns(ctx.sessions).submit(reader, "apply_prepare", request))
     _execute_next(ctx, _PackRuntime(ctx.tmp_path / "ws", [_good(facts)]))
     assert _grant_view(ctx, reader, pid, run.id).result_payload["state"] == "ready"

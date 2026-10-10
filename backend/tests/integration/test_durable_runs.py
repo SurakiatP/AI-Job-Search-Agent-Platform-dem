@@ -174,7 +174,7 @@ async def test_startup_reconcile_resumes_running_run_killed_before_its_sandbox_w
 
 def _parked(ctx):
     csrf, pid, session_, facts, _ = _setup(ctx, [])
-    runtime = _PackRuntime(ctx.tmp_path / "ws", [[_ans("why", None), _ans("auth", True, facts["py"])]])
+    runtime = _PackRuntime(ctx.tmp_path / "ws", [[_ans("why", None)]])
     run_id = _prepare(ctx, csrf, pid, session_).json()["id"]
     _execute_next(ctx, runtime)
     return csrf, pid, session_, facts, run_id
@@ -196,7 +196,6 @@ def test_parked_pack_needs_input_does_not_block_queue_and_input_completes_it(api
     # Invalid or unknown answers change nothing.
     assert _input(ctx, csrf, pid, run_id, {"nope": "x"}).json()["code"] == "invalid_answer"
     assert _input(ctx, csrf, pid, run_id, {"why": "  "}).status_code == 422
-    assert _input(ctx, csrf, pid, run_id, {"auth": False}).json()["code"] == "invalid_answer"  # already answered
     assert _run(ctx, run_id).status == "needs_input"
     # Apply submit needs a ready pack.
     assert _post(ctx, csrf, pid, session_, "apply_submit", "s0").json()["code"] == "apply_pack_required"
@@ -212,11 +211,32 @@ def test_parked_pack_needs_input_does_not_block_queue_and_input_completes_it(api
 
 
 @pytest.mark.integration
+def test_model_suggested_boolean_parks_until_the_owner_confirms_it(api_context):
+    ctx = api_context
+    csrf, pid, session_, facts, _ = _setup(ctx, [])
+    runtime = _PackRuntime(ctx.tmp_path / "ws", [_good(facts)])
+    run_id = _prepare(ctx, csrf, pid, session_, questions=QUESTIONS).json()["id"]
+    _execute_next(ctx, runtime)
+    run = _run(ctx, run_id)
+    payload = run.result_payload
+    assert run.status == "needs_input" and payload["state"] == "parked" and payload["missing_required"] == ["auth"]
+    auth = payload["answers"][1]
+    assert auth["answer"] is None and auth["suggestion"] is True and auth["reason"] == "needs_confirmation"
+    assert auth["evidence_ids"] == [facts["py"]]
+    assert _post(ctx, csrf, pid, session_, "apply_submit", "s0").json()["code"] == "apply_pack_required"
+    done = _input(ctx, csrf, pid, run_id, {"auth": True})
+    assert done.status_code == 200 and done.json()["status"] == "completed"
+    entry = done.json()["result_payload"]["answers"][1]
+    assert entry["answer"] is True and entry["source"] == "owner" and "suggestion" not in entry and "reason" not in entry
+    assert done.json()["result_payload"]["state"] == "ready"
+
+
+@pytest.mark.integration
 def test_partial_input_stays_needs_input_and_validates_kinds(api_context):
     ctx = api_context
     csrf, pid, session_, facts, _ = _setup(ctx, [])
     runtime = _PackRuntime(ctx.tmp_path / "ws", [[]])
-    run_id = _prepare(ctx, csrf, pid, session_).json()["id"]
+    run_id = _prepare(ctx, csrf, pid, session_, questions=QUESTIONS).json()["id"]
     _execute_next(ctx, runtime)
     assert _run(ctx, run_id).result_payload["missing_required"] == ["why", "auth"]
     assert _input(ctx, csrf, pid, run_id, {"auth": "maybe"}).json()["code"] == "invalid_answer"
@@ -234,7 +254,7 @@ def test_pack_entries_own_kind_and_choices_drive_input(api_context):
     ctx = api_context
     csrf, pid, session_, facts, _ = _setup(ctx, [])
     runtime = _PackRuntime(ctx.tmp_path / "ws", [[]])
-    run_id = _prepare(ctx, csrf, pid, session_).json()["id"]
+    run_id = _prepare(ctx, csrf, pid, session_, questions=QUESTIONS).json()["id"]
     _execute_next(ctx, runtime)
     with ctx.sessions.begin() as db:  # the entry's own choices, not the snapshot's, are the authority
         run = db.get(Run, UUID(run_id))

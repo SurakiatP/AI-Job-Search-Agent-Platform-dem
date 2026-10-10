@@ -744,6 +744,7 @@ class RunService:
                     raise ServiceError("invalid_answer")
                 entry.update(answer=value, evidence_ids=[], source="owner")
                 entry.pop("reason", None)
+                entry.pop("suggestion", None)
             missing = [qid for qid, q in questions.items() if q["required"] and by_id[qid]["answer"] is None]
             ready = not missing
             run.result_payload = {**payload, "answers": entries, "missing_required": missing,

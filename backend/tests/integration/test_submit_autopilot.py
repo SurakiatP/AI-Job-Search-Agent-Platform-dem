@@ -17,9 +17,9 @@ from job_search_platform.db.models import Approval, Run, RunEvent
 from job_search_platform.services.contracts import RunRequest
 from job_search_platform.workers.queue import PostgresRunQueue
 from test_agent_applications import (
-    PREFIX, _PackRuntime, _actor, _approvals, _decide, _good, _post, _prepare, _ready_pack, _run, _status,
+    PREFIX, QUESTIONS, _PackRuntime, _actor, _approvals, _decide, _good, _post, _prepare, _ready_pack, _run, _status,
 )
-from test_cv_tailoring import _execute_next, _session
+from test_cv_tailoring import _execute_next, _session, _setup
 from test_durable_runs import _input, _parked
 from test_rest_api import _write_headers, api_context  # noqa: F401
 from test_smart_match_migration import _migrate
@@ -93,6 +93,21 @@ def test_pack_completed_via_owner_input_is_auto_approved(api_context):
     submit = _submit(ctx, csrf, pid, session, _PackRuntime(ctx.tmp_path / "ws", []), "s1")
     assert _run(ctx, submit).status == "completed"
     assert _approvals(ctx, pid)[0]["decided_by"] == "autopilot"
+
+
+@pytest.mark.integration
+def test_autopilot_waits_for_the_owner_to_confirm_a_suggested_boolean(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, _ = _setup(ctx, [])
+    runtime = _PackRuntime(ctx.tmp_path / "ws", [_good(facts)])
+    run_id = _prepare(ctx, csrf, pid, session, questions=QUESTIONS).json()["id"]
+    _execute_next(ctx, runtime)
+    _limit(ctx, csrf, pid, 3)
+    assert _post(ctx, csrf, pid, session, "apply_submit", "s1").json()["code"] == "apply_pack_required"
+    assert _approvals(ctx, pid) == []
+    assert _input(ctx, csrf, pid, run_id, {"auth": True}).status_code == 200
+    submit = _submit(ctx, csrf, pid, session, runtime, "s2")
+    assert _run(ctx, submit).status == "completed" and _approvals(ctx, pid)[0]["decided_by"] == "autopilot"
 
 
 @pytest.mark.integration
