@@ -861,7 +861,7 @@ async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Servic
         authorize(db, actor, project_id, "read", "run")
         from job_search_platform.db.models import Run
         query = select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())
-        query = query.where(Run.operation.not_in(("profile_cv", "match_jobs")))
+        query = query.where(Run.operation.not_in(("profile_cv", "match_jobs", "extract_experience")))
         if actor.kind != "owner":
             query = query.where(Run.operation != "export_document")
         rows = db.scalars(query).all()
