@@ -12,6 +12,7 @@ from job_search_platform.db.models import Approval, Grant, OwnerSession, Project
 from job_search_platform.services.contracts import EvaluationResult
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import MAX_ACTIVE_SECONDS, MAX_TOOL_CALLS, accrue_active_time, append_event
+from job_search_platform.services.skills import SKILL_BY_ID
 
 GLOBAL_CLAIM_LOCK = 728_006
 MAX_ACTIVE_PROJECTS = 2
@@ -228,8 +229,8 @@ class PostgresRunQueue:
             return False
         if operation is None:
             return True
-        capability = {"evaluate_job": "jobs:evaluate", "draft_documents": "documents:draft"}.get(operation)
-        return capability is not None and capability in creator.capabilities
+        skill = SKILL_BY_ID.get(operation)
+        return skill is not None and skill.capability in creator.capabilities
     @staticmethod
     def _elapsed(run: Run, now: datetime) -> float:
         if run.active_started_at is None:

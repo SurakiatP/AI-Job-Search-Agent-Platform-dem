@@ -2,18 +2,20 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import get_args
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from job_search_platform.db.models import Grant, OwnerSession
-from job_search_platform.services.contracts import Actor
+from job_search_platform.services.contracts import Actor, Capability
 from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.skills import SKILL_BY_ID
 
-GRANT_CAPABILITIES = frozenset({"results:read", "jobs:evaluate", "documents:draft"})
+GRANT_CAPABILITIES = frozenset(get_args(Capability))
 RESULT_RESOURCES = frozenset({"run", "event", "result", "generated_document"})
-GRANT_WORK_RESOURCES = frozenset({"evaluate_job", "draft_documents"})
+GRANT_WORK_RESOURCES = frozenset(SKILL_BY_ID)
 OWNER_ONLY_RESOURCES = frozenset({
     "project", "session", "message", "cv", "cv_original", "upload", "raw_input",
     "preference", "job", "provider_settings", "grant", "approval", "owner_session",
@@ -63,8 +65,7 @@ def authorize(db: Session, actor: Actor, project_id: UUID, action: str,
         raise ServiceError("forbidden")
     persisted = frozenset(grant.capabilities) & GRANT_CAPABILITIES
     if resource_kind in GRANT_WORK_RESOURCES:
-        needed = "jobs:evaluate" if resource_kind == "evaluate_job" else "documents:draft"
-        if needed not in persisted:
+        if SKILL_BY_ID[resource_kind].capability not in persisted:
             raise ServiceError("forbidden")
         return
     if resource_kind in RESULT_RESOURCES:

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from uuid import UUID
 import hashlib
 import secrets
@@ -21,7 +23,7 @@ from mcp.shared.exceptions import MCPError
 from mcp.shared._httpx_utils import create_mcp_http_client
 from sqlalchemy import select
 
-from job_search_platform.api.mcp import create_mcp_app, mcp_lifespan_context
+from job_search_platform.api.mcp import create_mcp_app, create_mcp_server, mcp_lifespan_context
 from job_search_platform.api.shared import create_shared_app
 from job_search_platform.db.models import DocumentRevision, Grant, Project, Run
 
@@ -35,6 +37,18 @@ def test_mcp_transport_rejects_wildcard_host_or_origin():
         create_mcp_app(services, allowed_hosts=["*"])
     with pytest.raises(ValueError, match="allowlist_must_be_exact"):
         create_mcp_app(services, allowed_origins=["http://127.0.0.1:*"])
+
+
+def test_mcp_skill_tools_match_golden_schemas():
+    # External MCP clients cache tool schemas; the registry must not change them.
+    golden = json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "mcp_skill_tools.json").read_text())
+    server = create_mcp_server(SimpleNamespace(sessions=None, grants=None))
+    tools = {tool.name: tool for tool in asyncio.run(server.list_tools())}
+    assert [name for name in tools if name in golden] == ["evaluate_job", "draft_documents"]
+    for name, expected in golden.items():
+        assert tools[name].description == expected["description"]
+        assert tools[name].input_schema == expected["input_schema"]
+        assert tools[name].output_schema == expected["output_schema"]
 
 
 @pytest.fixture

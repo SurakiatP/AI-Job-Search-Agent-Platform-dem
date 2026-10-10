@@ -40,6 +40,7 @@ from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
 from job_search_platform.services.runs import actor_scope
+from job_search_platform.services.skills import SKILLS
 from job_search_platform.services.settings import provider_catalog as settings_catalog
 
 router = APIRouter()
@@ -1021,10 +1022,8 @@ async def set_tool_settings(project_id: UUID, adapter: str, body: ToolConnectorU
 @router.get("/tools", response_model=ToolsView)
 async def list_tools(actor=Depends(owner_actor)):
     return {"tools": [
-        {"name": "evaluate_job", "description": "Compare a supplied job revision with the Project CV.",
-         "required_capability": "jobs:evaluate"},
-        {"name": "draft_documents", "description": "Prepare application documents from a supplied job revision.",
-         "required_capability": "documents:draft"},
+        *({"name": skill.id, "description": skill.description, "required_capability": skill.capability}
+          for skill in SKILLS),
         {"name": "get_run", "description": "Read an authorized Project run and its published result view.",
          "required_capability": "results:read"},
         {"name": "cancel_run", "description": "Request cancellation of an authorized Project run.",

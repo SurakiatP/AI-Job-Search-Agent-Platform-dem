@@ -1,0 +1,268 @@
+{
+  "draft_documents": {
+    "description": "Draft application documents for one supplied job posting or same-Project job revision.",
+    "input_schema": {
+      "$defs": {
+        "JobCreate": {
+          "additionalProperties": false,
+          "properties": {
+            "company": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Company"
+            },
+            "description": {
+              "maxLength": 50000,
+              "minLength": 1,
+              "title": "Description",
+              "type": "string"
+            },
+            "source_url": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Source Url"
+            },
+            "title": {
+              "maxLength": 300,
+              "minLength": 1,
+              "title": "Title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "JobCreate",
+          "type": "object"
+        },
+        "ProtocolJobInput": {
+          "additionalProperties": false,
+          "properties": {
+            "cv_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cv Id"
+            },
+            "idempotency_key": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency Key",
+              "type": "string"
+            },
+            "job": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/JobCreate"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "job_revision_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Job Revision Id"
+            },
+            "output_language": {
+              "enum": [
+                "th",
+                "en"
+              ],
+              "title": "Output Language",
+              "type": "string"
+            }
+          },
+          "required": [
+            "output_language",
+            "idempotency_key"
+          ],
+          "title": "ProtocolJobInput",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/ProtocolJobInput"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "draft_documentsArguments",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "draft_documentsDictOutput",
+      "type": "object"
+    }
+  },
+  "evaluate_job": {
+    "description": "Evaluate one supplied job posting or same-Project job revision against the current CV.",
+    "input_schema": {
+      "$defs": {
+        "JobCreate": {
+          "additionalProperties": false,
+          "properties": {
+            "company": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Company"
+            },
+            "description": {
+              "maxLength": 50000,
+              "minLength": 1,
+              "title": "Description",
+              "type": "string"
+            },
+            "source_url": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Source Url"
+            },
+            "title": {
+              "maxLength": 300,
+              "minLength": 1,
+              "title": "Title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "JobCreate",
+          "type": "object"
+        },
+        "ProtocolJobInput": {
+          "additionalProperties": false,
+          "properties": {
+            "cv_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cv Id"
+            },
+            "idempotency_key": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency Key",
+              "type": "string"
+            },
+            "job": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/JobCreate"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "job_revision_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Job Revision Id"
+            },
+            "output_language": {
+              "enum": [
+                "th",
+                "en"
+              ],
+              "title": "Output Language",
+              "type": "string"
+            }
+          },
+          "required": [
+            "output_language",
+            "idempotency_key"
+          ],
+          "title": "ProtocolJobInput",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/ProtocolJobInput"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "evaluate_jobArguments",
+      "type": "object"
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "evaluate_jobDictOutput",
+      "type": "object"
+    }
+  }
+}

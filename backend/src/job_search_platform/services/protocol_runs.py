@@ -4,37 +4,18 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
-from typing import Annotated, Literal
-from uuid import UUID, uuid5
+from uuid import uuid5
 
-from pydantic import StringConstraints, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import ConversationSession, Project
 from job_search_platform.db.repositories import Repositories
 from job_search_platform.services.authorization import authorize
-from job_search_platform.services.contracts import Actor, DTO, JobCreate, RunRequest, RunView
+from job_search_platform.services.contracts import Actor, Operation, ProtocolJobInput, RunRequest, RunView
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import RunService, actor_scope, lock_current_grant
-
-
-class ProtocolJobInput(DTO):
-    job: JobCreate | None = None
-    job_revision_id: UUID | None = None
-    cv_id: UUID | None = None
-    output_language: Literal["th", "en"]
-    idempotency_key: Annotated[str, StringConstraints(min_length=1, max_length=128)]
-
-    @model_validator(mode="after")
-    def validate_intent(self):
-        if (self.job is None) == (self.job_revision_id is None):
-            raise ValueError("exactly_one_job_source_required")
-        if not self.idempotency_key.strip():
-            raise ValueError("idempotency_key_required")
-        if self.job is not None and not self.job.description.strip():
-            raise ValueError("job_description_required")
-        return self
+from job_search_platform.services.skills import SKILL_BY_ID
 
 
 class ProtocolRuns:
@@ -45,12 +26,11 @@ class ProtocolRuns:
         self.runs = RunService(sessions)
 
     async def submit(
-        self, actor: Actor, operation: Literal["evaluate_job", "draft_documents"],
-        request: ProtocolJobInput,
+        self, actor: Actor, operation: Operation, request: ProtocolJobInput,
     ) -> RunView:
         if actor.kind != "grant" or actor.project_id is None or actor.grant_id is None:
             raise ServiceError("forbidden")
-        if operation not in ("evaluate_job", "draft_documents"):
+        if operation not in SKILL_BY_ID:
             raise ServiceError("forbidden")
         return await asyncio.to_thread(self._submit, actor, operation, request)
 
