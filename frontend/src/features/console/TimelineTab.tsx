@@ -16,13 +16,14 @@ const groups = {
   all: () => true,
   active: (s: RunStatus) => s === 'queued' || s === 'running',
   waiting: (s: RunStatus) => s === 'waiting_approval',
+  needsYou: (s: RunStatus) => s === 'needs_input',
   done: (s: RunStatus) => s === 'completed',
   failed: (s: RunStatus) => s === 'failed' || s === 'interrupted' || s === 'cancelled',
 };
 type Group = keyof typeof groups;
 
 function duration(run: RunView, c: Copy) {
-  if (!run.finished_at) return c.running;
+  if (!run.finished_at) return run.status === 'needs_input' ? c.waitingInput : c.running;
   const seconds = Math.max(0, Math.round((Date.parse(run.finished_at) - Date.parse(run.created_at)) / 1000));
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
@@ -43,6 +44,7 @@ function RunDetails({ projectId, run, c }: { projectId: string; run: RunView; c:
   if (!events) return <p role="status" className="text-sm text-muted-foreground">…</p>;
   const rounds = events.filter(e => e.data.step === 'llm_round');
   const sum = (key: 'latency_ms' | 'input_tokens' | 'output_tokens') => rounds.reduce((n, e) => n + (e.data[key] ?? 0), 0);
+  const reported = rounds.some(e => e.data.input_tokens != null || e.data.output_tokens != null);
   const secs = (ms: number | null | undefined) => ms == null ? '—' : `${(ms / 1000).toFixed(1)} ${c.seconds}`;
   const tok = (n: number | null | undefined) => n == null ? '—' : String(n);
   const lines = events.filter(e => e.event_type === 'run_resumed' || e.event_type === 'run_needs_input' || e.data.step === 'llm_round');
@@ -52,7 +54,7 @@ function RunDetails({ projectId, run, c }: { projectId: string; run: RunView; c:
       {e.event_type === 'run_resumed' ? c.resumed : e.event_type === 'run_needs_input' ? c.needsInput
         : <>{c.llmRound} · {e.data.model ?? '—'} · {secs(e.data.latency_ms)} · {tok(e.data.input_tokens)} {c.tokensIn} / {tok(e.data.output_tokens)} {c.tokensOut}</>}
     </li>)}</ul>
-    {rounds.length > 0 && <p className="font-medium">{c.total}: {rounds.length} {c.rounds} · {secs(sum('latency_ms'))} · {sum('input_tokens')} {c.tokensIn} / {sum('output_tokens')} {c.tokensOut}</p>}
+    {rounds.length > 0 && <p className="font-medium">{c.total}: {rounds.length} {c.rounds} · {secs(sum('latency_ms'))}{reported && <> · {sum('input_tokens')} {c.tokensIn} / {sum('output_tokens')} {c.tokensOut}</>}</p>}
   </div>;
 }
 

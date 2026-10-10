@@ -14,8 +14,9 @@ const ev = (sequence: number, event_type: string, data: Record<string, unknown>)
 const stream = ev(1, 'run_progress', { step: 'llm_round', model: 'hermes-x', latency_ms: 1500, input_tokens: 100, output_tokens: 20 })
   + ev(2, 'run_resumed', { message_key: 'events.run_resumed' })
   + ev(3, 'run_progress', { step: 'llm_round', model: 'hermes-x', latency_ms: 2500, input_tokens: null, output_tokens: null });
+const nullStream = ev(1, 'run_progress', { step: 'llm_round', model: 'hermes-x', latency_ms: 1000, input_tokens: null, output_tokens: null });
 
-async function mock(page: Page, locale: 'en' | 'th') {
+async function mock(page: Page, locale: 'en' | 'th', events = stream) {
   await page.addInitScript(l => { localStorage.setItem('ui.locale', l); }, locale);
   await useSyntheticApplication(page);
   const seen = { input: null as unknown, grant: null as unknown };
@@ -24,7 +25,7 @@ async function mock(page: Page, locale: 'en' | 'th') {
   await page.route(`${api}/sessions/${sessionId}`, r => r.fulfill(json({ id: sessionId, project_id: projectId, title: 'First synthetic session', created_at: '2026-10-01T00:00:00Z', cv_revision_id: 'c1', job_revision_id: jobId, cv_name: 'Data CV', cv_revision: 1, job_title: 'Synthetic data analyst', job_company: 'Example Co' })));
   await page.route(`${api}/runs`, r => r.fulfill(json([current])));
   await page.route(`${api}/runs/${runId}`, r => r.fulfill(json(current)));
-  await page.route(`${api}/runs/${runId}/events`, r => r.fulfill({ status: 200, contentType: 'text/event-stream', body: stream }));
+  await page.route(`${api}/runs/${runId}/events`, r => r.fulfill({ status: 200, contentType: 'text/event-stream', body: events }));
   await page.route(`${api}/runs/${runId}/input`, r => { seen.input = r.request().postDataJSON(); current = run({ status: 'completed', result_payload: { ...pack, state: 'ready', missing_required: [], answers: pack.answers.map(a => a.answer === null ? { ...a, answer: a.question_id === 'q2' ? true : '30 days', source: 'owner', reason: undefined } : a) } }); return r.fulfill(json(current)); });
   await page.route(`${api}/jobs`, r => r.fulfill(json([{ id: jobId, revision: 1, created_at: '2026-10-01T00:00:00Z', title: 'Synthetic data analyst', company: 'Example Co', source_url: null, description: 'Synthetic', application_status: 'saved' }])));
   await page.route(`${api}/grants`, r => {
@@ -43,6 +44,26 @@ test('timeline shows the requester, llm_round stats with a total, and the resume
   await expect(page.getByText('LLM round · hermes-x · 1.5 s · 100 tokens in / 20 tokens out')).toBeVisible();
   await expect(page.getByText('LLM round · hermes-x · 2.5 s · — tokens in / — tokens out')).toBeVisible();
   await expect(page.getByText('Total: 2 rounds · 4.0 s · 100 tokens in / 20 tokens out')).toBeVisible();
+});
+
+test('console shows a needs_input run as waiting, in its own filter, and omits unreported token totals', async ({ page }) => {
+  await mock(page, 'en', nullStream);
+  await page.goto(`/app/projects/${projectId}/console`);
+  const row = page.getByRole('row').filter({ hasText: 'Synthetic data analyst' });
+  await expect(row.getByText('Running', { exact: true })).toHaveCount(0);
+  await expect(row.getByText('Waiting for your input')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Needs you 1$/ })).toBeVisible();
+  await page.getByRole('button', { name: /^Needs you/ }).click();
+  await expect(row).toBeVisible();
+  await page.getByRole('button', { name: 'Run details' }).click();
+  await expect(page.getByText('Total: 1 rounds · 1.0 s', { exact: true })).toBeVisible();
+});
+
+test('console waiting label is localised (Thai)', async ({ page }) => {
+  await mock(page, 'th');
+  await page.goto(`/app/projects/${projectId}/console`);
+  await expect(page.getByRole('row').filter({ hasText: 'Synthetic data analyst' }).getByRole('cell').nth(4)).toHaveText('รอข้อมูลจากคุณ');
+  await expect(page.getByRole('button', { name: /^ต้องการคุณ 1$/ })).toBeVisible();
 });
 
 test('needs_input pack renders per-kind inputs and saving POSTs the answers', async ({ page }) => {
