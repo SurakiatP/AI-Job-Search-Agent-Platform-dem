@@ -93,9 +93,11 @@ def gate_answers(answers: Sequence[Mapping], questions: Sequence[Mapping],
         if given is not None and given["answer"] is not None:
             reason = _check(question, given["answer"], given["evidence_ids"], facts_claims)
         if reason is None:
-            entries.append({"question_id": question["id"], "answer": given["answer"], "evidence_ids": given["evidence_ids"]})
+            entries.append({"question_id": question["id"], "label": question["label"], "answer": given["answer"],
+                            "evidence_ids": given["evidence_ids"]})
             continue
-        entries.append({"question_id": question["id"], "answer": None, "evidence_ids": [], "reason": reason})
+        entries.append({"question_id": question["id"], "label": question["label"], "answer": None, "evidence_ids": [],
+                        "reason": reason})
         if question["required"]:
             missing.append(question["id"])
     return entries, missing

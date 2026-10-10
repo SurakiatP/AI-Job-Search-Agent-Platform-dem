@@ -93,9 +93,9 @@ def test_prepare_ready_pack_cites_evidence_and_events_hold_no_answers(api_contex
     assert run.status == "completed" and run.operation == "apply_prepare"
     assert run.result_payload == {
         "kind": "apply_pack", "state": "ready", "missing_required": [],
-        "answers": [{"question_id": "why", "answer": "Packaged services with Docker", "evidence_ids": [facts["docker"]]},
-                    {"question_id": "auth", "answer": True, "evidence_ids": [facts["py"]]},
-                    {"question_id": "level", "answer": "senior", "evidence_ids": [facts["py"]]}]}
+        "answers": [{"question_id": "why", "label": "Why do you want this job?", "answer": "Packaged services with Docker", "evidence_ids": [facts["docker"]]},
+                    {"question_id": "auth", "label": "Authorised to work in Thailand?", "answer": True, "evidence_ids": [facts["py"]]},
+                    {"question_id": "level", "label": "Seniority", "answer": "senior", "evidence_ids": [facts["py"]]}]}
     (_, prompt, kwargs), = runtime.submits
     assert kwargs["operation"] == "apply_prepare" and "Why do you want this job?" in prompt
     with ctx.sessions() as db:
@@ -113,7 +113,7 @@ def test_prepare_parks_when_a_required_answer_is_unanswerable(api_context):
     run = _run(ctx, run_id)
     assert run.status == "completed"
     assert run.result_payload["state"] == "parked" and run.result_payload["missing_required"] == ["why"]
-    assert run.result_payload["answers"][0] == {"question_id": "why", "answer": None, "evidence_ids": [],
+    assert run.result_payload["answers"][0] == {"question_id": "why", "label": "Why do you want this job?", "answer": None, "evidence_ids": [],
                                                "reason": "not_answerable"}
     # A parked pack cannot be submitted.
     assert _post(ctx, csrf, pid, session, "apply_submit", "s1").json()["code"] == "apply_pack_required"

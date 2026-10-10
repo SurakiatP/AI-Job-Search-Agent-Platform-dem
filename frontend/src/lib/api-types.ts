@@ -13,7 +13,7 @@ export type RunRequest = {
   questions?: ApplyQuestion[];
 };
 export type ApplyQuestion = { id: string; label: string; required: boolean; kind: 'text' | 'choice' | 'boolean'; choices?: string[] };
-export type ApplyPack = { kind: 'apply_pack'; state: 'ready' | 'parked'; answers: { question_id: string; answer: string | boolean | null; evidence_ids: string[]; reason?: string }[]; missing_required: string[] };
+export type ApplyPack = { kind: 'apply_pack'; state: 'ready' | 'parked'; answers: { question_id: string; label?: string; answer: string | boolean | null; evidence_ids: string[]; reason?: string }[]; missing_required: string[] };
 
 export type ApiErrorBody = {
   code: string;

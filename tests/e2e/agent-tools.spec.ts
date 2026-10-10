@@ -5,9 +5,9 @@ const prepareRunId = 'cccccccc-0000-4000-8000-000000000001';
 const approvalId = 'dddddddd-0000-4000-8000-000000000001';
 const json = (body: unknown, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body) });
 const run = (id: string, operation: string, extra: Record<string, unknown> = {}) => ({ id, project_id: projectId, session_id: sessionId, operation, status: 'completed', job_revision_id: jobId, output_language: 'en', result_file_ids: [], created_at: '2026-10-10T00:00:00Z', finished_at: '2026-10-10T00:01:00Z', retry_of_id: null, evaluation_result: null, ...extra });
-const pack = { kind: 'apply_pack', state: 'parked', missing_required: ['2. Authorised to work?'], answers: [
-  { question_id: '1. Why this job?', answer: 'Packaged services with Docker', evidence_ids: ['f1', 'f2'] },
-  { question_id: '2. Authorised to work?', answer: null, evidence_ids: [], reason: 'not_answerable' },
+const pack = { kind: 'apply_pack', state: 'parked', missing_required: ['q2'], answers: [
+  { question_id: 'q1', label: 'Why this job?', answer: 'Packaged services with Docker', evidence_ids: ['f1', 'f2'] },
+  { question_id: 'q2', label: 'Authorised to work?', answer: null, evidence_ids: [], reason: 'not_answerable' },
 ] };
 const job = (applied: boolean) => ({ id: jobId, revision: 1, created_at: '2026-10-01T00:00:00Z', title: 'Synthetic data analyst', company: 'Example Co', source_url: null, description: 'Synthetic', application_status: applied ? 'applied' : 'saved' });
 
@@ -35,6 +35,9 @@ test('submit approval shows answers, evidence, missing list and approving POSTs 
   await page.goto(`/app/projects/${projectId}/console?tab=approvals`);
   await expect(page.getByText('Synthetic data analyst')).toBeVisible();
   await expect(page.getByText('Packaged services with Docker')).toBeVisible();
+  await expect(page.getByText('Why this job?')).toBeVisible();
+  await expect(page.getByText('Authorised to work?')).toHaveCount(2); // the answer row and the missing-required list
+  await expect(page.getByText('q1', { exact: true })).toHaveCount(0);
   await expect(page.getByText('2 facts cited')).toBeVisible();
   await expect(page.getByText('Not answerable')).toBeVisible();
   await expect(page.getByText('Required questions with no answer')).toBeVisible();
@@ -47,11 +50,13 @@ test('answer pack has copy buttons, parked reason, and submit is disabled until 
   const seen = await mock(page, 'en');
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByRole('button', { name: 'Copy', exact: true })).toHaveCount(1);
+  await expect(page.getByText('Why this job?')).toBeVisible();
+  await expect(page.getByText('q1', { exact: true })).toHaveCount(0);
   await expect(page.getByText('No fact in your experience bank supports an answer.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Request submit' })).toBeDisabled();
   await page.getByLabel('Question').fill('Why this job?');
   await page.getByRole('button', { name: 'Prepare application' }).click();
-  await expect.poll(() => seen.runs[0]).toMatchObject({ operation: 'apply_prepare', questions: [{ label: 'Why this job?', required: true, kind: 'text' }] });
+  await expect.poll(() => seen.runs[0]).toMatchObject({ operation: 'apply_prepare', questions: [{ id: 'q1', label: 'Why this job?', required: true, kind: 'text' }] });
 });
 
 test('follow-up action appears only for applied jobs', async ({ page }) => {

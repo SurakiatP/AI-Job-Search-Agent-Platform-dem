@@ -1003,7 +1003,7 @@ components:
           type: [array, 'null']
           minItems: 1
           maxItems: 40
-          description: 'Required for apply_prepare and rejected otherwise (422). The application form questions, untrusted data; ids must be unique. The run result_payload is an apply_pack: {kind, state ready|parked, answers[{question_id, answer|null, evidence_ids, reason?}], missing_required[]}, readable only with results:read. A required question without an evidenced answer parks the pack. A second apply_prepare for the same job while one is queued or running gives 409 document_busy.'
+          description: 'Required for apply_prepare and rejected otherwise (422). The application form questions, untrusted data; ids must be unique. The run result_payload is an apply_pack: {kind, state ready|parked, answers[{question_id, label (the question text), answer|null, evidence_ids, reason?}], missing_required[]}, readable only with results:read. A required question without an evidenced answer parks the pack. A second apply_prepare for the same job while one is queued or running gives 409 document_busy.'
           items: {$ref: '#/components/schemas/ApplyQuestion'}
     ApplyQuestion:
       type: object

@@ -32,6 +32,7 @@ def test_gate_keeps_supported_answers_in_question_order():
         _answers(level=("senior", [F2]), auth=(True, [F2]), why=("Packaged services with Docker", [F1])), QUESTIONS, FACTS)
     assert [e["question_id"] for e in entries] == ["why", "auth", "level"]
     assert all(e["answer"] is not None and "reason" not in e for e in entries) and missing == []
+    assert [e["label"] for e in entries] == ["Why us?", "Authorised?", "Level"]
 
 
 def test_gate_nulls_unsupported_claims_invalid_options_and_missing_evidence():
@@ -52,7 +53,7 @@ def test_gate_nulls_unsupported_claims_invalid_options_and_missing_evidence():
 def test_unanswered_required_question_is_parked_and_optional_is_not():
     entries, missing = gate_answers([], QUESTIONS, FACTS)
     assert missing == ["why", "auth"] and entries[2] == {
-        "question_id": "level", "answer": None, "evidence_ids": [], "reason": "not_answerable"}
+        "question_id": "level", "label": "Level", "answer": None, "evidence_ids": [], "reason": "not_answerable"}
     null_answer, missing = gate_answers(_answers(why=(None, [])), QUESTIONS[:1], FACTS)
     assert missing == ["why"] and null_answer[0]["reason"] == "not_answerable"
 

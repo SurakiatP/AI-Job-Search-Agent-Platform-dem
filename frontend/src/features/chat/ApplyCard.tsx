@@ -51,15 +51,13 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
   function prepare() {
     const filled = rows.filter(row => row.label.trim());
     if (filled.length === 0) { setMessage({ ok: false, text: c.needQuestion }); return; }
-    // The API keeps only ids on the pack, so the id carries the label text to stay readable in the pack and approval.
     const questions: ApplyQuestion[] = filled.map((row, index) => {
       const label = row.label.trim();
       const choices = row.choices.split(',').map(item => item.trim()).filter(Boolean);
-      return { id: `${index + 1}. ${label}`.slice(0, 64), label, required: row.required, kind: row.kind, ...(row.kind === 'choice' ? { choices: choices.length ? choices : ['-'] } : {}) };
+      return { id: `q${index + 1}`, label, required: row.required, kind: row.kind, ...(row.kind === 'choice' ? { choices: choices.length ? choices : ['-'] } : {}) };
     });
     void send('apply_prepare', { questions });
   }
-  const labelOf = (id: string) => id;
 
   return <Card><CardHeader><CardTitle className="text-lg">{c.title}</CardTitle></CardHeader><CardContent className="grid gap-4">
     <p className="text-sm text-muted-foreground">{c.body}</p>
@@ -67,7 +65,7 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
     {pack && <section aria-labelledby={`pack-${latest?.id}`} className="grid gap-3 border-t pt-4">
       <h3 id={`pack-${latest?.id}`} className="flex flex-wrap items-center gap-2 font-semibold">{c.pack} <Badge variant={pack.state === 'ready' ? 'success' : 'warning'}>{pack.state === 'ready' ? c.ready : c.parked}</Badge></h3>
       <ul className="grid gap-3">{pack.answers.map(answer => <li key={answer.question_id} className="grid gap-1 rounded-lg border p-3 text-sm">
-        <span className="text-muted-foreground [overflow-wrap:anywhere]">{labelOf(answer.question_id)}</span>
+        <span className="text-muted-foreground [overflow-wrap:anywhere]">{answer.label ?? answer.question_id}</span>
         {answer.answer === null
           ? <><Badge variant="warning" className="justify-self-start">{c.notAnswerable}</Badge><span>{c.reasonLabel}: {c.reasons[answer.reason ?? 'not_answerable'] ?? answer.reason}</span></>
           : <><span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{String(answer.answer)}</span><span className="text-xs text-muted-foreground">{answer.evidence_ids.length} {c.evidence}</span><CopyAnswer text={String(answer.answer)} c={c} /></>}

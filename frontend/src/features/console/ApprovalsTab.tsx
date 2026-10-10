@@ -20,11 +20,11 @@ function SubmitDetail({ projectId, approval, c }: { projectId: string; approval:
     <p><span className="text-muted-foreground">{c.job}: </span><span className="font-medium [overflow-wrap:anywhere]">{title ?? '—'}</span></p>
     <h3 className="font-medium">{c.answers}</h3>
     <ul className="grid gap-2">{pack.answers.map(a => <li key={a.question_id} className="grid gap-0.5 rounded-lg border p-3">
-      <span className="text-muted-foreground [overflow-wrap:anywhere]">{a.question_id}</span>
+      <span className="text-muted-foreground [overflow-wrap:anywhere]">{a.label ?? a.question_id}</span>
       {a.answer === null ? <Badge variant="warning" className="justify-self-start">{c.notAnswerable}</Badge> : <span className="[overflow-wrap:anywhere]">{String(a.answer)}</span>}
       <span className="text-xs text-muted-foreground">{a.evidence_ids.length} {c.evidenceN}</span>
     </li>)}</ul>
-    {pack.missing_required.length > 0 && <div><h3 className="font-medium text-warning">{c.missingReq}</h3><ul className="list-disc ps-5">{pack.missing_required.map(id => <li key={id} className="[overflow-wrap:anywhere]">{id}</li>)}</ul></div>}
+    {pack.missing_required.length > 0 && <div><h3 className="font-medium text-warning">{c.missingReq}</h3><ul className="list-disc ps-5">{pack.missing_required.map(id => <li key={id} className="[overflow-wrap:anywhere]">{pack.answers.find(a => a.question_id === id)?.label ?? id}</li>)}</ul></div>}
     <p className="text-muted-foreground">{c.applyNote}</p>
   </div>;
 }
