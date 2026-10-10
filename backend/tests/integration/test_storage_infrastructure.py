@@ -280,3 +280,33 @@ def test_start_warns_on_stderr_when_openrouter_key_missing(tmp_path, monkeypatch
     err = capsys.readouterr().err
     assert ("warning: OPENROUTER_API_KEY not set" in err) is warns
     assert "fake-key" not in err
+
+
+@pytest.mark.parametrize("seed_rc,expected", [(0, "started"), (1, "litellm_seed_failed")])
+def test_start_runs_seed_after_up_and_maps_failure(tmp_path, monkeypatch, seed_rc, expected) -> None:
+    import subprocess
+
+    local_infra = _load_local_infra()
+    monkeypatch.setattr(local_infra, "prepare_private_directory", lambda p: p)
+    monkeypatch.setattr(local_infra, "validate_minio_source", lambda p: p)
+    monkeypatch.setattr(local_infra, "ensure_credentials", lambda p: None)
+    monkeypatch.setattr(local_infra, "validate_gosu_source", lambda p: None)
+    monkeypatch.setattr(local_infra, "validate_postgres_overlay", lambda: None)
+    monkeypatch.setattr(local_infra, "validate_dependency_overlay", lambda: None)
+    monkeypatch.setattr(local_infra, "compose_environment", lambda *a: {})
+    commands: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        commands.append(command)
+        return subprocess.CompletedProcess(command, seed_rc if "run" in command else 0, "", "")
+
+    monkeypatch.setattr(local_infra.subprocess, "run", fake_run)
+    if expected == "started":
+        assert local_infra.start(tmp_path, tmp_path)["status"] == "started"
+    else:
+        with pytest.raises(local_infra.ConfigurationError, match="litellm_seed_failed"):
+            local_infra.start(tmp_path, tmp_path)
+    up, seed = commands
+    assert "up" in up and "--wait" in up and "litellm-seed" not in up and "--profile" not in up
+    assert seed[seed.index("--file") + 2 :][:2] == ["--profile", "seed"]
+    assert seed[-3:] == ["run", "--rm", "litellm-seed"]

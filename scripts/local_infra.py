@@ -233,7 +233,7 @@ def _compose(
     *,
     timeout: int = 120,
 ) -> subprocess.CompletedProcess[str]:
-    command = [
+    command = [  # callers put global flags (--profile) first in `action`
         "docker",
         "compose",
         "--project-name",
@@ -258,7 +258,7 @@ def _compose(
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ConfigurationError("compose_command_unavailable_or_timed_out") from exc
     if result.returncode:
-        raise ConfigurationError(f"compose_{action[0]}_failed")
+        raise ConfigurationError(f"compose_{action[2] if action[0] == '--profile' else action[0]}_failed")
     return result
 
 
@@ -269,6 +269,10 @@ def start(private_dir: Path, source_dir: Path) -> dict[str, str]:
     if not os.environ.get("OPENROUTER_API_KEY"):
         print("warning: OPENROUTER_API_KEY not set; LiteLLM has no provider key and model calls will fail", file=sys.stderr)
     _compose(["up", "--detach", "--build", "--wait", "--wait-timeout", "300"], private_dir, source_dir, timeout=1800)
+    try:  # one-shot seed is profiled out of `up --wait`, which treats its exit as failure
+        _compose(["--profile", "seed", "run", "--rm", "litellm-seed"], private_dir, source_dir, timeout=300)
+    except ConfigurationError as exc:
+        raise ConfigurationError("litellm_seed_failed") from exc
     return {"status": "started", "private_directory": str(private_dir), "minio_source_commit": MINIO_COMMIT}
 
 
