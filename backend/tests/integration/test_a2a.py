@@ -29,6 +29,7 @@ from job_search_platform.db.models import DocumentRevision, Project, Run
 from job_search_platform.integrations.hermes_runtime import HermesRuntime
 from job_search_platform.workers.executor import RunExecutor
 from test_rest_api import _owner, _write_headers, api_context as _base_api_context
+from helpers import completed_extract_run
 from test_runs import provider_config, revisions
 
 
@@ -180,6 +181,7 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
         assert card_response.status_code == 200
         card = card_response.json()
         assert [skill["id"] for skill in card["skills"]] == ["evaluate_job", "draft_documents"]
+        assert "extract_experience" not in json.dumps(card)
         assert {interface["protocolBinding"] for interface in card["supportedInterfaces"]} == {
             "JSONRPC",
             "HTTP+JSON",
@@ -392,6 +394,14 @@ async def test_a2a_rechecks_grants_and_never_reflects_rejected_input(api_context
             ),
         )
         created = await _send(client, "evaluate_job", request)
+        # Owner-only experience-bank extraction is neither a skill nor a task a grant can read.
+        with api_context.sessions.begin() as db:
+            extract_id = completed_extract_run(db, project_id)
+        a2a_context = ClientCallContext(service_parameters={"A2A-Version": "1.0"})
+        assert (await client.get_task(GetTaskRequest(id=created.id), context=a2a_context)).id == created.id
+        # The adapter maps TaskNotFound to the generic request_rejected on the wire.
+        with pytest.raises(Exception, match="request_rejected"):
+            await client.get_task(GetTaskRequest(id=str(extract_id)), context=a2a_context)
         response = api_context.client.delete(
             f"/api/v1/projects/{project_id}/grants/{grant['id']}", headers=_write_headers(csrf)
         )

@@ -96,3 +96,16 @@ def cancel_queued_extract_runs(sessions) -> None:
     with sessions.begin() as db:
         db.execute(update(Run).where(Run.operation == "extract_experience", Run.status == "queued")
                    .values(status="cancelled", finished_at=datetime.now(timezone.utc)))
+
+
+def completed_extract_run(db, project_id):
+    """An owner-only extract_experience run row, for protocol-exclusion checks."""
+    from job_search_platform.db.models import Run
+    cv_revision = db.scalar(select(CVRevision).where(CVRevision.project_id == project_id).limit(1))
+    run = Run(project_id=project_id, actor_scope="owner", idempotency_key=uuid4().hex, request_digest="0" * 64,
+              operation="extract_experience", cv_revision_id=cv_revision.id,
+              provider_configuration_id=provider_config(db).id, input_snapshot={}, config_snapshot={},
+              output_language="en", status="completed")
+    db.add(run)
+    db.flush()
+    return run.id
