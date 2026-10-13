@@ -3,6 +3,8 @@ import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslation } from 'react-i18next';
+import { accountErrorText, useRunGate } from '../../lib/accountGate';
 import { apiRequest } from '../../lib/api';
 import { ApiError, type ApplyPack, type ApplyQuestion, type JobRevisionView, type Locale, type RunOperation, type RunView } from '../../lib/api-types';
 import { useResource } from '../projects/useResource';
@@ -26,6 +28,8 @@ function CopyAnswer({ text, c }: { text: string; c: (typeof copy)['en'] }) {
 export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage, busy, runs, onChanged }: { projectId: string; jobId: string; sessionId: string; locale: Locale; outputLanguage: Locale; busy: boolean; runs: RunView[]; onChanged: () => void }) {
   const c = copy[locale];
   const [rows, setRows] = useState<Row[]>([blank()]);
+  const { t } = useTranslation();
+  const gate = useRunGate();
   const [working, setWorking] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string | boolean>>({});
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -46,8 +50,8 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
       return next;
     });
   }, [latest?.id, waiting, pack]);
-  const disabled = busy || working || inFlight;
-  const errorText = (caught: unknown) => caught instanceof ApiError ? (caught.code === 'gateway_unconfigured' ? c.provider : (c as unknown as Record<string, string>)[caught.code] ?? c.failed) : c.failed;
+  const disabled = busy || working || inFlight || gate.blocked;
+  const errorText = (caught: unknown) => accountErrorText(t, caught, locale) ?? (caught instanceof ApiError ? (caught.code === 'gateway_unconfigured' ? c.provider : (c as unknown as Record<string, string>)[caught.code] ?? c.failed) : c.failed);
   const update = (index: number, patch: Partial<Row>) => setRows(current => current.map((row, i) => i === index ? { ...row, ...patch } : row));
 
   async function send(operation: RunOperation, extra: Record<string, unknown> = {}) {
@@ -118,14 +122,14 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
         {rows.length > 1 && <Button type="button" variant="ghost" size="sm" className="min-h-11 justify-self-start" onClick={() => setRows(current => current.filter((_, i) => i !== index))}>{c.remove} {index + 1}</Button>}
       </fieldset>)}
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" className="min-h-11" disabled={disabled || rows.length >= 40} onClick={() => setRows(current => [...current, blank()])}>{c.add}</Button>
-        <Button type="submit" className="min-h-11" disabled={disabled}>{c.prepare}</Button>
+        <Button type="button" variant="outline" className="min-h-11" disabled={disabled || rows.length >= 40} title={gate.title} onClick={() => setRows(current => [...current, blank()])}>{c.add}</Button>
+        <Button type="submit" className="min-h-11" disabled={disabled} title={gate.title}>{c.prepare}</Button>
       </div>
     </form>
     <div className="grid gap-2 border-t pt-4">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" className="min-h-11" disabled={disabled || latest?.status !== 'completed' || pack?.state !== 'ready' || applied} onClick={() => void send('apply_submit')}>{c.submit}</Button>
-        {applied && <Button type="button" variant="outline" className="min-h-11" disabled={disabled} onClick={() => void send('draft_follow_up')}>{c.followUp}</Button>}
+        <Button type="button" variant="outline" className="min-h-11" disabled={disabled || latest?.status !== 'completed' || pack?.state !== 'ready' || applied} title={gate.title} onClick={() => void send('apply_submit')}>{c.submit}</Button>
+        {applied && <Button type="button" variant="outline" className="min-h-11" disabled={disabled} title={gate.title} onClick={() => void send('draft_follow_up')}>{c.followUp}</Button>}
       </div>
       <p className="text-xs text-muted-foreground">{c.submitHint} <Link className="text-primary hover:underline" to={`/app/projects/${projectId}/console?tab=approvals`}>{c.approvals}</Link></p>
     </div>

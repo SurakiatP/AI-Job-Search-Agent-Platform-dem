@@ -1,3 +1,4 @@
+import { useRunGate } from '../../lib/accountGate';
 import { useEffect, useRef, useState } from 'react';
 import { CvPreviewButton } from '@/components/CvPreview';
 import { useParams } from 'react-router';
@@ -55,6 +56,7 @@ function RenameDialog({ cv, c, projectId, onClose, onDone }: { cv: CVView; c: ty
 
 export function ProfilePage() {
   const { t, i18n } = useTranslation();
+  const gate = useRunGate();
   const locale: 'th' | 'en' = i18n.language.startsWith('th') ? 'th' : 'en';
   const c = copy[locale];
   const { projectId = '' } = useParams();
@@ -144,7 +146,7 @@ export function ProfilePage() {
             <div className="flex flex-wrap gap-2">
               {cv.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="default" />}
               <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>
-              {cv.latest_revision && bank.data?.provider_configured && <Button type="button" variant="outline" aria-label={`${c.extract}: ${cv.name}`} onClick={() => void extract(cv)}>{c.extract}</Button>}
+              {cv.latest_revision && bank.data?.provider_configured && <Button type="button" variant="outline" aria-label={`${c.extract}: ${cv.name}`} disabled={gate.blocked} title={gate.title} onClick={() => void extract(cv)}>{c.extract}</Button>}
               {!cv.is_primary && <Button type="button" size="sm" variant="ghost" onClick={() => void makePrimary(cv)}>{c.makePrimary}</Button>}
             </div>
           </CardContent></Card></li>)}</ul>}

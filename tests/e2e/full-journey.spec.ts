@@ -208,15 +208,16 @@ test('expired approval is visible but cannot be approved from a stale request', 
   await expect(page.getByRole('button', { name: 'Refresh status' })).toBeVisible();
 });
 
-test('synthetic unavailable owner session is routed to the local launcher message', async ({ page }) => {
+test('anonymous visitors are redirected to log in with the original path preserved', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
-  await page.route('**/api/v1/owner/session', route => route.fulfill({
+  await page.route('**/api/v1/auth/session', route => route.fulfill({
     status: 401,
     contentType: 'application/json',
     body: JSON.stringify({ code: 'unauthorized', message_key: 'errors.unauthorized', retryable: false, correlation_id: '55555555-5555-4555-8555-555555555555' }),
   }));
   await page.goto('/app/settings');
-  await expect(page.getByRole('heading', { name: 'Open the app from the local launcher' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Log in', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/login\?next=%2Fapp%2Fsettings$/);
   await expect(page.getByRole('heading', { name: 'Settings' })).toHaveCount(0);
   await expect(page.getByText('errors.unauthorized')).toHaveCount(0);
 });

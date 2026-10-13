@@ -3,6 +3,8 @@ import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslation } from 'react-i18next';
+import { accountErrorText, useRunGate } from '../../lib/accountGate';
 import { apiRequest } from '../../lib/api';
 import { ApiError, type Locale, type RunView, type TailorMode, type TailorPayload } from '../../lib/api-types';
 
@@ -16,13 +18,15 @@ const isTailor = (payload: RunView['result_payload']): payload is TailorPayload 
 export function TailorCard({ projectId, sessionId, locale, outputLanguage, busy, run, onChanged }: { projectId: string; sessionId: string; locale: Locale; outputLanguage: Locale; busy: boolean; run: RunView | null; onChanged: () => void }) {
   const c = copy[locale];
   const [mode, setMode] = useState<TailorMode>('autopilot');
+  const { t } = useTranslation();
+  const gate = useRunGate();
   const [picked, setPicked] = useState<number[]>([]);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [working, setWorking] = useState(false);
   const payload = (run?.status === 'completed' || run?.status === 'needs_input') && isTailor(run.result_payload) ? run.result_payload : null;
   const proposals = payload?.mode === 'interactive' ? payload.proposals ?? [] : [];
   const selectable = (status: string) => status === 'proposed';
-  const errorText = (caught: unknown, fallback: string) => caught instanceof ApiError ? (caught.code === 'gateway_unconfigured' ? c.provider : (c as unknown as Record<string, string>)[caught.code] ?? fallback) : fallback;
+  const errorText = (caught: unknown, fallback: string) => accountErrorText(t, caught, locale) ?? (caught instanceof ApiError ? (caught.code === 'gateway_unconfigured' ? c.provider : (c as unknown as Record<string, string>)[caught.code] ?? fallback) : fallback);
 
   async function start() {
     setWorking(true); setMessage(null);
@@ -50,7 +54,7 @@ export function TailorCard({ projectId, sessionId, locale, outputLanguage, busy,
         <input type="radio" name={`tailor-mode-${sessionId}`} className="mt-1 size-4 shrink-0 accent-primary" value={value} checked={mode === value} onChange={() => setMode(value)} />
         <span className="min-w-0"><span className="font-medium">{c[value]}</span><span className="block text-muted-foreground">{c[`${value}Hint` as const]}</span></span></label>)}
     </fieldset>
-    <div><Button type="button" className="min-h-11" disabled={busy || working} onClick={() => void start()}>{c.start}</Button></div>
+    <div><Button type="button" className="min-h-11" disabled={busy || working || gate.blocked} title={gate.title} onClick={() => void start()}>{c.start}</Button></div>
     {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className={`text-sm ${message.kind === 'error' ? 'text-destructive' : ''}`}>{message.text}{message.kind === 'ok' && <> <Link className="text-primary hover:underline" to={`/app/projects/${projectId}/documents`}>{c.docs}</Link></>}</p>}
     {run?.status === 'needs_input' && <p role="status" className="text-sm font-medium">{c.waitingChoice}</p>}
     {payload && <section aria-labelledby={`tailor-result-${run?.id}`} className="grid gap-3 border-t pt-4">

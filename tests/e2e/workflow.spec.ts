@@ -4,22 +4,19 @@ const projectId = '11111111-1111-4111-8111-111111111111';
 const runId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const csrf = 'synthetic-csrf-token-never-valid-outside-this-test';
 
-test('typed API bootstraps owner CSRF and resumes deduplicated run events', async ({ page }) => {
+test('typed API restores the account session CSRF and resumes deduplicated run events', async ({ page }) => {
   const eventCursors: string[] = [];
   let bootstrapCalls = 0;
-  let hashAtExchange = 'not-observed';
   let contentType = '';
   let writeCsrf = '';
 
-  await page.route('**/api/v1/owner/bootstrap', async route => {
+  await page.route('**/api/v1/auth/session', async route => {
     bootstrapCalls += 1;
-    hashAtExchange = await page.evaluate(() => window.location.hash);
-    expect(route.request().postDataJSON()).toEqual({ nonce: 'synthetic-one-use-launch-nonce-0001' });
     await route.fulfill({
       status: 200,
       headers: { 'set-cookie': 'jsp_owner_session=synthetic-cookie; Path=/; HttpOnly; SameSite=Strict' },
       contentType: 'application/json',
-      body: JSON.stringify({ authenticated: true, csrf_token: csrf, expires_at: '2026-10-05T00:00:00Z' }),
+      body: JSON.stringify({ authenticated: true, csrf_token: csrf, expires_at: '2026-10-05T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, created_at: '2026-10-01T00:00:00Z' } }),
     });
   });
   await page.route('**/api/v1/projects/upload', async route => {
@@ -36,7 +33,7 @@ test('typed API bootstraps owner CSRF and resumes deduplicated run events', asyn
     await route.fulfill({ status: 200, contentType: 'text/event-stream', body: data.map(event => `id: ${event.sequence}\nevent: ${event.event_type}\ndata: ${JSON.stringify(event)}\n\n`).join('') });
   });
 
-  await page.goto('/tests/shell.html#owner-nonce=synthetic-one-use-launch-nonce-0001');
+  await page.goto('/tests/shell.html');
   const state = await page.evaluate(async () => {
     const api = await import('/src/lib/api.ts');
     const session = await api.initializeOwnerSession();
@@ -65,7 +62,6 @@ test('typed API bootstraps owner CSRF and resumes deduplicated run events', asyn
   expect(state.empty).toBeUndefined();
   expect(state.events).toEqual([1, 2]);
   expect(state.hash).toBe('');
-  expect(hashAtExchange).toBe('');
   expect(bootstrapCalls).toBe(1);
   expect(eventCursors).toEqual(['0', '1']);
   expect(writeCsrf).toBe(csrf);

@@ -1,7 +1,7 @@
 const { test } = require('@playwright/test');
 const assert = require('node:assert/strict');
 const baseRun = { created_at: '2026-10-04T00:00:00Z', id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', session_id: 'ssss', project_id: 'pppp', job_revision_id: 'jjjj', operation: 'evaluate_job', status: 'running', output_language: 'en', result_file_ids: [], evaluation_result: null, retry_of_id: null };
-const owner = { authenticated: true, csrf_token: 'synthetic-only', expires_at: '2030-01-01T00:00:00Z' };
+const owner = { authenticated: true, csrf_token: 'synthetic-only', expires_at: '2030-01-01T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, created_at: '2026-10-01T00:00:00Z' } };
 const approval = id => ({ id, run_id: baseRun.id, action: 'promote_cv', revision_id: `revision-${id}`, expected_cv_revision_id: `base-${id}`, change_digest: `digest-${id}`, expires_at: '2030-01-01T00:00:00Z', consumed_at: null, decision: null });
 async function setup(page, handler) {
   await page.route('**/api/v1/**', handler ?? (route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(owner) })));
@@ -64,7 +64,7 @@ async function cancellation(browser) {
   const page = await browser.newPage(); let mode = 'network'; let accepted = false;
   await setup(page, async route => {
     const path = new URL(route.request().url()).pathname; let value = [];
-    if (path.endsWith('/owner/session')) value = owner;
+    if (path.endsWith('/auth/session')) value = owner;
     else if (path.endsWith('/cancel')) { accepted = true; if (mode === 'network') return route.abort('failed'); value = { ...baseRun, status: 'completed' }; }
     else if (path.endsWith('/events')) return route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' });
     else if (path.endsWith('/runs')) value = [baseRun];
@@ -83,7 +83,7 @@ async function staleResponse(browser) {
   const page = await browser.newPage(); let reads = 0; const cursors = [];
   await setup(page, async route => {
     const path = new URL(route.request().url()).pathname; let value = [];
-    if (path.endsWith('/owner/session')) value = owner;
+    if (path.endsWith('/auth/session')) value = owner;
     else if (path.endsWith('/events')) {
       const cursor = route.request().headers()['last-event-id']; cursors.push(cursor);
       const events = cursor === '0' ? [{ sequence: 1, event_type: 'run_progress', data: { step: 'Synthetic running', status: 'running' } }, { sequence: 2, event_type: 'run_completed', data: { step: 'Synthetic done', status: 'completed' } }] : [];
@@ -103,7 +103,7 @@ async function approvalRecovery(browser) {
   page.on('pageerror', error => errors.push(error.message));
   await setup(page, async route => {
     const path = new URL(route.request().url()).pathname; let value = [];
-    if (path.endsWith('/owner/session')) value = owner;
+    if (path.endsWith('/auth/session')) value = owner;
     else if (path.endsWith('/approvals')) { approvalReads++; if (approvalReads === 2) return route.abort('failed'); value = approvalReads === 1 ? [] : [approval('Recovered')]; }
     else if (path.endsWith('/events')) {
       const cursor = route.request().headers()['last-event-id']; const event = { sequence: 1, event_type: 'approval_requested', data: { approval_id: 'Recovered', status: 'waiting_approval' } };
@@ -121,7 +121,7 @@ async function idempotencyAndReload(browser) {
   const page = await browser.newPage(); let messages = 0; const submissions = []; let savedRun = null;
   await setup(page, async route => {
     const path = new URL(route.request().url()).pathname; let value = [];
-    if (path.endsWith('/owner/session')) value = owner;
+    if (path.endsWith('/auth/session')) value = owner;
     else if (path.endsWith('/messages') && route.request().method() === 'POST') { messages++; value = { id: 'synthetic-message', content: 'Synthetic history only' }; }
     else if (path.endsWith('/runs') && route.request().method() === 'POST') {
       const body = route.request().postDataJSON(); submissions.push(body);
@@ -176,7 +176,7 @@ test('restart interruption hides an unconsumed stale approval', async ({ browser
   await setup(page, route => {
     const path = new URL(route.request().url()).pathname;
     let value = [];
-    if (path.endsWith('/owner/session')) value = owner;
+    if (path.endsWith('/auth/session')) value = owner;
     else if (path.endsWith('/events')) return route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' });
     else if (path.endsWith('/approvals')) value = [approval('synthetic-pending')];
     else if (path.endsWith('/runs')) value = [{ ...baseRun, status }];

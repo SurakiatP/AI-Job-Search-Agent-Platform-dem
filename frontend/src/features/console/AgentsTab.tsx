@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { sendJson, useResource } from '../projects/useResource';
+import { useRunGate } from '@/lib/accountGate';
 import { apiRequest } from '@/lib/api';
 import type { Copy } from './copy';
 import { CopyButton, Empty, useNow, type Locale } from './shared';
@@ -25,6 +26,7 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const now = useNow(30000);
+  const gate = useRunGate();
   // token lives only in this component state; Tabs unmounts it on tab change
 
   async function create(event: FormEvent) {
@@ -69,7 +71,7 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
               <option value="1">{c.h1}</option><option value="24">{c.h24}</option><option value="168">{c.d7}</option>
             </select>
           </div>
-          <div><Button type="submit" disabled={busy || caps.length === 0}>{c.create}</Button></div>
+          <div><Button type="submit" disabled={busy || caps.length === 0 || gate.blocked} title={gate.title}>{c.create}</Button></div>
         </form>
       </CardContent>
     </Card>

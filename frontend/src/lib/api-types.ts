@@ -51,9 +51,16 @@ function isSafeMessageKey(value: unknown): value is string {
   return typeof value === 'string' && /^[a-z][a-z0-9_.]{0,119}$/.test(value);
 }
 
+export type Account = { id: string; email: string; locale: Locale; email_verified: boolean; created_at: string };
+export type AccountAgent = {
+  id: string; project_id: string; project_name: string; label: string | null; capabilities: string[];
+  created_at: string; expires_at: string; revoked_at: string | null;
+};
+
 export type OwnerSessionState =
   | { status: 'loading' }
-  | { status: 'ready'; expires_at: string }
+  | { status: 'anonymous' }
+  | { status: 'ready'; expires_at: string; user: Account }
   | { status: 'error'; error: ApiError };
 
 export type ProjectView = { id: string; name: string; created_at: string };

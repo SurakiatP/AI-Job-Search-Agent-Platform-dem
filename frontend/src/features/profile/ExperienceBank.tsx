@@ -1,3 +1,4 @@
+import { useRunGate } from '../../lib/accountGate';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ const toBody = (d: Draft) => ({ kind: d.kind, text: d.text.trim(), role: d.role.
 
 export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { projectId: string; locale: 'th' | 'en'; primaryCvId: string | null; bank: ReturnType<typeof useResource<ExperienceView>> }) {
   const c = copy[locale];
+  const gate = useRunGate();
   const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const status = bank.data?.extraction?.status;
@@ -66,7 +68,7 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
       {bank.data && !bank.data.provider_configured && <p className="flex flex-wrap items-center gap-2">{c.noProvider} <Link className="underline" to="/app/settings?section=gateway">{c.settings}</Link></p>}
       {extraction && active && <p className="flex flex-wrap items-center gap-2">{status === 'queued' ? c.queued : c.running}<Button size="sm" variant="outline" onClick={() => void act(() => apiRequest(`/projects/${projectId}/runs/${extraction.run_id}/cancel`, { method: 'POST' })).catch(() => undefined)}>{c.stop}</Button></p>}
       {extraction?.status === 'completed' && extraction.summary && <p>{c.done(extraction.summary)}</p>}
-      {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && <p className="flex flex-wrap items-center gap-2">{c.failed}{cvForRun && <Button size="sm" variant="outline" onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}>{c.retry}</Button>}</p>}
+      {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && <p className="flex flex-wrap items-center gap-2">{c.failed}{cvForRun && <Button size="sm" variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}>{c.retry}</Button>}</p>}
     </div>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {bank.status === 'error' && <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{c.loadError}<Button variant="outline" onClick={bank.reload}>{c.retry}</Button></p>}
@@ -85,6 +87,6 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
       </li>)}</ul>
     </div>)}
     <FactForm c={c} initial={blank} submitLabel={c.add} onSubmit={d => act(() => sendJson(base, 'POST', toBody(d)))} />
-    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}>{extraction ? c.extract : c.extractFirst}</Button></div>}
+    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}>{extraction ? c.extract : c.extractFirst}</Button></div>}
   </section>;
 }

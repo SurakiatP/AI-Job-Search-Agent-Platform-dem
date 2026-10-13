@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Bookmark, Bot, FileText, FolderOpen, LayoutDashboard, MessagesSquare, Search, Settings, UserRound, type LucideIcon } from 'lucide-react';
+import { Bookmark, Bot, FileText, FolderOpen, LayoutDashboard, MessagesSquare, Search, Settings, UserCog, UserRound, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { AppearanceControl } from './AppearanceControl';
@@ -59,6 +59,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
       </li>)}
     </ul></div>}
     <div className="mt-auto grid gap-3">
+      <NavItem to="/app/account" icon={UserCog} active={inside('/app/account')} onNavigate={onNavigate}>{t('account.menu')}</NavItem>
       <NavItem to="/app/settings" icon={Settings} active={inside('/app/settings')} onNavigate={onNavigate}>{t('settings')}</NavItem>
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <AppearanceControl />
