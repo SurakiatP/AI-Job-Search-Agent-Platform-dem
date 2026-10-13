@@ -30,6 +30,13 @@ def _private_secret(name: str) -> str:
     return path.read_text(encoding="utf-8").strip()
 
 
+def pytest_collection_modifyitems(items):
+    # Any test that needs the real Postgres fixtures is an integration test.
+    for item in items:
+        if "postgres_engine" in item.fixturenames:
+            item.add_marker(pytest.mark.integration)
+
+
 @pytest.fixture
 def postgres_engine():
     """Give each test a uniquely named database; never reset shared/global state."""
