@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+from urllib.parse import urlsplit
 import stat
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -70,6 +71,18 @@ def _migrate(engine) -> None:
         command.upgrade(cfg, "head")
 
 
+def _owner_sessions(sessions) -> OwnerSessions:
+    public = os.environ.get("APP_PUBLIC_ORIGIN")
+    extra = set() if public else {"http://localhost:8000"}  # unset: both loopback spellings, as before
+    dev = os.environ.get("JSP_DEV_ORIGIN", "").rstrip("/")
+    if dev:
+        parsed = urlsplit(dev)
+        if parsed.hostname not in {"localhost", "127.0.0.1", "::1"} or parsed.scheme != "http" or parsed.path or parsed.query or parsed.fragment:
+            raise RuntimeError("development_origin_must_be_loopback")
+        extra.add(dev)
+    return OwnerSessions(sessions, public_origin=public or "http://127.0.0.1:8000", extra_origins=frozenset(extra))
+
+
 def build_services() -> Services:
     """Assemble pinned local infrastructure without returning credential values."""
     user = _private_text("postgres-user")
@@ -119,10 +132,7 @@ def build_services() -> Services:
     queue = PostgresRunQueue(sessions)
     executor = RunExecutor(sessions, queue, runtime, artifacts, store,
                            workspace_root=runtime.workspace_root)
-    dev = os.environ.get("JSP_DEV_ORIGIN", "").rstrip("/")
-    owner_sessions = OwnerSessions(
-        sessions, public_origin=os.environ.get("APP_PUBLIC_ORIGIN", "http://127.0.0.1:8000"),
-        extra_origins=frozenset({dev} if dev else ()))
+    owner_sessions = _owner_sessions(sessions)
     mailer = SmtpMailer.from_env()  # None without SMTP_HOST: Accounts logs mail_disabled and drops mail
     accounts = Accounts(sessions, owner_sessions, mailer, public_origin=owner_sessions.public_origin, runs=runs,
                         workspace_root=runtime.workspace_root)

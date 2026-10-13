@@ -263,12 +263,12 @@ class Accounts:
                 return list(db.scalars(select(Project.id).where(Project.user_id == user_id)))
 
         def busy(user_id):
-            """True while a worker may still run for the user: a non-terminal run, a lease or a sandbox."""
+            """True while a worker may still run for the user: a non-terminal run or a held lease."""
             with self.sessions() as db:
                 return db.scalar(select(Run.id).where(
                     Run.project_id.in_(select(Project.id).where(Project.user_id == user_id)),
                     Run.status.not_in(("completed", "failed", "cancelled", "interrupted"))
-                    | Run.lease_owner.is_not(None) | Run.sandbox_id.is_not(None)).limit(1)) is not None
+                    | Run.lease_owner.is_not(None)).limit(1)) is not None
 
         def wipe_workspaces(ids):
             if self.workspace_root is None:
@@ -290,6 +290,8 @@ class Accounts:
 
         purged = 0
         for user_id, requested_at in await asyncio.to_thread(pending):
+            if now - requested_at > timedelta(hours=24):
+                logger.warning("account_purge_overdue", extra={"user_id": str(user_id)})
             try:
                 if await asyncio.to_thread(busy, user_id):
                     continue  # a cancelled run's worker is still winding down; retry next cycle
@@ -306,6 +308,4 @@ class Accounts:
                 continue
             purged += 1
             logger.info("account_purged", extra={"user_id": str(user_id)})
-            if now - requested_at > timedelta(hours=24):
-                logger.warning("account_purge_overdue", extra={"user_id": str(user_id)})
         return purged

@@ -161,3 +161,10 @@ def test_agents_lists_only_own_grants(accounts, db_session):
     assert rows[0]["project_id"] == pa.id and rows[0]["project_name"] == "Alice project"
     assert rows[0]["capabilities"] == ["results:read"]
     assert abs(datetime.now(timezone.utc) - rows[0]["created_at"]) < timedelta(minutes=1)
+
+
+def test_forgot_password_normalizes_email(accounts, mailer):
+    signed_up(accounts, mailer)
+    sent = len(mailer.sent)
+    accounts.forgot_password("  Alice@Example.TEST ")
+    assert len(mailer.sent) == sent + 1 and mailer.sent[-1].to == "alice@example.test"

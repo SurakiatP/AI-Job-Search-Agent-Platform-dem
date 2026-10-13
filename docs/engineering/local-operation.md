@@ -47,7 +47,7 @@ rtk uv run --locked --project backend python scripts/local_infra.py status \
   --source-dir "$MINIO_SOURCE_DIR"
 ```
 
-Build the frontend and launch the app. The default listener is loopback-only at `http://127.0.0.1:8000`. The launcher prints the login page URL (`http://127.0.0.1:8000/login`); there is no launch link or one-use nonce any more. Sign in there with an account (see "Accounts" below).
+Build the frontend and launch the app. The default listener is loopback-only at `http://127.0.0.1:8000`. The launcher prints the login page URL (`http://127.0.0.1:8000/login`) and `--open-browser` opens it; there is no launch link or one-use nonce any more. Sign in there with an account (see "Accounts" below).
 
 ```sh
 rtk npm ci --prefix frontend
@@ -74,7 +74,7 @@ rtk uv run --locked --project backend python scripts/accounts.py create-user --e
 rtk uv run --locked --project backend python scripts/accounts.py disable-user --email you@example.com
 ```
 
-  The password is read twice with a hidden prompt, or as one line from stdin when stdin is not a terminal. `--claim-existing` hands every project that has no owner to this user, and moves those projects' queued or past runs from the legacy `owner` scope to `user:<id>`. Run it once, for the person who owned the data before accounts existed. It prints counts only, never the email. `disable-user` blocks login, revokes all sessions and grants, and prints `disabled`. Both exit 2 with `error: <code>` on a rejected input.
+  The password is read twice with a hidden prompt, or as one line from stdin when stdin is not a terminal. `--claim-existing` hands every project that has no owner to this user, and moves those projects' queued or past runs from the legacy `owner` scope to `user:<id>`. Run it once, for the person who owned the data before accounts existed. Stop the app first: the command takes the maintenance lock, which conflicts with a running app's writes. Legacy runs that were still queued before the claim are failed by the queue the next time the app starts. It prints counts only, never the email. `disable-user` blocks login, revokes all sessions and grants, and prints `disabled`. Both exit 2 with `error: <code>` on a rejected input.
 - **Settings.** `APP_PUBLIC_ORIGIN` (default `http://127.0.0.1:8000`) builds the links in mail and decides the `Secure` cookie flag. `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` (`no-reply@localhost`) and `SMTP_STARTTLS` (`true`) configure outbound mail. `USER_DAILY_RUN_QUOTA` (30) caps runs per user per Asia/Bangkok day; going over returns 429 `quota_exceeded`.
 
 ## LiteLLM gateway
@@ -128,7 +128,7 @@ Every address the app uses comes from the environment, with the local-stack defa
 | `LANGFUSE_HOST` | empty (Langfuse off). `http://127.0.0.1:53000` turns on the `langfuse` compose profile in `local_infra.py start` and the app's span export | no |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | unset (tracing off) | no |
 | `JSP_LOG_LEVEL` | `INFO` | no |
-| `JSP_ALLOWED_ORIGINS` / `JSP_DEV_ORIGIN` | owner loopback origin / unset | no |
+| `APP_PUBLIC_ORIGIN` / `JSP_DEV_ORIGIN` | the launcher sets it to the listener origin (default `http://127.0.0.1:8000`; with it unset both `127.0.0.1:8000` and `localhost:8000` are allowed) / unset. `JSP_DEV_ORIGIN` must be an `http` loopback origin, e.g. the Vite dev server. An `https` `APP_PUBLIC_ORIGIN` makes the session cookie `Secure`. | no |
 | `CORE02_PRIVATE_DIR` | `~/.cache/job-search-platform/core02-runtime-20261003` | no (the directory holds secrets) |
 | `MINIO_SOURCE_DIR` / `GOSU_SOURCE_DIR` | `~/.cache/job-search-platform/upstream/{minio,gosu}` | no |
 | `CORE02_POSTGRES_PORT` / `CORE02_MINIO_PORT` / `CORE02_LITELLM_PORT` / `CORE02_LANGFUSE_PORT` | `55432` / `59000` / `54000` / `53000` (host ports published by compose) | no |

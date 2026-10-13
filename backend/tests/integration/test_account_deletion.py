@@ -134,10 +134,19 @@ def test_purge_waits_for_live_runs(accounts, sessions):
     accounts.request_deletion(actor.user_id, PW, EMAIL)
     assert asyncio.run(accounts.purge_due(FakeStore())) == 0
     assert purged_counts(sessions, actor.user_id, project_id)[0] == 1
-    with sessions.begin() as db:
-        db.execute(update(Run).where(Run.project_id == project_id).values(
-            status="cancelled", lease_owner=None, sandbox_id=None))
+    with sessions.begin() as db:  # what the executor leaves behind: terminal and released
+        db.execute(update(Run).where(Run.project_id == project_id).values(status="cancelled", lease_owner=None))
     assert asyncio.run(accounts.purge_due(FakeStore())) == 1
+
+
+def test_purge_removes_a_user_whose_run_executed(accounts, sessions):
+    actor, project_id, _ = seed(sessions)
+    with sessions.begin() as db:  # the executor sets sandbox_id on every executed run and never clears it
+        db.execute(update(Run).where(Run.project_id == project_id).values(
+            status="completed", lease_owner=None, sandbox_id="sandbox-1"))
+    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    assert asyncio.run(accounts.purge_due(FakeStore())) == 1
+    assert purged_counts(sessions, actor.user_id, project_id) == [0] * 6
 
 
 def test_purge_removes_run_workspaces_only_for_the_deleted_user(accounts, sessions, tmp_path):
@@ -175,6 +184,18 @@ def test_overdue_purge_is_logged_without_email(accounts, sessions, caplog):
     with caplog.at_level(logging.INFO):
         assert asyncio.run(accounts.purge_due(FakeStore())) == 1
     assert "account_purge_overdue" in caplog.text and "account_purged" in caplog.text and EMAIL not in caplog.text
+
+
+def test_overdue_is_logged_even_while_the_user_is_busy(accounts, sessions, caplog):
+    actor, _, _ = seed(sessions, run_status="running")
+    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    with sessions.begin() as db:
+        db.execute(update(Run).where(Run.status == "cancelled").values(status="running", lease_owner="w1"))
+        db.get(User, actor.user_id).deletion_requested_at = datetime.now(timezone.utc) - timedelta(hours=25)
+    with caplog.at_level(logging.INFO):
+        assert asyncio.run(accounts.purge_due(FakeStore())) == 0
+    overdue = [r for r in caplog.records if r.getMessage() == "account_purge_overdue"]
+    assert len(overdue) == 1 and overdue[0].user_id == str(actor.user_id) and EMAIL not in caplog.text
 
 
 def test_supervisor_purges_prunes_and_survives_failures(sessions, caplog):

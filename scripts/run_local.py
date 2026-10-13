@@ -20,6 +20,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", choices=("127.0.0.1", "::1"), default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--open-browser", action="store_true", help="open the login page in the default browser")
     parser.add_argument("--build-frontend", action="store_true", help="build the frontend before starting")
     parser.add_argument("--frontend-dist", type=Path, default=ROOT / "frontend" / "dist")
     parser.add_argument("--enable-sharing", action="store_true", help="enable project-token MCP/A2A listener")
@@ -47,6 +48,9 @@ async def _launch(args: argparse.Namespace) -> int:
         app = create_app(services, frontend_dist=dist)
 
         print(f"App: {scheme_host}/login", flush=True)
+        if args.open_browser:
+            import webbrowser
+            webbrowser.open(f"{scheme_host}/login")
 
         import uvicorn
 

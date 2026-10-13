@@ -36,6 +36,8 @@ class Grants:
             token = "jspg_" + secrets.token_urlsafe(32)
             with self.sessions.begin() as db:
                 authorize(db, actor, project_id, "manage", "grant")
+                # project row first, then user: the order request_deletion takes its locks in
+                db.execute(select(Project.id).where(Project.id == project_id).with_for_update())
                 require_verified_owner(db, project_id)
                 Repositories.project(db, project_id)
                 row = Grant(project_id=project_id, token_hash=token_hash(token),

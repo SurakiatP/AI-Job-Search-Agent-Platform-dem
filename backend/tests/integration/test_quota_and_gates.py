@@ -4,7 +4,7 @@ import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-from threading import Barrier
+from threading import Barrier, BrokenBarrierError
 
 import pytest
 from sqlalchemy import select, update
@@ -129,11 +129,22 @@ def test_concurrent_submits_cannot_exceed_the_quota(migrated_engine, monkeypatch
             targets.append((p, chat, job))
         provider_config(db)
     _submit(RunService(factory), actor, *targets[0], "existing")
-    barrier = Barrier(2)
+    barrier = Barrier(2, timeout=0.5)
+    from job_search_platform.services import approvals
+    real = approvals.budget_day_start
+
+    def overlapped(now):
+        # Runs after the user lock, before the count: without the lock both threads count 1 here.
+        try:
+            barrier.wait()
+        except BrokenBarrierError:
+            pass
+        return real(now)
+
+    monkeypatch.setattr(approvals, "budget_day_start", overlapped)
 
     def attempt(index):
         service = RunService(factory)
-        barrier.wait()
         try:
             _submit(service, actor, *targets[index], f"race-{index}")
             return "ok"
