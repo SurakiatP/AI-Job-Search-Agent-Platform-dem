@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -59,7 +58,7 @@ function AgentsSection() {
             <p className="break-words text-sm font-medium">{agent.label ?? t('account.untitledAgent')}</p>
             <p className="break-words text-sm">{t('account.project')}: {agent.project_name}</p>
             <div className="flex flex-wrap gap-1.5">{agent.capabilities.map(cap => <Badge key={cap} variant="outline">{cap}</Badge>)}</div>
-            <p className="text-sm">{t('account.expires')} <time dateTime={agent.expires_at}>{fmt.format(new Date(agent.expires_at))}</time></p>
+            <p className="text-sm">{t('account.created')} <time dateTime={agent.created_at}>{fmt.format(new Date(agent.created_at))}</time> · {t('account.expires')} <time dateTime={agent.expires_at}>{fmt.format(new Date(agent.expires_at))}</time></p>
           </div>
           <div className="flex items-center gap-3">
             <Badge variant={state === 'active' ? 'success' : 'secondary'}>{t(`account.${state}`)}</Badge>
@@ -72,7 +71,6 @@ function AgentsSection() {
 
 function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -83,7 +81,8 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
     setBusy(true); setError('');
     try {
       await deleteAccount(password, confirm.trim());
-      navigate('/', { replace: true });
+      // Full reload: the session is gone, and a soft navigation races the login gate's redirect.
+      window.location.replace('/');
     } catch (caught) {
       const key = caught instanceof ApiError ? `errors.${caught.code}` : '';
       setError(key && ['errors.invalid_credentials', 'errors.confirmation_mismatch', 'errors.rate_limited'].includes(key) ? t(key, { seconds: caught instanceof ApiError ? caught.fields?.retry_after ?? '60' : '60' }) : t('errors.request_failed'));
@@ -100,7 +99,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
         {error && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{error}</p>}
         <div className="flex flex-wrap justify-end gap-2">
           <DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{t('account.cancel')}</Button></DialogClose>
-          <Button type="submit" variant="destructive" disabled={busy || !password || !confirm}>{t('account.deleteConfirm')}</Button>
+          <Button type="submit" variant="destructive" disabled={busy || !password || confirm.trim().toLowerCase() !== email.trim().toLowerCase()}>{t('account.deleteConfirm')}</Button>
         </div>
       </form>
     </DialogContent>

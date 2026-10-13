@@ -219,6 +219,7 @@
     "confirmEmail": "Type your email to confirm",
     "deleteConfirm": "Delete permanently",
     "cancel": "Cancel",
-    "loadFailed": "We could not load your account."
+    "loadFailed": "We could not load your account.",
+    "created": "Given"
   }
 }

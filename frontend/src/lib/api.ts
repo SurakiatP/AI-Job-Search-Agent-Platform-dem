@@ -112,8 +112,7 @@ export const getAccount = () => apiRequest<Account>('/account');
 export const listAccountAgents = () => apiRequest<AccountAgent[]>('/account/agents');
 export async function deleteAccount(password: string, confirmEmail: string): Promise<void> {
   await apiRequest<void>('/account', { method: 'DELETE', body: JSON.stringify({ password, confirm_email: confirmEmail }) });
-  csrfToken = null;
-  setSession({ status: 'anonymous' });
+  csrfToken = null; // caller reloads the app, which drops all session state
 }
 
 function isWrite(method: string): boolean {
@@ -146,8 +145,12 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   } catch {
     throw new ApiError(0, { code: 'network_error', message_key: 'errors.network_error', retryable: true });
   }
-  if (response.status === 401) { csrfToken = null; setSession({ status: 'anonymous' }); }
-  if (!response.ok) throw await responseError(response);
+  if (!response.ok) {
+    const error = await responseError(response);
+    // Only a missing or expired session ends the login; other 401s (e.g. wrong password) are ordinary errors.
+    if (response.status === 401 && error.code === 'unauthorized') { csrfToken = null; setSession({ status: 'anonymous' }); }
+    throw error;
+  }
   if (response.status === 204) return undefined as T;
   if (response.headers.get('Content-Type')?.includes('application/json')) return await response.json() as T;
   return await response.blob() as T;
