@@ -1640,12 +1640,13 @@ components:
     AgentView:
       type: object
       additionalProperties: false
-      required: [id, project_id, project_name, label, capabilities, expires_at, revoked_at]
+      required: [id, project_id, project_name, label, capabilities, created_at, expires_at, revoked_at]
       properties:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
         project_name: {type: string}
         label: {type: [string, 'null']}
         capabilities: {type: array, items: {type: string}}
+        created_at: {type: string, format: date-time}
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}

@@ -195,7 +195,7 @@ class Accounts:
             rows = db.execute(select(Grant, Project.name).join(Project, Project.id == Grant.project_id)
                               .where(Project.user_id == user_id).order_by(Grant.expires_at)).all()
             return [{"id": grant.id, "project_id": grant.project_id, "project_name": name, "label": grant.label,
-                     "capabilities": sorted(grant.capabilities), "expires_at": grant.expires_at,
+                     "capabilities": sorted(grant.capabilities), "created_at": grant.created_at, "expires_at": grant.expires_at,
                      "revoked_at": grant.revoked_at} for grant, name in rows]
 
     def request_deletion(self, user_id: UUID, password: str, confirm_email: str) -> None:

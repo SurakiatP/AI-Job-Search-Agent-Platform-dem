@@ -160,3 +160,4 @@ def test_agents_lists_only_own_grants(accounts, db_session):
     assert [row["id"] for row in rows] == [ga.id]
     assert rows[0]["project_id"] == pa.id and rows[0]["project_name"] == "Alice project"
     assert rows[0]["capabilities"] == ["results:read"]
+    assert abs(datetime.now(timezone.utc) - rows[0]["created_at"]) < timedelta(minutes=1)
