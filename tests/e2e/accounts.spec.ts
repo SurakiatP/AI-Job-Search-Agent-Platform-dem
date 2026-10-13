@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { useSyntheticApplication } from '../fixtures/application';
 
 const user = { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', created_at: '2026-10-01T00:00:00Z' };
 const projectId = '11111111-1111-4111-8111-111111111111';
@@ -123,3 +124,54 @@ test('delete account needs the typed email; wrong password stays on the page, th
   await submit.click();
   await expect(page).toHaveURL(/\/$/);
 });
+
+test('signup sends the current UI locale', async ({ page }) => {
+  await mockApi(page, true);
+  let body: { locale?: string } = {};
+  await page.route('**/api/v1/auth/signup', route => { body = route.request().postDataJSON(); return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email' }) }); });
+  await page.goto('/signup');
+  await page.getByLabel('Email').fill('new@example.test');
+  await page.getByLabel('Password').fill('long-enough-password');
+  await page.getByRole('button', { name: 'Sign up', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  expect(body.locale).toBe('en');
+  await page.goto('/signup');
+  await page.getByRole('button', { name: 'ไทย', exact: true }).click();
+  await page.getByLabel('อีเมล').fill('new@example.test');
+  await page.getByLabel('รหัสผ่าน').fill('long-enough-password');
+  await page.getByRole('button', { name: 'สมัครใช้งาน', exact: true }).click();
+  await expect.poll(() => body.locale).toBe('th');
+});
+
+test('verify-email shows the localized invalid-token message', async ({ page }) => {
+  await mockApi(page, true);
+  await page.route('**/api/v1/auth/verify-email', route => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_token', message_key: 'errors.invalid_token', retryable: false }) }));
+  await page.goto('/verify-email?token=anything');
+  await expect(page.getByRole('alert')).toContainText('This link is invalid or has expired.');
+});
+
+for (const next of ['//evil.example', 'https://evil.example']) {
+  test(`login ignores external next=${next}`, async ({ page }) => {
+    await mockApi(page, true);
+    await page.goto('/login?next=' + encodeURIComponent(next));
+    await page.getByLabel('Email').fill('synthetic@example.test');
+    await page.getByLabel('Password').fill('correct-password');
+    await page.getByRole('button', { name: 'Log in', exact: true }).click();
+    await expect(page).toHaveURL(/\/app$/);
+  });
+}
+
+for (const [name, status, body, message] of [
+  ['email_unverified', 403, { code: 'email_unverified', message_key: 'errors.email_unverified', retryable: false }, 'Confirm your email first.'],
+  ['quota_exceeded', 429, { code: 'quota_exceeded', message_key: 'errors.quota_exceeded', retryable: false, fields: { reset_at: '2030-01-02T00:00:00Z' } }, "You reached today's run limit. It resets at"],
+] as const) {
+  test(`run submit ${name} shows the localized message`, async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+    await useSyntheticApplication(page);
+    await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.request().method() === 'POST'
+      ? route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) }) : route.fallback());
+    await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+    await page.getByRole('button', { name: 'Cover letter', exact: true }).click();
+    await expect(page.getByRole('alert').filter({ hasText: message })).toBeVisible();
+  });
+}
