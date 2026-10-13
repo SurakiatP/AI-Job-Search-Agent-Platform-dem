@@ -45,6 +45,10 @@ export async function useSyntheticApplication(page: Page, options: { emptyProjec
       await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(session) });
       return;
     }
+    if (route.request().method() === 'POST' && path === `/projects/${projectId}/cvs`) {
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: '66666666-6666-4666-8666-666666666666', name: 'synthetic-cv' }) });
+      return;
+    }
     if (route.request().method() === 'POST' && path === `/projects/${projectId}/cv`) {
       await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: '66666666-6666-4666-8666-666666666666', revision: 1 }) });
       return;
@@ -62,14 +66,20 @@ export async function useSyntheticApplication(page: Page, options: { emptyProjec
       '/projects': options.emptyProjects ? [] : [project, secondProject],
       [`/projects/${projectId}`]: project,
       [`/projects/${projectId}/sessions`]: [session],
+      [`/projects/${projectId}/sessions/${sessionId}`]: { ...session, cv_revision_id: 'c1', job_revision_id: jobId, cv_name: 'Data CV', cv_revision: 1, job_title: 'Synthetic data analyst', job_company: 'Example Co' },
+      [`/projects/${projectId}/documents/trash`]: [],
       [`/projects/${projectId}/preferences`]: currentPreferences,
       [`/projects/${secondProjectId}`]: secondProject,
       [`/projects/${secondProjectId}/sessions`]: [],
       [`/projects/${secondProjectId}/preferences`]: { project_id: secondProjectId, locale: 'en', output_language: 'en', notifications_enabled: true, updated_at: '2026-10-02T00:00:00Z' },
       [`/projects/${secondProjectId}/cv`]: [],
+      [`/projects/${secondProjectId}/cvs`]: [],
+      [`/projects/${secondProjectId}/experience`]: { items: [], extraction: null, provider_configured: false },
       [`/projects/${secondProjectId}/jobs`]: [],
       [`/projects/${secondProjectId}/documents`]: [],
       [`/projects/${projectId}/cv`]: [],
+      [`/projects/${projectId}/cvs`]: [],
+      [`/projects/${projectId}/experience`]: { items: [], extraction: null, provider_configured: false },
       [`/projects/${projectId}/jobs`]: options.missingJob ? [] : [options.unsafeJobSource ? { ...job, source_url: 'javascript:alert(1)' } : job],
       [`/projects/${projectId}/documents`]: options.emptyDocuments ? [] : [{ id: documentId, document_type: 'cover_letter', title: 'Synthetic cover letter', output_language: 'th', partial: true, content_markdown: preview, latest_revision: { id: '77777777-7777-4777-8777-777777777777', revision: 2, created_at: '2026-10-01T00:00:00Z' } }],
       [`/projects/${projectId}/documents/${documentId}/revisions`]: [{ id: '77777777-7777-4777-8777-777777777777', revision: 2, document_id: documentId, created_at: '2026-10-01T00:00:00Z', file_id: '88888888-8888-4888-8888-888888888888', content_markdown: preview }],

@@ -57,18 +57,18 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-async function openSettings(page: import('@playwright/test').Page, tab: 'Providers and tools' | 'Project sharing') {
+async function openSettings(page: import('@playwright/test').Page, section: 'Tools' | 'Project sharing') {
   await page.goto('/app/settings');
-  await page.getByRole('button', { name: 'EN' }).click();
-  await page.getByRole('tab', { name: tab }).click();
-  await expect(page.getByLabel('Project', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'EN', exact: true }).click();
+  await page.getByRole('button', { name: section, exact: true }).click();
+  await expect(page.getByLabel('Project settings for')).toBeVisible();
 }
 
 
 test('project sharing shows a token once, lists metadata only, and revokes the grant', async ({ page }) => {
   await openSettings(page, 'Project sharing');
   await page.getByRole('checkbox', { name: /Read generated results/ }).check();
-  await page.getByRole('checkbox', { name: 'Evaluate supplied job postings' }).check();
+  await page.getByRole('checkbox', { name: /Evaluate job postings/ }).check();
   await page.getByRole('button', { name: 'Create project token' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.getByLabel('Project access token')).toHaveValue('jspg_SYNTHETIC_ONE_TIME_TOKEN');
@@ -77,11 +77,11 @@ test('project sharing shows a token once, lists metadata only, and revokes the g
   await page.getByRole('button', { name: 'Done and hide token' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText('jspg_SYNTHETIC_ONE_TIME_TOKEN')).toHaveCount(0);
-  await expect(page.getByText('Evaluate supplied job postings', { exact: true })).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Evaluate job postings' })).toBeVisible();
   await page.getByRole('button', { name: 'Revoke' }).click();
   await expect(page.getByText('Revoked')).toBeVisible();
   await page.reload();
-  await page.getByRole('tab', { name: 'Project sharing' }).click();
+  await expect(page.getByRole('button', { name: 'Project sharing', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText('jspg_SYNTHETIC_ONE_TIME_TOKEN')).toHaveCount(0);
   await expect(page.getByText('Revoked')).toBeVisible();
 });

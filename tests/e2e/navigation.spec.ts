@@ -4,8 +4,12 @@ import { documentId, jobId, projectId, secondProjectId, sessionId, useSyntheticA
 async function contrastRatio(locator: ReturnType<import('@playwright/test').Page['getByRole']>) {
   return locator.evaluate(element => {
     const luminance = (color: string) => {
-      const channels = color.match(/[\d.]+/g)?.slice(0, 3).map(Number);
-      if (!channels || channels.length !== 3) throw new Error(`Unsupported computed color: ${color}`);
+      // Computed colors may be oklch(); rasterize one pixel so the canvas converts any CSS color to sRGB.
+      const context = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('Canvas unavailable');
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      const channels = Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
       const [r, g, b] = channels.map(value => {
         const srgb = value / 255;
         return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
@@ -24,51 +28,51 @@ test('landing start action stays in the header and works at desktop and 320px in
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
   const banner = page.getByRole('banner');
-  const thaiStart = banner.getByRole('link', { name: 'เริ่มต้นใช้งาน', exact: true });
+  const thaiStart = banner.getByRole('link', { name: 'เริ่มใช้งาน', exact: true });
   await expect(thaiStart).toBeVisible();
   await expect(thaiStart).toBeInViewport();
   const desktopBox = await thaiStart.boundingBox();
   expect(desktopBox?.x ?? 0).toBeGreaterThan(800);
   await thaiStart.click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
   await page.goto('/');
   await page.getByRole('button', { name: 'EN', exact: true }).click();
   const englishStart = page.getByRole('banner').getByRole('link', { name: 'Get started', exact: true });
   await expect(englishStart).toBeVisible();
   await englishStart.click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto('/');
   await expect(page.getByRole('banner').getByRole('link', { name: 'Get started', exact: true })).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: '/tmp/ui02-landing-320.png', fullPage: true });
   await page.getByRole('banner').getByRole('link', { name: 'Get started', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
   await page.goto('/');
   await page.getByRole('button', { name: 'ไทย', exact: true }).click();
-  await expect(page.getByRole('banner').getByRole('link', { name: 'เริ่มต้นใช้งาน', exact: true })).toBeInViewport();
-  await page.getByRole('banner').getByRole('link', { name: 'เริ่มต้นใช้งาน', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
+  await expect(page.getByRole('banner').getByRole('link', { name: 'เริ่มใช้งาน', exact: true })).toBeInViewport();
+  await page.getByRole('banner').getByRole('link', { name: 'เริ่มใช้งาน', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
 });
 
 test('every page supports direct links, back/forward, locale changes and responsive navigation', async ({ page }) => {
   await useSyntheticApplication(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'หางานที่ใช่ได้อย่างชัดเจน' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'สมัครงานให้ตรงจุด', level: 1 })).toBeVisible();
   await page.screenshot({ path: '/tmp/ui02-landing-desktop.png', fullPage: true });
-  await expect(page.getByRole('banner').getByRole('link', { name: 'เริ่มต้นใช้งาน', exact: true })).toBeVisible();
-  await page.getByRole('banner').getByRole('link', { name: 'เริ่มต้นใช้งาน', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
+  await expect(page.getByRole('banner').getByRole('link', { name: 'เริ่มใช้งาน', exact: true })).toBeVisible();
+  await page.getByRole('banner').getByRole('link', { name: 'เริ่มใช้งาน', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
   await page.goBack();
   await page.getByRole('button', { name: 'EN', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Find your next role with clarity' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Apply with precision', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'How it works' })).toBeVisible();
   await expect(page.getByRole('banner').getByRole('link', { name: 'Get started', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Get started' }).click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
-  await page.getByRole('link', { name: 'Projects', exact: true }).click();
+  await page.getByRole('banner').getByRole('link', { name: 'Get started' }).click();
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
+  await page.goto('/app/projects');
   await expect(page).toHaveURL('/app/projects');
-  await page.getByRole('link', { name: 'New project' }).click();
+  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'New project' }).click();
   const name = page.getByRole('textbox', { name: 'Project name' });
   await name.fill('Synthetic project draft');
   await page.getByRole('button', { name: 'ไทย', exact: true }).click();
@@ -80,43 +84,42 @@ test('every page supports direct links, back/forward, locale changes and respons
   await page.getByRole('textbox', { name: 'What are you looking for?' }).fill('Data analyst roles');
   await page.getByRole('button', { name: 'Create a project' }).click();
   await expect(page.getByRole('heading', { name: 'Profile and CV' })).toBeVisible();
-  await expect(page.getByText('Goal: Data analyst roles')).toBeVisible();
-  await page.getByRole('link', { name: /Sessions: First synthetic session/ }).click();
-  await expect(page.getByRole('textbox', { name: 'Instructions for this task (used for evaluation or drafting)' })).toHaveValue('Data analyst roles');
+  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'First synthetic session' }).click();
+  await expect(page).toHaveURL(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await expect(page.getByRole('heading', { name: 'First synthetic session', level: 1 })).toBeVisible();
   let uploaded = false;
   let savedLanguage = '';
   page.on('request', request => {
-    if (request.url().endsWith(`/api/v1/projects/${projectId}/cv`) && request.method() === 'POST') uploaded = true;
+    if (request.url().endsWith(`/api/v1/projects/${projectId}/cvs`) && request.method() === 'POST') uploaded = true;
     if (request.url().endsWith(`/api/v1/projects/${projectId}/preferences`) && request.method() === 'PATCH') savedLanguage = JSON.parse(request.postData() ?? '{}').output_language;
   });
   await page.goto(`/app/projects/${projectId}/profile`);
   await expect(page.getByRole('heading', { name: 'Profile and CV' })).toBeVisible();
-  const projectNavigation = page.getByRole('navigation', { name: 'Navigation' });
-  await expect(projectNavigation.getByRole('link', { name: 'Profile and CV', exact: true })).toBeVisible();
+  const projectNavigation = page.getByRole('navigation', { name: 'Navigation' }).first();
+  await expect(projectNavigation.getByRole('link', { name: 'CV & preferences', exact: true })).toBeVisible();
   await expect(projectNavigation.getByRole('link', { name: 'Saved jobs', exact: true })).toBeVisible();
   await expect(projectNavigation.getByRole('link', { name: 'Documents', exact: true })).toBeVisible();
   await page.screenshot({ path: '/tmp/ui02-profile-desktop.png', fullPage: true });
-  await expect(page.getByRole('heading', { name: 'No CV added yet' })).toBeVisible();
-  await page.getByRole('textbox', { name: 'CV text' }).fill('Synthetic CV text only');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'No CV yet' })).toBeVisible();
+  await page.getByLabel('Add CV', { exact: true }).setInputFiles({ name: 'synthetic-cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic CV text only') });
   await expect.poll(() => uploaded).toBe(true);
   await page.getByLabel('Document language').selectOption('en');
   await page.getByRole('button', { name: 'Save preferences' }).click();
   await expect.poll(() => savedLanguage).toBe('en');
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
-  await expect(page.getByRole('textbox', { name: 'Instructions for this task (used for evaluation or drafting)' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Provider not configured' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'First synthetic session', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Evaluation' })).toBeVisible();
   await page.screenshot({ path: '/tmp/ui02-chat-desktop.png', fullPage: true });
   await page.goto(`/app/projects/${projectId}/jobs`);
   await page.getByRole('link', { name: 'Synthetic data analyst' }).click();
   await expect(page).toHaveURL(`/app/projects/${projectId}/jobs/${jobId}`);
-  await page.getByRole('link', { name: 'View documents' }).click();
+  await page.getByRole('link', { name: 'View all documents' }).click();
   await expect(page).toHaveURL(`/app/projects/${projectId}/documents`);
   await page.getByRole('link', { name: 'Synthetic cover letter' }).click();
   await expect(page).toHaveURL(`/app/projects/${projectId}/documents/${documentId}`);
   await expect(page.getByTestId('document-language')).toContainText('ไทย');
   await expect(page.getByText('Partial document', { exact: true })).toBeVisible();
-  await expect(page.getByTestId('document-content')).toHaveText('**Synthetic Thai experience** <img src=x onerror=alert(1)> Draft is incomplete.');
+  await expect(page.getByTestId('document-content')).toHaveText('Synthetic Thai experience <img src=x onerror=alert(1)> Draft is incomplete.');
   await expect(page.getByTestId('document-content').locator('img')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Download document' })).toBeVisible();
   await page.screenshot({ path: '/tmp/ui02-document-detail-desktop.png', fullPage: true });
@@ -125,11 +128,12 @@ test('every page supports direct links, back/forward, locale changes and respons
   await page.goForward();
   await expect(page).toHaveURL(`/app/projects/${projectId}/documents/${documentId}`);
   await page.goto('/app/settings');
-  await expect(page.getByRole('tab', { name: 'Providers and tools' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Providers and tools' }).click();
-  await expect(page.getByRole('heading', { name: 'Providers and tools' })).toBeVisible();
+  const sections = page.getByRole('navigation', { name: 'Settings sections' });
+  await expect(sections.getByRole('button', { name: 'Tools' })).toBeVisible();
+  await sections.getByRole('button', { name: 'Tools' }).click();
+  await expect(sections.getByRole('button', { name: 'Tools' })).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: 'ไทย', exact: true }).click();
-  await expect(page.getByRole('tab', { name: 'ผู้ให้บริการและเครื่องมือ' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('navigation', { name: 'หมวดการตั้งค่า' }).getByRole('button', { name: 'เครื่องมือ' })).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: 'EN', exact: true }).click();
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto('/');
@@ -137,12 +141,12 @@ test('every page supports direct links, back/forward, locale changes and respons
   await page.screenshot({ path: '/tmp/ui02-landing-mobile.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('banner').getByRole('link', { name: 'Get started', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
   await page.goto('/');
   await page.getByRole('button', { name: 'ไทย', exact: true }).click();
-  await expect(page.getByRole('banner').getByRole('link', { name: 'เริ่มต้นใช้งาน', exact: true })).toBeInViewport();
-  await page.getByRole('banner').getByRole('link', { name: 'เริ่มต้นใช้งาน', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
+  await expect(page.getByRole('banner').getByRole('link', { name: 'เริ่มใช้งาน', exact: true })).toBeInViewport();
+  await page.getByRole('banner').getByRole('link', { name: 'เริ่มใช้งาน', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
   await page.goto('/app/settings');
   await expect(page.getByRole('button', { name: 'EN', exact: true })).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -179,7 +183,7 @@ test('new-project redirect can retry after the session list fails', async ({ pag
   await page.goto('/app');
   await expect(page.getByRole('alert')).toContainText('We could not load this information.');
   await page.getByRole('button', { name: 'Try again' }).click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
 });
 
 test('empty documents links to a route that exists', async ({ page }) => {
@@ -187,9 +191,9 @@ test('empty documents links to a route that exists', async ({ page }) => {
   await useSyntheticApplication(page, { emptyDocuments: true });
   await page.goto(`/app/projects/${projectId}/documents`);
   await expect(page.getByRole('heading', { name: 'No documents yet' })).toBeVisible();
-  await page.locator('#main-content').getByRole('link', { name: 'Profile and CV' }).click();
-  await expect(page).toHaveURL(`/app/projects/${projectId}/profile`);
-  await expect(page.getByRole('heading', { name: 'Profile and CV' })).toBeVisible();
+  await page.locator('#main-content').getByRole('link', { name: 'Go to Evaluate' }).click();
+  await expect(page).toHaveURL(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await expect(page.getByRole('heading', { name: 'First synthetic session' })).toBeVisible();
 });
 
 test('project server failures show a retry action instead of a missing-resource page', async ({ page }) => {
@@ -230,40 +234,27 @@ test('document revision server failures remain retryable', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Synthetic cover letter' })).toBeVisible();
 });
 
-test('unsaved CV and preference fields survive route changes and remain project scoped', async ({ page }) => {
+test('unsaved preference fields survive route changes and remain project scoped', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   await page.goto(`/app/projects/${projectId}/profile`);
-  await page.getByRole('textbox', { name: 'CV text' }).fill('Unsubmitted synthetic CV draft');
-  await page.getByLabel('Upload a CV file').setInputFiles({ name: 'selected-cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic selected file') });
+  const navigation = page.getByRole('navigation', { name: 'Navigation' }).first();
   await page.getByLabel('Document language').selectOption('th');
   await page.getByLabel('Notifications').uncheck();
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Saved jobs' }).click();
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Profile and CV' }).click();
-  await expect(page.getByRole('textbox', { name: 'CV text' })).toHaveValue('Unsubmitted synthetic CV draft');
-  await expect(page.getByRole('status')).toContainText('selected-cv.txt');
+  await navigation.getByRole('link', { name: 'Saved jobs' }).click();
+  await navigation.getByRole('link', { name: 'CV & preferences' }).click();
   await expect(page.getByLabel('Document language')).toHaveValue('th');
   await expect(page.getByLabel('Notifications')).not.toBeChecked();
-  let uploadedFilename = '';
-  page.on('request', request => {
-    if (request.url().endsWith(`/api/v1/projects/${projectId}/cv`) && request.method() === 'POST') {
-      uploadedFilename = request.postData() ?? '';
-    }
-  });
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect.poll(() => uploadedFilename).toContain('filename="selected-cv.txt"');
-  await expect(page.getByRole('status')).toHaveCount(0);
   await page.getByRole('button', { name: 'Save preferences' }).click();
   await expect(page.getByLabel('Document language')).toHaveValue('th');
   await expect(page.getByLabel('Notifications')).not.toBeChecked();
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Saved jobs', exact: true }).click();
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Profile and CV', exact: true }).click();
+  await navigation.getByRole('link', { name: 'Saved jobs', exact: true }).click();
+  await navigation.getByRole('link', { name: 'CV & preferences', exact: true }).click();
   await expect(page.getByLabel('Document language')).toHaveValue('th');
   await expect(page.getByLabel('Notifications')).not.toBeChecked();
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Projects', exact: true }).click();
-  await page.locator('.surface-card').filter({ hasText: 'Second synthetic project' }).getByRole('link', { name: 'Profile and CV' }).click();
-  await expect(page.getByRole('textbox', { name: 'CV text' })).toHaveValue('');
-  await expect(page.getByLabel('Upload a CV file')).toHaveValue('');
+  await navigation.getByRole('link', { name: 'Second synthetic project' }).click();
+  await navigation.getByRole('link', { name: 'CV & preferences' }).click();
+  await expect(page).toHaveURL(`/app/projects/${secondProjectId}/profile`);
   await expect(page.getByLabel('Document language')).toHaveValue('en');
   await expect(page.getByLabel('Notifications')).toBeChecked();
 });
@@ -276,10 +267,9 @@ test('enabled primary actions meet normal-text contrast requirements', async ({ 
     await page.getByRole('button', { name: theme, exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.toLowerCase());
     await page.goto(`/app/projects/${projectId}/profile`);
-    await page.getByRole('textbox', { name: 'CV text' }).fill('Synthetic text enables CV save');
-    const save = page.getByRole('button', { name: 'Save', exact: true });
-    await expect(save).toBeEnabled();
-    expect(await contrastRatio(save)).toBeGreaterThanOrEqual(4.5);
+    const addCv = page.locator('button', { hasText: 'Add CV' });
+    await expect(addCv).toBeEnabled();
+    expect(await contrastRatio(addCv)).toBeGreaterThanOrEqual(4.5);
     const savePreferences = page.getByRole('button', { name: 'Save preferences', exact: true });
     await expect(savePreferences).toBeEnabled();
     expect(await contrastRatio(savePreferences)).toBeGreaterThanOrEqual(4.5);
@@ -291,12 +281,11 @@ test('legacy DOC files are rejected before upload with a localized error', async
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   await page.goto(`/app/projects/${projectId}/profile`);
-  await page.getByLabel('Upload a CV file').setInputFiles({ name: 'legacy-cv.doc', mimeType: 'application/msword', buffer: Buffer.from('Synthetic legacy CV') });
   let uploadRequests = 0;
   page.on('request', request => {
-    if (request.url().endsWith(`/api/v1/projects/${projectId}/cv`) && request.method() === 'POST') uploadRequests++;
+    if (request.url().endsWith(`/api/v1/projects/${projectId}/cvs`) && request.method() === 'POST') uploadRequests++;
   });
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByLabel('Add CV', { exact: true }).setInputFiles({ name: 'legacy-cv.doc', mimeType: 'application/msword', buffer: Buffer.from('Synthetic legacy CV') });
   await expect(page.getByRole('alert')).toHaveText('Choose a text PDF, DOCX or text file.');
   expect(uploadRequests).toBe(0);
 });

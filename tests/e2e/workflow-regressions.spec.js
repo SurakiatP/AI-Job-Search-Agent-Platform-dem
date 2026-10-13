@@ -1,6 +1,6 @@
 const { test } = require('@playwright/test');
 const assert = require('node:assert/strict');
-const baseRun = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', session_id: 'ssss', project_id: 'pppp', job_revision_id: 'jjjj', operation: 'evaluate_job', status: 'running', output_language: 'en', result_file_ids: [], evaluation_result: null, retry_of_id: null };
+const baseRun = { created_at: '2026-10-04T00:00:00Z', id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', session_id: 'ssss', project_id: 'pppp', job_revision_id: 'jjjj', operation: 'evaluate_job', status: 'running', output_language: 'en', result_file_ids: [], evaluation_result: null, retry_of_id: null };
 const owner = { authenticated: true, csrf_token: 'synthetic-only', expires_at: '2030-01-01T00:00:00Z' };
 const approval = id => ({ id, run_id: baseRun.id, action: 'promote_cv', revision_id: `revision-${id}`, expected_cv_revision_id: `base-${id}`, change_digest: `digest-${id}`, expires_at: '2030-01-01T00:00:00Z', consumed_at: null, decision: null });
 async function setup(page, handler) {
@@ -10,7 +10,14 @@ async function setup(page, handler) {
     const r = await import('/node_modules/.vite/deps/react.js'); const React = r.default ?? r;
     const d = await import('/node_modules/.vite/deps/react-dom_client.js'); const dom = d.default ?? d;
     const node = document.createElement('div'); node.id = 'probe'; document.body.append(node);
-    window.probe = { React, root: dom.createRoot(node) };
+    // The shell page already loaded the app's version-stamped react-router module; import that exact URL (from the
+    // browser's resource list, not from source text) so Link and MemoryRouter share one router context.
+    const entry = performance.getEntriesByType('resource').find(item => /\/\.vite\/deps\/react-router\.js/.test(item.name));
+    if (!entry) throw new Error('react-router was not loaded by the shell page; cannot share its router context');
+    const { MemoryRouter } = await import(entry.name);
+    const root = dom.createRoot(node);
+    // Link-bearing components (RunResults) need a router context.
+    window.probe = { React, root: { render: el => root.render(React.createElement(MemoryRouter, null, el)) } };
   });
 }
 async function mountHook(page) {
@@ -41,7 +48,9 @@ async function components(browser) {
   }, baseRun);
   await page.waitForTimeout(60);
   assert.match(await page.locator('#probe').innerText(), /Preserved synthetic partial document/);
-  assert.equal(await page.locator('#probe a').count(), 1);
+  // One result-file download plus the "Open document" link to the preserved document.
+  assert.equal(await page.locator('#probe a').count(), 2);
+  assert.equal(await page.locator('#probe a[href$="/download"]').count(), 1);
   assert.equal(await page.evaluate(() => window.syntheticAttack), undefined, 'markdown remains escaped');
   await page.evaluate(a => { const p = window.probe; p.root.render(p.React.createElement(p.ApprovalCard, { approval: a, locale: 'en', busy: false, onDecision: () => {}, onRefresh: () => {} })); }, approval('A'));
   await page.locator('#probe input[type=checkbox]').check();

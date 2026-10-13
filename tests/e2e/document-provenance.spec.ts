@@ -40,10 +40,10 @@ test('shows each generated document revision source instead of the current CV af
 
   await page.goto(`/app/projects/${projectId}/documents/${documentId}`);
   await expect(page.getByRole('heading', { name: 'Synthetic partial cover letter' })).toBeVisible();
-  await expect(page.getByRole('status')).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: /\S/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'EN' }).click();
-  await expect(page.getByRole('status')).toContainText('Partial document');
+  await page.getByRole('button', { name: 'EN', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: /\S/ })).toContainText('Partial document');
   await expect(page.getByTestId('source-cv-revision-1')).toContainText('1');
   await expect(page.getByTestId('source-cv-revision-2')).toContainText('2');
   await expect(page.getByTestId('source-cv-revision-1')).not.toContainText('3');
@@ -85,11 +85,12 @@ test('keeps document access when CV provenance lookup fails or its source is abs
   }));
 
   await page.goto(`/app/projects/${projectId}/documents/${documentId}`);
-  await page.getByRole('button', { name: 'EN' }).click();
+  await page.getByRole('button', { name: 'EN', exact: true }).click();
   const unavailableSources = page.getByTestId('source-cv-unavailable');
   await expect(unavailableSources).toHaveCount(2);
-  await expect(unavailableSources.first()).toContainText(sourceCvOne);
-  await expect(unavailableSources.nth(1)).toContainText('Source CV unavailable');
+  // Revisions render newest first, so the missing-source revision 2 precedes revision 1's unresolved id.
+  await expect(unavailableSources.filter({ hasText: sourceCvOne })).toHaveCount(1);
+  await expect(unavailableSources.filter({ hasText: 'Source CV unavailable' })).toHaveCount(2);
   await expect(page.getByRole('heading', { name: 'Synthetic document with unavailable provenance' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Download document' })).toHaveCount(2);
   await expect(page.getByTestId('document-content')).toContainText('Still available synthetic document.');
