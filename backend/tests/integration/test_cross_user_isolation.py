@@ -18,7 +18,8 @@ from sqlalchemy import select
 from job_search_platform.db.models import Approval, CVRevision, ConversationSession, Project
 from job_search_platform.integrations.mailer import MemoryMailer
 from job_search_platform.services.accounts import Accounts
-from helpers import login_cookie, session as make_session, user as make_user
+from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD
+from helpers import login_cookie, user as make_user
 from test_mcp import _session as mcp_session
 from test_rest_api import (
     _removal_project, _seed_completed_run, _seed_document, _write_headers,
@@ -26,8 +27,11 @@ from test_rest_api import (
 )
 from test_surface_parity import _issue_grant, _start_shared, _stop_shared
 
+pytestmark = pytest.mark.integration  # needs MinIO and Postgres
+
 BASE = "/api/v1"
 ALICE_SESSION_TITLE = "Alice private session"
+ALICE_PROJECT_NAME = "Alice private project"
 
 
 @pytest.fixture
@@ -50,6 +54,15 @@ def _login(context, user_id) -> str:
     return csrf
 
 
+def _alice_state(api_context, project_id: str) -> tuple[str, dict[str, str]]:
+    """Alice's project name and every session title, read straight from the database."""
+    with api_context.sessions() as db:
+        name = db.get(Project, UUID(project_id)).name
+        titles = {str(i): t for i, t in db.execute(select(ConversationSession.id, ConversationSession.title)
+                                                   .where(ConversationSession.project_id == UUID(project_id)))}
+    return name, titles
+
+
 @pytest.fixture
 def world(api_context):
     """Alice owns a full project; Bob is a second verified user with his own project."""
@@ -59,7 +72,8 @@ def world(api_context):
     project_id, session_id = _removal_project(api_context, csrf_alice)
     with api_context.sessions.begin() as db:
         db.get(ConversationSession, UUID(session_id)).title = ALICE_SESSION_TITLE
-    run_id = _seed_completed_run(api_context, project_id, session_id, status="waiting_approval", key="iso-run")
+        db.get(Project, UUID(project_id)).name = ALICE_PROJECT_NAME
+    run_id = _seed_completed_run(api_context, project_id, session_id, key="iso-run")  # terminal, so the SSE events route ends
     doc = _seed_document(api_context, project_id, "alice.pdf", run_id=run_id)
     job_id = api_context.client.get(f"{BASE}/projects/{project_id}/jobs").json()[0]["id"]
     with api_context.sessions.begin() as db:
@@ -71,24 +85,35 @@ def world(api_context):
         db.flush()
         approval_id = approval.id
         cv_revision = db.scalar(select(CVRevision).where(CVRevision.project_id == UUID(project_id)))
+        cv_revision.skill_profile = {"method": SKILL_METHOD, "skills": ["python"]}  # lets job-search/match run
         cv_id, cv_revision_id = cv_revision.cv_id, cv_revision.id
     alice_grant = _issue_grant(api_context, csrf_alice, UUID(project_id), ["results:read"])
+    # Real rows for the remaining path parameters, so no URL falls back to a random id.
+    item = api_context.client.post(f"{BASE}/projects/{project_id}/experience", headers=_write_headers(csrf_alice),
+                                   json={"kind": "skill", "text": "Alice skill"})
+    hidden = api_context.client.post(f"{BASE}/projects/{project_id}/job-search/hidden", headers=_write_headers(csrf_alice),
+                                     json={"kind": "job", "value": "alice-job", "label": "Alice job"})
+    assert item.status_code == 201 and hidden.status_code == 201, (item.text, hidden.text)
+    state = _alice_state(api_context, project_id)
+    assert state == (ALICE_PROJECT_NAME, {session_id: ALICE_SESSION_TITLE})
     csrf_bob = _login(api_context, bob.user_id)
-    bob_project = api_context.client.post(f"{BASE}/projects", json={"name": "Bob project"},
-                                          headers=_write_headers(csrf_bob)).json()["id"]
+    bob_project, bob_session = _removal_project(api_context, csrf_bob)
+    bob_run = _seed_completed_run(api_context, bob_project, bob_session, key="bob-run")
     return SimpleNamespace(
         csrf=csrf_bob, alice=alice, bob=bob, project=project_id, bob_project=UUID(bob_project),
+        bob_session=bob_session, bob_run=str(bob_run), alice_csrf=csrf_alice, alice_state=state,
         ids={"project_id": project_id, "session_id": session_id, "cv_id": str(cv_id), "cv_revision_id": str(cv_revision_id), "job_id": job_id,
              "job_revision_id": job_id, "document_id": str(doc.document), "revision_id": str(doc.revision),
              "file_id": str(doc.file), "run_id": str(run_id), "grant_id": alice_grant["id"],
-             "approval_id": str(approval_id)},
+             "approval_id": str(approval_id), "item_id": item.json()["id"], "hidden_id": hidden.json()["id"],
+             "adapter": "career_ops"},
     )
 
 
 def test_bob_cannot_list_alice_projects(api_context, world):
     listed = api_context.client.get(f"{BASE}/projects").json()
     assert world.project not in {p["id"] for p in listed}
-    assert [p["name"] for p in listed] == ["Bob project"]
+    assert [p["id"] for p in listed] == [str(world.bob_project)]
 
 
 def _project_routes(client) -> list[tuple[str, str]]:
@@ -97,53 +122,76 @@ def _project_routes(client) -> list[tuple[str, str]]:
                   for method in item if method in {"get", "post", "put", "patch", "delete"})
 
 
-def test_bob_gets_404_on_every_alice_route(api_context, world):
-    client = api_context.client
+def _urls_and_calls(client, world, headers):
+    """Yield (method, template, send) for every project route; ``send`` issues the request with
+    placeholder bodies, then retries a 422 with a body built from the OpenAPI schema."""
+    spec = client.get("/openapi.json").json()
     routes = _project_routes(client)
     assert len(routes) >= 40, len(routes)
-    headers = _write_headers(world.csrf)
-    skipped, failures = [], []
 
-    spec = client.get("/openapi.json").json()
+    def _get(url, params=None):
+        return client.get(url, params=params)
 
-    def query(method, template):
-        """Required query parameters (e.g. cv_revision_id) a GET needs to get past validation."""
-        found = spec["paths"][template][method.lower()].get("parameters", [])
-        return {p["name"]: world.ids.get(p["name"], str(uuid4())) for p in found if p["in"] == "query" and p.get("required")}
+    def send_for(method, template):
+        url = BASE + re.sub(r"\{(\w+)\}", lambda m: world.ids[m.group(1)], template)
+        operation = spec["paths"][template][method.lower()]
+        content = operation.get("requestBody", {}).get("content", {})
 
-    def call(method, template, url):
-        if method == "GET":
-            return client.get(url)
-        content = spec["paths"][template][method.lower()].get("requestBody", {}).get("content", {})
-        if "application/json" in content:
-            # First pass sends {} as the brief says; a 422 is retried below with a valid body.
-            return client.request(method, url, json={}, headers=headers)
-        if "multipart/form-data" in content:
-            return client.request(method, url, files={"file": ("cv.txt", b"synthetic cv", "text/plain")}, headers=headers)
-        return client.request(method, url, json={}, headers=headers)
+        def send():
+            if method == "GET":
+                response = _get(url)
+                if response.status_code == 422:  # required query params, e.g. cv_revision_id
+                    params = {p["name"]: world.ids[p["name"]] for p in operation.get("parameters", [])
+                              if p["in"] == "query" and p.get("required")}
+                    response = _get(url, params)
+                return response
+            if "multipart/form-data" in content:
+                return client.request(method, url, files={"file": ("cv.txt", b"synthetic cv", "text/plain")}, headers=headers)
+            response = client.request(method, url, json={}, headers=headers)
+            if response.status_code == 422 and "application/json" in content:
+                body = _example(spec, content["application/json"]["schema"])
+                body = {**body, **_OVERRIDES.get((method, template), lambda ids: {})(world.ids)}
+                response = client.request(method, url, json=body, headers=headers)
+            return response
+        return send
 
-    for method, template in routes:
-        url = BASE + re.sub(r"\{(\w+)\}", lambda m: world.ids.get(m.group(1), "career_ops" if m.group(1) == "adapter" else str(uuid4())), template)
-        response = call(method, template, url)
-        if response.status_code == 422 and method == "GET":
-            response = client.get(url, params=query(method, template))
-        elif response.status_code == 422:
-            # Validation ran before authorization: retry with a well-formed body from the schema.
-            content = spec["paths"][template][method.lower()].get("requestBody", {}).get("content", {})
-            if "application/json" not in content:
-                skipped.append((method, template))
-                continue
-            body = _example(spec, content["application/json"]["schema"])
-            body = {**body, **_OVERRIDES.get((method, template), lambda ids: {})(world.ids)}
-            response = client.request(method, url, json=body, headers=headers)
+    return [(method, template, send_for(method, template)) for method, template in routes]
+
+
+def test_bob_gets_404_on_every_alice_route(api_context, world):
+    calls = _urls_and_calls(api_context.client, world, _write_headers(world.csrf))
+    failures = []
+    for method, template, send in calls:
+        response = send()
         if response.status_code != 404:
             failures.append((method, template, response.status_code, response.text[:300]))
     assert not failures, "\n".join(map(str, failures))
-    assert not skipped, skipped
-    with api_context.sessions() as db:
-        assert db.get(Project, UUID(world.project)).name is not None
-        assert db.scalar(select(ConversationSession.title).where(
-            ConversationSession.id == UUID(world.ids["session_id"]))) == ALICE_SESSION_TITLE
+    # Nothing of Alice's changed: same project name and the same session titles as before.
+    assert _alice_state(api_context, world.project) == world.alice_state
+
+
+def test_control_alice_urls_are_valid(api_context, world):
+    """Positive control: the exact Alice URLs Bob is denied work for Alice, so a 404 means authorization."""
+    _login(api_context, world.alice.user_id)
+    calls = _urls_and_calls(api_context.client, world, _write_headers(world.alice_csrf))
+    bad = []
+    for method, template, send in calls:
+        if method == "GET":
+            response = send()
+            if not 200 <= response.status_code < 300:
+                bad.append((template, response.status_code, response.text[:200]))
+    assert not bad, "\n".join(map(str, bad))
+
+
+def test_control_bob_credentials_work_on_his_own_project(api_context, world):
+    client, headers, pid = api_context.client, _write_headers(world.csrf), world.bob_project
+    assert client.get(f"{BASE}/projects/{pid}").status_code == 200
+    assert client.get(f"{BASE}/projects/{pid}/sessions").status_code == 200
+    renamed = client.patch(f"{BASE}/projects/{pid}", json={"name": "Bob renamed"}, headers=headers)
+    assert renamed.status_code == 200 and renamed.json()["name"] == "Bob renamed"
+    created = client.post(f"{BASE}/projects/{pid}/jobs", headers=headers,
+                          json={"title": "Bob job", "company": "C", "description": "D"})
+    assert created.status_code == 201, created.text
 
 
 def _example(spec: dict, schema: dict):
@@ -201,9 +249,12 @@ def test_agents_endpoint_is_per_user(api_context, world):
 
 @pytest.mark.asyncio
 async def test_bob_grant_cannot_reach_alice(api_context, world, unused_tcp_port):
-    bob_grant = await asyncio.to_thread(_bob_grant, api_context, world)
+    bob_grant = await asyncio.to_thread(
+        _issue_grant, api_context, world.csrf, world.bob_project, ["results:read"])
     auth = {"Authorization": f"Bearer {bob_grant['token']}"}
     api_context.client.cookies.clear()
+    own = api_context.client.get(f"{BASE}/projects/{world.bob_project}/runs/{world.bob_run}", headers=auth)
+    assert own.status_code == 200, own.text
     rest = api_context.client.get(f"{BASE}/projects/{world.project}/runs/{world.ids['run_id']}", headers=auth)
     assert rest.status_code == 404, rest.text
 
@@ -211,12 +262,21 @@ async def test_bob_grant_cannot_reach_alice(api_context, world, unused_tcp_port)
     try:
         async with mcp_session(f"{base_url}/mcp/", bob_grant["token"]) as mcp:
             await mcp.initialize()
-            with pytest.raises(MCPError):
+            visible = await mcp.call_tool("get_run", {"run_id": world.bob_run})
+            assert not visible.is_error
+            with pytest.raises(MCPError, match="not_found"):
+                await mcp.call_tool("get_run", {"run_id": str(uuid4())})
+            with pytest.raises(MCPError, match="not_found"):
                 await mcp.call_tool("get_run", {"run_id": world.ids["run_id"]})
         a2a = await create_client(base_url, ClientConfig(
             streaming=False, supported_protocol_bindings=["JSONRPC"],
             httpx_client=httpx.AsyncClient(headers={**auth, "A2A-Version": "1.0"})))
-        with pytest.raises(A2AClientError):
+        assert str((await a2a.get_task(GetTaskRequest(id=world.bob_run))).id) == world.bob_run
+        # The foreign run must be indistinguishable from a run that does not exist.
+        with pytest.raises(A2AClientError) as missing:
+            await a2a.get_task(GetTaskRequest(id=str(uuid4())))
+        with pytest.raises(A2AClientError) as denied:
             await a2a.get_task(GetTaskRequest(id=world.ids["run_id"]))
+        assert str(denied.value) == str(missing.value) and str(denied.value), (denied.value, missing.value)
     finally:
         await _stop_shared(server, task)
