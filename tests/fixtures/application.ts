@@ -45,6 +45,10 @@ export async function useSyntheticApplication(page: Page, options: { emptyProjec
       await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(session) });
       return;
     }
+    if (route.request().method() === 'POST' && path === `/projects/${projectId}/cvs`) {
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: '66666666-6666-4666-8666-666666666666', name: 'synthetic-cv' }) });
+      return;
+    }
     if (route.request().method() === 'POST' && path === `/projects/${projectId}/cv`) {
       await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: '66666666-6666-4666-8666-666666666666', revision: 1 }) });
       return;
@@ -69,6 +73,8 @@ export async function useSyntheticApplication(page: Page, options: { emptyProjec
       [`/projects/${secondProjectId}/sessions`]: [],
       [`/projects/${secondProjectId}/preferences`]: { project_id: secondProjectId, locale: 'en', output_language: 'en', notifications_enabled: true, updated_at: '2026-10-02T00:00:00Z' },
       [`/projects/${secondProjectId}/cv`]: [],
+      [`/projects/${secondProjectId}/cvs`]: [],
+      [`/projects/${secondProjectId}/experience`]: { items: [], extraction: null, provider_configured: false },
       [`/projects/${secondProjectId}/jobs`]: [],
       [`/projects/${secondProjectId}/documents`]: [],
       [`/projects/${projectId}/cv`]: [],
