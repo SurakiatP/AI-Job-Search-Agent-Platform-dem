@@ -174,7 +174,7 @@ def test_owner_approve_sets_decided_by_owner(api_context):
 def test_migration_0020_backfills_owner_on_existing_decisions(postgres_engine):
     _migrate(postgres_engine, command.upgrade, "0019_grant_label")
     factory = sessionmaker(bind=postgres_engine, expire_on_commit=False)
-    from helpers import project, revisions, session as make_session, provider_config
+    from helpers import legacy_project as project, revisions, session as make_session, provider_config
     from job_search_platform.db.models import Run
     with factory() as db:
         p = project(db)

@@ -23,33 +23,6 @@ tags:
   - name: settings
   - name: system
 paths:
-  /owner/session:
-    post:
-      tags: [bootstrap]
-      description: Restore a valid loopback owner session after page reload. Requires exact configured Origin and Host plus HttpOnly owner cookie; returns the same derived CSRF token without nonce reuse or token rotation.
-      security: [{ownerSession: []}]
-      responses:
-        '200': {description: Current owner session, content: {application/json: {schema: {$ref: '#/components/schemas/OwnerBootstrapView'}}}}
-        '401': {description: Missing, expired or revoked owner session}
-  /owner/bootstrap:
-    post:
-      tags: [bootstrap]
-      security: []
-      summary: Exchange the one-time local launch nonce for an owner session
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/OwnerBootstrapRequest'}
-      responses:
-        '200':
-          description: Session established; cookie is HttpOnly and SameSite
-          headers:
-            Set-Cookie: {schema: {type: string}}
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/OwnerBootstrapView'}
-        '401': {$ref: '#/components/responses/Unauthorized'}
   /projects:
     get:
       tags: [projects]
@@ -1368,19 +1341,6 @@ components:
       additionalProperties: false
       required: [decision]
       properties: {decision: {type: string, enum: [approve, reject]}}
-    OwnerBootstrapRequest:
-      type: object
-      additionalProperties: false
-      required: [nonce]
-      properties: {nonce: {type: string, minLength: 32, maxLength: 256}}
-    OwnerBootstrapView:
-      type: object
-      additionalProperties: false
-      required: [authenticated, csrf_token, expires_at]
-      properties:
-        authenticated: {const: true}
-        csrf_token: {type: string}
-        expires_at: {type: string, format: date-time}
     GrantIssueRequest:
       type: object
       additionalProperties: false

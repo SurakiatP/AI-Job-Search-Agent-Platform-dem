@@ -101,7 +101,7 @@ class _SyntheticSandboxParser:
 def publication_context(db_session, private_bucket, tmp_path):
     store, client, bucket = private_bucket
     actor = owner(db_session)
-    project_row = project(db_session)
+    project_row = project(db_session, owner=actor)
     workspace = tmp_path / "parse-workspace"
     (workspace / "inputs").mkdir(parents=True)
     parser = _SyntheticSandboxParser(workspace)

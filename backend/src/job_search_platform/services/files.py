@@ -541,7 +541,7 @@ def _authorize_file(db: Session, actor: Actor, project_id: UUID, row: StoredFile
     if row.kind == "generated_document":
         authorize(db, actor, project_id, "results:read", "generated_document")
         # Owners may still preview a trashed draft; grants never reach it.
-        if actor.kind != "owner" and db.scalar(
+        if actor.kind != "user" and db.scalar(
             select(Document.id).join(
                 DocumentRevision,
                 (DocumentRevision.project_id == Document.project_id) & (DocumentRevision.document_id == Document.id),

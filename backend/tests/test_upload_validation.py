@@ -28,7 +28,7 @@ class _NoParser:
 @pytest.fixture
 def upload_context(db_session):
     actor = owner(db_session)
-    project_row = project(db_session)
+    project_row = project(db_session, owner=actor)
     db_session.commit()
     sessions = sessionmaker(bind=db_session.get_bind(), expire_on_commit=False)
     files = Files(sessions, _NoObjectStore(), _NoParser())

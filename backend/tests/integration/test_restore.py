@@ -17,6 +17,7 @@ import boto3
 import psycopg
 import pytest
 from helpers import primary_cv
+from helpers import user as helpers_user
 from botocore.config import Config
 from psycopg import sql
 from sqlalchemy import create_engine, select
@@ -26,7 +27,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from conftest import PRIVATE_DIR, _private_secret
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from job_search_platform.db.models import (
-    CV, CVRevision, Document, DocumentRevision, Grant, JobRevision, JobApplicationStatus, OwnerLaunchNonce, OwnerSession,
+    CV, CVRevision, Document, DocumentRevision, Grant, JobRevision, JobApplicationStatus, OwnerSession,
     ConversationSession, Project, ProviderConfiguration, Run, RunArtifact, StoredFile,
 )
 from job_search_platform.services.errors import ServiceError
@@ -95,6 +96,8 @@ def _seed_snapshot(engine, client, bucket: str):
     file_rows = []
     file_ids = {}
     with Session(engine) as session, session.begin():
+        owner_user = helpers_user(session)
+        project.user_id = owner_user.user_id
         session.add(project)
         session.flush()
         for kind, display_name, body in samples:
@@ -129,8 +132,6 @@ def _seed_snapshot(engine, client, bucket: str):
             source_job_revision_id=job.id, content_markdown="Synthetic generated cover letter preview.",
         )
         session.add(document_revision)
-        session.add(OwnerSession(session_hash=b"s" * 32, csrf_hash=b"c" * 32, expires_at=backup.datetime.now(backup.timezone.utc)))
-        session.add(OwnerLaunchNonce(nonce_hash=b"n" * 32, origin="http://127.0.0.1:8000", expires_at=backup.datetime.now(backup.timezone.utc)))
         session.add(Grant(
             project_id=project.id, token_hash=b"g" * 32, capabilities=["read"],
             expires_at=backup.datetime.now(backup.timezone.utc),
@@ -255,7 +256,6 @@ def test_pg_minio_backup_restores_content_auth_reset_and_keychain_invalidation(
             rows = session.scalars(select(StoredFile).order_by(StoredFile.display_name)).all()
             assert len(rows) == len(expected)
             assert session.scalar(select(OwnerSession.id).limit(1)) is None
-            assert session.scalar(select(OwnerLaunchNonce.id).limit(1)) is None
             assert session.scalar(select(Grant.id).limit(1)) is None
             provider = session.get(ProviderConfiguration, snapshot["provider"])
             assert provider is not None
@@ -280,7 +280,7 @@ def test_pg_minio_backup_restores_content_auth_reset_and_keychain_invalidation(
             old_run = session.get(Run, snapshot["runs"]["interrupted"])
             assert old_run is not None
             owner_session = OwnerSession(
-                session_hash=b"r" * 32, csrf_hash=b"x" * 32,
+                user_id=session.get(Project, old_run.project_id).user_id, session_hash=b"r" * 32, csrf_hash=b"x" * 32,
                 expires_at=backup.datetime.now(backup.timezone.utc) + timedelta(hours=1),
             )
             fresh_provider = ProviderConfiguration(
@@ -295,7 +295,7 @@ def test_pg_minio_backup_restores_content_auth_reset_and_keychain_invalidation(
                 output_language=old_run.output_language, idempotency_key="destination-manual-retry",
                 retry_of_id=old_run.id,
             )
-            owner_actor = Actor("owner", owner_session.id, None, None, frozenset())
+            owner_actor = Actor("user", owner_session.id, None, None, frozenset(), owner_session.user_id)
             project_id = old_run.project_id
             original_cv_id = old_run.cv_revision_id
             original_job_id = old_run.job_revision_id

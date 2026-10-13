@@ -1,4 +1,4 @@
-"""Loopback owner bootstrap, with persisted one-use evidence and CSRF."""
+"""User sessions bound to APP_PUBLIC_ORIGIN, with persisted state and CSRF."""
 
 from __future__ import annotations
 
@@ -7,14 +7,15 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
-import ipaddress
 import re
 import secrets
 from urllib.parse import urlsplit
 
-from sqlalchemy import select
+from uuid import UUID
 
-from job_search_platform.db.models import OwnerLaunchNonce, OwnerSession
+from sqlalchemy import select, update
+
+from job_search_platform.db.models import OwnerSession, User
 from job_search_platform.services.contracts import Actor
 from job_search_platform.services.errors import ServiceError
 
@@ -33,12 +34,6 @@ def csrf_for_cookie(cookie: str) -> str:
 
 
 @dataclass(frozen=True)
-class LaunchToken:
-    nonce: str = field(repr=False)
-    expires_at: datetime
-
-
-@dataclass(frozen=True)
 class OwnerExchange:
     actor: Actor
     session_cookie: str = field(repr=False)
@@ -46,33 +41,24 @@ class OwnerExchange:
     expires_at: datetime
 
 
+REFRESH_AFTER = timedelta(hours=1)
+
+
 class OwnerSessions:
-    def __init__(self, sessions, *, allowed_origins: set[str], allowed_hosts: set[str],
-                 launch_ttl: timedelta = timedelta(minutes=5),
-                 session_ttl: timedelta = timedelta(hours=8)):
+    def __init__(self, sessions, *, public_origin: str, idle_ttl: timedelta = timedelta(days=7),
+                 absolute_ttl: timedelta = timedelta(days=30), extra_origins: frozenset[str] = frozenset()):
         self.sessions = sessions
-        if not allowed_origins or not allowed_hosts:
+        parsed = urlsplit(public_origin)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ServiceError("invalid_owner_origin")
-        for origin in allowed_origins:
-            try:
-                parsed = urlsplit(origin)
-                loopback = parsed.hostname == "localhost" or ipaddress.ip_address(parsed.hostname).is_loopback
-                if (not loopback or parsed.scheme not in {"http", "https"} or parsed.username
-                        or parsed.password or parsed.path or parsed.query or parsed.fragment
-                        or parsed.port is None):
-                    raise ValueError
-            except (ValueError, TypeError):
-                raise ServiceError("invalid_owner_origin") from None
-        for host in allowed_hosts:
-            try:
-                parsed = urlsplit("http://" + host)
-                loopback = parsed.hostname == "localhost" or ipaddress.ip_address(parsed.hostname).is_loopback
-                if not loopback or parsed.port is None or parsed.username or parsed.path or parsed.query or parsed.fragment:
-                    raise ValueError
-            except (ValueError, TypeError):
-                raise ServiceError("invalid_owner_origin") from None
-        self.origins, self.hosts = frozenset(allowed_origins), frozenset(allowed_hosts)
-        self.launch_ttl, self.session_ttl = launch_ttl, session_ttl
+        self.public_origin = public_origin
+        self.origins = frozenset({public_origin}) | frozenset(extra_origins)
+        self.hosts = frozenset({parsed.netloc}) | frozenset(urlsplit(o).netloc for o in extra_origins)
+        self.idle_ttl, self.absolute_ttl = idle_ttl, absolute_ttl
+
+    @property
+    def secure_cookies(self) -> bool:
+        return self.public_origin.startswith("https://")
 
     def _check(self, *, origin=None, host=None, require_origin=True):
         if host not in self.hosts or (require_origin and origin not in self.origins):
@@ -80,41 +66,31 @@ class OwnerSessions:
         if origin is not None and origin not in self.origins:
             raise ServiceError("invalid_origin")
 
-    async def create_launch_nonce(self, origin: str) -> LaunchToken:
-        if origin not in self.origins:
-            raise ServiceError("invalid_owner_origin")
-        def create():
-            nonce = secrets.token_urlsafe(32)
-            expiry = datetime.now(timezone.utc) + self.launch_ttl
-            with self.sessions.begin() as db:
-                db.add(OwnerLaunchNonce(nonce_hash=token_hash(nonce), origin=origin, expires_at=expiry))
-            return LaunchToken(nonce, expiry)
-        return await asyncio.to_thread(create)
+    def create(self, user_id: UUID) -> OwnerExchange:
+        """Insert a session for ``user_id``; synchronous, callers use ``asyncio.to_thread``."""
+        now = datetime.now(timezone.utc)
+        cookie = secrets.token_urlsafe(32)
+        csrf = csrf_for_cookie(cookie)
+        expiry = now + self.absolute_ttl
+        with self.sessions.begin() as db:
+            row = OwnerSession(user_id=user_id, session_hash=token_hash(cookie), csrf_hash=token_hash(csrf),
+                               expires_at=expiry, last_seen_at=now)
+            db.add(row)
+            db.flush()
+            actor = Actor("user", row.id, None, None, frozenset(), user_id)
+        return OwnerExchange(actor, cookie, csrf, expiry)
 
-    async def exchange(self, nonce: str, *, origin: str | None, host: str | None) -> OwnerExchange:
-        self._check(origin=origin, host=host)
-        def exchange():
-            now = datetime.now(timezone.utc)
-            try:
-                digest = token_hash(nonce)
-            except ServiceError:
-                raise ServiceError("invalid_launch") from None
-            with self.sessions.begin() as db:
-                launch = db.scalar(select(OwnerLaunchNonce).where(
-                    OwnerLaunchNonce.nonce_hash == digest).with_for_update())
-                if (launch is None or launch.consumed_at is not None
-                        or launch.expires_at <= now or launch.origin != origin):
-                    raise ServiceError("invalid_launch")
-                cookie = secrets.token_urlsafe(32)
-                csrf = csrf_for_cookie(cookie)
-                expiry = now + self.session_ttl
-                row = OwnerSession(session_hash=token_hash(cookie), csrf_hash=token_hash(csrf), expires_at=expiry)
-                db.add(row)
-                db.flush()
-                launch.consumed_at = now
-                actor = Actor("owner", row.id, None, None, frozenset())
-            return OwnerExchange(actor, cookie, csrf, expiry)
-        return await asyncio.to_thread(exchange)
+    def revoke(self, cookie: str) -> None:
+        with self.sessions.begin() as db:
+            row = db.scalar(select(OwnerSession).where(OwnerSession.session_hash == token_hash(cookie)))
+            if row is not None and row.revoked_at is None:
+                row.revoked_at = datetime.now(timezone.utc)
+
+    @staticmethod
+    def revoke_all(db, user_id: UUID, now: datetime) -> None:
+        db.execute(update(OwnerSession).where(
+            OwnerSession.user_id == user_id, OwnerSession.revoked_at.is_(None),
+        ).values(revoked_at=now))
 
     async def authenticate(self, cookie: str, *, host: str, origin: str | None = None) -> Actor:
         self._check(origin=origin, host=host, require_origin=False)
@@ -139,15 +115,22 @@ class OwnerSessions:
 
     def _authenticate(self, cookie: str, csrf: str | None):
         now = datetime.now(timezone.utc)
-        with self.sessions() as db:
-            row = db.scalar(select(OwnerSession).where(OwnerSession.session_hash == token_hash(cookie)))
-            if row is None or row.revoked_at is not None or row.expires_at <= now:
+        digest = token_hash(cookie)
+        with self.sessions.begin() as db:
+            row = db.scalar(select(OwnerSession).where(OwnerSession.session_hash == digest))
+            if (row is None or row.revoked_at is not None or row.expires_at <= now
+                    or row.last_seen_at + self.idle_ttl <= now):
+                raise ServiceError("unauthorized")
+            disabled = db.scalar(select(User.disabled_at).where(User.id == row.user_id))
+            if disabled is not None:
                 raise ServiceError("unauthorized")
             if csrf is not None:
                 try:
-                    digest = token_hash(csrf)
+                    csrf_digest = token_hash(csrf)
                 except ServiceError:
                     raise ServiceError("invalid_csrf") from None
-                if not hmac.compare_digest(row.csrf_hash, digest):
+                if not hmac.compare_digest(row.csrf_hash, csrf_digest):
                     raise ServiceError("invalid_csrf")
-            return Actor("owner", row.id, None, None, frozenset())
+            if now - row.last_seen_at > REFRESH_AFTER:
+                row.last_seen_at = now
+            return Actor("user", row.id, None, None, frozenset(), row.user_id)

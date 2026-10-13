@@ -147,7 +147,7 @@ def test_backup_marks_queued_runs_interrupted_before_dump(migrated_engine, recov
     sessions = sessionmaker(bind=migrated_engine, expire_on_commit=False)
     with sessions.begin() as db:
         actor = owner(db)
-        db_project = project(db, "Synthetic queued recovery")
+        db_project = project(db, "Synthetic queued recovery", owner=actor)
         conversation = conversation_session(db, db_project.id)
         cv, job = revisions(db, db_project.id)
         provider_config(db, db_project.id)
@@ -179,7 +179,7 @@ async def test_backend_bridge_loss_interrupts_native_run_preserves_completed_out
     sessions = sessionmaker(bind=migrated_engine, expire_on_commit=False)
     with sessions.begin() as db:
         actor = owner(db)
-        db_project = project(db, "Synthetic crash recovery")
+        db_project = project(db, "Synthetic crash recovery", owner=actor)
         conversation = conversation_session(db, db_project.id)
         cv, job = revisions(db, db_project.id)
         provider_config(db, db_project.id)

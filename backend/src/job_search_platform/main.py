@@ -7,7 +7,6 @@ import stat
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import urlsplit
 from uuid import uuid4
 
 import boto3
@@ -57,25 +56,6 @@ def _private_text(name: str) -> str:
     if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & 0o077:
         raise RuntimeError("private_runtime_credentials_unavailable")
     return path.read_text(encoding="utf-8").strip()
-
-
-def _origin_settings() -> tuple[set[str], set[str]]:
-    default = {"http://127.0.0.1:8000", "http://localhost:8000"}
-    raw = os.environ.get("JSP_ALLOWED_ORIGINS", "")
-    origins = {entry.strip() for entry in raw.split(",") if entry.strip()} or default
-    dev = os.environ.get("JSP_DEV_ORIGIN")
-    if dev:
-        parsed = urlsplit(dev)
-        if parsed.hostname not in {"localhost", "127.0.0.1", "::1"} or parsed.scheme != "http" or parsed.path not in {"", "/"} or parsed.query or parsed.fragment:
-            raise RuntimeError("development_origin_must_be_loopback")
-        origins.add(dev.rstrip("/"))
-    hosts: set[str] = set()
-    for origin in origins:
-        parsed = urlsplit(origin)
-        if parsed.hostname is None or parsed.scheme != "http" or parsed.path not in {"", "/"} or parsed.query or parsed.fragment:
-            raise RuntimeError("owner_origin_invalid")
-        hosts.add(parsed.netloc)
-    return origins, hosts
 
 
 def _migrate(engine) -> None:
@@ -137,8 +117,10 @@ def build_services() -> Services:
     executor = RunExecutor(sessions, queue, runtime, artifacts, store,
                            workspace_root=runtime.workspace_root)
     supervisor = WorkerSupervisor(sessions, queue, executor, runtime)
-    origins, hosts = _origin_settings()
-    owner_sessions = OwnerSessions(sessions, allowed_origins=origins, allowed_hosts=hosts)
+    dev = os.environ.get("JSP_DEV_ORIGIN", "").rstrip("/")
+    owner_sessions = OwnerSessions(
+        sessions, public_origin=os.environ.get("APP_PUBLIC_ORIGIN", "http://127.0.0.1:8000"),
+        extra_origins=frozenset({dev} if dev else ()))
     return Services(sessions=sessions, owner_sessions=owner_sessions, files=files,
                     documents=documents, runs=runs, grants=grants, settings=settings,
                     approvals=approvals, supervisor=supervisor, runtime=runtime,
@@ -272,7 +254,7 @@ def create_app(
         "ApprovalDecision", "ApprovalRequest", "ApprovalView", "CVRevisionView", "CVUpdate", "CVView", "InlineJob",
         "DocumentRevisionView", "DocumentView", "ErrorView", "EvaluationResult", "FileView", "GatewayStatusView",
         "GrantIssueRequest", "GrantIssuedView", "GrantView", "JobCreate", "JobRevisionView",
-        "MessageCreate", "OwnerBootstrapRequest", "OwnerBootstrapView", "PreferencesUpdate",
+        "MessageCreate", "PreferencesUpdate",
         "PreferencesView", "ReadinessView", "ProjectCreate", "ProjectUpdate", "ProjectView",
         "RevisionView", "RunEventData", "RunEventView", "RunRequest", "RunRequester", "RunView",
         "SessionCreate", "SessionView", "SkillCoverage", "ToolConnectorSettingsView", "ToolConnectorUpdate",
@@ -325,7 +307,7 @@ def create_app(
             for method, operation in operations.items():
                 if not isinstance(operation, dict):
                     continue
-                if path in {"/owner/bootstrap", "/health", "/health/ready"}:
+                if path in {"/health", "/health/ready"}:
                     operation["security"] = []
                 elif method in grant_routes.get(path, set()):
                     operation["security"] = [{"ownerSession": []}, {"projectGrant": []}]

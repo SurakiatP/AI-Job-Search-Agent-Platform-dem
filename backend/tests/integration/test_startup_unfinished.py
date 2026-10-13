@@ -19,8 +19,8 @@ from job_search_platform.workers.supervisor import WorkerSupervisor
 @pytest.mark.parametrize("unfinished_status", ["queued", "waiting_approval"])
 @pytest.mark.asyncio
 async def test_startup_keeps_queued_and_waiting_work_untouched(db_session, tmp_path, unfinished_status):
-    p = project(db_session, "Synthetic restart recovery")
     actor = owner(db_session)
+    p = project(db_session, "Synthetic restart recovery", owner=actor)
     conversation = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)

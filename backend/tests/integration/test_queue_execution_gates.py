@@ -15,7 +15,7 @@ from job_search_platform.workers.queue import PostgresRunQueue
 
 def _ready(db):
     actor = owner(db)
-    p = project(db)
+    p = project(db, owner=actor)
     creator, token = grant(db, p.id, capabilities=("jobs:evaluate", "results:read"))
     chat = session(db, p.id)
     _, job = revisions(db, p.id)

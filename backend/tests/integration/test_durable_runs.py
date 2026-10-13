@@ -25,8 +25,8 @@ from test_rest_api import _write_headers, api_context  # noqa: F401
 
 
 async def _queued_run(db_session):
-    p = project(db_session, "Synthetic durable run")
     actor = owner(db_session)
+    p = project(db_session, "Synthetic durable run", owner=actor)
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -276,8 +276,7 @@ def test_concurrent_tailor_applies_queue_exactly_one_export(api_context):
     ctx = api_context
     csrf, pid, session_, facts, _ = _setup(ctx, [])
     run_id, _runtime = _interactive(ctx, csrf, pid, session_, facts)
-    with ctx.sessions.begin() as db:
-        actor = owner(db)
+    actor = ctx.client.app.state.services.owner_sessions.create(ctx.user_id).actor
     runs = ctx.client.app.state.services.runs
     original = runs._queue_export
 

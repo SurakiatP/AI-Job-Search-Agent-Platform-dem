@@ -21,11 +21,12 @@ DraftKind = Literal["cover_letter", "application_message", "follow_up"]
 
 @dataclass(frozen=True, slots=True)
 class Actor:
-    kind: Literal["owner", "grant"]
+    kind: Literal["user", "grant"]
     owner_session_id: UUID | None
     grant_id: UUID | None
     project_id: UUID | None
     capabilities: frozenset[str]
+    user_id: UUID | None = None
 
 
 class DTO(BaseModel):
@@ -461,16 +462,6 @@ class ApprovalRequest(DTO):
 
 class ApprovalDecision(DTO):
     decision: Literal["approve", "reject"]
-
-
-class OwnerBootstrapRequest(DTO):
-    nonce: Annotated[SecretStr, Field(min_length=32, max_length=256)]
-
-
-class OwnerBootstrapView(DTO):
-    authenticated: Literal[True]
-    csrf_token: str
-    expires_at: datetime
 
 
 class GrantIssueRequest(DTO):

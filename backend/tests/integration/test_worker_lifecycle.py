@@ -211,8 +211,8 @@ def test_draft_manifest_requires_safe_staging_relative_paths() -> None:
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_native_tool_budget_is_reserved_before_the_actual_side_effect(db_session, tmp_path: Path) -> None:
-    db_project = project(db_session, "Synthetic worker gate")
     actor = owner(db_session)
+    db_project = project(db_session, "Synthetic worker gate", owner=actor)
     conversation = session(db_session, db_project.id)
     _, job = revisions(db_session, db_project.id)
     provider_config(db_session, db_project.id)
@@ -345,8 +345,8 @@ async def test_native_tool_budget_is_reserved_before_the_actual_side_effect(db_s
 async def test_startup_reconciliation_stops_container_after_bridge_crash(
     db_session, persisted_failure: bool
 ) -> None:
-    db_project = project(db_session, "Synthetic bridge recovery")
     actor = owner(db_session)
+    db_project = project(db_session, "Synthetic bridge recovery", owner=actor)
     conversation = session(db_session, db_project.id)
     _, job = revisions(db_session, db_project.id)
     provider_config(db_session, db_project.id)
@@ -422,8 +422,8 @@ async def test_startup_reconciliation_stops_container_after_bridge_crash(
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_executor_parses_supplied_cv_before_offline_provider_failure(db_session) -> None:
-    db_project = project(db_session, "Synthetic executor CV")
     actor = owner(db_session)
+    db_project = project(db_session, "Synthetic executor CV", owner=actor)
     conversation = session(db_session, db_project.id)
     body = b"SYNTHETIC_EXECUTOR_CV: bilingual profile\n"
     stored = StoredFile(
@@ -500,8 +500,8 @@ async def test_executor_parses_supplied_cv_before_offline_provider_failure(db_se
 
 @pytest.mark.asyncio
 async def test_completed_evaluation_stores_deterministic_skill_coverage(db_session, tmp_path: Path) -> None:
-    db_project = project(db_session, "Synthetic coverage")
     actor = owner(db_session)
+    db_project = project(db_session, "Synthetic coverage", owner=actor)
     conversation = session(db_session, db_project.id)
     body = b"Synthetic CV: ReactJS, Python and postgres."
     stored = StoredFile(
@@ -583,8 +583,8 @@ async def test_completed_evaluation_stores_deterministic_skill_coverage(db_sessi
 
 @pytest.mark.asyncio
 async def test_profile_cv_run_stores_skill_names_only_without_provider(db_session, tmp_path: Path) -> None:
-    db_project = project(db_session, "Synthetic profile")
     actor = owner(db_session)
+    db_project = project(db_session, "Synthetic profile", owner=actor)
     body = b"Synthetic CV: ReactJS, Python. Private phone 0812345678 and secret-marker-xyz."
     stored = StoredFile(
         project_id=db_project.id, kind="cv_original", publication_state="published",

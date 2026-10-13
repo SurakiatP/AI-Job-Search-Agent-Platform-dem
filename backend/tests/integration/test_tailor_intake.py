@@ -16,7 +16,7 @@ from job_search_platform.services.runs import RunService
 
 def _ctx(db, capabilities=("cv:tailor", "results:read")):
     local_owner = owner(db)
-    p = project(db)
+    p = project(db, owner=local_owner)
     actor, _ = grant(db, p.id, capabilities=capabilities)
     cv, job = revisions(db, p.id)
     provider_config(db, p.id)

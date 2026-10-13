@@ -100,8 +100,8 @@ class SyntheticObjectStore:
 
 
 def _arrange(db_session, monkeypatch):
-    db_project = project(db_session, "Synthetic match")
     actor = owner(db_session)
+    db_project = project(db_session, "Synthetic match", owner=actor)
     stored = StoredFile(project_id=db_project.id, kind="cv_original", publication_state="published",
                         storage_key="synthetic/match-cv.txt", checksum_sha256=hashlib.sha256(CV_BODY).hexdigest(),
                         size_bytes=len(CV_BODY), mime_type="text/plain", display_name="synthetic-cv.txt")

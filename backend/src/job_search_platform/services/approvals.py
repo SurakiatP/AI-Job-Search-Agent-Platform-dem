@@ -86,7 +86,7 @@ class ApprovalService:
         """Owner is the approver: apply the promote_cv change at once, with the same checks as an approved request."""
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "resolve", "approval")
-            if actor.kind != "owner":
+            if actor.kind != "user":
                 raise ServiceError("forbidden")
             if db.scalar(select(Project).where(Project.id == project_id).with_for_update()) is None:
                 raise ServiceError("not_found")
@@ -180,7 +180,7 @@ class ApprovalService:
         result: ApprovalView | None = None
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "resolve", "approval")
-            if actor.kind != "owner":
+            if actor.kind != "user":
                 raise ServiceError("forbidden")
             if db.scalar(select(Project).where(Project.id == project_id).with_for_update()) is None:
                 raise ServiceError("not_found")
@@ -521,7 +521,7 @@ class ApprovalService:
 
     @staticmethod
     def _creator_is_current(db: Session, run: Run, now: datetime) -> bool:
-        if run.actor_scope == "owner":
+        if run.actor_scope.startswith("user:"):
             return True
         if not run.actor_scope.startswith("grant:"):
             return False

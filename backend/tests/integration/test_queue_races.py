@@ -28,7 +28,7 @@ def _submit(service, actor, project_id, request):
 def _enqueue(service, actor, db, project_count: int, runs_each: int = 1):
     ids = []
     for number in range(project_count):
-        p = project(db, f"Queue race {number}")
+        p = project(db, f"Queue race {number}", owner=actor)
         chat = session(db, p.id)
         _, job = revisions(db, p.id)
         provider_config(db, p.id)
@@ -66,7 +66,7 @@ def test_same_project_runs_do_not_claim_twice_and_expired_lease_is_never_stolen(
     factory = _factory(db_session)
     service = RunService(factory)
     actor = owner(db_session)
-    p = project(db_session)
+    p = project(db_session, owner=actor)
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -99,7 +99,7 @@ def test_tool_call_limit_is_reserved_before_call_and_active_time_is_durable(db_s
     factory = _factory(db_session)
     service = RunService(factory)
     actor = owner(db_session)
-    p = project(db_session, "Tool budget")
+    p = project(db_session, "Tool budget", owner=actor)
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -118,7 +118,7 @@ def test_tool_call_limit_is_reserved_before_call_and_active_time_is_durable(db_s
         assert persisted.tool_calls == 30
         assert persisted.active_seconds >= 0
 
-    p2 = project(db_session, "Runtime budget")
+    p2 = project(db_session, "Runtime budget", owner=actor)
     chat2 = session(db_session, p2.id)
     _, job2 = revisions(db_session, p2.id)
     provider_config(db_session, p2.id)

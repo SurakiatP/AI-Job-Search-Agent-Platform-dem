@@ -22,8 +22,8 @@ def _submit(service, actor, project_id, request):
 
 
 def test_owner_instruction_is_frozen_with_run_and_used_by_native_prompt(db_session):
-    project_record = project(db_session)
     actor = owner(db_session)
+    project_record = project(db_session, owner=actor)
     chat = session(db_session, project_record.id)
     _, job = revisions(db_session, project_record.id)
     provider_config(db_session, project_record.id)
@@ -61,8 +61,8 @@ def test_owner_instruction_is_frozen_with_run_and_used_by_native_prompt(db_sessi
 
 
 def test_idempotency_digest_conflicts_on_changed_owner_instruction(db_session):
-    project_record = project(db_session)
     actor = owner(db_session)
+    project_record = project(db_session, owner=actor)
     chat = session(db_session, project_record.id)
     _, job = revisions(db_session, project_record.id)
     provider_config(db_session, project_record.id)
@@ -85,8 +85,8 @@ def test_idempotency_digest_conflicts_on_changed_owner_instruction(db_session):
 
 
 def test_retry_reuses_source_instruction_and_rejects_changed_intent(db_session):
-    project_record = project(db_session)
     actor = owner(db_session)
+    project_record = project(db_session, owner=actor)
     chat = session(db_session, project_record.id)
     _, job = revisions(db_session, project_record.id)
     provider_config(db_session, project_record.id)
@@ -121,8 +121,8 @@ def test_retry_reuses_source_instruction_and_rejects_changed_intent(db_session):
 
 
 def test_grants_cannot_submit_or_read_owner_instructions(db_session):
-    project_record = project(db_session)
     owner_actor = owner(db_session)
+    project_record = project(db_session, owner=owner_actor)
     chat = session(db_session, project_record.id)
     _, job = revisions(db_session, project_record.id)
     provider_config(db_session, project_record.id)

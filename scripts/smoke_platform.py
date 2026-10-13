@@ -20,11 +20,23 @@ import httpx
 from sqlalchemy import select
 from job_search_platform.main import build_services
 from job_search_platform.db.models import ProviderConfiguration, Run, StoredFile
-from job_search_platform.services.owner_sessions import CSRF_HEADER
+from job_search_platform.services.owner_sessions import COOKIE_NAME, CSRF_HEADER
 
 
 class SmokeFailure(Exception):
     """Stable diagnostic without request content, upstream errors or credentials."""
+
+
+def _smoke_login(services, client) -> str:
+    """Attach a fresh session of the first enabled user; return its CSRF token."""
+    from job_search_platform.db.models import User
+    with services.sessions() as db:
+        user_id = db.scalar(select(User.id).where(User.disabled_at.is_(None)).order_by(User.created_at).limit(1))
+    if user_id is None:
+        raise SmokeFailure("smoke_user_unavailable")
+    exchange = services.owner_sessions.create(user_id)
+    client.cookies.set(COOKIE_NAME, exchange.session_cookie)
+    return exchange.csrf_token
 
 
 async def confirm_native_stopped(services, project_id, run_id, timeout=30):
@@ -64,11 +76,7 @@ async def smoke(origin: str, source_project: UUID | None) -> dict:
                 return {"status": "blocked", "reason": "configure_provider_in_settings"}
             provider = (source.provider, source.model, source.secret_reference, source.base_url)
         async with httpx.AsyncClient(base_url=origin, timeout=90, headers={"Origin": origin}) as client:
-            launch = await services.owner_sessions.create_launch_nonce(origin)
-            response = await client.post("/api/v1/owner/bootstrap", json={"nonce": launch.nonce})
-            if response.status_code != 200:
-                raise SmokeFailure("owner_bootstrap_failed")
-            client.headers[CSRF_HEADER] = response.json()["csrf_token"]
+            client.headers[CSRF_HEADER] = _smoke_login(services, client)
 
             async def request(method, path, **kwargs):
                 response = await client.request(method, "/api/v1" + path, **kwargs)
@@ -157,11 +165,7 @@ async def smoke(origin: str, source_project: UUID | None) -> dict:
             if pending:
                 try:
                     async with httpx.AsyncClient(base_url=origin, timeout=30, headers={"Origin": origin}) as cleanup:
-                        launch = await services.owner_sessions.create_launch_nonce(origin)
-                        auth = await cleanup.post("/api/v1/owner/bootstrap", json={"nonce": launch.nonce})
-                        if auth.status_code != 200:
-                            raise SmokeFailure("smoke_cleanup_auth_failed")
-                        cleanup.headers[CSRF_HEADER] = auth.json()["csrf_token"]
+                        cleanup.headers[CSRF_HEADER] = _smoke_login(services, cleanup)
                         for run_id in pending:
                             response = await cleanup.post(f"/api/v1/projects/{smoke_project_id}/runs/{run_id}/cancel")
                             if response.status_code >= 400:

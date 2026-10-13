@@ -77,9 +77,9 @@ EVENT_TYPES = frozenset(
 
 
 def actor_scope(actor: Actor) -> str:
-    """Stable idempotency scope: one owner across sessions, each grant per token."""
-    if actor.kind == "owner" and actor.owner_session_id is not None:
-        return "owner"
+    """Stable idempotency scope: one user across sessions, each grant per token."""
+    if actor.kind == "user" and actor.user_id is not None:
+        return f"user:{actor.user_id}"
     if actor.kind == "grant" and actor.grant_id is not None:
         return f"grant:{actor.grant_id}"
     raise ServiceError("unauthorized")
@@ -219,7 +219,7 @@ class RunService:
         *, now: datetime, scope: str,
     ) -> RunView:
         authorize(db, actor, project_id, "write", request.operation)
-        if actor.kind != "owner" and request.owner_instructions:
+        if actor.kind != "user" and request.owner_instructions:
             raise ServiceError("unauthorized")
         project = db.scalar(select(Project).where(Project.id == project_id).with_for_update())
         if project is None:
@@ -323,14 +323,14 @@ class RunService:
             )
         if canonical_request.operation == "draft_follow_up":
             canonical_request = canonical_request.model_copy(update={"draft_kind": "follow_up"})
-        if canonical_request.draft_kind is not None and actor.kind != "owner" and canonical_request.operation != "draft_follow_up":
+        if canonical_request.draft_kind is not None and actor.kind != "user" and canonical_request.operation != "draft_follow_up":
             raise ServiceError("forbidden")
         is_tailor = canonical_request.operation == "tailor_cv"
         tailor_mode = (canonical_request.tailor_mode or "autopilot") if is_tailor else None
-        if tailor_mode == "interactive" and actor.kind != "owner":
+        if tailor_mode == "interactive" and actor.kind != "user":
             raise ServiceError("forbidden")
         # A tailor run appends to the job's live tailored CV document, like a draft of its kind.
-        auto_kind = "cv" if is_tailor else canonical_request.draft_kind if actor.kind == "owner" else None
+        auto_kind = "cv" if is_tailor else canonical_request.draft_kind if actor.kind == "user" else None
         previous_draft = None
         revise_id = canonical_request.document_id
         if (
@@ -360,9 +360,9 @@ class RunService:
             )
         if revise_id is not None:
             if canonical_request.operation not in {"draft_documents", "draft_follow_up", "tailor_cv"} or (
-                not is_tailor and (actor.kind != "owner" or (
+                not is_tailor and (actor.kind != "user" or (
                     retry_source is None and request.document_id is None and canonical_request.draft_kind is None))
-            ) or (is_tailor and actor.kind != "owner" and request.document_id is not None):
+            ) or (is_tailor and actor.kind != "user" and request.document_id is not None):
                 raise ServiceError("forbidden")
             document = db.scalar(select(Document).where(
                 Document.project_id == project_id, Document.id == revise_id))
@@ -534,7 +534,7 @@ class RunService:
     def _submit_export_sync(
         self, actor: Actor, project_id: UUID, document_id: UUID, edit: DocumentEdit
     ) -> RunView:
-        if actor.kind != "owner":
+        if actor.kind != "user":
             raise ServiceError("forbidden")
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
@@ -590,7 +590,7 @@ class RunService:
         key = uuid4().hex
         run = Run(
             project_id=source.project_id,
-            actor_scope="owner",
+            actor_scope=actor_scope(actor),
             idempotency_key=key,
             request_digest=hashlib.sha256(json.dumps(
                 {"export_document": str(document.id) if document else key, "key": key}).encode()).hexdigest(),
@@ -617,7 +617,7 @@ class RunService:
 
     async def submit_restore(self, actor: Actor, project_id: UUID, document_id: UUID, revision_id: UUID) -> RunView:
         """Owner-only undo: re-export an earlier revision's Markdown as a new revision of the same document."""
-        if actor.kind != "owner":
+        if actor.kind != "user":
             raise ServiceError("forbidden")
 
         def load() -> str:
@@ -640,7 +640,7 @@ class RunService:
     def _tailor_apply_sync(self, actor: Actor, project_id: UUID, run_id: UUID, proposal_ids: list[int]) -> RunView:
         from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, fact_claims, require_evidence
 
-        if actor.kind != "owner":
+        if actor.kind != "user":
             raise ServiceError("forbidden")
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
@@ -709,7 +709,7 @@ class RunService:
         return await asyncio.to_thread(self._input_sync, actor, project_id, run_id, answers)
 
     def _input_sync(self, actor: Actor, project_id: UUID, run_id: UUID, answers: dict[str, str | bool]) -> RunView:
-        if actor.kind != "owner":
+        if actor.kind != "user":
             raise ServiceError("forbidden")
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
@@ -748,7 +748,7 @@ class RunService:
         return await asyncio.to_thread(self._submit_profile_sync, actor, project_id, cv_id)
 
     def _submit_profile_sync(self, actor: Actor, project_id: UUID, cv_id: UUID) -> RunView | None:
-        if actor.kind != "owner":
+        if actor.kind != "user":
             raise ServiceError("forbidden")
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
@@ -780,7 +780,7 @@ class RunService:
             key = uuid4().hex
             # No session, job or provider: the run only parses the CV inside the sandbox.
             run = Run(
-                project_id=project_id, actor_scope="owner", idempotency_key=key,
+                project_id=project_id, actor_scope=actor_scope(actor), idempotency_key=key,
                 request_digest=hashlib.sha256(json.dumps({"profile_cv": str(latest.id), "key": key}).encode()).hexdigest(),
                 operation="profile_cv", cv_revision_id=latest.id,
                 input_snapshot={"cv_file_id": str(latest.file_id)}, config_snapshot={},
@@ -796,7 +796,7 @@ class RunService:
         return await asyncio.to_thread(self._submit_extract_sync, actor, project_id, cv_id, automatic)
 
     def _submit_extract_sync(self, actor: Actor, project_id: UUID, cv_id: UUID, automatic: bool) -> RunView | None:
-        if actor.kind != "owner":
+        if actor.kind != "user":
             raise ServiceError("forbidden")
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
@@ -829,7 +829,7 @@ class RunService:
                 raise ServiceError("gateway_unconfigured")
             key = uuid4().hex
             run = Run(
-                project_id=project_id, actor_scope="owner", idempotency_key=key,
+                project_id=project_id, actor_scope=actor_scope(actor), idempotency_key=key,
                 request_digest=hashlib.sha256(json.dumps({"extract_experience": str(latest.id), "key": key}).encode()).hexdigest(),
                 operation="extract_experience", cv_revision_id=latest.id,
                 input_snapshot={"cv_file_id": str(latest.file_id)},
@@ -845,7 +845,7 @@ class RunService:
         return await asyncio.to_thread(self._submit_match_sync, actor, project_id, request)
 
     def _submit_match_sync(self, actor: Actor, project_id: UUID, request: MatchRunRequest) -> RunView:
-        if actor.kind != "owner":
+        if actor.kind != "user":
             raise ServiceError("forbidden")
         now = datetime.now(timezone.utc)
         snapshot = request.model_dump(mode="json")
@@ -878,7 +878,7 @@ class RunService:
             if queued >= MAX_QUEUED_PER_PROJECT:
                 raise ServiceError("queue_full", retryable=True)
             key = uuid4().hex
-            run = Run(project_id=project_id, actor_scope="owner", idempotency_key=key,
+            run = Run(project_id=project_id, actor_scope=actor_scope(actor), idempotency_key=key,
                       request_digest=hashlib.sha256(json.dumps({"match_jobs": snapshot, "key": key}, sort_keys=True).encode()).hexdigest(),
                       operation="match_jobs", cv_revision_id=revision.id,
                       input_snapshot=snapshot, config_snapshot=gateway.snapshot(),
@@ -969,7 +969,7 @@ class RunService:
 
     @staticmethod
     def _requester(db: Session, run: Run) -> RunRequester | None:
-        if run.actor_scope == "owner":
+        if run.actor_scope.startswith("user:"):
             return RunRequester(kind="owner")
         try:
             grant_id = UUID(run.actor_scope.removeprefix("grant:"))
@@ -1003,7 +1003,7 @@ class RunService:
             select(Run).where(Run.project_id == project_id, Run.id == run_id)
         )
         # Manual-edit export runs are owner-only; grants (REST, MCP, A2A) never see them.
-        if run is None or (actor is not None and actor.kind != "owner" and run.operation in {"export_document", "profile_cv", "match_jobs", "extract_experience"}):
+        if run is None or (actor is not None and actor.kind != "user" and run.operation in {"export_document", "profile_cv", "match_jobs", "extract_experience"}):
             raise ServiceError("not_found")
         return run
 

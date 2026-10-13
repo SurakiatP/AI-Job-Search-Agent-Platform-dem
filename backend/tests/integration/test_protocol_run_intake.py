@@ -18,7 +18,7 @@ from job_search_platform.services.protocol_runs import ProtocolJobInput, Protoco
 
 def _context(db, *, cv=True):
     local_owner = owner(db)
-    p = project(db)
+    p = project(db, owner=local_owner)
     actor, token = grant(db, p.id, capabilities=("jobs:evaluate", "documents:draft", "results:read"))
     private_chat = session(db, p.id, "Private owner conversation")
     db.add(Message(project_id=p.id, session_id=private_chat.id, role="user", content="SYNTHETIC_OWNER_HISTORY_ONLY"))

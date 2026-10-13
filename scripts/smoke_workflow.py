@@ -79,7 +79,7 @@ async def _run(project_id: uuid.UUID) -> int:
                 _emit({"status": "blocked", "reason": "owner_session_unavailable"})
                 return 2
             provider_id = provider.id
-            actor = Actor("owner", owner_session.id, None, None, frozenset())
+            actor = Actor("user", owner_session.id, None, None, frozenset(), owner_session.user_id)
 
         settings = Settings(sessions, MacOSKeychain())
         trusted = await settings.trusted_provider(configuration_id=provider_id)
@@ -95,7 +95,7 @@ async def _run(project_id: uuid.UUID) -> int:
         checksum = hashlib.sha256(body).hexdigest()
         await object_store.put(storage_key, body, checksum)
         with sessions.begin() as db:
-            smoke_project = Project(id=smoke_project_id, name=f"CORE-08 synthetic smoke {smoke_project_id}")
+            smoke_project = Project(id=smoke_project_id, name=f"CORE-08 synthetic smoke {smoke_project_id}", user_id=owner_session.user_id)
             db.add(smoke_project)
             db.flush()
             db.add(ToolConnectorConfiguration(

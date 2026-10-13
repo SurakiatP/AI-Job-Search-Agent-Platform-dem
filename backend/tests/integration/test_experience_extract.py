@@ -21,8 +21,8 @@ CV_BODY = "Data Engineer, SCB (2022–2024)\n• Built Airflow pipelines that cu
 
 
 def _arrange(db_session):
-    p = project(db_session, "Synthetic extract")
     actor = owner(db_session)
+    p = project(db_session, "Synthetic extract", owner=actor)
     body = CV_BODY.encode()
     stored = StoredFile(project_id=p.id, kind="cv_original", publication_state="published",
                         storage_key="synthetic/extract-cv.txt", checksum_sha256=hashlib.sha256(body).hexdigest(),

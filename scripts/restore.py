@@ -157,10 +157,9 @@ def _restore_dump(dump: Path, private_dir: Path, args) -> None:
 
 
 def _invalidate_auth_and_keychain(engine) -> None:
-    from job_search_platform.db.models import Grant, OwnerLaunchNonce, OwnerSession, ProviderConfiguration, Run
+    from job_search_platform.db.models import Grant, OwnerSession, ProviderConfiguration, Run
 
     with Session(engine) as session, session.begin():
-        session.query(OwnerLaunchNonce).delete(synchronize_session=False)
         session.query(OwnerSession).filter(OwnerSession.revoked_at.is_(None)).update(
             {OwnerSession.revoked_at: text("clock_timestamp()")}, synchronize_session=False
         )

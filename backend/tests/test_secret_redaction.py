@@ -14,7 +14,8 @@ from job_search_platform.integrations.secrets import MacOSKeychain
 def settings(engine):
     factory = sessionmaker(engine, expire_on_commit=False)
     with factory.begin() as db:
-        actor, p = owner(db), project(db)
+        actor = owner(db)
+        p = project(db, owner=actor)
     return Settings(factory), actor, p.id
 
 

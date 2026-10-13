@@ -15,7 +15,8 @@ from job_search_platform.services.grants import Grants
 async def test_tokens_are_disclosed_once_hashed_and_currently_revocable(migrated_engine, caplog):
     factory = sessionmaker(migrated_engine, expire_on_commit=False)
     with factory.begin() as db:
-        actor, p = owner(db), project(db)
+        actor = owner(db)
+        p = project(db, owner=actor)
     svc = Grants(factory)
     issued = await svc.issue(actor, p.id, GrantIssueRequest(
         capabilities=frozenset({"results:read", "jobs:evaluate"}),
@@ -40,7 +41,8 @@ async def test_tokens_are_disclosed_once_hashed_and_currently_revocable(migrated
 async def test_grant_expiry_empty_capabilities_and_foreign_revoke_are_denied(migrated_engine):
     factory = sessionmaker(migrated_engine, expire_on_commit=False)
     with factory.begin() as db:
-        actor, first, second = owner(db), project(db), project(db)
+        actor = owner(db)
+        first, second = project(db, owner=actor), project(db, owner=actor)
     svc = Grants(factory)
     with pytest.raises(ServiceError, match="invalid_grant"):
         await svc.issue(actor, first.id, GrantIssueRequest(
