@@ -15,6 +15,7 @@ from job_search_platform.workers.queue import PostgresRunQueue
 from job_search_platform.workers.supervisor import WorkerSupervisor
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("unfinished_status", ["queued", "waiting_approval"])
 @pytest.mark.asyncio
 async def test_startup_keeps_queued_and_waiting_work_untouched(db_session, tmp_path, unfinished_status):

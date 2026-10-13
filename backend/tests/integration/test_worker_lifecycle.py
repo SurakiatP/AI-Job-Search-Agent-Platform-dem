@@ -208,6 +208,7 @@ def test_draft_manifest_requires_safe_staging_relative_paths() -> None:
         parse('{"drafts":[{"path":"../outside.md","document_type":"cover_letter","title":"Synthetic","format":"pdf"}]}')
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_native_tool_budget_is_reserved_before_the_actual_side_effect(db_session, tmp_path: Path) -> None:
     db_project = project(db_session, "Synthetic worker gate")
@@ -338,6 +339,7 @@ async def test_native_tool_budget_is_reserved_before_the_actual_side_effect(db_s
         shutil.rmtree(runtime_root, ignore_errors=True)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("persisted_failure", [False, True])
 @pytest.mark.asyncio
 async def test_startup_reconciliation_stops_container_after_bridge_crash(
@@ -417,6 +419,7 @@ async def test_startup_reconciliation_stops_container_after_bridge_crash(
         shutil.rmtree(runtime_root, ignore_errors=True)
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_executor_parses_supplied_cv_before_offline_provider_failure(db_session) -> None:
     db_project = project(db_session, "Synthetic executor CV")
