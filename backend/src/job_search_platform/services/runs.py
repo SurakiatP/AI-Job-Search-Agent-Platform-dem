@@ -928,24 +928,29 @@ class RunService:
                 raise ServiceError("not_found")
             if actor.kind == "grant" and run.actor_scope != actor_scope(actor):
                 raise ServiceError("forbidden")
-            if run.status in {"completed", "failed", "cancelled", "interrupted"}:
-                return self._authorized_view(db, actor, run)
-            if run.status in ("queued", "needs_input") or (
-                    run.status == "waiting_approval" and run.operation == "apply_submit"):
-                # None of these holds a sandbox; a pending submit has no worker, so it ends now and its approval is void.
-                if run.status == "waiting_approval":
-                    for approval in db.scalars(select(Approval).where(
-                            Approval.run_id == run.id, Approval.consumed_at.is_(None)).with_for_update()):
-                        approval.consumed_at = now
-                        approval.decision = "reject"
-                run.status = "cancelled"
-                run.finished_at = now
-                run.lease_owner = run.lease_expires_at = run.heartbeat_at = None
-                append_event(db, run, "run_cancelled", {"status": "cancelled"}, now=now)
-            elif run.cancellation_requested_at is None:
-                run.cancellation_requested_at = now
-                append_event(db, run, "run_cancel_requested", {"status": run.status}, now=now)
+            self.cancel_locked(db, run, now)
             return self._authorized_view(db, actor, run)
+
+    @staticmethod
+    def cancel_locked(db: Session, run: Run, now: datetime) -> None:
+        """Apply cancellation to a run the caller already holds a row lock on; terminal runs are left alone."""
+        if run.status in {"completed", "failed", "cancelled", "interrupted"}:
+            return
+        if run.status in ("queued", "needs_input") or (
+                run.status == "waiting_approval" and run.operation == "apply_submit"):
+            # None of these holds a sandbox; a pending submit has no worker, so it ends now and its approval is void.
+            if run.status == "waiting_approval":
+                for approval in db.scalars(select(Approval).where(
+                        Approval.run_id == run.id, Approval.consumed_at.is_(None)).with_for_update()):
+                    approval.consumed_at = now
+                    approval.decision = "reject"
+            run.status = "cancelled"
+            run.finished_at = now
+            run.lease_owner = run.lease_expires_at = run.heartbeat_at = None
+            append_event(db, run, "run_cancelled", {"status": "cancelled"}, now=now)
+        elif run.cancellation_requested_at is None:
+            run.cancellation_requested_at = now
+            append_event(db, run, "run_cancel_requested", {"status": run.status}, now=now)
 
     async def events(
         self, actor: Actor, project_id: UUID, run_id: UUID, after: int

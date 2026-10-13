@@ -119,13 +119,14 @@ def build_services() -> Services:
     queue = PostgresRunQueue(sessions)
     executor = RunExecutor(sessions, queue, runtime, artifacts, store,
                            workspace_root=runtime.workspace_root)
-    supervisor = WorkerSupervisor(sessions, queue, executor, runtime)
     dev = os.environ.get("JSP_DEV_ORIGIN", "").rstrip("/")
     owner_sessions = OwnerSessions(
         sessions, public_origin=os.environ.get("APP_PUBLIC_ORIGIN", "http://127.0.0.1:8000"),
         extra_origins=frozenset({dev} if dev else ()))
     mailer = SmtpMailer.from_env()  # None without SMTP_HOST: Accounts logs mail_disabled and drops mail
-    accounts = Accounts(sessions, owner_sessions, mailer, public_origin=owner_sessions.public_origin)
+    accounts = Accounts(sessions, owner_sessions, mailer, public_origin=owner_sessions.public_origin, runs=runs,
+                        workspace_root=runtime.workspace_root)
+    supervisor = WorkerSupervisor(sessions, queue, executor, runtime, purge=lambda: accounts.purge_due(store))
     return Services(sessions=sessions, owner_sessions=owner_sessions, files=files,
                     documents=documents, runs=runs, grants=grants, settings=settings,
                     approvals=approvals, supervisor=supervisor, runtime=runtime,

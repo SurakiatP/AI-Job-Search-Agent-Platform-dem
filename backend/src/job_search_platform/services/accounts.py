@@ -5,20 +5,26 @@ email addresses are ever logged.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import secrets
+import shutil
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
+from botocore.exceptions import ClientError
 from sqlalchemy.exc import IntegrityError
 
-from job_search_platform.db.models import Grant, Project, User, UserToken
+from job_search_platform.db.models import Grant, Project, Run, StoredFile, User, UserToken
 from job_search_platform.integrations.mailer import Mail
+from job_search_platform.integrations.object_store import _is_missing
 from job_search_platform.services import rate_limits
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import OwnerExchange, OwnerSessions
+from job_search_platform.services.runs import RunService
 from job_search_platform.services.passwords import (
     check_policy, hash_password, normalize_email, verify_dummy, verify_password,
 )
@@ -53,8 +59,11 @@ def _digest(token: str) -> bytes:
 
 
 class Accounts:
-    def __init__(self, sessions, owner_sessions: OwnerSessions, mailer, *, public_origin: str):
+    def __init__(self, sessions, owner_sessions: OwnerSessions, mailer, *, public_origin: str, runs: RunService | None = None,
+                 workspace_root: Path | None = None):
         self.sessions = sessions
+        self.workspace_root = workspace_root.resolve() if workspace_root is not None else None
+        self.runs = runs or RunService(sessions)  # RunService; needed by request_deletion to cancel the user's live runs
         self.owner_sessions = owner_sessions
         self.mailer = mailer
         self.public_origin = public_origin.rstrip("/")
@@ -214,6 +223,9 @@ class Accounts:
             raise ServiceError("invalid_credentials")
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
+            # Lock order: projects (by id), then the user row, then runs (by id) - projects before user, as
+            # every other path that takes both, so two transactions cannot wait on each other.
+            db.execute(select(Project.id).where(Project.user_id == user_id).order_by(Project.id).with_for_update())
             user = db.get(User, user_id, with_for_update=True)
             user.deletion_requested_at = now
             user.disabled_at = user.disabled_at or now
@@ -221,4 +233,79 @@ class Accounts:
             db.execute(update(Grant).where(
                 Grant.project_id.in_(select(Project.id).where(Project.user_id == user_id)),
                 Grant.revoked_at.is_(None)).values(revoked_at=now))
-        # Task 7 cancels queued/running runs here and adds the purge worker.
+            live = db.scalars(select(Run).where(
+                Run.project_id.in_(select(Project.id).where(Project.user_id == user_id)),
+                Run.status.in_(("queued", "running", "waiting_approval", "needs_input"))
+            ).order_by(Run.id).with_for_update()).all()
+            for run in live:
+                self.runs.cancel_locked(db, run, now)
+
+    # -- purge -----------------------------------------------------------------------------------
+    async def purge_due(self, store, *, now: datetime | None = None) -> int:
+        """Delete accounts whose deletion was requested: objects first, then the user row (cascades the rest).
+
+        A user whose objects cannot all be removed is skipped and retried next cycle. Returns users purged.
+        """
+        now = now or datetime.now(timezone.utc)
+
+        def pending():
+            with self.sessions() as db:
+                return db.execute(select(User.id, User.deletion_requested_at).where(
+                    User.deletion_requested_at.is_not(None)).order_by(User.deletion_requested_at)).all()
+
+        def keys_of(user_id):
+            with self.sessions() as db:
+                return list(db.scalars(select(StoredFile.storage_key).join(Project, Project.id == StoredFile.project_id)
+                                       .where(Project.user_id == user_id)))
+
+        def project_ids(user_id):
+            with self.sessions() as db:
+                return list(db.scalars(select(Project.id).where(Project.user_id == user_id)))
+
+        def busy(user_id):
+            """True while a worker may still run for the user: a non-terminal run, a lease or a sandbox."""
+            with self.sessions() as db:
+                return db.scalar(select(Run.id).where(
+                    Run.project_id.in_(select(Project.id).where(Project.user_id == user_id)),
+                    Run.status.not_in(("completed", "failed", "cancelled", "interrupted"))
+                    | Run.lease_owner.is_not(None) | Run.sandbox_id.is_not(None)).limit(1)) is not None
+
+        def wipe_workspaces(ids):
+            if self.workspace_root is None:
+                return
+            for project_id in ids:
+                path = self.workspace_root / str(project_id)
+                if path.is_symlink():
+                    path.unlink()  # never follow a link out of the workspace root
+                elif path.exists():
+                    if not path.resolve().is_relative_to(self.workspace_root):
+                        raise ValueError("workspace_outside_root")
+                    shutil.rmtree(path)
+
+        def drop(user_id):
+            with self.sessions.begin() as db:
+                # runs -> sessions has no ON DELETE CASCADE, so the project cascade would trip over it.
+                db.execute(delete(Run).where(Run.project_id.in_(select(Project.id).where(Project.user_id == user_id))))
+                db.execute(delete(User).where(User.id == user_id))
+
+        purged = 0
+        for user_id, requested_at in await asyncio.to_thread(pending):
+            try:
+                if await asyncio.to_thread(busy, user_id):
+                    continue  # a cancelled run's worker is still winding down; retry next cycle
+                for key in await asyncio.to_thread(keys_of, user_id):
+                    try:
+                        await store.delete(key)
+                    except ClientError as exc:
+                        if not _is_missing(exc):
+                            raise
+                await asyncio.to_thread(wipe_workspaces, await asyncio.to_thread(project_ids, user_id))
+                await asyncio.to_thread(drop, user_id)
+            except Exception as exc:  # noqa: BLE001 - one stuck user must not block the rest; retry next cycle
+                logger.warning("account_purge_failed", extra={"user_id": str(user_id), "error": type(exc).__name__})
+                continue
+            purged += 1
+            logger.info("account_purged", extra={"user_id": str(user_id)})
+            if now - requested_at > timedelta(hours=24):
+                logger.warning("account_purge_overdue", extra={"user_id": str(user_id)})
+        return purged
