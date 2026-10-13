@@ -41,3 +41,14 @@ def test_verify_rejects_malformed_hash(garbage):
 
 def test_verify_dummy_returns_none():
     assert passwords.verify_dummy("anything-at-all") is None
+
+
+@pytest.mark.parametrize("raw,expected", [(" A@X.com ", "a@x.com"), ("a@x.com", "a@x.com")])
+def test_normalize_email(raw, expected):
+    assert passwords.normalize_email(raw) == expected
+
+
+@pytest.mark.parametrize("bad", ["", "ax.com", "a@", "@x.com", "a@b@c", "a" * 250 + "@x.com"])
+def test_normalize_email_rejects(bad):
+    with pytest.raises(ServiceError):
+        passwords.normalize_email(bad)

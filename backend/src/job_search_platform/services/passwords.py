@@ -51,3 +51,11 @@ def _dummy_hash() -> str:
 def verify_dummy(password: str) -> None:
     """Spend the same work as a real check, so unknown emails are not distinguishable by timing."""
     verify_password(password, _dummy_hash())
+
+
+def normalize_email(raw: str) -> str:
+    email = raw.strip().lower()
+    local, sep, domain = email.partition("@")
+    if not sep or not local or not domain or "@" in domain or len(email) > 254:
+        raise ServiceError("invalid_email")
+    return email
