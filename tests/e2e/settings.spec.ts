@@ -59,7 +59,7 @@ test.beforeEach(async ({ page }) => {
 
 async function openSettings(page: import('@playwright/test').Page, section: 'Tools' | 'Project sharing') {
   await page.goto('/app/settings');
-  await page.getByRole('button', { name: 'EN' }).click();
+  await page.getByRole('button', { name: 'EN', exact: true }).click();
   await page.getByRole('button', { name: section, exact: true }).click();
   await expect(page.getByLabel('Project settings for')).toBeVisible();
 }

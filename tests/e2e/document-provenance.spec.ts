@@ -42,7 +42,7 @@ test('shows each generated document revision source instead of the current CV af
   await expect(page.getByRole('heading', { name: 'Synthetic partial cover letter' })).toBeVisible();
   await expect(page.getByRole('status').filter({ hasText: /\S/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'EN' }).click();
+  await page.getByRole('button', { name: 'EN', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: /\S/ })).toContainText('Partial document');
   await expect(page.getByTestId('source-cv-revision-1')).toContainText('1');
   await expect(page.getByTestId('source-cv-revision-2')).toContainText('2');
@@ -85,7 +85,7 @@ test('keeps document access when CV provenance lookup fails or its source is abs
   }));
 
   await page.goto(`/app/projects/${projectId}/documents/${documentId}`);
-  await page.getByRole('button', { name: 'EN' }).click();
+  await page.getByRole('button', { name: 'EN', exact: true }).click();
   const unavailableSources = page.getByTestId('source-cv-unavailable');
   await expect(unavailableSources).toHaveCount(2);
   // Revisions render newest first, so the missing-source revision 2 precedes revision 1's unresolved id.
