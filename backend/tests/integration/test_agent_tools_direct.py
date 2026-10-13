@@ -85,6 +85,7 @@ def _runs(api_context):
         return db.scalar(select(func.count()).select_from(Run))
 
 
+@pytest.mark.integration
 def test_rest_search_full_description_age_stale_and_text_mode(api_context, fake_source):
     csrf, project_id = _project(api_context)
     token = _grant(api_context, project_id, csrf, ["jobs:search"])
@@ -104,6 +105,7 @@ def test_rest_search_full_description_age_stale_and_text_mode(api_context, fake_
     assert owner_view.status_code == 200 and len(owner_view.json()["jobs"]) == 1
 
 
+@pytest.mark.integration
 def test_rest_fit_is_deterministic_and_creates_no_run(api_context):
     csrf, project_id = _project(api_context)
     token = _grant(api_context, project_id, csrf, ["jobs:evaluate"])
@@ -127,6 +129,7 @@ def test_rest_fit_is_deterministic_and_creates_no_run(api_context):
     assert _runs(api_context) == before
 
 
+@pytest.mark.integration
 def test_rest_capability_denials(api_context):
     csrf, project_id = _project(api_context)
     evaluate_only = _grant(api_context, project_id, csrf, ["jobs:evaluate"])
@@ -139,6 +142,7 @@ def test_rest_capability_denials(api_context):
     assert _as_grant(api_context.client, "POST", search, "not-a-token", json={}).status_code == 401
 
 
+@pytest.mark.integration
 def test_rest_grant_cannot_use_another_projects_path(api_context):
     csrf, project_id = _project(api_context)
     token = _grant(api_context, project_id, csrf, ["jobs:evaluate", "jobs:search"])

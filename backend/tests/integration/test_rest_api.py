@@ -674,6 +674,7 @@ def test_trashed_document_is_hidden_from_grants_but_not_the_owner(api_context):
     assert [d.id for d in asyncio.run(services.documents.list_ready(grant_actor, UUID(pid)))] == [seeded.document]
 
 
+@pytest.mark.integration
 def test_runtime_openapi_matches_application_contract_paths_methods_and_schemas(api_context):
     contract = yaml.safe_load((Path(__file__).resolve().parents[3] / "docs" / "contracts" / "application-api.yaml").read_text())
     runtime = api_context.client.get("/openapi.json").json()
@@ -716,6 +717,7 @@ REMOVED_ROUTES = (("get", "/providers"), ("get", "/settings/provider"), ("put", 
                   ("post", "/settings/provider/models"), ("post", "/settings/provider/test"))
 
 
+@pytest.mark.integration
 def test_provider_routes_are_gone_and_gateway_status_is_owner_only(api_context):
     client = api_context.client
     csrf = _owner(api_context)
@@ -735,6 +737,7 @@ def test_provider_routes_are_gone_and_gateway_status_is_owner_only(api_context):
     assert client.get("/api/v1/gateway", headers={"Authorization": f"Bearer {token}"}).status_code in (401, 403)
 
 
+@pytest.mark.integration
 def test_health_is_liveness_and_ready_reports_components(api_context, monkeypatch):
     from job_search_platform.api import rest
     client = api_context.client
@@ -758,6 +761,7 @@ def test_health_is_liveness_and_ready_reports_components(api_context, monkeypatc
     assert "10.9.8.7" not in degraded.text and "4000" not in degraded.text
 
 
+@pytest.mark.integration
 def test_request_log_has_id_and_route_template_but_no_query(api_context):
     stream = io.StringIO()
     handler = logging.StreamHandler(stream)
@@ -778,6 +782,7 @@ def test_request_log_has_id_and_route_template_but_no_query(api_context):
     assert re.fullmatch(r"[0-9a-f-]{36}", second["request_id"]) and second["request_id"] == bad.headers["X-Request-ID"]
 
 
+@pytest.mark.integration
 def test_ready_is_single_flight_and_cached(api_context, monkeypatch):
     from job_search_platform.api import rest
     calls = {"gateway": 0}
@@ -818,6 +823,7 @@ def test_gateway_probe_reads_a_bounded_body(monkeypatch):
     assert read and all(0 < n <= 4096 for n in read)
 
 
+@pytest.mark.integration
 def test_unmatched_route_is_labelled_unmatched(api_context):
     stream = io.StringIO()
     handler = logging.StreamHandler(stream)
