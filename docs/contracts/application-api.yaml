@@ -12,7 +12,8 @@ servers:
 security:
   - ownerSession: []
 tags:
-  - name: bootstrap
+  - name: auth
+  - name: account
   - name: projects
   - name: sessions
   - name: jobs
@@ -848,6 +849,84 @@ paths:
     delete:
       tags: [sharing]
       responses: {'204': {description: Revoked}}
+  /auth/signup:
+    post:
+      tags: [auth]
+      description: Public. Always 202 check_email, whether or not the email has an account. 429 rate_limited per client IP.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SignupRequest'}}}}
+      responses:
+        '202': {description: Always the same answer, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+  /auth/verify-email:
+    post:
+      tags: [auth]
+      description: Public. 400 invalid_token when unknown, used or expired.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TokenRequest'}}}}
+      responses:
+        '204': {description: Done}
+  /auth/resend-verification:
+    post:
+      tags: [auth]
+      description: Session. 202 check_email; no-op when already verified.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Always the same answer, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+  /auth/login:
+    post:
+      tags: [auth]
+      description: Public. Sets the jsp_owner_session cookie. 401 invalid_credentials is identical for unknown email, wrong password and disabled user.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}}
+      responses:
+        '200': {description: Logged in, content: {application/json: {schema: {$ref: '#/components/schemas/LoginView'}}}}
+  /auth/session:
+    post:
+      tags: [auth]
+      description: Cookie. Restores the session after a page reload. 401 unauthorized without a valid cookie.
+      security: []
+      responses:
+        '200': {description: Session, content: {application/json: {schema: {$ref: '#/components/schemas/SessionStateView'}}}}
+  /auth/logout:
+    post:
+      tags: [auth]
+      description: Session and CSRF. Revokes the session and clears the cookie.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Logged out}
+  /auth/password/forgot:
+    post:
+      tags: [auth]
+      description: Public. Always 202 check_email. 429 rate_limited per email.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ForgotPasswordRequest'}}}}
+      responses:
+        '202': {description: Always the same answer, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+  /auth/password/reset:
+    post:
+      tags: [auth]
+      description: Public. Sets the password and revokes all sessions; does not log in. 400 invalid_token, 422 weak_password.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResetPasswordRequest'}}}}
+      responses:
+        '204': {description: Done}
+  /account:
+    get:
+      tags: [account]
+      responses:
+        '200': {description: Current account, content: {application/json: {schema: {$ref: '#/components/schemas/AccountView'}}}}
+    delete:
+      tags: [account]
+      description: Session and CSRF. Starts deletion and clears the cookie. 401 invalid_credentials, 422 confirmation_mismatch.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DeleteAccountRequest'}}}}
+      responses:
+        '204': {description: Deletion requested}
+  /account/agents:
+    get:
+      tags: [account]
+      description: Every grant on the caller's projects.
+      responses:
+        '200': {description: Connected agents, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AgentView'}}}}}
   /health:
     get:
       tags: [system]
@@ -1485,3 +1564,88 @@ components:
         retryable: {type: boolean}
         fields: {type: [object, 'null'], additionalProperties: {type: string}}
         correlation_id: {type: string, format: uuid}
+    SignupRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: {type: string, maxLength: 254}
+        password: {type: string, maxLength: 256}
+        locale: {type: string, enum: [th, en], default: th}
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: {type: string, maxLength: 254}
+        password: {type: string, maxLength: 256}
+    TokenRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: {type: string, minLength: 1, maxLength: 256}
+    ForgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: {type: string, maxLength: 254}
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [token, password]
+      properties:
+        token: {type: string, minLength: 1, maxLength: 256}
+        password: {type: string, maxLength: 256}
+    DeleteAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [password, confirm_email]
+      properties:
+        password: {type: string, maxLength: 256}
+        confirm_email: {type: string, maxLength: 254}
+    CheckEmailView:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {type: string, enum: [check_email]}
+    AccountView:
+      type: object
+      additionalProperties: false
+      required: [id, email, locale, email_verified, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string}
+        locale: {type: string, enum: [th, en]}
+        email_verified: {type: boolean}
+        created_at: {type: string, format: date-time}
+    LoginView:
+      type: object
+      additionalProperties: false
+      required: [user, csrf_token]
+      properties:
+        user: {$ref: '#/components/schemas/AccountView'}
+        csrf_token: {type: string}
+    SessionStateView:
+      type: object
+      additionalProperties: false
+      required: [authenticated, csrf_token, expires_at, user]
+      properties:
+        authenticated: {type: boolean, const: true}
+        csrf_token: {type: string}
+        expires_at: {type: string, format: date-time}
+        user: {$ref: '#/components/schemas/AccountView'}
+    AgentView:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, project_name, label, capabilities, expires_at, revoked_at]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        project_name: {type: string}
+        label: {type: [string, 'null']}
+        capabilities: {type: array, items: {type: string}}
+        expires_at: {type: string, format: date-time}
+        revoked_at: {type: [string, 'null'], format: date-time}

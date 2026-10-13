@@ -23,14 +23,17 @@ from pydantic import BaseModel
 
 from job_search_platform import config
 from job_search_platform.api.dependencies import Services
+from job_search_platform.api.accounts import router as accounts_router
 from job_search_platform.api.rest import _http_error, router as rest_router
 from job_search_platform.api.sse import router as sse_router
 from job_search_platform.db.session import make_engine
 from job_search_platform.integrations.hermes_runtime import HermesRuntime
 from job_search_platform.integrations import tracing
 from job_search_platform.integrations.logging import RequestLogMiddleware, configure_logging
+from job_search_platform.integrations.mailer import SmtpMailer
 from job_search_platform.integrations.object_store import S3ObjectStore
 from job_search_platform.integrations.secrets import MacOSKeychain
+from job_search_platform.services.accounts import Accounts
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.documents import Artifacts, Documents
 from job_search_platform.services.errors import ServiceError
@@ -121,10 +124,13 @@ def build_services() -> Services:
     owner_sessions = OwnerSessions(
         sessions, public_origin=os.environ.get("APP_PUBLIC_ORIGIN", "http://127.0.0.1:8000"),
         extra_origins=frozenset({dev} if dev else ()))
+    mailer = SmtpMailer.from_env()  # None without SMTP_HOST: Accounts logs mail_disabled and drops mail
+    accounts = Accounts(sessions, owner_sessions, mailer, public_origin=owner_sessions.public_origin)
     return Services(sessions=sessions, owner_sessions=owner_sessions, files=files,
                     documents=documents, runs=runs, grants=grants, settings=settings,
                     approvals=approvals, supervisor=supervisor, runtime=runtime,
-                    queue=queue, artifacts=artifacts, secret_store=secrets, engine=engine)
+                    queue=queue, artifacts=artifacts, secret_store=secrets, engine=engine,
+                    accounts=accounts, mailer=mailer)
 
 
 def _safe_field_names(exc: RequestValidationError) -> dict[str, str] | None:
@@ -139,6 +145,7 @@ def _safe_field_names(exc: RequestValidationError) -> dict[str, str] | None:
                 "operation", "cv_revision_id", "job_revision_id", "idempotency_key", "retry_of_id",
                 "action", "revision_id", "expected_cv_revision_id", "target_file_id", "decision",
                 "capabilities", "expires_at", "provider", "model", "credential", "enabled", "base_url",
+                "email", "password", "token", "confirm_email",
             }:
                 fields[field_name] = "invalid"
     return fields or None
@@ -208,6 +215,7 @@ def create_app(
                   servers=[{"url": "/api/v1"}], lifespan=lifespan,
                   telemetry={"auto_configure": False})
     app.include_router(rest_router, prefix="/api/v1")
+    app.include_router(accounts_router, prefix="/api/v1")
     app.include_router(sse_router, prefix="/api/v1")
 
     @app.middleware("http")
@@ -307,7 +315,8 @@ def create_app(
             for method, operation in operations.items():
                 if not isinstance(operation, dict):
                     continue
-                if path in {"/health", "/health/ready"}:
+                if path in {"/health", "/health/ready"} or (
+                        path.startswith("/auth/") and path not in {"/auth/resend-verification", "/auth/logout"}):
                     operation["security"] = []
                 elif method in grant_routes.get(path, set()):
                     operation["security"] = [{"ownerSession": []}, {"projectGrant": []}]

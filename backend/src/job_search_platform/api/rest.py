@@ -49,6 +49,7 @@ SAFE_FIELDS = frozenset({
     "session_id", "operation", "cv_revision_id", "job_revision_id", "idempotency_key",
     "retry_of_id", "cv_id", "document_id", "action", "revision_id", "expected_cv_revision_id", "target_file_id",
     "decision", "capabilities", "expires_at", "provider", "model", "credential", "enabled", "base_url",
+    "retry_after", "reset_at",
 })
 
 
@@ -69,6 +70,8 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "secret_store_unavailable": 503,
         "jev_unavailable": 409, "gateway_unconfigured": 409,
         "duplicate": 409, "bank_full": 409,
+        "email_unverified": 403, "quota_exceeded": 429, "rate_limited": 429, "invalid_credentials": 401,
+        "invalid_token": 400, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
     body = {
