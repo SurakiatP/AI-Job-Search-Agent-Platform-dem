@@ -47,7 +47,7 @@ rtk uv run --locked --project backend python scripts/local_infra.py status \
   --source-dir "$MINIO_SOURCE_DIR"
 ```
 
-Build the frontend and launch the owner app. The default listener is loopback-only at `http://127.0.0.1:8000`. The launcher prints a one-use owner bootstrap URL; treat it as a login credential. `--open-browser` opens the URL directly and keeps its nonce out of terminal output. Do not share terminal logs while bootstrapping.
+Build the frontend and launch the app. The default listener is loopback-only at `http://127.0.0.1:8000`. The launcher prints the login page URL (`http://127.0.0.1:8000/login`); there is no launch link or one-use nonce any more. Sign in there with an account (see "Accounts" below).
 
 ```sh
 rtk npm ci --prefix frontend
@@ -55,11 +55,27 @@ rtk uv sync --locked --project backend --all-groups
 rtk uv run --locked --project backend python scripts/run_local.py --build-frontend --open-browser
 ```
 
-If you need to enter the nonce yourself, use the one-use URL printed by the launcher in the local browser. It creates the owner session cookie; the app then enforces same-origin CSRF protections. Keep the owner listener on loopback.
+The session cookie `jsp_owner_session` is `HttpOnly` and `SameSite=Strict`, and `Secure` when `APP_PUBLIC_ORIGIN` is https. The app enforces same-origin CSRF protections. Keep the listener on loopback.
 
 In Settings, select OpenAI, Anthropic, or OpenRouter, choose a model, enter the key in the provider field, and save it. The browser sends the key to the local backend for Keychain storage; it is not retained in local browser storage or the database. Use the Settings connection check before submitting a run. The selected provider receives the CV and job details needed to perform the request. Do not configure a key in a grant or share workflow.
 
 Create a project, add a CV and a job posting you supplied, and start the evaluation/draft workflow. Review the evaluation and every generated document yourself. Application submission remains manual. In Saved jobs, the owner can mark a posting as applied or return it to saved. This persisted status is separate from an agent Run status; the button only records the owner’s action and does not send an application.
+
+## Accounts
+
+Each person has an account (email and password, 10-128 characters). Everything below runs against the database selected by `JSP_DATABASE` and the credentials in `CORE02_PRIVATE_DIR`.
+
+- **Sign-up and login.** Open `/login`. Sign-up, forgot password and resend verification always answer "check your email" and never reveal whether an address has an account. An account must verify its email before it can start runs. Sessions end 7 days after last use or 30 days after login, whichever is first.
+- **Mail.** The app sends verification and reset links by SMTP. With no `SMTP_HOST` it only logs `mail_disabled` and drops the mail. For local development start Mailpit with the stack (`scripts/local_infra.py start` or `docker compose -f infra/compose.yaml up -d mailpit`), then set `SMTP_HOST=127.0.0.1`, `SMTP_PORT=51025` and `SMTP_STARTTLS=false`. Read the mail at `http://127.0.0.1:58025`. Mailpit keeps nothing on disk and listens on loopback only.
+- **First owner account.** `create-user` makes an already verified account, so no mail is needed:
+
+```sh
+rtk uv run --locked --project backend python scripts/accounts.py create-user --email you@example.com [--claim-existing] [--locale th|en]
+rtk uv run --locked --project backend python scripts/accounts.py disable-user --email you@example.com
+```
+
+  The password is read twice with a hidden prompt, or as one line from stdin when stdin is not a terminal. `--claim-existing` hands every project that has no owner to this user, and moves those projects' queued or past runs from the legacy `owner` scope to `user:<id>`. Run it once, for the person who owned the data before accounts existed. It prints counts only, never the email. `disable-user` blocks login, revokes all sessions and grants, and prints `disabled`. Both exit 2 with `error: <code>` on a rejected input.
+- **Settings.** `APP_PUBLIC_ORIGIN` (default `http://127.0.0.1:8000`) builds the links in mail and decides the `Secure` cookie flag. `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` (`no-reply@localhost`) and `SMTP_STARTTLS` (`true`) configure outbound mail. `USER_DAILY_RUN_QUOTA` (30) caps runs per user per Asia/Bangkok day; going over returns 429 `quota_exceeded`.
 
 ## LiteLLM gateway
 
