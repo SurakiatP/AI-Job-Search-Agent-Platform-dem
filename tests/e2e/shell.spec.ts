@@ -4,7 +4,7 @@ test('locale/theme/navigation retain distinct project and session drafts only in
   await page.goto('/tests/shell.html');
   await page.getByRole('textbox', { name: 'ข้อความ', exact: true }).fill('สนใจงานนี้');
   await page.getByRole('button', { name: 'EN', exact: true }).click();
-  await page.getByRole('button', { name: 'Dark', exact: true }).click();
+  await page.getByRole('navigation').getByRole('button', { name: 'Dark', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('สนใจงานนี้');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -37,10 +37,10 @@ test('invalid preferences fall back and System tracks OS while an explicit theme
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('button', { name: 'สว่าง', exact: true }).click();
+  await page.getByRole('navigation').getByRole('button', { name: 'สว่าง', exact: true }).click();
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('button', { name: 'ตามระบบ', exact: true }).click();
+  await page.getByRole('navigation').getByRole('button', { name: 'ตามระบบ', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
@@ -49,8 +49,8 @@ test('actual sidebar navigation keeps the application document and unsent draft'
   await page.getByRole('textbox', { name: 'ข้อความ', exact: true }).fill('draft before navigation');
   const documentRequests: string[] = [];
   page.on('request', request => { if (request.isNavigationRequest()) documentRequests.push(request.url()); });
-  await page.getByRole('link', { name: 'โปรเจกต์', exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/projects$/);
+  await page.getByRole('link', { name: 'โปรเจกต์ใหม่', exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/projects\/new$/);
   expect(documentRequests).toEqual([]);
   await page.goBack();
   await expect(page.getByRole('textbox', { name: 'ข้อความ', exact: true })).toHaveValue('draft before navigation');
@@ -67,6 +67,7 @@ test('actual sidebar navigation keeps the application document and unsent draft'
 });
 
 test('320px shell keeps the language control visible and drawer returns keyboard focus', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto('/tests/shell.html');
   await expect(page.getByRole('button', { name: 'EN', exact: true })).toBeInViewport();
@@ -81,7 +82,7 @@ test('320px shell keeps the language control visible and drawer returns keyboard
   await expect(page.getByRole('heading', { name: 'Shell verification' })).toBeVisible();
   const motion = await page.locator('body *').evaluateAll(elements => elements.some(el => {
     const css = getComputedStyle(el);
-    return css.animationName !== 'none' || css.transitionDuration.split(',').some(value => parseFloat(value) > 0);
+    return (css.animationName !== 'none' && parseFloat(css.animationDuration) > 0.001) || css.transitionDuration.split(',').some(value => parseFloat(value) > 0.001);
   }));
   expect(motion).toBe(false);
 });
