@@ -48,6 +48,7 @@ from job_search_platform.services.contracts import (
 )
 from job_search_platform.services.applications import MAX_ANSWER_CHARS
 from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.quota import enforce_run_gates
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD
 
 MAX_QUEUED_PER_PROJECT = 10
@@ -387,6 +388,7 @@ class RunService:
             return self._authorized_view(db, actor, previous)
 
         # Replays above stay valid; a removed job cannot start new work.
+        enforce_run_gates(db, project_id, now=now)
         if job.removed_at is not None:
             raise ServiceError("job_removed")
         pack_run = self._application_checks(db, project_id, job, canonical_request)
@@ -587,6 +589,7 @@ class RunService:
     def _queue_export(self, db: Session, actor: Actor, source: Run, document: Document | None, output_format: str,
                       markdown: str, now: datetime, *, title: str = "", document_type: str = "cv") -> RunView:
         """Queue a non-LLM export run that inherits session/CV/job/provider from `source`; no document means a new one."""
+        enforce_run_gates(db, source.project_id, now=now)
         key = uuid4().hex
         run = Run(
             project_id=source.project_id,
@@ -777,6 +780,7 @@ class RunService:
                 Run.project_id == project_id, Run.status == "queued")) or 0
             if queued >= MAX_QUEUED_PER_PROJECT:
                 raise ServiceError("queue_full", retryable=True)
+            enforce_run_gates(db, project_id, now=now)
             key = uuid4().hex
             # No session, job or provider: the run only parses the CV inside the sandbox.
             run = Run(
@@ -827,6 +831,7 @@ class RunService:
             gateway = GatewaySettings.from_env()
             if not gateway.api_key:
                 raise ServiceError("gateway_unconfigured")
+            enforce_run_gates(db, project_id, now=now)
             key = uuid4().hex
             run = Run(
                 project_id=project_id, actor_scope=actor_scope(actor), idempotency_key=key,
@@ -877,6 +882,7 @@ class RunService:
                 Run.project_id == project_id, Run.status == "queued")) or 0
             if queued >= MAX_QUEUED_PER_PROJECT:
                 raise ServiceError("queue_full", retryable=True)
+            enforce_run_gates(db, project_id, now=now)
             key = uuid4().hex
             run = Run(project_id=project_id, actor_scope=actor_scope(actor), idempotency_key=key,
                       request_digest=hashlib.sha256(json.dumps({"match_jobs": snapshot, "key": key}, sort_keys=True).encode()).hexdigest(),

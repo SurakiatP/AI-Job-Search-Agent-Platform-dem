@@ -13,6 +13,7 @@ from job_search_platform.db.repositories import Repositories
 from job_search_platform.services.authorization import authorize, GRANT_CAPABILITIES
 from job_search_platform.services.contracts import Actor, GrantIssuedView, GrantView
 from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.quota import require_verified_owner
 from job_search_platform.services.owner_sessions import token_hash
 
 
@@ -35,6 +36,7 @@ class Grants:
             token = "jspg_" + secrets.token_urlsafe(32)
             with self.sessions.begin() as db:
                 authorize(db, actor, project_id, "manage", "grant")
+                require_verified_owner(db, project_id)
                 Repositories.project(db, project_id)
                 row = Grant(project_id=project_id, token_hash=token_hash(token),
                             capabilities=sorted(request.capabilities), expires_at=request.expires_at,
