@@ -10,9 +10,11 @@ async function setup(page, handler) {
     const r = await import('/node_modules/.vite/deps/react.js'); const React = r.default ?? r;
     const d = await import('/node_modules/.vite/deps/react-dom_client.js'); const dom = d.default ?? d;
     const node = document.createElement('div'); node.id = 'probe'; document.body.append(node);
-    // Use the exact (version-stamped) router module the app imports so the router context is shared.
-    const routerUrl = (await (await fetch('/src/features/chat/RunResults.tsx')).text()).match(/"(\/node_modules\/\.vite\/deps\/react-router\.js[^"]*)"/)[1];
-    const { MemoryRouter } = await import(routerUrl);
+    // The shell page already loaded the app's version-stamped react-router module; import that exact URL (from the
+    // browser's resource list, not from source text) so Link and MemoryRouter share one router context.
+    const entry = performance.getEntriesByType('resource').find(item => /\/\.vite\/deps\/react-router\.js/.test(item.name));
+    if (!entry) throw new Error('react-router was not loaded by the shell page; cannot share its router context');
+    const { MemoryRouter } = await import(entry.name);
     const root = dom.createRoot(node);
     // Link-bearing components (RunResults) need a router context.
     window.probe = { React, root: { render: el => root.render(React.createElement(MemoryRouter, null, el)) } };
