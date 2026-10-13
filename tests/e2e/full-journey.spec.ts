@@ -30,7 +30,7 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
     id: runId,
     project_id: projectId,
     session_id: sessionId,
-    operation: 'evaluate_job',
+    operation: 'draft_documents',
     status: 'completed',
     job_revision_id: jobId,
     output_language: 'en',
@@ -64,48 +64,42 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'EN', exact: true }).click();
   await page.getByRole('banner').getByRole('link', { name: 'Get started', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
 
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Projects', exact: true }).click();
-  await page.getByRole('link', { name: 'New project', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'New project', exact: true }).click();
   await page.getByRole('textbox', { name: 'Project name' }).fill('Synthetic bilingual project');
   await page.getByRole('textbox', { name: 'What are you looking for?' }).fill('Thai and English data analyst roles');
   await page.getByRole('button', { name: 'Create a project' }).click();
   await expect(page.getByRole('heading', { name: 'Profile and CV' })).toBeVisible();
-  await page.getByRole('textbox', { name: 'CV text' }).fill('Synthetic CV: data analysis and reporting experience.');
+  await page.getByLabel('Add CV').setInputFiles({ name: 'synthetic-cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic CV: data analysis and reporting experience.') });
   await page.getByLabel('Document language').selectOption('en');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByRole('button', { name: 'Save preferences' }).click();
 
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Saved jobs', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'Saved jobs', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic data analyst' }).click();
   await expect(page.getByTestId('job-description')).toContainText('Synthetic posting description.');
   await page.goBack();
   await expect(page).toHaveURL(`/app/projects/${projectId}/jobs`);
 
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'First synthetic session', exact: true }).click();
-  const composer = page.getByRole('textbox', { name: 'Instructions for this task (used for evaluation or drafting)' });
-  await composer.fill('Please evaluate this supplied synthetic posting.');
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Saved jobs', exact: true }).click();
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'First synthetic session', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'Instructions for this task (used for evaluation or drafting)' })).toHaveValue('Please evaluate this supplied synthetic posting.');
+  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'First synthetic session', exact: true }).click();
+  // The session is paired (CV and job) and has no free-text composer, so the output language is chosen
+  // before drafting. The Thai UI keeps its own selector label; the chosen language must reach the run.
   await page.getByRole('button', { name: 'ไทย', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'คำแนะนำสำหรับงานนี้ (ใช้ในการประเมินหรือร่างเอกสาร)' })).toHaveValue('Please evaluate this supplied synthetic posting.');
-  await page.getByLabel('ภาษาผลลัพธ์').selectOption('en');
+  await page.getByLabel('ภาษาเอกสาร').selectOption('en');
   await page.getByRole('button', { name: 'EN', exact: true }).click();
-  await page.getByRole('button', { name: 'Start run', exact: true }).click();
+  await page.getByRole('button', { name: 'Cover letter', exact: true }).click();
   await expect(page.getByTestId('run-status')).toHaveText('Completed');
   expect(submittedRun).toMatchObject({
     session_id: sessionId,
-    operation: 'evaluate_job',
-    job_revision_id: jobId,
+    operation: 'draft_documents',
+    draft_kind: 'cover_letter',
     output_language: 'en',
   });
 
-  await page.getByRole('link', { name: 'Synthetic English cover letter' }).click();
+  await page.getByTitle('Open document').click();
   await expect(page.getByRole('heading', { name: 'Synthetic English cover letter' })).toBeVisible();
   await expect(page.getByTestId('document-language')).toContainText('English');
-  await expect(page.getByRole('status')).toHaveText('Partial document');
+  await expect(page.getByRole('status').filter({ hasText: /\S/ })).toHaveText('Partial document');
   await expect(page.getByTestId('document-content')).toHaveText('Synthetic English draft for review.');
   await page.getByRole('button', { name: 'ไทย', exact: true }).click();
   await expect(page.getByTestId('document-language')).toContainText('English');
@@ -113,7 +107,6 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
   await page.goto('/app/settings');
-  await page.getByRole('tab', { name: 'ลักษณะที่แสดง' }).click();
   await page.getByRole('button', { name: 'มืด' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
@@ -126,7 +119,7 @@ test('synthetic upload and transport faults stay explicit without false completi
   await page.goto(`/app/projects/${projectId}/profile`);
 
   let uploadRequests = 0;
-  await page.route(`**/api/v1/projects/${projectId}/cv`, async route => {
+  await page.route(`**/api/v1/projects/${projectId}/cvs`, async route => {
     if (route.request().method() === 'POST') {
       await route.fulfill({
         status: 422,
@@ -138,14 +131,14 @@ test('synthetic upload and transport faults stay explicit without false completi
     await route.fallback();
   });
   page.on('request', request => {
-    if (request.url().endsWith(`/api/v1/projects/${projectId}/cv`) && request.method() === 'POST') uploadRequests += 1;
+    if (request.url().endsWith(`/api/v1/projects/${projectId}/cvs`) && request.method() === 'POST') uploadRequests += 1;
   });
-  await page.getByLabel('Upload a CV file').setInputFiles({
+  await page.getByLabel('Add CV').setInputFiles({
     name: 'synthetic-scan-only.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.4 synthetic scanned-only fixture'),
   });
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  // Choosing a file uploads it immediately; there is no separate Save step.
   await expect(page.getByRole('alert')).toContainText(/scan|OCR|text/i);
   expect(uploadRequests).toBe(1);
 
@@ -208,9 +201,7 @@ test('expired approval is visible but cannot be approved from a stale request', 
   await page.route(`**/api/v1/projects/${projectId}/runs/${runId}/events`, route => route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' }));
 
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
-  await page.getByRole('textbox', { name: 'Instructions for this task (used for evaluation or drafting)' }).fill('Draft synthetic application materials.');
-  await page.getByLabel('Requested work').selectOption('draft_documents');
-  await page.getByRole('button', { name: 'Start run', exact: true }).click();
+  await page.getByRole('button', { name: 'Cover letter', exact: true }).click();
   await expect(page.getByTestId('run-status')).toHaveText('Waiting for approval');
   await expect(page.getByText('This request has expired', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Approve' })).toHaveCount(0);

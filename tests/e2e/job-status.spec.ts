@@ -39,21 +39,22 @@ test('owner application status survives errors, reload, and browser history', as
     });
   });
 
+  // The list view uses a compact control (button only); the status text lives on the job detail page.
+  const status = (text: string) => page.getByRole('status').filter({ hasText: text });
   await page.goto(`/app/projects/${projectId}/jobs`);
-  await expect(page.getByRole('status').first()).toHaveText('Saved');
   await page.getByRole('button', { name: 'Mark as applied' }).click();
   await expect(page.getByRole('alert')).toContainText('could not save this status');
-  await expect(page.getByRole('status').first()).toHaveText('Saved');
+  await expect(page.getByRole('button', { name: 'Mark as applied' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Mark as applied' }).click();
-  await expect(page.getByRole('status').first()).toHaveText('Marked as applied');
+  await expect(page.getByRole('button', { name: 'Move back to saved' })).toBeVisible();
   await page.getByRole('link', { name: 'Synthetic data analyst' }).click();
-  await expect(page.getByRole('status').first()).toHaveText('Marked as applied');
+  await expect(status('Marked as applied')).toBeVisible();
 
   await page.goBack();
-  await expect(page.getByRole('status').first()).toHaveText('Marked as applied');
+  await expect(page.getByRole('button', { name: 'Move back to saved' })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('status').first()).toHaveText('Marked as applied');
+  await expect(page.getByRole('button', { name: 'Move back to saved' })).toBeVisible();
   await page.goForward();
-  await expect(page.getByRole('status').first()).toHaveText('Marked as applied');
+  await expect(status('Marked as applied')).toBeVisible();
 });
