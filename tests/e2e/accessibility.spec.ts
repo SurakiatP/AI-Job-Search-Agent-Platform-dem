@@ -27,7 +27,11 @@ test('approved routes fit 320px, tablet, and desktop and keep the language contr
       await expect(page.getByRole('button', { name: 'EN', exact: true })).toBeVisible();
       await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${width}px overflow at ${route}`).toBe(true);
-      await expect.poll(() => page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running').length), { message: `running animation at ${route}` }).toBe(0);
+      // Reduced motion clamps every animation to one 1ms run; a clamped one may still read "running" until its first frame on a busy host.
+      expect(await page.evaluate(() => document.getAnimations().filter(animation => {
+        const timing = animation.effect?.getComputedTiming();
+        return animation.playState === 'running' && (Number(timing?.duration) > 1 || timing?.iterations === Infinity);
+      }).length), `unclamped animation at ${route}`).toBe(0);
       if (route === `/app/projects/${projectId}/documents/${documentId}`) {
         const readingMetrics = await page.locator('body').evaluate(element => {
           const style = getComputedStyle(element);
