@@ -83,6 +83,19 @@ def authorize(db: Session, actor: Actor, project_id: UUID, action: str,
     raise ServiceError("forbidden")
 
 
+def user_scope_is_current(db: Session, scope: str, project_id: UUID) -> bool:
+    """True for ``user:<id>`` when that user exists, is enabled and owns the project."""
+    if not scope.startswith("user:"):
+        return False
+    try:
+        user_id = UUID(scope.removeprefix("user:"))
+    except ValueError:
+        return False
+    return db.scalar(select(Project.id).join(User, User.id == Project.user_id).where(
+        Project.id == project_id, User.id == user_id, User.disabled_at.is_(None),
+    ).with_for_update(of=User)) is not None
+
+
 def require_scoped_id(db: Session, model: type, project_id: UUID, resource_id: UUID,
                       *, id_column: str = "id"):
     """Resolve a resource by project and ID; conceal foreign IDs uniformly."""

@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from job_search_platform.db.models import (
     CV, Approval, CVRevision, DocumentRevision, Grant, JobApplicationStatus, Project, ProjectPreference, Run, StoredFile,
 )
-from job_search_platform.services.authorization import authorize
+from job_search_platform.services.authorization import authorize, user_scope_is_current
 from job_search_platform.services.contracts import Actor, ApprovalRequest, ApprovalView
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import accrue_active_time, actor_scope, append_event, lock_current_grant
@@ -522,7 +522,7 @@ class ApprovalService:
     @staticmethod
     def _creator_is_current(db: Session, run: Run, now: datetime) -> bool:
         if run.actor_scope.startswith("user:"):
-            return True
+            return user_scope_is_current(db, run.actor_scope, run.project_id)
         if not run.actor_scope.startswith("grant:"):
             return False
         try:

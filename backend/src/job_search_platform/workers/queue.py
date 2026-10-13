@@ -8,7 +8,8 @@ from pydantic import ValidationError
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import Approval, Grant, Project, Run, RunArtifact, User
+from job_search_platform.db.models import Approval, Grant, Project, Run, RunArtifact
+from job_search_platform.services.authorization import user_scope_is_current
 from job_search_platform.services.contracts import EvaluationResult
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import MAX_ACTIVE_SECONDS, MAX_TOOL_CALLS, accrue_active_time, append_event
@@ -245,13 +246,7 @@ class PostgresRunQueue:
     def _scope_is_current(db: Session, scope: str, project_id: UUID, now: datetime,
                           operation: str | None = None) -> bool:
         if scope.startswith("user:"):
-            try:
-                user_id = UUID(scope.removeprefix("user:"))
-            except ValueError:
-                return False
-            return db.scalar(select(Project.id).join(User, User.id == Project.user_id).where(
-                Project.id == project_id, User.id == user_id, User.disabled_at.is_(None),
-            ).with_for_update(of=User)) is not None
+            return user_scope_is_current(db, scope, project_id)
         if not scope.startswith("grant:"):
             return False
         try:
