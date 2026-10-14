@@ -77,7 +77,7 @@ def _public(address: str) -> bool:
     ip = ipaddress.ip_address(address.split("%")[0])
     if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
         ip = ip.ipv4_mapped
-    return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified)
+    return ip.is_global and not (ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified)
 
 
 async def check_url(url: str) -> str:
