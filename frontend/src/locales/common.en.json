@@ -146,6 +146,7 @@
     "password": "Password",
     "passwordHint": "10 to 128 characters.",
     "confirmPassword": "Confirm password",
+    "showPassword": "Show password",
     "loginTitle": "Log in",
     "loginIntro": "Log in to open your job search workspace.",
     "loginAction": "Log in",

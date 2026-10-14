@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
+import { PasswordInput } from '../../components/PasswordInput';
 import { Label } from '../../components/ui/label';
 import { apiRequest, deleteAccount, logout, resendVerification, useAccount } from '../../lib/api';
 import { ApiError, type AccountAgent } from '../../lib/api-types';
@@ -94,7 +95,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
       <form className="grid gap-4" onSubmit={event => void submit(event)}>
         <DialogTitle>{t('account.deleteTitle')}</DialogTitle>
         <DialogDescription>{t('account.deleteBody')}</DialogDescription>
-        <div className="grid gap-1.5"><Label htmlFor="delete-password">{t('auth.password')}</Label><Input id="delete-password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="delete-password">{t('auth.password')}</Label><PasswordInput id="delete-password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
         <div className="grid gap-1.5"><Label htmlFor="delete-email">{t('account.confirmEmail')}</Label><Input id="delete-email" type="email" autoComplete="off" placeholder={email} required value={confirm} onChange={e => setConfirm(e.target.value)} /></div>
         {error && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{error}</p>}
         <div className="flex flex-wrap justify-end gap-2">

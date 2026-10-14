@@ -33,21 +33,37 @@ test('landing start leads to login; wrong then right password reaches the reques
   await page.goto('/app/account');
   await expect(page).toHaveURL(/\/login\?next=%2Fapp%2Faccount$/);
   await page.getByLabel('Email').fill('synthetic@example.test');
-  await page.getByLabel('Password').fill('wrong');
+  await page.getByLabel('Password', { exact: true }).fill('wrong');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('The email or password is not correct.');
-  await page.getByLabel('Password').fill('correct-password');
+  await page.getByLabel('Password', { exact: true }).fill('correct-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
   await expect(page.getByText('No connected agents')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Resend email' })).toHaveCount(0);
 });
 
+test('the eye button shows and hides the typed password', async ({ page }) => {
+  await mockApi(page, true);
+  await page.goto('/login');
+  const field = page.getByLabel('Password', { exact: true });
+  const eye = page.getByRole('button', { name: 'Show password' });
+  await field.fill('correct-password');
+  await expect(field).toHaveAttribute('type', 'password');
+  await expect(eye).toHaveAttribute('aria-pressed', 'false');
+  await eye.click();
+  await expect(field).toHaveAttribute('type', 'text');
+  await expect(field).toHaveValue('correct-password');
+  await expect(eye).toHaveAttribute('aria-pressed', 'true');
+  await eye.click();
+  await expect(field).toHaveAttribute('type', 'password');
+});
+
 test('signup shows the check-email state and verify-email consumes then hides the token', async ({ page }) => {
   await mockApi(page, true);
   await page.goto('/signup');
   await page.getByLabel('Email').fill('new@example.test');
-  await page.getByLabel('Password').fill('long-enough-password');
+  await page.getByLabel('Password', { exact: true }).fill('long-enough-password');
   await page.getByRole('button', { name: 'Sign up', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
   await page.goto('/verify-email?token=good-token');
@@ -61,7 +77,7 @@ test('unverified users see the banner and disabled run controls with an explanat
   await mockApi(page, false);
   await page.goto('/login?next=%2Fapp%2Fprojects%2F' + projectId + '%2Fsessions%2F' + sessionId);
   await page.getByLabel('Email').fill('synthetic@example.test');
-  await page.getByLabel('Password').fill('correct-password');
+  await page.getByLabel('Password', { exact: true }).fill('correct-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByText('Confirm your email to start runs and connect agents.')).toBeVisible();
   await page.goto(`/app/projects/${projectId}/console?tab=agents`);
@@ -91,7 +107,7 @@ test('agents list shows given date and revoke calls the grant route', async ({ p
   await page.route(`**/api/v1/projects/${projectId}/grants/${grantId}`, route => { revoked = `${route.request().method()} ${new URL(route.request().url()).pathname}`; return route.fulfill({ status: 204 }); });
   await page.goto('/login?next=%2Fapp%2Faccount');
   await page.getByLabel('Email').fill('synthetic@example.test');
-  await page.getByLabel('Password').fill('correct-password');
+  await page.getByLabel('Password', { exact: true }).fill('correct-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByText('Synthetic agent')).toBeVisible();
   await expect(page.getByText(/Given\s+Oct 3, 2026/)).toBeVisible();
@@ -107,12 +123,12 @@ test('delete account needs the typed email; wrong password stays on the page, th
     : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...user, email_verified: true }) }));
   await page.goto('/login?next=%2Fapp%2Faccount');
   await page.getByLabel('Email').fill('synthetic@example.test');
-  await page.getByLabel('Password').fill('correct-password');
+  await page.getByLabel('Password', { exact: true }).fill('correct-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await page.getByRole('button', { name: 'Delete account', exact: true }).click();
   const dialog = page.getByRole('dialog');
   const submit = dialog.getByRole('button', { name: 'Delete permanently' });
-  await dialog.getByLabel('Password').fill('wrong-password');
+  await dialog.getByLabel('Password', { exact: true }).fill('wrong-password');
   await dialog.getByLabel('Type your email to confirm').fill('other@example.test');
   await expect(submit).toBeDisabled();
   await dialog.getByLabel('Type your email to confirm').fill('Synthetic@Example.test');
@@ -131,14 +147,14 @@ test('signup sends the current UI locale', async ({ page }) => {
   await page.route('**/api/v1/auth/signup', route => { body = route.request().postDataJSON(); return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email' }) }); });
   await page.goto('/signup');
   await page.getByLabel('Email').fill('new@example.test');
-  await page.getByLabel('Password').fill('long-enough-password');
+  await page.getByLabel('Password', { exact: true }).fill('long-enough-password');
   await page.getByRole('button', { name: 'Sign up', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
   expect(body.locale).toBe('en');
   await page.goto('/signup');
   await page.getByRole('button', { name: 'ไทย', exact: true }).click();
   await page.getByLabel('อีเมล').fill('new@example.test');
-  await page.getByLabel('รหัสผ่าน').fill('long-enough-password');
+  await page.getByLabel('รหัสผ่าน', { exact: true }).fill('long-enough-password');
   await page.getByRole('button', { name: 'สมัครใช้งาน', exact: true }).click();
   await expect.poll(() => body.locale).toBe('th');
 });
@@ -155,7 +171,7 @@ for (const next of ['//evil.example', 'https://evil.example']) {
     await mockApi(page, true);
     await page.goto('/login?next=' + encodeURIComponent(next));
     await page.getByLabel('Email').fill('synthetic@example.test');
-    await page.getByLabel('Password').fill('correct-password');
+    await page.getByLabel('Password', { exact: true }).fill('correct-password');
     await page.getByRole('button', { name: 'Log in', exact: true }).click();
     await expect(page).toHaveURL(/\/app$/);
   });
