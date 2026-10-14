@@ -7,7 +7,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
@@ -210,6 +210,11 @@ def discover_boards(freehire_rows: list[dict], current: dict[str, list[str]]) ->
         parts = urlsplit(str(row.get("url") or ""))
         source = _ATS_HOSTS.get(parts.netloc.lower())
         segments = [s for s in parts.path.split("/") if s]
-        if source and segments and job_boards.valid_board(segments[0]):
-            found[source].add(segments[0])
+        if not (source and segments):
+            continue
+        token = segments[0]
+        if source == "greenhouse" and token == "embed":  # embed/job_board?for=<token>
+            token = parse_qs(parts.query).get("for", [""])[0]
+        if token != "embed" and job_boards.valid_board(token):
+            found[source].add(token)
     return {source: sorted(tokens) for source, tokens in found.items()}

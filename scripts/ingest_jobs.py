@@ -27,7 +27,7 @@ def _sessions() -> sessionmaker:
     url = URL.create("postgresql+psycopg", username=_private_text("postgres-user"),
                      password=_private_text("postgres-password"), host=config.postgres_host(),
                      port=config.postgres_port(), database=config.database_name())
-    return sessionmaker(make_engine(url.render_as_string(hide_password=False)), expire_on_commit=False)
+    return sessionmaker(make_engine(url), expire_on_commit=False)
 
 
 def run(args) -> int:
@@ -68,6 +68,9 @@ def main() -> int:
         return args.func(args)
     except ServiceError as exc:
         print(f"error: {exc.code}", file=sys.stderr)
+        return 2
+    except job_boards.BoardError as exc:
+        print(f"error: {exc}", file=sys.stderr)
         return 2
 
 
