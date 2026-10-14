@@ -26,6 +26,7 @@ def _parse_ts(value: object) -> datetime | None:
 
 def apply_board(db: Session, source: str, board: str | None, rows: list[dict], now: datetime) -> dict:
     """One successfully fetched board: upsert what was seen, count a miss for what was not."""
+    rows = list({r["external_id"]: r for r in rows}.values())  # last duplicate wins
     counts = {"fetched": len(rows), "created": 0, "updated": 0, "closed": 0}
     existing = {p.external_id: p for p in db.scalars(select(JobPosting).where(
         JobPosting.source == source, JobPosting.board.is_(None) if board is None else JobPosting.board == board))}

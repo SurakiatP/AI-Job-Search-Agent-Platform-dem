@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 
 from job_search_platform.db.models import JobPosting
 from job_search_platform.services import job_store
@@ -85,6 +84,7 @@ def test_naive_posted_at_treated_as_utc(db_session):
 
 
 @pytest.mark.integration
-def test_duplicate_external_id_in_rows_raises(db_session):
-    with pytest.raises(IntegrityError):
-        job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(1)], T0)
+def test_duplicate_external_id_in_rows_last_wins(db_session):
+    counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(1, "Senior Engineer")], T0)
+    rows = db_session.scalars(select(JobPosting).where(JobPosting.external_id == "1")).all()
+    assert len(rows) == 1 and rows[0].title == "Senior Engineer" and counts["created"] == 1
