@@ -104,6 +104,12 @@ async def verify_email(body: TokenRequest, services: Services = Depends(get_serv
     return Response(status_code=204)
 
 
+@router.post("/digest/unsubscribe", status_code=204)
+async def digest_unsubscribe(body: TokenRequest, request: Request, services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.saved_searches.unsubscribe, body.token, _ip(request))
+    return Response(status_code=204)
+
+
 @router.post("/auth/resend-verification", status_code=202, response_model=CheckEmailView)
 async def resend_verification(actor=Depends(owner_actor), services: Services = Depends(get_services)):
     await asyncio.to_thread(services.accounts.resend_verification, actor.user_id)
