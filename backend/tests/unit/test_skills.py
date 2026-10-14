@@ -31,7 +31,7 @@ def test_owner_only_operations_are_not_skills():
 
 def test_grant_capabilities_unchanged():
     assert GRANT_CAPABILITIES == frozenset({"results:read", "jobs:evaluate", "documents:draft", "cv:tailor", "jobs:search",
-                                     "applications:apply"})
+                                     "applications:apply", "applications:write"})
     assert GRANT_WORK_RESOURCES == frozenset({"evaluate_job", "draft_documents", "tailor_cv", "apply_prepare", "apply_submit", "draft_follow_up"})
 
 
