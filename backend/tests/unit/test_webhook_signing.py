@@ -37,7 +37,8 @@ async def test_validate_url_rules(monkeypatch):
 async def test_check_url_classification(monkeypatch):
     monkeypatch.delenv("WEBHOOK_ALLOW_PRIVATE", raising=False)
     table = {"pub.test": ["93.184.216.34"], "a.test": ["10.0.0.1"], "b.test": ["127.0.0.1"],
-             "c.test": ["::ffff:127.0.0.1"], "d.test": ["169.254.169.254"]}
+             "c.test": ["::ffff:127.0.0.1"], "d.test": ["169.254.169.254"],
+             "e.test": ["100.64.0.1"], "f.test": ["64:ff9b::7f00:1"]}
 
     async def fake(host):
         if host == "gone.test":
@@ -47,7 +48,7 @@ async def test_check_url_classification(monkeypatch):
         return table[host]
     monkeypatch.setattr(webhooks, "_resolve", fake)
     assert await webhooks.check_url("https://pub.test/x") == "ok"
-    for host in "abcd":
+    for host in "abcdef":
         assert await webhooks.check_url(f"https://{host}.test/x") == "blocked", host
     assert await webhooks.check_url("https://gone.test/x") == "unresolvable"
     assert await webhooks.check_url("https://ex..com/") == "invalid"
