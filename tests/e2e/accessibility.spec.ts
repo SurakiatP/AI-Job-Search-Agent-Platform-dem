@@ -18,6 +18,7 @@ const routes = [
 ];
 
 test('approved routes fit 320px, tablet, and desktop and keep the language control available', async ({ page }) => {
+  test.setTimeout(90_000); // 16 routes x 3 widths; the 30s default is too tight on CI runners
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await useSyntheticApplication(page);
