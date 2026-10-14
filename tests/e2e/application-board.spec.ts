@@ -65,3 +65,55 @@ test('board fits 320px in Thai with long titles', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 2, name: /^บันทึกไว้/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('job page edits stage and contact, offers mailto, logs correspondence and notes, newest first', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const detail = { job_revision_id: jobId, title: 'Synthetic data analyst', company: 'Example Co', stage: 'saved', contact: { name: null as string | null, email: null as string | null, role: null as string | null }, events: [] as Record<string, unknown>[] };
+  let n = 0;
+  const push = (kind: string, payload: Record<string, unknown>) => detail.events.unshift({ id: `00000000-0000-4000-8000-00000000000${n++}`, kind, actor: 'user', payload, created_at: `2026-10-14T00:0${n}:00Z` });
+  await page.route(`**/api/v1/projects/${projectId}/jobs/${jobId}/application`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detail) }));
+  await page.route(`**/api/v1/projects/${projectId}/jobs/${jobId}/application-status`, async route => {
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    const to = route.request().postDataJSON().application_status;
+    push('stage_changed', { from: detail.stage, to }); detail.stage = to;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ job_revision_id: jobId, application_status: to }) });
+  });
+  await page.route(`**/api/v1/projects/${projectId}/jobs/${jobId}/application/contact`, async route => {
+    detail.contact = route.request().postDataJSON(); push('contact_updated', detail.contact);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detail) });
+  });
+  await page.route(`**/api/v1/projects/${projectId}/jobs/${jobId}/application/events`, async route => {
+    const { kind, ...payload } = route.request().postDataJSON(); push(kind, { note: null, ...payload });
+    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(detail.events[0]) });
+  });
+
+  await page.goto(`/app/projects/${projectId}/jobs/${jobId}`);
+  await page.getByLabel('Stage').selectOption('interview');
+  await expect(page.getByRole('list', { name: 'Timeline' }).getByRole('listitem').first()).toContainText('Saved → Interview');
+
+  await expect(page.getByRole('link', { name: 'Write email' })).toHaveCount(0);
+  await page.getByLabel('Recruiter name').fill('สมหญิง ใจดี');
+  await page.getByLabel('Recruiter email').fill('a+jobs@example.co.th');
+  await page.getByRole('button', { name: 'Save contact' }).click();
+  await expect(page.getByRole('link', { name: 'Write email' })).toHaveAttribute('href', 'mailto:a%2Bjobs@example.co.th?subject=Re%3A%20Synthetic%20data%20analyst');
+
+  await page.getByLabel('Direction').selectOption('received');
+  await page.getByLabel('Subject').fill('Interview invite');
+  await page.getByRole('button', { name: 'Log correspondence' }).click();
+  await page.getByLabel('Note', { exact: true }).fill('Prepare portfolio');
+  await page.getByRole('button', { name: 'Add note' }).click();
+  const items = page.getByRole('list', { name: 'Timeline' }).getByRole('listitem');
+  await expect(items.nth(0)).toContainText('Prepare portfolio');
+  await expect(items.nth(1)).toContainText('Received email: Interview invite');
+  await expect(items.nth(2)).toContainText('Contact updated');
+});
+
+test('job page fits 320px in Thai', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await useSyntheticApplication(page);
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto(`/app/projects/${projectId}/jobs/${jobId}`);
+  await expect(page.getByLabel('ขั้นตอน')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
