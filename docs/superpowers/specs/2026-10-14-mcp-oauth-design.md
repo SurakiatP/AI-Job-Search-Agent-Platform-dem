@@ -25,7 +25,7 @@ Success looks like this:
 
 | # | Topic | Decision |
 |---|---|---|
-| Q1 | Where the AS lives | The SDK auth routes (metadata, `/authorize`, `/token`, `/register`, `/revoke`) are on the shared listener, at the issuer origin. `/authorize` validates and then redirects the browser to the owner app's `/oauth/consent` page. |
+| Q1 | Where the AS lives | The SDK auth routes (metadata, `/authorize`, `/token`, `/register`, `/revoke`) are on the shared listener, at the issuer origin. `/authorize` validates and then redirects the browser to the owner app's `/app/oauth/consent` page (under `/app` so the login `?next=` allowlist returns there). |
 | Q2 | Client registration | Both. CIMD (an `https` URL `client_id`) is fetched and cached. DCR goes through the SDK `/register`. No manual pre-registration. |
 | Q3 | Consent model | Each approval creates a new `Grant` bound to the client. Scopes equal the existing capability names. There is no remembered consent; every authorization shows the page. |
 | Q4 | Tokens | Access tokens are opaque (`jspo_`) and last 1 hour. Refresh tokens (`jspr_`) rotate on every use and never outlive the grant. PKCE S256 is mandatory. `resource` must name the MCP URL. |
@@ -45,9 +45,9 @@ Success looks like this:
 
 | Column | Type | Notes |
 |---|---|---|
-| `client_id` | text PK | A random `jspc_…` value for DCR, or the document URL for CIMD |
+| `client_id` | varchar(2048) PK | The SDK-generated UUID string for DCR, or the document URL for CIMD |
 | `kind` | text | `dcr` or `cimd` (check constraint) |
-| `metadata` | JSON | `OAuthClientInformationFull` as validated: `client_name`, `redirect_uris`, `token_endpoint_auth_method` (always `none`) |
+| `client_info` | JSON | `OAuthClientInformationFull` as validated: `client_name`, `redirect_uris`, `token_endpoint_auth_method` (always `none`) |
 | `fetched_at` | timestamptz | CIMD only; the document is refetched when older than 24 hours |
 | `created_at` | timestamptz | |
 
@@ -78,6 +78,7 @@ Success looks like this:
 | `client_id` | text FK → `oauth_clients` on delete cascade | |
 | `resource` | text | |
 | `expires_at` | timestamptz | Access: now + 1 h. Refresh: the grant's `expires_at`. |
+| `pair_id` | UUID | Shared by the access and refresh token issued together; revoking one revokes both |
 | `revoked_at` | timestamptz, null | |
 
 ### `grants` changes
@@ -87,7 +88,7 @@ Success looks like this:
 
 ## Core service — `services/oauth.py`
 
-`OAuthProvider` implements the SDK's `OAuthAuthorizationServerProvider`. All DB work runs in `asyncio.to_thread`, like `Grants`.
+One class, `OAuth`, implements the SDK's `OAuthAuthorizationServerProvider` and the owner consent methods. Async provider methods run DB work in `asyncio.to_thread`, like `Grants`.
 
 - `get_client(client_id)`
   - DCR: load the row.
@@ -104,9 +105,9 @@ Success looks like this:
 - `load_refresh_token` / `exchange_refresh_token`
   - Rotation: the old refresh token is revoked and a new pair is issued.
   - Presenting an already revoked refresh token revokes the grant's OAuth tokens (reuse detection).
-  - Requested scopes may only narrow the grant's capabilities.
+  - New tokens always carry the grant's capabilities. A narrower `scope` passes the SDK check but does not narrow access, because `authorize()` reads the grant.
 - `load_access_token(token)`
-  - Valid only if the token row is valid, its grant is not revoked or expired, and the project owner is not disabled.
+  - Valid only if the token row is valid and its grant is not revoked or expired. A disabled owner is still refused by `authorize()` on every tool call.
   - Returns an `AccessToken` with `subject = str(grant_id)` and `resource`.
 - `revoke_token(token)`: revokes that token and its pair. The grant itself stays; the owner revokes grants from Connected agents.
 
@@ -115,7 +116,7 @@ Success looks like this:
 - `jspo_` tokens: accepted only when `resource` equals the configured MCP resource. The result is the same `Actor("grant", …)` built from the linked grant.
 - Anything else is `unauthorized`.
 
-`OAuthConsents` (owner REST service):
+Consent methods (sync, called from owner REST through `asyncio.to_thread`):
 - `view(actor, handle)`: client name, client id host, redirect URI, requested scopes, and the user's projects.
 - `approve(actor, handle, project_id, capabilities, expires_at)`: in one transaction, `Grants`-style checks (`authorize(…, "manage", "grant")`, `require_verified_owner`), create the `Grant` with `oauth_client_id` and `label = client_name`, then set the code. Returns `redirect_uri?code=…&state=…&iss=…`.
 - `deny(actor, handle)`: consumes the request and returns `redirect_uri?error=access_denied&state=…&iss=…`.
@@ -142,7 +143,7 @@ Success looks like this:
 
 ## UI
 
-- Route `/oauth/consent` sits under `OwnerGate`. An anonymous user goes to `/login?next=…` and comes back.
+- Route `/app/oauth/consent` sits under `OwnerGate`. An anonymous user goes to `/login?next=…` and comes back.
 - The page shows:
   - The client name, with the `client_id` host and the redirect URI host shown plainly, so a spoofed name is visible.
   - A project select.
@@ -151,7 +152,7 @@ Success looks like this:
   - Approve and Deny buttons.
 - Approve or Deny sets `window.location` to the returned `redirect_url`.
 - Thai and English copy, following the existing locale files.
-- Connected agents (Account and Console Agents tab) shows `client_name · client_id_host` for OAuth grants.
+- Connected agents on the Account page shows `client_id_host` under the name for OAuth grants. The Console Agents tab needs no change: the grant `label` is already the client name.
 
 ## Errors
 
@@ -175,7 +176,7 @@ Success looks like this:
   - An access token is rejected by A2A, and a token with a wrong `resource` is rejected at `/authorize`.
   - Deny returns `access_denied`; an expired handle returns 404.
   - A non-HTTPS, non-loopback issuer leaves OAuth off and `jspg_` still works.
-- E2E (Playwright): consent page approve and deny, and the login redirect round trip.
+- E2E (Playwright): consent page approve, deny and expired request. The login round trip is covered by the existing `safeNext` rule for `/app` paths.
 
 ## Out of scope
 
