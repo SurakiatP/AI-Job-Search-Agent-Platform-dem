@@ -242,6 +242,16 @@ def test_filters_reach_upstream_on_search(client, monkeypatch):
     assert "posting_language" not in " ".join(seen[0]["filter"]) and "salary" not in " ".join(seen[0]["filter"])
 
 
+def test_company_filter_reaches_search(client, monkeypatch):
+    seen = serve(monkeypatch)
+    assert client.get(f"/projects/{uuid4()}/job-search?company=%20Acme%20&q=").status_code == 200
+    assert 'company = "Acme"' in seen[0]["filter"]
+    seen.clear()
+    assert client.get(f"/projects/{uuid4()}/job-search?company=%20&q=").status_code == 200
+    assert "company" not in " ".join(seen[0]["filter"])
+    assert client.get(f"/projects/{uuid4()}/job-search?company=" + "x" * 301).status_code == 422
+
+
 def test_public_job_stats_needs_no_auth_and_returns_four_keys(monkeypatch):
     dist = {"category": {f"c{i}": i for i in range(12)}, "posting_language": {"th": 7}, "skills": {"x": 1}}
     serve(monkeypatch, lambda p: result(total=5) if p["limit"] == 1

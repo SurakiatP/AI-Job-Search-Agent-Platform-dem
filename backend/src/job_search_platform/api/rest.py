@@ -464,6 +464,7 @@ async def search_job_sources(
     work_mode: Annotated[str | None, Query(pattern="^(remote|hybrid|onsite)$")] = None,
     posted_within_days: Annotated[int | None, Query(ge=1, le=90)] = None,
     category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
+    company: Annotated[str, Query(max_length=300)] = "",
     limit: Annotated[int, Query(ge=1, le=20)] = 20,
     offset: Annotated[int, Query(ge=0, le=1000)] = 0,
     filters: dict = Depends(job_filters),
@@ -477,7 +478,8 @@ async def search_job_sources(
         raise RequestValidationError([{"loc": ("query", "cities"), "msg": "invalid", "type": "value_error"}])
     return await asyncio.to_thread(
         job_sources.search_jobs, q=q, cities=city_list, work_mode=work_mode,
-        posted_within_days=posted_within_days, category=category, limit=limit, offset=offset, **filters)
+        posted_within_days=posted_within_days, category=category, limit=limit, offset=offset,
+        company=company.strip() or None, **filters)
 
 
 def _direct_skill_route(skill):

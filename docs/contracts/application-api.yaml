@@ -193,7 +193,7 @@ paths:
     get:
       tags: [jobs]
       description: >-
-        Owner-only server-side proxy of Freehire's public job API, Thailand listings only (countries=TH).
+        Owner-only job search backed by the local search index (Meilisearch), Thailand listings only.
         Query: q (max 200), cities (comma list, max 5 x 60), work_mode (remote|hybrid|onsite),
         posted_within_days (1-90), category (slug, max 60), limit (1-20, default 20), offset (0-1000).
         Items carry slug, title, company, location, cities, work_mode, skills (max 8), category, posted_at,
@@ -203,7 +203,8 @@ paths:
         intern|junior|middle|senior|lead|staff|principal|c_level), employment_type (full_time|part_time|contract|
         internship|fellowship), company_type (product|startup|agency|outsource|outstaff|inhouse|government),
         skills (comma list, max 5, each ^[a-z0-9][a-z0-9.+#-]{0,40}$), posting_language (th), salary_min
-        (1-1000000 THB per month). Comma values mean OR.
+        (1-1000000 THB per month). Comma values mean OR. company (exact company name, max 300, trimmed;
+        empty = unset) is accepted on this route only; Smart match does not filter by company.
       security: [{ownerSession: []}]
       responses:
         '200': {description: 'Job search page {items, total, limit, offset}'}
@@ -280,7 +281,7 @@ paths:
     get:
       tags: [jobs]
       description: >-
-        Owner-only "Smart match": the job-search filters (q, cities, work_mode, posted_within_days, category)
+        Owner-only "Smart match", backed by the local search index: the job-search filters (q, cities, work_mode, posted_within_days, category)
         and the advanced filters below, plus cv_revision_id (a live CV revision of this project) and pool (1-100, default 100, upstream page
         size) and offset (0-1000, start of the pool chunk). The pool is scored against the revision's stored
         skill profile (keyword dictionary, no AI) and returned sorted by score descending, ties by recency,
