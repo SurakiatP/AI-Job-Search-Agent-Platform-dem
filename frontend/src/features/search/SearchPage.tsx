@@ -21,6 +21,7 @@ import { PageBack } from '@/components/PageBack';
 import { sampleJobs } from './sampleJobs';
 import { highlightSegments } from './highlight';
 import { categoryLabel } from './categories';
+import { SavedSearchesPanel } from './SavedSearches';
 import { ADV_KEYS, AdvancedFilters, Presets, splitList, type Facet } from './AdvancedFilters';
 
 type JobSearchItem = {
@@ -505,6 +506,7 @@ export function SearchPage() {
           className={`min-h-11 rounded-md px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>;
       })}
     </div>
+    <SavedSearchesPanel projectId={projectId} params={params} filtered={filtered} onApply={changes => { setQInput(changes.q ?? ''); setMany(changes); }} />
 
     {smartActive && ai?.status !== 'unavailable' && <p className="-mt-3 text-xs text-muted-foreground">{c.privacy}</p>}
 

@@ -170,3 +170,7 @@ export type ApprovalView = {
   applied_at: string | null;
   decided_by?: 'owner' | 'autopilot' | null;
 };
+export type DigestFrequency = 'daily' | 'weekly';
+export type SavedSearchFilters = { q?: string; cities?: string[]; work_mode?: 'remote' | 'hybrid' | 'onsite' | null; category?: string | null; seniority?: string[]; employment_type?: string[]; company_type?: string[]; skills?: string[]; posting_language?: 'th' | null; salary_min?: number | null };
+export type SavedSearchView = { id: string; name: string; filters: SavedSearchFilters; frequency: DigestFrequency; digest_enabled: boolean; next_run_at: string; last_sent_at: string | null; created_at: string };
+export type SavedSearchList = { items: SavedSearchView[]; status: { email_verified: boolean; notifications_enabled: boolean } };

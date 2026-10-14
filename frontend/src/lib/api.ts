@@ -105,6 +105,7 @@ export async function logout(): Promise<void> {
 }
 export const signup = (email: string, password: string, locale: 'th' | 'en') => authRequest<{ status: 'check_email' }>('/auth/signup', { email, password, locale });
 export const verifyEmail = (token: string) => authRequest<void>('/auth/verify-email', { token });
+export const unsubscribeDigest = (token: string) => authRequest<void>('/digest/unsubscribe', { token });
 export const resendVerification = () => authRequest<{ status: 'check_email' }>('/auth/resend-verification');
 export const forgotPassword = (email: string) => authRequest<{ status: 'check_email' }>('/auth/password/forgot', { email });
 export const resetPassword = (token: string, password: string) => authRequest<void>('/auth/password/reset', { token, password });
