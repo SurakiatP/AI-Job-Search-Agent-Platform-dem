@@ -48,6 +48,7 @@ from job_search_platform.services.contracts import (
 )
 from job_search_platform.services.applications import MAX_ANSWER_CHARS
 from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.quota import enforce_run_gates
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD
 
 MAX_QUEUED_PER_PROJECT = 10
@@ -387,6 +388,7 @@ class RunService:
             return self._authorized_view(db, actor, previous)
 
         # Replays above stay valid; a removed job cannot start new work.
+        enforce_run_gates(db, project_id, now=now)
         if job.removed_at is not None:
             raise ServiceError("job_removed")
         pack_run = self._application_checks(db, project_id, job, canonical_request)
@@ -587,6 +589,7 @@ class RunService:
     def _queue_export(self, db: Session, actor: Actor, source: Run, document: Document | None, output_format: str,
                       markdown: str, now: datetime, *, title: str = "", document_type: str = "cv") -> RunView:
         """Queue a non-LLM export run that inherits session/CV/job/provider from `source`; no document means a new one."""
+        enforce_run_gates(db, source.project_id, now=now)
         key = uuid4().hex
         run = Run(
             project_id=source.project_id,
@@ -777,6 +780,7 @@ class RunService:
                 Run.project_id == project_id, Run.status == "queued")) or 0
             if queued >= MAX_QUEUED_PER_PROJECT:
                 raise ServiceError("queue_full", retryable=True)
+            enforce_run_gates(db, project_id, now=now)
             key = uuid4().hex
             # No session, job or provider: the run only parses the CV inside the sandbox.
             run = Run(
@@ -827,6 +831,7 @@ class RunService:
             gateway = GatewaySettings.from_env()
             if not gateway.api_key:
                 raise ServiceError("gateway_unconfigured")
+            enforce_run_gates(db, project_id, now=now)
             key = uuid4().hex
             run = Run(
                 project_id=project_id, actor_scope=actor_scope(actor), idempotency_key=key,
@@ -877,6 +882,7 @@ class RunService:
                 Run.project_id == project_id, Run.status == "queued")) or 0
             if queued >= MAX_QUEUED_PER_PROJECT:
                 raise ServiceError("queue_full", retryable=True)
+            enforce_run_gates(db, project_id, now=now)
             key = uuid4().hex
             run = Run(project_id=project_id, actor_scope=actor_scope(actor), idempotency_key=key,
                       request_digest=hashlib.sha256(json.dumps({"match_jobs": snapshot, "key": key}, sort_keys=True).encode()).hexdigest(),
@@ -922,24 +928,29 @@ class RunService:
                 raise ServiceError("not_found")
             if actor.kind == "grant" and run.actor_scope != actor_scope(actor):
                 raise ServiceError("forbidden")
-            if run.status in {"completed", "failed", "cancelled", "interrupted"}:
-                return self._authorized_view(db, actor, run)
-            if run.status in ("queued", "needs_input") or (
-                    run.status == "waiting_approval" and run.operation == "apply_submit"):
-                # None of these holds a sandbox; a pending submit has no worker, so it ends now and its approval is void.
-                if run.status == "waiting_approval":
-                    for approval in db.scalars(select(Approval).where(
-                            Approval.run_id == run.id, Approval.consumed_at.is_(None)).with_for_update()):
-                        approval.consumed_at = now
-                        approval.decision = "reject"
-                run.status = "cancelled"
-                run.finished_at = now
-                run.lease_owner = run.lease_expires_at = run.heartbeat_at = None
-                append_event(db, run, "run_cancelled", {"status": "cancelled"}, now=now)
-            elif run.cancellation_requested_at is None:
-                run.cancellation_requested_at = now
-                append_event(db, run, "run_cancel_requested", {"status": run.status}, now=now)
+            self.cancel_locked(db, run, now)
             return self._authorized_view(db, actor, run)
+
+    @staticmethod
+    def cancel_locked(db: Session, run: Run, now: datetime) -> None:
+        """Apply cancellation to a run the caller already holds a row lock on; terminal runs are left alone."""
+        if run.status in {"completed", "failed", "cancelled", "interrupted"}:
+            return
+        if run.status in ("queued", "needs_input") or (
+                run.status == "waiting_approval" and run.operation == "apply_submit"):
+            # None of these holds a sandbox; a pending submit has no worker, so it ends now and its approval is void.
+            if run.status == "waiting_approval":
+                for approval in db.scalars(select(Approval).where(
+                        Approval.run_id == run.id, Approval.consumed_at.is_(None)).with_for_update()):
+                    approval.consumed_at = now
+                    approval.decision = "reject"
+            run.status = "cancelled"
+            run.finished_at = now
+            run.lease_owner = run.lease_expires_at = run.heartbeat_at = None
+            append_event(db, run, "run_cancelled", {"status": "cancelled"}, now=now)
+        elif run.cancellation_requested_at is None:
+            run.cancellation_requested_at = now
+            append_event(db, run, "run_cancel_requested", {"status": run.status}, now=now)
 
     async def events(
         self, actor: Actor, project_id: UUID, run_id: UUID, after: int

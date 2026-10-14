@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ApiError, type ApiErrorBody, type OwnerSessionState } from './api-types';
+import { ApiError, type Account, type AccountAgent, type ApiErrorBody, type OwnerSessionState } from './api-types';
 
 const API_BASE = '/api/v1';
 const CSRF_HEADER = 'X-CSRF-Token';
@@ -13,21 +13,6 @@ function publishOwnerSession(state: OwnerSessionState) {
   ownerSessionListeners.forEach(listener => listener(state));
 }
 
-function safeNonceFromFragment(): string | null {
-  if (typeof window === 'undefined' || !window.location.hash) return null;
-  const fragment = new URLSearchParams(window.location.hash.slice(1));
-  const nonce = fragment.get('owner-nonce');
-  if (nonce) {
-    // Remove launch credentials before starting any network request.
-    window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`);
-    return nonce;
-  }
-  return null;
-}
-
-// Strip launch material while the app module is evaluated, before the first API request or UI render.
-let launchNonce = safeNonceFromFragment();
-
 async function responseError(response: Response): Promise<ApiError> {
   let body: Partial<ApiErrorBody> | undefined;
   try {
@@ -39,21 +24,16 @@ async function responseError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, body);
 }
 
+type SessionBody = { csrf_token: string; expires_at: string; user: Account };
+
 async function bootstrapOwnerSession(): Promise<OwnerSessionState> {
-  const nonce = launchNonce;
-  launchNonce = null;
-  const response = await fetch(`${API_BASE}/owner/${nonce ? 'bootstrap' : 'session'}`, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: nonce ? { 'Content-Type': 'application/json' } : undefined,
-    body: nonce ? JSON.stringify({ nonce }) : undefined,
-    cache: 'no-store',
-  });
+  const response = await fetch(`${API_BASE}/auth/session`, { method: 'POST', credentials: 'same-origin', cache: 'no-store' });
+  if (response.status === 401) return { status: 'anonymous' };
   if (!response.ok) throw await responseError(response);
-  const value = await response.json() as { authenticated: true; csrf_token: string; expires_at: string };
-  if (value.authenticated !== true || typeof value.csrf_token !== 'string') throw new ApiError(500);
+  const value = await response.json() as Partial<SessionBody>;
+  if (typeof value.csrf_token !== 'string' || !value.user) throw new ApiError(500);
   csrfToken = value.csrf_token;
-  return { status: 'ready', expires_at: value.expires_at };
+  return { status: 'ready', expires_at: String(value.expires_at), user: value.user };
 }
 
 export function initializeOwnerSession(): Promise<OwnerSessionState> {
@@ -71,6 +51,11 @@ export function initializeOwnerSession(): Promise<OwnerSessionState> {
   return ownerSessionPromise;
 }
 
+export function refreshOwnerSession(): Promise<OwnerSessionState> {
+  ownerSessionPromise = null;
+  return initializeOwnerSession();
+}
+
 export function useOwnerSession(): OwnerSessionState {
   const [state, setState] = useState<OwnerSessionState>(ownerSessionState);
   useEffect(() => {
@@ -82,6 +67,54 @@ export function useOwnerSession(): OwnerSessionState {
   return state;
 }
 
+export function useAccount(): Account | null {
+  const session = useOwnerSession();
+  return session.status === 'ready' ? session.user : null;
+}
+
+function setSession(state: OwnerSessionState) {
+  ownerSessionPromise = Promise.resolve(state);
+  publishOwnerSession(state);
+}
+
+// Auth endpoints run before (or while ending) a session, so they bypass the session gate in apiRequest.
+async function authRequest<T>(path: string, body?: unknown, write = false): Promise<T> {
+  const headers = new Headers();
+  if (body !== undefined) headers.set('Content-Type', 'application/json');
+  if (write && csrfToken) headers.set(CSRF_HEADER, csrfToken);
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, credentials: 'same-origin', cache: 'no-store', body: body === undefined ? undefined : JSON.stringify(body) });
+  } catch {
+    throw new ApiError(0, { code: 'network_error', message_key: 'errors.network_error', retryable: true });
+  }
+  if (!response.ok) throw await responseError(response);
+  if (response.status === 204) return undefined as T;
+  return await response.json() as T;
+}
+
+export async function login(email: string, password: string): Promise<void> {
+  const value = await authRequest<{ user: Account; csrf_token: string }>('/auth/login', { email, password });
+  csrfToken = value.csrf_token;
+  setSession({ status: 'ready', expires_at: '', user: value.user });
+}
+export async function logout(): Promise<void> {
+  await authRequest<void>('/auth/logout', undefined, true).catch(() => undefined);
+  csrfToken = null;
+  setSession({ status: 'anonymous' });
+}
+export const signup = (email: string, password: string, locale: 'th' | 'en') => authRequest<{ status: 'check_email' }>('/auth/signup', { email, password, locale });
+export const verifyEmail = (token: string) => authRequest<void>('/auth/verify-email', { token });
+export const resendVerification = () => authRequest<{ status: 'check_email' }>('/auth/resend-verification');
+export const forgotPassword = (email: string) => authRequest<{ status: 'check_email' }>('/auth/password/forgot', { email });
+export const resetPassword = (token: string, password: string) => authRequest<void>('/auth/password/reset', { token, password });
+export const getAccount = () => apiRequest<Account>('/account');
+export const listAccountAgents = () => apiRequest<AccountAgent[]>('/account/agents');
+export async function deleteAccount(password: string, confirmEmail: string): Promise<void> {
+  await apiRequest<void>('/account', { method: 'DELETE', body: JSON.stringify({ password, confirm_email: confirmEmail }) });
+  csrfToken = null; // caller reloads the app, which drops all session state
+}
+
 function isWrite(method: string): boolean {
   return !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase());
 }
@@ -89,6 +122,7 @@ function isWrite(method: string): boolean {
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const session = await initializeOwnerSession();
   if (session.status === 'error') throw session.error;
+  if (session.status === 'anonymous') throw new ApiError(401, { code: 'unauthorized', message_key: 'errors.unauthorized' });
   if (session.status !== 'ready') throw new ApiError(0, { code: 'session_loading', message_key: 'errors.unauthorized', retryable: true });
   const method = init.method ?? 'GET';
   const headers = new Headers(init.headers);
@@ -111,7 +145,12 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   } catch {
     throw new ApiError(0, { code: 'network_error', message_key: 'errors.network_error', retryable: true });
   }
-  if (!response.ok) throw await responseError(response);
+  if (!response.ok) {
+    const error = await responseError(response);
+    // Only a missing or expired session ends the login; other 401s (e.g. wrong password) are ordinary errors.
+    if (response.status === 401 && error.code === 'unauthorized') { csrfToken = null; setSession({ status: 'anonymous' }); }
+    throw error;
+  }
   if (response.status === 204) return undefined as T;
   if (response.headers.get('Content-Type')?.includes('application/json')) return await response.json() as T;
   return await response.blob() as T;

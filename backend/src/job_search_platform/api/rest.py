@@ -197,6 +197,7 @@ async def create_project(body: ProjectCreate, actor=Depends(write_actor), servic
 @router.get("/projects/{project_id}", response_model=ProjectView)
 async def get_project(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
     with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "project")
         row = db.get(Project, project_id)
         if row is None:
             raise ServiceError("not_found")
@@ -207,6 +208,7 @@ async def get_project(project_id: UUID, actor=Depends(owner_actor), services: Se
 async def update_project(project_id: UUID, body: ProjectUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
     _owner_only(actor)
     with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "project")
         row = db.get(Project, project_id)
         if row is None:
             raise ServiceError("not_found")
@@ -219,6 +221,7 @@ async def update_project(project_id: UUID, body: ProjectUpdate, actor=Depends(wr
 async def delete_project(project_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     _owner_only(actor)
     with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "project")
         row = db.scalar(select(Project).where(Project.id == project_id).with_for_update())
         if row is None:
             raise ServiceError("not_found")
@@ -333,6 +336,7 @@ async def create_session(project_id: UUID, body: SessionCreate, actor=Depends(wr
 async def update_session(project_id: UUID, session_id: UUID, body: SessionUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
     _owner_only(actor)
     with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "session")
         row = db.scalar(select(ConversationSession).where(
             ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
         if row is None or row.removed_at is not None:
@@ -347,6 +351,7 @@ async def delete_session(project_id: UUID, session_id: UUID, actor=Depends(write
     """Hard-delete a session without runs; hide one with run history (runs, documents and approvals stay)."""
     _owner_only(actor)
     with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "session")
         row = db.scalar(select(ConversationSession).where(
             ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
         if row is None or row.removed_at is not None:
@@ -366,6 +371,7 @@ async def delete_session(project_id: UUID, session_id: UUID, actor=Depends(write
 async def restore_session(project_id: UUID, session_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     _owner_only(actor)
     with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "session")
         row = db.scalar(select(ConversationSession).where(
             ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
         if row is None:
@@ -975,6 +981,8 @@ async def promote_cv(project_id: UUID, body: CVPromoteRequest, actor=Depends(wri
 @router.post("/projects/{project_id}/approvals", status_code=201, response_model=ApprovalView)
 async def request_approval(project_id: UUID, body: ApprovalRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
     # Agents open approvals from inside their own run; the owner applies a change directly (e.g. /cv/promote).
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "request", "approval")
     raise ServiceError("approval_requires_run")
 
 

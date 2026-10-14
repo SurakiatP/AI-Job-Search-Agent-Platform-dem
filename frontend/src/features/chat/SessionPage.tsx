@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { accountErrorText, useRunGate } from '@/lib/accountGate';
 import { CvPreviewButton } from '@/components/CvPreview';
 import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -36,12 +37,13 @@ function ReviseBox({ c, projectId, docId, busy, onSubmit }: { c: typeof copy.en;
   const [text, setText] = useDraft(projectId, docId, 'revise');
   const [open, setOpen] = useState(text !== '');
   const id = useId();
+  const gate = useRunGate();
   return <div className="grid gap-2">
     <Button type="button" variant="ghost" size="sm" className="min-h-11 justify-self-start" aria-expanded={open} onClick={() => setOpen(value => !value)}><ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />{c.reviseAi}</Button>
     {open && <form className="grid gap-2" onSubmit={event => { event.preventDefault(); if (text.trim() && !busy) void onSubmit(text.trim()).then(ok => { if (ok) setText(''); }); }}>
       <label className="text-sm font-medium" htmlFor={id}>{c.revise}</label>
       <Textarea id={id} rows={2} maxLength={500} value={text} placeholder={c.reviseHint} onChange={event => setText(event.target.value)} disabled={busy} />
-      <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{text.length}/500</span><Button type="submit" size="sm" className="min-h-11" disabled={busy || !text.trim()}>{c.send}</Button></div>
+      <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{text.length}/500</span><Button type="submit" size="sm" className="min-h-11" disabled={busy || !text.trim()} title={gate.title}>{c.send}</Button></div>
     </form>}
   </div>;
 }
@@ -78,6 +80,8 @@ export function SessionPage() {
   const [outputLanguage, setOutputLanguage] = useState<Locale>(locale);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [accountError, setAccountError] = useState('');
+  const gate = useRunGate();
   const last = useRef<{ operation: RunOperation; instructions: string; documentId?: string; draftKind?: DraftKind } | null>(null);
   const [confirmKind, setConfirmKind] = useState<DraftKind | null>(null);
   const status = workflow.run?.status;
@@ -99,7 +103,7 @@ export function SessionPage() {
   const busy = active || submitting || workflow.submitting;
 
   async function startRun(operation: RunOperation, instructions: string, documentId?: string, retryOf?: string, draftKind?: DraftKind): Promise<boolean> {
-    setSubmitting(true); setError('');
+    setSubmitting(true); setError(''); setAccountError('');
     const key = crypto.randomUUID();
     try {
       await apiRequest<RunView>(`/projects/${projectId}/runs`, {
@@ -110,6 +114,8 @@ export function SessionPage() {
       await workflow.reload().catch(() => undefined); reloadRuns();
       return true;
     } catch (caught) {
+      const account = accountErrorText(t, caught, i18n.language);
+      if (account) { setAccountError(account); return false; }
       setError(caught instanceof ApiError && caught.code === 'gateway_unconfigured' ? 'provider' : caught instanceof ApiError ? caught.message_key : 'errors.request_failed');
       return false;
     } finally { setSubmitting(false); }
@@ -129,7 +135,7 @@ export function SessionPage() {
     {workflow.error && <p className="flex flex-wrap items-center gap-3 text-sm text-destructive" role="alert"><span className="min-w-0 break-words">{t(workflow.error, { defaultValue: t('pages.loadError') })}</span> <Button type="button" variant="outline" size="sm" onClick={() => void workflow.reload().catch(() => undefined)}>{c.refresh}</Button></p>}
     <RunTimeline locale={locale} run={workflow.run} events={workflow.events} cancellationPending={workflow.cancellationPending} />
     {active && <Button type="button" variant="outline" className="self-start" disabled={workflow.submitting || workflow.cancellationPending} onClick={() => void workflow.cancel()}>{c.cancel}</Button>}
-    {failed && (last.current || workflow.run?.operation === 'evaluate_job') && <Button type="button" variant="outline" className="self-start" disabled={busy} onClick={retry}>{c.retry}</Button>}
+    {failed && (last.current || workflow.run?.operation === 'evaluate_job') && <Button type="button" variant="outline" className="self-start" disabled={busy || gate.blocked} title={gate.title} onClick={retry}>{c.retry}</Button>}
     <ApprovalCard approval={workflow.pendingApproval} locale={locale} busy={workflow.submitting} onDecision={(id, decision) => void workflow.decideApproval(id, decision)} onRefresh={() => void workflow.reload().catch(() => undefined)} />
   </>;
   return <section className="flex min-w-0 flex-col gap-4">
@@ -147,6 +153,7 @@ export function SessionPage() {
       <TriangleAlert className="size-5 text-warning" aria-hidden="true" /><div className="min-w-0 flex-1"><p className="font-medium">{c.outdated}</p><p className="text-sm text-muted-foreground">{c.outdatedBody}</p></div>
       <NewSessionButton size="sm" projectId={projectId} job={{ savedId: current.job_revision_id ?? undefined }} cvName={current.cv_name ?? undefined}>{c.outdatedBtn}</NewSessionButton></CardContent></Card>}
     {error === 'provider' && <Card role="alert" className="border-warning/50"><CardContent className="flex flex-wrap items-center gap-3 p-4"><p className="min-w-0 flex-1 font-medium">{c.noProvider}</p><Button asChild size="sm"><Link to="/app/settings?section=gateway">{c.settings}</Link></Button></CardContent></Card>}
+    {accountError && <p className="text-sm text-destructive [overflow-wrap:anywhere]" role="alert">{accountError}</p>}
     {error && error !== 'provider' && <p className="text-sm text-destructive" role="alert">{t(error, { defaultValue: t('pages.loadError') })}</p>}
 
     {!paired && workflow.messages.length > 0 && <div className="grid gap-3"><h2 className="text-sm font-medium text-muted-foreground">{c.readOnly}</h2>{workflow.messages.map(item => item.role === 'user'
@@ -161,8 +168,8 @@ export function SessionPage() {
       <Card><CardHeader><CardTitle className="text-lg">{c.draft}</CardTitle></CardHeader><CardContent className="grid gap-3">
         <p className="text-sm text-muted-foreground">{c.draftBody}</p>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" className="min-h-11" variant={liveDoc('cover_letter') ? 'outline' : 'default'} disabled={busy} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button>
-          <Button type="button" className="min-h-11" variant="outline" disabled={busy} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button>
+          <Button type="button" className="min-h-11" variant={liveDoc('cover_letter') ? 'outline' : 'default'} disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button>
+          <Button type="button" className="min-h-11" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button>
           <label className="ms-auto flex items-center gap-2 text-sm">{c.lang}<select className={selectClass} value={outputLanguage} onChange={event => setOutputLanguage(event.target.value === 'en' ? 'en' : 'th')} disabled={busy}><option value="th">{c.th}</option><option value="en">{c.en}</option></select></label>
         </div>{!evalIsLatest && runPanel}</CardContent></Card>
       <TailorCard projectId={projectId} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} run={sessionRuns.find(run => run.operation === 'tailor_cv') ?? null} onChanged={() => { void workflow.reload().catch(() => undefined); reloadRuns(); }} />
@@ -173,7 +180,7 @@ export function SessionPage() {
     </DialogContent></Dialog>}
 
       <h2 className="text-lg font-semibold">{c.docs}</h2>
-      {drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <DocCard key={doc.id} c={c} base={base} projectId={projectId} doc={doc} busy={busy} onRevise={text => startRun('draft_documents', text, doc.id)} />)}
+      {drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <DocCard key={doc.id} c={c} base={base} projectId={projectId} doc={doc} busy={busy || gate.blocked} onRevise={text => startRun('draft_documents', text, doc.id)} />)}
     </>}
   </section>;
 }

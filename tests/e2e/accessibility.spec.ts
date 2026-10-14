@@ -12,9 +12,13 @@ const routes = [
   `/app/projects/${projectId}/documents`,
   `/app/projects/${projectId}/documents/${documentId}`,
   '/app/settings',
+  '/login',
+  '/signup',
+  '/app/account',
 ];
 
 test('approved routes fit 320px, tablet, and desktop and keep the language control available', async ({ page }) => {
+  test.setTimeout(90_000); // 16 routes x 3 widths; the 30s default is too tight on CI runners
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await useSyntheticApplication(page);
@@ -77,4 +81,19 @@ test('document language stays English after the UI changes to Thai and partial s
   await page.getByRole('button', { name: 'EN', exact: true }).click();
   await expect(page.getByTestId('document-language')).toContainText('ไทย');
   await expect(page.getByRole('status').filter({ hasText: 'Partial document' })).toHaveText('Partial document');
+});
+
+// An authenticated visit to /login redirects to /app (correct: no reason to log in twice), so the auth pages are also checked anonymously.
+test('anonymous auth pages fit 320px with language control and heading', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await page.route('**/api/v1/auth/session', route => route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ code: 'unauthorized', message_key: 'errors.unauthorized', retryable: false }) }));
+  for (const width of [320, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of ['/login', '/signup']) {
+      await page.goto(route);
+      await expect(page.getByRole('button', { name: 'EN', exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${width}px overflow at ${route}`).toBe(true);
+    }
+  }
 });

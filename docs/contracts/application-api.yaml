@@ -288,10 +288,11 @@ paths:
         content: {application/json: {schema: {$ref: '#/components/schemas/MatchRunRequest'}}}
       responses:
         '202': {description: Match run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '403': {$ref: '#/components/responses/Forbidden'}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: No gateway app key (code gateway_unconfigured), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '422': {description: Invalid body}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search/hidden:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -409,10 +410,10 @@ paths:
       responses:
         '202': {description: Extraction run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
         '401': {$ref: '#/components/responses/Unauthorized'}
-        '403': {$ref: '#/components/responses/Forbidden'}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: No gateway app key (code gateway_unconfigured), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '429': {description: Project run queue is full (code queue_full), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {description: 'Project run queue is full (code queue_full), or the daily run quota is spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search/facets:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -537,9 +538,10 @@ paths:
         content: {application/json: {schema: {$ref: '#/components/schemas/DocumentEdit'}}}
       responses:
         '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '403': {description: Not an owner}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: Another draft or export run for the document is queued or running (document_busy), or the document has no published source revision (document_source_unavailable)}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/documents/{document_id}/revisions/{revision_id}/restore:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -558,9 +560,10 @@ paths:
         earlier revision as a new revision of the same document. History stays immutable.
       responses:
         '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '403': {description: Not an owner}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: Another draft or export run for the document is queued or running (document_busy)}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/runs/{run_id}/tailor/apply:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -580,9 +583,10 @@ paths:
       responses:
         '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
         '400': {description: Evidence check failed (evidence_required) or no chosen edit matched the base text (tailor_nothing_to_apply)}
-        '403': {description: Not an owner}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: Another export for the tailored CV is queued or running (document_busy), or the run was already applied (tailor_already_applied)}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/runs/{run_id}/input:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -703,6 +707,8 @@ paths:
       responses:
         '200': {description: 'Already profiled: {status: ready}'}
         '202': {description: Profile run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/files/{file_id}/download:
     parameters:
@@ -750,6 +756,8 @@ paths:
         content: {application/json: {schema: {$ref: '#/components/schemas/RunRequest'}}}
       responses:
         '202': {description: Queued or existing idempotent run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '409': {description: Idempotency key reused with different inputs, or the job was removed (code job_removed)}
   /projects/{project_id}/runs/{run_id}:
     parameters:
@@ -838,7 +846,9 @@ paths:
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/GrantIssueRequest'}}}
-      responses: {'201': {description: Token disclosed once, content: {application/json: {schema: {$ref: '#/components/schemas/GrantIssuedView'}}}}}
+      responses:
+        '201': {description: Token disclosed once, content: {application/json: {schema: {$ref: '#/components/schemas/GrantIssuedView'}}}}
+        '403': {description: 'Owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/grants/{grant_id}:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -857,6 +867,7 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SignupRequest'}}}}
       responses:
         '202': {description: Always the same answer, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
   /auth/verify-email:
     post:
       tags: [auth]
@@ -872,6 +883,7 @@ paths:
       security: [{ownerSession: []}]
       responses:
         '202': {description: Always the same answer, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
   /auth/login:
     post:
       tags: [auth]
@@ -880,6 +892,7 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}}
       responses:
         '200': {description: Logged in, content: {application/json: {schema: {$ref: '#/components/schemas/LoginView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
   /auth/session:
     post:
       tags: [auth]
@@ -902,6 +915,7 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ForgotPasswordRequest'}}}}
       responses:
         '202': {description: Always the same answer, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
   /auth/password/reset:
     post:
       tags: [auth]
@@ -1000,6 +1014,9 @@ components:
   responses:
     Unauthorized:
       description: Owner session or grant is missing, expired or revoked
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
+    RateLimited:
+      description: Too many attempts (code rate_limited, field retry_after in seconds)
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
     Unavailable:
       description: Provider or secret adapter is unavailable
@@ -1640,12 +1657,13 @@ components:
     AgentView:
       type: object
       additionalProperties: false
-      required: [id, project_id, project_name, label, capabilities, expires_at, revoked_at]
+      required: [id, project_id, project_name, label, capabilities, created_at, expires_at, revoked_at]
       properties:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
         project_name: {type: string}
         label: {type: [string, 'null']}
         capabilities: {type: array, items: {type: string}}
+        created_at: {type: string, format: date-time}
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}

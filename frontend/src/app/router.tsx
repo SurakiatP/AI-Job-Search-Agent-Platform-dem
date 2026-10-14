@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from '../components/AppShell';
 import type { SidebarProject } from '../components/ProjectSidebar';
 import { DocumentDetailPage, DocumentsPage } from '../features/documents/DocumentsPage';
 import { SessionPage } from '../features/chat/SessionPage';
+import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { JobDetailPage, JobsPage } from '../features/jobs/JobsPage';
 import { ConsolePage } from '../features/console/ConsolePage';
@@ -17,6 +18,8 @@ import { MissingResource, ErrorState, LoadingState } from '../features/projects/
 import { useResource } from '../features/projects/useResource';
 import { SearchPage } from '../features/search/SearchPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
+import { AccountPage } from '../features/account/AccountPage';
+import { ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage, VerifyEmailPage } from '../features/auth/AuthPages';
 import { useOwnerSession } from '../lib/api';
 import './routes.css';
 
@@ -88,11 +91,12 @@ function NotFoundPage() { return <AppShell><MissingResource /></AppShell>; }
 
 function OwnerGate() {
   const session = useOwnerSession();
-  const { i18n } = useTranslation();
+  const { t } = useTranslation();
+  const location = useLocation();
   if (session.status === 'loading') return <AppShell><LoadingState /></AppShell>;
+  if (session.status === 'anonymous') return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   if (session.status === 'error') {
-    const th = i18n.language.startsWith('th');
-    return <AppShell><Card className="mx-auto mt-12 max-w-xl"><CardHeader><h1 className="text-xl font-semibold">{th ? 'เปิดแอปจากตัวเริ่มใช้งาน' : 'Open the app from the local launcher'}</h1></CardHeader><CardContent><p className="text-muted-foreground">{th ? 'เซสชันหมดอายุหรือยังไม่ได้เริ่ม กรุณาเปิดลิงก์ใหม่จาก terminal ที่รันแอป แล้วโหลดหน้านี้อีกครั้ง' : 'The owner session is missing or expired. Open a fresh link from the terminal running the app, then reload this page.'}</p></CardContent></Card></AppShell>;
+    return <AppShell><Card className="mx-auto mt-12 max-w-xl"><CardHeader><h1 className="text-xl font-semibold">{t('auth.sessionExpiredTitle')}</h1></CardHeader><CardContent className="grid gap-4"><p className="text-muted-foreground">{t('auth.sessionExpiredBody')}</p><div><Button asChild><Link to="/login">{t('auth.loginAction')}</Link></Button></div></CardContent></Card></AppShell>;
   }
   return <Outlet />;
 }
@@ -100,7 +104,10 @@ function OwnerGate() {
 export function AppRoutes() {
   return <Routes>
     <Route path="/" element={<LandingPage />} />
+    <Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route path="/verify-email" element={<VerifyEmailPage />} />
+    <Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route element={<OwnerGate />}><Route path="/app" element={<AppStart />} /><Route path="/app/search" element={<AppSearchStart />} />
+    <Route path="/app/account" element={<AppWorkspace />}><Route index element={<AccountPage />} /></Route>
     <Route path="/app/settings" element={<AppWorkspace />}><Route index element={<SettingsPage />} /></Route>
     <Route path="/app/projects" element={<AppWorkspace />}><Route index element={<ProjectsPage />} /><Route path="new" element={<NewProjectPage />} /></Route>
     <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="overview" element={<OverviewPage />} /><Route path="console" element={<ConsolePage />} /><Route path="search" element={<SearchPage />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions/:sessionId" element={<SessionPage />} /><Route path="jobs" element={<JobsPage />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /></Route>

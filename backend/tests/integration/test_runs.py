@@ -70,7 +70,7 @@ def test_idempotent_replay_keeps_original_implicit_cv_and_config_snapshot(db_ses
 
 
 def test_grant_scopes_are_distinct_and_replay_does_not_create_another_run(db_session):
-    p = project(db_session)
+    p = project(db_session, owner=owner(db_session))
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -153,7 +153,7 @@ def test_reload_retry_uses_durable_job_reference_and_original_cv(db_session):
 
 
 def test_grant_hourly_quota_counts_new_runs_but_not_idempotent_replay(db_session):
-    p = project(db_session, "Grant quota")
+    p = project(db_session, "Grant quota", owner=owner(db_session))
     actor, _ = grant(db_session, p.id, capabilities=("jobs:evaluate", "results:read"))
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
@@ -180,7 +180,7 @@ def test_grant_hourly_quota_counts_new_runs_but_not_idempotent_replay(db_session
 
 
 def test_grant_cancellation_requires_current_creator_and_terminal_is_immutable(db_session):
-    p = project(db_session)
+    p = project(db_session, owner=owner(db_session))
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -213,7 +213,7 @@ def test_grant_cancellation_requires_current_creator_and_terminal_is_immutable(d
 
 
 def test_revoked_creator_grant_is_checked_again_at_dispatch(db_session):
-    p = project(db_session, "Revoked before dispatch")
+    p = project(db_session, "Revoked before dispatch", owner=owner(db_session))
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -323,7 +323,7 @@ def test_project_results_reader_sees_other_creator_run_and_only_published_files(
 
 
 def test_evaluation_grant_replay_and_cancel_redact_results_after_read_revocation(db_session):
-    p = project(db_session, "Revoked result access")
+    p = project(db_session, "Revoked result access", owner=owner(db_session))
     creator, persisted = grant(
         db_session, p.id, capabilities=("jobs:evaluate", "results:read")
     )
@@ -390,7 +390,7 @@ def test_evaluation_grant_replay_and_cancel_redact_results_after_read_revocation
 
 @pytest.mark.asyncio
 async def test_events_reauthorize_between_yields_after_capability_removal(db_session):
-    p = project(db_session, "Event authorization refresh")
+    p = project(db_session, "Event authorization refresh", owner=owner(db_session))
     reader, persisted = grant(
         db_session, p.id, capabilities=("jobs:evaluate", "results:read")
     )

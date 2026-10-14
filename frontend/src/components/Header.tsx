@@ -9,7 +9,7 @@ import { Button } from './ui/button';
 export function Wordmark({ compact = false }: { compact?: boolean }) {
   return <span className="flex min-w-0 items-center gap-2 text-sm font-semibold leading-snug">
     <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"><Sparkles aria-hidden="true" size={16} /></span>
-    {!compact && <span className="min-w-0 [overflow-wrap:anywhere]">AI Job Search Agent Platform</span>}
+    {!compact && <span className="hidden min-w-0 [overflow-wrap:anywhere] sm:inline">AI Job Search Agent Platform</span>}
   </span>;
 }
 

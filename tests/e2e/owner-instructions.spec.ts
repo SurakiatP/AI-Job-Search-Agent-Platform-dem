@@ -15,7 +15,7 @@ const runView = (id: string, status = 'failed', retryOf: string | null = null) =
 });
 
 test('submission ambiguity keeps the instruction and reload retries from the immutable source run', async ({ page }) => {
-  const owner = { authenticated: true, csrf_token: 'synthetic-only', expires_at: '2030-01-01T00:00:00Z' };
+  const owner = { authenticated: true, csrf_token: 'synthetic-only', expires_at: '2030-01-01T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, created_at: '2026-10-01T00:00:00Z' } };
   const sourceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const retryId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
   const instruction = 'OWNER-INSTRUCTION-SENTINEL: emphasize retention experience.';
@@ -27,7 +27,7 @@ test('submission ambiguity keeps the instruction and reload retries from the imm
     const request = route.request();
     const path = new URL(request.url()).pathname;
     let value: unknown = [];
-    if (path.endsWith('/owner/session')) value = owner;
+    if (path.endsWith('/auth/session')) value = owner;
     else if (path.endsWith('/messages') && request.method() === 'POST') {
       messageWrites += 1;
       value = { id: 'synthetic-message', content: instruction };

@@ -80,6 +80,7 @@ class AgentView(_Body):
     project_name: str
     label: str | None
     capabilities: list[str]
+    created_at: datetime
     expires_at: datetime
     revoked_at: datetime | None
 

@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import signal
 import subprocess
+import time
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -13,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import Run, RunArtifact, StoredFile
+from job_search_platform.services import rate_limits
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import append_event
 from job_search_platform.workers.queue import MAX_ACTIVE_PROJECTS
@@ -101,6 +105,9 @@ def _find_native_process(workspace: Path) -> tuple[int, datetime] | None:
     return matches[0] if matches else None
 
 
+logger = logging.getLogger(__name__)
+
+
 class WorkerSupervisor:
     """Dispatch up to the shared queue cap and stop real execution on shutdown."""
 
@@ -113,6 +120,8 @@ class WorkerSupervisor:
         *,
         poll_interval: float = 0.5,
         shutdown_timeout: float = 30,
+        purge: Callable[[], Awaitable[int]] | None = None,
+        purge_interval: float = 300,
     ) -> None:
         self.sessions = sessions
         self.queue = queue
@@ -120,6 +129,8 @@ class WorkerSupervisor:
         self.runtime = runtime
         self.poll_interval = poll_interval
         self.shutdown_timeout = shutdown_timeout
+        self._purge = purge
+        self.purge_interval = purge_interval
         self.lease_owner = f"worker-{uuid.uuid4()}"
         self._active: dict[uuid.UUID, tuple[Run, asyncio.Task]] = {}
         self._closing = asyncio.Event()
@@ -131,7 +142,11 @@ class WorkerSupervisor:
             self._dispatcher = asyncio.create_task(self._dispatch_loop())
 
     async def _dispatch_loop(self) -> None:
+        last_purge = time.monotonic()
         while not self._closing.is_set():
+            if time.monotonic() - last_purge >= self.purge_interval:
+                last_purge = time.monotonic()
+                await self._purge_step()
             if len(self._active) >= MAX_ACTIVE_PROJECTS:
                 await asyncio.sleep(self.poll_interval)
                 continue
@@ -142,6 +157,18 @@ class WorkerSupervisor:
             task = asyncio.create_task(self._execute_claim(run))
             self._active[run.id] = (run, task)
             task.add_done_callback(lambda _task, run_id=run.id: self._active.pop(run_id, None))
+
+    async def _purge_step(self) -> None:
+        try:
+            if self._purge is not None:
+                await self._purge()
+            await asyncio.to_thread(self._prune_rate_limits)
+        except Exception as exc:  # noqa: BLE001 - housekeeping must never stop dispatch
+            logger.warning("purge_failed", extra={"error": type(exc).__name__})
+
+    def _prune_rate_limits(self) -> None:
+        with self.sessions.begin() as db:
+            rate_limits.prune(db)
 
     async def _execute_claim(self, run: Run) -> None:
         try:

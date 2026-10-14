@@ -1,3 +1,4 @@
+import { useRunGate } from '@/lib/accountGate';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,7 @@ type IssuedGrant = Grant & { token: string };
 const capabilityKey: Record<Capability, string> = { 'results:read': 'capability.resultsRead', 'jobs:evaluate': 'capability.jobsEvaluate', 'documents:draft': 'capability.documentsDraft', 'cv:tailor': 'capability.cvTailor', 'jobs:search': 'capability.jobsSearch', 'applications:apply': 'capability.applicationsApply' };
 
 export function ProjectSharing({ projectId }: { projectId: string }) {
+  const gate = useRunGate();
   const { t, i18n } = useTranslation('settings');
   const project = encodeURIComponent(projectId);
   const grants = useResource<Grant[]>(`/projects/${project}/grants`);
@@ -56,7 +58,7 @@ export function ProjectSharing({ projectId }: { projectId: string }) {
 
   return <div className="grid gap-6">
     <SectionCard title={t('nav.sharing')} description={t('sharing.description')} onSubmit={create}
-      footer={<Button type="submit" disabled={busy || capabilities.length === 0}>{t('createGrant')}</Button>}>
+      footer={<Button type="submit" disabled={busy || capabilities.length === 0 || gate.blocked} title={gate.title}>{t('createGrant')}</Button>}>
       <p className="text-sm text-muted-foreground">{t('sharingDefaultOff')} {t('sharingResultsPrivacy')}</p>
       <fieldset className="grid gap-2">
         <legend className="mb-1 text-sm font-medium">{t('capabilities')}</legend>

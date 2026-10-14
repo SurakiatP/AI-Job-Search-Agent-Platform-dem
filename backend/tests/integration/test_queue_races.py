@@ -25,9 +25,11 @@ def _submit(service, actor, project_id, request):
     return asyncio.run(service.submit(actor, project_id, request))
 
 
-def _enqueue(service, actor, db, project_count: int, runs_each: int = 1):
+def _enqueue(service, actor, db, project_count: int, runs_each: int = 1, *, owner_per_project: bool = False):
     ids = []
     for number in range(project_count):
+        if owner_per_project:  # the per-user running cap would otherwise serialize one account's projects
+            actor = owner(db)
         p = project(db, f"Queue race {number}", owner=actor)
         chat = session(db, p.id)
         _, job = revisions(db, p.id)
@@ -43,7 +45,7 @@ def test_two_dispatchers_claim_at_most_two_distinct_projects(db_session):
     factory = _factory(db_session)
     service = RunService(factory)
     actor = owner(db_session)
-    _enqueue(service, actor, db_session, project_count=3)
+    _enqueue(service, actor, db_session, project_count=3, owner_per_project=True)
     barrier = Barrier(2)
     queues = [PostgresRunQueue(factory), PostgresRunQueue(factory)]
 

@@ -44,10 +44,13 @@ def upgrade() -> None:
     op.execute("CREATE INDEX ix_owner_sessions_user_id ON owner_sessions (user_id)")
     op.execute("ALTER TABLE owner_sessions ADD COLUMN last_seen_at timestamptz NOT NULL DEFAULT now()")
     op.execute("DROP TABLE owner_launch_nonces")
+    # Existing grants are backfilled with the migration time.
+    op.execute("ALTER TABLE grants ADD COLUMN created_at timestamptz NOT NULL DEFAULT now()")
 
 
 def downgrade() -> None:
     op.execute("CREATE TABLE owner_launch_nonces (\n\tid UUID NOT NULL, \n\tnonce_hash BYTEA NOT NULL, \n\torigin VARCHAR(512) NOT NULL, \n\texpires_at TIMESTAMP WITH TIME ZONE NOT NULL, \n\tconsumed_at TIMESTAMP WITH TIME ZONE, \n\tPRIMARY KEY (id), \n\tUNIQUE (nonce_hash)\n)")
+    op.execute("ALTER TABLE grants DROP COLUMN created_at")
     op.execute("DELETE FROM owner_sessions")
     op.execute("ALTER TABLE owner_sessions DROP COLUMN last_seen_at")
     op.execute("ALTER TABLE owner_sessions DROP COLUMN user_id")

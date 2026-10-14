@@ -153,7 +153,7 @@ async def test_actual_launcher_serves_inside_running_loop_and_prints_login_url(p
     dist = tmp_path / "dist"
     (dist / "assets").mkdir(parents=True)
     (dist / "index.html").write_text("<html><body>Synthetic launcher page</body></html>")
-    args = SimpleNamespace(frontend_dist=dist, build_frontend=False, host=host, port=unused_tcp_port)
+    args = SimpleNamespace(frontend_dist=dist, build_frontend=False, open_browser=False, host=host, port=unused_tcp_port)
     task = asyncio.create_task(launcher._launch(args))
     try:
         async with asyncio.timeout(20):

@@ -44,6 +44,10 @@ class PostgresRunQueue:
                     )
                 ).all()
             )
+            # One running run per user keeps a single account from occupying every worker slot.
+            busy_users = set(db.scalars(
+                select(Project.user_id).join(Run, Run.project_id == Project.id).where(Run.status == "running")
+            ).all())
             candidates = db.execute(
                 select(Run.id, Run.project_id, Run.actor_scope, Run.operation)
                 .where(Run.status == "queued")
@@ -57,6 +61,9 @@ class PostgresRunQueue:
                     continue
                 if len(active_projects) >= MAX_ACTIVE_PROJECTS and not exempt:
                     break
+                owner_id = db.scalar(select(Project.user_id).where(Project.id == project_id))
+                if owner_id in busy_users and not exempt:
+                    continue
                 project = db.scalar(
                     select(Project).where(Project.id == project_id).with_for_update()
                 )
@@ -92,6 +99,7 @@ class PostgresRunQueue:
                 db.flush()
                 if not exempt:
                     active_projects.add(project_id)
+                    busy_users.add(owner_id)
                 return run
             return None
 

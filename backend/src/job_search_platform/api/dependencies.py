@@ -30,7 +30,6 @@ class Services:
     artifacts: Any = None
     accounts: Any = None
     mailer: Any = None
-    mailer: Any = None
     secret_store: Any = None
     engine: Any = None
     maintenance_lock: Any = None

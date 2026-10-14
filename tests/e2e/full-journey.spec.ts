@@ -63,7 +63,7 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'EN', exact: true }).click();
-  await page.getByRole('banner').getByRole('link', { name: 'Get started', exact: true }).click();
+  await page.getByRole('banner').getByRole('link', { name: 'Log in', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
 
   await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'New project', exact: true }).click();
@@ -107,7 +107,7 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
   await page.goto('/app/settings');
-  await page.getByRole('button', { name: 'มืด' }).click();
+  await page.getByRole('button', { name: 'มืด', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByTestId('run-status')).toHaveText('เสร็จแล้ว');
@@ -208,15 +208,16 @@ test('expired approval is visible but cannot be approved from a stale request', 
   await expect(page.getByRole('button', { name: 'Refresh status' })).toBeVisible();
 });
 
-test('synthetic unavailable owner session is routed to the local launcher message', async ({ page }) => {
+test('anonymous visitors are redirected to log in with the original path preserved', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
-  await page.route('**/api/v1/owner/session', route => route.fulfill({
+  await page.route('**/api/v1/auth/session', route => route.fulfill({
     status: 401,
     contentType: 'application/json',
     body: JSON.stringify({ code: 'unauthorized', message_key: 'errors.unauthorized', retryable: false, correlation_id: '55555555-5555-4555-8555-555555555555' }),
   }));
   await page.goto('/app/settings');
-  await expect(page.getByRole('heading', { name: 'Open the app from the local launcher' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Log in', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/login\?next=%2Fapp%2Fsettings$/);
   await expect(page.getByRole('heading', { name: 'Settings' })).toHaveCount(0);
   await expect(page.getByText('errors.unauthorized')).toHaveCount(0);
 });

@@ -1,3 +1,4 @@
+import { useRunGate } from '@/lib/accountGate';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -296,6 +297,7 @@ export function SearchPage() {
   const [version, setVersion] = useState(0);
   const [ai, setAi] = useState<AiState | null>(null);
   const [hiddenCount, setHiddenCount] = useState(0);
+  const gateBlocked = useRunGate().blocked;
   const [ranking, setRanking] = useState(false);
   const [rankFailed, setRankFailed] = useState(false);
   const [undo, setUndo] = useState<{ id: string; message: string; retry: boolean } | null>(null);
@@ -369,7 +371,7 @@ export function SearchPage() {
       .then(page => {
         if (controller.signal.aborted) return;
         setItems(page.items); setTotal(page.total); setStatus('ready'); setAi(page.ai ?? null); setHiddenCount(page.hidden_count ?? 0);
-        if (smart && (page.ai?.status === 'missing' || page.ai?.status === 'partial')) void rankJobs(controller.signal);
+        if (smart && !gateBlocked && (page.ai?.status === 'missing' || page.ai?.status === 'partial')) void rankJobs(controller.signal);
       })
       .catch(error => {
         if (controller.signal.aborted) return;
@@ -383,7 +385,7 @@ export function SearchPage() {
         setStatus('error');
       });
     return () => controller.abort();
-  }, [buildPath, sample, version, smart, revisionId, cvId]);
+  }, [buildPath, sample, version, smart, revisionId, cvId, gateBlocked]);
 
   const hideTimer = useRef(0);
   useEffect(() => {

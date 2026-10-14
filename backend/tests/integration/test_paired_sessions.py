@@ -349,10 +349,10 @@ def test_hidden_external_agent_session_reappears_on_new_protocol_run(db_session)
     import asyncio
     from datetime import datetime, timezone
     from sqlalchemy.orm import sessionmaker
-    from helpers import grant, project, provider_config, revisions
+    from helpers import grant, project, provider_config, revisions, user
     from job_search_platform.services.protocol_runs import ProtocolJobInput, ProtocolRuns
 
-    p = project(db_session)
+    p = project(db_session, owner=user(db_session))
     actor, _ = grant(db_session, p.id, capabilities=("jobs:evaluate", "results:read"))
     provider_config(db_session, p.id)
     revisions(db_session, p.id)

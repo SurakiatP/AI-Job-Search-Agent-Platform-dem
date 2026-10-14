@@ -17,7 +17,10 @@ export function LandingPage() {
   const { locale } = useLocale();
   const c = landingCopy[locale];
   return <div className="landing text-foreground">
-    <Header actions={<Button asChild size="sm"><Link to="/app">{c.cta}</Link></Button>} />
+    <Header actions={<>
+      <Button asChild className="rounded-full bg-amber-400 px-3 text-neutral-950 shadow-none hover:bg-amber-500 active:bg-amber-600 max-[399px]:hidden sm:px-5"><Link to="/signup">{c.signup}</Link></Button>
+      <Button asChild variant="outline" className="rounded-full border-foreground bg-transparent px-3 shadow-none sm:px-5"><Link to="/login">{c.login}</Link></Button>
+    </>} />
     <main className="grid gap-24 pb-16 lg:gap-32">
       <section className="relative">
         <div className="landing-hero-bg" aria-hidden="true" />
@@ -29,7 +32,7 @@ export function LandingPage() {
             </h1>
             <p className="max-w-xl text-lg text-muted-foreground">{c.sub}</p>
             <div className="flex flex-wrap justify-center gap-3">
-              <Button asChild size="lg"><Link to="/app">{c.cta}</Link></Button>
+              <Button asChild size="lg"><Link to="/login">{c.cta}</Link></Button>
               <Button asChild size="lg" variant="outline"><a href="#how">{c.secondary}</a></Button>
             </div>
           </div>
@@ -74,7 +77,7 @@ export function LandingPage() {
         <Reveal className="landing-rise">
           <div className="landing-cta-bg grid justify-items-center gap-6 rounded-3xl border px-6 py-16 text-center">
             <h2 className="max-w-2xl text-3xl font-semibold not-italic sm:text-4xl">{c.closing}</h2>
-            <Button asChild size="lg"><Link to="/app">{c.cta}</Link></Button>
+            <Button asChild size="lg"><Link to="/login">{c.cta}</Link></Button>
           </div>
         </Reveal>
       </section>
