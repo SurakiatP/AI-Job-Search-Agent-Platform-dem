@@ -19,7 +19,7 @@ GRANT_WORK_RESOURCES = frozenset(skill.id for skill in SKILLS if skill.kind == "
 GRANT_READ_RESOURCES = frozenset(skill.id for skill in SKILLS if skill.kind == "direct")
 OWNER_ONLY_RESOURCES = frozenset({
     "project", "session", "message", "cv", "cv_original", "upload", "raw_input",
-    "preference", "job", "provider_settings", "grant", "approval", "owner_session", "saved_search",
+    "preference", "job", "provider_settings", "grant", "approval", "owner_session", "saved_search", "webhook",
 })
 
 

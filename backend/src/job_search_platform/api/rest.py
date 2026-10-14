@@ -35,6 +35,7 @@ from job_search_platform.services.contracts import (
     PreferencesUpdate, ProjectCreate,
     GatewayStatusView, PreferencesView, ProjectUpdate, ProjectView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
+    QueuedView, WebhookCreate, WebhookCreatedView, WebhookDeliveryView, WebhookUpdate, WebhookView,
 )
 from job_search_platform.services import applications, experience, job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
@@ -74,7 +75,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "duplicate": 409, "bank_full": 409,
         "email_unverified": 403, "quota_exceeded": 429, "rate_limited": 429, "invalid_credentials": 401,
         "invalid_token": 400, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
-        "saved_search_limit": 409, "saved_search_name_taken": 409, "mail_unavailable": 503,
+        "saved_search_limit": 409, "invalid_webhook_url": 422, "webhook_limit": 409, "delivery_not_dead": 409, "saved_search_name_taken": 409, "mail_unavailable": 503,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
     body = {
@@ -640,6 +641,56 @@ async def preview_saved_search(project_id: UUID, saved_search_id: UUID, actor=De
     _owner_only(actor)
     await asyncio.to_thread(services.saved_searches.preview, actor, project_id, saved_search_id)
     return {"status": "sent"}
+
+
+@router.get("/projects/{project_id}/webhooks", response_model=list[WebhookView])
+async def list_webhooks(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await asyncio.to_thread(services.webhooks.list, actor, project_id)
+
+
+@router.post("/projects/{project_id}/webhooks", status_code=201, response_model=WebhookCreatedView)
+async def create_webhook(project_id: UUID, body: WebhookCreate, actor=Depends(write_actor),
+                         services: Services = Depends(get_services)):
+    _owner_only(actor)
+    return await services.webhooks.create(actor, project_id, body)
+
+
+@router.get("/projects/{project_id}/webhooks/deliveries", response_model=list[WebhookDeliveryView])
+async def list_webhook_deliveries(project_id: UUID, actor=Depends(owner_actor),
+                                  services: Services = Depends(get_services)):
+    return await asyncio.to_thread(services.webhooks.deliveries, actor, project_id)
+
+
+@router.post("/projects/{project_id}/webhooks/deliveries/{delivery_id}/redeliver", status_code=202,
+             response_model=QueuedView)
+async def redeliver_webhook(project_id: UUID, delivery_id: UUID, actor=Depends(write_actor),
+                            services: Services = Depends(get_services)):
+    _owner_only(actor)
+    await asyncio.to_thread(services.webhooks.redeliver, actor, project_id, delivery_id)
+    return {"status": "queued"}
+
+
+@router.patch("/projects/{project_id}/webhooks/{webhook_id}", response_model=WebhookView)
+async def update_webhook(project_id: UUID, webhook_id: UUID, body: WebhookUpdate, actor=Depends(write_actor),
+                         services: Services = Depends(get_services)):
+    _owner_only(actor)
+    return await asyncio.to_thread(services.webhooks.update, actor, project_id, webhook_id, body)
+
+
+@router.delete("/projects/{project_id}/webhooks/{webhook_id}", status_code=204)
+async def delete_webhook(project_id: UUID, webhook_id: UUID, actor=Depends(write_actor),
+                         services: Services = Depends(get_services)):
+    _owner_only(actor)
+    await asyncio.to_thread(services.webhooks.delete, actor, project_id, webhook_id)
+    return Response(status_code=204)
+
+
+@router.post("/projects/{project_id}/webhooks/{webhook_id}/test", status_code=202, response_model=QueuedView)
+async def test_webhook(project_id: UUID, webhook_id: UUID, actor=Depends(write_actor),
+                       services: Services = Depends(get_services)):
+    _owner_only(actor)
+    await asyncio.to_thread(services.webhooks.send_test, actor, project_id, webhook_id)
+    return {"status": "queued"}
 
 
 def _extraction(db, project_id: UUID) -> dict | None:

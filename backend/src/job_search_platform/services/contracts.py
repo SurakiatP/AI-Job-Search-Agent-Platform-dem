@@ -680,10 +680,12 @@ class SavedSearchUpdate(DTO):
     name: _SavedSearchName | None = None
     frequency: DigestFrequency | None = None
     digest_enabled: bool | None = None
+    push_enabled: bool | None = None
 
     @model_validator(mode="after")
     def validate_intent(self):
-        if self.name is None and self.frequency is None and self.digest_enabled is None:
+        if (self.name is None and self.frequency is None and self.digest_enabled is None
+                and self.push_enabled is None):
             raise ValueError("one_field_required")
         return self
 
@@ -697,6 +699,7 @@ class SavedSearchView(DTO):
     next_run_at: datetime
     last_sent_at: datetime | None = None
     created_at: datetime
+    push_enabled: bool = False
 
 
 class DigestStatusView(DTO):
@@ -711,6 +714,53 @@ class SavedSearchListView(DTO):
 
 class DigestPreviewView(DTO):
     status: Literal["sent"]
+
+
+WebhookEvent = Literal["run.waiting_approval", "run.needs_input", "run.completed", "run.failed", "run.cancelled", "digest.ready"]
+
+
+class WebhookCreate(DTO):
+    url: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2048)]
+    events: Annotated[list[WebhookEvent], Field(min_length=1, max_length=6), AfterValidator(lambda v: sorted(set(v)))]
+
+
+class WebhookUpdate(DTO):
+    events: Annotated[list[WebhookEvent], Field(min_length=1, max_length=6), AfterValidator(lambda v: sorted(set(v)))] | None = None
+    enabled: bool | None = None
+
+    @model_validator(mode="after")
+    def validate_intent(self):
+        if self.events is None and self.enabled is None:
+            raise ValueError("one_field_required")
+        return self
+
+
+class WebhookView(DTO):
+    id: UUID
+    url: str
+    events: tuple[WebhookEvent, ...]
+    enabled: bool
+    created_at: datetime
+
+
+class WebhookCreatedView(WebhookView):
+    secret: str
+
+
+class WebhookDeliveryView(DTO):
+    id: UUID
+    endpoint_id: UUID | None = None
+    event_type: str
+    status: Literal["pending", "delivered", "dead"]
+    attempts: int
+    last_status_code: int | None = None
+    last_error: str | None = None
+    created_at: datetime
+    delivered_at: datetime | None = None
+
+
+class QueuedView(DTO):
+    status: Literal["queued"]
 
 
 class ToolDescriptor(DTO):

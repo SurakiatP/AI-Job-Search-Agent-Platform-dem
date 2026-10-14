@@ -123,6 +123,9 @@ class WorkerSupervisor:
         purge: Callable[[], Awaitable[int]] | None = None,
         purge_interval: float = 300,
         digests: Callable[[], Awaitable[int]] | None = None,
+        deliveries: Callable[[], Awaitable[int]] | None = None,
+        deliveries_interval: float = 2.0,
+        prune_deliveries: Callable[[], Awaitable[int]] | None = None,
     ) -> None:
         self.sessions = sessions
         self.queue = queue
@@ -133,6 +136,10 @@ class WorkerSupervisor:
         self._purge = purge
         self.purge_interval = purge_interval
         self._digests = digests
+        self._deliveries = deliveries
+        self.deliveries_interval = deliveries_interval
+        self._prune_deliveries = prune_deliveries
+        self._delivery_task: asyncio.Task | None = None
         self.lease_owner = f"worker-{uuid.uuid4()}"
         self._active: dict[uuid.UUID, tuple[Run, asyncio.Task]] = {}
         self._closing = asyncio.Event()
@@ -142,6 +149,8 @@ class WorkerSupervisor:
         await self.reconcile_startup()
         if self._dispatcher is None:
             self._dispatcher = asyncio.create_task(self._dispatch_loop())
+        if self._deliveries is not None and self._delivery_task is None:
+            self._delivery_task = asyncio.create_task(self._delivery_loop())
 
     async def _dispatch_loop(self) -> None:
         last_purge = time.monotonic()
@@ -172,6 +181,22 @@ class WorkerSupervisor:
                 await self._digests()
             except Exception as exc:  # noqa: BLE001 - digests must never stop dispatch
                 logger.warning("digests_failed", extra={"error": type(exc).__name__})
+        if self._prune_deliveries is not None:
+            try:
+                await self._prune_deliveries()
+            except Exception as exc:  # noqa: BLE001 - pruning must never stop dispatch
+                logger.warning("webhook_prune_failed", extra={"error": type(exc).__name__})
+
+    async def _delivery_loop(self) -> None:
+        while not self._closing.is_set():
+            try:
+                await self._deliveries()
+            except Exception as exc:  # noqa: BLE001 - webhook delivery must never stop the worker
+                logger.warning("webhook_delivery_failed", extra={"error": type(exc).__name__})
+            try:
+                await asyncio.wait_for(self._closing.wait(), timeout=self.deliveries_interval)
+            except asyncio.TimeoutError:
+                pass
 
     def _prune_rate_limits(self) -> None:
         with self.sessions.begin() as db:
@@ -204,6 +229,10 @@ class WorkerSupervisor:
             self._dispatcher.cancel()
             await asyncio.gather(self._dispatcher, return_exceptions=True)
             self._dispatcher = None
+        if self._delivery_task is not None:
+            self._delivery_task.cancel()
+            await asyncio.gather(self._delivery_task, return_exceptions=True)
+            self._delivery_task = None
         tasks = [task for _run, task in self._active.values()]
         if tasks:
             _done, pending = await asyncio.wait(tasks, timeout=self.shutdown_timeout)

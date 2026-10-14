@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bookmark, Mail, Send, Trash2 } from 'lucide-react';
+import { Bookmark, BellRing, Mail, Send, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { apiRequest } from '../../lib/api';
-import { ApiError, type DigestFrequency, type SavedSearchFilters, type SavedSearchList, type SavedSearchView } from '../../lib/api-types';
+import { ApiError, type DigestFrequency, type SavedSearchFilters, type SavedSearchList, type SavedSearchView, type WebhookView } from '../../lib/api-types';
 import { selectClass } from '../settings/Field';
 import { sendJson, useResource } from '../projects/useResource';
 import { splitList } from './AdvancedFilters';
@@ -21,7 +21,7 @@ const copy = {
     name: 'ชื่อ', frequency: 'ความถี่', daily: 'ทุกวัน', weekly: 'ทุกสัปดาห์ (วันจันทร์)', cancel: 'ยกเลิก', confirmSave: 'บันทึก',
     saved: 'บันทึกการค้นหาแล้ว', previewSent: 'ส่งอีเมลตัวอย่างแล้ว', untitled: 'การค้นหาของฉัน',
     next: (d: string) => `สรุปครั้งถัดไป: ${d}`, off: 'ปิดอีเมลสรุปอยู่',
-    frequencyFor: (n: string) => `ความถี่ของสรุป ${n}`, emailFor: (n: string) => `อีเมลสรุปของ ${n}`,
+    frequencyFor: (n: string) => `ความถี่ของสรุป ${n}`, emailFor: (n: string) => `อีเมลสรุปของ ${n}`, pushFor: (n: string) => `ส่ง push สรุปของ ${n}`, pushHint: 'เพิ่ม webhook ที่เลือก "สรุปงานใหม่พร้อม" ในการตั้งค่าก่อน',
     previewFor: (n: string) => `ส่งตัวอย่างของ ${n}`, deleteFor: (n: string) => `ลบ ${n}`,
     deleteTitle: (n: string) => `ลบ “${n}”?`, deleteBody: 'การค้นหานี้และอีเมลสรุปจะถูกลบ', deleteConfirm: 'ลบการค้นหา',
     unverified: 'ยืนยันอีเมลก่อนจึงจะได้รับสรุปงาน', notificationsOff: 'โปรเจกต์นี้ปิดการแจ้งเตือนอยู่ เปิดได้ที่การตั้งค่าโปรเจกต์',
@@ -34,7 +34,7 @@ const copy = {
     name: 'Name', frequency: 'Frequency', daily: 'Daily', weekly: 'Weekly', cancel: 'Cancel', confirmSave: 'Save',
     saved: 'Search saved', previewSent: 'Preview sent', untitled: 'My search',
     next: (d: string) => `Next digest: ${d}`, off: 'Email digest is off',
-    frequencyFor: (n: string) => `Digest frequency for ${n}`, emailFor: (n: string) => `Email digest for ${n}`,
+    frequencyFor: (n: string) => `Digest frequency for ${n}`, emailFor: (n: string) => `Email digest for ${n}`, pushFor: (n: string) => `Push digest for ${n}`, pushHint: 'Add a webhook subscribed to "Digest ready" in Settings first.',
     previewFor: (n: string) => `Send a preview of ${n}`, deleteFor: (n: string) => `Delete ${n}`,
     deleteTitle: (n: string) => `Delete “${n}”?`, deleteBody: 'This search and its email digest will be removed.', deleteConfirm: 'Delete search',
     unverified: 'Verify your email to receive digests', notificationsOff: 'Notifications are off for this project. Turn them on in project settings.',
@@ -74,6 +74,8 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
   const f = filtersFromParams(params);
   const savable = Boolean(f.q || f.cities?.length || f.work_mode || f.category || f.posting_language || f.salary_min || LIST_KEYS.some(key => f[key]?.length));
   const list = useResource<SavedSearchList>(base);
+  const hooks = useResource<WebhookView[]>(`/projects/${projectId}/webhooks`);
+  const pushReady = (hooks.data ?? []).some(h => h.enabled && h.events.includes('digest.ready'));
   const [saveOpen, setSaveOpen] = useState(false);
   const [name, setName] = useState('');
   const [frequency, setFrequency] = useState<DigestFrequency>('daily');
@@ -118,10 +120,14 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
         </select>
         <Button variant="outline" size="icon" aria-pressed={item.digest_enabled} aria-label={c.emailFor(item.name)} disabled={busy}
           onClick={() => void run(() => sendJson(`${base}/${item.id}`, 'PATCH', { digest_enabled: !item.digest_enabled }))}><Mail className="size-4" aria-hidden="true" /></Button>
+        <Button variant="outline" size="icon" aria-pressed={item.push_enabled} aria-label={c.pushFor(item.name)} disabled={busy || (!pushReady && !item.push_enabled)}
+          aria-describedby={pushReady ? undefined : `push-hint-${item.id}`}
+          onClick={() => void run(() => sendJson(`${base}/${item.id}`, 'PATCH', { push_enabled: !item.push_enabled }))}><BellRing className="size-4" aria-hidden="true" /></Button>
         <Button variant="outline" size="icon" aria-label={c.previewFor(item.name)} disabled={busy}
           onClick={() => void run(() => sendJson(`${base}/${item.id}/preview`, 'POST', {}), c.previewSent)}><Send className="size-4" aria-hidden="true" /></Button>
         <Button variant="ghost" size="icon" aria-label={c.deleteFor(item.name)} onClick={() => setDeleting(item)}><Trash2 className="size-4" aria-hidden="true" /></Button>
       </div>
+      {!pushReady && !item.push_enabled && <p id={`push-hint-${item.id}`} className="text-xs text-muted-foreground sm:col-span-2">{c.pushHint}</p>}
     </li>)}</ul>}
     <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
       <DialogContent>

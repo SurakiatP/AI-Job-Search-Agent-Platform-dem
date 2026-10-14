@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 
 from job_search_platform.db.models import Project, ProjectPreference, SavedSearch, SavedSearchSeen, User
 from job_search_platform.integrations.mailer import Mail
-from job_search_platform.services import job_sources, rate_limits
+from job_search_platform.services import job_sources, rate_limits, webhooks
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
     Actor, DigestStatusView, SavedSearchCreate, SavedSearchListView, SavedSearchUpdate, SavedSearchView,
@@ -54,7 +54,8 @@ def _new_token() -> tuple[str, bytes]:
 def _view(row: SavedSearch) -> SavedSearchView:
     return SavedSearchView(id=row.id, name=row.name, filters=row.filters, frequency=row.frequency,
                            digest_enabled=row.digest_enabled, next_run_at=row.next_run_at,
-                           last_sent_at=row.last_sent_at, created_at=row.created_at)
+                           last_sent_at=row.last_sent_at, created_at=row.created_at,
+                           push_enabled=row.push_enabled)
 
 
 DIGEST_DAYS = 7
@@ -192,6 +193,9 @@ class SavedSearches:
                 if body.digest_enabled is not None and body.digest_enabled != row.digest_enabled:
                     row.digest_enabled = body.digest_enabled
                     reschedule = reschedule or body.digest_enabled  # never fire at once for a stale slot
+                if body.push_enabled is not None and body.push_enabled != row.push_enabled:
+                    row.push_enabled = body.push_enabled
+                    reschedule = reschedule or body.push_enabled  # never fire at once for a stale slot
                 if reschedule:
                     row.next_run_at = next_slot(now, row.frequency)
                 db.flush()
@@ -256,7 +260,7 @@ class SavedSearches:
         try:
             with self.sessions.begin() as db:
                 row = db.scalar(select(SavedSearch).where(
-                    SavedSearch.digest_enabled, SavedSearch.next_run_at <= now,
+                    or_(SavedSearch.digest_enabled, SavedSearch.push_enabled), SavedSearch.next_run_at <= now,
                     SavedSearch.id.not_in(done) if done else true(),
                 ).order_by(SavedSearch.next_run_at).limit(1).with_for_update(skip_locked=True))
                 if row is None:
@@ -272,7 +276,12 @@ class SavedSearches:
                     logger.warning("digest_source_failed", extra={"saved_search_id": str(row_id)})
                     raise _RowFailed from None
                 if items:
-                    self._mail(account, row, items)
+                    if row.digest_enabled:
+                        self._mail(account, row, items)
+                    queued = webhooks.enqueue_digest(db, row.project_id, row.id, row.name, items, now) if row.push_enabled else 0
+                    if not row.digest_enabled and not queued:  # push-only with no receiver: keep items unseen
+                        row.next_run_at = next_slot(now, row.frequency)
+                        return row_id, 0
                     db.execute(pg_insert(SavedSearchSeen).values(
                         [{"saved_search_id": row_id, "slug": item["slug"], "seen_at": now} for item in items]
                     ).on_conflict_do_nothing())
