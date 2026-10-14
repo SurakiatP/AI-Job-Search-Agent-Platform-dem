@@ -111,15 +111,18 @@ def test_applied_to_job_counts_every_project_of_the_same_user(db_session):
     actor, record, job = _setup(db_session)
     other = project(db_session, "Synthetic other", owner=actor)
     twin = JobRevision(project_id=other.id, revision=1, title="Twin", description="Synthetic",
-                       source_url="https://jobs.example.test/1?utm_source=digest")
+                       source_url="https://Jobs.Example.test/1/?utm_source=digest")
+    removed = JobRevision(project_id=other.id, revision=3, title="Removed twin", description="Synthetic",
+                          source_url="https://jobs.example.test/1", removed_at=datetime.now(timezone.utc))
     unlinked = JobRevision(project_id=other.id, revision=2, title="No URL", description="Synthetic")
-    db_session.add_all([twin, unlinked])
+    db_session.add_all([twin, unlinked, removed])
     db_session.flush()
     _, foreign = revisions(db_session, project(db_session, owner=owner(db_session)).id)
     assert applications.applied_to_job(db_session, other.id, twin.id) is False
     applications.set_stage(db_session, actor, record.id, job.id, "applied")
     assert applications.applied_to_job(db_session, record.id, job.id) is True
     assert applications.applied_to_job(db_session, other.id, twin.id) is True
+    assert applications.applied_to_job(db_session, other.id, removed.id) is True
     assert applications.applied_to_job(db_session, other.id, unlinked.id) is False
     assert applications.applied_to_job(db_session, foreign.project_id, foreign.id) is False
     assert applications.record_applied_via_approval(db_session, other.id, twin.id, "user:x", uuid4(), uuid4()) is False

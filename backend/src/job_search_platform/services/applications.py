@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Collection, Mapping, Sequence
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from job_search_platform.services.evidence import claims
@@ -187,10 +188,13 @@ def application_recorded(db: Session, project_id: UUID, job_id: UUID) -> bool:
 
 
 def applied_to_job(db: Session, project_id: UUID, job_id: UUID) -> bool:
-    """TOR FR-T02: one submission per (user, job). The same source URL in any of the user's projects is the same job."""
+    """TOR FR-T02: one submission per (user, job). The same source URL in any of the user's projects is the same job.
+
+    Removed cards still count: hiding a card does not withdraw what was sent."""
     if application_recorded(db, project_id, job_id):
         return True
-    url = _strip_utm(db.scalar(select(JobRevision.source_url).where(JobRevision.id == job_id)))
+    url = _same_job_url(db.scalar(select(JobRevision.source_url).where(
+        JobRevision.project_id == project_id, JobRevision.id == job_id)))
     if url is None:
         return False
     user_id = db.scalar(select(Project.user_id).where(Project.id == project_id))
@@ -199,7 +203,16 @@ def applied_to_job(db: Session, project_id: UUID, job_id: UUID) -> bool:
     rows = db.execute(select(JobRevision.project_id, JobRevision.id, JobRevision.source_url)
                       .join(Project, Project.id == JobRevision.project_id)
                       .where(owned, JobRevision.id != job_id, JobRevision.source_url.is_not(None))).all()
-    return any(_strip_utm(source) == url and application_recorded(db, pid, jid) for pid, jid, source in rows)
+    return any(_same_job_url(source) == url and application_recorded(db, pid, jid) for pid, jid, source in rows)
+
+
+def _same_job_url(url: str | None) -> str | None:
+    """Comparison key only: utm_* dropped, host lowercased, trailing slash ignored."""
+    url = _strip_utm(url)
+    if url is None:
+        return None
+    parts = urlsplit(url)
+    return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), parts.path.rstrip("/"), parts.query, ""))
 
 
 def event_view(event: ApplicationEvent) -> ApplicationEventView:
