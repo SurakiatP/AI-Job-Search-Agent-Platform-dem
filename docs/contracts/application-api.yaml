@@ -1607,7 +1607,7 @@ components:
       additionalProperties: false
       required: [capabilities, expires_at]
       properties:
-        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}}
+        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
         expires_at: {type: string, format: date-time}
         label: {type: [string, 'null'], minLength: 1, maxLength: 80, description: Optional name shown as the run requester; trimmed.}
     GrantIssuedView:
@@ -1627,7 +1627,7 @@ components:
       properties:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
-        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}}
+        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}
         label: {type: [string, 'null'], maxLength: 80}
@@ -1729,7 +1729,7 @@ components:
       properties:
         name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, apply_prepare, apply_submit, draft_follow_up, jobs_search, jobs_fit, applications_list, applications_update, get_run, cancel_run, list_results]}
         description: {type: string}
-        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}
+        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}
     ToolsView:
       type: object
       additionalProperties: false
