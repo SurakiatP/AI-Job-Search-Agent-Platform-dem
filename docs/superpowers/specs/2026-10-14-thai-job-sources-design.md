@@ -57,6 +57,7 @@ Request rules (DELIVERY.md, LEARNINGS 2026-10-14):
 - There is a 0.5 s pause between requests to the same host.
 - Each run has a 20-minute total deadline. Boards left unfetched are recorded as `skipped`, not as absences.
 - Each board is isolated: an exception marks that board failed and the run continues.
+- SmartRecruiters boards with more than 500 Thailand postings are reported failed (`too_many_postings`) before any detail call.
 
 The board list lives in `backend/src/job_search_platform/data/job_boards.json`:
 
@@ -126,7 +127,7 @@ Other commands:
 - **work_mode.** Remote/hybrid/onsite comes from Lever `workplaceType`, SmartRecruiters `location.remote`/`hybrid`, or title/location keywords (remote, hybrid, ทำงานที่บ้าน), else null.
 - **salary.** Lever `salaryRange`, SmartRecruiters compensation, and freehire's salary fields when present, else null. `salary_thb_month_min` is set only for THB amounts: monthly as-is, yearly ÷ 12. Other currencies or periods leave it null, so the salary filter never compares across currencies.
 - **province and cities.** The location dictionary maps the location text to a province code. `cities` holds the English province name, in the same form freehire uses, so the city filter matches across sources.
-- **posting_language.** `th` if Thai characters are at least 20% of the letters in the title and description, else `en`.
+- **posting_language.** `th` if Thai characters are at least 30% of the letters in the title and description, else `en`.
 
 ## Thai dictionary
 
