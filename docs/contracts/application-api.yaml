@@ -1253,6 +1253,7 @@ components:
         name: {type: [string, 'null'], minLength: 1, maxLength: 80}
         frequency: {type: [string, 'null'], enum: [daily, weekly, null]}
         digest_enabled: {type: [boolean, 'null']}
+        push_enabled: {type: [boolean, 'null']}
     SavedSearchView:
       type: object
       additionalProperties: false
@@ -1266,6 +1267,7 @@ components:
         next_run_at: {type: string, format: date-time}
         last_sent_at: {type: [string, 'null'], format: date-time}
         created_at: {type: string, format: date-time}
+        push_enabled: {type: boolean}
     DigestStatusView:
       type: object
       additionalProperties: false

@@ -54,7 +54,8 @@ def _new_token() -> tuple[str, bytes]:
 def _view(row: SavedSearch) -> SavedSearchView:
     return SavedSearchView(id=row.id, name=row.name, filters=row.filters, frequency=row.frequency,
                            digest_enabled=row.digest_enabled, next_run_at=row.next_run_at,
-                           last_sent_at=row.last_sent_at, created_at=row.created_at)
+                           last_sent_at=row.last_sent_at, created_at=row.created_at,
+                           push_enabled=row.push_enabled)
 
 
 DIGEST_DAYS = 7
@@ -192,6 +193,9 @@ class SavedSearches:
                 if body.digest_enabled is not None and body.digest_enabled != row.digest_enabled:
                     row.digest_enabled = body.digest_enabled
                     reschedule = reschedule or body.digest_enabled  # never fire at once for a stale slot
+                if body.push_enabled is not None and body.push_enabled != row.push_enabled:
+                    row.push_enabled = body.push_enabled
+                    reschedule = reschedule or body.push_enabled  # never fire at once for a stale slot
                 if reschedule:
                     row.next_run_at = next_slot(now, row.frequency)
                 db.flush()

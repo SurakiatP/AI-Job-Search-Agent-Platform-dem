@@ -513,6 +513,7 @@ class SavedSearch(Base):
     next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     __table_args__ = (
         UniqueConstraint("project_id", "name", name="uq_saved_searches_name"),
         CheckConstraint("frequency IN ('daily','weekly')", name="ck_saved_searches_frequency"),
@@ -528,3 +529,57 @@ class SavedSearchSeen(Base):
     slug: Mapped[str] = mapped_column(String(200), primary_key=True)
     seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     __table_args__ = (Index("ix_saved_search_seen_at", "seen_at"),)
+
+
+class WebhookEndpoint(Base):
+    """FR-P06 owner project webhook. ``secret`` signs deliveries; shown once at creation, never returned again."""
+    __tablename__ = "webhook_endpoints"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    events: Mapped[list] = mapped_column(JSON, nullable=False)
+    secret: Mapped[str] = mapped_column(String(64), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class A2APushConfig(Base):
+    """FR-P04 per-task A2A push config, owned by the grant that created the run."""
+    __tablename__ = "a2a_push_configs"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    grant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("grants.id", ondelete="CASCADE"), nullable=False)
+    config_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    token: Mapped[str] = mapped_column(String(256), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "run_id"], ["runs.project_id", "runs.id"], ondelete="CASCADE",
+                             name="fk_a2a_push_configs_run"),
+        UniqueConstraint("run_id", "config_id", name="uq_a2a_push_configs_config"),
+    )
+
+
+class WebhookDelivery(Base):
+    """FR-P06 outbox row and delivery history; exactly one of endpoint_id / push_config_id is set."""
+    __tablename__ = "webhook_deliveries"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    endpoint_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("webhook_endpoints.id", ondelete="CASCADE"))
+    push_config_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("a2a_push_configs.id", ondelete="CASCADE"))
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="pending", server_default=text("'pending'"))
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    last_status_code: Mapped[int | None] = mapped_column(Integer)
+    last_error: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        CheckConstraint("(endpoint_id IS NULL) <> (push_config_id IS NULL)", name="ck_webhook_deliveries_target"),
+        CheckConstraint("status IN ('pending','delivered','dead')", name="ck_webhook_deliveries_status"),
+        Index("ix_webhook_deliveries_due", "next_attempt_at", postgresql_where=text("status = 'pending'")),
+        Index("ix_webhook_deliveries_project", "project_id", "created_at"),
+    )
