@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -11,16 +12,17 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend" / "src"))
 
 from sqlalchemy import select  # noqa: E402
-from sqlalchemy.engine import URL  # noqa: E402
+from sqlalchemy.engine import URL
+from sqlalchemy.exc import SQLAlchemyError  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 from job_search_platform import config  # noqa: E402
 from job_search_platform.db.models import IngestRun  # noqa: E402
 from job_search_platform.db.session import make_engine  # noqa: E402
-from job_search_platform.integrations import job_boards  # noqa: E402
+from job_search_platform.integrations import job_boards, meili  # noqa: E402
 from job_search_platform.integrations.logging import configure_logging  # noqa: E402
 from job_search_platform.main import _private_text  # noqa: E402
-from job_search_platform.services import job_store  # noqa: E402
+from job_search_platform.services import job_index, job_store  # noqa: E402
 from job_search_platform.services.errors import ServiceError  # noqa: E402
 
 
@@ -33,9 +35,15 @@ def _sessions() -> sessionmaker:
 
 def run(args) -> int:
     sources = (args.source,) if args.source else job_boards.SOURCES
-    result = job_store.run_ingest(_sessions(), boards=job_store.load_boards(), sources=sources)
+    try:
+        index = (meili.client(), config.meili_index())
+    except RuntimeError:
+        logging.getLogger(__name__).warning("index_unconfigured")
+        index = None
+    result = job_store.run_ingest(_sessions(), boards=job_store.load_boards(), sources=sources, index=index)
     print(json.dumps({"status": result.status, "fetched": result.fetched, "created": result.created,
-                      "updated": result.updated, "deleted": result.deleted, "merged": result.merged}))
+                      "updated": result.updated, "deleted": result.deleted, "merged": result.merged,
+                      "index": (result.per_board or {}).get("index", {}).get("state")}))
     return 1 if result.status == "failed" else 0
 
 
@@ -46,6 +54,26 @@ def discover(args) -> int:
     tmp.write_text(json.dumps(merged, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     os.replace(tmp, job_store.BOARDS_FILE)
     print(json.dumps({source: len(tokens) for source, tokens in merged.items()}))
+    return 0
+
+
+def _index_client():
+    try:
+        return meili.client(), config.meili_index()
+    except RuntimeError:
+        raise meili.MeiliError("index_unconfigured")
+
+
+def reindex(args) -> int:
+    client, index = _index_client()
+    print(json.dumps({"documents": job_index.rebuild(_sessions(), client, index)}))
+    return 0
+
+
+def index_settings(args) -> int:
+    client, index = _index_client()
+    client.wait(client.update_settings(index, job_index.SETTINGS))
+    print(json.dumps({"settings": "applied"}))
     return 0
 
 
@@ -64,6 +92,8 @@ def main() -> int:
     one.add_argument("--source", choices=job_boards.SOURCES)
     one.set_defaults(func=run)
     sub.add_parser("discover").set_defaults(func=discover)
+    sub.add_parser("reindex").set_defaults(func=reindex)
+    sub.add_parser("index-settings").set_defaults(func=index_settings)
     sub.add_parser("status").set_defaults(func=status)
     args = parser.parse_args()
     configure_logging()
@@ -71,6 +101,9 @@ def main() -> int:
         return args.func(args)
     except ServiceError as exc:
         print(f"error: {exc.code}", file=sys.stderr)
+        return 2
+    except (meili.MeiliError, SQLAlchemyError) as exc:
+        print(f"error: {exc if isinstance(exc, meili.MeiliError) else 'database_error'}", file=sys.stderr)
         return 2
     except job_boards.BoardError as exc:
         print(f"error: {exc}", file=sys.stderr)

@@ -164,3 +164,58 @@ def test_empty_fetch_marks_board_suspicious_shrink(migrated_engine):
     assert run.per_board["greenhouse:a"] == {"state": "failed", "error": "suspicious_shrink"}
     with sessions() as db:
         assert db.scalar(select(JobPosting.missed_runs).where(JobPosting.external_id == "1")) == 0
+
+
+class _Index:
+    """Minimal in-memory Meilisearch stand-in; fail=True makes every call raise."""
+
+    def __init__(self, fail=False):
+        self.fail, self.docs, self.exists = fail, {}, False
+
+    def _t(self):
+        from job_search_platform.integrations.meili import MeiliError
+        if self.fail:
+            raise MeiliError("unreachable")
+        return 0
+
+    def wait(self, uid, **_): pass
+    def index_exists(self, i): self._t(); return self.exists
+    def create_index(self, i): self.exists = True; return self._t()
+    def update_settings(self, i, s): return self._t()
+    def delete_index(self, i): return self._t()
+    def swap(self, a, b): return self._t()
+    def add_documents(self, i, docs): self.docs.update({d["id"]: d for d in docs}); return self._t()
+    def delete_documents(self, i, ids): [self.docs.pop(x, None) for x in ids]; return self._t()
+
+
+def _run_idx(sessions, plan, at, index):
+    return job_store.run_ingest(sessions, boards={"greenhouse": ["a"]}, sources=("greenhouse",),
+                                fetch=Fetch(plan), clock=lambda: at, sleep=lambda s: None, index=index)
+
+
+@pytest.mark.integration
+def test_index_failure_keeps_store_and_dirty_rows(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    run = _run_idx(sessions, {("greenhouse", "a"): [_raw(1)]}, T0, (_Index(fail=True), "jobs"))
+    assert run.status == "partial" and run.created == 1
+    assert run.per_board["index"]["state"] == "index_failed"
+    with sessions() as db:
+        assert db.scalar(select(JobPosting.index_dirty).where(JobPosting.external_id == "1")) is True
+        assert db.get(IngestRun, run.id).status == "partial"
+
+
+@pytest.mark.integration
+def test_index_sync_after_commit(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    idx = _Index()
+    first = _run_idx(sessions, {("greenhouse", "a"): [_raw(1)]}, T0, (idx, "jobs"))
+    assert first.status == "ok" and first.per_board["index"]["state"] == "rebuilt" and len(idx.docs) == 1
+    second = _run_idx(sessions, {("greenhouse", "a"): [_raw(1), {**_raw(2), "title": "Designer"}]}, T0 + timedelta(hours=1), (idx, "jobs"))
+    assert second.per_board["index"]["state"] == "ok" and len(idx.docs) == 2
+
+
+@pytest.mark.integration
+def test_no_index_configured_runs_as_before(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    run = _run_idx(sessions, {("greenhouse", "a"): [_raw(1)]}, T0, None)
+    assert run.status == "ok" and run.created == 1 and "index" not in run.per_board
