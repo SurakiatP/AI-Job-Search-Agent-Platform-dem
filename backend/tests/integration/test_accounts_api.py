@@ -109,3 +109,28 @@ def test_delete_account_requires_matching_email_and_password(ctx):
                             json={"password": PW, "confirm_email": "alice@example.test"})
     assert ok.status_code == 204
     assert ctx.client.get("/api/v1/account").status_code == 401
+
+
+@pytest.fixture
+def api_context(migrated_engine, tmp_path):
+    from test_rest_api import api_context as _fx
+    yield from _fx.__wrapped__(migrated_engine, tmp_path)
+
+
+@pytest.mark.integration
+def test_agents_show_oauth_client_host(api_context):
+    from datetime import datetime, timedelta, timezone
+    from uuid import UUID
+    from test_rest_api import _owner, _write_headers
+    from job_search_platform.db.models import Grant, OAuthClient
+    svc = api_context.client.app.state.services
+    svc.accounts = Accounts(api_context.sessions, svc.owner_sessions, MemoryMailer(), public_origin="http://127.0.0.1:8765")
+    csrf = _owner(api_context)
+    project = api_context.client.post("/api/v1/projects", json={"name": "P"}, headers=_write_headers(csrf)).json()
+    with api_context.sessions.begin() as db:
+        db.add(OAuthClient(client_id="https://client.example.test/c.json", kind="cimd", client_info={}))
+        db.flush()
+        db.add(Grant(project_id=UUID(project["id"]), oauth_client_id="https://client.example.test/c.json",
+                     capabilities=["results:read"], expires_at=datetime.now(timezone.utc) + timedelta(days=1), label="Synthetic"))
+    agents = api_context.client.get("/api/v1/account/agents").json()
+    assert [a["client_id_host"] for a in agents] == ["client.example.test"]

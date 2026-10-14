@@ -204,6 +204,7 @@
     "revoked": "Revoked",
     "revoke": "Revoke",
     "untitledAgent": "Unnamed agent",
+    "oauthClient": "Connected with OAuth from {{host}}",
     "revokeFailed": "Could not revoke access. Try again.",
     "dangerSection": "Delete account",
     "dangerBody": "This removes your account, projects and documents. It cannot be undone.",
@@ -215,5 +216,19 @@
     "cancel": "Cancel",
     "loadFailed": "We could not load your account.",
     "created": "Given"
+  },
+  "oauth": {
+    "title": "{{client}} wants to use your Job Search Platform",
+    "origin": "From {{host}} · returns to {{redirect}}",
+    "project": "Project",
+    "capabilities": "Allow it to",
+    "expiry": "Access lasts",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "allow": "Allow",
+    "deny": "Deny",
+    "expired": "This request has expired. Start the connection again from your app.",
+    "noProjects": "Create a project first, then connect again.",
+    "createProject": "Create a project"
   }
 }

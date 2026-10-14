@@ -375,11 +375,12 @@ class Grant(Base):
     __tablename__ = "grants"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    token_hash: Mapped[bytes] = mapped_column(LargeBinary(32), unique=True, nullable=False)
+    token_hash: Mapped[bytes | None] = mapped_column(LargeBinary(32), unique=True)
     capabilities: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     label: Mapped[str | None] = mapped_column(String(80))
+    oauth_client_id: Mapped[str | None] = mapped_column(String(2048), ForeignKey("oauth_clients.client_id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     __table_args__ = (UniqueConstraint("project_id", "id", name="uq_grants_project_id"),)
 
@@ -583,3 +584,51 @@ class WebhookDelivery(Base):
         Index("ix_webhook_deliveries_due", "next_attempt_at", postgresql_where=text("status = 'pending'")),
         Index("ix_webhook_deliveries_project", "project_id", "created_at"),
     )
+
+
+class OAuthClient(Base):
+    """FR-P03 OAuth client: DCR-registered (public) or a cached Client ID Metadata Document."""
+    __tablename__ = "oauth_clients"
+    client_id: Mapped[str] = mapped_column(String(2048), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(8), nullable=False)
+    client_info: Mapped[dict] = mapped_column(JSON, nullable=False)
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (CheckConstraint("kind IN ('dcr','cimd')", name="ck_oauth_clients_kind"),)
+
+
+class OAuthAuthorization(Base):
+    """A pending /authorize request; becomes a single-use code once the user approves."""
+    __tablename__ = "oauth_authorizations"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    request_hash: Mapped[bytes] = mapped_column(LargeBinary(32), unique=True, nullable=False)
+    client_id: Mapped[str] = mapped_column(String(2048), ForeignKey("oauth_clients.client_id", ondelete="CASCADE"), nullable=False)
+    redirect_uri: Mapped[str] = mapped_column(String(2048), nullable=False)
+    redirect_uri_explicit: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    state: Mapped[str | None] = mapped_column(String(512))
+    code_challenge: Mapped[str] = mapped_column(String(128), nullable=False)
+    resource: Mapped[str] = mapped_column(String(2048), nullable=False)
+    scopes: Mapped[list] = mapped_column(JSON, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    code_hash: Mapped[bytes | None] = mapped_column(LargeBinary(32), unique=True)
+    code_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    grant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("grants.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class OAuthToken(Base):
+    """Opaque OAuth access/refresh token (hash only). ``pair_id`` links the two issued together."""
+    __tablename__ = "oauth_tokens"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary(32), unique=True, nullable=False)
+    kind: Mapped[str] = mapped_column(String(8), nullable=False)
+    pair_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    grant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("grants.id", ondelete="CASCADE"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(2048), ForeignKey("oauth_clients.client_id", ondelete="CASCADE"), nullable=False)
+    resource: Mapped[str] = mapped_column(String(2048), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (CheckConstraint("kind IN ('access','refresh')", name="ck_oauth_tokens_kind"),)

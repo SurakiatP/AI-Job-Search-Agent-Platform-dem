@@ -18,6 +18,7 @@ import { MissingResource, ErrorState, LoadingState } from '../features/projects/
 import { useResource } from '../features/projects/useResource';
 import { SearchPage } from '../features/search/SearchPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
+import { ConsentPage } from '../features/oauth/ConsentPage';
 import { AccountPage } from '../features/account/AccountPage';
 import { DigestUnsubscribePage } from '../features/digest/UnsubscribePage';
 import { ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage, VerifyEmailPage } from '../features/auth/AuthPages';
@@ -108,6 +109,7 @@ export function AppRoutes() {
     <Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route path="/verify-email" element={<VerifyEmailPage />} /><Route path="/digest/unsubscribe" element={<DigestUnsubscribePage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route element={<OwnerGate />}><Route path="/app" element={<AppStart />} /><Route path="/app/search" element={<AppSearchStart />} />
+    <Route path="/app/oauth/consent" element={<ConsentPage />} />
     <Route path="/app/account" element={<AppWorkspace />}><Route index element={<AccountPage />} /></Route>
     <Route path="/app/settings" element={<AppWorkspace />}><Route index element={<SettingsPage />} /></Route>
     <Route path="/app/projects" element={<AppWorkspace />}><Route index element={<ProjectsPage />} /><Route path="new" element={<NewProjectPage />} /></Route>

@@ -74,9 +74,20 @@ def _token_from_context(ctx: Context[Any, Any]) -> str:
 class _BearerAuthenticationMiddleware:
     """Authenticate every HTTP operation without binding identity to MCP sessions."""
 
-    def __init__(self, app: Any, grants: Any) -> None:
+    def __init__(self, app: Any, grants: Any, resource: str | None = None, resource_metadata_url: str | None = None) -> None:
         self.app = app
         self.grants = grants
+        self.resource = resource
+        self.resource_metadata_url = resource_metadata_url
+
+    def _unauthorized(self, token_sent: bool) -> JSONResponse:
+        headers = {"Cache-Control": "no-store"}
+        if self.resource_metadata_url:
+            value = f'Bearer resource_metadata="{self.resource_metadata_url}"'
+            headers["WWW-Authenticate"] = value + (', error="invalid_token"' if token_sent else "")
+        else:
+            headers["WWW-Authenticate"] = "Bearer"
+        return JSONResponse({"error": "unauthorized"}, status_code=401, headers=headers)
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         if scope["type"] != "http":
@@ -90,13 +101,13 @@ class _BearerAuthenticationMiddleware:
         authorization_header = authorization_values[0] if len(authorization_values) == 1 else ""
         scheme, separator, token = authorization_header.partition(" ")
         if not separator or scheme.lower() != "bearer" or not token or token.strip() != token:
-            response = JSONResponse({"error": "unauthorized"}, status_code=401, headers={"Cache-Control": "no-store"})
+            response = self._unauthorized(False)
             await response(scope, receive, send)
             return
         try:
-            actor = await self.grants.authenticate(token)
+            actor = await self.grants.authenticate(token, resource=self.resource)
         except ServiceError:
-            response = JSONResponse({"error": "unauthorized"}, status_code=401, headers={"Cache-Control": "no-store"})
+            response = self._unauthorized(True)
             await response(scope, receive, send)
             return
         except Exception:
@@ -104,15 +115,15 @@ class _BearerAuthenticationMiddleware:
             await response(scope, receive, send)
             return
         if actor.kind != "grant" or actor.project_id is None:
-            response = JSONResponse({"error": "unauthorized"}, status_code=401, headers={"Cache-Control": "no-store"})
+            response = self._unauthorized(True)
             await response(scope, receive, send)
             return
         await self.app(scope, receive, send)
 
 
-async def _authenticate(ctx: Context[Any, Any], grants: Any) -> Actor:
+async def _authenticate(ctx: Context[Any, Any], grants: Any, resource: str | None = None) -> Actor:
     try:
-        actor = await grants.authenticate(_token_from_context(ctx))
+        actor = await grants.authenticate(_token_from_context(ctx), resource=resource)
     except ServiceError as exc:
         raise _error(exc) from None
     except Exception:
@@ -122,7 +133,7 @@ async def _authenticate(ctx: Context[Any, Any], grants: Any) -> Actor:
     return actor
 
 
-def create_mcp_server(services: Any) -> MCPServer:
+def create_mcp_server(services: Any, resource: str | None = None) -> MCPServer:
     """Build one stateless official MCP server bound to shared backend services."""
     server = MCPServer(
         name="Job Search Platform",
@@ -173,7 +184,7 @@ def create_mcp_server(services: Any) -> MCPServer:
         request: Any,
         ctx: Context[Any, Any],
     ) -> dict[str, Any]:
-        actor = await _authenticate(ctx, services.grants)
+        actor = await _authenticate(ctx, services.grants, resource)
         try:
             run = await intake.submit(actor, operation, request)
         except ServiceError as exc:
@@ -186,7 +197,7 @@ def create_mcp_server(services: Any) -> MCPServer:
         async def tool(request, ctx: Context[Any, Any]) -> dict[str, Any]:
             require_arguments(ctx, {"request"})
             if skill.kind == "direct":
-                actor = await _authenticate(ctx, services.grants)
+                actor = await _authenticate(ctx, services.grants, resource)
                 try:
                     return await skill.handler(services, actor, request)
                 except ServiceError as exc:
@@ -209,7 +220,7 @@ def create_mcp_server(services: Any) -> MCPServer:
     )
     async def get_run(run_id: UUID, ctx: Context[Any, Any]) -> dict[str, Any]:
         require_arguments(ctx, {"run_id"})
-        actor = await _authenticate(ctx, services.grants)
+        actor = await _authenticate(ctx, services.grants, resource)
         try:
             run = await services.runs.get(actor, actor.project_id, run_id)
             result = _run_result(run)
@@ -234,7 +245,7 @@ def create_mcp_server(services: Any) -> MCPServer:
     )
     async def cancel_run(run_id: UUID, ctx: Context[Any, Any]) -> dict[str, Any]:
         require_arguments(ctx, {"run_id"})
-        actor = await _authenticate(ctx, services.grants)
+        actor = await _authenticate(ctx, services.grants, resource)
         try:
             run = await services.runs.cancel(actor, actor.project_id, run_id)
         except ServiceError as exc:
@@ -252,7 +263,7 @@ def create_mcp_server(services: Any) -> MCPServer:
     )
     async def list_results(ctx: Context[Any, Any]) -> dict[str, Any]:
         require_arguments(ctx, set())
-        actor = await _authenticate(ctx, services.grants)
+        actor = await _authenticate(ctx, services.grants, resource)
         try:
             documents = await services.documents.list_ready(actor, actor.project_id)
             with services.sessions.begin() as db:
@@ -295,7 +306,7 @@ def create_mcp_server(services: Any) -> MCPServer:
         mime_type="text/markdown",
     )
     async def evaluation_resource(run_id: str, ctx: Context[Any, Any]) -> str:
-        actor = await _authenticate(ctx, services.grants)
+        actor = await _authenticate(ctx, services.grants, resource)
         try:
             run = await services.runs.get(actor, actor.project_id, UUID(run_id))
         except (ServiceError, ValueError) as exc:
@@ -318,7 +329,7 @@ def create_mcp_server(services: Any) -> MCPServer:
         mime_type="text/markdown",
     )
     async def document_resource(document_id: str, ctx: Context[Any, Any]) -> str:
-        actor = await _authenticate(ctx, services.grants)
+        actor = await _authenticate(ctx, services.grants, resource)
         try:
             document = await services.documents.get(actor, actor.project_id, UUID(document_id))
         except (ServiceError, ValueError) as exc:
@@ -340,13 +351,15 @@ def create_mcp_app(
     *,
     allowed_hosts: list[str] | None = None,
     allowed_origins: list[str] | None = None,
+    resource: str | None = None,
+    resource_metadata_url: str | None = None,
 ) -> Starlette:
     """Return the official MCP Streamable HTTP ASGI app, mounted by the shared listener."""
     hosts = list(_DEFAULT_HOSTS if allowed_hosts is None else allowed_hosts)
     origins = list(() if allowed_origins is None else allowed_origins)
     if any(not value or "*" in value for value in [*hosts, *origins]):
         raise ValueError("mcp_transport_allowlist_must_be_exact")
-    server = create_mcp_server(services)
+    server = create_mcp_server(services, resource)
     app = server.streamable_http_app(
         streamable_http_path="/",
         stateless_http=True,
@@ -358,7 +371,8 @@ def create_mcp_app(
             allowed_origins=origins,
         ),
     )
-    app.add_middleware(_BearerAuthenticationMiddleware, grants=services.grants)
+    app.add_middleware(_BearerAuthenticationMiddleware, grants=services.grants, resource=resource,
+                       resource_metadata_url=resource_metadata_url)
     return app
 
 

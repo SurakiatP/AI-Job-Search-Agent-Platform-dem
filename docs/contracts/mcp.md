@@ -21,3 +21,17 @@ The only resource templates are `job-search://runs/{run_id}/evaluation` and `job
 MCP errors use stable authorization or request codes and omit request bodies, credentials, native output, tracebacks, and provider configuration. The official SDK request middleware validates bounded tool arguments before its generated Pydantic argument model runs; invalid fields and rejected extra values return only `invalid_parameters`, without echoing the supplied value in tool content or logs. The implementation does not expose shell access, raw file paths, object-store keys, private chat, or generic project CRUD.
 
 The scoped TCP test uses a parent FastAPI lifespan to enter the SDK app lifespan, two projects, real PostgreSQL and MinIO test fixtures, and the official SDK client. It verifies initialize/version negotiation, exact tool list, inline-job submission and replay, conflicting idempotency input, strict extra-field rejection, status polling, queued cancellation, pending running cancellation, cross-project transfer denial, result-only capability behavior, published artifact/resource reads through `Artifacts.publish`, missing/expired/revoked bearer denial, and an unknown raw-file resource guess. Its controlled synthetic queue completion verifies adapter and publication integration only; it is not native provider execution proof. Shared listener activation remains owned by the application integrator.
+
+## OAuth 2.1 (FR-P03)
+
+The shared listener also serves an OAuth 2.1 authorization server so MCP clients can connect without a pasted `jspg_` token.
+
+- Discovery: `/.well-known/oauth-protected-resource/mcp` (RFC 9728) and `/.well-known/oauth-authorization-server` (RFC 8414). An unauthenticated `/mcp` request returns `401` with `WWW-Authenticate: Bearer resource_metadata="<origin>/.well-known/oauth-protected-resource/mcp"`.
+- Endpoints: `/authorize` (per-IP rate limited, 60/hour), `/token`, `/register` (per-IP rate limited, 20/hour), `/revoke`.
+- Rate limits key on the direct peer IP. Behind a reverse proxy every client shares one bucket, so rate-limit at the proxy as well.
+- Public clients only (`token_endpoint_auth_method: none`), registered by Client ID Metadata Document (an https `client_id` URL, fetched with an SSRF guard) or Dynamic Client Registration.
+- PKCE `S256` is required, and the `resource` parameter is required and must equal the `/mcp` URL.
+- Access tokens (`jspo_`) last 1 hour and are valid only at `/mcp` (A2A refuses them). Refresh tokens rotate; reuse of a rotated refresh token revokes the grant's tokens.
+- Each consent creates a `Grant` that the owner can revoke under Connected agents; revocation takes effect on the next request.
+- OAuth is off unless the shared origin (`SHARE_PUBLIC_ORIGIN`) is https or loopback with no path; with OAuth on, `/mcp` also accepts the `SHARE_PUBLIC_ORIGIN` host. Otherwise the OAuth routes are not mounted and `/mcp` advertises no resource metadata.
+- `jspg_` grant tokens keep working unchanged.

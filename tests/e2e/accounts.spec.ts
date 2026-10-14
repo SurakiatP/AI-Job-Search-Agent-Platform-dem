@@ -87,13 +87,14 @@ test('agents list shows given date and revoke calls the grant route', async ({ p
   await mockApi(page, true);
   const grantId = '77777777-7777-4777-8777-777777777777';
   let revoked = '';
-  await page.route('**/api/v1/account/agents', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: grantId, project_id: projectId, project_name: 'Synthetic project', label: 'Synthetic agent', capabilities: ['results:read'], created_at: '2026-10-03T08:00:00Z', expires_at: '2099-01-01T00:00:00Z', revoked_at: null }]) }));
+  await page.route('**/api/v1/account/agents', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: grantId, project_id: projectId, project_name: 'Synthetic project', label: 'Synthetic agent', capabilities: ['results:read'], created_at: '2026-10-03T08:00:00Z', expires_at: '2099-01-01T00:00:00Z', revoked_at: null, client_id_host: 'client.example.test' }]) }));
   await page.route(`**/api/v1/projects/${projectId}/grants/${grantId}`, route => { revoked = `${route.request().method()} ${new URL(route.request().url()).pathname}`; return route.fulfill({ status: 204 }); });
   await page.goto('/login?next=%2Fapp%2Faccount');
   await page.getByLabel('Email').fill('synthetic@example.test');
   await page.getByLabel('Password').fill('correct-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByText('Synthetic agent')).toBeVisible();
+  await expect(page.getByText('client.example.test')).toBeVisible();
   await expect(page.getByText(/Given\s+Oct 3, 2026/)).toBeVisible();
   await page.getByRole('button', { name: 'Revoke', exact: true }).click();
   await expect.poll(() => revoked).toBe(`DELETE /api/v1/projects/${projectId}/grants/${grantId}`);

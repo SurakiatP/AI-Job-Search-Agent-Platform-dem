@@ -8,7 +8,7 @@ import secrets
 
 from sqlalchemy import select
 
-from job_search_platform.db.models import Grant, Project
+from job_search_platform.db.models import Grant, OAuthToken, Project
 from job_search_platform.db.repositories import Repositories
 from job_search_platform.services.authorization import authorize, GRANT_CAPABILITIES
 from job_search_platform.services.contracts import Actor, GrantIssuedView, GrantView
@@ -24,8 +24,9 @@ def grant_view(row):
 
 
 class Grants:
-    def __init__(self, sessions):
+    def __init__(self, sessions, *, mcp_resource: str | None = None):
         self.sessions = sessions
+        self.mcp_resource = mcp_resource
 
     async def issue(self, actor, project_id, request):
         now = datetime.now(timezone.utc)
@@ -50,13 +51,25 @@ class Grants:
             return view
         return await asyncio.to_thread(issue)
 
-    async def authenticate(self, token: str) -> Actor:
+    async def authenticate(self, token: str, *, resource: str | None = None) -> Actor:
+        """``jspg_`` grant tokens work everywhere; ``jspo_`` OAuth access tokens only at the MCP resource."""
+        oauth = token.startswith("jspo_")
+        if oauth and (self.mcp_resource is None or resource != self.mcp_resource):
+            raise ServiceError("unauthorized")
+
         def authenticate():
             digest = token_hash(token)
+            now = datetime.now(timezone.utc)
             with self.sessions() as db:
-                found = db.execute(select(Grant, Project.user_id).join(
-                    Project, Project.id == Grant.project_id).where(Grant.token_hash == digest)).first()
-                if found is None or found[0].revoked_at is not None or found[0].expires_at <= datetime.now(timezone.utc):
+                query = select(Grant, Project.user_id).join(Project, Project.id == Grant.project_id)
+                if oauth:
+                    query = query.join(OAuthToken, OAuthToken.grant_id == Grant.id).where(
+                        OAuthToken.token_hash == digest, OAuthToken.kind == "access",
+                        OAuthToken.revoked_at.is_(None), OAuthToken.expires_at > now)
+                else:
+                    query = query.where(Grant.token_hash == digest)
+                found = db.execute(query).first()
+                if found is None or found[0].revoked_at is not None or found[0].expires_at <= now:
                     raise ServiceError("unauthorized")
                 row, owner_id = found
                 return Actor("grant", None, row.id, row.project_id,

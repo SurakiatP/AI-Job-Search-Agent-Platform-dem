@@ -15,13 +15,17 @@ const routes = [
   '/login', '/digest/unsubscribe?token=x',
   '/signup',
   '/app/account',
+  '/app/oauth/consent?request=a11y',
 ];
 
 test('approved routes fit 320px, tablet, and desktop and keep the language control available', async ({ page }) => {
-  test.setTimeout(90_000); // 16 routes x 3 widths; the 30s default is too tight on CI runners
+  test.setTimeout(90_000); // 17 routes x 3 widths; the 30s default is too tight on CI runners
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await useSyntheticApplication(page);
+  await page.route('**/api/v1/oauth/requests/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+    client_name: 'Synthetic Client', client_id_host: 'client.example.test', redirect_uri: 'http://127.0.0.1:33418/callback',
+    requested_scopes: ['results:read'], projects: [{ id: projectId, name: 'Synthetic project' }], expires_at: '2099-01-01T00:00:00Z' }) }));
 
   for (const width of [320, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
