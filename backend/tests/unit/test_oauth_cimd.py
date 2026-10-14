@@ -29,7 +29,8 @@ def test_validate_cimd_accepts_public_client():
 
 @pytest.mark.parametrize("over", [{"client_id": "https://evil.example.test/c.json"}, {"redirect_uris": []},
                                   {"token_endpoint_auth_method": "client_secret_post"}, {"client_secret": "s"},
-                                  {"grant_types": ["client_credentials"]}])
+                                  {"grant_types": ["client_credentials"]},
+                                  {"redirect_uris": ["javascript:alert(1)//"]}])
 def test_validate_cimd_rejects(over):
     with pytest.raises(ValueError):
         oauth.validate_cimd(URL, _doc(**over))
@@ -71,3 +72,13 @@ async def test_cimd_blocked_url_is_not_fetched(monkeypatch):
     monkeypatch.setattr(webhooks, "check_url", blocked)
     assert await oauth.fetch_cimd(URL, transport=httpx.MockTransport(lambda r: calls.append(r) or httpx.Response(200))) is None
     assert calls == []
+
+
+@pytest.mark.parametrize("uris,ok", [
+    (["https://app.example.test/cb"], True), (["http://127.0.0.1:9/cb"], True), (["http://localhost/cb"], True),
+    (["http://[::1]:9/cb"], True), (["http://evil.example.test/cb"], False), (["javascript:alert(1)//"], False),
+    (["data:text/html,x"], False), (["file:///etc/passwd"], False), (["cursor://callback"], True),
+    (["com.example.app:/cb"], True), (["JavaScript:alert(1)"], False), ([], False),
+    (["https://app.example.test/cb", "javascript:alert(1)//"], False)])
+def test_redirect_uris_ok(uris, ok):
+    assert oauth.redirect_uris_ok(uris) is ok
