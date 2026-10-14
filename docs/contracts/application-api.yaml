@@ -2190,7 +2190,7 @@ components:
     AgentView:
       type: object
       additionalProperties: false
-      required: [id, project_id, project_name, label, capabilities, created_at, expires_at, revoked_at]
+      required: [id, project_id, project_name, label, capabilities, created_at, expires_at, revoked_at, client_id_host]
       properties:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
@@ -2200,3 +2200,4 @@ components:
         created_at: {type: string, format: date-time}
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}
+        client_id_host: {type: [string, 'null']}

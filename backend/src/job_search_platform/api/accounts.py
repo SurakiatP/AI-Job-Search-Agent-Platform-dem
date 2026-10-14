@@ -83,6 +83,7 @@ class AgentView(_Body):
     created_at: datetime
     expires_at: datetime
     revoked_at: datetime | None
+    client_id_host: str | None = None
 
 
 CHECK_EMAIL = {"status": "check_email"}

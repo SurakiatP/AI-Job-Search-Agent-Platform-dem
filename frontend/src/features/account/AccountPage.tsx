@@ -56,6 +56,7 @@ function AgentsSection() {
         return <li key={agent.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${state === 'active' ? '' : 'text-muted-foreground'}`}>
           <div className="grid min-w-0 gap-1.5">
             <p className="break-words text-sm font-medium">{agent.label ?? t('account.untitledAgent')}</p>
+            {agent.client_id_host && <p className="break-words text-sm text-muted-foreground">{t('account.oauthClient', { host: agent.client_id_host })}</p>}
             <p className="break-words text-sm">{t('account.project')}: {agent.project_name}</p>
             <div className="flex flex-wrap gap-1.5">{agent.capabilities.map(cap => <Badge key={cap} variant="outline">{cap}</Badge>)}</div>
             <p className="text-sm">{t('account.created')} <time dateTime={agent.created_at}>{fmt.format(new Date(agent.created_at))}</time> · {t('account.expires')} <time dateTime={agent.expires_at}>{fmt.format(new Date(agent.expires_at))}</time></p>

@@ -204,6 +204,7 @@
     "revoked": "Revoked",
     "revoke": "Revoke",
     "untitledAgent": "Unnamed agent",
+    "oauthClient": "Connected with OAuth from {{host}}",
     "revokeFailed": "Could not revoke access. Try again.",
     "dangerSection": "Delete account",
     "dangerBody": "This removes your account, projects and documents. It cannot be undone.",

@@ -9,6 +9,7 @@ import asyncio
 import hashlib
 import logging
 import secrets
+from urllib.parse import urlsplit
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -205,7 +206,9 @@ class Accounts:
                               .where(Project.user_id == user_id).order_by(Grant.expires_at)).all()
             return [{"id": grant.id, "project_id": grant.project_id, "project_name": name, "label": grant.label,
                      "capabilities": sorted(grant.capabilities), "created_at": grant.created_at, "expires_at": grant.expires_at,
-                     "revoked_at": grant.revoked_at} for grant, name in rows]
+                     "revoked_at": grant.revoked_at,
+                     "client_id_host": (urlsplit(grant.oauth_client_id).hostname or grant.oauth_client_id) if grant.oauth_client_id else None}
+                    for grant, name in rows]
 
     def request_deletion(self, user_id: UUID, password: str, confirm_email: str) -> None:
         with self.sessions() as db:
