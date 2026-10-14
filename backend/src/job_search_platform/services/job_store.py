@@ -7,6 +7,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
@@ -195,3 +196,20 @@ def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards
                 lock.execute(text("SELECT pg_advisory_unlock(hashtext('ingest'))"))
             except Exception:  # must not mask the run's result or exception
                 _log.exception("ingest_unlock_failed")
+
+
+_ATS_HOSTS = {"boards.greenhouse.io": "greenhouse", "job-boards.greenhouse.io": "greenhouse",
+              "boards.eu.greenhouse.io": "greenhouse", "job-boards.eu.greenhouse.io": "greenhouse",
+              "jobs.lever.co": "lever", "jobs.smartrecruiters.com": "smartrecruiters"}
+
+
+def discover_boards(freehire_rows: list[dict], current: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Board tokens from freehire's Thai postings' ATS URLs; additive only (spec D10)."""
+    found = {source: set(current.get(source, [])) for source in ("greenhouse", "lever", "smartrecruiters")}
+    for row in freehire_rows:
+        parts = urlsplit(str(row.get("url") or ""))
+        source = _ATS_HOSTS.get(parts.netloc.lower())
+        segments = [s for s in parts.path.split("/") if s]
+        if source and segments and job_boards.valid_board(segments[0]):
+            found[source].add(segments[0])
+    return {source: sorted(tokens) for source, tokens in found.items()}

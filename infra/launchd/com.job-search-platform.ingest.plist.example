@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- WP5 hourly ingest. Copy to ~/Library/LaunchAgents/, replace REPO_DIR and PRIVATE_DIR, then:
+     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.job-search-platform.ingest.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.job-search-platform.ingest</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/env</string><string>uv</string><string>run</string><string>--locked</string>
+    <string>--project</string><string>REPO_DIR/backend</string>
+    <string>python</string><string>REPO_DIR/scripts/ingest_jobs.py</string><string>run</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict><key>CORE02_PRIVATE_DIR</key><string>PRIVATE_DIR</string></dict>
+  <key>StartInterval</key><integer>3600</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/tmp/jsp-ingest.log</string>
+  <key>StandardErrorPath</key><string>/tmp/jsp-ingest.log</string>
+</dict>
+</plist>
