@@ -11,3 +11,7 @@ See [local operation](docs/engineering/local-operation.md) for pinned setup, loc
 ## Verification and security
 
 [Security verification](docs/engineering/security-verification.md) describes the checks CI can run and the additional native, storage, and image scans required on an operator machine. The latest recorded full scan and its scope limits are in [dependency evidence](docs/engineering/dependencies.md). CI does not deploy or publish artifacts.
+
+## Architecture decisions
+
+[ADR-015](docs/adr/ADR-015-python-stack-deviation.md) records how the delivered stack (Python/FastAPI, React) deviates from TOR §7 and when each deviation should be revisited.
