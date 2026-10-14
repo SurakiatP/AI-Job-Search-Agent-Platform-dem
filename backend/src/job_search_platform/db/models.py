@@ -221,16 +221,45 @@ class JobRevision(Base):
     __table_args__ = (ForeignKeyConstraint(["project_id", "content_file_id"], ["files.project_id", "files.id"]), UniqueConstraint("project_id", "id", name="uq_job_revisions_project_id"), UniqueConstraint("project_id", "revision", name="uq_job_revisions_number"), CheckConstraint("revision > 0", name="ck_job_revision_positive"))
 
 
+APPLICATION_STAGES = ("saved", "applied", "responded", "interview", "offer", "hired", "rejected", "withdrawn")
+APPLICATION_EVENT_KINDS = ("stage_changed", "note", "contact_updated", "email_logged", "applied_via_approval")
+
+
+def _in(values: tuple[str, ...]) -> str:
+    return ",".join(f"'{value}'" for value in values)
+
+
 class JobApplicationStatus(Base):
-    """Mutable owner status kept separate from immutable job and run revisions."""
+    """Mutable owner status and recruiter contact, kept separate from immutable job and run revisions."""
     __tablename__ = "job_application_statuses"
     project_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     job_revision_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
+    contact_name: Mapped[str | None] = mapped_column(String(200))
+    contact_email: Mapped[str | None] = mapped_column(String(320))
+    contact_role: Mapped[str | None] = mapped_column(String(200))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     __table_args__ = (
         ForeignKeyConstraint(["project_id", "job_revision_id"], ["job_revisions.project_id", "job_revisions.id"], ondelete="CASCADE"),
-        CheckConstraint("status IN ('saved','applied')", name="ck_job_application_status_value"),
+        CheckConstraint(f"status IN ({_in(APPLICATION_STAGES)})", name="ck_job_application_status_value"),
+    )
+
+
+class ApplicationEvent(Base):
+    """Append-only FR-T01 ledger. A trigger rejects UPDATE and any DELETE that is not an FK cascade."""
+    __tablename__ = "application_events"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    job_revision_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    actor_scope: Mapped[str] = mapped_column(String(80), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "job_revision_id"], ["job_revisions.project_id", "job_revisions.id"],
+                             ondelete="CASCADE", name="fk_application_events_job"),
+        CheckConstraint(f"kind IN ({_in(APPLICATION_EVENT_KINDS)})", name="ck_application_events_kind"),
+        Index("ix_application_events_job", "project_id", "job_revision_id", "created_at"),
     )
 
 class JobSubmission(Base):
