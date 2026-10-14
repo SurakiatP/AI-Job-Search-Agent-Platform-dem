@@ -45,7 +45,7 @@ from job_search_platform.services.contracts import (
     RunRequester,
     RunView,
 )
-from job_search_platform.services.applications import MAX_ANSWER_CHARS, application_recorded
+from job_search_platform.services.applications import MAX_ANSWER_CHARS, application_recorded, applied_to_job
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.quota import enforce_run_gates
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD
@@ -517,7 +517,7 @@ class RunService:
                 raise ServiceError("document_busy")
         if request.operation != "apply_submit":
             return None
-        if applied:
+        if applied or applied_to_job(db, project_id, job.id):
             raise ServiceError("already_applied")
         pack = latest_ready_pack(db, project_id, job.id)
         if pack is None:

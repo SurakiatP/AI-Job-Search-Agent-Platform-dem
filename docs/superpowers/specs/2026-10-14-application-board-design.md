@@ -179,7 +179,7 @@ Stage labels (th / en):
 - `not_found`: wrong project, removed job, or another user's job.
 - `forbidden`: a grant without the capability, or a grant attempting an owner-only action.
 - `application_not_applied`: an agent stage move before the application is recorded, or a follow-up before applied.
-- `already_applied`: `apply_submit` after the application is recorded.
+- `already_applied`: `apply_submit` after the application is recorded, for this card or for a card with the same source URL (`utm_*` ignored) in any project of the same user (TOR FR-T02, one submission per user and job).
 - `validation_error` (existing 422 handler, via DTO validation): bad stage, oversize text, bad email, or neither `stage` nor `note`.
 
 ## Testing

@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from job_search_platform.db.models import (
     CV, Approval, CVRevision, DocumentRevision, Grant, Project, ProjectPreference, Run, StoredFile,
 )
-from job_search_platform.services.applications import application_recorded, record_applied_via_approval
+from job_search_platform.services.applications import applied_to_job, record_applied_via_approval
 from job_search_platform.services.authorization import authorize, user_scope_is_current
 from job_search_platform.services.contracts import Actor, ApprovalRequest, ApprovalView
 from job_search_platform.services.errors import ServiceError
@@ -443,7 +443,7 @@ class ApprovalService:
             if (pack is None or pack.operation != "apply_prepare" or pack.status != "completed"
                     or not isinstance(payload, dict) or payload.get("state") != "ready"):
                 raise ServiceError("apply_pack_required")
-            if not allow_applied and application_recorded(db, project_id, pack.job_revision_id):
+            if not allow_applied and applied_to_job(db, project_id, pack.job_revision_id):
                 raise ServiceError("already_applied")
             return ({"action": request.action, "target_run_id": str(pack.id), "job_revision_id": str(pack.job_revision_id),
                      "pack_digest": _digest(payload)}, None)
