@@ -1936,3 +1936,195 @@ Expected: all pass, except the 2 known baselines that need `CORE02_PRIVATE_DIR` 
 rtk git add backend/src/job_search_platform/data/job_boards.json backend/AGENTS.md infra/AGENTS.md docs/engineering/local-operation.md docs/adr/ADR-015-python-stack-deviation.md docs/demo/tor-roadmap.md
 rtk git commit -m "docs(jobs): seed ATS boards, ingest operation guide, client questions (WP5)"
 ```
+
+---
+
+### Task 10: Retention — delete instead of close, 90-day age limit, tombstones (owner order 2026-10-14)
+
+Spec: D6 and D9 as amended on 2026-10-14. Owner order: postings older than 3 months, and postings the source removed, are deleted from the database so the store does not grow without bound. Saved project jobs are unaffected, because they are `JobRevision` copies.
+
+**Files:**
+- Create: `backend/migrations/versions/0028_job_retention.py`
+- Modify: `backend/src/job_search_platform/db/models.py` (`JobPosting`, `IngestRun`; add `JobPostingTombstone`, `JobIndexDelete`)
+- Modify: `backend/src/job_search_platform/services/job_store.py`
+- Modify: `scripts/ingest_jobs.py` (print `deleted` instead of `closed`)
+- Modify tests: `backend/tests/integration/test_job_store_schema.py`, `test_job_store.py`, `test_job_dedup.py`, `test_ingest_run.py`
+- Test (new): `backend/tests/integration/test_job_retention.py`
+
+**Interfaces:**
+- Consumes: everything from Tasks 1–8.
+- Produces, in `services/job_store.py`:
+  - `MAX_AGE = timedelta(days=90)`, `DELETE_AFTER_MISSES = 2` (renamed from `CLOSE_AFTER_MISSES`), `TOMBSTONE_UNSEEN = timedelta(days=7)`, `TOMBSTONE_MAX = timedelta(days=180)`, `RUN_LOG_MAX = timedelta(days=90)`.
+  - `apply_board(db, source, board, rows, now) -> {"fetched", "created", "updated", "deleted", "skipped_old"}`.
+  - `retire(db, now) -> int` deletes postings whose age basis is older than `MAX_AGE`. The age basis is `posted_at`, else `first_seen_at`. It writes tombstones and index deletes and returns the number deleted.
+  - `delete_postings(db, ids, now, *, tombstone: bool) -> int`: the one place rows are deleted (see Step 3).
+  - `prune(db, now) -> None` drops stale tombstones and old `ingest_runs` rows.
+  - `recompute_clusters(db, now) -> int`: unchanged contract, now over all rows (there is no closed state).
+  - Removed: `purge_descriptions`, `PURGE_AFTER`, `CLOSE_AFTER_MISSES`, and every use of `closed_at`.
+- Produces, in `db/models.py`: `JobPostingTombstone(source, external_id, deleted_at, last_seen_at)` with PK (source, external_id), and `JobIndexDelete(posting_id uuid PK, deleted_at)`. `IngestRun.closed` is renamed to `IngestRun.deleted`.
+
+- [ ] **Step 1: Migration `0028_job_retention`** (down_revision `0027_job_store`)
+
+```python
+"""WP5 retention (owner 2026-10-14): delete instead of close, tombstones stop re-ingesting aged-out postings,
+index-delete queue for the search index (part 2)."""
+
+from alembic import op
+
+revision = "0028_job_retention"
+down_revision = "0027_job_store"
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    op.execute("DELETE FROM job_postings WHERE closed_at IS NOT NULL")
+    op.execute("DROP INDEX ix_job_postings_open")
+    op.execute("ALTER TABLE job_postings DROP COLUMN closed_at")
+    op.execute("CREATE INDEX ix_job_postings_canonical ON job_postings (canonical_id)")
+    op.execute("ALTER TABLE ingest_runs RENAME COLUMN closed TO deleted")
+    op.execute("""CREATE TABLE job_posting_tombstones (
+        source varchar(20) NOT NULL,
+        external_id varchar(200) NOT NULL,
+        deleted_at timestamptz NOT NULL,
+        last_seen_at timestamptz NOT NULL,
+        PRIMARY KEY (source, external_id))""")
+    op.execute("""CREATE TABLE job_index_deletes (
+        posting_id uuid PRIMARY KEY,
+        deleted_at timestamptz NOT NULL)""")
+
+
+def downgrade() -> None:
+    op.execute("DROP TABLE job_index_deletes")
+    op.execute("DROP TABLE job_posting_tombstones")
+    op.execute("ALTER TABLE ingest_runs RENAME COLUMN deleted TO closed")
+    op.execute("DROP INDEX ix_job_postings_canonical")
+    op.execute("ALTER TABLE job_postings ADD COLUMN closed_at timestamptz")
+    op.execute("CREATE INDEX ix_job_postings_open ON job_postings (closed_at, canonical_id)")
+```
+
+Update the ORM to match:
+- Remove `JobPosting.closed_at`.
+- Replace `Index("ix_job_postings_open", ...)` with `Index("ix_job_postings_canonical", "canonical_id")`.
+- Rename `IngestRun.closed` to `deleted`.
+- Add the two new classes.
+
+- [ ] **Step 2: Write the failing tests** in `backend/tests/integration/test_job_retention.py`. Synthetic rows only. Reuse the `_gh` helper pattern from `test_job_store.py`, with a `posted` parameter that sets `first_published`.
+
+```python
+@pytest.mark.integration
+def test_missing_twice_deletes_row_and_queues_index_delete(db_session): ...
+    # seen at T0; missing at T0+1h keeps it (missed_runs 1); missing at T0+2h deletes it.
+    # Assert no JobPosting row, one JobIndexDelete with its id, and no tombstone (the source removed it).
+
+@pytest.mark.integration
+def test_failed_board_never_deletes(migrated_engine): ...
+    # run_ingest with BoardError for the board twice: the posting survives.
+
+@pytest.mark.integration
+def test_posting_older_than_90_days_is_never_inserted(db_session): ...
+    # posted_at = T0 - 91 days: apply_board creates nothing, counts["skipped_old"] == 1.
+
+@pytest.mark.integration
+def test_retire_deletes_aged_rows_and_writes_tombstone(db_session): ...
+    # posting with posted_at None, first_seen_at = T0 - 91 days: retire(T0) deletes it,
+    # writes a tombstone (source, external_id) and a JobIndexDelete.
+    # A posting first seen at T0 - 89 days stays.
+
+@pytest.mark.integration
+def test_tombstone_blocks_reinsert_and_refreshes_last_seen(db_session): ...
+    # after retire, apply_board with the same posting (posted_at None) creates nothing;
+    # tombstone.last_seen_at == now.
+
+@pytest.mark.integration
+def test_prune_drops_unseen_and_expired_tombstones_and_old_runs(db_session): ...
+    # tombstone last_seen 8 days ago -> dropped; last_seen 1 day ago but deleted_at 181 days ago -> dropped;
+    # last_seen 1 day ago, deleted 10 days ago -> kept. IngestRun started 91 days ago -> dropped; 89 days -> kept.
+
+@pytest.mark.integration
+def test_deleting_canonical_promotes_member_and_marks_it_dirty(db_session): ...
+    # freehire + greenhouse share a URL (one cluster). Make the canonical miss two runs so it is deleted.
+    # After recompute_clusters, the survivor has canonical_id None and index_dirty True,
+    # even though the FK ON DELETE SET NULL already cleared its canonical_id.
+```
+
+Write the bodies in full (no `...`), following the assertions in the comments.
+
+- [ ] **Step 3: Implement `job_store.py` changes**
+
+```python
+MAX_AGE = timedelta(days=90)
+DELETE_AFTER_MISSES = 2
+TOMBSTONE_UNSEEN = timedelta(days=7)
+TOMBSTONE_MAX = timedelta(days=180)
+RUN_LOG_MAX = timedelta(days=90)
+
+
+def delete_postings(db: Session, ids: list[uuid.UUID], now: datetime, *, tombstone: bool) -> int:
+    """The only row delete: queue search-index deletes, flag cluster members dirty, optionally tombstone."""
+    if not ids:
+        return 0
+    # members of a deleted canonical lose canonical_id via FK SET NULL; flag them so the index re-syncs them
+    db.execute(update(JobPosting).where(JobPosting.canonical_id.in_(ids)).values(index_dirty=True, updated_at=now))
+    if tombstone:
+        db.execute(pg_insert(JobPostingTombstone).from_select(
+            ["source", "external_id", "deleted_at", "last_seen_at"],
+            select(JobPosting.source, JobPosting.external_id, literal(now), literal(now)).where(JobPosting.id.in_(ids)),
+        ).on_conflict_do_nothing())
+    db.execute(pg_insert(JobIndexDelete).values([{"posting_id": i, "deleted_at": now} for i in ids])
+               .on_conflict_do_nothing())
+    return db.execute(delete(JobPosting).where(JobPosting.id.in_(ids))).rowcount
+```
+
+`apply_board` changes:
+- Load the tombstoned external_ids for `source` once: `select(JobPostingTombstone.external_id).where(source == ...)`.
+- For each incoming row:
+  - If `posted_at` is not None and `posted_at < now - MAX_AGE`: count `skipped_old`, delete any existing row through `delete_postings(..., tombstone=False)`, then continue.
+  - Else if `external_id` is tombstoned: set `last_seen_at = now` on that tombstone, then continue.
+  - Otherwise, upsert as today, without the reopen branch.
+- Missing rows: `missed_runs += 1`. Rows reaching `DELETE_AFTER_MISSES` are collected and passed to `delete_postings(..., tombstone=False)`, adding to `counts["deleted"]`.
+
+```python
+def retire(db: Session, now: datetime) -> int:
+    ids = list(db.scalars(select(JobPosting.id).where(
+        func.coalesce(JobPosting.posted_at, JobPosting.first_seen_at) < now - MAX_AGE)))
+    return delete_postings(db, ids, now, tombstone=True)
+
+
+def prune(db: Session, now: datetime) -> None:
+    db.execute(delete(JobPostingTombstone).where(or_(
+        JobPostingTombstone.last_seen_at < now - TOMBSTONE_UNSEEN, JobPostingTombstone.deleted_at < now - TOMBSTONE_MAX)))
+    db.execute(delete(IngestRun).where(IngestRun.started_at < now - RUN_LOG_MAX, IngestRun.status != "running"))
+```
+
+- `recompute_clusters` selects all `JobPosting` rows (no `closed_at` filter) and drops the trailing bulk UPDATE about closed postings.
+- In `run_ingest`'s final transaction, the order is `retire` → `recompute_clusters` → `prune`. `totals["deleted"]` adds the `retire` count.
+- `purge_descriptions` and its call are deleted.
+- The module docstring becomes "upsert per board, delete rule, retention, dedup clusters (spec D6, D8, D9)".
+
+Imports to add: `delete`, `func`, `literal`, `or_` from sqlalchemy; `insert as pg_insert` from `sqlalchemy.dialects.postgresql`; and the two new models.
+
+- [ ] **Step 4: Update existing tests** to the new behavior; do not delete coverage:
+- `test_job_store.py`:
+  - `test_closes_after_two_missed_fetches` becomes "deletes after two missed fetches".
+  - `test_reappearing_posting_reopens` becomes "a posting deleted then seen again is created fresh with a new `first_seen_at`". The source removed it, so there is no tombstone.
+  - Counts use `deleted`.
+- `test_job_dedup.py`:
+  - The canonical-close promotion becomes canonical-delete promotion (Step 2 covers the FK case; keep one here too).
+  - The closed-member test becomes "deleted member leaves no dangling `canonical_id`".
+  - The purge test is removed, because `purge_descriptions` is gone; `test_job_retention.py` covers retention instead.
+- `test_job_store_schema.py`: drop the `closed_at` assertion and add round-trips for the two new tables.
+- `test_ingest_run.py`: rename `closed` to `deleted` in assertions.
+- `scripts/ingest_jobs.py`: `run` and `status` print `deleted`.
+
+- [ ] **Step 5: Run the tests**
+
+Run: `cd backend && rtk uv run --locked pytest tests/integration/test_job_retention.py tests/integration/test_job_store.py tests/integration/test_job_dedup.py tests/integration/test_ingest_run.py tests/integration/test_job_store_schema.py tests/unit -q`
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+rtk git add backend/migrations/versions/0028_job_retention.py backend/src/job_search_platform/db/models.py backend/src/job_search_platform/services/job_store.py scripts/ingest_jobs.py backend/tests
+rtk git commit -m "feat(jobs): delete removed and 90-day-old postings, tombstones, index-delete queue (WP5)"
+```

@@ -32,10 +32,10 @@ Production hardening (monitoring, a server scheduler) belongs to WP1.
 | D3 | freehire is ingested as an extra source, outside the three. Its terms allow access through the documented API, within 600 requests/min, or 300/min for `/agent/jobs/search`. Every posting keeps its `source` and original URL. The owner emails hello@freehire.me to confirm re-serving. |
 | D4 | Postgres is the system of record (TOR §7). Part 2 indexes the open, canonical postings into Meilisearch. |
 | D5 | A run-once `ingest` command runs hourly. It is idempotent, follows the TOR appendix ก.3 run-once worker model, and is launched by launchd on the owner machine (systemd timer in WP1). No loop inside the backend process. |
-| D6 | A posting absent from two consecutive successful fetches of its board becomes `closed`. A failed fetch never counts as an absence. |
+| D6 | A posting absent from two consecutive successful fetches of its board is deleted (amended 2026-10-14: delete, not close). A failed fetch never counts as an absence. |
 | D7 | Enrichment uses dictionaries only, with no LLM. Unknown values become `other` or null. |
 | D8 | Dedup has two tiers: normalized URL, then normalized (company, title, province) within 30 days. Each cluster keeps one canonical posting. |
-| D9 | Closed postings are kept as rows. Their `description_markdown` is cleared 90 days after `closed_at`. |
+| D9 | Retention (amended 2026-10-14, owner order, so the store cannot grow without bound): a posting whose age (`posted_at`, else `first_seen_at`) passes 90 days is deleted, and an incoming posting already older than that is never stored. Aged-out postings leave a tombstone `(source, external_id)` so they are not re-ingested; a tombstone is dropped when the source stops listing it for 7 days, or after 180 days. Deletes are queued in `job_index_deletes` for the search index (part 2). `ingest_runs` older than 90 days are dropped. Saved project jobs are separate `JobRevision` copies and are unaffected. |
 | D10 | Board lists for the three ATSs are seeded from freehire's Thai postings and kept in an editable file. A re-runnable `discover` command adds new boards. |
 
 ## Sources and adapters
