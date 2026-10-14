@@ -12,16 +12,21 @@ import json
 import logging
 import os
 import random
+import secrets
 import time
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 import httpx
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 
-from job_search_platform.db.models import A2APushConfig, Grant, WebhookDelivery, WebhookEndpoint
+from job_search_platform.db.models import A2APushConfig, Grant, Project, WebhookDelivery, WebhookEndpoint
 from job_search_platform.services.a2a_state import context_id, task_state
+from job_search_platform.services.authorization import authorize
+from job_search_platform.services.contracts import (
+    WebhookCreate, WebhookCreatedView, WebhookDeliveryView, WebhookUpdate, WebhookView,
+)
 from job_search_platform.services.errors import ServiceError
 
 logger = logging.getLogger("jsp.webhooks")
@@ -149,6 +154,19 @@ def _classify(code: int | None, error: str | None) -> str:
     return "dead"
 
 
+MAX_ENDPOINTS = 5
+
+
+def _webhook_view(row: WebhookEndpoint) -> WebhookView:
+    return WebhookView(id=row.id, url=row.url, events=tuple(row.events), enabled=row.enabled, created_at=row.created_at)
+
+
+def _delivery_view(row: WebhookDelivery) -> WebhookDeliveryView:
+    return WebhookDeliveryView(id=row.id, endpoint_id=row.endpoint_id, event_type=row.event_type, status=row.status,
+                               attempts=row.attempts, last_status_code=row.last_status_code, last_error=row.last_error,
+                               created_at=row.created_at, delivered_at=row.delivered_at)
+
+
 class Webhooks:
     def __init__(self, sessions, *, timeout: float = 10.0, rand=random.random):
         self.sessions = sessions
@@ -238,3 +256,83 @@ class Webhooks:
 
     async def prune_async(self) -> int:
         return await asyncio.to_thread(self.prune)
+
+    @staticmethod
+    def _endpoint(db, project_id: UUID, webhook_id: UUID) -> WebhookEndpoint:
+        row = db.scalar(select(WebhookEndpoint).where(WebhookEndpoint.project_id == project_id,
+                                                      WebhookEndpoint.id == webhook_id).with_for_update())
+        if row is None:
+            raise ServiceError("not_found")
+        return row
+
+    def list(self, actor, project_id: UUID) -> list[WebhookView]:
+        with self.sessions() as db:
+            authorize(db, actor, project_id, "read", "webhook")
+            rows = db.scalars(select(WebhookEndpoint).where(WebhookEndpoint.project_id == project_id)
+                              .order_by(WebhookEndpoint.created_at, WebhookEndpoint.id)).all()
+            return [_webhook_view(r) for r in rows]
+
+    def _authorize_write(self, actor, project_id: UUID) -> None:
+        with self.sessions() as db:
+            authorize(db, actor, project_id, "write", "webhook")
+
+    async def create(self, actor, project_id: UUID, body: WebhookCreate) -> WebhookCreatedView:
+        await asyncio.to_thread(self._authorize_write, actor, project_id)  # foreign project: 404 before URL checks
+        await validate_url(body.url)
+
+        def insert() -> WebhookCreatedView:
+            with self.sessions.begin() as db:
+                authorize(db, actor, project_id, "write", "webhook")
+                db.execute(select(Project.id).where(Project.id == project_id).with_for_update())
+                if db.scalar(select(func.count()).select_from(WebhookEndpoint)
+                             .where(WebhookEndpoint.project_id == project_id)) >= MAX_ENDPOINTS:
+                    raise ServiceError("webhook_limit")
+                row = WebhookEndpoint(project_id=project_id, url=body.url, events=list(body.events),
+                                      secret=secrets.token_urlsafe(32))
+                db.add(row)
+                db.flush()
+                return WebhookCreatedView(**_webhook_view(row).model_dump(), secret=row.secret)
+        return await asyncio.to_thread(insert)
+
+    def update(self, actor, project_id: UUID, webhook_id: UUID, body: WebhookUpdate) -> WebhookView:
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "webhook")
+            row = self._endpoint(db, project_id, webhook_id)
+            if body.events is not None:
+                row.events = list(body.events)
+            if body.enabled is not None:
+                row.enabled = body.enabled
+            db.flush()
+            return _webhook_view(row)
+
+    def delete(self, actor, project_id: UUID, webhook_id: UUID) -> None:
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "webhook")
+            db.delete(self._endpoint(db, project_id, webhook_id))
+
+    def send_test(self, actor, project_id: UUID, webhook_id: UUID) -> None:
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "webhook")
+            row = self._endpoint(db, project_id, webhook_id)
+            _add(db, project_id=project_id, event_type="ping", now=now, endpoint_id=row.id,
+                 payload_for=lambda delivery_id: _envelope(delivery_id, "ping", now, {"project_id": str(project_id)}))
+
+    def deliveries(self, actor, project_id: UUID) -> list[WebhookDeliveryView]:
+        with self.sessions() as db:
+            authorize(db, actor, project_id, "read", "webhook")
+            rows = db.scalars(select(WebhookDelivery).where(WebhookDelivery.project_id == project_id)
+                              .order_by(WebhookDelivery.created_at.desc(), WebhookDelivery.id).limit(50)).all()
+            return [_delivery_view(r) for r in rows]
+
+    def redeliver(self, actor, project_id: UUID, delivery_id: UUID) -> None:
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "webhook")
+            row = db.scalar(select(WebhookDelivery).where(WebhookDelivery.project_id == project_id,
+                                                          WebhookDelivery.id == delivery_id).with_for_update())
+            if row is None:
+                raise ServiceError("not_found")
+            if row.status != "dead":
+                raise ServiceError("delivery_not_dead")
+            row.status, row.attempts, row.next_attempt_at = "pending", 0, datetime.now(timezone.utc)
+            row.last_status_code = row.last_error = None

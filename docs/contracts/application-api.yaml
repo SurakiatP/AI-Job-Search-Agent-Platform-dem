@@ -22,6 +22,7 @@ tags:
   - name: approvals
   - name: sharing
   - name: settings
+  - name: webhooks
   - name: system
 paths:
   /projects:
@@ -437,6 +438,99 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '429': {$ref: '#/components/responses/RateLimited'}
         '503': {description: 'Mail is not configured (code mail_unavailable)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/webhooks:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [webhooks]
+      description: Owner-only (FR-P06). Webhook endpoints of this project, oldest first. The signing secret is never returned here.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Endpoints, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/WebhookView'}}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [webhooks]
+      description: >-
+        Owner-only. Registers an endpoint; the URL must be https and public (SSRF checked, 422 invalid_webhook_url).
+        At most 5 per project (409 webhook_limit). The signing secret is returned once, in this response only.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/WebhookCreate'}}}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/WebhookCreatedView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: 'Limit reached (code webhook_limit)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: 'Invalid body or unsafe URL (code invalid_webhook_url)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/webhooks/deliveries:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [webhooks]
+      description: Owner-only. The 50 most recent deliveries of this project, newest first. Payloads are not returned.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Deliveries, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/WebhookDeliveryView'}}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/webhooks/deliveries/{delivery_id}/redeliver:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: delivery_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [webhooks]
+      description: Owner-only. Re-queues a dead delivery with attempts reset; any other status gives 409 delivery_not_dead.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/QueuedView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: 'Delivery is not dead (code delivery_not_dead)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/webhooks/{webhook_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: webhook_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      tags: [webhooks]
+      description: Owner-only. Changes the subscribed events or enables or disables the endpoint; at least one field is required.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/WebhookUpdate'}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/WebhookView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: Invalid body}
+    delete:
+      tags: [webhooks]
+      description: Owner-only. Deletes one endpoint of this project and its deliveries; another project's id gives 404.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Deleted}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/webhooks/{webhook_id}/test:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: webhook_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [webhooks]
+      description: Owner-only. Queues a signed ping delivery to this endpoint.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/QueuedView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/experience:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -1288,6 +1382,61 @@ components:
       required: [status]
       properties:
         status: {type: string, enum: [sent]}
+    WebhookCreate:
+      type: object
+      additionalProperties: false
+      required: [url, events]
+      properties:
+        url: {type: string, minLength: 1, maxLength: 2048}
+        events: {type: array, minItems: 1, maxItems: 6, items: {type: string, enum: [run.waiting_approval, run.needs_input, run.completed, run.failed, run.cancelled, digest.ready]}}
+    WebhookUpdate:
+      type: object
+      additionalProperties: false
+      description: At least one field is required.
+      properties:
+        events: {anyOf: [{type: array, minItems: 1, maxItems: 6, items: {type: string, enum: [run.waiting_approval, run.needs_input, run.completed, run.failed, run.cancelled, digest.ready]}}, {type: 'null'}]}
+        enabled: {type: [boolean, 'null']}
+    WebhookView:
+      type: object
+      additionalProperties: false
+      required: [id, url, events, enabled, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        url: {type: string}
+        events: {type: array, items: {type: string, enum: [run.waiting_approval, run.needs_input, run.completed, run.failed, run.cancelled, digest.ready]}}
+        enabled: {type: boolean}
+        created_at: {type: string, format: date-time}
+    WebhookCreatedView:
+      type: object
+      additionalProperties: false
+      required: [id, url, events, enabled, created_at, secret]
+      properties:
+        id: {type: string, format: uuid}
+        url: {type: string}
+        events: {type: array, items: {type: string, enum: [run.waiting_approval, run.needs_input, run.completed, run.failed, run.cancelled, digest.ready]}}
+        enabled: {type: boolean}
+        created_at: {type: string, format: date-time}
+        secret: {type: string, description: Signing key; shown once}
+    WebhookDeliveryView:
+      type: object
+      additionalProperties: false
+      required: [id, event_type, status, attempts, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        endpoint_id: {type: [string, 'null'], format: uuid}
+        event_type: {type: string}
+        status: {type: string, enum: [pending, delivered, dead]}
+        attempts: {type: integer}
+        last_status_code: {type: [integer, 'null']}
+        last_error: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+        delivered_at: {type: [string, 'null'], format: date-time}
+    QueuedView:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {type: string, enum: [queued]}
     ExperienceItemCreate:
       type: object
       additionalProperties: false

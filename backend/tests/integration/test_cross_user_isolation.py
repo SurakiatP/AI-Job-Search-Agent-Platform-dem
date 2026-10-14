@@ -15,7 +15,7 @@ from a2a.types import GetTaskRequest
 from mcp.shared.exceptions import MCPError
 from sqlalchemy import select
 
-from job_search_platform.db.models import Approval, CVRevision, ConversationSession, Project
+from job_search_platform.db.models import Approval, CVRevision, ConversationSession, Project, WebhookDelivery
 from job_search_platform.integrations.mailer import MemoryMailer
 from job_search_platform.services.accounts import Accounts
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD
@@ -64,8 +64,9 @@ def _alice_state(api_context, project_id: str) -> tuple[str, dict[str, str]]:
 
 
 @pytest.fixture
-def world(api_context):
+def world(api_context, monkeypatch):
     """Alice owns a full project; Bob is a second verified user with his own project."""
+    monkeypatch.setenv("WEBHOOK_ALLOW_PRIVATE", "1")
     with api_context.sessions.begin() as db:
         alice, bob = make_user(db), make_user(db)
     csrf_alice = _login(api_context, alice.user_id)
@@ -97,6 +98,15 @@ def world(api_context):
     saved = api_context.client.post(f"{BASE}/projects/{project_id}/saved-searches", headers=_write_headers(csrf_alice),
                                     json={"name": "Alice search", "filters": {"q": "python"}})
     assert saved.status_code == 201, saved.text
+    hook = api_context.client.post(f"{BASE}/projects/{project_id}/webhooks", headers=_write_headers(csrf_alice),
+                                   json={"url": "http://127.0.0.1:9/alice", "events": ["run.completed"]})
+    assert hook.status_code == 201, hook.text
+    with api_context.sessions.begin() as db:
+        delivery = WebhookDelivery(project_id=UUID(project_id), endpoint_id=UUID(hook.json()["id"]), event_type="ping",
+                                   status="dead", payload={})
+        db.add(delivery)
+        db.flush()
+        delivery_id = delivery.id
     state = _alice_state(api_context, project_id)
     assert state == (ALICE_PROJECT_NAME, {session_id: ALICE_SESSION_TITLE})
     csrf_bob = _login(api_context, bob.user_id)
@@ -108,6 +118,7 @@ def world(api_context):
         ids={"project_id": project_id, "session_id": session_id, "cv_id": str(cv_id), "cv_revision_id": str(cv_revision_id), "job_id": job_id,
              "job_revision_id": job_id, "document_id": str(doc.document), "revision_id": str(doc.revision),
              "file_id": str(doc.file), "run_id": str(run_id), "grant_id": alice_grant["id"], "saved_search_id": saved.json()["id"],
+             "webhook_id": hook.json()["id"], "delivery_id": str(delivery_id),
              "approval_id": str(approval_id), "item_id": item.json()["id"], "hidden_id": hidden.json()["id"],
              "adapter": "career_ops"},
     )
@@ -238,6 +249,8 @@ _OVERRIDES = {
     ("POST", "/projects/{project_id}/runs/{run_id}/input"): lambda ids: {"answers": {"q": "a"}},
     ("POST", "/projects/{project_id}/jobs/{job_id}/application/events"): lambda ids: {"kind": "note", "text": "x"},
     ("PATCH", "/projects/{project_id}/saved-searches/{saved_search_id}"): lambda ids: {"digest_enabled": False},
+    ("POST", "/projects/{project_id}/webhooks"): lambda ids: {"url": "http://127.0.0.1:9/x", "events": ["run.completed"]},
+    ("PATCH", "/projects/{project_id}/webhooks/{webhook_id}"): lambda ids: {"enabled": False},
     ("POST", "/projects/{project_id}/sessions"): lambda ids: {"cv_revision_id": ids["cv_revision_id"], "job_revision_id": ids["job_id"]},
 }
 
