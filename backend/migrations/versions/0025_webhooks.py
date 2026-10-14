@@ -49,9 +49,13 @@ def upgrade() -> None:
     op.execute("CREATE INDEX ix_webhook_deliveries_due ON webhook_deliveries (next_attempt_at) WHERE status = 'pending'")
     op.execute("CREATE INDEX ix_webhook_deliveries_project ON webhook_deliveries (project_id, created_at)")
     op.execute("ALTER TABLE saved_searches ADD COLUMN push_enabled boolean NOT NULL DEFAULT false")
+    op.execute("DROP INDEX ix_saved_searches_due")
+    op.execute("CREATE INDEX ix_saved_searches_due ON saved_searches (next_run_at) WHERE (digest_enabled OR push_enabled)")
 
 
 def downgrade() -> None:
+    op.execute("DROP INDEX ix_saved_searches_due")
+    op.execute("CREATE INDEX ix_saved_searches_due ON saved_searches (next_run_at) WHERE digest_enabled")
     op.execute("ALTER TABLE saved_searches DROP COLUMN push_enabled")
     op.execute("DROP TABLE webhook_deliveries")
     op.execute("DROP TABLE a2a_push_configs")

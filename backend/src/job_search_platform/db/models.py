@@ -518,7 +518,7 @@ class SavedSearch(Base):
         UniqueConstraint("project_id", "name", name="uq_saved_searches_name"),
         CheckConstraint("frequency IN ('daily','weekly')", name="ck_saved_searches_frequency"),
         CheckConstraint("length(btrim(name)) BETWEEN 1 AND 80", name="ck_saved_searches_name"),
-        Index("ix_saved_searches_due", "next_run_at", postgresql_where=text("digest_enabled")),
+        Index("ix_saved_searches_due", "next_run_at", postgresql_where=text("(digest_enabled OR push_enabled)")),
     )
 
 

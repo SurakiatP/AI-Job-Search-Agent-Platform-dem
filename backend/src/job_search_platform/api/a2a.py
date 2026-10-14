@@ -8,7 +8,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any, AsyncIterator, Sequence
 from urllib.parse import urlsplit
-from uuid import UUID, uuid4, uuid5, NAMESPACE_URL
+from uuid import UUID, uuid4
 
 from a2a.server.context import ServerCallContext
 from a2a.server.request_handlers.request_handler import RequestHandler
@@ -49,6 +49,7 @@ from google.protobuf.json_format import MessageToDict, ParseDict
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from job_search_platform.api.dependencies import Services
+from job_search_platform.services.a2a_state import context_id, task_state
 from job_search_platform.services.contracts import Actor, RunView
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.protocol_runs import ProtocolRuns
@@ -236,18 +237,7 @@ class _PlatformRequestHandler(RequestHandler):
 
     @staticmethod
     def _task_state(status: str) -> tuple[str, dict[str, Any]]:
-        mapped = {
-            "queued": "TASK_STATE_SUBMITTED",
-            "running": "TASK_STATE_WORKING",
-            "waiting_approval": "TASK_STATE_INPUT_REQUIRED",
-            "needs_input": "TASK_STATE_INPUT_REQUIRED",
-            "completed": "TASK_STATE_COMPLETED",
-            "failed": "TASK_STATE_FAILED",
-            "cancelled": "TASK_STATE_CANCELED",
-            "interrupted": "TASK_STATE_FAILED",
-        }.get(status, "TASK_STATE_FAILED")
-        metadata = {"terminal_reason": "interrupted"} if status == "interrupted" else {}
-        return mapped, metadata
+        return task_state(status)
 
     def _task(self, run: RunView, *, cancellation_requested: bool = False) -> Task:
         state, metadata = self._task_state(run.status)
@@ -274,7 +264,7 @@ class _PlatformRequestHandler(RequestHandler):
             Task,
             {
                 "id": str(run.id),
-                "contextId": str(uuid5(NAMESPACE_URL, f"job-search-a2a:{run.id}")),
+                "contextId": context_id(run.id),
                 "status": status,
                 "metadata": metadata,
             },

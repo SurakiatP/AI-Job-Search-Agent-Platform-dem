@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 
 from job_search_platform.db.models import Project, ProjectPreference, SavedSearch, SavedSearchSeen, User
 from job_search_platform.integrations.mailer import Mail
-from job_search_platform.services import job_sources, rate_limits
+from job_search_platform.services import job_sources, rate_limits, webhooks
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
     Actor, DigestStatusView, SavedSearchCreate, SavedSearchListView, SavedSearchUpdate, SavedSearchView,
@@ -260,7 +260,7 @@ class SavedSearches:
         try:
             with self.sessions.begin() as db:
                 row = db.scalar(select(SavedSearch).where(
-                    SavedSearch.digest_enabled, SavedSearch.next_run_at <= now,
+                    or_(SavedSearch.digest_enabled, SavedSearch.push_enabled), SavedSearch.next_run_at <= now,
                     SavedSearch.id.not_in(done) if done else true(),
                 ).order_by(SavedSearch.next_run_at).limit(1).with_for_update(skip_locked=True))
                 if row is None:
@@ -276,7 +276,10 @@ class SavedSearches:
                     logger.warning("digest_source_failed", extra={"saved_search_id": str(row_id)})
                     raise _RowFailed from None
                 if items:
-                    self._mail(account, row, items)
+                    if row.digest_enabled:
+                        self._mail(account, row, items)
+                    if row.push_enabled:
+                        webhooks.enqueue_digest(db, row.project_id, row.id, row.name, items, now)
                     db.execute(pg_insert(SavedSearchSeen).values(
                         [{"saved_search_id": row_id, "slug": item["slug"], "seen_at": now} for item in items]
                     ).on_conflict_do_nothing())
