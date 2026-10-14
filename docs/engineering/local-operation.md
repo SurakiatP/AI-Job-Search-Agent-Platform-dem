@@ -161,6 +161,29 @@ rtk uv run --locked --project backend python scripts/run_local.py \
 
 Replace the example address with an IP assigned to the owner's machine. In Settings, create a project grant with only the capabilities needed and a short expiry, then deliver the generated token through a private channel. Tokens are bearer credentials. A grant is restricted to its project and capabilities; it cannot read raw CVs, chat history, provider settings, or owner-only controls. Revoke a grant in Settings when access ends. Do not expose the shared listener to the public Internet; this local workflow does not provide public-hosting authentication or HTTPS.
 
+## Hourly job ingest
+
+The ingest worker (`scripts/ingest_jobs.py`) stores jobs from freehire and the Greenhouse, Lever and SmartRecruiters boards in PostgreSQL. It needs the PostgreSQL service and `CORE02_PRIVATE_DIR`.
+
+```sh
+rtk uv run --locked --project backend python scripts/ingest_jobs.py run        # one full ingest; prints a JSON summary
+rtk uv run --locked --project backend python scripts/ingest_jobs.py status     # last 5 runs
+rtk uv run --locked --project backend python scripts/ingest_jobs.py discover   # refresh data/job_boards.json from freehire, then commit it
+```
+
+`run --source <name>` ingests one source. A failed board is recorded in `ingest_runs.per_board` and never counts toward deleting its postings. A posting is deleted only after it is missing from two successful runs. A fetch that returns nothing, or under half of 20 or more stored postings, is treated as failed (`suspicious_shrink`). A posting older than 90 days is deleted and tombstoned so it is not re-ingested.
+
+To run it every hour, install the launchd template:
+
+```sh
+mkdir -p ~/Library/Logs/job-search-platform
+cp infra/launchd/com.job-search-platform.ingest.plist.example ~/Library/LaunchAgents/com.job-search-platform.ingest.plist
+# edit the copy: replace REPO_DIR with this checkout, HOME_DIR with your home directory (launchd needs absolute paths) and PRIVATE_DIR with CORE02_PRIVATE_DIR; check PATH (which uv)
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.job-search-platform.ingest.plist
+```
+
+Output goes to `~/Library/Logs/job-search-platform/ingest.log`. Check it with `tail ~/Library/Logs/job-search-platform/ingest.log` and `ingest_jobs.py status`. Stop it with `launchctl bootout gui/$(id -u)/com.job-search-platform.ingest`.
+
 ## Verification on the operator machine
 
 After preparing the clean pinned source checkouts described above, set their `*_SOURCE_DIR` variables in this shell and run the lock/runtime/source checks before use. The checker reports missing upstream checkouts as incomplete; a local run with those paths unset is not a pass.
