@@ -232,6 +232,7 @@ _OVERRIDES = {
     ("POST", "/projects/{project_id}/approvals"): lambda ids: {"action": "delete_document_revision", "revision_id": ids["revision_id"]},
     ("POST", "/projects/{project_id}/grants"): lambda ids: {"capabilities": ["results:read"]},
     ("POST", "/projects/{project_id}/runs/{run_id}/input"): lambda ids: {"answers": {"q": "a"}},
+    ("POST", "/projects/{project_id}/jobs/{job_id}/application/events"): lambda ids: {"kind": "note", "text": "x"},
     ("POST", "/projects/{project_id}/sessions"): lambda ids: {"cv_revision_id": ids["cv_revision_id"], "job_revision_id": ids["job_id"]},
 }
 

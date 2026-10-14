@@ -27,6 +27,7 @@ from job_search_platform.db.models import (
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
+    ApplicationCardView, ApplicationContact, ApplicationDetailView, ApplicationEntry, ApplicationEventView,
     AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVPromoteRequest, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
     ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
@@ -34,7 +35,7 @@ from job_search_platform.services.contracts import (
     GatewayStatusView, PreferencesView, ProjectUpdate, ProjectView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
-from job_search_platform.services import experience, job_sources, smart_match
+from job_search_platform.services import applications, experience, job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
 from job_search_platform.services.runs import actor_scope
@@ -690,19 +691,43 @@ async def update_job_application_status(
     _owner_only(actor)
     with services.sessions.begin() as db:
         authorize(db, actor, project_id, "write", "job")
-        _require_live_job(db, project_id, job_id)
-        statement = pg_insert(JobApplicationStatus).values(
-            project_id=project_id,
-            job_revision_id=job_id,
-            status=body.application_status,
-        )
-        db.execute(
-            statement.on_conflict_do_update(
-                index_elements=["project_id", "job_revision_id"],
-                set_={"status": body.application_status, "updated_at": func.now()},
-            )
-        )
-        return {"job_revision_id": job_id, "application_status": body.application_status}
+        row = applications.set_stage(db, actor, project_id, job_id, body.application_status)
+        return {"job_revision_id": job_id, "application_status": row.status}
+
+
+@router.get("/projects/{project_id}/applications", response_model=list[ApplicationCardView])
+async def list_applications(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+        return applications.board(db, project_id)
+
+
+@router.get("/projects/{project_id}/jobs/{job_id}/application", response_model=ApplicationDetailView)
+async def get_application(project_id: UUID, job_id: UUID, actor=Depends(owner_actor),
+                          services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+        return applications.detail(db, project_id, job_id)
+
+
+@router.put("/projects/{project_id}/jobs/{job_id}/application/contact", response_model=ApplicationDetailView)
+async def set_application_contact(project_id: UUID, job_id: UUID, body: ApplicationContact,
+                                  actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "job")
+        applications.set_contact(db, actor, project_id, job_id, body)
+        return applications.detail(db, project_id, job_id)
+
+
+@router.post("/projects/{project_id}/jobs/{job_id}/application/events", status_code=201,
+             response_model=ApplicationEventView)
+async def add_application_event(project_id: UUID, job_id: UUID, body: ApplicationEntry,
+                                actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "job")
+        return applications.event_view(applications.add_event(db, actor, project_id, job_id, body))
 
 
 @router.post("/projects/{project_id}/jobs", status_code=201, response_model=JobRevisionView)
