@@ -190,7 +190,7 @@ Output goes to `~/Library/Logs/job-search-platform/ingest.log`. Check it with `t
 
 The `meilisearch` service starts with `local_infra.py start` (loopback port 57700, key in the private file `meili-master-key`). The index (`MEILI_INDEX`, default `jobs`) is built on the first ingest run or by `reindex`, and synced after every later run. Search and facets are served only from the index: while it is unavailable, search returns 502 `job_source_unavailable`; there is no Postgres fallback. Run `reindex` to recover.
 
-To add or restart one compose service, use `docker compose -f infra/compose.yaml up --detach --no-deps <service>` with the owner's `.env` loaded. Export `OPENROUTER_API_KEY` first if `start` may recreate LiteLLM.
+Never run `local_infra.py start` without the owner's `.env` loaded (it recreates LiteLLM, and an unset `OPENROUTER_API_KEY` leaves model calls failing). To add or restart one service, load `.env`, export `CORE02_PRIVATE_DIR` (and `MINIO_SOURCE_DIR`/`GOSU_SOURCE_DIR` if compose asks), then run `docker compose -f infra/compose.yaml up --detach --no-deps <service>`.
 
 ## Verification on the operator machine
 

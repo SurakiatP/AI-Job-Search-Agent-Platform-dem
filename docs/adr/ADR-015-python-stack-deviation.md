@@ -44,7 +44,7 @@ Keep the Python backend and the React frontend. Meet the §7 principles ("One Ag
 - **pgvector.** Add when a feature needs embeddings, for example semantic matching.
 - **Redis.** One process polling Postgres covers SSE, and Postgres covers rate limits. Add Redis, or switch SSE to Postgres `LISTEN/NOTIFY`, when more than one backend instance runs.
 - **No ORM rule.** The owner decided on 2026-10-11 to keep the ORM models. Correctness-critical queries (queue claims, idempotency, application records) use explicit `select`/`with_for_update` and advisory locks. If the client enforces the rule, move to SQLAlchemy Core (`Table` objects, explicit `update()`) and keep Alembic; there is no `relationship()` to unwind. Raw psycopg or sqlc-gen-python would mean rewriting every query.
-- **Freehire dependency.** Freehire is now one ingested source among four (with Greenhouse, Lever and SmartRecruiters), stored in PostgreSQL by the hourly ingest. Search stops depending on freehire.me at query time once WP5 part 2 (Meilisearch search over the local store) lands.
+- **Freehire dependency.** Freehire is now one ingested source among four (with Greenhouse, Lever and SmartRecruiters), stored in PostgreSQL by the hourly ingest. Search does not call freehire.me at query time; it is served from Meilisearch over the local store.
 - **Baseline features.** FR-J05 and FR-T01 describe freehire features as existing ("ของเดิม"). Without the fork they were built here (saved-search digests, application board).
 - **Gaps not covered by this ADR:** Prometheus/Grafana, a linter in CI, the infrastructure-dependent integration suite in CI (MinIO, Hermes), production deploy (WP1), generated frontend contracts.
 
