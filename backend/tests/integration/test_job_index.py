@@ -175,7 +175,6 @@ def test_failed_task_keeps_rows_dirty_and_deletes_queued(sessions):
     _store(sessions, greenhouse=[_gh(1, "https://g/1"), _gh(2, "https://g/2", title="Data Scientist")])
     with sessions() as db, db.begin():
         db.add(JobIndexDelete(posting_id=_ids(sessions)["gh-acme-1"], deleted_at=NOW))
-    meili.settings_ok = True
     # settings task is first; let it pass, fail the delete task
     real = meili.update_settings
 
