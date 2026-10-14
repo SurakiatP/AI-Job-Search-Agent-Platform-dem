@@ -17,7 +17,10 @@ export function LandingPage() {
   const { locale } = useLocale();
   const c = landingCopy[locale];
   return <div className="landing text-foreground">
-    <Header actions={<Button asChild size="sm"><Link to="/login">{c.cta}</Link></Button>} />
+    <Header actions={<>
+      <Button asChild className="rounded-full bg-amber-400 px-3 text-neutral-950 shadow-none hover:bg-amber-500 active:bg-amber-600 max-[399px]:hidden sm:px-5"><Link to="/signup">{c.signup}</Link></Button>
+      <Button asChild variant="outline" className="rounded-full border-foreground bg-transparent px-3 shadow-none sm:px-5"><Link to="/login">{c.login}</Link></Button>
+    </>} />
     <main className="grid gap-24 pb-16 lg:gap-32">
       <section className="relative">
         <div className="landing-hero-bg" aria-hidden="true" />

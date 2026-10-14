@@ -63,7 +63,7 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'EN', exact: true }).click();
-  await page.getByRole('banner').getByRole('link', { name: 'Get started', exact: true }).click();
+  await page.getByRole('banner').getByRole('link', { name: 'Log in', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
 
   await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'New project', exact: true }).click();
