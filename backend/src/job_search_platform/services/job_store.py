@@ -125,7 +125,6 @@ def purge_descriptions(db: Session, now: datetime) -> int:
         .values(description_markdown=None)).rowcount
 
 
-
 RUN_DEADLINE = timedelta(minutes=20)
 BOARDS_FILE = Path(__file__).resolve().parents[1] / "data" / "job_boards.json"
 _log = logging.getLogger("jsp.ingest")
@@ -143,6 +142,7 @@ def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards
     with sessions() as lock:
         if not lock.scalar(text("SELECT pg_try_advisory_lock(hashtext('ingest'))")):
             raise ServiceError("ingest_running")
+        lock.commit()  # session-level advisory lock survives commit; avoids idle-in-transaction
         try:
             started = clock()
             run = IngestRun(id=uuid.uuid4(), started_at=started, status="running", per_board={})
@@ -170,17 +170,28 @@ def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards
                     per_board[key] = {"state": "failed", "error": type(exc).__name__}
                     _log.exception("ingest_board_failed", extra={"route": key})
             now = clock()
-            with sessions.begin() as db:
-                merged = recompute_clusters(db, now)
-                purge_descriptions(db, now)
-                row = db.get(IngestRun, run.id)
-                states = [v["state"] for v in per_board.values()]
-                row.status = ("failed" if states and all(s != "ok" for s in states)
-                              else "partial" if any(s != "ok" for s in states) else "ok")
-                row.per_board, row.finished_at, row.merged = per_board, now, merged
-                for name, value in totals.items():
-                    setattr(row, name, value)
+            states = [v["state"] for v in per_board.values()]
+            status = ("failed" if states and all(x != "ok" for x in states)
+                      else "partial" if any(x != "ok" for x in states) else "ok")
+            try:
+                with sessions.begin() as db:
+                    merged = recompute_clusters(db, now)
+                    purge_descriptions(db, now)
+                    row = db.get(IngestRun, run.id)
+                    row.status, row.per_board, row.finished_at, row.merged = status, per_board, now, merged
+                    for name, value in totals.items():
+                        setattr(row, name, value)
+            except Exception:
+                with sessions.begin() as db:  # never leave the run 'running'; keep per-board results
+                    row = db.get(IngestRun, run.id)
+                    row.status, row.per_board, row.finished_at = "failed", per_board, now
+                    for name, value in totals.items():
+                        setattr(row, name, value)
+                raise
             _log.info("ingest_run_finished", extra={"status": row.status})
             return row
         finally:
-            lock.execute(text("SELECT pg_advisory_unlock(hashtext('ingest'))"))
+            try:
+                lock.execute(text("SELECT pg_advisory_unlock(hashtext('ingest'))"))
+            except Exception:  # must not mask the run's result or exception
+                _log.exception("ingest_unlock_failed")

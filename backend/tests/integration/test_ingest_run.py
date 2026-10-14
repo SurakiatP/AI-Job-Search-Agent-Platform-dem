@@ -1,4 +1,3 @@
-
 """WP5 ingest run: per-board isolation, failed boards never close, lock, idempotency. Fake fetchers."""
 from __future__ import annotations
 
@@ -133,3 +132,21 @@ def test_apply_board_error_rolls_back_that_board_only(migrated_engine, monkeypat
     assert run.per_board["greenhouse:b"]["state"] == "ok"
     with sessions() as db:
         assert db.scalars(select(JobPosting.board)).all() == ["b"]
+
+
+@pytest.mark.integration
+def test_final_step_failure_marks_run_failed_and_releases_lock(migrated_engine, monkeypatch):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+
+    def boom(db, now):
+        raise RuntimeError("cluster fail")
+
+    monkeypatch.setattr(job_store, "recompute_clusters", boom)
+    with pytest.raises(RuntimeError):
+        _run(sessions, {("greenhouse", "a"): [_raw(1)]}, T0)
+    with sessions() as db:
+        row = db.scalars(select(IngestRun).order_by(IngestRun.started_at.desc())).first()
+        assert row.status == "failed" and row.finished_at is not None
+        assert row.per_board["greenhouse:a"]["state"] == "ok" and row.created == 1
+    monkeypatch.undo()
+    assert _run(sessions, {}, T0 + timedelta(hours=1)).status == "ok"  # lock released
