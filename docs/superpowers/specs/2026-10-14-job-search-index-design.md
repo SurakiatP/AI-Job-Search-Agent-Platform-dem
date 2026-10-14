@@ -1,6 +1,6 @@
 # Job search on Meilisearch over the job store (TOR FR-J01) — design
 
-Status: owner-approved decisions, 2026-10-14. The written spec awaits owner review.
+Status: owner-approved decisions, 2026-10-14; amended 2026-10-15 for part 1's delete-and-retention model (part 1 merged in PR #19). The amended spec awaits owner review.
 Branch: `feat/job-search-index` from `origin/develop`, after part 1 (`2026-10-14-thai-job-sources-design.md`) merges.
 
 ## Goal
@@ -38,7 +38,7 @@ Done means:
 
 Index `jobs`, primary key `id` (the posting uuid; slugs can hold characters Meilisearch ids reject).
 
-Documents hold only the open canonical postings (`closed_at IS NULL AND canonical_id IS NULL`). Fields:
+Documents hold only canonical postings (`canonical_id IS NULL`). Part 1 deletes rows rather than closing them (D6, D9), so every stored row is live. Fields:
 - the existing item shape `map_item` returns: `slug`, `title`, `company`, `location`, `cities`, `work_mode`, `skills`, `category`, `posted_at`, `source_url`, `description_markdown`;
 - `seniority`, `employment_type`, `company_type`, `posting_language`, `salary_thb_month_min`;
 - `posted_ts` (Unix seconds of `posted_at`, else `first_seen_at`);
@@ -56,12 +56,15 @@ Settings, applied idempotently by `scripts/ingest_jobs.py index-settings` and at
 ## Sync
 
 This is the last step of `ingest run` (part 1), after dedup:
-1. Collect postings with `index_dirty = true` (part 1 sets it on every change that affects search).
-2. Upsert documents for open canonical postings in batches of 1,000.
-3. Delete ids that are closed or no longer canonical.
-4. Wait for each Meilisearch task to finish, with a 120 s deadline, and clear `index_dirty` only for batches that succeeded. A failed task marks the run `partial` with `index_failed`. The rows stay dirty, so the next run re-sends them.
+1. Deletes first. Read `job_index_deletes` (part 1 queues every deleted posting id) and send them as one `delete-batch`, at most 1,000 ids per call. After the task succeeds, remove those queue rows.
+2. Collect postings with `index_dirty = true` (part 1 sets it on every change that affects search).
+3. Upsert the canonical ones in batches of 1,000. Send the non-canonical ones (merged into another posting) to `delete-batch`.
+4. Wait for each Meilisearch task to finish, with a 120 s deadline per task. Clear `index_dirty`, or remove the queue rows, only for batches that succeeded. A failed task marks the run `partial` with error `index_failed`. Dirty rows and queued deletes stay, so the next run re-sends them. Deleting an id the index does not hold is a no-op, so retries are safe.
+5. The sync has its own 5-minute budget outside the board deadline. When Meilisearch is unreachable, the sync step is recorded as `index_failed` and ingest otherwise completes. Search keeps serving the previous index.
 
-`scripts/ingest_jobs.py reindex` builds `jobs_tmp` from all open canonical postings, applies settings, and swaps it with `jobs` (`/swap-indexes`). Use it for recovery or after changing settings.
+The sync runs after the final ingest transaction commits, in its own transactions, so an index failure never rolls back the store.
+
+`scripts/ingest_jobs.py reindex` builds `jobs_tmp` from all canonical postings, applies settings, and swaps it with `jobs` (`/swap-indexes`). It then deletes `jobs_tmp`, clears `index_dirty` on every row, and empties `job_index_deletes` rows queued before the rebuild started. Use it for the first index build, for recovery, or after changing settings. If no index exists, `ingest run` performs this rebuild instead of a sync.
 
 ## Query mapping (`search_jobs`)
 
@@ -112,7 +115,8 @@ Unit tests, no network:
 
 Integration tests, marked `integration`, against the compose Meilisearch with a throwaway index name:
 - sync adds, updates and deletes the right documents across a two-run fixture;
-- closed and non-canonical postings are never searchable;
+- deleted and non-canonical postings are never searchable: a queued delete removes the document, and a merged posting is removed;
+- a failed Meilisearch task leaves rows dirty and queued deletes in place, and the next run re-sends them;
 - each FR-J01 facet filters correctly: region (`cities`), work_mode, seniority, skills, salary and company;
 - a Thai query (`โปรแกรมเมอร์`, `กรุงเทพ`) finds Thai postings;
 - `reindex` swap leaves search working throughout;

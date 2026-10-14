@@ -179,6 +179,34 @@ services:
     labels:
       com.job-search-platform.task: litellm-gateway
 
+  meilisearch:
+    # getmeili/meilisearch v1.55.0 (Community Edition, MIT), multi-arch index digest. Job search index (FR-J01).
+    image: getmeili/meilisearch:v1.55.0@sha256:ff546679970126f8822e15d1b6a06bfbff1f2ce2e43f810cfb5258012f92de5c
+    restart: unless-stopped
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export MEILI_MASTER_KEY="$$(cat /run/secrets/meili-master-key)"
+        && exec meilisearch
+    environment:
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_DB_PATH: /meili_data/data.ms
+    secrets:
+      - meili-master-key
+    volumes:
+      - meili-data:/meili_data
+    ports:
+      - "127.0.0.1:${CORE02_MEILI_PORT:-57700}:7700"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    labels:
+      com.job-search-platform.task: job-search-index
+
   mailpit:
     # axllent/mailpit v1.31.5 (== :latest on 2026-10-14), multi-arch index digest. Dev mail sink only.
     image: axllent/mailpit:v1.31.5@sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
@@ -365,6 +393,9 @@ networks:
     driver: bridge
 
 volumes:
+  meili-data:
+    labels:
+      com.job-search-platform.task: job-search-index
   postgres17_alpine_data:
     name: jobsearch-core02-postgres17-alpine-data
     labels:
@@ -391,6 +422,8 @@ volumes:
       com.job-search-platform.task: langfuse
 
 secrets:
+  meili-master-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/meili-master-key
   postgres_user:
     file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/postgres-user
   postgres_password:

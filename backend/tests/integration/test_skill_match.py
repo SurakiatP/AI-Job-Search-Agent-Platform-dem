@@ -1,6 +1,7 @@
 """CV skill profile + job-search match: endpoints, ordering, isolation and migration 0013."""
 from __future__ import annotations
 
+import time
 from uuid import UUID, uuid4
 
 import pytest
@@ -17,18 +18,19 @@ PREFIX = "/api/v1/projects"
 
 
 def _raw(slug, title, description, age):
-    return {"public_slug": slug, "title": title, "company": "Acme", "description": description,
-            "skills": [], "reality": {"class": "fresh", "age_days": age}, "url": f"https://jobs.example.com/{slug}"}
+    return {"slug": slug, "title": title, "company": "Acme", "description_markdown": description, "skills": [],
+            "posted_ts": int(time.time()) - age * 86400 - 3600, "reality_stale": False,
+            "source_url": f"https://jobs.example.com/{slug}"}
 
 
 JOBS = [
-    {"data": [
+    {"hits": [
         _raw("none", "Cook", "Kitchen work", 0),
         _raw("half", "Dev", "React and Docker", 1),
         _raw("old-full", "Dev", "Python and SQL", 9),
         _raw("new-full", "Dev", "Python and SQL", 2),
         _raw("few", "Dev", "Only Python", 0),
-    ], "meta": {"total": 5}},
+    ], "estimatedTotalHits": 5},
 ]
 
 
@@ -36,7 +38,7 @@ JOBS = [
 def source(monkeypatch):
     job_sources._cache.clear()
     seen = []
-    monkeypatch.setattr(job_sources, "fetch_json", lambda url: (seen.append(url), JOBS[0])[1])
+    monkeypatch.setattr(job_sources, "_search", lambda payload: (seen.append(payload), JOBS[0])[1])
     return seen
 
 
@@ -66,8 +68,8 @@ def test_match_sorting_null_last_and_missing_profile(api_context, source):
     assert half["match"]["score_percent"] == 0 and half["match"]["missing"] == ["React", "Docker"]
     assert body["items"][3]["match"] is None and body["items"][4]["match"] is None
     assert (body["total"], body["offset"], body["pool"]) == (5, 0, 100)
-    assert "limit=100" in source[-1] and "q=dev" in source[-1]
-    assert client.get(url + "&offset=100").json()["offset"] == 100 and "offset=100" in source[-1]
+    assert source[-1]["limit"] == 100 and source[-1]["q"] == "dev"
+    assert client.get(url + "&offset=100").json()["offset"] == 100 and source[-1]["offset"] == 100
 
 
 @pytest.mark.integration
@@ -100,10 +102,10 @@ def test_match_is_project_scoped_owner_only_and_reports_source_errors(api_contex
     _set_profile(api_context, rev2, ["Python"])
     job_sources._cache.clear()
 
-    def down(_url):
+    def down(_payload):
         raise job_sources.ServiceError("job_source_unavailable", retryable=True)
 
-    monkeypatch.setattr(job_sources, "fetch_json", down)
+    monkeypatch.setattr(job_sources, "_search", down)
     res = client.get(f"{PREFIX}/{pid2}/job-search/match?cv_revision_id={rev2}")
     assert res.status_code == 502 and res.json()["code"] == "job_source_unavailable"
 

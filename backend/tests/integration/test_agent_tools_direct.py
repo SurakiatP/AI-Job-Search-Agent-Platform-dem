@@ -26,10 +26,10 @@ from test_rest_api import _owner, _write_headers, api_context as _base_api_conte
 CV_TEXT = "Skills: Python, Docker, PostgreSQL. Built REST APIs."
 JOB_TEXT = "We need Python, Docker, Kubernetes and Redis experience."
 RAW = {
-    "public_slug": "synthetic-python-dev", "title": "Synthetic Python Dev", "company": "Example Co",
+    "slug": "synthetic-python-dev", "title": "Synthetic Python Dev", "company": "Example Co",
     "location": "Bangkok", "cities": ["Bangkok"], "work_mode": "remote", "posted_at": "2026-10-01",
-    "reality": {"age_days": 9, "class": "stale"}, "url": "https://jobs.example.test/1?utm_source=x",
-    "description": "# Role\n\nNeed **Python** and [Docker](https://x.test).\n\n- Ship APIs",
+    "posted_ts": int(datetime.now(timezone.utc).timestamp()) - 9 * 86400 - 3600, "reality_stale": True, "source_url": "https://jobs.example.test/1?utm_source=x",
+    "description_markdown": "# Role\n\nNeed **Python** and [Docker](https://x.test).\n\n- Ship APIs",
 }
 
 
@@ -44,7 +44,7 @@ def fake_source(monkeypatch):
 
     def fake(**kwargs):
         calls.append(kwargs)
-        return {"items": [job_sources.map_item(RAW)], "total": 1, "limit": kwargs["limit"], "offset": 0}
+        return {"items": [job_sources.hit_to_item(RAW, datetime.now(timezone.utc))], "total": 1, "limit": kwargs["limit"], "offset": 0}
 
     monkeypatch.setattr(job_sources, "search_jobs", fake)
     return calls
@@ -91,7 +91,7 @@ def test_rest_search_full_description_age_stale_and_text_mode(api_context, fake_
     token = _grant(api_context, project_id, csrf, ["jobs:search"])
     base = f"/api/v1/projects/{project_id}/agent/jobs/search"
     job = _as_grant(api_context.client, "POST", base, token, json={"q": "python", "limit": 30}).json()["jobs"][0]
-    assert job["description_format"] == "markdown" and job["description"] == RAW["description"]
+    assert job["description_format"] == "markdown" and job["description"] == RAW["description_markdown"]
     assert job["posting_age_days"] == 9 and job["stale"] is True
     assert job["source_id"] == "synthetic-python-dev" and job["city"] == "Bangkok"
     assert job["source_url"] == "https://jobs.example.test/1"

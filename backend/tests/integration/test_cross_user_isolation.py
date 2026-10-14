@@ -17,6 +17,7 @@ from sqlalchemy import select
 
 from job_search_platform.db.models import Approval, CVRevision, ConversationSession, Project, WebhookDelivery
 from job_search_platform.integrations.mailer import MemoryMailer
+from job_search_platform.services import job_sources
 from job_search_platform.services.accounts import Accounts
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD
 from helpers import login_cookie, user as make_user
@@ -184,8 +185,11 @@ def test_bob_gets_404_on_every_alice_route(api_context, world):
     assert _alice_state(api_context, world.project) == world.alice_state
 
 
-def test_control_alice_urls_are_valid(api_context, world):
+def test_control_alice_urls_are_valid(api_context, world, monkeypatch):
     """Positive control: the exact Alice URLs Bob is denied work for Alice, so a 404 means authorization."""
+    job_sources._cache.clear()  # job-search routes read the index; fake it so only authorization is under test
+    monkeypatch.setattr(job_sources, "_search", lambda payload: {"hits": [], "estimatedTotalHits": 0,
+                                                                  "facetDistribution": {}})
     _login(api_context, world.alice.user_id)
     calls = _urls_and_calls(api_context.client, world, _write_headers(world.alice_csrf))
     bad = []

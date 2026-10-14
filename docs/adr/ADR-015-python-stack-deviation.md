@@ -16,7 +16,7 @@ Keep the Python backend and the React frontend. Meet the §7 principles ("One Ag
 | Baseline | Fork freehire (Go, MIT) | Call freehire's public job API (`services/job_sources.py`). Hermes Agent is the runner; Career Ops supplies the skills. | Deviation |
 | Backend | Go 1.24+, Fiber v2, sqlc, no ORM | Python 3.12, FastAPI 0.142, SQLAlchemy 2.1 declarative ORM models (`db/models.py`), Alembic migrations | Deviation (includes the "no ORM" rule) |
 | Database | PostgreSQL 16+ with pgvector | PostgreSQL 17.11, no pgvector | Partial: no feature needs embeddings yet |
-| Search | Meilisearch 1.x | None. Search goes live through the freehire API, so job payloads are not stored in Postgres. | Deviation |
+| Search | Meilisearch 1.x | Meilisearch 1.55 CE (MIT) over the local job store (`integrations/meili.py`, `services/job_index.py`) | Complies |
 | Queue / durable execution | Postgres-backed (River or outbox), no new broker | Postgres queue with `FOR UPDATE SKIP LOCKED` (`workers/queue.py`) and automatic resume after restart | Complies in principle |
 | Cache / realtime | Redis 7 (rate limiting, SSE fan-out) | No Redis. SSE polls Postgres (`api/sse.py`); rate limits are a Postgres sliding window (`services/rate_limits.py`). | Deviation |
 | Object storage | S3-compatible (MinIO in dev) | MinIO OSS, pinned source build | Complies |
@@ -33,18 +33,18 @@ Keep the Python backend and the React frontend. Meet the §7 principles ("One Ag
 
 ## Why
 
-- The platform is delivered and verified in Python. Every TOR functional requirement except FR-J01 (Meilisearch) and the Telegram channel of FR-J05 is merged, with 821 backend tests passing. A Go port would redo that work without adding function.
+- The platform is delivered and verified in Python. Every TOR functional requirement except the Telegram channel of FR-J05 is merged, with 821 backend tests passing. A Go port would redo that work without adding function.
 - Hermes Agent (the runner) and Career Ops (the skills) are Python. A Go core would need a cross-language bridge on every run.
 - MCP and A2A both have official Python SDKs implementing the transports §7 requires.
 - The freehire public API supplies the job data the fork was meant to provide (ATS adapters, dedup, lifecycle) without a fork to maintain.
 
 ## Consequences and revisit triggers
 
-- **FR-J01 (Meilisearch).** While search goes through the freehire API there is no local job store to index. Revisit in WP5: once Thai adapters store jobs locally, add Meilisearch as §7 requires.
+- **FR-J01 (Meilisearch).** Resolved in WP5 part 2: Meilisearch 1.55 CE indexes the local job store and serves search and facets. While the index is unavailable search returns `job_source_unavailable` (502); there is no Postgres fallback.
 - **pgvector.** Add when a feature needs embeddings, for example semantic matching.
 - **Redis.** One process polling Postgres covers SSE, and Postgres covers rate limits. Add Redis, or switch SSE to Postgres `LISTEN/NOTIFY`, when more than one backend instance runs.
 - **No ORM rule.** The owner decided on 2026-10-11 to keep the ORM models. Correctness-critical queries (queue claims, idempotency, application records) use explicit `select`/`with_for_update` and advisory locks. If the client enforces the rule, move to SQLAlchemy Core (`Table` objects, explicit `update()`) and keep Alembic; there is no `relationship()` to unwind. Raw psycopg or sqlc-gen-python would mean rewriting every query.
-- **Freehire dependency.** Freehire is now one ingested source among four (with Greenhouse, Lever and SmartRecruiters), stored in PostgreSQL by the hourly ingest. Search stops depending on freehire.me at query time once WP5 part 2 (Meilisearch search over the local store) lands.
+- **Freehire dependency.** Freehire is now one ingested source among four (with Greenhouse, Lever and SmartRecruiters), stored in PostgreSQL by the hourly ingest. Search does not call freehire.me at query time; it is served from Meilisearch over the local store.
 - **Baseline features.** FR-J05 and FR-T01 describe freehire features as existing ("ของเดิม"). Without the fork they were built here (saved-search digests, application board).
 - **Gaps not covered by this ADR:** Prometheus/Grafana, a linter in CI, the infrastructure-dependent integration suite in CI (MinIO, Hermes), production deploy (WP1), generated frontend contracts.
 

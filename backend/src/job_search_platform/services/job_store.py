@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, defer
 
 from job_search_platform.db.models import IngestRun, JobIndexDelete, JobPosting, JobPostingTombstone
 from job_search_platform.integrations import job_boards
+from job_search_platform.services import job_index
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.job_mapping import map_posting
 
@@ -187,7 +188,7 @@ def load_boards(path: Path | None = None) -> dict[str, list[str]]:
 
 
 def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards.fetch_board,
-               clock=lambda: datetime.now(timezone.utc), sleep=time.sleep) -> IngestRun:
+               clock=lambda: datetime.now(timezone.utc), sleep=time.sleep, index=None) -> IngestRun:
     """One hourly run (spec D5): each board in its own transaction; failed/skipped boards never count as missing."""
     # dedicated autocommit connection: advisory lock is per backend, so it must stay on this one connection
     with sessions.kw["bind"].connect().execution_options(isolation_level="AUTOCOMMIT") as lock:
@@ -239,6 +240,16 @@ def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards
                     for name, value in totals.items():
                         setattr(row, name, value)
                 raise
+            if index is not None:  # after commit, still under the advisory lock: two runs never sync at once
+                client, name = index
+                result = job_index.sync(sessions, client, name)
+                per_board["index"] = result
+                if result["state"] == "index_failed" and row.status == "ok":
+                    row.status = "partial"
+                with sessions.begin() as db:
+                    stored = db.get(IngestRun, run.id)
+                    stored.per_board, stored.status = per_board, row.status
+                row.per_board = per_board
             _log.info("ingest_run_finished", extra={"status": row.status})
             return row
         finally:

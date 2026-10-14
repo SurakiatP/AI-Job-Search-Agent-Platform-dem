@@ -27,3 +27,11 @@ def minio_endpoint() -> str:
 
 def private_bucket() -> str:
     return _env("JSP_PRIVATE_BUCKET", "job-search-platform-private")
+
+
+def meili_url() -> str:
+    return _env("MEILI_URL", "http://127.0.0.1:57700")
+
+
+def meili_index() -> str:
+    return _env("MEILI_INDEX", "jobs")

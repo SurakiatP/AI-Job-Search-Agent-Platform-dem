@@ -1,6 +1,7 @@
 """Smart match API: Jev scores, bands, highlights, hidden filters and the start-run route."""
 from __future__ import annotations
 
+import time
 from uuid import UUID, uuid4
 
 import pytest
@@ -17,14 +18,15 @@ SLUGS = ["a", "b", "c", "d", "e"]
 
 
 def _raw(slug, title="Dev", company="Other", description="Python and SQL"):
-    return {"public_slug": slug, "title": title, "company": company, "description": description,
-            "skills": [], "reality": {"class": "fresh", "age_days": 1}, "url": f"https://jobs.example.com/{slug}"}
+    return {"slug": slug, "title": title, "company": company, "description_markdown": description, "skills": [],
+            "posted_ts": int(time.time()) - 86400 - 3600, "reality_stale": False,
+            "source_url": f"https://jobs.example.com/{slug}"}
 
 
 def _serve(monkeypatch, raws):
     job_sources._cache.clear()
     seen = []
-    monkeypatch.setattr(job_sources, "fetch_json", lambda url: (seen.append(url), {"data": raws, "meta": {"total": len(raws)}})[1])
+    monkeypatch.setattr(job_sources, "_search", lambda payload: (seen.append(payload), {"hits": raws, "estimatedTotalHits": len(raws)})[1])
     return seen
 
 
@@ -42,10 +44,10 @@ def _setup(api_context, **extra):
 
 
 def _score(api_context, pid, rev, raw, fit, *, stale=False):
-    item = {"title": raw["title"], "description_markdown": raw["description"]}
+    item = {"title": raw["title"], "description_markdown": raw["description_markdown"]}
     digest = "0" * 64 if stale else smart_match.content_hash(item)
     with api_context.sessions.begin() as db:
-        db.add(JobMatchScore(project_id=UUID(pid), cv_revision_id=UUID(rev), job_slug=raw["public_slug"], content_hash=digest,
+        db.add(JobMatchScore(project_id=UUID(pid), cv_revision_id=UUID(rev), job_slug=raw["slug"], content_hash=digest,
                              model=JEV_MODEL, fit_percent=fit, uncertain=False,
                              details={"band": 4, "seniority": "mid", "hard_blocker": False, "skills_evidenced": ["Python"],
                                       "must_missing": ["SQL"], "nice_missing": ["Docker"]}))
@@ -104,7 +106,7 @@ def test_auto_mode_without_categories_falls_back_to_keyword_pool(api_context, mo
     assert seen
     _profile(api_context, rev, categories=["it"], categories_model=JEV_MODEL)
     body = api_context.client.get(_url(pid, rev)).json()
-    assert any("category=it" in u for u in seen)
+    assert any('category = "it"' in p["filter"] for p in seen)
     assert body["ai"]["categories"] == ["it"] and [i["slug"] for i in body["items"]] == ["a"]
 
 
@@ -220,10 +222,10 @@ def test_run_request_validates_and_stores_filters_and_public_route_needs_no_cook
     assert snap["posting_language"] == "th" and snap["salary_min"] == 25000 and snap["employment_type"] == []
     seen = _serve(monkeypatch, [_raw("a")])
     ok = client.get(_url(pid, rev, "&q=dev&seniority=junior&company_type=startup&salary_min=15000"))
-    assert ok.status_code == 200 and "seniority=junior" in seen[0] and "company_type=startup" in seen[0]
+    assert ok.status_code == 200 and 'seniority IN ["junior"]' in seen[0]["filter"] and 'company_type IN ["startup"]' in seen[0]["filter"]
     client.cookies.clear()
-    monkeypatch.setattr(job_sources, "fetch_json", lambda url: {"data": [], "meta": {"total": 4}} if "/agent/jobs/search" in url
-                        else {"data": {"total": 9, "facets": {"category": {"it": 9}, "posting_language": {"th": 3}}}})
+    monkeypatch.setattr(job_sources, "_search", lambda p: {"hits": [], "estimatedTotalHits": 4} if p["limit"] == 1
+                        else {"estimatedTotalHits": 9, "facetDistribution": {"category": {"it": 9}, "posting_language": {"th": 3}}})
     job_sources._cache.clear()
     public = client.get("/api/v1/public/job-stats")
     assert public.status_code == 200 and public.json() == {"total": 9, "new_7d": 4, "thai_postings": 3,
