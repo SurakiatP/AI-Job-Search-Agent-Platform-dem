@@ -146,6 +146,7 @@
     "password": "รหัสผ่าน",
     "passwordHint": "10 ถึง 128 ตัวอักษร",
     "confirmPassword": "ยืนยันรหัสผ่าน",
+    "showPassword": "แสดงรหัสผ่าน",
     "loginTitle": "เข้าสู่ระบบ",
     "loginIntro": "เข้าสู่ระบบเพื่อเปิดพื้นที่หางานของคุณ",
     "loginAction": "เข้าสู่ระบบ",

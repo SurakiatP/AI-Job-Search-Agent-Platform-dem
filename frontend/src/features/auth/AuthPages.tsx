@@ -6,6 +6,7 @@ import { Header } from '../../components/Header';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
+import { PasswordInput } from '../../components/PasswordInput';
 import { Label } from '../../components/ui/label';
 import { forgotPassword, login, refreshOwnerSession, resetPassword, signup, useOwnerSession, verifyEmail } from '../../lib/api';
 import { ApiError } from '../../lib/api-types';
@@ -27,7 +28,9 @@ function AuthShell({ title, intro, children }: { title: string; intro?: string; 
 function Field({ id, label, hint, ...props }: { id: string; label: string; hint?: string } & React.ComponentProps<typeof Input>) {
   return <div className="grid gap-1.5">
     <Label htmlFor={id}>{label}</Label>
-    <Input id={id} aria-describedby={hint ? `${id}-hint` : undefined} {...props} />
+    {props.type === 'password'
+      ? <PasswordInput id={id} aria-describedby={hint ? `${id}-hint` : undefined} {...props} />
+      : <Input id={id} aria-describedby={hint ? `${id}-hint` : undefined} {...props} />}
     {hint && <p id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</p>}
   </div>;
 }
