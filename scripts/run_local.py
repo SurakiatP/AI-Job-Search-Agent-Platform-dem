@@ -41,6 +41,9 @@ async def _launch(args: argparse.Namespace) -> int:
     url_host = "[::1]" if args.host == "::1" else args.host
     scheme_host = f"http://{url_host}:{args.port}"
     os.environ.setdefault("APP_PUBLIC_ORIGIN", scheme_host)
+    if getattr(args, "enable_sharing", False):
+        share_host = f"[{args.share_host}]" if ":" in args.share_host else args.share_host
+        os.environ.setdefault("SHARE_PUBLIC_ORIGIN", f"http://{share_host}:{args.share_port}")
     services = build_services()
     guard = acquire_service_maintenance(services)
     try:
