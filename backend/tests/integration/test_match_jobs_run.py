@@ -5,7 +5,9 @@ import json
 import asyncio
 import os
 import threading
+import time
 import uuid
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -29,17 +31,21 @@ CV_BODY = b"Synthetic CV: Python, Docker. secret-marker-xyz"
 COMPANIES = {"j1": "Acme", "j2": "Hidden Co", "j3": "Beta"}
 
 
+NOW = datetime.now(timezone.utc)
+FIXED_TS = int(NOW.timestamp()) - 2 * 86400 - 3600
+
+
 def _raw_job(slug: str) -> dict:
-    return {"public_slug": slug, "title": f"Dev {slug}", "company": COMPANIES[slug], "skills": ["Python"],
-            "description": f"Build services in Python and Docker for {slug}.", "cities": ["Bangkok"],
-            "work_mode": "remote", "reality": {"age_days": 2, "class": "fresh"}, "enrichment": {"category": "it"},
-            "url": f"https://jobs.example.test/{slug}"}
+    return {"slug": slug, "title": f"Dev {slug}", "company": COMPANIES[slug], "skills": ["Python"],
+            "description_markdown": f"Build services in Python and Docker for {slug}.", "cities": ["Bangkok"],
+            "work_mode": "remote", "posted_ts": FIXED_TS, "reality_stale": False, "category": "it",
+            "source_url": f"https://jobs.example.test/{slug}"}
 
 
-def _fake_fetch(url: str) -> dict:
-    if "/jobs/facets" in url:
-        return {"data": {"total": 3, "facets": {"category": {"it": 3}}}}
-    return {"data": [_raw_job(s) for s in COMPANIES], "meta": {"total": 3}}
+def _fake_search(payload: dict) -> dict:
+    if payload.get("facets"):
+        return {"hits": [], "estimatedTotalHits": 3, "facetDistribution": {"category": {"it": 3}}}
+    return {"hits": [_raw_job(s) for s in COMPANIES], "estimatedTotalHits": 3}
 
 
 class FakeJev:
@@ -115,7 +121,7 @@ def _arrange(db_session, monkeypatch):
                                    value=smart_match.company_key("Hidden Co"), label="Hidden Co"))
     db_session.commit()
     job_sources._cache.clear()
-    monkeypatch.setattr(job_sources, "fetch_json", _fake_fetch)
+    monkeypatch.setattr(job_sources, "_search", _fake_search)
     sessions = sessionmaker(bind=db_session.get_bind(), expire_on_commit=False)
     return db_project, actor, revision, sessions
 
@@ -158,7 +164,7 @@ async def test_match_run_parses_once_scores_pool_and_reuses_cache(db_session, tm
     assert runtime.parses == 1
     rows = {row.job_slug: row for row in _scores(sessions, revision.id)}
     assert set(rows) == {"j1", "j3"}
-    jobs = {s: job_sources.map_item(_raw_job(s)) for s in ("j1", "j3")}
+    jobs = {s: job_sources.hit_to_item(_raw_job(s), NOW) for s in ("j1", "j3")}
     for slug, row in rows.items():
         assert row.model == JEV_MODEL and row.fit_percent == 100 and row.uncertain is False
         assert row.content_hash == smart_match.content_hash(jobs[slug])
@@ -306,15 +312,16 @@ async def test_cancelled_match_run_keeps_finished_scores(db_session, tmp_path, m
 async def test_match_run_passes_snapshot_filters_to_build_pool(db_session, tmp_path, monkeypatch):
     db_project, actor, revision, sessions = _arrange(db_session, monkeypatch)
     urls = []
-    monkeypatch.setattr(job_sources, "fetch_json", lambda url: (urls.append(url), _fake_fetch(url))[1])
+    monkeypatch.setattr(job_sources, "_search", lambda payload: (urls.append(payload), _fake_search(payload))[1])
     request = MatchRunRequest(cv_revision_id=revision.id, seniority=["junior"], skills=["python"], posting_language="th", salary_min=15000)
     view = await _run_once(sessions, tmp_path, actor, db_project.id, request, FakeRuntime(), FakeJev())
     with sessions() as db:
         snap = db.get(Run, view.id).input_snapshot
     assert snap["seniority"] == ["junior"] and snap["salary_min"] == 15000
-    searches = [u for u in urls if "/agent/jobs/search" in u and "limit=100" in u]  # skips the facets new_7d probe
-    assert searches and all("seniority=junior" in u and "skills=python" in u and "posting_language=th" in u
-                            and "salary_min=15000" in u for u in searches)
+    searches = [p for p in urls if p["limit"] == 100]  # skips the facets new_7d probe
+    assert searches and all('seniority IN ["junior"]' in p["filter"] and 'skills IN ["python"]' in p["filter"]
+                            and 'posting_language = "th"' in p["filter"] and "salary_thb_month_min >= 15000" in p["filter"]
+                            for p in searches)
 
 
 @pytest.mark.asyncio

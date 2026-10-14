@@ -1,4 +1,4 @@
-"""Read-only proxy for Freehire's public job API (official API only, Thailand listings)."""
+"""Job search served from the local Meilisearch index (FR-J01); the index is filled by services/job_index."""
 from __future__ import annotations
 
 import json
@@ -6,42 +6,27 @@ import re
 import threading
 import time
 from collections import OrderedDict
+from datetime import datetime, timezone
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
-from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
+from job_search_platform import config
+from job_search_platform.integrations import meili
 from job_search_platform.services.errors import ServiceError
 
-BASE = "https://freehire.me/api/v1"
-USER_AGENT = "job-search-platform/0.1 (local owner app; official public API)"
-TIMEOUT_SECONDS = 8
-MAX_BYTES = 2 * 1024 * 1024
 CACHE_TTL_SECONDS = 300
 CACHE_MAX_ENTRIES = 128
 DESCRIPTION_MAX = 50000
-# Upstream reality.class values seen: "fresh", "stale". Anything but "fresh" counts as stale.
-FRESH_CLASS = "fresh"
+STALE_AFTER_DAYS = 60
+RETRIEVE = ["slug", "title", "company", "location", "cities", "work_mode", "skills", "category", "posted_at",
+            "posted_ts", "source_url", "description_markdown", "reality_stale"]
+FACETS = ["category", "cities", "seniority", "employment_type", "company_type", "skills", "posting_language"]
 
 
-class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
-
-
-def fetch_json(url: str) -> dict:
-    """Blocking GET; every failure becomes a safe, retryable ServiceError (upstream bodies never leak)."""
+def _search(payload: dict) -> dict:
+    """The only Meilisearch call; failures become safe, retryable ServiceErrors."""
     try:
-        request = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"}, method="GET")
-        with build_opener(NoRedirect(), ProxyHandler({})).open(request, timeout=TIMEOUT_SECONDS) as response:
-            if response.status != 200:
-                raise ValueError
-            raw = response.read(MAX_BYTES + 1)
-        if len(raw) > MAX_BYTES:
-            raise ValueError
-        data = json.loads(raw)
-        if not isinstance(data, dict):
-            raise ValueError
-        return data
-    except Exception:
+        return meili.client().search(config.meili_index(), payload)
+    except (meili.MeiliError, OSError, ValueError):
         raise ServiceError("job_source_unavailable", retryable=True) from None
 
 
@@ -49,17 +34,18 @@ _cache: OrderedDict[str, tuple[float, dict]] = OrderedDict()
 _lock = threading.Lock()
 
 
-def _cached(url: str, fetch) -> dict:
+def _cached(payload: dict) -> dict:
+    key = json.dumps(payload, sort_keys=True)
     now = time.monotonic()
     with _lock:
-        hit = _cache.get(url)
+        hit = _cache.get(key)
         if hit and now - hit[0] < CACHE_TTL_SECONDS:
-            _cache.move_to_end(url)
+            _cache.move_to_end(key)
             return hit[1]
-    data = fetch(url)
+    data = _search(payload)
     with _lock:
-        _cache[url] = (now, data)
-        _cache.move_to_end(url)
+        _cache[key] = (now, data)
+        _cache.move_to_end(key)
         while len(_cache) > CACHE_MAX_ENTRIES:
             _cache.popitem(last=False)
     return data
@@ -85,24 +71,23 @@ def _strings(value, limit=None) -> list[str]:
     return items[:limit]
 
 
-def map_item(raw: dict) -> dict:
-    enrichment = raw.get("enrichment") if isinstance(raw.get("enrichment"), dict) else {}
-    reality = raw.get("reality") if isinstance(raw.get("reality"), dict) else {}
-    age = reality.get("age_days")
-    description = raw.get("description")
+def hit_to_item(hit: dict, now: datetime) -> dict:
+    ts = hit.get("posted_ts")
+    age = max(0, int(now.timestamp() - ts) // 86400) if isinstance(ts, int) and not isinstance(ts, bool) else None
+    description = hit.get("description_markdown")
     return {
-        "slug": str(raw.get("public_slug") or ""),
-        "title": str(raw.get("title") or ""),
-        "company": _text(raw.get("company")),
-        "location": _text(raw.get("location")),
-        "cities": _strings(raw.get("cities")),
-        "work_mode": _text(raw.get("work_mode")),
-        "skills": _strings(raw.get("skills"), 8),
-        "category": _text(enrichment.get("category")),
-        "posted_at": _text(raw.get("posted_at")),
-        "age_days": age if isinstance(age, int) and not isinstance(age, bool) else None,
-        "stale": isinstance(reality.get("class"), str) and reality["class"] != FRESH_CLASS,
-        "source_url": _strip_utm(raw.get("url")),
+        "slug": str(hit.get("slug") or ""),
+        "title": str(hit.get("title") or ""),
+        "company": _text(hit.get("company")),
+        "location": _text(hit.get("location")),
+        "cities": _strings(hit.get("cities")),
+        "work_mode": _text(hit.get("work_mode")),
+        "skills": _strings(hit.get("skills"), 8),
+        "category": _text(hit.get("category")),
+        "posted_at": _text(hit.get("posted_at")),
+        "age_days": age,
+        "stale": hit.get("reality_stale") is True or (age is not None and age > STALE_AFTER_DAYS),
+        "source_url": _strip_utm(hit.get("source_url")),
         "description_markdown": description[:DESCRIPTION_MAX] if isinstance(description, str) else "",
     }
 
@@ -133,34 +118,44 @@ def parse_choices(value: str | None, name: str) -> list[str] | None:
     return items if set(items) <= set(CHOICES[name]) else None
 
 
+def build_filter(*, cities=(), work_mode=None, posted_within_days=None, category=None, seniority=(),
+                 employment_type=(), company_type=(), skills=(), posting_language=None, salary_min=None,
+                 company=None, now: datetime) -> list[str]:
+    q = meili.quote
+
+    def many(field, values):
+        return [f"{field} IN [{', '.join(q(v) for v in values)}]"] if values else []
+
+    def one(field, value):
+        return [f"{field} = {q(value)}"] if value else []
+
+    return [*many("cities", cities), *one("work_mode", work_mode),
+            *([f"posted_ts >= {int(now.timestamp()) - posted_within_days * 86400}"] if posted_within_days else []),
+            *one("category", category), *many("seniority", seniority), *many("employment_type", employment_type),
+            *many("company_type", company_type), *many("skills", skills), *one("posting_language", posting_language),
+            *([f"salary_thb_month_min >= {int(salary_min)}"] if salary_min else []), *one("company", company)]
+
+
 def search_jobs(*, q=None, cities=(), work_mode=None, posted_within_days=None, category=None,
                 seniority=(), employment_type=(), company_type=(), skills=(), posting_language=None,
-                salary_min=None, limit=20, offset=0, fetch=None) -> dict:
+                salary_min=None, company=None, limit=20, offset=0, now=None) -> dict:
     """Params must already be validated by the caller (see rest.py)."""
-    params = [("countries", "TH"), ("description_format", "markdown"), ("limit", limit), ("offset", offset)]
-    if q and q.strip():
-        params.append(("q", q.strip()))
-    if cities:
-        params.append(("cities", ",".join(cities)))
-    for name, value in (("work_mode", work_mode), ("posted_within_days", posted_within_days),
-                        ("category", category)):
-        if value:
-            params.append((name, value))
-    for name, values in (("seniority", seniority), ("employment_type", employment_type),
-                         ("company_type", company_type), ("skills", skills)):
-        if values:
-            params.append((name, ",".join(values)))
-    if posting_language:
-        params.append(("posting_language", posting_language))
-    if salary_min:
-        params += [("salary_min", salary_min), ("salary_currency", "thb"), ("salary_period", "month")]
-    data = _cached(f"{BASE}/agent/jobs/search?{urlencode(sorted(params))}", fetch or fetch_json)
-    rows, meta = data.get("data"), data.get("meta")
-    if not isinstance(rows, list) or not isinstance(meta, dict):
+    now = now or datetime.now(timezone.utc).replace(second=0, microsecond=0)  # minute grain keeps the cache useful
+    query = (q or "").strip()
+    payload = {"q": query, "limit": limit, "offset": offset, "attributesToRetrieve": RETRIEVE,
+               "filter": build_filter(cities=cities, work_mode=work_mode, posted_within_days=posted_within_days,
+                                      category=category, seniority=seniority, employment_type=employment_type,
+                                      company_type=company_type, skills=skills, posting_language=posting_language,
+                                      salary_min=salary_min, company=company, now=now)}
+    if not query:
+        payload["sort"] = ["posted_ts:desc"]
+    data = _cached(payload)
+    hits, total = data.get("hits"), data.get("estimatedTotalHits")
+    if not isinstance(hits, list):
         raise ServiceError("job_source_unavailable", retryable=True)
-    total = meta.get("total")
-    return {"items": [map_item(r) for r in rows if isinstance(r, dict)],
-            "total": total if isinstance(total, int) else len(rows), "limit": limit, "offset": offset}
+    return {"items": [hit_to_item(h, now) for h in hits if isinstance(h, dict)],
+            "total": total if isinstance(total, int) and not isinstance(total, bool) else len(hits),
+            "limit": limit, "offset": offset}
 
 
 def _top(counts, n) -> list[dict]:
@@ -171,18 +166,18 @@ def _top(counts, n) -> list[dict]:
     return [{"value": k, "count": v} for k, v in pairs[:n]]
 
 
-def job_facets(*, fetch=None) -> dict:
-    data = _cached(f"{BASE}/jobs/facets?countries=TH", fetch or fetch_json).get("data")
-    facets = data.get("facets") if isinstance(data, dict) else None
-    if not isinstance(facets, dict) or not isinstance(data.get("total"), int):
+def job_facets(*, now=None) -> dict:
+    data = _cached({"q": "", "limit": 0, "facets": FACETS})
+    facets, total = data.get("facetDistribution"), data.get("estimatedTotalHits")
+    if not isinstance(facets, dict) or not isinstance(total, int):
         raise ServiceError("job_source_unavailable", retryable=True)
     thai = facets.get("posting_language")
     thai = thai.get("th") if isinstance(thai, dict) else None
     try:  # decorative number: a failed second call must not take the facets down
-        new_7d = search_jobs(posted_within_days=7, limit=1, fetch=fetch)["total"]
+        new_7d = search_jobs(posted_within_days=7, limit=1, now=now)["total"]
     except ServiceError:
         new_7d = None
-    return {"total": data["total"], "categories": _top(facets.get("category"), 12),
+    return {"total": total, "categories": _top(facets.get("category"), 12),
             "cities": _top(facets.get("cities"), 10), "seniority": _top(facets.get("seniority"), 12),
             "employment_type": _top(facets.get("employment_type"), 12),
             "company_type": _top(facets.get("company_type"), 12), "skills": _top(facets.get("skills"), 20),
