@@ -35,7 +35,6 @@ from job_search_platform.integrations.mailer import SmtpMailer
 from job_search_platform.integrations.object_store import S3ObjectStore
 from job_search_platform.integrations.secrets import MacOSKeychain
 from job_search_platform.services.accounts import Accounts
-from job_search_platform.services.saved_searches import SavedSearches
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.documents import Artifacts, Documents
 from job_search_platform.services.errors import ServiceError
@@ -44,6 +43,7 @@ from job_search_platform.services.files import Files
 from job_search_platform.services.grants import Grants
 from job_search_platform.services.owner_sessions import OwnerSessions
 from job_search_platform.services.runs import RunService
+from job_search_platform.services.saved_searches import SavedSearches
 from job_search_platform.services.settings import Settings
 from job_search_platform.services import contracts
 from job_search_platform.workers.executor import RunExecutor

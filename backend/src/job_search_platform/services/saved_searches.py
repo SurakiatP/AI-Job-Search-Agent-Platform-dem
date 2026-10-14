@@ -107,6 +107,10 @@ class _SendFailed(Exception):
     pass
 
 
+def _deliverable(account: User | None, notifications: bool) -> bool:
+    return account is not None and account.email_verified_at is not None and account.disabled_at is None and notifications
+
+
 class SavedSearches:
     def __init__(self, sessions, mailer, *, public_origin: str, search=None):
         self.sessions = sessions
@@ -240,7 +244,7 @@ class SavedSearches:
                     return None
                 row_id = row.id
                 account, notifications = self._gates(db, row.project_id)
-                if account is None or account.email_verified_at is None or account.disabled_at is not None or not notifications:
+                if not _deliverable(account, notifications):
                     row.next_run_at = next_slot(now, row.frequency)
                     return row_id, 0
                 try:
@@ -256,8 +260,11 @@ class SavedSearches:
                     row.last_sent_at = now
                 row.next_run_at = next_slot(now, row.frequency)
                 return row_id, 1 if items else 0
-        except _SendFailed:
-            return row_id, 0  # rolled back: no seen rows, no token change, same next_run_at
+        except Exception as exc:  # noqa: BLE001 - one poison row must not starve the others
+            if not isinstance(exc, _SendFailed):
+                logger.warning("digest_failed", extra={"saved_search_id": str(row_id), "error": type(exc).__name__})
+            # rolled back: no seen rows, no token change, same next_run_at; None row_id means selection itself failed
+            return None if row_id is None else (row_id, 0)
 
     async def run_due(self, now: datetime | None = None) -> int:
         now = now or datetime.now(timezone.utc)
@@ -290,6 +297,7 @@ class SavedSearches:
             return db.execute(delete(SavedSearchSeen).where(SavedSearchSeen.seen_at < now - SEEN_RETENTION)).rowcount
 
     async def housekeeping(self) -> int:
-        sent = await self.run_due()
-        await asyncio.to_thread(self.prune_seen)
-        return sent
+        try:
+            return await self.run_due()
+        finally:
+            await asyncio.to_thread(self.prune_seen)

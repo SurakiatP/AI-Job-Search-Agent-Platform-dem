@@ -251,3 +251,59 @@ def test_supervisor_runs_digests_even_when_purge_fails(migrated_engine):
     supervisor = WorkerSupervisor(sessions, None, None, None, purge=bad_purge, digests=digests)
     asyncio.run(supervisor._purge_step())
     assert calls == [1]
+
+
+@pytest.mark.integration
+def test_poison_row_does_not_starve_others(ctx):
+    sessions, service, mailer, source, actor, pid, sid = ctx
+    other = service.create(actor, pid, SavedSearchCreate(name="Other", filters={"q": "other"}),
+                           now=NOW - timedelta(days=1)).id
+    inner = source.__call__
+
+    def picky(**kwargs):
+        if kwargs.get("q") == "data":
+            raise RuntimeError("poison")
+        return inner(**kwargs)
+    service.search = picky
+    _due(sessions, sid, NOW - timedelta(minutes=2))
+    _due(sessions, other)
+    assert asyncio.run(service.run_due(NOW)) == 1
+    assert [m.subject for m in mailer.sent] == ["งานใหม่ 2 ตำแหน่ง: Other"]
+    assert _seen(sessions, sid) == set()
+    with sessions() as db:
+        assert db.get(SavedSearch, sid).next_run_at == NOW - timedelta(minutes=2)
+
+
+@pytest.mark.integration
+def test_housekeeping_prunes_even_when_run_due_raises(ctx):
+    sessions, service, *_, sid = ctx
+
+    async def boom(now=None):
+        raise RuntimeError("boom")
+    service.run_due = boom
+    with sessions.begin() as db:
+        db.add(SavedSearchSeen(saved_search_id=sid, slug="old", seen_at=datetime(2000, 1, 1, tzinfo=UTC)))
+    with pytest.raises(RuntimeError):
+        asyncio.run(service.housekeeping())
+    assert _seen(sessions, sid) == set()
+
+
+@pytest.mark.integration
+def test_failed_preview_does_not_consume_rate_limit(ctx):
+    sessions, service, mailer, source, actor, pid, sid = ctx
+    good = mailer.send
+
+    def broken(mail):
+        raise OSError("smtp down")
+    mailer.send = broken
+    for _ in range(6):
+        with pytest.raises(ServiceError) as caught:
+            service.preview(actor, pid, sid)
+        assert caught.value.code == "mail_unavailable"
+    mailer.send = good
+    for _ in range(5):
+        service.preview(actor, pid, sid)
+    assert len(mailer.sent) == 5
+    with pytest.raises(ServiceError) as caught:
+        service.preview(actor, pid, sid)
+    assert caught.value.code == "rate_limited"
