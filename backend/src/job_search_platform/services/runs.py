@@ -135,7 +135,7 @@ def append_event(
     db.add(event)
     db.flush()
     from job_search_platform.services import webhooks  # webhooks imports a2a_state only; lazy keeps runs import-light
-    webhooks.enqueue_for_run_event(db, run, event_type, event.created_at)
+    webhooks.enqueue_for_run_event(db, run, event_type, event.created_at, public.status)
     return event
 
 

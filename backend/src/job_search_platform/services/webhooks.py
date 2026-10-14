@@ -25,7 +25,7 @@ WEBHOOK_EVENTS = ("run.waiting_approval", "run.needs_input", "run.completed", "r
 RUN_EVENT_MAP = {"run_waiting_approval": "run.waiting_approval", "run_needs_input": "run.needs_input",
                  "run_completed": "run.completed", "run_failed": "run.failed", "run_cancelled": "run.cancelled"}
 # A run event that changes the task's state, mapped to the run status it means.
-A2A_EVENT_STATUS = {"run_queued": "queued", "run_started": "running", "run_resumed": "running",
+A2A_EVENT_STATUS = {"run_queued": "queued", "run_started": "running", "run_resumed": "queued",
                     "run_waiting_approval": "waiting_approval", "run_needs_input": "needs_input",
                     "run_completed": "completed", "run_failed": "failed", "run_cancelled": "cancelled",
                     "run_interrupted": "interrupted"}
@@ -82,11 +82,12 @@ def _envelope(delivery_id: UUID, event: str, now: datetime, data: dict) -> dict:
     return {"id": str(delivery_id), "type": event, "created_at": _iso(now), "data": data}
 
 
-def enqueue_for_run_event(db, run, event_type: str, now: datetime) -> int:
+def enqueue_for_run_event(db, run, event_type: str, now: datetime, reported_status: str | None = None) -> int:
     """Queue A2A push and owner webhook deliveries for one run event, in the caller's transaction."""
     count = 0
     status = A2A_EVENT_STATUS.get(event_type)
     if status is not None:
+        status = reported_status or status  # what the caller just set wins, so push matches tasks/get
         state, metadata = task_state(status)
         configs = db.scalars(select(A2APushConfig).join(Grant, Grant.id == A2APushConfig.grant_id).where(
             A2APushConfig.run_id == run.id, Grant.revoked_at.is_(None), Grant.expires_at > now)).all()

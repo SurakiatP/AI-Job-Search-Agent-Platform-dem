@@ -7,12 +7,11 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.orm import sessionmaker
 
 from helpers import owner, project, provider_config, revisions, session
 from job_search_platform.db.models import A2APushConfig, Grant, Run, SavedSearch, WebhookDelivery, WebhookEndpoint
-from job_search_platform.integrations.mailer import MemoryMailer
 from job_search_platform.services import saved_searches as ss
 from job_search_platform.services.contracts import SavedSearchCreate
 from job_search_platform.services.runs import append_event
@@ -131,3 +130,18 @@ def test_digest_push_available(world):
         db.execute(update(WebhookEndpoint).where(WebhookEndpoint.project_id == pid).values(enabled=False))
     with sessions() as db:
         assert webhooks.digest_push_available(db, pid) is False
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("event, data, state, metadata", [
+    ("run_resumed", {"status": "queued"}, "TASK_STATE_SUBMITTED", {}),
+    ("run_queued", {"status": "queued"}, "TASK_STATE_SUBMITTED", {}),
+    ("run_interrupted", {"status": "interrupted"}, "TASK_STATE_FAILED", {"terminal_reason": "interrupted"}),
+])
+def test_a2a_push_state_matches_tasks_get(world, event, data, state, metadata):
+    sessions, _, _, run_id, _ = world
+    with sessions.begin() as db:
+        append_event(db, db.get(Run, run_id), event, data, now=NOW)
+    (row,) = [r for r in _deliveries(sessions) if r.push_config_id]
+    update_ = row.payload["statusUpdate"]
+    assert update_["status"]["state"] == state and update_["metadata"] == metadata
