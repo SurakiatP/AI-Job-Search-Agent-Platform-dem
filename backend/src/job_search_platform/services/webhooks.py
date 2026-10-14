@@ -5,15 +5,20 @@ Signing keys (endpoint secrets, A2A tokens) are never logged or returned after c
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
+import json
 import logging
 import os
-from datetime import datetime, timedelta
+import random
+import time
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+import httpx
+from sqlalchemy import delete, select, update
 
 from job_search_platform.db.models import A2APushConfig, Grant, WebhookDelivery, WebhookEndpoint
 from job_search_platform.services.a2a_state import context_id, task_state
@@ -124,3 +129,112 @@ def enqueue_digest(db, project_id: UUID, saved_search_id: UUID, name: str, items
 
 def digest_push_available(db, project_id: UUID) -> bool:
     return bool(_endpoints(db, project_id, "digest.ready"))
+
+
+LEASE = timedelta(minutes=5)
+BATCH = 10
+MAX_BODY = 256 * 1024
+RETENTION = timedelta(days=30)
+RETRYABLE = {408, 429}
+
+
+def _classify(code: int | None, error: str | None) -> str:
+    """'delivered', 'retry' or 'dead' for one HTTP attempt."""
+    if error is not None:
+        return "retry"
+    if 200 <= code < 300:
+        return "delivered"
+    if code >= 500 or code in RETRYABLE:
+        return "retry"
+    return "dead"
+
+
+class Webhooks:
+    def __init__(self, sessions, *, timeout: float = 10.0, rand=random.random):
+        self.sessions = sessions
+        self.timeout = timeout
+        self.rand = rand
+
+    def _claim(self, now: datetime) -> list[dict]:
+        with self.sessions.begin() as db:
+            rows = db.execute(
+                select(WebhookDelivery, WebhookEndpoint, A2APushConfig, Grant)
+                .outerjoin(WebhookEndpoint, WebhookEndpoint.id == WebhookDelivery.endpoint_id)
+                .outerjoin(A2APushConfig, A2APushConfig.id == WebhookDelivery.push_config_id)
+                .outerjoin(Grant, Grant.id == A2APushConfig.grant_id)
+                .where(WebhookDelivery.status == "pending", WebhookDelivery.next_attempt_at <= now)
+                .order_by(WebhookDelivery.next_attempt_at).limit(BATCH)
+                .with_for_update(skip_locked=True, of=WebhookDelivery)
+            ).all()
+            claimed = []
+            for delivery, endpoint, config, grant in rows:
+                delivery.next_attempt_at = now + LEASE  # lease: a crash mid-send does not re-send at once
+                if endpoint is not None:
+                    item = {"url": endpoint.url, "key": endpoint.secret, "token": None,
+                            "blocked": None if endpoint.enabled else "endpoint_disabled"}
+                else:
+                    valid = grant is not None and grant.revoked_at is None and grant.expires_at > now
+                    item = {"url": config.url, "key": config.token, "token": config.token,
+                            "blocked": None if valid else "grant_revoked"}
+                claimed.append({"id": delivery.id, "event": delivery.event_type, "payload": delivery.payload,
+                                "attempts": delivery.attempts, **item})
+            return claimed
+
+    async def _send(self, client: httpx.AsyncClient, item: dict) -> tuple[int | None, str | None]:
+        if item["blocked"]:
+            return None, item["blocked"]
+        body = json.dumps(item["payload"], separators=(",", ":"), ensure_ascii=False).encode()
+        if len(body) > MAX_BODY:
+            return None, "payload_too_large"
+        try:
+            await validate_url(item["url"])
+        except ServiceError:
+            return None, "blocked_url"
+        headers = {"Content-Type": "application/json", "User-Agent": "ai-job-search-platform-webhooks/1",
+                   "X-JSP-Event": item["event"], "X-JSP-Delivery": str(item["id"]),
+                   "X-JSP-Signature": sign(item["key"], int(time.time()), body)}
+        if item["token"]:
+            headers["X-A2A-Notification-Token"] = item["token"]
+        try:
+            response = await client.post(item["url"], content=body, headers=headers)
+        except httpx.TimeoutException:
+            return None, "timeout"
+        except httpx.HTTPError as exc:
+            return None, type(exc).__name__[:200]
+        return response.status_code, None
+
+    def _record(self, item: dict, code: int | None, error: str | None, now: datetime) -> None:
+        final_errors = {"endpoint_disabled", "grant_revoked", "blocked_url", "payload_too_large"}
+        outcome = "dead" if error in final_errors else _classify(code, error)
+        attempts = item["attempts"] + (0 if error in final_errors else 1)
+        if outcome == "retry" and attempts >= MAX_ATTEMPTS:
+            outcome = "dead"
+        values = {"attempts": attempts, "last_status_code": code, "last_error": error}
+        if outcome == "delivered":
+            values.update(status="delivered", delivered_at=now)
+        elif outcome == "dead":
+            values.update(status="dead")
+        else:
+            values.update(next_attempt_at=now + backoff(attempts, self.rand()))
+        with self.sessions.begin() as db:
+            db.execute(update(WebhookDelivery).where(WebhookDelivery.id == item["id"]).values(**values))
+
+    async def deliver_due(self, now: datetime | None = None) -> int:
+        now = now or datetime.now(timezone.utc)
+        claimed = await asyncio.to_thread(self._claim, now)
+        if not claimed:
+            return 0
+        async with httpx.AsyncClient(follow_redirects=False, timeout=self.timeout) as client:
+            results = await asyncio.gather(*(self._send(client, item) for item in claimed))
+        for item, (code, error) in zip(claimed, results):
+            await asyncio.to_thread(self._record, item, code, error, now)
+        return len(claimed)
+
+    def prune(self, now: datetime | None = None) -> int:
+        now = now or datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            return db.execute(delete(WebhookDelivery).where(
+                WebhookDelivery.status.in_(("delivered", "dead")), WebhookDelivery.created_at < now - RETENTION)).rowcount
+
+    async def prune_async(self) -> int:
+        return await asyncio.to_thread(self.prune)
