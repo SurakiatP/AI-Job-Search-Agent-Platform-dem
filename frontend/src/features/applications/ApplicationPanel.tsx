@@ -34,7 +34,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 export function mailtoHref(email: string, jobTitle: string): string {
   const [local, domain] = email.split('@');
-  return `mailto:${encodeURIComponent(local)}@${domain}?subject=${encodeURIComponent(`Re: ${jobTitle}`)}`;
+  return `mailto:${encodeURIComponent(local)}@${encodeURIComponent(domain)}?subject=${encodeURIComponent(`Re: ${jobTitle}`)}`;
 }
 
 export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged }: { projectId: string; jobId: string; jobTitle: string; onStageChanged: () => void }) {
@@ -51,7 +51,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged }:
 
   useEffect(() => {
     if (data) setContact({ name: data.contact.name ?? '', email: data.contact.email ?? '', role: data.contact.role ?? '' });
-  }, [data?.contact.name, data?.contact.email, data?.contact.role]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data?.contact.name, data?.contact.email, data?.contact.role]);
 
   async function run(action: () => Promise<unknown>, after?: () => void) {
     if (busy) return;
@@ -62,7 +62,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged }:
   const describe = (event: ApplicationEventView): string => {
     const p = event.payload as Record<string, string | null>;
     switch (event.kind) {
-      case 'stage_changed': return `${stageLabel[p.from as ApplicationStage][locale]} → ${stageLabel[p.to as ApplicationStage][locale]}`;
+      case 'stage_changed': return `${stageLabel[p.from as ApplicationStage]?.[locale] ?? String(p.from)} → ${stageLabel[p.to as ApplicationStage]?.[locale] ?? String(p.to)}`;
       case 'note': return p.text ?? '';
       case 'contact_updated': return [c.contactUpdated, p.name, p.email].filter(Boolean).join(' · ');
       case 'email_logged': return `${p.direction === 'sent' ? c.sentEmail : c.receivedEmail}: ${p.subject} (${p.occurred_on})${p.note ? ` — ${p.note}` : ''}`;

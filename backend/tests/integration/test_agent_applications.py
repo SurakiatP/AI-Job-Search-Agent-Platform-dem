@@ -220,6 +220,30 @@ def test_submit_waits_for_owner_then_approve_records_applied_and_completes(api_c
 
 
 @pytest.mark.integration
+def test_approving_after_the_card_moved_on_neither_regresses_nor_double_records(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, runtime, pack_id = _ready_pack(ctx)
+    submit_id = _post(ctx, csrf, pid, session, "apply_submit", "s1").json()["id"]
+    _execute_next(ctx, runtime)
+    (approval,) = _approvals(ctx, pid)
+    base = f"{PREFIX}/{pid}/jobs/{session['job_revision_id']}"
+    moved = ctx.client.patch(f"{base}/application-status", json={"application_status": "interview"},
+                             headers=_write_headers(csrf))
+    assert moved.status_code == 200, moved.text
+    decided = _decide(ctx, csrf, pid, approval["id"], "approve")
+    assert decided.status_code == 200 and decided.json()["applied_at"] is not None
+    assert _status(ctx, pid, session) == "interview"
+    assert _run(ctx, submit_id).status == "cancelled"
+    with ctx.sessions() as db:
+        payloads = [e.public_data for e in db.scalars(select(RunEvent).where(RunEvent.run_id == UUID(submit_id)))]
+    assert any(p.get("message_key") == "errors.already_applied" for p in payloads)
+    kinds = [e["kind"] for e in ctx.client.get(f"{base}/application").json()["events"]]
+    assert "applied_via_approval" not in kinds
+    again = _decide(ctx, csrf, pid, approval["id"], "approve")
+    assert again.status_code == 200 and again.json()["decision"] == "approve"
+
+
+@pytest.mark.integration
 def test_pending_submit_approval_does_not_freeze_the_project_queue(api_context):
     from job_search_platform.workers.queue import PostgresRunQueue
     ctx = api_context
@@ -260,7 +284,7 @@ def test_stale_pack_voids_the_approval(api_context):
     (approval,) = _approvals(ctx, pid)
     ctx.client.patch(f"{PREFIX}/{pid}/jobs/{session['job_revision_id']}/application-status",
                      headers=_write_headers(csrf), json={"application_status": "applied"})
-    assert _decide(ctx, csrf, pid, approval["id"], "approve").json()["code"] == "approval_stale"
+    assert _decide(ctx, csrf, pid, approval["id"], "approve").status_code == 200  # no-op: already applied
 
 
 @pytest.mark.integration

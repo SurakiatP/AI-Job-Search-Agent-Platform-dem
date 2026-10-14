@@ -55,7 +55,7 @@
     "notifications": "Notifications",
     "savePreferences": "Save preferences",
     "jobsTitle": "Applications",
-    "noJobsTitle": "No saved jobs",
+    "noJobsTitle": "No applications yet",
     "invalidSourceUrl": "Enter a valid HTTP or HTTPS source URL.",
     "noJobsDescription": "Add a supplied job posting to see it here.",
     "jobDetailTitle": "Job posting",

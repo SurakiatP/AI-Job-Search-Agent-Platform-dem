@@ -82,7 +82,7 @@ export function OverviewPage() {
   const pendingSession = pending[0]?.session_id;
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   const stats = [
-    { label: c.saved, value: jobList.length, to: `${base}/applications` }, { label: c.applied, value: jobList.filter(j => APPLIED_ONWARD.has(j.application_status ?? 'saved')).length, to: `${base}/applications` }, { label: c.documents, value: docList.length, to: `${base}/documents` },
+    { label: c.saved, value: jobList.filter(j => (j.application_status ?? 'saved') === 'saved').length, to: `${base}/applications` }, { label: c.applied, value: jobList.filter(j => APPLIED_ONWARD.has(j.application_status ?? 'saved')).length, to: `${base}/applications` }, { label: c.documents, value: docList.length, to: `${base}/documents` },
   ];
 
   return <div className="grid gap-6">

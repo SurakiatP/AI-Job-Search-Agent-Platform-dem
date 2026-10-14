@@ -263,11 +263,15 @@ def add_event(db: Session, actor: Actor, project_id: UUID, job_id: UUID,
 
 
 def record_applied_via_approval(db: Session, project_id: UUID, job_id: UUID, scope: str,
-                                approval_id: UUID, pack_run_id: UUID) -> None:
+                                approval_id: UUID, pack_run_id: UUID) -> bool:
+    """Record the approved submission; False (no change) if the card already reached applied or later."""
     row = _lock_status(db, project_id, job_id)
+    if application_recorded(db, project_id, job_id):
+        return False
     _append(db, project_id, job_id, scope, "applied_via_approval",
             {"from": row.status, "approval_id": str(approval_id), "pack_run_id": str(pack_run_id)})
     row.status = "applied"
+    return True
 
 
 async def applications_list(services, actor: Actor, request: ApplicationsListInput,

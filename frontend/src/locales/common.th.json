@@ -55,7 +55,7 @@
     "notifications": "การแจ้งเตือน",
     "savePreferences": "บันทึกค่ากำหนด",
     "jobsTitle": "ใบสมัคร",
-    "noJobsTitle": "ยังไม่มีงานที่บันทึก",
+    "noJobsTitle": "ยังไม่มีใบสมัคร",
     "invalidSourceUrl": "กรุณากรอก URL ต้นทางที่ถูกต้องซึ่งขึ้นต้นด้วย HTTP หรือ HTTPS",
     "noJobsDescription": "เพิ่มประกาศงานเพื่อดูได้ที่นี่",
     "jobDetailTitle": "ประกาศงาน",

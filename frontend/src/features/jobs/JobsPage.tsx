@@ -24,14 +24,14 @@ import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 
 const copy = {
   th: {
-    findJobs: 'ค้นหางาน', addJob: 'เพิ่มงาน', close: 'ปิดฟอร์ม', noJobs: 'ยังไม่มีงานที่บันทึก', noJobsNext: 'กด "เพิ่มงาน" เพื่อวางประกาศงานแรกของคุณ',
-    back: 'งานที่บันทึก', evalSession: 'เปิดเซสชันที่ประเมินงานนี้', report: 'รายงานการประเมินล่าสุด', notEvaluated: 'ยังไม่ได้ประเมินงานนี้', notEvaluatedNext: 'เปิดเซสชันเพื่อให้เอเจนต์ประเมินความเหมาะสมของงานนี้',
+    findJobs: 'ค้นหางาน', addJob: 'เพิ่มงาน', close: 'ปิดฟอร์ม', noJobs: 'ยังไม่มีใบสมัคร', noJobsNext: 'กด "เพิ่มงาน" เพื่อวางประกาศงานแรกของคุณ',
+    back: 'ใบสมัคร', evalSession: 'เปิดเซสชันที่ประเมินงานนี้', report: 'รายงานการประเมินล่าสุด', notEvaluated: 'ยังไม่ได้ประเมินงานนี้', notEvaluatedNext: 'เปิดเซสชันเพื่อให้เอเจนต์ประเมินความเหมาะสมของงานนี้',
     evaluate: 'ประเมินงานนี้', description: 'รายละเอียดงาน', fit: 'ความเหมาะสม', documents: 'เอกสารที่เกี่ยวข้อง',
     noDocs: 'ยังไม่มีเอกสารที่เชื่อมกับงานนี้', allDocs: 'ดูเอกสารทั้งหมด', draft: 'ร่างเอกสารสำหรับงานนี้', revision: 'ฉบับที่', untitled: 'งานไม่มีชื่อ',
   },
   en: {
-    findJobs: 'Find jobs', addJob: 'Add job', close: 'Close form', noJobs: 'No saved jobs yet', noJobsNext: 'Press "Add job" to paste your first posting.',
-    back: 'Saved jobs', evalSession: 'Open the evaluation session', report: 'Latest evaluation report', notEvaluated: 'Not evaluated yet', notEvaluatedNext: 'Open a session so the agent can assess how well this job fits you.',
+    findJobs: 'Find jobs', addJob: 'Add job', close: 'Close form', noJobs: 'No applications yet', noJobsNext: 'Press "Add job" to paste your first posting.',
+    back: 'Applications', evalSession: 'Open the evaluation session', report: 'Latest evaluation report', notEvaluated: 'Not evaluated yet', notEvaluatedNext: 'Open a session so the agent can assess how well this job fits you.',
     evaluate: 'Evaluate this job', description: 'Job description', fit: 'Fit score', documents: 'Related documents',
     noDocs: 'No documents are linked to this job yet', allDocs: 'View all documents', draft: 'Draft documents for this job', revision: 'Revision', untitled: 'Untitled job',
   },
