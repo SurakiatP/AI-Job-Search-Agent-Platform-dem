@@ -5,7 +5,7 @@ Not here: backend/frontend code, secrets, credentials, upstream checkouts (these
 
 ## Layout
 
-- `compose.yaml` - services: `postgres`, `minio`, `litellm-db`, `litellm`, `mailpit`; profile `seed` (`litellm-seed`); profile `langfuse` (`langfuse-db`, `langfuse-clickhouse`, `langfuse-valkey`, `langfuse-minio`, and more).
+- `compose.yaml` - services: `postgres`, `minio`, `litellm-db`, `litellm`, `mailpit`, `meilisearch` (job search index, pinned `getmeili/meilisearch:v1.55.0` digest, loopback port 57700 / `CORE02_MEILI_PORT`, key from private file `meili-master-key`); profile `seed` (`litellm-seed`); profile `langfuse` (`langfuse-db`, `langfuse-clickhouse`, `langfuse-valkey`, `langfuse-minio`, and more).
 - `postgres/` - `Dockerfile`, `go.mod`, `go.sum`, `provenance.json` (PostgreSQL 17.11 alpine + gosu built from pinned source).
 - `minio/` - `Dockerfile`, `go.mod`, `go.sum`, `provenance.json` (MinIO OSS built from pinned source commit).
 - `litellm/` - `config.yaml`, `seed.py` (LiteLLM gateway config and seeding).

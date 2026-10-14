@@ -169,6 +169,8 @@ The ingest worker (`scripts/ingest_jobs.py`) stores jobs from freehire and the G
 rtk uv run --locked --project backend python scripts/ingest_jobs.py run        # one full ingest; prints a JSON summary
 rtk uv run --locked --project backend python scripts/ingest_jobs.py status     # last 5 runs
 rtk uv run --locked --project backend python scripts/ingest_jobs.py discover   # refresh data/job_boards.json from freehire, then commit it
+rtk uv run --locked --project backend python scripts/ingest_jobs.py reindex     # rebuild the Meilisearch index from Postgres (atomic swap)
+rtk uv run --locked --project backend python scripts/ingest_jobs.py index-settings  # re-apply index settings
 ```
 
 `run --source <name>` ingests one source. A failed board is recorded in `ingest_runs.per_board` and never counts toward deleting its postings. A posting is deleted only after it is missing from two successful runs. A fetch that returns nothing, or under half of 20 or more stored postings, is treated as failed (`suspicious_shrink`). A posting older than 90 days is deleted and tombstoned so it is not re-ingested.
@@ -183,6 +185,12 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.job-search-platform.
 ```
 
 Output goes to `~/Library/Logs/job-search-platform/ingest.log`. Check it with `tail ~/Library/Logs/job-search-platform/ingest.log` and `ingest_jobs.py status`. Stop it with `launchctl bootout gui/$(id -u)/com.job-search-platform.ingest`.
+
+### Job search index (Meilisearch)
+
+The `meilisearch` service starts with `local_infra.py start` (loopback port 57700, key in the private file `meili-master-key`). The index (`MEILI_INDEX`, default `jobs`) is built on the first ingest run or by `reindex`, and synced after every later run. Search and facets are served only from the index: while it is unavailable, search returns 502 `job_source_unavailable`; there is no Postgres fallback. Run `reindex` to recover.
+
+To add or restart one compose service, use `docker compose -f infra/compose.yaml up --detach --no-deps <service>` with the owner's `.env` loaded. Export `OPENROUTER_API_KEY` first if `start` may recreate LiteLLM.
 
 ## Verification on the operator machine
 
