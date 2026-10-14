@@ -87,3 +87,8 @@ Trivy High/Critical (2026-10-11):
 | valkey 8-alpine | 0 | |
 
 Accepted under the owner's option A (loopback only, private network, metadata-only spans, signup and telemetry off). Re-scan on every Langfuse version bump.
+
+## Meilisearch image (2026-10-15)
+
+- `getmeili/meilisearch:v1.55.0@sha256:ff546679970126f8822e15d1b6a06bfbff1f2ce2e43f810cfb5258012f92de5c` (Community Edition, MIT, multi-arch index digest, Alpine 3.22.6). Job search index (FR-J01). Loopback port only, private master key file, analytics off.
+- `trivy image --scanners vuln --severity HIGH,CRITICAL` (Trivy 0.75.0, DB pulled 2026-10-14 17:14 UTC): 0 High/Critical findings.
