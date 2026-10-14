@@ -19,6 +19,7 @@ import { useResource } from '../features/projects/useResource';
 import { SearchPage } from '../features/search/SearchPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { AccountPage } from '../features/account/AccountPage';
+import { DigestUnsubscribePage } from '../features/digest/UnsubscribePage';
 import { ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage, VerifyEmailPage } from '../features/auth/AuthPages';
 import { useOwnerSession } from '../lib/api';
 import './routes.css';
@@ -104,7 +105,7 @@ function OwnerGate() {
 export function AppRoutes() {
   return <Routes>
     <Route path="/" element={<LandingPage />} />
-    <Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route path="/verify-email" element={<VerifyEmailPage />} />
+    <Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route path="/verify-email" element={<VerifyEmailPage />} /><Route path="/digest/unsubscribe" element={<DigestUnsubscribePage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route element={<OwnerGate />}><Route path="/app" element={<AppStart />} /><Route path="/app/search" element={<AppSearchStart />} />
     <Route path="/app/account" element={<AppWorkspace />}><Route index element={<AccountPage />} /></Route>

@@ -12,7 +12,7 @@ const routes = [
   `/app/projects/${projectId}/documents`,
   `/app/projects/${projectId}/documents/${documentId}`,
   '/app/settings',
-  '/login',
+  '/login', '/digest/unsubscribe?token=x',
   '/signup',
   '/app/account',
 ];

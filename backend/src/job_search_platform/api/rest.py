@@ -29,6 +29,7 @@ from job_search_platform.services.authorization import authorize, require_scoped
 from job_search_platform.services.contracts import (
     ApplicationCardView, ApplicationContact, ApplicationDetailView, ApplicationEntry, ApplicationEventView,
     AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVPromoteRequest, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
+    DigestPreviewView, SavedSearchCreate, SavedSearchListView, SavedSearchUpdate, SavedSearchView,
     ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     PreferencesUpdate, ProjectCreate,
@@ -73,6 +74,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "duplicate": 409, "bank_full": 409,
         "email_unverified": 403, "quota_exceeded": 429, "rate_limited": 429, "invalid_credentials": 401,
         "invalid_token": 400, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
+        "saved_search_limit": 409, "saved_search_name_taken": 409, "mail_unavailable": 503,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
     body = {
@@ -602,6 +604,42 @@ async def unhide_job_search_item(project_id: UUID, hidden_id: UUID, actor=Depend
             raise ServiceError("not_found")
         db.delete(row)
     return Response(status_code=204)
+
+
+@router.get("/projects/{project_id}/saved-searches", response_model=SavedSearchListView)
+async def list_saved_searches(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await asyncio.to_thread(services.saved_searches.list, actor, project_id)
+
+
+@router.post("/projects/{project_id}/saved-searches", status_code=201, response_model=SavedSearchView)
+async def create_saved_search(project_id: UUID, body: SavedSearchCreate, actor=Depends(write_actor),
+                              services: Services = Depends(get_services)):
+    _owner_only(actor)
+    return await asyncio.to_thread(services.saved_searches.create, actor, project_id, body)
+
+
+@router.patch("/projects/{project_id}/saved-searches/{saved_search_id}", response_model=SavedSearchView)
+async def update_saved_search(project_id: UUID, saved_search_id: UUID, body: SavedSearchUpdate,
+                              actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    return await asyncio.to_thread(services.saved_searches.update, actor, project_id, saved_search_id, body)
+
+
+@router.delete("/projects/{project_id}/saved-searches/{saved_search_id}", status_code=204)
+async def delete_saved_search(project_id: UUID, saved_search_id: UUID, actor=Depends(write_actor),
+                              services: Services = Depends(get_services)):
+    _owner_only(actor)
+    await asyncio.to_thread(services.saved_searches.delete, actor, project_id, saved_search_id)
+    return Response(status_code=204)
+
+
+@router.post("/projects/{project_id}/saved-searches/{saved_search_id}/preview", status_code=202,
+             response_model=DigestPreviewView)
+async def preview_saved_search(project_id: UUID, saved_search_id: UUID, actor=Depends(write_actor),
+                               services: Services = Depends(get_services)):
+    _owner_only(actor)
+    await asyncio.to_thread(services.saved_searches.preview, actor, project_id, saved_search_id)
+    return {"status": "sent"}
 
 
 def _extraction(db, project_id: UUID) -> dict | None:

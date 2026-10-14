@@ -365,6 +365,78 @@ paths:
         '204': {description: Unhidden}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/saved-searches:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: >-
+        Owner-only (FR-J05). Saved searches, newest first, plus the owner's digest status:
+        email_verified and notifications_enabled. Digest mail is sent only when both are true.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Saved searches, content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchListView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [jobs]
+      description: >-
+        Owner-only. Saves a filter set with a digest frequency. At most 10 per project (409 saved_search_limit);
+        names are unique per project, case-insensitive (409 saved_search_name_taken).
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchCreate'}}}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: 'Limit reached (code saved_search_limit) or name taken (code saved_search_name_taken)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+  /projects/{project_id}/saved-searches/{saved_search_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: saved_search_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      tags: [jobs]
+      description: Owner-only. Renames, changes the frequency or switches the digest on or off; at least one field is required.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchUpdate'}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: 'Name taken (code saved_search_name_taken)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+    delete:
+      tags: [jobs]
+      description: Owner-only. Deletes one saved search of this project; another project's id gives 404.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Deleted}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/saved-searches/{saved_search_id}/preview:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: saved_search_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [jobs]
+      description: Owner-only. Sends the digest for this saved search to the owner now, without changing its schedule.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Sent, content: {application/json: {schema: {$ref: '#/components/schemas/DigestPreviewView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {description: 'Mail is not configured (code mail_unavailable)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/experience:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -965,6 +1037,16 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TokenRequest'}}}}
       responses:
         '204': {description: Done}
+  /digest/unsubscribe:
+    post:
+      tags: [auth]
+      description: Public. Turns off one saved search's digest from the emailed link token. 400 invalid_token when unknown or malformed.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TokenRequest'}}}}
+      responses:
+        '204': {description: Done}
+        '400': {description: 'Invalid token (code invalid_token)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
   /auth/resend-verification:
     post:
       tags: [auth]
@@ -1141,6 +1223,69 @@ components:
         kind: {type: string, enum: [job, company]}
         value: {type: string, minLength: 1, maxLength: 300}
         label: {type: string, minLength: 1, maxLength: 300}
+    SavedSearchFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        q: {type: string, maxLength: 200, default: ''}
+        cities: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 80}, default: []}
+        work_mode: {type: [string, 'null'], enum: [remote, hybrid, onsite, null]}
+        category: {type: [string, 'null'], pattern: '^[a-z0-9_-]{1,60}$'}
+        seniority: {type: array, maxItems: 10, default: [], items: {type: string, enum: [intern, junior, middle, senior, lead, staff, principal, c_level]}}
+        employment_type: {type: array, maxItems: 10, default: [], items: {type: string, enum: [full_time, part_time, contract, internship, fellowship]}}
+        company_type: {type: array, maxItems: 10, default: [], items: {type: string, enum: [product, startup, agency, outsource, outstaff, inhouse, government]}}
+        skills: {type: array, maxItems: 5, default: [], items: {type: string, pattern: '^[a-z0-9][a-z0-9.+#-]{0,40}$'}}
+        posting_language: {type: [string, 'null'], enum: [th, null]}
+        salary_min: {type: [integer, 'null'], minimum: 1, maximum: 1000000, description: THB per month}
+    SavedSearchCreate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 80}
+        filters: {$ref: '#/components/schemas/SavedSearchFilters'}
+        frequency: {type: string, enum: [daily, weekly], default: daily}
+    SavedSearchUpdate:
+      type: object
+      additionalProperties: false
+      description: At least one field is required.
+      properties:
+        name: {type: [string, 'null'], minLength: 1, maxLength: 80}
+        frequency: {type: [string, 'null'], enum: [daily, weekly, null]}
+        digest_enabled: {type: [boolean, 'null']}
+    SavedSearchView:
+      type: object
+      additionalProperties: false
+      required: [id, name, filters, frequency, digest_enabled, next_run_at, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        filters: {$ref: '#/components/schemas/SavedSearchFilters'}
+        frequency: {type: string, enum: [daily, weekly]}
+        digest_enabled: {type: boolean}
+        next_run_at: {type: string, format: date-time}
+        last_sent_at: {type: [string, 'null'], format: date-time}
+        created_at: {type: string, format: date-time}
+    DigestStatusView:
+      type: object
+      additionalProperties: false
+      required: [email_verified, notifications_enabled]
+      properties:
+        email_verified: {type: boolean}
+        notifications_enabled: {type: boolean}
+    SavedSearchListView:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        items: {type: array, default: [], items: {$ref: '#/components/schemas/SavedSearchView'}}
+        status: {$ref: '#/components/schemas/DigestStatusView'}
+    DigestPreviewView:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {type: string, enum: [sent]}
     ExperienceItemCreate:
       type: object
       additionalProperties: false

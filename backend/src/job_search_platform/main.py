@@ -43,6 +43,7 @@ from job_search_platform.services.files import Files
 from job_search_platform.services.grants import Grants
 from job_search_platform.services.owner_sessions import OwnerSessions
 from job_search_platform.services.runs import RunService
+from job_search_platform.services.saved_searches import SavedSearches
 from job_search_platform.services.settings import Settings
 from job_search_platform.services import contracts
 from job_search_platform.workers.executor import RunExecutor
@@ -136,12 +137,14 @@ def build_services() -> Services:
     mailer = SmtpMailer.from_env()  # None without SMTP_HOST: Accounts logs mail_disabled and drops mail
     accounts = Accounts(sessions, owner_sessions, mailer, public_origin=owner_sessions.public_origin, runs=runs,
                         workspace_root=runtime.workspace_root)
-    supervisor = WorkerSupervisor(sessions, queue, executor, runtime, purge=lambda: accounts.purge_due(store))
+    saved_searches = SavedSearches(sessions, mailer, public_origin=owner_sessions.public_origin)
+    supervisor = WorkerSupervisor(sessions, queue, executor, runtime, purge=lambda: accounts.purge_due(store),
+                                  digests=saved_searches.housekeeping)
     return Services(sessions=sessions, owner_sessions=owner_sessions, files=files,
                     documents=documents, runs=runs, grants=grants, settings=settings,
                     approvals=approvals, supervisor=supervisor, runtime=runtime,
                     queue=queue, artifacts=artifacts, secret_store=secrets, engine=engine,
-                    accounts=accounts, mailer=mailer)
+                    accounts=accounts, mailer=mailer, saved_searches=saved_searches)
 
 
 def _safe_field_names(exc: RequestValidationError) -> dict[str, str] | None:

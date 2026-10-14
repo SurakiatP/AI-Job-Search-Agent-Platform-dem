@@ -94,6 +94,9 @@ def world(api_context):
     hidden = api_context.client.post(f"{BASE}/projects/{project_id}/job-search/hidden", headers=_write_headers(csrf_alice),
                                      json={"kind": "job", "value": "alice-job", "label": "Alice job"})
     assert item.status_code == 201 and hidden.status_code == 201, (item.text, hidden.text)
+    saved = api_context.client.post(f"{BASE}/projects/{project_id}/saved-searches", headers=_write_headers(csrf_alice),
+                                    json={"name": "Alice search", "filters": {"q": "python"}})
+    assert saved.status_code == 201, saved.text
     state = _alice_state(api_context, project_id)
     assert state == (ALICE_PROJECT_NAME, {session_id: ALICE_SESSION_TITLE})
     csrf_bob = _login(api_context, bob.user_id)
@@ -104,7 +107,7 @@ def world(api_context):
         bob_session=bob_session, bob_run=str(bob_run), alice_csrf=csrf_alice, alice_state=state,
         ids={"project_id": project_id, "session_id": session_id, "cv_id": str(cv_id), "cv_revision_id": str(cv_revision_id), "job_id": job_id,
              "job_revision_id": job_id, "document_id": str(doc.document), "revision_id": str(doc.revision),
-             "file_id": str(doc.file), "run_id": str(run_id), "grant_id": alice_grant["id"],
+             "file_id": str(doc.file), "run_id": str(run_id), "grant_id": alice_grant["id"], "saved_search_id": saved.json()["id"],
              "approval_id": str(approval_id), "item_id": item.json()["id"], "hidden_id": hidden.json()["id"],
              "adapter": "career_ops"},
     )
@@ -234,6 +237,7 @@ _OVERRIDES = {
     ("POST", "/projects/{project_id}/grants"): lambda ids: {"capabilities": ["results:read"]},
     ("POST", "/projects/{project_id}/runs/{run_id}/input"): lambda ids: {"answers": {"q": "a"}},
     ("POST", "/projects/{project_id}/jobs/{job_id}/application/events"): lambda ids: {"kind": "note", "text": "x"},
+    ("PATCH", "/projects/{project_id}/saved-searches/{saved_search_id}"): lambda ids: {"digest_enabled": False},
     ("POST", "/projects/{project_id}/sessions"): lambda ids: {"cv_revision_id": ids["cv_revision_id"], "job_revision_id": ids["job_id"]},
 }
 

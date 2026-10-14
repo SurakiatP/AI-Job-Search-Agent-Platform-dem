@@ -38,7 +38,9 @@ from job_search_platform.services.documents import Artifacts, Documents
 from job_search_platform.services.files import Files
 from job_search_platform.services.grants import Grants
 from job_search_platform.services.owner_sessions import OwnerSessions
+from job_search_platform.integrations.mailer import MemoryMailer
 from job_search_platform.services.runs import RunService
+from job_search_platform.services.saved_searches import SavedSearches
 from job_search_platform.services.settings import Settings
 from job_search_platform.workers.queue import PostgresRunQueue
 from helpers import login_cookie, primary_cv, provider_config, revisions
@@ -123,6 +125,7 @@ def api_context(migrated_engine, tmp_path):
         approvals=ApprovalService(sessions),
         supervisor=_Supervisor(), runtime=runtime, queue=PostgresRunQueue(sessions),
         artifacts=artifacts, secret_store=secret_store,
+        saved_searches=SavedSearches(sessions, MemoryMailer(), public_origin="http://127.0.0.1:8765"),
     )
     app = create_app(services)
     with TestClient(app, base_url="http://127.0.0.1:8765") as http:
