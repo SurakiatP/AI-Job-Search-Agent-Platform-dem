@@ -17,6 +17,8 @@ LIMITS: dict[str, tuple[int, int]] = {
     "login_email": (10, 900),
     "resend_email": (3, 3600),
     "forgot_email": (3, 3600),
+    "digest_preview": (5, 3600),
+    "digest_unsubscribe_ip": (30, 3600),
 }
 RETENTION = timedelta(hours=24)
 
