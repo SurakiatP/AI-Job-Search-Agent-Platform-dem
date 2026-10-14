@@ -497,3 +497,33 @@ class RunArtifact(Base):
         ForeignKeyConstraint(["project_id", "file_id"], ["files.project_id", "files.id"]),
         ForeignKeyConstraint(["project_id", "document_revision_id"], ["document_revisions.project_id", "document_revisions.id"]),
     )
+
+
+class SavedSearch(Base):
+    """FR-J05 saved job-search filters with a scheduled email digest."""
+    __tablename__ = "saved_searches"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    filters: Mapped[dict] = mapped_column(JSON, nullable=False)
+    frequency: Mapped[str] = mapped_column(String(8), nullable=False)
+    digest_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
+    unsubscribe_token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (
+        UniqueConstraint("project_id", "name", name="uq_saved_searches_name"),
+        CheckConstraint("frequency IN ('daily','weekly')", name="ck_saved_searches_frequency"),
+        CheckConstraint("length(btrim(name)) BETWEEN 1 AND 80", name="ck_saved_searches_name"),
+        Index("ix_saved_searches_due", "next_run_at", postgresql_where=text("digest_enabled")),
+    )
+
+
+class SavedSearchSeen(Base):
+    """Job slugs already sent in a digest for one saved search; pruned after 90 days."""
+    __tablename__ = "saved_search_seen"
+    saved_search_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("saved_searches.id", ondelete="CASCADE"), primary_key=True)
+    slug: Mapped[str] = mapped_column(String(200), primary_key=True)
+    seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (Index("ix_saved_search_seen_at", "seen_at"),)

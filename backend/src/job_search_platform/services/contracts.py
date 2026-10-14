@@ -41,12 +41,11 @@ T = TypeVar("T")
 _Choices = Annotated[list[T], Field(max_length=10), AfterValidator(lambda v: sorted(set(v)))]
 
 
-class MatchRunRequest(DTO):
-    cv_revision_id: UUID
+class SavedSearchFilters(DTO):
+    """Job-search filters shared by Smart Match runs and FR-J05 saved searches; one set of rules."""
     q: Annotated[str, StringConstraints(max_length=200)] = ""
     cities: Annotated[list[Annotated[str, StringConstraints(min_length=1, max_length=80)]], Field(max_length=10)] = []
     work_mode: Literal["remote", "hybrid", "onsite"] | None = None
-    posted_within_days: Annotated[int, Field(ge=1, le=90)] | None = None
     category: Annotated[str, StringConstraints(pattern=r"^[a-z0-9_-]{1,60}$")] | None = None
     seniority: _Choices[Literal["intern", "junior", "middle", "senior", "lead", "staff", "principal", "c_level"]] = []
     employment_type: _Choices[Literal["full_time", "part_time", "contract", "internship", "fellowship"]] = []
@@ -55,6 +54,11 @@ class MatchRunRequest(DTO):
                       AfterValidator(lambda v: sorted(set(v))), Field(max_length=5)] = []
     posting_language: Literal["th"] | None = None
     salary_min: Annotated[int, Field(ge=1, le=1_000_000)] | None = None
+
+
+class MatchRunRequest(SavedSearchFilters):
+    cv_revision_id: UUID
+    posted_within_days: Annotated[int, Field(ge=1, le=90)] | None = None
     pool: Annotated[int, Field(ge=1, le=100)] = 100
     offset: Annotated[int, Field(ge=0, le=1000)] = 0
 
@@ -652,6 +656,53 @@ class ApplicationsUpdateInput(DTO):
         if self.stage is None and self.note is None:
             raise ValueError("stage_or_note_required")
         return self
+
+
+DigestFrequency = Literal["daily", "weekly"]
+_SavedSearchName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+
+
+class SavedSearchCreate(DTO):
+    name: _SavedSearchName
+    filters: SavedSearchFilters = SavedSearchFilters()
+    frequency: DigestFrequency = "daily"
+
+
+class SavedSearchUpdate(DTO):
+    name: _SavedSearchName | None = None
+    frequency: DigestFrequency | None = None
+    digest_enabled: bool | None = None
+
+    @model_validator(mode="after")
+    def validate_intent(self):
+        if self.name is None and self.frequency is None and self.digest_enabled is None:
+            raise ValueError("one_field_required")
+        return self
+
+
+class SavedSearchView(DTO):
+    id: UUID
+    name: str
+    filters: SavedSearchFilters
+    frequency: DigestFrequency
+    digest_enabled: bool
+    next_run_at: datetime
+    last_sent_at: datetime | None = None
+    created_at: datetime
+
+
+class DigestStatusView(DTO):
+    email_verified: bool
+    notifications_enabled: bool
+
+
+class SavedSearchListView(DTO):
+    items: tuple[SavedSearchView, ...] = ()
+    status: DigestStatusView
+
+
+class DigestPreviewView(DTO):
+    status: Literal["sent"]
 
 
 class ToolDescriptor(DTO):
