@@ -632,3 +632,72 @@ class OAuthToken(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     __table_args__ = (CheckConstraint("kind IN ('access','refresh')", name="ck_oauth_tokens_kind"),)
+
+
+JOB_POSTING_SOURCES = ("freehire", "greenhouse", "lever", "smartrecruiters")
+
+
+class JobPosting(Base):
+    """WP5 job store: one ingested posting per (source, external_id); Postgres is the system of record."""
+    __tablename__ = "job_postings"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    board: Mapped[str | None] = mapped_column(String(100))
+    external_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    slug: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    company: Mapped[str | None] = mapped_column(String(300))
+    location: Mapped[str | None] = mapped_column(String(300))
+    cities: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    province: Mapped[str | None] = mapped_column(String(8))
+    work_mode: Mapped[str | None] = mapped_column(String(10))
+    seniority: Mapped[str | None] = mapped_column(String(12))
+    employment_type: Mapped[str | None] = mapped_column(String(12))
+    company_type: Mapped[str | None] = mapped_column(String(12))
+    category: Mapped[str | None] = mapped_column(String(60))
+    skills: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    salary_min: Mapped[int | None] = mapped_column(Integer)
+    salary_max: Mapped[int | None] = mapped_column(Integer)
+    salary_currency: Mapped[str | None] = mapped_column(String(3))
+    salary_period: Mapped[str | None] = mapped_column(String(5))
+    salary_thb_month_min: Mapped[int | None] = mapped_column(Integer)
+    posting_language: Mapped[str | None] = mapped_column(String(2))
+    description_markdown: Mapped[str | None] = mapped_column(Text)
+    source_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    url_key: Mapped[str | None] = mapped_column(String(2048))
+    match_key: Mapped[str | None] = mapped_column(String(700))
+    canonical_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("job_postings.id", ondelete="SET NULL"))
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    missed_runs: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reality_stale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    index_dirty: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    __table_args__ = (
+        UniqueConstraint("source", "external_id", name="uq_job_postings_source_external"),
+        CheckConstraint(f"source IN ({_in(JOB_POSTING_SOURCES)})", name="ck_job_postings_source"),
+        CheckConstraint("missed_runs >= 0", name="ck_job_postings_missed"),
+        Index("ix_job_postings_url_key", "url_key"),
+        Index("ix_job_postings_match_key", "match_key"),
+        Index("ix_job_postings_open", "closed_at", "canonical_id"),
+        Index("ix_job_postings_board", "source", "board"),
+    )
+
+
+class IngestRun(Base):
+    """One hourly ingest run; per_board maps 'source:board' to {state, fetched, error}."""
+    __tablename__ = "ingest_runs"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(8), nullable=False)
+    per_board: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    fetched: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    closed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    merged: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    __table_args__ = (CheckConstraint("status IN ('running','ok','partial','failed')", name="ck_ingest_runs_status"),)
