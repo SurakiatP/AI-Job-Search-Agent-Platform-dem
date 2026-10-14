@@ -117,3 +117,11 @@ def test_request_state_key_is_created_private_and_reused(tmp_path):
     os.chmod(path, 0o640)
     with pytest.raises(RuntimeError, match="private_runtime_credentials_unavailable"):
         mcp_tasks.mcp_request_state_key(tmp_path)
+
+
+def test_request_state_key_empty_file_is_refused(tmp_path):
+    path = tmp_path / "mcp-request-state-key"
+    path.write_text("")
+    path.chmod(0o600)
+    with pytest.raises(RuntimeError, match="private_runtime_credentials_unavailable"):
+        mcp_tasks.mcp_request_state_key(tmp_path)

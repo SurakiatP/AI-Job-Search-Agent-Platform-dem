@@ -80,4 +80,7 @@ def mcp_request_state_key(private_dir: Path) -> str:
             handle.write(secrets.token_urlsafe(32))
     if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & 0o077:
         raise RuntimeError("private_runtime_credentials_unavailable")
-    return path.read_text(encoding="utf-8").strip()
+    key = path.read_text(encoding="utf-8").strip()
+    if not key:
+        raise RuntimeError("private_runtime_credentials_unavailable")
+    return key
