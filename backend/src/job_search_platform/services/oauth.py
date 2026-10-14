@@ -36,7 +36,10 @@ CIMD_DEADLINE = 5.0
 
 
 def is_cimd_client_id(client_id: str) -> bool:
-    parts = urlsplit(client_id)
+    try:
+        parts = urlsplit(client_id)
+    except ValueError:
+        return False
     return (parts.scheme == "https" and bool(parts.hostname) and parts.path not in {"", "/"}
             and not parts.username and not parts.password and not parts.fragment)
 
@@ -54,7 +57,10 @@ def redirect_uris_ok(uris) -> bool:
     if not uris:
         return False
     for uri in uris:
-        parts = urlsplit(str(uri))
+        try:
+            parts = urlsplit(str(uri))
+        except ValueError:
+            return False
         scheme = parts.scheme.lower()
         if scheme == "https":
             ok = bool(parts.hostname)
@@ -130,6 +136,8 @@ class OAuth:
 
     # -- clients ------------------------------------------------------------------------------
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
+        if len(client_id) > 2048 or "\x00" in client_id:
+            return None
         def cached():
             with self.sessions() as db:
                 return db.get(OAuthClient, client_id)
@@ -170,6 +178,8 @@ class OAuth:
             raise AuthorizeError("invalid_target", "resource must be this MCP server")
         if params.scopes and not set(params.scopes) <= GRANT_CAPABILITIES:
             raise AuthorizeError("invalid_scope", "unknown scope")
+        if len(params.state or "") > 512 or len(params.code_challenge or "") > 128:
+            raise AuthorizeError("invalid_request", "state or code_challenge too long")
         handle = secrets.token_urlsafe(32)
 
         def add():
@@ -207,6 +217,7 @@ class OAuth:
                 row = db.scalar(select(OAuthAuthorization).where(OAuthAuthorization.code_hash == digest))
                 if row is None or row.client_id != client.client_id:
                     return None
+                # a replay after the 60-second code lifetime is rejected by the SDK before the provider sees it, so it does not revoke the grant's tokens
                 # consumed codes still load, so a replay reaches exchange and revokes the grant's tokens
                 return AuthorizationCode(code=authorization_code, scopes=list(row.scopes), expires_at=row.code_expires_at.timestamp(),
                                          client_id=row.client_id, code_challenge=row.code_challenge,

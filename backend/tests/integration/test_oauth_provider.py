@@ -67,6 +67,13 @@ async def test_register_rejects_confidential_client(migrated_engine):
 
 
 @pytest.mark.integration
+async def test_get_client_rejects_malformed_ids(migrated_engine):
+    _, svc = _svc(migrated_engine)
+    assert await svc.get_client("x" * 3000) is None
+    assert await svc.get_client("a\x00b") is None
+
+
+@pytest.mark.integration
 async def test_authorize_requires_matching_resource_and_known_scopes(migrated_engine):
     _, svc = _svc(migrated_engine)
     client = _public_client()
@@ -79,6 +86,10 @@ async def test_authorize_requires_matching_resource_and_known_scopes(migrated_en
     with pytest.raises(AuthorizeError) as caught:
         await svc.authorize(client, AuthorizationParams(scopes=["admin"], resource=RESOURCE, **base))
     assert caught.value.error == "invalid_scope"
+    for over in ({"state": "s" * 513}, {"code_challenge": "c" * 129}):
+        with pytest.raises(AuthorizeError) as caught:
+            await svc.authorize(client, AuthorizationParams(scopes=None, resource=RESOURCE, **{**base, **over}))
+        assert caught.value.error == "invalid_request"
     url = await svc.authorize(client, AuthorizationParams(scopes=["results:read"], resource=RESOURCE + "/", **base))
     assert url.startswith("http://127.0.0.1:8765/app/oauth/consent?request=")
 

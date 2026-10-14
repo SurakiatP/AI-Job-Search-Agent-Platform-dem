@@ -37,6 +37,16 @@ test('approve sends chosen project, capabilities and expiry, then returns to the
   expect(days).toBeGreaterThan(29); expect(days).toBeLessThan(31);
 });
 
+test('write-capable scopes are never pre-checked', async ({ page }) => {
+  view.requested_scopes = ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write'];
+  await consent(page);
+  await page.goto('/app/oauth/consent?request=handle-all');
+  await expect(page.getByRole('checkbox')).toHaveCount(7);
+  await expect(page.getByRole('checkbox', { checked: true })).toHaveCount(5);
+  await expect(page.getByRole('checkbox', { checked: false })).toHaveCount(2);
+  view.requested_scopes = ['jobs:evaluate'];
+});
+
 test('deny returns access_denied to the client', async ({ page }) => {
   const posts = await consent(page);
   await page.goto('/app/oauth/consent?request=handle-2');

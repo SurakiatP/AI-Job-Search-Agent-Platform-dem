@@ -17,7 +17,8 @@ def _doc(**over):
 def test_is_cimd_client_id():
     assert oauth.is_cimd_client_id(URL)
     for value in ("http://client.example.test/c.json", "https://client.example.test", "https://client.example.test/",
-                  "0b6f6c1e-7d84-4c55-9f0a-2a8f6f0f6d11", "https://u:p@client.example.test/c.json", URL + "#x"):
+                  "0b6f6c1e-7d84-4c55-9f0a-2a8f6f0f6d11", "https://u:p@client.example.test/c.json", URL + "#x",
+                  "https://[abc/x"):
         assert not oauth.is_cimd_client_id(value), value
 
 
@@ -79,6 +80,6 @@ async def test_cimd_blocked_url_is_not_fetched(monkeypatch):
     (["http://[::1]:9/cb"], True), (["http://evil.example.test/cb"], False), (["javascript:alert(1)//"], False),
     (["data:text/html,x"], False), (["file:///etc/passwd"], False), (["cursor://callback"], True),
     (["com.example.app:/cb"], True), (["JavaScript:alert(1)"], False), ([], False),
-    (["https://app.example.test/cb", "javascript:alert(1)//"], False)])
+    (["https://app.example.test/cb", "javascript:alert(1)//"], False), (["https://[abc/x"], False)])
 def test_redirect_uris_ok(uris, ok):
     assert oauth.redirect_uris_ok(uris) is ok

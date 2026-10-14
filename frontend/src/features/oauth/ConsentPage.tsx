@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { AppShell } from '../../components/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { ApiError } from '../../lib/api-types';
@@ -24,6 +25,10 @@ function navigableRedirect(value: string): string | null {
 function hostOf(url: string) { try { return new URL(url).host; } catch { return url; } }
 
 export function ConsentPage() {
+  return <AppShell><ConsentBody /></AppShell>;
+}
+
+function ConsentBody() {
   const { t } = useTranslation();
   const { t: ts } = useTranslation('settings');
   const [params] = useSearchParams();
@@ -40,7 +45,8 @@ export function ConsentPage() {
   if (view.status === 'error') return <ErrorState onRetry={view.reload} />;
   if (!view.data) return <LoadingState />;
   const data = view.data;
-  const capabilities = chosen ?? ((data.requested_scopes.length ? data.requested_scopes : ['results:read']).filter(s => s in capabilityKey) as Capability[]);
+  // Write-capable scopes are never pre-checked; the owner must tick them deliberately.
+  const capabilities = chosen ?? ((data.requested_scopes.length ? data.requested_scopes : ['results:read']).filter(s => s in capabilityKey && s !== 'applications:apply' && s !== 'applications:write') as Capability[]);
   const projectId = project || data.projects[0]?.id || '';
 
   async function submit(kind: 'approve' | 'deny') {

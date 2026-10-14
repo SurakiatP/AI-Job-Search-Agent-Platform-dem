@@ -14,6 +14,7 @@ import pytest
 import uvicorn
 
 from job_search_platform.api.shared import create_shared_app
+from job_search_platform.services import rate_limits
 from job_search_platform.services.grants import Grants
 from job_search_platform.services.oauth import OAuth, validate_cimd
 from test_rest_api import _owner, _write_headers, api_context as _api_context_fixture
@@ -56,6 +57,7 @@ async def _flow(api_context, port, *, register=True, client_id=None, fetch=None)
         assert prm["resource"] == f"{origin}/mcp" and prm["authorization_servers"] == [origin]
         meta = (await http.get("/.well-known/oauth-authorization-server")).json()
         assert meta["token_endpoint_auth_methods_supported"] == ["none"]
+        assert meta["authorization_response_iss_parameter_supported"] is True
         assert meta["client_id_metadata_document_supported"] is True and meta["code_challenge_methods_supported"] == ["S256"]
         if register:
             reg = await http.post("/register", json={"client_name": "Synthetic DCR", "redirect_uris": [CB],
@@ -66,6 +68,8 @@ async def _flow(api_context, port, *, register=True, client_id=None, fetch=None)
                                                     "code_challenge": challenge, "code_challenge_method": "S256",
                                                     "state": "s", "resource": f"{origin}/mcp"})
         assert auth.status_code == 302
+        bad = await http.get("/authorize", params={"client_id": "https://[abc/x", "response_type": "code", "redirect_uri": CB})
+        assert bad.status_code < 500
         handle = parse_qs(urlsplit(auth.headers["location"]).query)["request"][0]
         expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
         approved = api_context.client.post(f"/api/v1/oauth/requests/{handle}/approve", headers=_write_headers(csrf),
@@ -155,6 +159,42 @@ async def test_insecure_issuer_leaves_oauth_off(api_context, unused_tcp_port):
             assert (await http.get("/.well-known/oauth-authorization-server")).status_code == 404
             unauth = await http.post("/mcp/", json={})
             assert unauth.status_code == 401 and "resource_metadata" not in unauth.headers.get("www-authenticate", "")
+    finally:
+        server.should_exit = True
+        await task
+
+
+@pytest.mark.integration
+async def test_public_host_and_authorize_rate_limit(api_context, unused_tcp_port, monkeypatch):
+    monkeypatch.setitem(rate_limits.LIMITS, "oauth_authorize_ip", (3, 3600))
+    server, task, origin, _, _, tokens, _ = await _flow(api_context, unused_tcp_port)
+    services = api_context.client.app.state.services
+    services.oauth.issuer = "https://agents.example.test"
+    server2, task2 = await _serve(create_shared_app(services, host="127.0.0.1", port=unused_tcp_port + 1), unused_tcp_port + 1)
+    try:
+        async with httpx.AsyncClient(base_url=origin, trust_env=False) as http:
+            codes = [(await http.get("/authorize", params={"client_id": "x"})).status_code for _ in range(5)]
+            assert codes[0] != 429 and codes[-1] == 429  # the flow already spent two hits
+        async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{unused_tcp_port + 1}", trust_env=False) as http:
+            auth = {"authorization": f"Bearer {tokens['access_token']}"}
+            ok = await http.post("/mcp/", json={}, headers={**auth, "host": "agents.example.test"})
+            evil = await http.post("/mcp/", json={}, headers={**auth, "host": "evil.example.test"})
+            assert ok.status_code != 421 and evil.status_code == 421  # Host check, not the (empty) body, decides
+    finally:
+        server.should_exit = server2.should_exit = True
+        await task
+        await task2
+
+
+@pytest.mark.integration
+async def test_issuer_with_path_leaves_oauth_off(api_context, unused_tcp_port):
+    services = api_context.client.app.state.services
+    services.oauth = OAuth(api_context.sessions, issuer="https://agents.example.test/base", resource="https://agents.example.test/base/mcp",
+                           consent_url="http://127.0.0.1:8765/app/oauth/consent")
+    server, task = await _serve(create_shared_app(services, host="127.0.0.1", port=unused_tcp_port), unused_tcp_port)
+    try:
+        async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{unused_tcp_port}", trust_env=False) as http:
+            assert (await http.get("/.well-known/oauth-authorization-server")).status_code == 404
     finally:
         server.should_exit = True
         await task

@@ -14,7 +14,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from mcp.server.auth.handlers.metadata import MetadataHandler
-from mcp.server.auth.routes import (REGISTRATION_PATH, build_metadata, create_auth_routes,
+from mcp.server.auth.routes import (AUTHORIZATION_PATH, REGISTRATION_PATH, build_metadata, create_auth_routes,
                                     create_protected_resource_routes, cors_middleware)
 from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 from pydantic import AnyHttpUrl, TypeAdapter
@@ -91,13 +91,18 @@ def oauth_routes(provider) -> list[Route]:
     metadata.token_endpoint_auth_methods_supported = ["none"]
     metadata.revocation_endpoint_auth_methods_supported = ["none"]
     metadata.client_id_metadata_document_supported = True
+    metadata.authorization_response_iss_parameter_supported = True
     replaced = []
     for route in routes:
         if route.path == "/.well-known/oauth-authorization-server":
             route = Route(route.path, endpoint=cors_middleware(MetadataHandler(metadata).handle, ["GET", "OPTIONS"]),
                           methods=["GET", "OPTIONS"])
         elif route.path == REGISTRATION_PATH:
-            route = Route(route.path, endpoint=_RateLimited(provider.sessions, route.endpoint), methods=["POST", "OPTIONS"])
+            route = Route(route.path, endpoint=_RateLimited(provider.sessions, route.endpoint, "oauth_register_ip", {"POST"}),
+                          methods=["POST", "OPTIONS"])
+        elif route.path == AUTHORIZATION_PATH:
+            route = Route(route.path, endpoint=_RateLimited(provider.sessions, route.endpoint, "oauth_authorize_ip", {"GET", "POST"}),
+                          methods=route.methods)
         replaced.append(route)
     return replaced + create_protected_resource_routes(AnyHttpUrl(provider.resource), [issuer], scopes_supported=scopes,
                                                        resource_name="Job Search Platform MCP")
@@ -106,16 +111,16 @@ def oauth_routes(provider) -> list[Route]:
 class _RateLimited:
     """ASGI wrapper (a class, because Starlette treats a plain function endpoint as a request handler)."""
 
-    def __init__(self, sessions, app):
-        self.sessions, self.app = sessions, app
+    def __init__(self, sessions, app, bucket, methods):
+        self.sessions, self.app, self.bucket, self.methods = sessions, app, bucket, methods
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and scope["method"] == "POST":
+        if scope["type"] == "http" and scope["method"] in self.methods:
             ip = (scope.get("client") or ("unknown",))[0]
 
             def hit():
                 with self.sessions.begin() as db:
-                    rate_limits.hit(db, "oauth_register_ip", ip)
+                    rate_limits.hit(db, self.bucket, ip)
             try:
                 await asyncio.to_thread(hit)
             except ServiceError:

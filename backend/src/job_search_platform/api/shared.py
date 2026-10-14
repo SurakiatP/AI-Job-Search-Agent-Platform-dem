@@ -1,5 +1,6 @@
 """Opt-in protocol listener. Owner REST, cookies and frontend are never mounted here."""
 import logging
+from urllib.parse import urlsplit
 from contextlib import asynccontextmanager
 
 from mcp.server.auth.routes import build_resource_metadata_url, validate_issuer_url
@@ -26,6 +27,8 @@ def _oauth_enabled(oauth) -> bool:
         return False
     try:
         validate_issuer_url(AnyHttpUrl(oauth.issuer))
+        if urlsplit(oauth.issuer).path not in {"", "/"}:
+            raise ValueError("issuer path")
     except ValueError:
         logger.warning("oauth_disabled_insecure_issuer")
         return False
@@ -35,7 +38,9 @@ def _oauth_enabled(oauth) -> bool:
 def create_shared_app(services: Services, *, host: str, port: int) -> Starlette:
     authority = f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
     oauth = services.oauth if _oauth_enabled(services.oauth) else None
-    mcp = create_mcp_app(services, allowed_hosts=[authority], allowed_origins=[],
+    # behind a proxy the client's Host is the public origin, not the bind address
+    public = [urlsplit(oauth.issuer).netloc] if oauth else []
+    mcp = create_mcp_app(services, allowed_hosts=[authority, *public], allowed_origins=[],
                          resource=oauth.resource if oauth else None,
                          resource_metadata_url=str(build_resource_metadata_url(AnyHttpUrl(oauth.resource))) if oauth else None)
 

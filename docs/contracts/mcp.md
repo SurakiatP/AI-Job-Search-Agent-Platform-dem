@@ -27,10 +27,10 @@ The scoped TCP test uses a parent FastAPI lifespan to enter the SDK app lifespan
 The shared listener also serves an OAuth 2.1 authorization server so MCP clients can connect without a pasted `jspg_` token.
 
 - Discovery: `/.well-known/oauth-protected-resource/mcp` (RFC 9728) and `/.well-known/oauth-authorization-server` (RFC 8414). An unauthenticated `/mcp` request returns `401` with `WWW-Authenticate: Bearer resource_metadata="<origin>/.well-known/oauth-protected-resource/mcp"`.
-- Endpoints: `/authorize`, `/token`, `/register` (per-IP rate limited), `/revoke`.
+- Endpoints: `/authorize` (per-IP rate limited, 60/hour), `/token`, `/register` (per-IP rate limited, 20/hour), `/revoke`.
 - Public clients only (`token_endpoint_auth_method: none`), registered by Client ID Metadata Document (an https `client_id` URL, fetched with an SSRF guard) or Dynamic Client Registration.
 - PKCE `S256` is required, and the `resource` parameter is required and must equal the `/mcp` URL.
 - Access tokens (`jspo_`) last 1 hour and are valid only at `/mcp` (A2A refuses them). Refresh tokens rotate; reuse of a rotated refresh token revokes the grant's tokens.
 - Each consent creates a `Grant` that the owner can revoke under Connected agents; revocation takes effect on the next request.
-- OAuth is off unless the shared origin (`SHARE_PUBLIC_ORIGIN`) is https or loopback; then the OAuth routes are not mounted and `/mcp` advertises no resource metadata.
+- OAuth is off unless the shared origin (`SHARE_PUBLIC_ORIGIN`) is https or loopback with no path; with OAuth on, `/mcp` also accepts the `SHARE_PUBLIC_ORIGIN` host. Otherwise the OAuth routes are not mounted and `/mcp` advertises no resource metadata.
 - `jspg_` grant tokens keep working unchanged.
