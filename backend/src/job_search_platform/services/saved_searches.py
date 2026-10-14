@@ -5,17 +5,21 @@ calls housekeeping(). Agents never reach this module (owner-only resource "saved
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, true
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 
-from job_search_platform.db.models import Project, ProjectPreference, SavedSearch, User
+from job_search_platform.db.models import Project, ProjectPreference, SavedSearch, SavedSearchSeen, User
+from job_search_platform.integrations.mailer import Mail
 from job_search_platform.services import job_sources, rate_limits
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
@@ -51,6 +55,56 @@ def _view(row: SavedSearch) -> SavedSearchView:
     return SavedSearchView(id=row.id, name=row.name, filters=row.filters, frequency=row.frequency,
                            digest_enabled=row.digest_enabled, next_run_at=row.next_run_at,
                            last_sent_at=row.last_sent_at, created_at=row.created_at)
+
+
+DIGEST_DAYS = 7
+DIGEST_LIMIT = 20
+SEEN_RETENTION = timedelta(days=90)
+DUE_BATCH = 20
+
+DIGEST_MESSAGES = {
+    "en": {"subject": "{n} new jobs: {name}", "empty_subject": "No new jobs right now: {name}",
+           "intro": "New jobs for your saved search “{name}”:", "empty": "There are no new jobs for “{name}” right now.",
+           "stale": "possibly stale", "age": "{d} days ago", "today": "today",
+           "open": "See all results in the app:", "stop": "Stop this digest:"},
+    "th": {"subject": "งานใหม่ {n} ตำแหน่ง: {name}", "empty_subject": "ยังไม่มีงานใหม่: {name}",
+           "intro": "งานใหม่สำหรับการค้นหาที่บันทึกไว้ “{name}”:", "empty": "ตอนนี้ยังไม่มีงานใหม่สำหรับ “{name}”",
+           "stale": "อาจเป็นประกาศเก่า", "age": "{d} วันก่อน", "today": "วันนี้",
+           "open": "ดูผลทั้งหมดในแอป:", "stop": "หยุดรับสรุปนี้:"},
+}
+
+
+def render_digest(locale: str, name: str, items: list[dict], app_link: str, unsubscribe_link: str) -> tuple[str, str]:
+    m = DIGEST_MESSAGES.get(locale, DIGEST_MESSAGES["en"])
+    lines: list[str] = []
+    for number, item in enumerate(items, 1):
+        age = item.get("age_days")
+        detail = " · ".join(part for part in (
+            item.get("company"), ", ".join(item.get("cities") or []) or None,
+            (m["today"] if age == 0 else m["age"].format(d=age)) if isinstance(age, int) else None,
+            m["stale"] if item.get("stale") else None) if part)
+        lines.append(f"{number}. {item['title']}")
+        if detail:
+            lines.append(f"   {detail}")
+        if item.get("source_url"):
+            lines.append(f"   {item['source_url']}")
+    head = m["intro"].format(name=name) if items else m["empty"].format(name=name)
+    subject = m["subject"].format(n=len(items), name=name) if items else m["empty_subject"].format(name=name)
+    return subject, "\n".join([head, "", *lines, "", m["open"], app_link, "", m["stop"], unsubscribe_link])
+
+
+def _query(filters: dict) -> str:
+    """Search-page URL query for stored filters (lists comma-joined, empty values dropped)."""
+    pairs = []
+    for key, value in filters.items():
+        text = ",".join(value) if isinstance(value, list) else ("" if value is None else str(value))
+        if text:
+            pairs.append((key, text))
+    return urlencode(pairs)
+
+
+class _SendFailed(Exception):
+    pass
 
 
 class SavedSearches:
@@ -144,3 +198,98 @@ class SavedSearches:
             if row is None:
                 raise ServiceError("invalid_token")
             row.digest_enabled = False
+
+    def collect(self, db, row: SavedSearch, *, exclude_seen: bool = True) -> list[dict]:
+        page = self.search(**row.filters, posted_within_days=DIGEST_DAYS, limit=DIGEST_LIMIT, offset=0)
+        seen = set(db.scalars(select(SavedSearchSeen.slug).where(SavedSearchSeen.saved_search_id == row.id))) \
+            if exclude_seen else set()
+        items, slugs = [], set()
+        for item in page["items"]:
+            slug = item.get("slug")
+            if not slug or slug in seen or slug in slugs:
+                continue
+            slugs.add(slug)
+            items.append(item)
+        return items[:DIGEST_LIMIT]
+
+    def _mail(self, account: User, row: SavedSearch, items: list[dict]) -> None:
+        """Rotate the unsubscribe token and send; raises _SendFailed when no mail can go out."""
+        if self.mailer is None:
+            logger.warning("mail_disabled", extra={"kind": "digest"})
+            raise _SendFailed
+        token, digest = _new_token()
+        row.unsubscribe_token_hash = digest
+        app_link = f"{self.public_origin}/app/projects/{row.project_id}/search?{_query(row.filters)}"
+        subject, text = render_digest(account.locale, row.name, items, app_link,
+                                      f"{self.public_origin}/digest/unsubscribe?token={token}")
+        try:
+            self.mailer.send(Mail(account.email, subject, text))
+        except Exception:  # noqa: BLE001 - delivery failure must not record the digest as sent
+            logger.warning("digest_send_failed", extra={"saved_search_id": str(row.id)})
+            raise _SendFailed from None
+
+    def _run_one(self, now: datetime, done: set) -> tuple[UUID, int] | None:
+        row_id = None
+        try:
+            with self.sessions.begin() as db:
+                row = db.scalar(select(SavedSearch).where(
+                    SavedSearch.digest_enabled, SavedSearch.next_run_at <= now,
+                    SavedSearch.id.not_in(done) if done else true(),
+                ).order_by(SavedSearch.next_run_at).limit(1).with_for_update(skip_locked=True))
+                if row is None:
+                    return None
+                row_id = row.id
+                account, notifications = self._gates(db, row.project_id)
+                if account is None or account.email_verified_at is None or account.disabled_at is not None or not notifications:
+                    row.next_run_at = next_slot(now, row.frequency)
+                    return row_id, 0
+                try:
+                    items = self.collect(db, row)
+                except ServiceError:
+                    logger.warning("digest_source_failed", extra={"saved_search_id": str(row_id)})
+                    return row_id, 0  # next_run_at unchanged: the next housekeeping tick retries
+                if items:
+                    self._mail(account, row, items)
+                    db.execute(pg_insert(SavedSearchSeen).values(
+                        [{"saved_search_id": row_id, "slug": item["slug"], "seen_at": now} for item in items]
+                    ).on_conflict_do_nothing())
+                    row.last_sent_at = now
+                row.next_run_at = next_slot(now, row.frequency)
+                return row_id, 1 if items else 0
+        except _SendFailed:
+            return row_id, 0  # rolled back: no seen rows, no token change, same next_run_at
+
+    async def run_due(self, now: datetime | None = None) -> int:
+        now = now or datetime.now(timezone.utc)
+        done: set = set()
+        sent = 0
+        for _ in range(DUE_BATCH):
+            result = await asyncio.to_thread(self._run_one, now, done)
+            if result is None:
+                break
+            done.add(result[0])
+            sent += result[1]
+        return sent
+
+    def preview(self, actor: Actor, project_id: UUID, saved_search_id: UUID) -> None:
+        try:
+            with self.sessions.begin() as db:
+                authorize(db, actor, project_id, "write", "saved_search")
+                row = self._row(db, project_id, saved_search_id)
+                account, _ = self._gates(db, project_id)
+                if account is None or account.email_verified_at is None:
+                    raise ServiceError("email_unverified")
+                rate_limits.hit(db, "digest_preview", str(actor.user_id))
+                self._mail(account, row, self.collect(db, row, exclude_seen=False))
+        except _SendFailed:
+            raise ServiceError("mail_unavailable", retryable=True) from None
+
+    def prune_seen(self, now: datetime | None = None) -> int:
+        now = now or datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            return db.execute(delete(SavedSearchSeen).where(SavedSearchSeen.seen_at < now - SEEN_RETENTION)).rowcount
+
+    async def housekeeping(self) -> int:
+        sent = await self.run_due()
+        await asyncio.to_thread(self.prune_seen)
+        return sent

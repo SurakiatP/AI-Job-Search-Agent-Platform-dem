@@ -122,6 +122,7 @@ class WorkerSupervisor:
         shutdown_timeout: float = 30,
         purge: Callable[[], Awaitable[int]] | None = None,
         purge_interval: float = 300,
+        digests: Callable[[], Awaitable[int]] | None = None,
     ) -> None:
         self.sessions = sessions
         self.queue = queue
@@ -131,6 +132,7 @@ class WorkerSupervisor:
         self.shutdown_timeout = shutdown_timeout
         self._purge = purge
         self.purge_interval = purge_interval
+        self._digests = digests
         self.lease_owner = f"worker-{uuid.uuid4()}"
         self._active: dict[uuid.UUID, tuple[Run, asyncio.Task]] = {}
         self._closing = asyncio.Event()
@@ -165,6 +167,11 @@ class WorkerSupervisor:
             await asyncio.to_thread(self._prune_rate_limits)
         except Exception as exc:  # noqa: BLE001 - housekeeping must never stop dispatch
             logger.warning("purge_failed", extra={"error": type(exc).__name__})
+        if self._digests is not None:
+            try:
+                await self._digests()
+            except Exception as exc:  # noqa: BLE001 - digests must never stop dispatch
+                logger.warning("digests_failed", extra={"error": type(exc).__name__})
 
     def _prune_rate_limits(self) -> None:
         with self.sessions.begin() as db:
