@@ -229,6 +229,7 @@ _FUTURE = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
 # Request models with cross-field validators that a required-fields-only example cannot satisfy.
 _OVERRIDES = {
     ("POST", "/projects/{project_id}/agent/jobs/fit"): lambda ids: {"job_revision_id": ids["job_id"]},
+    ("POST", "/projects/{project_id}/agent/applications/update"): lambda ids: {"job_id": ids["job_id"], "note": "x"},
     ("POST", "/projects/{project_id}/approvals"): lambda ids: {"action": "delete_document_revision", "revision_id": ids["revision_id"]},
     ("POST", "/projects/{project_id}/grants"): lambda ids: {"capabilities": ["results:read"]},
     ("POST", "/projects/{project_id}/runs/{run_id}/input"): lambda ids: {"answers": {"q": "a"}},

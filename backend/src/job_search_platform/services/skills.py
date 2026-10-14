@@ -11,10 +11,10 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from job_search_platform.services import agent_jobs
+from job_search_platform.services import agent_jobs, applications
 from job_search_platform.services.contracts import (
     DTO, AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApplyPrepareInput, ApplySubmitInput, Capability,
-    ProtocolJobInput,
+    ApplicationDetailView, ApplicationsListInput, ApplicationsListResult, ApplicationsUpdateInput, ProtocolJobInput,
 )
 
 
@@ -128,6 +128,38 @@ SKILLS: tuple[Skill, ...] = (
         tags=("documents", "drafting"),
         examples=("Draft a follow-up for the job I applied to",),
         input_model=ProtocolJobInput,
+    ),
+    Skill(
+        id="applications_list",
+        name="Application board",
+        description=(
+            "Read this Project's application board: every saved job with its stage (saved, applied, responded, "
+            "interview, offer, hired, rejected, withdrawn), or one application's recruiter contact and event "
+            "ledger when job_id is given. Read-only; creates no Task."
+        ),
+        capability="results:read",
+        tags=("applications", "tracking"),
+        examples=("Which of my applications are at the interview stage?",),
+        input_model=ApplicationsListInput,
+        kind="direct",
+        handler=applications.applications_list,
+        output_model=ApplicationsListResult,
+    ),
+    Skill(
+        id="applications_update",
+        name="Update application",
+        description=(
+            "Move an application that was already applied for to responded, interview, offer, hired, rejected or "
+            "withdrawn, and/or add a note to its ledger. Cannot mark a job applied (that needs the owner's "
+            "approval) or edit the recruiter contact. Creates no Task."
+        ),
+        capability="applications:write",
+        tags=("applications", "tracking"),
+        examples=("Move my Example Co application to interview",),
+        input_model=ApplicationsUpdateInput,
+        kind="direct",
+        handler=applications.applications_update,
+        output_model=ApplicationDetailView,
     ),
 )
 SKILL_BY_ID: dict[str, Skill] = {skill.id: skill for skill in SKILLS}

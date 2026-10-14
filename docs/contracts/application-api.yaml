@@ -239,6 +239,40 @@ paths:
         '200': {description: Coverage, content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobFitResult'}}}}
         '403': {description: Grant lacks jobs:evaluate}
         '404': {description: Unknown job revision or CV}
+  /projects/{project_id}/agent/applications/list:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [applications]
+      description: >-
+        Direct agent call (skill applications_list, capability results:read; owner session also allowed). Without
+        job_id returns the board cards; with job_id returns that application's detail (contact and event ledger).
+        Read-only; no Run is created.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationsListInput'}}}
+      responses:
+        '200': {description: Board or one application, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationsListResult'}}}}
+        '403': {description: Grant lacks results:read}
+        '404': {description: Unknown job revision}
+  /projects/{project_id}/agent/applications/update:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [applications]
+      description: >-
+        Direct agent call (skill applications_update, capability applications:write; owner session also allowed).
+        Moves an already-applied application to responded, interview, offer, hired, rejected or withdrawn and/or adds a
+        note. Cannot set applied (owner approval) or edit the contact. 409 application_not_applied before the job was
+        applied for; 422 when neither stage nor note is given. No Run is created.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationsUpdateInput'}}}
+      responses:
+        '200': {description: Updated application, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationDetailView'}}}}
+        '403': {description: Grant lacks applications:write}
+        '404': {description: Unknown job revision}
+        '409': {description: Application not applied yet, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search/match:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -1348,6 +1382,25 @@ components:
         stage: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn]}
         contact: {$ref: '#/components/schemas/ApplicationContact'}
         events: {type: array, items: {$ref: '#/components/schemas/ApplicationEventView'}}
+    ApplicationsListInput:
+      type: object
+      additionalProperties: false
+      properties:
+        job_id: {type: [string, 'null'], format: uuid}
+    ApplicationsListResult:
+      type: object
+      additionalProperties: false
+      properties:
+        applications: {type: array, items: {$ref: '#/components/schemas/ApplicationCardView'}}
+        application: {anyOf: [{$ref: '#/components/schemas/ApplicationDetailView'}, {type: 'null'}]}
+    ApplicationsUpdateInput:
+      type: object
+      additionalProperties: false
+      required: [job_id]
+      properties:
+        job_id: {type: string, format: uuid}
+        stage: {type: [string, 'null'], enum: [responded, interview, offer, hired, rejected, withdrawn, null]}
+        note: {type: [string, 'null'], minLength: 1, maxLength: 2000}
     CVRevisionView:
       allOf:
         - {$ref: '#/components/schemas/RevisionView'}
@@ -1674,7 +1727,7 @@ components:
       additionalProperties: false
       required: [name, description, required_capability]
       properties:
-        name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, apply_prepare, apply_submit, draft_follow_up, jobs_search, jobs_fit, get_run, cancel_run, list_results]}
+        name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, apply_prepare, apply_submit, draft_follow_up, jobs_search, jobs_fit, applications_list, applications_update, get_run, cancel_run, list_results]}
         description: {type: string}
         required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}
     ToolsView:

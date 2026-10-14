@@ -26,7 +26,7 @@ def test_markdown_to_text_leaves_snake_case_and_math_alone():
 
 def test_direct_skills_have_handlers_and_are_not_operations():
     direct = [s for s in SKILLS if s.kind == "direct"]
-    assert {s.id for s in direct} == {"jobs_search", "jobs_fit"}
+    assert {s.id for s in direct} == {"jobs_search", "jobs_fit", "applications_list", "applications_update"}
     for skill in direct:
         assert callable(skill.handler) and skill.output_model is not None
         assert skill.id not in get_args(Operation)

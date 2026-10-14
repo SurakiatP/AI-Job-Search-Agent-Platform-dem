@@ -155,7 +155,7 @@ async def test_official_mcp_http_tools_submission_cancel_and_revocation(api_cont
                 names = {tool.name for tool in (await session.list_tools()).tools}
                 assert names == {
                     "evaluate_job", "draft_documents", "tailor_cv", "jobs_search", "jobs_fit",
-                    "apply_prepare", "apply_submit", "draft_follow_up",
+                    "apply_prepare", "apply_submit", "draft_follow_up", "applications_list", "applications_update",
                     "get_run", "cancel_run", "list_results"
                 }
                 args = {

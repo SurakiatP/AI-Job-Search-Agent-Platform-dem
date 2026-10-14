@@ -37,4 +37,4 @@ def test_grant_capabilities_unchanged():
 
 def test_tool_descriptor_name_is_one_flat_enum():
     name = ToolDescriptor.model_json_schema()["properties"]["name"]
-    assert name["enum"] == ["evaluate_job", "draft_documents", "tailor_cv", "apply_prepare", "apply_submit", "draft_follow_up", "jobs_search", "jobs_fit", "get_run", "cancel_run", "list_results"]
+    assert name["enum"] == ["evaluate_job", "draft_documents", "tailor_cv", "apply_prepare", "apply_submit", "draft_follow_up", "jobs_search", "jobs_fit", "applications_list", "applications_update", "get_run", "cancel_run", "list_results"]

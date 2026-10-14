@@ -656,7 +656,7 @@ class ApplicationsUpdateInput(DTO):
 
 class ToolDescriptor(DTO):
     # A nested Literal flattens to one OpenAPI enum; `Operation | Literal[...]` would emit anyOf.
-    name: Literal[Operation, Literal["jobs_search", "jobs_fit", "get_run", "cancel_run", "list_results"]]
+    name: Literal[Operation, Literal["jobs_search", "jobs_fit", "applications_list", "applications_update", "get_run", "cancel_run", "list_results"]]
     description: str
     required_capability: Capability
 
