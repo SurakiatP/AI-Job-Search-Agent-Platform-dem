@@ -79,6 +79,9 @@ _OK = {"title": "Engineer", "absolute_url": "https://g/1", "id": 1}
     ("freehire", {"public_slug": "s", "title": "Eng", "url": "https://f/1", "enrichment": {"category": ["x"]}}),
     ("freehire", {"public_slug": "s", "title": "Eng", "url": "https://f/1", "enrichment": {"category": {"a": 1}}}),
     ("lever", {"id": "x", "text": "Eng", "hostedUrl": "https://l/x", "createdAt": 10**20}),
+    ("lever", {"id": "x", "text": "Eng", "hostedUrl": "https://l/x", "salaryRange": {"min": 1, "currency": 5, "interval": 7}}),
+    ("freehire", {"public_slug": "s", "title": "Eng", "url": "https://f/1", "enrichment": {"salary_min": 1, "salary_currency": 5}}),
+    ("freehire", {"public_slug": "s", "title": "Eng", "url": "https://f/1", "enrichment": {"salary_min": 1, "salary_currency": ["T"], "salary_period": ["x"]}}),
 ])
 def test_malformed_shapes_never_raise(source, raw):
     row = map_posting(source, "acme", raw)

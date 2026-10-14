@@ -117,7 +117,8 @@ def map_posting(source: str, board: str | None, raw: dict) -> dict | None:
     cities = f.get("cities") if isinstance(f.get("cities"), list) and f["cities"] else ([province[1]] if province else [])
     smin, smax, currency, period = f.get("salary") or (None, None, None, None)
     smin, smax = _int(smin), _int(smax)
-    period = _PERIOD.get(str(period or "").lower())
+    currency = currency if isinstance(currency, str) else None
+    period = _PERIOD.get(period.lower()) if isinstance(period, str) else None
     language = f.get("posting_language") if f.get("posting_language") in ("th", "en") else jd.posting_language_of(f"{title}\n{description}")
     company = _text(f.get("company"))
     ckey = company_key(company)
