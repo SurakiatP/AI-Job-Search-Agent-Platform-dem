@@ -9,11 +9,13 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
 import os
 import random
 import secrets
+import socket
 import time
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
@@ -66,17 +68,40 @@ def allow_private() -> bool:
     return os.environ.get("WEBHOOK_ALLOW_PRIVATE") == "1"
 
 
-async def validate_url(url: str) -> None:
+async def _resolve(host: str) -> list[str]:
+    infos = await asyncio.get_running_loop().getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    return [info[4][0] for info in infos]
+
+
+def _public(address: str) -> bool:
+    ip = ipaddress.ip_address(address.split("%")[0])
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+        ip = ip.ipv4_mapped
+    return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified)
+
+
+async def check_url(url: str) -> str:
+    """Classify a webhook URL: ok | blocked | unresolvable | invalid. Never raises."""
     try:
         parts = urlsplit(url)
-    except ValueError:
-        raise ServiceError("invalid_webhook_url") from None
-    if allow_private():
-        if parts.scheme not in {"http", "https"} or not parts.hostname:
-            raise ServiceError("invalid_webhook_url")
-        return
-    from a2a.utils.push_url_validator import validate_push_notification_url
-    if parts.scheme != "https" or not await validate_push_notification_url(url):
+        host = parts.hostname
+        parts.port  # noqa: B018 - raises ValueError on a malformed port
+        if not host or parts.scheme not in {"http", "https"}:
+            return "blocked"
+        if parts.scheme != "https" and not allow_private():
+            return "blocked"
+        addresses = await _resolve(host)
+        if not allow_private() and not all(_public(a) for a in addresses):
+            return "blocked"
+        return "ok" if addresses else "unresolvable"
+    except (ValueError, UnicodeError):
+        return "invalid"
+    except OSError:
+        return "unresolvable"
+
+
+async def validate_url(url: str) -> None:
+    if await check_url(url) != "ok":
         raise ServiceError("invalid_webhook_url")
 
 
@@ -163,6 +188,7 @@ def _classify(code: int | None, error: str | None) -> str:
 
 
 MAX_ENDPOINTS = 5
+TOTAL_DEADLINE = 15.0  # seconds, whole send incl. connect and headers
 
 
 def _webhook_view(row: WebhookEndpoint) -> WebhookView:
@@ -212,9 +238,10 @@ class Webhooks:
         body = json.dumps(item["payload"], separators=(",", ":"), ensure_ascii=False).encode()
         if len(body) > MAX_BODY:
             return None, "payload_too_large"
-        try:
-            await validate_url(item["url"])
-        except ServiceError:
+        verdict = await check_url(item["url"])
+        if verdict == "unresolvable":
+            return None, "dns_error"
+        if verdict != "ok":
             return None, "blocked_url"
         headers = {"Content-Type": "application/json", "User-Agent": "ai-job-search-platform-webhooks/1",
                    "X-JSP-Event": item["event"], "X-JSP-Delivery": str(item["id"]),
@@ -222,12 +249,13 @@ class Webhooks:
         if item["token"]:
             headers["X-A2A-Notification-Token"] = item["token"]
         try:
-            response = await client.post(item["url"], content=body, headers=headers)
-        except httpx.TimeoutException:
+            async with asyncio.timeout(TOTAL_DEADLINE):
+                async with client.stream("POST", item["url"], content=body, headers=headers) as response:
+                    return response.status_code, None  # body is never read
+        except (httpx.TimeoutException, TimeoutError):
             return None, "timeout"
         except httpx.HTTPError as exc:
             return None, type(exc).__name__[:200]
-        return response.status_code, None
 
     def _record(self, item: dict, code: int | None, error: str | None, now: datetime) -> None:
         final_errors = {"endpoint_disabled", "grant_revoked", "blocked_url", "payload_too_large"}
@@ -250,10 +278,14 @@ class Webhooks:
         claimed = await asyncio.to_thread(self._claim, now)
         if not claimed:
             return 0
-        async with httpx.AsyncClient(follow_redirects=False, timeout=self.timeout) as client:
-            results = await asyncio.gather(*(self._send(client, item) for item in claimed))
-        for item, (code, error) in zip(claimed, results):
-            await asyncio.to_thread(self._record, item, code, error, now)
+        async with httpx.AsyncClient(follow_redirects=False, timeout=self.timeout, trust_env=False) as client:
+            results = await asyncio.gather(*(self._send(client, item) for item in claimed), return_exceptions=True)
+        for item, result in zip(claimed, results):
+            code, error = (None, type(result).__name__[:200]) if isinstance(result, BaseException) else result
+            try:
+                await asyncio.to_thread(self._record, item, code, error, now)
+            except Exception as exc:  # one row's failure must not skip the others
+                logger.warning("webhook record failed: %s", type(exc).__name__)
         return len(claimed)
 
     def prune(self, now: datetime | None = None) -> int:

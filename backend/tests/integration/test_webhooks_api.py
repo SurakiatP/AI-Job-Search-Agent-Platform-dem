@@ -56,7 +56,7 @@ def test_ssrf_validation_and_limit(api_context, monkeypatch):
     client = api_context.client
     csrf, pid = _project(api_context)
     base = f"{API}/{pid}/webhooks"
-    for url in ("http://hooks.example.com/x", "https://127.0.0.1/x", "https://169.254.169.254/latest"):
+    for url in ("http://hooks.example.com/x", "https://127.0.0.1/x", "https://169.254.169.254/latest", "https://ex..com/x"):
         bad = client.post(base, headers=_write_headers(csrf), json={"url": url, "events": ["run.completed"]})
         assert bad.status_code == 422 and bad.json()["code"] == "invalid_webhook_url", url
     monkeypatch.setenv("WEBHOOK_ALLOW_PRIVATE", "1")

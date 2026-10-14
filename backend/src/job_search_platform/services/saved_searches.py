@@ -278,8 +278,10 @@ class SavedSearches:
                 if items:
                     if row.digest_enabled:
                         self._mail(account, row, items)
-                    if row.push_enabled:
-                        webhooks.enqueue_digest(db, row.project_id, row.id, row.name, items, now)
+                    queued = webhooks.enqueue_digest(db, row.project_id, row.id, row.name, items, now) if row.push_enabled else 0
+                    if not row.digest_enabled and not queued:  # push-only with no receiver: keep items unseen
+                        row.next_run_at = next_slot(now, row.frequency)
+                        return row_id, 0
                     db.execute(pg_insert(SavedSearchSeen).values(
                         [{"saved_search_id": row_id, "slug": item["slug"], "seen_at": now} for item in items]
                     ).on_conflict_do_nothing())

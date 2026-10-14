@@ -11,7 +11,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import sessionmaker
 
 from helpers import owner, project, provider_config, revisions, session
-from job_search_platform.db.models import A2APushConfig, Grant, Run, SavedSearch, WebhookDelivery, WebhookEndpoint
+from job_search_platform.db.models import A2APushConfig, Grant, Run, SavedSearch, SavedSearchSeen, WebhookDelivery, WebhookEndpoint
 from job_search_platform.services import saved_searches as ss
 from job_search_platform.services.contracts import SavedSearchCreate
 from job_search_platform.services.runs import append_event
@@ -145,3 +145,29 @@ def test_a2a_push_state_matches_tasks_get(world, event, data, state, metadata):
     (row,) = [r for r in _deliveries(sessions) if r.push_config_id]
     update_ = row.payload["statusUpdate"]
     assert update_["status"]["state"] == state and update_["metadata"] == metadata
+
+
+@pytest.mark.integration
+def test_push_only_digest_without_receiver_keeps_items_unseen(world):
+    sessions, actor, pid, *_ = world
+    items = [{"slug": "a", "title": "Synthetic job", "company": None, "cities": [], "age_days": 1, "stale": False,
+              "source_url": "https://jobs.example.test/a"}]
+    service = ss.SavedSearches(sessions, None, public_origin="http://127.0.0.1:8765",
+                               search=lambda **kw: {"items": items, "total": 1, "limit": 20, "offset": 0})
+    created = service.create(actor, pid, SavedSearchCreate(name="Push only", filters={"q": "x"}), now=NOW - timedelta(days=1))
+    with sessions.begin() as db:
+        db.execute(update(WebhookEndpoint).where(WebhookEndpoint.project_id == pid).values(enabled=False))
+        db.execute(update(SavedSearch).where(SavedSearch.id == created.id).values(
+            digest_enabled=False, push_enabled=True, next_run_at=NOW - timedelta(minutes=1)))
+    asyncio.run(service.run_due(NOW))
+    with sessions() as db:
+        row = db.get(SavedSearch, created.id)
+        assert row.last_sent_at is None and row.next_run_at == ss.next_slot(NOW, "daily")
+        assert db.scalars(select(SavedSearchSeen)).all() == []
+    assert [r for r in _deliveries(sessions) if r.event_type == "digest.ready"] == []
+    later = ss.next_slot(NOW, "daily")
+    with sessions.begin() as db:
+        db.execute(update(WebhookEndpoint).where(WebhookEndpoint.url.like("%/all")).values(enabled=True))
+    asyncio.run(service.run_due(later))
+    (hook,) = [r for r in _deliveries(sessions) if r.event_type == "digest.ready"]
+    assert hook.payload["data"]["items"][0]["slug"] == "a"

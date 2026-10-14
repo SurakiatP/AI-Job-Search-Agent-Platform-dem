@@ -217,7 +217,7 @@ Backend (Postgres, plus a real local HTTP receiver: a small Starlette app on uvi
   - 404 → `dead` immediately.
   - 302 → `dead`, and the redirect target receives nothing.
   - Timeout is retryable.
-- **SSRF:**
+- **SSRF:** DNS rebinding between validation and connect is an accepted, documented limitation.
   - Without the env flag, `http://127.0.0.1`, `https://10.0.0.1` and `https://localhost` are rejected at registration.
   - A URL that passed registration but later resolves to a private address is rejected at send time, using a monkeypatched validator.
 - **Revocation and disabling:** after a grant is revoked, its A2A configs get no new deliveries, and pending rows die with `grant_revoked`. A disabled endpoint's pending rows die with `endpoint_disabled`.

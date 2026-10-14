@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import socket
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -221,3 +222,60 @@ async def test_supervisor_runs_delivery_loop(migrated_engine):
     supervisor._closing.set()
     await asyncio.wait_for(task, 1)
     assert len(calls) >= 2
+
+
+@pytest.mark.integration
+async def test_one_raising_send_does_not_lose_the_batch(receiver, setup, monkeypatch):
+    sessions, pid = setup
+    good = _queue(sessions, pid, _endpoint(sessions, pid, f"{receiver.base}/ok"), NOW)
+    bad = _queue(sessions, pid, _endpoint(sessions, pid, f"{receiver.base}/boom"), NOW)
+    original = wh.Webhooks._send
+
+    async def send(self, client, item):
+        if item["url"].endswith("/boom"):
+            raise RuntimeError("secret detail")
+        return await original(self, client, item)
+    monkeypatch.setattr(wh.Webhooks, "_send", send)
+    await wh.Webhooks(sessions, rand=lambda: 0.0).deliver_due(NOW)
+    assert _row(sessions, good).status == "delivered"
+    row = _row(sessions, bad)
+    assert (row.status, row.attempts, row.last_error) == ("pending", 1, "RuntimeError")
+
+
+@pytest.mark.integration
+async def test_dripping_body_is_never_read_and_total_deadline_bounds_a_send(receiver, setup, monkeypatch):
+    sessions, pid = setup
+    monkeypatch.setattr(wh, "TOTAL_DEADLINE", 0.5)
+    receiver.delay["/late"] = 3  # under the per-phase timeout, over the total deadline
+    drip = _queue(sessions, pid, _endpoint(sessions, pid, f"{receiver.base}/drip"), NOW)
+    late = _queue(sessions, pid, _endpoint(sessions, pid, f"{receiver.base}/late"), NOW)
+    fast = _queue(sessions, pid, _endpoint(sessions, pid, f"{receiver.base}/ok"), NOW)
+    started = asyncio.get_running_loop().time()
+    await wh.Webhooks(sessions).deliver_due(NOW)
+    assert asyncio.get_running_loop().time() - started < 2.5
+    assert _row(sessions, drip).status == "delivered" and _row(sessions, fast).status == "delivered"
+    row = _row(sessions, late)
+    assert row.status == "pending" and row.attempts == 1 and row.last_error == "timeout"
+
+
+@pytest.mark.integration
+async def test_proxy_env_is_ignored(receiver, setup, monkeypatch):
+    sessions, pid = setup
+    for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"):
+        monkeypatch.setenv(name, "http://127.0.0.1:9")
+    did = _queue(sessions, pid, _endpoint(sessions, pid, f"{receiver.base}/ok"), NOW)
+    await wh.Webhooks(sessions).deliver_due(NOW)
+    assert _row(sessions, did).status == "delivered" and len(receiver.calls) == 1
+
+
+@pytest.mark.integration
+async def test_unresolvable_host_is_retryable_dns_error(receiver, setup, monkeypatch):
+    sessions, pid = setup
+
+    async def gone(host):
+        raise socket.gaierror("nope")
+    monkeypatch.setattr(wh, "_resolve", gone)
+    did = _queue(sessions, pid, _endpoint(sessions, pid, f"{receiver.base}/ok"), NOW)
+    await wh.Webhooks(sessions).deliver_due(NOW)
+    row = _row(sessions, did)
+    assert (row.status, row.attempts, row.last_error) == ("pending", 1, "dns_error") and receiver.calls == []

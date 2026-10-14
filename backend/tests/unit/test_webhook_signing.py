@@ -1,5 +1,6 @@
 """FR-P06 signing, backoff and URL rules. Synthetic data only."""
 import hashlib
+import socket
 import hmac
 from datetime import timedelta
 
@@ -31,3 +32,32 @@ async def test_validate_url_rules(monkeypatch):
     await webhooks.validate_url("http://127.0.0.1:9/x")
     with pytest.raises(ServiceError):
         await webhooks.validate_url("ftp://127.0.0.1/x")
+
+
+async def test_check_url_classification(monkeypatch):
+    monkeypatch.delenv("WEBHOOK_ALLOW_PRIVATE", raising=False)
+    table = {"pub.test": ["93.184.216.34"], "a.test": ["10.0.0.1"], "b.test": ["127.0.0.1"],
+             "c.test": ["::ffff:127.0.0.1"], "d.test": ["169.254.169.254"]}
+
+    async def fake(host):
+        if host == "gone.test":
+            raise socket.gaierror("nope")
+        if ".." in host:
+            raise UnicodeError("label empty")  # what getaddrinfo raises for malformed IDNA hosts
+        return table[host]
+    monkeypatch.setattr(webhooks, "_resolve", fake)
+    assert await webhooks.check_url("https://pub.test/x") == "ok"
+    for host in "abcd":
+        assert await webhooks.check_url(f"https://{host}.test/x") == "blocked", host
+    assert await webhooks.check_url("https://gone.test/x") == "unresolvable"
+    assert await webhooks.check_url("https://ex..com/") == "invalid"
+    monkeypatch.setenv("WEBHOOK_ALLOW_PRIVATE", "1")
+    assert await webhooks.check_url("http://b.test/x") == "ok"
+    assert await webhooks.check_url("https://ex..com/") == "invalid"
+
+
+async def test_validate_url_malformed_is_service_error(monkeypatch):
+    monkeypatch.delenv("WEBHOOK_ALLOW_PRIVATE", raising=False)
+    with pytest.raises(ServiceError) as caught:
+        await webhooks.validate_url("https://ex..com/x")
+    assert caught.value.code == "invalid_webhook_url"
