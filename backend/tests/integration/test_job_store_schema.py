@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from job_search_platform.db.models import IngestRun, JobPosting
+from job_search_platform.db.models import IngestRun, JobIndexDelete, JobPosting, JobPostingTombstone
 
 
 def _posting(**extra):
@@ -25,7 +25,7 @@ def test_posting_round_trip_and_defaults(db_session):
     db_session.flush()
     row = db_session.query(JobPosting).one()
     assert row.cities == [] and row.skills == [] and row.missed_runs == 0
-    assert row.closed_at is None and row.canonical_id is None and row.index_dirty is True
+    assert row.canonical_id is None and row.index_dirty is True
 
 
 @pytest.mark.integration
@@ -49,3 +49,14 @@ def test_ingest_run_row(db_session):
     db_session.add(IngestRun(id=uuid.uuid4(), started_at=datetime.now(timezone.utc), status="running"))
     db_session.flush()
     assert db_session.query(IngestRun).one().per_board == {}
+
+
+@pytest.mark.integration
+def test_tombstone_and_index_delete_round_trip(db_session):
+    now = datetime.now(timezone.utc)
+    pid = uuid.uuid4()
+    db_session.add_all([JobPostingTombstone(source="lever", external_id="x", deleted_at=now, last_seen_at=now),
+                        JobIndexDelete(posting_id=pid, deleted_at=now)])
+    db_session.flush()
+    assert db_session.get(JobPostingTombstone, ("lever", "x")).deleted_at == now
+    assert db_session.get(JobIndexDelete, pid).deleted_at == now

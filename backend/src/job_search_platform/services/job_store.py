@@ -1,4 +1,4 @@
-"""WP5 job store: upsert per board, close rule, dedup clusters, description purge (spec D6, D8, D9)."""
+"""WP5 job store: upsert per board, delete rule, retention, dedup clusters (spec D6, D8, D9)."""
 from __future__ import annotations
 
 import json
@@ -9,17 +9,21 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from sqlalchemy import select, text, update
+from sqlalchemy import delete, func, literal, or_, select, text, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from job_search_platform.db.models import IngestRun, JobPosting
+from job_search_platform.db.models import IngestRun, JobIndexDelete, JobPosting, JobPostingTombstone
 from job_search_platform.integrations import job_boards
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.job_mapping import map_posting
 
-CLOSE_AFTER_MISSES = 2
+MAX_AGE = timedelta(days=90)
+DELETE_AFTER_MISSES = 2
+TOMBSTONE_UNSEEN = timedelta(days=7)
+TOMBSTONE_MAX = timedelta(days=180)
+RUN_LOG_MAX = timedelta(days=90)
 DEDUP_WINDOW = timedelta(days=30)
-PURGE_AFTER = timedelta(days=90)
 
 
 def _parse_ts(value: object) -> datetime | None:
@@ -32,48 +36,90 @@ def _parse_ts(value: object) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
+def delete_postings(db: Session, ids: list[uuid.UUID], now: datetime, *, tombstone: bool) -> int:
+    """The only row delete: queue search-index deletes, flag cluster members dirty, optionally tombstone."""
+    if not ids:
+        return 0
+    # members of a deleted canonical lose canonical_id via FK SET NULL; flag them so the index re-syncs them
+    db.execute(update(JobPosting).where(JobPosting.canonical_id.in_(ids)).values(index_dirty=True, updated_at=now))
+    if tombstone:
+        db.execute(pg_insert(JobPostingTombstone).from_select(
+            ["source", "external_id", "deleted_at", "last_seen_at"],
+            select(JobPosting.source, JobPosting.external_id, literal(now), literal(now)).where(JobPosting.id.in_(ids)),
+        ).on_conflict_do_nothing())
+    db.execute(pg_insert(JobIndexDelete).values([{"posting_id": i, "deleted_at": now} for i in ids])
+               .on_conflict_do_nothing())
+    return db.execute(delete(JobPosting).where(JobPosting.id.in_(ids))).rowcount
+
+
 def apply_board(db: Session, source: str, board: str | None, rows: list[dict], now: datetime) -> dict:
-    """One successfully fetched board: upsert what was seen, count a miss for what was not."""
+    """One successfully fetched board: upsert what was seen, count a miss for what was not, delete after two."""
     rows = list({r["external_id"]: r for r in rows}.values())  # last duplicate wins
-    counts = {"fetched": len(rows), "created": 0, "updated": 0, "closed": 0}
+    counts = {"fetched": len(rows), "created": 0, "updated": 0, "deleted": 0, "skipped_old": 0}
     existing = {p.external_id: p for p in db.scalars(select(JobPosting).where(
         JobPosting.source == source, JobPosting.board.is_(None) if board is None else JobPosting.board == board))}
-    seen = set()
+    tombstoned = set(db.scalars(select(JobPostingTombstone.external_id).where(JobPostingTombstone.source == source)))
+    seen, too_old = set(), []
     for values in rows:
         values = dict(values, posted_at=_parse_ts(values.get("posted_at")))
-        seen.add(values["external_id"])
-        row = existing.get(values["external_id"])
+        external_id = values["external_id"]
+        seen.add(external_id)
+        row = existing.get(external_id)
+        if values["posted_at"] is not None and values["posted_at"] < now - MAX_AGE:
+            counts["skipped_old"] += 1
+            if row is not None:
+                too_old.append(row.id)
+            continue
+        if external_id in tombstoned:
+            db.execute(update(JobPostingTombstone).where(
+                JobPostingTombstone.source == source, JobPostingTombstone.external_id == external_id)
+                .values(last_seen_at=now))
+            continue
         if row is None:
             db.add(JobPosting(id=uuid.uuid4(), first_seen_at=now, last_seen_at=now, updated_at=now,
                               index_dirty=True, **values))
             counts["created"] += 1
             continue
         row.last_seen_at, row.missed_runs = now, 0
-        if row.closed_at is not None:
-            row.closed_at, row.index_dirty, row.updated_at = None, True, now
         if row.content_hash != values["content_hash"]:
             for key, value in values.items():
                 setattr(row, key, value)
             row.index_dirty, row.updated_at = True, now
             counts["updated"] += 1
+    missing = []
     for external_id, row in existing.items():
-        if external_id in seen or row.closed_at is not None:
+        if external_id in seen:
             continue
         row.missed_runs += 1
-        if row.missed_runs >= CLOSE_AFTER_MISSES:
-            row.closed_at, row.index_dirty, row.updated_at = now, True, now
-            counts["closed"] += 1
+        if row.missed_runs >= DELETE_AFTER_MISSES:
+            missing.append(row.id)
+    db.flush()
+    delete_postings(db, too_old, now, tombstone=False)
+    counts["deleted"] = delete_postings(db, missing, now, tombstone=False)
     db.flush()
     return counts
 
 
-def recompute_clusters(db: Session, now: datetime) -> int:
-    """Union-find over url_key and (match_key within 30 days); canonical = earliest first_seen open member.
+def retire(db: Session, now: datetime) -> int:
+    """Delete postings older than MAX_AGE (posted_at, else first_seen_at); tombstone them so they stay gone."""
+    ids = list(db.scalars(select(JobPosting.id).where(
+        func.coalesce(JobPosting.posted_at, JobPosting.first_seen_at) < now - MAX_AGE)))
+    return delete_postings(db, ids, now, tombstone=True)
 
-    ponytail: full recompute in Python over all open postings each run (~10k rows); move to incremental
+
+def prune(db: Session, now: datetime) -> None:
+    db.execute(delete(JobPostingTombstone).where(or_(
+        JobPostingTombstone.last_seen_at < now - TOMBSTONE_UNSEEN, JobPostingTombstone.deleted_at < now - TOMBSTONE_MAX)))
+    db.execute(delete(IngestRun).where(IngestRun.started_at < now - RUN_LOG_MAX, IngestRun.status != "running"))
+
+
+def recompute_clusters(db: Session, now: datetime) -> int:
+    """Union-find over url_key and (match_key within 30 days); canonical = earliest first_seen member.
+
+    ponytail: full recompute in Python over all postings each run (~10k rows); move to incremental
     when the store passes ~200k.
     """
-    rows = list(db.scalars(select(JobPosting).where(JobPosting.closed_at.is_(None))))
+    rows = list(db.scalars(select(JobPosting)))
     parent = {r.id: r.id for r in rows}
 
     def find(x):
@@ -113,17 +159,8 @@ def recompute_clusters(db: Session, now: datetime) -> int:
             if r.canonical_id != target:
                 r.canonical_id, r.index_dirty, r.updated_at = target, True, now
             merged += target is not None
-    # closed postings never stay canonical of an open one, and never point at anything
-    db.execute(update(JobPosting).where(JobPosting.closed_at.is_not(None), JobPosting.canonical_id.is_not(None))
-               .values(canonical_id=None, index_dirty=True, updated_at=now))
     db.flush()
     return merged
-
-
-def purge_descriptions(db: Session, now: datetime) -> int:
-    return db.execute(update(JobPosting).where(
-        JobPosting.closed_at < now - PURGE_AFTER, JobPosting.description_markdown.is_not(None))
-        .values(description_markdown=None)).rowcount
 
 
 RUN_DEADLINE = timedelta(minutes=20)
@@ -149,7 +186,7 @@ def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards
             run = IngestRun(id=uuid.uuid4(), started_at=started, status="running", per_board={})
             with sessions.begin() as db:
                 db.add(run)
-            per_board, totals = {}, {"fetched": 0, "created": 0, "updated": 0, "closed": 0}
+            per_board, totals = {}, {"fetched": 0, "created": 0, "updated": 0, "deleted": 0}
             targets = [(s, None) for s in sources if s == "freehire"] + [
                 (s, b) for s in sources if s != "freehire" for b in boards.get(s, [])]
             for source, board in targets:
@@ -176,8 +213,9 @@ def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards
                       else "partial" if any(x != "ok" for x in states) else "ok")
             try:
                 with sessions.begin() as db:
+                    totals["deleted"] += retire(db, now)
                     merged = recompute_clusters(db, now)
-                    purge_descriptions(db, now)
+                    prune(db, now)
                     row = db.get(IngestRun, run.id)
                     row.status, row.per_board, row.finished_at, row.merged = status, per_board, now, merged
                     for name, value in totals.items():

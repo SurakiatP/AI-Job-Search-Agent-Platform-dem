@@ -1,4 +1,4 @@
-"""WP5 store upsert and close rule (spec D6). Synthetic rows only."""
+"""WP5 store upsert and delete rule (spec D6). Synthetic rows only."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -28,7 +28,7 @@ def test_new_posting_created_then_seen_unchanged(db_session):
     row = _row(db_session, 1)
     row.index_dirty = False
     counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0 + timedelta(hours=1))
-    assert counts == {"fetched": 1, "created": 0, "updated": 0, "closed": 0}
+    assert counts == {"fetched": 1, "created": 0, "updated": 0, "deleted": 0, "skipped_old": 0}
     assert row.last_seen_at == T0 + timedelta(hours=1) and row.index_dirty is False
 
 
@@ -41,22 +41,23 @@ def test_changed_content_updates_and_marks_dirty(db_session):
 
 
 @pytest.mark.integration
-def test_closes_after_two_missed_fetches(db_session):
+def test_deletes_after_two_missed_fetches(db_session):
     job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(2)], T0)
     job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0 + timedelta(hours=1))
-    assert _row(db_session, 2).closed_at is None and _row(db_session, 2).missed_runs == 1
+    assert _row(db_session, 2) is not None and _row(db_session, 2).missed_runs == 1
     counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0 + timedelta(hours=2))
-    assert counts["closed"] == 1 and _row(db_session, 2).closed_at == T0 + timedelta(hours=2)
+    assert counts["deleted"] == 1 and _row(db_session, 2) is None and _row(db_session, 1) is not None
 
 
 @pytest.mark.integration
-def test_reappearing_posting_reopens(db_session):
+def test_deleted_posting_seen_again_is_created_fresh(db_session):
     job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0)
     for h in (1, 2):
         job_store.apply_board(db_session, "greenhouse", "acme", [], T0 + timedelta(hours=h))
-    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0 + timedelta(hours=3))
+    assert _row(db_session, 1) is None
+    counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0 + timedelta(hours=3))
     row = _row(db_session, 1)
-    assert row.closed_at is None and row.missed_runs == 0 and row.first_seen_at == T0 and row.slug == "gh-acme-1"
+    assert counts["created"] == 1 and row.missed_runs == 0 and row.first_seen_at == T0 + timedelta(hours=3)
 
 
 @pytest.mark.integration
@@ -66,7 +67,7 @@ def test_other_boards_untouched(db_session):
                                                 "location": {"name": "Bangkok"}})
     for h in (1, 2):
         job_store.apply_board(db_session, "greenhouse", "beta", [other], T0 + timedelta(hours=h))
-    assert _row(db_session, 1).closed_at is None and _row(db_session, 1).missed_runs == 0
+    assert _row(db_session, 1).missed_runs == 0
 
 
 @pytest.mark.integration

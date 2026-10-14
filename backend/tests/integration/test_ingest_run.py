@@ -1,4 +1,4 @@
-"""WP5 ingest run: per-board isolation, failed boards never close, lock, idempotency. Fake fetchers."""
+"""WP5 ingest run: per-board isolation, failed boards never delete, lock, idempotency. Fake fetchers."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -50,7 +50,7 @@ def test_failed_fetch_never_counts_as_missing(migrated_engine):
     for h in (1, 2):
         _run(sessions, {("greenhouse", "a"): BoardError("timeout")}, T0 + timedelta(hours=h))
     with sessions() as db:
-        assert db.scalar(select(JobPosting.closed_at).where(JobPosting.external_id == "1")) is None
+        assert db.scalar(select(JobPosting.missed_runs).where(JobPosting.external_id == "1")) == 0
 
 
 @pytest.mark.integration
@@ -66,7 +66,7 @@ def test_rerun_with_same_input_is_idempotent(migrated_engine):
     plan = {("greenhouse", "a"): [_raw(1), _raw(2)]}
     _run(sessions, plan, T0)
     second = _run(sessions, plan, T0 + timedelta(hours=1))
-    assert (second.created, second.updated, second.closed) == (0, 0, 0)
+    assert (second.created, second.updated, second.deleted) == (0, 0, 0)
 
 
 @pytest.mark.integration
@@ -102,7 +102,7 @@ def test_no_targets_is_ok_with_zero_counts(migrated_engine):
     run = job_store.run_ingest(sessions, boards={}, sources=("greenhouse",), fetch=Fetch({}),
                                clock=lambda: T0, sleep=lambda s: None)
     assert run.status == "ok" and run.per_board == {}
-    assert (run.fetched, run.created, run.updated, run.closed) == (0, 0, 0, 0)
+    assert (run.fetched, run.created, run.updated, run.deleted) == (0, 0, 0, 0)
 
 
 @pytest.mark.integration
@@ -124,7 +124,7 @@ def test_apply_board_error_rolls_back_that_board_only(migrated_engine, monkeypat
         real(db, source, board, rows, now)  # pending writes must roll back
         if board == "a":
             raise RuntimeError("db down")
-        return {"fetched": len(rows), "created": len(rows), "updated": 0, "closed": 0}
+        return {"fetched": len(rows), "created": len(rows), "updated": 0, "deleted": 0, "skipped_old": 0}
 
     monkeypatch.setattr(job_store, "apply_board", flaky)
     run = _run(sessions, {("greenhouse", "a"): [_raw(1)], ("greenhouse", "b"): [_raw(2)]}, T0)

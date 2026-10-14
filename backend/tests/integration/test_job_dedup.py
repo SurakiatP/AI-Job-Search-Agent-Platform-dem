@@ -1,4 +1,4 @@
-"""WP5 cross-source dedup (spec D8) and purge (D9). Synthetic postings only."""
+"""WP5 cross-source dedup (spec D8). Synthetic postings only."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -87,37 +87,27 @@ def test_canonical_is_earliest_seen_and_stable(db_session):
 
 
 @pytest.mark.integration
-def test_canonical_close_promotes_open_member(db_session):
+def test_canonical_delete_promotes_member(db_session):
     job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, "https://g/1")], T0)
     _ingest(db_session, T0 + timedelta(hours=1), freehire=[_fh("fh-1", "https://g/1")], greenhouse=[_gh(1, "https://g/1")])
     for h in (2, 3):
         _ingest(db_session, T0 + timedelta(hours=h), freehire=[_fh("fh-1", "https://g/1")])
     fh = db_session.scalar(select(JobPosting).where(JobPosting.slug == "fh-1"))
-    assert fh.canonical_id is None and fh.closed_at is None and fh.index_dirty is True
+    assert fh.canonical_id is None and fh.index_dirty is True
 
 
 @pytest.mark.integration
-def test_purge_clears_description_after_90_days_only(db_session):
-    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, "https://g/1"), _gh(2, "https://g/2")], T0)
-    for row in db_session.scalars(select(JobPosting)):
-        row.closed_at = T0 - (timedelta(days=91) if row.external_id == "1" else timedelta(days=89))
-    assert job_store.purge_descriptions(db_session, T0) == 1
-    rows = {r.external_id: r for r in db_session.scalars(select(JobPosting))}
-    assert rows["1"].description_markdown is None and rows["2"].description_markdown is not None
-
-
-@pytest.mark.integration
-def test_closed_member_loses_canonical_and_is_marked_dirty(db_session):
+def test_deleted_member_leaves_no_dangling_canonical(db_session):
     job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, "https://g/1")], T0)
     _ingest(db_session, T0 + timedelta(hours=1), freehire=[_fh("fh-1", "https://g/1")], greenhouse=[_gh(1, "https://g/1")])
     fh = db_session.scalar(select(JobPosting).where(JobPosting.slug == "fh-1"))
     assert fh.canonical_id is not None
-    for h in (2, 3):  # freehire stops listing fh-1: closes after two misses
+    for h in (2, 3):  # freehire stops listing fh-1: deleted after two misses
         job_store.apply_board(db_session, "freehire", None, [], T0 + timedelta(hours=h))
-    assert fh.closed_at is not None and fh.canonical_id is not None
-    fh.index_dirty = False
+    assert db_session.scalar(select(JobPosting).where(JobPosting.slug == "fh-1")) is None
     job_store.recompute_clusters(db_session, T0 + timedelta(hours=3))
-    assert fh.canonical_id is None and fh.index_dirty is True
+    gh = db_session.scalar(select(JobPosting).where(JobPosting.slug == "gh-acme-1"))
+    assert gh.canonical_id is None
 
 
 @pytest.mark.integration

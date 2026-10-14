@@ -34,7 +34,7 @@ def run(args) -> int:
     sources = (args.source,) if args.source else job_boards.SOURCES
     result = job_store.run_ingest(_sessions(), boards=job_store.load_boards(), sources=sources)
     print(json.dumps({"status": result.status, "fetched": result.fetched, "created": result.created,
-                      "updated": result.updated, "closed": result.closed, "merged": result.merged}))
+                      "updated": result.updated, "deleted": result.deleted, "merged": result.merged}))
     return 1 if result.status == "failed" else 0
 
 
@@ -50,7 +50,7 @@ def status(args) -> int:
     with _sessions()() as db:
         for row in db.scalars(select(IngestRun).order_by(IngestRun.started_at.desc()).limit(5)):
             print(json.dumps({"started_at": row.started_at.isoformat(), "status": row.status, "fetched": row.fetched,
-                              "created": row.created, "closed": row.closed, "merged": row.merged}))
+                              "created": row.created, "deleted": row.deleted, "merged": row.merged}))
     return 0
 
 

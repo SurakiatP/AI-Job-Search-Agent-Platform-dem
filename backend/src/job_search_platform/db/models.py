@@ -671,7 +671,6 @@ class JobPosting(Base):
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     missed_runs: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reality_stale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     index_dirty: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -682,9 +681,25 @@ class JobPosting(Base):
         CheckConstraint("missed_runs >= 0", name="ck_job_postings_missed"),
         Index("ix_job_postings_url_key", "url_key"),
         Index("ix_job_postings_match_key", "match_key"),
-        Index("ix_job_postings_open", "closed_at", "canonical_id"),
+        Index("ix_job_postings_canonical", "canonical_id"),
         Index("ix_job_postings_board", "source", "board"),
     )
+
+
+class JobPostingTombstone(Base):
+    """Remembers an aged-out posting so the source's still-listed copy is not re-ingested (spec D9)."""
+    __tablename__ = "job_posting_tombstones"
+    source: Mapped[str] = mapped_column(String(20), primary_key=True)
+    external_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    deleted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class JobIndexDelete(Base):
+    """Queue of deleted posting ids the search index must drop."""
+    __tablename__ = "job_index_deletes"
+    posting_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    deleted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class IngestRun(Base):
@@ -698,6 +713,6 @@ class IngestRun(Base):
     fetched: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    closed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    deleted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     merged: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     __table_args__ = (CheckConstraint("status IN ('running','ok','partial','failed')", name="ck_ingest_runs_status"),)
