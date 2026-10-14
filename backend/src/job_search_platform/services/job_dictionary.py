@@ -69,7 +69,7 @@ _ROLES = _load_roles()
 
 _SENIORITY = (  # first match wins: most specific first
     ("intern", _matcher(["intern", "internship", "trainee", "ฝึกงาน", "นักศึกษาฝึกงาน"])),
-    ("c_level", _matcher(["head of", "director", "chief", "vp", "vice president", "cto", "ceo", "cfo", "ผู้อำนวยการ"])),
+    ("c_level", _matcher(["head of", "ceo", "cto", "cfo", "coo", "vp", "vice president", "managing director", "chief executive officer", "chief technology officer", "chief financial officer", "chief operating officer", "ผู้อำนวยการ"])),
     ("principal", _matcher(["principal"])),
     ("staff", _matcher(["staff engineer", "staff software"])),
     ("lead", _matcher(["lead", "team lead", "tech lead", "หัวหน้า", "หัวหน้าทีม"])),
@@ -85,6 +85,7 @@ _LETTER = re.compile(r"[A-Za-z฀-๿]")
 
 
 def province_of(text: str | None) -> tuple[str, str] | None:
+    """Province of a location field only (not free text): Thai aliases match as substrings."""
     match = _PROVINCE_RE.search(text.lower()) if text else None
     return _PROVINCES[match.group(0)] if match else None
 

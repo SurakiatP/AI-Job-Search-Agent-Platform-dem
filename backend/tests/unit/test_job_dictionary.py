@@ -23,16 +23,17 @@ def test_locations_alias_collision_raises():
 
 def test_roles_aliases_unique():
     seen: set[str] = set()
-    for name, pattern, _ in jd._ROLES:
-        assert name not in seen, name
-        seen.add(name)
+    for key, aliases in jd.parse_dictionary((jd.DATA / "roles.txt").read_text(encoding="utf-8")):
+        for alias in (key.partition("|")[0], *aliases):
+            assert alias.casefold() not in seen, alias
+            seen.add(alias.casefold())
 
 
 @pytest.mark.parametrize("text, code", [
     ("Bangkok, Thailand", "TH-10"), ("กรุงเทพมหานคร", "TH-10"), ("กทม.", "TH-10"),
     ("Khlong Toei, Bangkok", "TH-10"), ("เขตบางรัก", "TH-10"), ("Chon Buri, Thailand", "TH-20"),
     ("ชลบุรี", "TH-20"), ("Chiang Mai", "TH-50"), ("Remote", None), (None, None),
-    ("Phra Nakhon Si Ayutthaya", "TH-14"), ("Bueng Kan", "TH-38"), ("นราธิวาส", "TH-96"),
+    ("Phra Nakhon Si Ayutthaya", "TH-14"), ("เลย, Thailand", "TH-42"), ("Bueng Kan", "TH-38"), ("นราธิวาส", "TH-96"),
 ])
 def test_province_of(text, code):
     found = jd.province_of(text)
@@ -42,7 +43,8 @@ def test_province_of(text, code):
 @pytest.mark.parametrize("title, seniority", [
     ("Senior Backend Engineer", "senior"), ("Sr. Accountant", "senior"), ("วิศวกรอาวุโส", "senior"),
     ("Software Engineering Intern", "intern"), ("นักศึกษาฝึกงาน การตลาด", "intern"),
-    ("Junior Designer", "junior"), ("Engineering Lead", "lead"), ("Head of Sales", "c_level"),
+    ("Junior Designer", "junior"), ("Engineering Lead", "lead"), ("Head of Sales", "c_level"), ("Art Director", None),
+    ("Chief Technology Officer", "c_level"),
     ("Accountant", None),
 ])
 def test_seniority_of(title, seniority):
@@ -86,3 +88,21 @@ def test_skills_of_are_filter_slugs_in_order_capped():
     found = jd.skills_of(text)
     assert found[:3] == ["python", "react", "docker"] and len(found) == 8
     assert all(jd.SKILL_SLUG.match(s) for s in found)
+
+
+def test_chief_accountant_is_not_c_level():
+    assert jd.seniority_of("Chief Accountant") != "c_level"
+
+
+@pytest.mark.parametrize("title, role", [
+    ("Device Driver Developer", None), ("Laboratory Technician", None),
+    ("นักเขียนโปรแกรม", "Software Engineer"), ("Software Engineering Intern", "Software Engineer"),
+    ("Delivery Driver", "Delivery Driver"), ("Maintenance Technician", "Maintenance Technician"),
+])
+def test_generic_aliases_do_not_misclassify(title, role):
+    found = jd.role_of(title)
+    assert (found[0] if found else None) == role
+
+
+def test_new_thai_skill_aliases_found():
+    assert jd.skills_of("ต้องใช้ เอสคิวแอล และ คูเบอร์เนทีส") == ["sql", "kubernetes"]
