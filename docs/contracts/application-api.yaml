@@ -239,6 +239,40 @@ paths:
         '200': {description: Coverage, content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobFitResult'}}}}
         '403': {description: Grant lacks jobs:evaluate}
         '404': {description: Unknown job revision or CV}
+  /projects/{project_id}/agent/applications/list:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [applications]
+      description: >-
+        Direct agent call (skill applications_list, capability results:read; owner session also allowed). Without
+        job_id returns the board cards; with job_id returns that application's detail (contact and event ledger).
+        Read-only; no Run is created.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationsListInput'}}}
+      responses:
+        '200': {description: Board or one application, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationsListResult'}}}}
+        '403': {description: Grant lacks results:read}
+        '404': {description: Unknown job revision}
+  /projects/{project_id}/agent/applications/update:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [applications]
+      description: >-
+        Direct agent call (skill applications_update, capability applications:write; owner session also allowed).
+        Moves an already-applied application to responded, interview, offer, hired, rejected or withdrawn and/or adds a
+        note. Cannot set applied (owner approval) or edit the contact. 409 application_not_applied before the job was
+        applied for; 422 when neither stage nor note is given. No Run is created.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationsUpdateInput'}}}
+      responses:
+        '200': {description: Updated application, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationDetailView'}}}}
+        '403': {description: Grant lacks applications:write}
+        '404': {description: Unknown job revision}
+        '409': {description: Application not applied yet, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search/match:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -442,13 +476,68 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
     patch:
       tags: [jobs]
-      description: Owner-only saved/applied status update. This records owner history and does not submit an application.
+      description: Owner-only stage update (eight stages). Appends a stage_changed ledger event and does not submit an application.
       security: [{ownerSession: []}]
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/JobApplicationStatusUpdate'}}}
       responses:
         '200': {description: Updated application status, content: {application/json: {schema: {$ref: '#/components/schemas/JobApplicationStatusView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/applications:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: Owner-only application board (TOR FR-T01). Every live job with its stage, contact flag and last activity.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Board cards, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/ApplicationCardView'}}}}}
+  /projects/{project_id}/jobs/{job_id}/application:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: job_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      tags: [jobs]
+      description: Owner-only application detail with recruiter contact and the newest 200 ledger events.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Application detail, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationDetailView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/jobs/{job_id}/application/contact:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: job_id, in: path, required: true, schema: {type: string, format: uuid}}
+    put:
+      tags: [jobs]
+      description: Owner-only recruiter contact. Null clears a field. Appends a contact_updated event when it changes.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationContact'}}}
+      responses:
+        '200': {description: Application detail, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationDetailView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/jobs/{job_id}/application/events:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: job_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [jobs]
+      description: >-
+        Owner-only ledger entry: a note, or a record of email the owner sent or received themselves.
+        Nothing is sent by the platform.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf: [{$ref: '#/components/schemas/ApplicationNote'}, {$ref: '#/components/schemas/ApplicationEmailLog'}]
+              discriminator: {propertyName: kind}
+      responses:
+        '201': {description: Appended event, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationEventView'}}}}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/documents:
@@ -1222,20 +1311,96 @@ components:
             title: {type: string}
             company: {type: [string, 'null']}
             source_url: {type: [string, 'null']}
-            application_status: {type: string, enum: [saved, applied], default: saved}
+            application_status: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn], default: saved}
     JobApplicationStatusUpdate:
       type: object
       additionalProperties: false
       required: [application_status]
       properties:
-        application_status: {type: string, enum: [saved, applied]}
+        application_status: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn]}
     JobApplicationStatusView:
       type: object
       additionalProperties: false
       required: [job_revision_id, application_status]
       properties:
         job_revision_id: {type: string, format: uuid}
-        application_status: {type: string, enum: [saved, applied]}
+        application_status: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn]}
+    ApplicationContact:
+      type: object
+      additionalProperties: false
+      properties:
+        name: {type: [string, 'null'], minLength: 1, maxLength: 200}
+        email: {type: [string, 'null'], maxLength: 320, pattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'}
+        role: {type: [string, 'null'], minLength: 1, maxLength: 200}
+    ApplicationNote:
+      type: object
+      additionalProperties: false
+      required: [kind, text]
+      properties:
+        kind: {type: string, const: note}
+        text: {type: string, minLength: 1, maxLength: 2000}
+    ApplicationEmailLog:
+      type: object
+      additionalProperties: false
+      required: [kind, direction, subject, occurred_on]
+      properties:
+        kind: {type: string, const: email_logged}
+        direction: {type: string, enum: [sent, received]}
+        subject: {type: string, minLength: 1, maxLength: 300}
+        occurred_on: {type: string, format: date}
+        note: {type: [string, 'null'], minLength: 1, maxLength: 2000}
+    ApplicationEventView:
+      type: object
+      additionalProperties: false
+      required: [id, kind, actor, payload, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        kind: {type: string, enum: [stage_changed, note, contact_updated, email_logged, applied_via_approval]}
+        actor: {type: string, enum: [user, agent, system]}
+        payload: {type: object, additionalProperties: true}
+        created_at: {type: string, format: date-time}
+    ApplicationCardView:
+      type: object
+      additionalProperties: false
+      required: [job_revision_id, title, created_at, stage, has_contact, last_activity_at]
+      properties:
+        job_revision_id: {type: string, format: uuid}
+        title: {type: string}
+        company: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+        stage: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn]}
+        has_contact: {type: boolean}
+        last_activity_at: {type: string, format: date-time}
+    ApplicationDetailView:
+      type: object
+      additionalProperties: false
+      required: [job_revision_id, title, stage, contact]
+      properties:
+        job_revision_id: {type: string, format: uuid}
+        title: {type: string}
+        company: {type: [string, 'null']}
+        stage: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn]}
+        contact: {$ref: '#/components/schemas/ApplicationContact'}
+        events: {type: array, items: {$ref: '#/components/schemas/ApplicationEventView'}}
+    ApplicationsListInput:
+      type: object
+      additionalProperties: false
+      properties:
+        job_id: {type: [string, 'null'], format: uuid}
+    ApplicationsListResult:
+      type: object
+      additionalProperties: false
+      properties:
+        applications: {type: array, items: {$ref: '#/components/schemas/ApplicationCardView'}}
+        application: {anyOf: [{$ref: '#/components/schemas/ApplicationDetailView'}, {type: 'null'}]}
+    ApplicationsUpdateInput:
+      type: object
+      additionalProperties: false
+      required: [job_id]
+      properties:
+        job_id: {type: string, format: uuid}
+        stage: {type: [string, 'null'], enum: [responded, interview, offer, hired, rejected, withdrawn, null]}
+        note: {type: [string, 'null'], minLength: 1, maxLength: 2000}
     CVRevisionView:
       allOf:
         - {$ref: '#/components/schemas/RevisionView'}
@@ -1442,7 +1607,7 @@ components:
       additionalProperties: false
       required: [capabilities, expires_at]
       properties:
-        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}}
+        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
         expires_at: {type: string, format: date-time}
         label: {type: [string, 'null'], minLength: 1, maxLength: 80, description: Optional name shown as the run requester; trimmed.}
     GrantIssuedView:
@@ -1462,7 +1627,7 @@ components:
       properties:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
-        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}}
+        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}
         label: {type: [string, 'null'], maxLength: 80}
@@ -1562,9 +1727,9 @@ components:
       additionalProperties: false
       required: [name, description, required_capability]
       properties:
-        name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, apply_prepare, apply_submit, draft_follow_up, jobs_search, jobs_fit, get_run, cancel_run, list_results]}
+        name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, apply_prepare, apply_submit, draft_follow_up, jobs_search, jobs_fit, applications_list, applications_update, get_run, cancel_run, list_results]}
         description: {type: string}
-        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply']}
+        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}
     ToolsView:
       type: object
       additionalProperties: false

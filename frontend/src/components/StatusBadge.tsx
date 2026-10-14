@@ -1,8 +1,11 @@
-import type { RunStatus } from '@/lib/api-types';
+import type { ApplicationStage, RunStatus } from '@/lib/api-types';
+import { stageLabel } from '@/lib/applicationStages';
 import { Badge } from './ui/badge';
 
-type Status = RunStatus | 'saved' | 'applied';
+type Status = RunStatus | ApplicationStage;
 type Variant = 'default' | 'secondary' | 'success' | 'warning' | 'danger';
+
+const stageVariant: Record<ApplicationStage, Variant> = { saved: 'secondary', applied: 'success', responded: 'success', interview: 'success', offer: 'success', hired: 'success', rejected: 'danger', withdrawn: 'secondary' };
 
 const config: Record<Status, { variant: Variant; th: string; en: string }> = {
   queued: { variant: 'default', th: 'คิวรอ', en: 'Queued' },
@@ -13,8 +16,7 @@ const config: Record<Status, { variant: Variant; th: string; en: string }> = {
   failed: { variant: 'danger', th: 'ล้มเหลว', en: 'Failed' },
   cancelled: { variant: 'secondary', th: 'ยกเลิกแล้ว', en: 'Cancelled' },
   interrupted: { variant: 'danger', th: 'หยุดกลางทาง', en: 'Interrupted' },
-  saved: { variant: 'secondary', th: 'บันทึกไว้', en: 'Saved' },
-  applied: { variant: 'success', th: 'สมัครแล้ว', en: 'Applied' },
+  ...Object.fromEntries((Object.keys(stageLabel) as ApplicationStage[]).map(stage => [stage, { variant: stageVariant[stage], ...stageLabel[stage] }])) as Record<ApplicationStage, { variant: Variant; th: string; en: string }>,
 };
 
 export function StatusBadge({ status, locale }: { status: Status; locale: 'th' | 'en' }) {

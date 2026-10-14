@@ -22,7 +22,6 @@ from job_search_platform.db.models import (
     Document,
     DocumentRevision,
     Grant,
-    JobApplicationStatus,
     JobRevision,
     Project,
     Run,
@@ -46,7 +45,7 @@ from job_search_platform.services.contracts import (
     RunRequester,
     RunView,
 )
-from job_search_platform.services.applications import MAX_ANSWER_CHARS
+from job_search_platform.services.applications import MAX_ANSWER_CHARS, application_recorded
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.quota import enforce_run_gates
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD
@@ -506,8 +505,7 @@ class RunService:
     @staticmethod
     def _application_checks(db: Session, project_id: UUID, job: JobRevision, request: RunRequest) -> Run | None:
         """Intake rules of the application tasks; returns the ready pack run an apply_submit will submit."""
-        applied = (db.scalar(select(JobApplicationStatus.status).where(
-            JobApplicationStatus.project_id == project_id, JobApplicationStatus.job_revision_id == job.id)) == "applied")
+        applied = application_recorded(db, project_id, job.id)
         active = Run.status.in_(("queued", "running", "waiting_approval"))
         if request.draft_kind == "follow_up" and not applied:
             raise ServiceError("application_not_applied")

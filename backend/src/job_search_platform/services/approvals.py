@@ -13,8 +13,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import (
-    CV, Approval, CVRevision, DocumentRevision, Grant, JobApplicationStatus, Project, ProjectPreference, Run, StoredFile,
+    CV, Approval, CVRevision, DocumentRevision, Grant, Project, ProjectPreference, Run, StoredFile,
 )
+from job_search_platform.services.applications import application_recorded, record_applied_via_approval
 from job_search_platform.services.authorization import authorize, user_scope_is_current
 from job_search_platform.services.contracts import Actor, ApprovalRequest, ApprovalView
 from job_search_platform.services.errors import ServiceError
@@ -222,9 +223,9 @@ class ApprovalService:
                     target_run_id=approval.target_run_id,
                 )
                 try:
-                    change, target_file_id = self._resolve_change(db, project_id, request)
+                    change, target_file_id = self._resolve_change(db, project_id, request, allow_applied=True)
                 except ServiceError as exc:
-                    if approval.action == "submit_application" and exc.code in {"apply_pack_required", "already_applied"}:
+                    if approval.action == "submit_application" and exc.code == "apply_pack_required":
                         raise ServiceError("approval_stale") from None
                     raise
                 if _digest(change) != approval.change_digest:
@@ -288,11 +289,11 @@ class ApprovalService:
                          {"status": "cancelled", "message_key": "errors.approval_rejected", "approval_id": approval.id}, now=now)
             return
         job_id = db.scalar(select(Run.job_revision_id).where(Run.project_id == run.project_id, Run.id == approval.target_run_id))
-        row = db.get(JobApplicationStatus, (run.project_id, job_id))
-        if row is None:
-            db.add(JobApplicationStatus(project_id=run.project_id, job_revision_id=job_id, status="applied"))
-        else:
-            row.status = "applied"
+        if not record_applied_via_approval(db, run.project_id, job_id, run.actor_scope, approval.id, approval.target_run_id):
+            run.status = "cancelled"  # the card already reached applied or later: nothing to record, approval stays single-use
+            append_event(db, run, "approval_rejected",
+                         {"status": "cancelled", "message_key": "errors.already_applied", "approval_id": approval.id}, now=now)
+            return
         run.status = "completed"
         run.result_payload = {"kind": "apply_submit", "state": "recorded",
                               "pack_run_id": str(approval.target_run_id), "job_revision_id": str(job_id)}
@@ -388,6 +389,7 @@ class ApprovalService:
         request: ApprovalRequest,
         *,
         allow_unavailable: bool = False,
+        allow_applied: bool = False,
     ) -> tuple[dict[str, object], UUID | None]:
         if request.action == "promote_cv":
             revision = db.scalar(
@@ -441,9 +443,7 @@ class ApprovalService:
             if (pack is None or pack.operation != "apply_prepare" or pack.status != "completed"
                     or not isinstance(payload, dict) or payload.get("state") != "ready"):
                 raise ServiceError("apply_pack_required")
-            if db.scalar(select(JobApplicationStatus.status).where(
-                    JobApplicationStatus.project_id == project_id,
-                    JobApplicationStatus.job_revision_id == pack.job_revision_id)) == "applied":
+            if not allow_applied and application_recorded(db, project_id, pack.job_revision_id):
                 raise ServiceError("already_applied")
             return ({"action": request.action, "target_run_id": str(pack.id), "job_revision_id": str(pack.job_revision_id),
                      "pack_digest": _digest(payload)}, None)

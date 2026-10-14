@@ -31,10 +31,10 @@ def test_owner_only_operations_are_not_skills():
 
 def test_grant_capabilities_unchanged():
     assert GRANT_CAPABILITIES == frozenset({"results:read", "jobs:evaluate", "documents:draft", "cv:tailor", "jobs:search",
-                                     "applications:apply"})
+                                     "applications:apply", "applications:write"})
     assert GRANT_WORK_RESOURCES == frozenset({"evaluate_job", "draft_documents", "tailor_cv", "apply_prepare", "apply_submit", "draft_follow_up"})
 
 
 def test_tool_descriptor_name_is_one_flat_enum():
     name = ToolDescriptor.model_json_schema()["properties"]["name"]
-    assert name["enum"] == ["evaluate_job", "draft_documents", "tailor_cv", "apply_prepare", "apply_submit", "draft_follow_up", "jobs_search", "jobs_fit", "get_run", "cancel_run", "list_results"]
+    assert name["enum"] == ["evaluate_job", "draft_documents", "tailor_cv", "apply_prepare", "apply_submit", "draft_follow_up", "jobs_search", "jobs_fit", "applications_list", "applications_update", "get_run", "cancel_run", "list_results"]

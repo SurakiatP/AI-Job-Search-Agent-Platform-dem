@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FitScore } from '@/components/FitScore';
 import { SkillCount } from '@/components/SkillCoverage';
 import { StatusBadge } from '@/components/StatusBadge';
+import { APPLIED_ONWARD } from '@/lib/applicationStages';
 import type { DocumentView, JobRevisionView, ProjectView, RunView } from '@/lib/api-types';
 import { ErrorState } from '../projects/PageStates';
 import { NewSessionButton } from '../sessions/NewSessionDialog';
@@ -18,18 +19,18 @@ type CvRevision = { id: string; revision: number; original_filename?: string; mi
 
 const copy = {
   th: {
-    subtitle: 'ภาพรวมโปรเจกต์ งานที่บันทึก เอกสาร และงานของเอเจนต์', evaluate: 'ประเมินงานใหม่',
-    saved: 'งานที่บันทึก', applied: 'สมัครแล้ว', documents: 'เอกสาร',
-    jobsTitle: 'งานที่บันทึกไว้', noJobs: 'ยังไม่มีงานที่บันทึก', noJobsNext: 'ไปที่หน้างานเพื่อเพิ่มประกาศงานแรก', addJob: 'เพิ่มงาน', viewAll: 'ดูทั้งหมด',
+    subtitle: 'ภาพรวมโปรเจกต์ ใบสมัคร เอกสาร และงานของเอเจนต์', evaluate: 'ประเมินงานใหม่',
+    saved: 'บันทึกไว้', applied: 'สมัครแล้ว', documents: 'เอกสาร',
+    jobsTitle: 'ใบสมัคร', noJobs: 'ยังไม่มีใบสมัคร', noJobsNext: 'ไปที่หน้าใบสมัครเพื่อเพิ่มประกาศงานแรก', addJob: 'เพิ่มงาน', viewAll: 'ดูทั้งหมด',
     docsTitle: 'เอกสารล่าสุด', noDocs: 'ยังไม่มีเอกสาร', noDocsNext: 'ประเมินงานแล้วให้เอเจนต์ร่างเอกสารให้', revision: 'ฉบับที่',
     cvTitle: 'CV ของคุณ', noCv: 'ยังไม่มี CV', noCvNext: 'เพิ่ม CV เพื่อให้เอเจนต์ประเมินงานได้', addCv: 'เพิ่ม CV', updateCv: 'อัปเดต CV',
     activity: 'งานของเอเจนต์', idle: 'ไม่มีงานที่กำลังทำ', approvals: 'รออนุมัติ', openSession: 'เปิดเซสชัน', untitled: 'งานไม่มีชื่อ', evaluating: 'ประเมินงาน', drafting: 'ร่างเอกสาร',
     cv: 'CV', cover_letter: 'จดหมายสมัครงาน', application_message: 'ข้อความสมัครงาน', other: 'เอกสารอื่น',
   },
   en: {
-    subtitle: 'Project overview: saved jobs, documents and agent activity', evaluate: 'Evaluate a new job',
-    saved: 'Saved jobs', applied: 'Applied', documents: 'Documents',
-    jobsTitle: 'Saved jobs', noJobs: 'No saved jobs yet', noJobsNext: 'Open Jobs to add your first posting.', addJob: 'Add a job', viewAll: 'View all',
+    subtitle: 'Project overview: applications, documents and agent activity', evaluate: 'Evaluate a new job',
+    saved: 'Saved', applied: 'Applied', documents: 'Documents',
+    jobsTitle: 'Applications', noJobs: 'No applications yet', noJobsNext: 'Open Applications to add your first posting.', addJob: 'Add a job', viewAll: 'View all',
     docsTitle: 'Latest documents', noDocs: 'No documents yet', noDocsNext: 'Evaluate a job, then ask the agent to draft documents.', revision: 'Revision',
     cvTitle: 'Your CV', noCv: 'No CV yet', noCvNext: 'Add a CV so the agent can evaluate jobs.', addCv: 'Add CV', updateCv: 'Update CV',
     activity: 'Agent activity', idle: 'Nothing running', approvals: 'Pending approvals', openSession: 'Open session', untitled: 'Untitled job', evaluating: 'Evaluating job', drafting: 'Drafting documents',
@@ -81,7 +82,7 @@ export function OverviewPage() {
   const pendingSession = pending[0]?.session_id;
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   const stats = [
-    { label: c.saved, value: jobList.length, to: `${base}/jobs` }, { label: c.applied, value: jobList.filter(j => j.application_status === 'applied').length, to: `${base}/jobs` }, { label: c.documents, value: docList.length, to: `${base}/documents` },
+    { label: c.saved, value: jobList.filter(j => (j.application_status ?? 'saved') === 'saved').length, to: `${base}/applications` }, { label: c.applied, value: jobList.filter(j => APPLIED_ONWARD.has(j.application_status ?? 'saved')).length, to: `${base}/applications` }, { label: c.documents, value: docList.length, to: `${base}/documents` },
   ];
 
   return <div className="grid gap-6">
@@ -95,9 +96,9 @@ export function OverviewPage() {
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="grid gap-6 lg:col-span-2 lg:content-start">
         <Card>
-          <CardHeader><CardTitle><Link className="hover:underline" to={`${base}/jobs`}>{c.jobsTitle}</Link></CardTitle></CardHeader>
+          <CardHeader><CardTitle><Link className="hover:underline" to={`${base}/applications`}>{c.jobsTitle}</Link></CardTitle></CardHeader>
           <CardContent>
-            {jobList.length === 0 ? <Empty title={c.noJobs} next={c.noJobsNext}><Button asChild size="sm"><Link to={`${base}/jobs`}>{c.addJob}</Link></Button></Empty> :
+            {jobList.length === 0 ? <Empty title={c.noJobs} next={c.noJobsNext}><Button asChild size="sm"><Link to={`${base}/applications`}>{c.addJob}</Link></Button></Empty> :
               <ul className="divide-y">{jobList.slice(0, 6).map(job => <li key={job.id} className="group flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <FitScore score={evaluations.get(job.id)?.evaluation_result?.score ?? null} locale={locale} />
                 <div className="min-w-0 flex-1"><Link className="break-words font-medium hover:underline" to={`${base}/jobs/${job.id}`}>{job.title}</Link>{job.company && <p className="break-words text-sm text-muted-foreground">{job.company}</p>}<SkillCount coverage={evaluations.get(job.id)?.evaluation_result?.skill_coverage} locale={locale} /></div>
@@ -105,7 +106,7 @@ export function OverviewPage() {
                 <JobRemoveMenu reveal projectId={projectId} jobId={job.id} title={job.title} onRemoved={jobs.reload} />
               </li>)}</ul>}
           </CardContent>
-          {jobList.length > 0 && <CardFooter><Link className="text-sm text-primary hover:underline" to={`${base}/jobs`}>{c.viewAll}</Link></CardFooter>}
+          {jobList.length > 0 && <CardFooter><Link className="text-sm text-primary hover:underline" to={`${base}/applications`}>{c.viewAll}</Link></CardFooter>}
         </Card>
         <Card>
           <CardHeader><CardTitle><Link className="hover:underline" to={`${base}/documents`}>{c.docsTitle}</Link></CardTitle></CardHeader>

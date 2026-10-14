@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, AsyncIterator, Literal, Protocol, TypeVar
 from uuid import UUID
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, SecretStr, StringConstraints, model_validator
 
 
-Capability = Literal["results:read", "jobs:evaluate", "documents:draft", "cv:tailor", "jobs:search", "applications:apply"]
+Capability = Literal["results:read", "jobs:evaluate", "documents:draft", "cv:tailor", "jobs:search", "applications:apply", "applications:write"]
 RunStatus = Literal["queued", "running", "waiting_approval", "needs_input", "completed", "failed", "cancelled", "interrupted"]
 Operation = Literal["evaluate_job", "draft_documents", "tailor_cv", "apply_prepare", "apply_submit", "draft_follow_up"]
 # profile_cv (CV skill profile, no LLM) and extract_experience (LLM experience-bank extraction) are likewise owner-only and internal.
@@ -17,6 +17,9 @@ Operation = Literal["evaluate_job", "draft_documents", "tailor_cv", "apply_prepa
 ViewOperation = Literal["evaluate_job", "draft_documents", "tailor_cv", "export_document", "profile_cv", "match_jobs", "extract_experience",
                  "apply_prepare", "apply_submit", "draft_follow_up"]
 DraftKind = Literal["cover_letter", "application_message", "follow_up"]
+
+
+ApplicationStage = Literal["saved", "applied", "responded", "interview", "offer", "hired", "rejected", "withdrawn"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -227,14 +230,14 @@ class JobRevisionView(RevisionView):
     source_url: str | None = None
 
 
-    application_status: Literal["saved", "applied"] = "saved"
+    application_status: ApplicationStage = "saved"
 
 class JobApplicationStatusUpdate(DTO):
-    application_status: Literal["saved", "applied"]
+    application_status: ApplicationStage
 
 class JobApplicationStatusView(DTO):
     job_revision_id: UUID
-    application_status: Literal["saved", "applied"]
+    application_status: ApplicationStage
 
 class JobCreate(DTO):
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
@@ -571,9 +574,92 @@ class AgentJobFitResult(DTO):
     reason: str | None = None
 
 
+AgentApplicationStage = Literal["responded", "interview", "offer", "hired", "rejected", "withdrawn"]
+_Note = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+_Short = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+
+
+class ApplicationContact(DTO):
+    """One recruiter per application; every field may be cleared with null."""
+    name: _Short | None = None
+    email: Annotated[str, StringConstraints(strip_whitespace=True, max_length=320,
+                                            pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")] | None = None
+    role: _Short | None = None
+
+
+class ApplicationNote(DTO):
+    kind: Literal["note"]
+    text: _Note
+
+
+class ApplicationEmailLog(DTO):
+    """The owner's record of correspondence they sent or received themselves; nothing is sent."""
+    kind: Literal["email_logged"]
+    direction: Literal["sent", "received"]
+    subject: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    occurred_on: date
+    note: _Note | None = None
+
+
+ApplicationEntry = Annotated[ApplicationNote | ApplicationEmailLog, Field(discriminator="kind")]
+
+
+class ApplicationEventView(DTO):
+    id: UUID
+    kind: Literal["stage_changed", "note", "contact_updated", "email_logged", "applied_via_approval"]
+    actor: Literal["user", "agent", "system"]
+    payload: dict[str, Any]
+    created_at: datetime
+
+
+class ApplicationCardView(DTO):
+    job_revision_id: UUID
+    title: str
+    company: str | None = None
+    created_at: datetime
+    stage: ApplicationStage
+    has_contact: bool
+    last_activity_at: datetime
+
+
+class ApplicationDetailView(DTO):
+    job_revision_id: UUID
+    title: str
+    company: str | None = None
+    stage: ApplicationStage
+    contact: ApplicationContact
+    events: tuple[ApplicationEventView, ...] = ()
+
+
+class ApplicationsListInput(DTO):
+    """Direct applications_list input: no job_id reads the whole board, a job_id reads one application."""
+    job_id: UUID | None = None
+
+
+class ApplicationsListResult(DTO):
+    applications: tuple[ApplicationCardView, ...] = ()
+    application: ApplicationDetailView | None = None
+
+
+class ApplicationsUpdateInput(DTO):
+    """Direct applications_update input: an agent stage move and/or a note on one application."""
+    job_id: UUID
+    stage: AgentApplicationStage | None = None
+    note: _Note | None = None
+
+    @model_validator(mode="after")
+    def validate_intent(self):
+        if self.stage is None and self.note is None:
+            raise ValueError("stage_or_note_required")
+        return self
+
+
 class ToolDescriptor(DTO):
     # A nested Literal flattens to one OpenAPI enum; `Operation | Literal[...]` would emit anyOf.
-    name: Literal[Operation, Literal["jobs_search", "jobs_fit", "get_run", "cancel_run", "list_results"]]
+    name: Literal[
+        Operation,
+        Literal["jobs_search", "jobs_fit", "applications_list", "applications_update", "get_run", "cancel_run", "list_results"],
+    ]
     description: str
     required_capability: Capability
 

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTranslation } from 'react-i18next';
 import { accountErrorText, useRunGate } from '../../lib/accountGate';
 import { apiRequest } from '../../lib/api';
+import { APPLIED_ONWARD } from '../../lib/applicationStages';
 import { ApiError, type ApplyPack, type ApplyQuestion, type JobRevisionView, type Locale, type RunOperation, type RunView } from '../../lib/api-types';
 import { useResource } from '../projects/useResource';
 
@@ -37,7 +38,7 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
   const { reload } = jobs;
   const runsKey = runs.map(run => `${run.id}:${run.status}`).join('|');
   useEffect(() => { reload(); }, [runsKey, reload]);
-  const applied = jobs.data?.find(job => job.id === jobId)?.application_status === 'applied';
+  const applied = APPLIED_ONWARD.has(jobs.data?.find(job => job.id === jobId)?.application_status ?? 'saved');
   const latest = runs.filter(run => run.operation === 'apply_prepare' && (run.status === 'completed' || run.status === 'needs_input') && isPack(run.result_payload)).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
   const pack = latest && isPack(latest.result_payload) ? latest.result_payload : null;
   const inFlight = runs.some(run => ['apply_prepare', 'apply_submit', 'draft_follow_up'].includes(run.operation) && ['queued', 'running'].includes(run.status));
