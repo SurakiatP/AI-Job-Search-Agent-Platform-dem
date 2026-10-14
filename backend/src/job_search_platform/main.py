@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from job_search_platform import config
 from job_search_platform.api.dependencies import Services
 from job_search_platform.api.accounts import router as accounts_router
+from job_search_platform.api.oauth import router as oauth_router
 from job_search_platform.api.rest import _http_error, router as rest_router
 from job_search_platform.api.sse import router as sse_router
 from job_search_platform.db.session import make_engine
@@ -41,6 +42,7 @@ from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.maintenance import acquire_maintenance_lock, assert_restore_ready
 from job_search_platform.services.files import Files
 from job_search_platform.services.grants import Grants
+from job_search_platform.services.oauth import OAuth
 from job_search_platform.services.owner_sessions import OwnerSessions
 from job_search_platform.services.runs import RunService
 from job_search_platform.services.saved_searches import SavedSearches
@@ -130,11 +132,15 @@ def build_services() -> Services:
     documents = Documents(sessions, store)
     artifacts = Artifacts(sessions, store, lambda project_id, run_id: runtime.workspace_root / str(project_id) / str(run_id) / "staging")
     approvals = ApprovalService(sessions)
-    grants = Grants(sessions)
     queue = PostgresRunQueue(sessions)
     executor = RunExecutor(sessions, queue, runtime, artifacts, store,
                            workspace_root=runtime.workspace_root)
     owner_sessions = _owner_sessions(sessions)
+    share_origin = os.environ.get("SHARE_PUBLIC_ORIGIN", "").rstrip("/") or None
+    mcp_resource = f"{share_origin}/mcp" if share_origin else None
+    grants = Grants(sessions, mcp_resource=mcp_resource)
+    oauth = (OAuth(sessions, issuer=share_origin, resource=mcp_resource,
+                   consent_url=f"{owner_sessions.public_origin}/app/oauth/consent") if share_origin else None)
     mailer = SmtpMailer.from_env()  # None without SMTP_HOST: Accounts logs mail_disabled and drops mail
     accounts = Accounts(sessions, owner_sessions, mailer, public_origin=owner_sessions.public_origin, runs=runs,
                         workspace_root=runtime.workspace_root)
@@ -147,7 +153,7 @@ def build_services() -> Services:
                     documents=documents, runs=runs, grants=grants, settings=settings,
                     approvals=approvals, supervisor=supervisor, runtime=runtime,
                     queue=queue, artifacts=artifacts, secret_store=secrets, engine=engine,
-                    accounts=accounts, mailer=mailer, saved_searches=saved_searches, webhooks=webhooks)
+                    accounts=accounts, mailer=mailer, saved_searches=saved_searches, webhooks=webhooks, oauth=oauth)
 
 
 def _safe_field_names(exc: RequestValidationError) -> dict[str, str] | None:
@@ -233,6 +239,7 @@ def create_app(
                   telemetry={"auto_configure": False})
     app.include_router(rest_router, prefix="/api/v1")
     app.include_router(accounts_router, prefix="/api/v1")
+    app.include_router(oauth_router, prefix="/api/v1")
     app.include_router(sse_router, prefix="/api/v1")
 
     @app.middleware("http")

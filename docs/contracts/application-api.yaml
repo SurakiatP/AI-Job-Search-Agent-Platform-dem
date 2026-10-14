@@ -23,6 +23,7 @@ tags:
   - name: sharing
   - name: settings
   - name: webhooks
+  - name: oauth
   - name: system
 paths:
   /projects:
@@ -438,6 +439,45 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '429': {$ref: '#/components/responses/RateLimited'}
         '503': {description: 'Mail is not configured (code mail_unavailable)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /oauth/requests/{handle}:
+    parameters: [{name: handle, in: path, required: true, schema: {type: string}}]
+    get:
+      tags: [oauth]
+      description: Owner-only (FR-P03). What an MCP client is asking to be allowed to do, for the consent page; the owner's projects are included for the picker.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Pending request, content: {application/json: {schema: {$ref: '#/components/schemas/OAuthConsentView'}}}}
+        '401': {description: No owner session, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {description: 'Unknown, expired or already used request', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /oauth/requests/{handle}/approve:
+    parameters: [{name: handle, in: path, required: true, schema: {type: string}}]
+    post:
+      tags: [oauth]
+      description: Owner-only. Creates the grant for the chosen project and returns the client redirect URL carrying the one-time code, state and iss.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/OAuthApproveRequest'}}}
+      responses:
+        '200': {description: Redirect target, content: {application/json: {schema: {$ref: '#/components/schemas/OAuthRedirectView'}}}}
+        '401': {description: No owner session, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {description: 'Unknown, expired or already used request', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /oauth/requests/{handle}/deny:
+    parameters: [{name: handle, in: path, required: true, schema: {type: string}}]
+    post:
+      tags: [oauth]
+      description: Owner-only. Spends the request and returns the client redirect URL with error=access_denied.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Redirect target, content: {application/json: {schema: {$ref: '#/components/schemas/OAuthRedirectView'}}}}
+        '401': {description: No owner session, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {description: 'Unknown, expired or already used request', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/webhooks:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -1382,6 +1422,38 @@ components:
       required: [status]
       properties:
         status: {type: string, enum: [sent]}
+    ConsentProject:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+    OAuthConsentView:
+      type: object
+      additionalProperties: false
+      required: [client_name, client_id_host, redirect_uri, requested_scopes, projects, expires_at]
+      properties:
+        client_name: {type: string}
+        client_id_host: {type: string}
+        redirect_uri: {type: string}
+        requested_scopes: {type: array, items: {type: string}}
+        projects: {type: array, items: {$ref: '#/components/schemas/ConsentProject'}}
+        expires_at: {type: string, format: date-time}
+    OAuthApproveRequest:
+      type: object
+      additionalProperties: false
+      required: [project_id, capabilities, expires_at]
+      properties:
+        project_id: {type: string, format: uuid}
+        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
+        expires_at: {type: string, format: date-time}
+    OAuthRedirectView:
+      type: object
+      additionalProperties: false
+      required: [redirect_url]
+      properties:
+        redirect_url: {type: string}
     WebhookCreate:
       type: object
       additionalProperties: false

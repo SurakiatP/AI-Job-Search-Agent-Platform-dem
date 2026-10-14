@@ -11,17 +11,19 @@ from urllib.parse import urlencode, urlsplit
 
 import httpx
 from mcp.server.auth.provider import (AccessToken, AuthorizationCode, AuthorizationParams, AuthorizeError,
-                                      RefreshToken, RegistrationError, TokenError)
+                                      RefreshToken, RegistrationError, TokenError, construct_redirect_uri)
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 from pydantic import ValidationError
 from sqlalchemy import select, update
 
-from job_search_platform.db.models import Grant, OAuthAuthorization, OAuthClient
+from job_search_platform.db.models import Grant, OAuthAuthorization, OAuthClient, Project
 from job_search_platform.db.models import OAuthToken as OAuthTokenRow
 from job_search_platform.services import webhooks
 from job_search_platform.services.authorization import GRANT_CAPABILITIES
+from job_search_platform.services.authorization import authorize as authorize_access
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import token_hash
+from job_search_platform.services.quota import require_verified_owner
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +121,9 @@ def _digest(value: str) -> bytes | None:
 
 
 class OAuth:
-    def __init__(self, sessions, *, resource: str, consent_url: str, fetch=fetch_cimd):
+    def __init__(self, sessions, *, issuer: str, resource: str, consent_url: str, fetch=fetch_cimd):
         self.sessions = sessions
+        self.issuer = issuer
         self.resource = resource
         self.consent_url = consent_url
         self.fetch = fetch
@@ -317,3 +320,41 @@ class OAuth:
                                                            OAuthTokenRow.revoked_at.is_(None)).values(revoked_at=_now()))
         if digest is not None:
             await asyncio.to_thread(revoke)
+
+    # -- owner consent (sync; REST calls these through asyncio.to_thread) ------------------------
+    def consent_view(self, actor, handle: str) -> dict:
+        with self.sessions() as db:
+            row = self.pending(handle, db)
+            client = db.get(OAuthClient, row.client_id)
+            projects = db.execute(select(Project.id, Project.name).where(Project.user_id == actor.user_id)
+                                  .order_by(Project.created_at)).all()
+            return {"client_name": client.client_info.get("client_name") or row.client_id,
+                    "client_id_host": urlsplit(row.client_id).hostname or row.client_id,
+                    "redirect_uri": row.redirect_uri, "requested_scopes": sorted(row.scopes),
+                    "projects": [{"id": pid, "name": name} for pid, name in projects], "expires_at": row.expires_at}
+
+    def approve(self, actor, handle: str, project_id, capabilities: frozenset[str], expires_at: datetime) -> str:
+        if (not capabilities or not capabilities <= GRANT_CAPABILITIES
+                or expires_at.tzinfo is None or expires_at <= _now()):
+            raise ServiceError("invalid_grant")
+        with self.sessions.begin() as db:
+            authorize_access(db, actor, project_id, "manage", "grant")
+            db.execute(select(Project.id).where(Project.id == project_id).with_for_update())
+            require_verified_owner(db, project_id)
+            row = self.pending(handle, db, lock=True)
+            client = db.get(OAuthClient, row.client_id)
+            grant = Grant(project_id=project_id, token_hash=None, oauth_client_id=row.client_id,
+                          capabilities=sorted(capabilities), expires_at=expires_at,
+                          label=(client.client_info.get("client_name") or urlsplit(row.client_id).hostname or "OAuth client")[:80])
+            db.add(grant)
+            db.flush()
+            code = self.issue_code(handle, grant.id, actor.user_id, db)
+            return construct_redirect_uri(row.redirect_uri, code=code, state=row.state, iss=self.issuer)
+
+    def deny(self, actor, handle: str) -> str:
+        if actor.kind != "user" or actor.user_id is None:
+            raise ServiceError("unauthorized")
+        with self.sessions.begin() as db:
+            row = self.pending(handle, db, lock=True)
+            row.consumed_at, row.user_id = _now(), actor.user_id
+            return construct_redirect_uri(row.redirect_uri, error="access_denied", state=row.state, iss=self.issuer)

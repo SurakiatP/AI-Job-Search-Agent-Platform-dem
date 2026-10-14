@@ -32,6 +32,7 @@ class Services:
     mailer: Any = None
     saved_searches: Any = None
     webhooks: Any = None
+    oauth: Any = None
     secret_store: Any = None
     engine: Any = None
     maintenance_lock: Any = None

@@ -28,7 +28,7 @@ CHALLENGE = base64.urlsafe_b64encode(hashlib.sha256(VERIFIER.encode()).digest())
 
 def _svc(engine):
     factory = sessionmaker(engine, expire_on_commit=False)
-    return factory, OAuth(factory, resource=RESOURCE, consent_url="http://127.0.0.1:8765/app/oauth/consent")
+    return factory, OAuth(factory, issuer="http://127.0.0.1:8766", resource=RESOURCE, consent_url="http://127.0.0.1:8765/app/oauth/consent")
 
 
 def _public_client(client_id="dcr-1"):
@@ -162,7 +162,7 @@ async def test_cimd_client_is_fetched_once_and_cached(migrated_engine):
     async def fetch(client_id):
         calls.append(client_id)
         return _public_client(client_id)
-    svc = OAuth(factory, resource=RESOURCE, consent_url="http://127.0.0.1:8765/app/oauth/consent", fetch=fetch)
+    svc = OAuth(factory, issuer="http://127.0.0.1:8766", resource=RESOURCE, consent_url="http://127.0.0.1:8765/app/oauth/consent", fetch=fetch)
     assert (await svc.get_client(url)).client_id == url
     assert (await svc.get_client(url)).client_id == url
     assert calls == [url]
