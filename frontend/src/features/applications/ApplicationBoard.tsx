@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, Mail } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { StatusBadge } from '@/components/StatusBadge';
 import { ItemMenu } from '@/components/ItemMenu';
 import type { ApplicationCardView, ApplicationStage } from '../../lib/api-types';
 import { ACTIVE_STAGES, CLOSED_STAGES, STAGES, stageLabel } from '../../lib/applicationStages';
@@ -34,8 +35,9 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
         <div className="min-w-0 flex-1">
           <h3 className="break-words font-medium leading-snug"><Link className="hover:underline" to={`${base}/jobs/${card.job_revision_id}`}>{card.title}</Link></h3>
           {card.company && <p className="break-words text-sm text-muted-foreground">{card.company}</p>}
+          {CLOSED_STAGES.includes(card.stage) && <div className="mt-1"><StatusBadge status={card.stage} locale={locale} /></div>}
         </div>
-        <ItemMenu label={`${c.move}: ${card.title}`} actions={STAGES.filter(stage => stage !== card.stage).map(stage => ({
+        <ItemMenu className="size-10" label={`${c.move}: ${card.title}`} actions={STAGES.filter(stage => stage !== card.stage).map(stage => ({
           label: stageLabel[stage][locale], icon: <ArrowRight className="size-4" aria-hidden="true" />, onSelect: () => void move(card, stage),
         }))} />
       </div>

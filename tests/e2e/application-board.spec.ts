@@ -48,6 +48,12 @@ test('board shows stage columns and moves a card by keyboard, surviving an error
   await expect(closed).toBeVisible();
   await closed.click();
   await expect(page.getByRole('link', { name: longTitle })).toBeVisible();
+  await expect(page.getByText('Rejected', { exact: true })).toBeVisible();
+  // Moving a closed card must not remount the board: Closed stays open.
+  await page.getByRole('button', { name: `Move to: ${longTitle}` }).click();
+  await page.getByRole('menuitem', { name: 'Withdrawn' }).click();
+  await expect(page.getByText('Withdrawn', { exact: true })).toBeVisible();
+  await expect(page.locator('details')).toHaveJSProperty('open', true);
 });
 
 test('board fits 320px in Thai with long titles', async ({ page }) => {

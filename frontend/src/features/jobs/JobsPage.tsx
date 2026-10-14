@@ -100,7 +100,7 @@ export function JobsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<'save' | 'source' | null>(null);
   const [open, setOpen] = useState(() => Boolean(title || description || company || sourceUrl));
-  if (result.status === 'loading') return <LoadingState />;
+  if (result.status === 'loading' && !result.data) return <LoadingState />;
   if (result.status === 'error') return <ErrorState onRetry={result.reload} />;
   const jobs = result.data ?? [];
   const showForm = open;

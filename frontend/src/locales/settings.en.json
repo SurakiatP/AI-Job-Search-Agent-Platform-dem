@@ -30,7 +30,7 @@
     "cvTailor": "Tailor your CV to a job (saved as a new CV document)",
     "jobsSearch": "Search job postings (full descriptions)",
     "applicationsApply": "Prepare application answers from your CV and request that you approve a submission",
-    "applicationsWrite": "Move application stages and add notes on the application board"
+    "applicationsWrite": "Move applications between stages and add notes on the board (never marks a job applied)"
   },
   "expiresAfter": "Token expires after",
   "grantName": "Name (optional)",
