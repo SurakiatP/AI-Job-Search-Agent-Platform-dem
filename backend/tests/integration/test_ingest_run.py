@@ -149,4 +149,7 @@ def test_final_step_failure_marks_run_failed_and_releases_lock(migrated_engine, 
         assert row.status == "failed" and row.finished_at is not None
         assert row.per_board["greenhouse:a"]["state"] == "ok" and row.created == 1
     monkeypatch.undo()
+    with migrated_engine.connect() as other:  # lock really free on a separate backend
+        assert other.scalar(text("SELECT pg_try_advisory_lock(hashtext('ingest'))")) is True
+        other.execute(text("SELECT pg_advisory_unlock(hashtext('ingest'))"))
     assert _run(sessions, {}, T0 + timedelta(hours=1)).status == "ok"  # lock released

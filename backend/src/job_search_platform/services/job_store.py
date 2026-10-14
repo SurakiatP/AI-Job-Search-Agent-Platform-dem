@@ -139,10 +139,10 @@ def load_boards(path: Path | None = None) -> dict[str, list[str]]:
 def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards.fetch_board,
                clock=lambda: datetime.now(timezone.utc), sleep=time.sleep) -> IngestRun:
     """One hourly run (spec D5): each board in its own transaction; failed/skipped boards never count as missing."""
-    with sessions() as lock:
+    # dedicated autocommit connection: advisory lock is per backend, so it must stay on this one connection
+    with sessions.kw["bind"].connect().execution_options(isolation_level="AUTOCOMMIT") as lock:
         if not lock.scalar(text("SELECT pg_try_advisory_lock(hashtext('ingest'))")):
             raise ServiceError("ingest_running")
-        lock.commit()  # session-level advisory lock survives commit; avoids idle-in-transaction
         try:
             started = clock()
             run = IngestRun(id=uuid.uuid4(), started_at=started, status="running", per_board={})
