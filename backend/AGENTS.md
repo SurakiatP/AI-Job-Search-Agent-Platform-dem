@@ -7,10 +7,11 @@ Not here: UI (`frontend/`), container build inputs (`infra/`), operator scripts 
 
 - `src/job_search_platform/main.py` - app factory and wiring; `config.py` - settings.
 - `api/` - transport adapters: `rest.py`, `sse.py`, `mcp.py`, `mcp_tasks.py`, `a2a.py`, `oauth.py`, `accounts.py`, `dependencies.py`, `shared.py`.
-- `services/` - business logic and the single authorization path (`authorization.py`), `skills.py` (skill registry), `contracts.py`, `errors.py`.
+- `services/` - business logic and the single authorization path (`authorization.py`), `skills.py` (skill registry), `contracts.py`, `errors.py`; job store: `job_store.py` (ingest run, delete rule and 90-day retention with tombstones, cross-source dedup), `job_mapping.py`, `job_dictionary.py`, `job_text.py`.
 - `db/` - `models.py`, `repositories.py`, `session.py`.
-- `integrations/` - adapters: `gateway.py` (LiteLLM), `hermes_runtime.py`, `object_store.py` (S3/MinIO), `secrets.py`, `mailer.py`, `tracing.py`, `jev.py`, `logging.py`.
+- `integrations/` - adapters: `gateway.py` (LiteLLM), `hermes_runtime.py`, `object_store.py` (S3/MinIO), `secrets.py`, `mailer.py`, `tracing.py`, `jev.py`, `logging.py`, `job_boards.py` (freehire, Greenhouse, Lever, SmartRecruiters adapters).
 - `workers/` - `queue.py` (PostgreSQL queue), `executor.py`, `supervisor.py`, `sandbox.py`.
+- `data/` - job dictionaries (seniority, category, work mode, 77 provinces) and `job_boards.json` (ATS board tokens, filled by `discover`).
 - `migrations/` - Alembic; revisions in `migrations/versions/NNNN_name.py` (latest: `0026_oauth.py`).
 - `tests/unit/`, `tests/integration/`, `tests/fixtures/` (synthetic CV and job), top-level `tests/test_*.py`.
 
@@ -21,6 +22,7 @@ Not here: UI (`frontend/`), container build inputs (`infra/`), operator scripts 
 - Tests without infrastructure (CI): `uv run --locked --project backend pytest backend/tests -m "not integration" -q`
 - Full suite: `uv run --locked --project backend pytest backend/tests -q`
 - Run the app: `uv run --locked --project backend python scripts/run_local.py --build-frontend` (loopback `127.0.0.1:8000`).
+- Job ingest: `uv run --locked --project backend python scripts/ingest_jobs.py run|discover|status` (see `docs/engineering/local-operation.md`, "Hourly job ingest").
 - Audit: `uv export --locked --project backend --all-groups --no-emit-project --format requirements-txt -o <file>`, then `uv run --locked --project backend pip-audit --strict --disable-pip -r <file>`.
 
 ## Tests

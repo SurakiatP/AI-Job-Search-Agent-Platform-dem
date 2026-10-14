@@ -10,6 +10,7 @@ Not here: backend/frontend code, secrets, credentials, upstream checkouts (these
 - `minio/` - `Dockerfile`, `go.mod`, `go.sum`, `provenance.json` (MinIO OSS built from pinned source commit).
 - `litellm/` - `config.yaml`, `seed.py` (LiteLLM gateway config and seeding).
 - `langfuse/` - `env.sh`.
+- `launchd/` - `com.job-search-platform.ingest.plist.example`, the hourly job-ingest template (copy, replace `REPO_DIR`/`PRIVATE_DIR`).
 - `hermes/` - `Dockerfile`, `setup.py` (acquire and build), `pyproject.toml`, `uv.lock`, `package.json`/`package-lock.json`, `parse_document.py`, `tool_gate.py`, `native_bridge.py`, `typst_render.py`, `export_pdf.mjs`.
 
 ## scripts/ (drive infra; run from repo root with `uv run --locked --project backend python scripts/<name>.py`)
