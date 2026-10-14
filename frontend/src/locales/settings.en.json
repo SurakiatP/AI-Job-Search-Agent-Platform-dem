@@ -54,6 +54,7 @@
     "appearance": "Appearance",
     "tools": "Tools",
     "sharing": "Project sharing",
+    "webhooks": "Webhooks",
     "gateway": "AI gateway"
   },
   "themeHeading": "Theme",

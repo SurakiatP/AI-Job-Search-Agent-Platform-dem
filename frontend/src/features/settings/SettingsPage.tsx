@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Brush, Share2, Sparkles, Wrench } from 'lucide-react';
+import { Brush, Share2, Sparkles, Webhook, Wrench } from 'lucide-react';
 import { PageBack } from '@/components/PageBack';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -11,9 +11,10 @@ import { AppearanceSettings } from './AppearanceSettings';
 import { selectClass } from './Field';
 import { GatewaySettings } from './GatewaySettings';
 import { ProjectSharing } from './ProjectSharing';
+import { WebhookSettings } from './WebhookSettings';
 import { ToolSettings } from './ToolSettings';
 
-const sections = [['appearance', Brush], ['gateway', Sparkles], ['tools', Wrench], ['sharing', Share2]] as const;
+const sections = [['appearance', Brush], ['gateway', Sparkles], ['tools', Wrench], ['sharing', Share2], ['webhooks', Webhook]] as const;
 type Section = (typeof sections)[number][0];
 
 export function SettingsPage() {
@@ -43,7 +44,7 @@ export function SettingsPage() {
         </ul>
       </nav>
       <div className="grid min-w-0 gap-4">
-        {(section === 'tools' || section === 'sharing') && <div className="grid gap-1.5 sm:max-w-xs">
+        {(section === 'tools' || section === 'sharing' || section === 'webhooks') && <div className="grid gap-1.5 sm:max-w-xs">
           <Label htmlFor="settings-project">{ts('projectScope')}</Label>
           <select id="settings-project" className={selectClass} value={projectId} onChange={event => setSelectedProject(event.target.value)}>
             {projects.data?.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
@@ -52,7 +53,7 @@ export function SettingsPage() {
         </div>}
         {section === 'appearance' && <AppearanceSettings />}
         {section === 'gateway' && <GatewaySettings />}
-        {(section === 'tools' || section === 'sharing') && projectId && (section === 'tools' ? <ToolSettings key={`tools:${projectId}`} projectId={projectId} /> : <ProjectSharing key={`sharing:${projectId}`} projectId={projectId} />)}
+        {(section === 'tools' || section === 'sharing' || section === 'webhooks') && projectId && (section === 'tools' ? <ToolSettings key={`tools:${projectId}`} projectId={projectId} /> : section === 'sharing' ? <ProjectSharing key={`sharing:${projectId}`} projectId={projectId} /> : <WebhookSettings key={`webhooks:${projectId}`} projectId={projectId} />)}
       </div>
     </div>
   </section>;

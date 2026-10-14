@@ -1,15 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 import { projectId, useSyntheticApplication } from '../fixtures/application';
 
-type Saved = { id: string; name: string; filters: Record<string, unknown>; frequency: 'daily' | 'weekly'; digest_enabled: boolean; next_run_at: string; last_sent_at: string | null; created_at: string };
+type Saved = { id: string; name: string; filters: Record<string, unknown>; frequency: 'daily' | 'weekly'; digest_enabled: boolean; push_enabled: boolean; next_run_at: string; last_sent_at: string | null; created_at: string };
 
-async function searchWithSaved(page: Page, status = { email_verified: true, notifications_enabled: true }) {
+async function searchWithSaved(page: Page, status = { email_verified: true, notifications_enabled: true }, webhooks: unknown[] = []) {
   const items: Saved[] = [];
   const posts: unknown[] = [];
   let previews = 0;
   await useSyntheticApplication(page);
   await page.route(`**/api/v1/projects/${projectId}/job-search**`, route => route.fulfill({ status: 200, contentType: 'application/json',
     body: JSON.stringify(route.request().url().includes('/facets') ? { total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 0, thai_postings: 0 } : { items: [], total: 0, limit: 20, offset: 0 }) }));
+  await page.route(`**/api/v1/projects/${projectId}/webhooks`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(webhooks) }));
   await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -18,7 +19,7 @@ async function searchWithSaved(page: Page, status = { email_verified: true, noti
     if (request.method() === 'POST' && url.pathname.endsWith('/preview')) { previews += 1; return route.fulfill({ status: 202, contentType: 'application/json', body: '{"status":"sent"}' }); }
     if (request.method() === 'POST') {
       const body = request.postDataJSON(); posts.push(body);
-      const row: Saved = { id: `00000000-0000-4000-8000-00000000000${items.length}`, name: body.name, filters: body.filters, frequency: body.frequency, digest_enabled: true, next_run_at: '2026-10-15T01:00:00Z', last_sent_at: null, created_at: '2026-10-14T00:00:00Z' };
+      const row: Saved = { id: `00000000-0000-4000-8000-00000000000${items.length}`, name: body.name, filters: body.filters, frequency: body.frequency, digest_enabled: true, push_enabled: false, next_run_at: '2026-10-15T01:00:00Z', last_sent_at: null, created_at: '2026-10-14T00:00:00Z' };
       items.push(row); return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(row) });
     }
     const row = items.find(item => item.id === id)!;
@@ -101,4 +102,30 @@ test('posted_within_days alone cannot be saved', async ({ page }) => {
   await searchWithSaved(page);
   await page.goto(`/app/projects/${projectId}/search?posted_within_days=7`);
   await expect(page.getByRole('button', { name: 'Save this search' })).toBeDisabled();
+});
+
+async function saveOne(page: Page) {
+  await page.goto(`/app/projects/${projectId}/search?q=data`);
+  await page.getByRole('button', { name: 'Save this search' }).click();
+  await page.getByLabel('Name').fill('Push me');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+}
+
+test('push toggle is enabled only with a digest.ready webhook', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await searchWithSaved(page, undefined, [{ id: 'h1', url: 'https://hooks.example.test/jsp', events: ['digest.ready'], enabled: true, created_at: '2026-10-14T00:00:00Z' }]);
+  await saveOne(page);
+  const push = page.getByRole('button', { name: 'Push digest for Push me' });
+  await expect(push).toBeEnabled();
+  await expect(push).toHaveAttribute('aria-pressed', 'false');
+  await push.click();
+  await expect(push).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('push toggle is disabled without a digest.ready webhook', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await searchWithSaved(page);
+  await saveOne(page);
+  await expect(page.getByRole('button', { name: 'Push digest for Push me' })).toBeDisabled();
 });
