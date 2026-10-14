@@ -509,6 +509,7 @@ class SavedSearch(Base):
     frequency: Mapped[str] = mapped_column(String(8), nullable=False)
     digest_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
     unsubscribe_token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    prev_unsubscribe_token_hash: Mapped[bytes | None] = mapped_column(LargeBinary)
     next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

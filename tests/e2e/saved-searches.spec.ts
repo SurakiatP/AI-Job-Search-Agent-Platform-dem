@@ -95,3 +95,10 @@ test('search with panel and the unsubscribe page fit 320px in Thai', async ({ pa
   await page.goto('/digest/unsubscribe?token=x');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('posted_within_days alone cannot be saved', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await searchWithSaved(page);
+  await page.goto(`/app/projects/${projectId}/search?posted_within_days=7`);
+  await expect(page.getByRole('button', { name: 'Save this search' })).toBeDisabled();
+});

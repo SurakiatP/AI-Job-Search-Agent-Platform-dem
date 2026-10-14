@@ -14,7 +14,7 @@ from helpers import owner, project
 from job_search_platform.db.models import ProjectPreference, SavedSearch, SavedSearchSeen, User
 from job_search_platform.integrations.mailer import MemoryMailer
 from job_search_platform.services import saved_searches as ss
-from job_search_platform.services.contracts import SavedSearchCreate
+from job_search_platform.services.contracts import SavedSearchCreate, SavedSearchUpdate
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.workers.supervisor import WorkerSupervisor
 
@@ -129,7 +129,29 @@ def test_source_failure_records_nothing_and_does_not_spin(ctx):
     assert asyncio.run(service.run_due(NOW)) == 0
     assert len(source.calls) == 1 and mailer.sent == [] and _seen(sessions, sid) == set()
     with sessions() as db:
-        assert db.get(SavedSearch, sid).next_run_at == NOW - timedelta(minutes=1)
+        assert db.get(SavedSearch, sid).next_run_at == NOW + timedelta(hours=1)
+
+
+@pytest.mark.integration
+def test_older_failing_row_backs_off_and_does_not_starve_newer(ctx):
+    sessions, service, mailer, source, actor, pid, sid = ctx
+    newer = service.create(actor, pid, SavedSearchCreate(name="Newer", filters={"q": "newer"}),
+                           now=NOW - timedelta(days=1)).id
+    inner = source.__call__
+
+    def picky(**kwargs):
+        if kwargs.get("q") == "data":
+            raise ServiceError("job_source_unavailable", retryable=True)
+        return inner(**kwargs)
+    service.search = picky
+    _due(sessions, sid, NOW - timedelta(minutes=2))
+    _due(sessions, newer)
+    assert asyncio.run(service.run_due(NOW)) == 1
+    assert [m.subject for m in mailer.sent] == ["งานใหม่ 2 ตำแหน่ง: Newer"]
+    with sessions() as db:
+        assert db.get(SavedSearch, sid).next_run_at == NOW + timedelta(hours=1)
+    calls = len(source.calls)
+    assert asyncio.run(service.run_due(NOW)) == 0 and len(source.calls) == calls
 
 
 @pytest.mark.integration
@@ -145,7 +167,7 @@ def test_mail_failure_records_nothing(ctx):
     assert asyncio.run(service.run_due(NOW)) == 0
     with sessions() as db:
         row = db.get(SavedSearch, sid)
-        assert row.last_sent_at is None and row.next_run_at == NOW - timedelta(minutes=1)
+        assert row.last_sent_at is None and row.next_run_at == NOW + timedelta(hours=1)
         assert row.unsubscribe_token_hash == old_hash
     assert _seen(sessions, sid) == set()
 
@@ -173,19 +195,36 @@ def test_concurrent_run_due_sends_once(ctx):
 
 
 @pytest.mark.integration
-def test_new_token_unsubscribes_and_old_one_expires(ctx):
-    sessions, service, mailer, source, *_, sid = ctx
-    _due(sessions, sid)
-    asyncio.run(service.run_due(NOW))
-    first = mailer.sent[0].text.split("token=")[1].split()[0]
-    service.preview(ctx[4], ctx[5], sid)
-    second = mailer.sent[1].text.split("token=")[1].split()[0]
-    with pytest.raises(ServiceError) as caught:
-        service.unsubscribe(first, "198.51.100.1")
-    assert caught.value.code == "invalid_token"
-    service.unsubscribe(second, "198.51.100.1")
-    with sessions() as db:
-        assert db.get(SavedSearch, sid).digest_enabled is False
+def test_latest_two_digest_links_work_and_preview_keeps_latest(ctx):
+    sessions, service, mailer, source, actor, pid, sid = ctx
+    ips = iter(f"198.51.100.{n}" for n in range(1, 20))
+
+    def token(index):
+        return mailer.sent[index].text.split("token=")[1].split()[0]
+
+    def works(tok):
+        try:
+            service.unsubscribe(tok, next(ips))
+        except ServiceError as exc:
+            assert exc.code == "invalid_token"
+            return False
+        with sessions() as db:
+            assert db.get(SavedSearch, sid).digest_enabled is False
+        service.update(actor, pid, sid, SavedSearchUpdate(digest_enabled=True))
+        return True
+
+    def digest(items):
+        source.items = items
+        _due(sessions, sid)
+        assert asyncio.run(service.run_due(NOW)) == 1
+
+    digest([_item("a")])
+    service.preview(actor, pid, sid)
+    assert works(token(0)) and works(token(1))  # preview never kills the latest digest link
+    digest([_item("b")])
+    assert works(token(0)) and works(token(2)) and not works(token(1))
+    digest([_item("c")])
+    assert not works(token(0)) and works(token(2)) and works(token(3))
 
 
 @pytest.mark.integration
@@ -271,7 +310,7 @@ def test_poison_row_does_not_starve_others(ctx):
     assert [m.subject for m in mailer.sent] == ["งานใหม่ 2 ตำแหน่ง: Other"]
     assert _seen(sessions, sid) == set()
     with sessions() as db:
-        assert db.get(SavedSearch, sid).next_run_at == NOW - timedelta(minutes=2)
+        assert db.get(SavedSearch, sid).next_run_at == NOW + timedelta(hours=1)
 
 
 @pytest.mark.integration

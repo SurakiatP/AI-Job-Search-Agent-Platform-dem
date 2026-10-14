@@ -1,6 +1,7 @@
 """Stable, transport-neutral Pydantic contracts shared by REST and protocols."""
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Annotated, Any, AsyncIterator, Literal, Protocol, TypeVar
@@ -659,7 +660,14 @@ class ApplicationsUpdateInput(DTO):
 
 
 DigestFrequency = Literal["daily", "weekly"]
-_SavedSearchName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+def _no_control_chars(value: str) -> str:
+    if any(unicodedata.category(c).startswith("C") for c in value):
+        raise ValueError("control_characters")
+    return value
+
+
+_SavedSearchName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80),
+                             AfterValidator(_no_control_chars)]
 
 
 class SavedSearchCreate(DTO):

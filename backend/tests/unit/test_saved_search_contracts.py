@@ -39,3 +39,12 @@ def test_create_and_update_rules():
     with pytest.raises(ValidationError):
         SavedSearchUpdate()
     assert SavedSearchUpdate(digest_enabled=False).digest_enabled is False
+
+
+def test_saved_search_name_rejects_control_characters_and_accepts_thai():
+    for bad in ("a\nb", "a\tb", "a\x00b", "a\rb"):
+        with pytest.raises(ValidationError):
+            SavedSearchCreate(name=bad)
+        with pytest.raises(ValidationError):
+            SavedSearchUpdate(name=bad)
+    assert SavedSearchCreate(name="งานข้อมูล กรุงเทพ").name == "งานข้อมูล กรุงเทพ"

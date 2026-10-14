@@ -65,12 +65,14 @@ export function paramsFromFilters(f: SavedSearchFilters): Record<string, string>
   return out;
 }
 
-export function SavedSearchesPanel({ projectId, params, filtered, onApply }: {
-  projectId: string; params: URLSearchParams; filtered: boolean; onApply: (changes: Record<string, string>) => void;
+export function SavedSearchesPanel({ projectId, params, onApply }: {
+  projectId: string; params: URLSearchParams; onApply: (changes: Record<string, string>) => void;
 }) {
   const locale = useTranslation().i18n.language.startsWith('th') ? 'th' : 'en';
   const c = copy[locale];
   const base = `/projects/${projectId}/saved-searches`;
+  const f = filtersFromParams(params);
+  const savable = Boolean(f.q || f.cities?.length || f.work_mode || f.category || f.posting_language || f.salary_min || LIST_KEYS.some(key => f[key]?.length));
   const list = useResource<SavedSearchList>(base);
   const [saveOpen, setSaveOpen] = useState(false);
   const [name, setName] = useState('');
@@ -98,9 +100,9 @@ export function SavedSearchesPanel({ projectId, params, filtered, onApply }: {
   return <section aria-labelledby="saved-searches-title" className="grid min-w-0 gap-3 rounded-lg border p-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h2 id="saved-searches-title" className="text-base font-semibold">{c.title}</h2>
-      <Button variant="outline" disabled={!filtered} onClick={openSave}><Bookmark className="size-4" aria-hidden="true" />{c.save}</Button>
+      <Button variant="outline" disabled={!savable} onClick={openSave}><Bookmark className="size-4" aria-hidden="true" />{c.save}</Button>
     </div>
-    {!filtered && items.length === 0 && <p className="text-sm text-muted-foreground">{c.hint}</p>}
+    {!savable && items.length === 0 && <p className="text-sm text-muted-foreground">{c.hint}</p>}
     {status && !status.email_verified && <p role="status" className="text-sm text-warning">{c.unverified}</p>}
     {status && status.email_verified && !status.notifications_enabled && <p role="status" className="text-sm text-warning">{c.notificationsOff}</p>}
     {!saveOpen && notice}

@@ -18,6 +18,7 @@ def upgrade() -> None:
         frequency varchar(8) NOT NULL,
         digest_enabled boolean NOT NULL DEFAULT true,
         unsubscribe_token_hash bytea NOT NULL UNIQUE,
+        prev_unsubscribe_token_hash bytea,
         next_run_at timestamptz NOT NULL,
         last_sent_at timestamptz,
         created_at timestamptz NOT NULL DEFAULT now(),

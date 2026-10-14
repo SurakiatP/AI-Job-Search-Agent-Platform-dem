@@ -14,7 +14,7 @@ from urllib.parse import urlencode
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, func, select, true
+from sqlalchemy import delete, func, or_, select, true, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 
@@ -61,6 +61,7 @@ DIGEST_DAYS = 7
 DIGEST_LIMIT = 20
 SEEN_RETENTION = timedelta(days=90)
 DUE_BATCH = 20
+RETRY_BACKOFF = timedelta(hours=1)  # failed rows wait this long so they cannot starve the batch
 
 DIGEST_MESSAGES = {
     "en": {"subject": "{n} new jobs: {name}", "empty_subject": "No new jobs right now: {name}",
@@ -103,8 +104,18 @@ def _query(filters: dict) -> str:
     return urlencode(pairs)
 
 
-class _SendFailed(Exception):
+class _RowFailed(Exception):
     pass
+
+
+class _SendFailed(_RowFailed):
+    pass
+
+
+def _name_taken(exc: IntegrityError) -> ServiceError:
+    if getattr(getattr(exc.orig, "diag", None), "constraint_name", None) == "uq_saved_searches_name":
+        return ServiceError("saved_search_name_taken")
+    raise exc
 
 
 def _deliverable(account: User | None, notifications: bool) -> bool:
@@ -163,8 +174,8 @@ class SavedSearches:
                 db.add(row)
                 db.flush()
                 return _view(row)
-        except IntegrityError:
-            raise ServiceError("saved_search_name_taken") from None
+        except IntegrityError as exc:
+            raise _name_taken(exc) from None
 
     def update(self, actor: Actor, project_id: UUID, saved_search_id: UUID, body: SavedSearchUpdate,
                *, now: datetime | None = None) -> SavedSearchView:
@@ -185,8 +196,8 @@ class SavedSearches:
                     row.next_run_at = next_slot(now, row.frequency)
                 db.flush()
                 return _view(row)
-        except IntegrityError:
-            raise ServiceError("saved_search_name_taken") from None
+        except IntegrityError as exc:
+            raise _name_taken(exc) from None
 
     def delete(self, actor: Actor, project_id: UUID, saved_search_id: UUID) -> None:
         with self.sessions.begin() as db:
@@ -197,8 +208,10 @@ class SavedSearches:
         with self.sessions.begin() as db:
             rate_limits.hit(db, "digest_unsubscribe_ip", ip)
         with self.sessions.begin() as db:
-            row = db.scalar(select(SavedSearch).where(
-                SavedSearch.unsubscribe_token_hash == hashlib.sha256(token.encode()).digest()).with_for_update())
+            digest = hashlib.sha256(token.encode()).digest()
+            row = db.scalar(select(SavedSearch).where(or_(
+                SavedSearch.unsubscribe_token_hash == digest,
+                SavedSearch.prev_unsubscribe_token_hash == digest)).with_for_update())
             if row is None:
                 raise ServiceError("invalid_token")
             row.digest_enabled = False
@@ -216,13 +229,19 @@ class SavedSearches:
             items.append(item)
         return items[:DIGEST_LIMIT]
 
-    def _mail(self, account: User, row: SavedSearch, items: list[dict]) -> None:
-        """Rotate the unsubscribe token and send; raises _SendFailed when no mail can go out."""
+    def _mail(self, account: User, row: SavedSearch, items: list[dict], *, preview: bool = False) -> None:
+        """Send with a fresh unsubscribe token; raises _SendFailed when no mail can go out.
+
+        A digest makes the new token current and keeps the previous one valid; a preview leaves the current
+        token alone and takes the previous slot, so the latest digest's link survives it."""
         if self.mailer is None:
             logger.warning("mail_disabled", extra={"kind": "digest"})
             raise _SendFailed
         token, digest = _new_token()
-        row.unsubscribe_token_hash = digest
+        if preview:
+            row.prev_unsubscribe_token_hash = digest
+        else:
+            row.prev_unsubscribe_token_hash, row.unsubscribe_token_hash = row.unsubscribe_token_hash, digest
         app_link = f"{self.public_origin}/app/projects/{row.project_id}/search?{_query(row.filters)}"
         subject, text = render_digest(account.locale, row.name, items, app_link,
                                       f"{self.public_origin}/digest/unsubscribe?token={token}")
@@ -251,7 +270,7 @@ class SavedSearches:
                     items = self.collect(db, row)
                 except ServiceError:
                     logger.warning("digest_source_failed", extra={"saved_search_id": str(row_id)})
-                    return row_id, 0  # next_run_at unchanged: the next housekeeping tick retries
+                    raise _RowFailed from None
                 if items:
                     self._mail(account, row, items)
                     db.execute(pg_insert(SavedSearchSeen).values(
@@ -261,10 +280,17 @@ class SavedSearches:
                 row.next_run_at = next_slot(now, row.frequency)
                 return row_id, 1 if items else 0
         except Exception as exc:  # noqa: BLE001 - one poison row must not starve the others
-            if not isinstance(exc, _SendFailed):
+            if not isinstance(exc, _RowFailed):
                 logger.warning("digest_failed", extra={"saved_search_id": str(row_id), "error": type(exc).__name__})
-            # rolled back: no seen rows, no token change, same next_run_at; None row_id means selection itself failed
-            return None if row_id is None else (row_id, 0)
+            if row_id is None:  # selection itself failed
+                return None
+            # row work rolled back (no seen rows, no token change); only the retry time moves
+            try:
+                with self.sessions.begin() as db:
+                    db.execute(update(SavedSearch).where(SavedSearch.id == row_id).values(next_run_at=now + RETRY_BACKOFF))
+            except Exception:  # noqa: BLE001 - the in-memory ``done`` set still stops this tick re-selecting it
+                logger.warning("digest_backoff_failed", extra={"saved_search_id": str(row_id)})
+            return row_id, 0
 
     async def run_due(self, now: datetime | None = None) -> int:
         now = now or datetime.now(timezone.utc)
@@ -287,7 +313,7 @@ class SavedSearches:
                 if account is None or account.email_verified_at is None:
                     raise ServiceError("email_unverified")
                 rate_limits.hit(db, "digest_preview", str(actor.user_id))
-                self._mail(account, row, self.collect(db, row, exclude_seen=False))
+                self._mail(account, row, self.collect(db, row, exclude_seen=False), preview=True)
         except _SendFailed:
             raise ServiceError("mail_unavailable", retryable=True) from None
 
