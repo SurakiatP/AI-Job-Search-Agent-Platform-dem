@@ -11,8 +11,10 @@ import pytest
 from sqlalchemy import update
 
 from helpers import provider_config, revisions, session as make_session
+from job_search_platform.api import mcp_tasks
 from job_search_platform.api.mcp import _TASK_SKILLS, create_mcp_app, mcp_lifespan_context
 from job_search_platform.db.models import Run
+from job_search_platform.services.protocol_runs import ProtocolRuns
 from test_rest_api import _owner, _write_headers, api_context as _api_context_fixture
 
 TASKS = {"extensions": {"io.modelcontextprotocol/tasks": {}}}
@@ -217,3 +219,89 @@ async def test_tasks_update_acknowledges_without_changing_run(api_context):
     with api_context.sessions() as db:
         run = db.get(Run, run_id)
         assert run.status == "needs_input" and run.result_payload is None
+
+
+URL_ELICITATION = {"elicitation": {"url": {}}}
+
+
+def _patch_submit(monkeypatch, api_context, pid, sid, cv_id, job_id, grant_id):
+    """apply_submit intake is covered by test_agent_applications; here it only needs to create one run row."""
+    calls: list[UUID] = []
+
+    async def fake_submit(self, actor, operation, request):
+        assert operation == "apply_submit"
+        run_id = await asyncio.to_thread(_run_row, api_context, pid, sid, cv_id, job_id, grant_id, operation="apply_submit")
+        calls.append(run_id)
+        return await api_context.client.app.state.services.runs.get(actor, actor.project_id, run_id)
+
+    monkeypatch.setattr(ProtocolRuns, "submit", fake_submit)
+    return calls
+
+
+def _submit_args(job_id) -> dict:
+    return {"request": {"job_revision_id": str(job_id), "idempotency_key": "mrtr-1"}}
+
+
+@pytest.mark.integration
+async def test_apply_submit_mrtr_rounds_until_terminal(api_context, monkeypatch):
+    services, pid, grant, cv_id, job_id, sid = await asyncio.to_thread(_setup, api_context)
+    calls = _patch_submit(monkeypatch, api_context, pid, sid, cv_id, job_id, grant["id"])
+    async with _mcp(services, grant["token"]) as mcp:
+        first = (await mcp.rpc("tools/call", {"name": "apply_submit", "arguments": _submit_args(job_id)}, caps=URL_ELICITATION))["result"]
+        assert first["resultType"] == "input_required"
+        run_id = calls[0]
+        request = first["inputRequests"][f"owner-approval-{run_id}"]
+        assert request["params"] == {"mode": "url", "url": f"{_origin(services)}/app/projects/{pid}/console?tab=approvals",
+                                     "message": request["params"]["message"]}
+        state = first["requestState"]
+        assert str(run_id) not in state  # sealed, not plaintext
+        await asyncio.to_thread(_set_status, api_context, run_id, "waiting_approval")
+        second = (await mcp.rpc("tools/call", {"name": "apply_submit", "arguments": _submit_args(job_id),
+                                               "requestState": state, "inputResponses": {}}, caps=URL_ELICITATION))["result"]
+        assert second["resultType"] == "input_required" and f"owner-approval-{run_id}" in second["inputRequests"]
+        await asyncio.to_thread(_set_status, api_context, run_id, "completed")
+        final = (await mcp.rpc("tools/call", {"name": "apply_submit", "arguments": _submit_args(job_id),
+                                              "requestState": second["requestState"], "inputResponses": {}}, caps=URL_ELICITATION))["result"]
+        assert final.get("resultType", "complete") == "complete"
+        assert final["structuredContent"]["run_id"] == str(run_id) and final["structuredContent"]["status"] == "completed"
+    assert calls == [run_id]
+
+
+@pytest.mark.integration
+async def test_apply_submit_without_url_elicitation_is_legacy(api_context, monkeypatch):
+    services, pid, grant, cv_id, job_id, sid = await asyncio.to_thread(_setup, api_context)
+    calls = _patch_submit(monkeypatch, api_context, pid, sid, cv_id, job_id, grant["id"])
+    async with _mcp(services, grant["token"]) as mcp:
+        result = (await mcp.rpc("tools/call", {"name": "apply_submit", "arguments": _submit_args(job_id)}, caps={}))["result"]
+        assert result.get("resultType", "complete") == "complete"
+        assert result["structuredContent"]["run_id"] == str(calls[0])
+
+
+@pytest.mark.integration
+async def test_mrtr_state_replayed_by_other_project_is_not_found(api_context, monkeypatch):
+    services, pid, grant, cv_id, job_id, sid = await asyncio.to_thread(_setup, api_context)
+    _, _, other_grant, *_ = await asyncio.to_thread(_setup, api_context)
+    calls = _patch_submit(monkeypatch, api_context, pid, sid, cv_id, job_id, grant["id"])
+    async with _mcp(services, grant["token"]) as mcp:
+        first = (await mcp.rpc("tools/call", {"name": "apply_submit", "arguments": _submit_args(job_id)}, caps=URL_ELICITATION))["result"]
+    async with _mcp(services, other_grant["token"]) as other:
+        replay = await other.rpc("tools/call", {"name": "apply_submit", "arguments": _submit_args(job_id),
+                                                "requestState": first["requestState"], "inputResponses": {}}, caps=URL_ELICITATION)
+    assert replay["error"]["code"] in {-32001, -32602}
+    assert "result" not in replay
+    assert len(calls) == 1
+
+
+@pytest.mark.integration
+async def test_request_state_survives_a_new_app_with_the_same_key(api_context, monkeypatch, tmp_path):
+    services, pid, grant, cv_id, job_id, sid = await asyncio.to_thread(_setup, api_context)
+    services.mcp_request_state_key = mcp_tasks.mcp_request_state_key(tmp_path)
+    calls = _patch_submit(monkeypatch, api_context, pid, sid, cv_id, job_id, grant["id"])
+    async with _mcp(services, grant["token"]) as mcp:
+        first = (await mcp.rpc("tools/call", {"name": "apply_submit", "arguments": _submit_args(job_id)}, caps=URL_ELICITATION))["result"]
+    await asyncio.to_thread(_set_status, api_context, calls[0], "completed")
+    async with _mcp(services, grant["token"]) as restarted:
+        final = (await restarted.rpc("tools/call", {"name": "apply_submit", "arguments": _submit_args(job_id),
+                                                    "requestState": first["requestState"], "inputResponses": {}}, caps=URL_ELICITATION))["result"]
+    assert final["structuredContent"]["status"] == "completed"
+    assert len(calls) == 1

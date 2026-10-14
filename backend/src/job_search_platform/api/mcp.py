@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
@@ -11,16 +12,19 @@ from uuid import UUID
 from mcp.server.caching import CacheHint
 from mcp.server.extension import Extension, MethodBinding
 from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.request_state import RequestStateSecurity
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.shared.exceptions import MCPError
 from mcp.types import CallToolResult, TextContent
-from mcp_types import RequestParams
+from mcp_types import ElicitRequest, InputRequiredResult, RequestParams
 from pydantic import ValidationError
 from sqlalchemy import func, select
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 
-from job_search_platform.api.mcp_tasks import TASKS_EXTENSION, client_declares_tasks, created_task, task_view
+from job_search_platform.api.mcp_tasks import (
+    TASKS_EXTENSION, client_declares_tasks, client_declares_url_elicitation, created_task, owner_action, task_view,
+)
 from job_search_platform.db.models import Run, RunEvent
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import Actor, Operation, RunView
@@ -265,12 +269,16 @@ class _TasksExtension(Extension):
 def create_mcp_server(services: Any, resource: str | None = None) -> MCPServer:
     """Build one stateless official MCP server bound to shared backend services."""
     intake = ProtocolRuns(services.sessions)
+    key = getattr(services, "mcp_request_state_key", None)
+    # None (tests, SimpleNamespace services) keeps the SDK's process-local key.
+    request_state = RequestStateSecurity(keys=[key], audience="job-search-platform-mcp") if key else None
     server = MCPServer(
         name="Job Search Platform",
         version="0.1.0",
         instructions="Use project-granted tools to evaluate job postings and draft application documents.",
         extensions=[_TasksExtension(services, resource, intake)],
         cache_hints=_CACHE_HINTS,
+        request_state_security=request_state,
     )
 
     async def sanitize_invalid_tool_arguments(ctx: Any, call_next: Any) -> Any:
@@ -324,6 +332,32 @@ def create_mcp_server(services: Any, resource: str | None = None) -> MCPServer:
             raise MCPError(-32000, "request_failed") from None
         return _run_result(run)
 
+    async def apply_submit_rounds(skill: Skill, request: Any, ctx: Context[Any, Any]) -> dict[str, Any] | InputRequiredResult:
+        """MRTR: the owner approves in the app; each retry re-reads the same run and never submits again."""
+        actor = await _authenticate(ctx, services.grants, resource)
+        if ctx.request_state is None:
+            if "results:read" not in actor.capabilities or not client_declares_url_elicitation(ctx.client_capabilities):
+                return await submit(skill.id, request, ctx)
+            run_id = UUID((await submit(skill.id, request, ctx))["run_id"])
+        else:
+            try:
+                run_id = UUID(json.loads(ctx.request_state)["run_id"])
+            except (ValueError, KeyError, TypeError):
+                raise MCPError(-32602, "invalid_request_state") from None
+        try:
+            run, result = await _run_result_with_artifacts(services, actor, run_id)
+        except ServiceError as exc:
+            raise _error(exc) from None
+        except Exception:
+            raise MCPError(-32000, "request_failed") from None
+        if run.operation != "apply_submit":
+            raise MCPError(-32001, "not_found")
+        if run.status in _TERMINAL_RUN_STATUSES:
+            return result
+        key, elicitation = owner_action(run, _owner_origin(services), approval=True)
+        return InputRequiredResult(input_requests={key: ElicitRequest.model_validate(elicitation)},
+                                   request_state=json.dumps({"run_id": str(run.id)}))
+
     def skill_tool(skill: Skill):
         async def tool(request, ctx: Context[Any, Any]) -> dict[str, Any]:
             require_arguments(ctx, {"request"})
@@ -339,6 +373,12 @@ def create_mcp_server(services: Any, resource: str | None = None) -> MCPServer:
         # The SDK derives the input schema from the signature, so bind the declared model.
         tool.__annotations__["request"] = skill.input_model
         tool.__name__ = tool.__qualname__ = skill.id
+        if skill.id == "apply_submit":
+            async def tool(request, ctx: Context[Any, Any]) -> dict[str, Any] | InputRequiredResult:
+                require_arguments(ctx, {"request"})
+                return await apply_submit_rounds(skill, request, ctx)
+            tool.__annotations__["request"] = skill.input_model
+            tool.__name__ = tool.__qualname__ = skill.id
         return tool
 
     for skill in SKILLS:

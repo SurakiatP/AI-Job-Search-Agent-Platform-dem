@@ -33,6 +33,7 @@ class Services:
     saved_searches: Any = None
     webhooks: Any = None
     oauth: Any = None
+    mcp_request_state_key: str | None = None
     secret_store: Any = None
     engine: Any = None
     maintenance_lock: Any = None
