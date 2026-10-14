@@ -77,12 +77,22 @@ def test_posting_older_than_90_days_is_never_inserted(db_session):
 
 
 @pytest.mark.integration
-def test_existing_row_now_too_old_is_deleted_without_tombstone(db_session):
+def test_existing_row_now_too_old_is_deleted_with_tombstone(db_session):
     job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, posted=T0 - timedelta(days=89))], T0)
+    pid = _rows(db_session)["1"].id
     counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, posted=T0 - timedelta(days=89))],
                                    T0 + timedelta(days=2))
-    assert counts["skipped_old"] == 1 and _rows(db_session) == {}
-    assert len(db_session.scalars(select(JobIndexDelete)).all()) == 1
+    assert counts["skipped_old"] == 1 and counts["deleted"] == 1 and _rows(db_session) == {}
+    tomb = db_session.scalars(select(JobPostingTombstone)).one()
+    assert (tomb.source, tomb.external_id) == ("greenhouse", "1")
+    assert db_session.scalars(select(JobIndexDelete)).one().posting_id == pid
+
+
+@pytest.mark.integration
+def test_future_posted_at_is_stored_and_survives_retire(db_session):
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, posted=T0 + timedelta(days=1))], T0)
+    assert set(_rows(db_session)) == {"1"}
+    assert job_store.retire(db_session, T0) == 0 and set(_rows(db_session)) == {"1"}
 
 
 @pytest.mark.integration

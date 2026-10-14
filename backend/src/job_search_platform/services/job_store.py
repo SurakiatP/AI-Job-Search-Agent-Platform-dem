@@ -94,8 +94,8 @@ def apply_board(db: Session, source: str, board: str | None, rows: list[dict], n
         if row.missed_runs >= DELETE_AFTER_MISSES:
             missing.append(row.id)
     db.flush()
-    delete_postings(db, too_old, now, tombstone=False)
-    counts["deleted"] = delete_postings(db, missing, now, tombstone=False)
+    counts["deleted"] = (delete_postings(db, too_old, now, tombstone=True)  # tombstoned so the source copy stays out
+                         + delete_postings(db, missing, now, tombstone=False))
     db.flush()
     return counts
 

@@ -161,7 +161,7 @@ rtk uv run --locked --project backend python scripts/ingest_jobs.py status     #
 rtk uv run --locked --project backend python scripts/ingest_jobs.py discover   # refresh data/job_boards.json from freehire, then commit it
 ```
 
-`run --source <name>` ingests one source. A failed board is recorded in `ingest_runs.per_board` and never counts toward closing its postings; a posting closes only after it is missing from two successful runs.
+`run --source <name>` ingests one source. A failed board is recorded in `ingest_runs.per_board` and never counts toward deleting its postings. A posting is deleted only after it is missing from two successful runs. A posting older than 90 days is deleted and tombstoned so it is not re-ingested.
 
 To run it every hour, install the launchd template:
 

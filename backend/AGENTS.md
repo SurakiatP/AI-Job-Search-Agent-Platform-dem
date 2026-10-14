@@ -7,7 +7,7 @@ Not here: UI (`frontend/`), container build inputs (`infra/`), operator scripts 
 
 - `src/job_search_platform/main.py` - app factory and wiring; `config.py` - settings.
 - `api/` - transport adapters: `rest.py`, `sse.py`, `mcp.py`, `mcp_tasks.py`, `a2a.py`, `oauth.py`, `accounts.py`, `dependencies.py`, `shared.py`.
-- `services/` - business logic and the single authorization path (`authorization.py`), `skills.py` (skill registry), `contracts.py`, `errors.py`; job store: `job_store.py` (ingest run, close rule, cross-source dedup), `job_mapping.py`, `job_dictionary.py`, `job_text.py`.
+- `services/` - business logic and the single authorization path (`authorization.py`), `skills.py` (skill registry), `contracts.py`, `errors.py`; job store: `job_store.py` (ingest run, delete rule and 90-day retention with tombstones, cross-source dedup), `job_mapping.py`, `job_dictionary.py`, `job_text.py`.
 - `db/` - `models.py`, `repositories.py`, `session.py`.
 - `integrations/` - adapters: `gateway.py` (LiteLLM), `hermes_runtime.py`, `object_store.py` (S3/MinIO), `secrets.py`, `mailer.py`, `tracing.py`, `jev.py`, `logging.py`, `job_boards.py` (freehire, Greenhouse, Lever, SmartRecruiters adapters).
 - `workers/` - `queue.py` (PostgreSQL queue), `executor.py`, `supervisor.py`, `sandbox.py`.
