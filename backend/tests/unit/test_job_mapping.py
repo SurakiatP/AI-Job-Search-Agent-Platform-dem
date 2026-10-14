@@ -56,3 +56,33 @@ def test_description_capped():
     raw = {"id": 1, "title": "Engineer", "absolute_url": "https://g/1", "location": {"name": "Bangkok"},
            "content": "x" * 60000}
     assert len(map_posting("greenhouse", "a", raw)["description_markdown"]) == 50000
+
+
+def test_match_key_capped_at_700():
+    for company, title in (("C" * 2000, "Engineer"), ("ß" * 300, "ß" * 300)):
+        row = map_posting("greenhouse", "a", {"id": 1, "title": title, "absolute_url": "https://g/1",
+                                              "company_name": company, "location": {"name": "Bangkok"}})
+        assert row["match_key"] and len(row["match_key"]) <= 700
+
+
+import pytest
+
+_OK = {"title": "Engineer", "absolute_url": "https://g/1", "id": 1}
+
+
+@pytest.mark.parametrize("source,raw", [
+    ("greenhouse", "nope"), ("greenhouse", None), ("greenhouse", {**_OK, "location": "Bangkok"}),
+    ("smartrecruiters", {"id": "1", "name": "Eng", "ref": "https://s/1", "company": "Acme"}),
+    ("smartrecruiters", {"id": "1", "name": "Eng", "ref": "https://s/1", "detail": {"jobAd": "x"}}),
+    ("smartrecruiters", {"id": "1", "name": "Eng", "ref": "https://s/1", "typeOfEmployment": "full"}),
+    ("freehire", {"public_slug": "s", "title": "Eng", "url": "https://f/1", "reality": "stale"}),
+    ("freehire", {"public_slug": "s", "title": "Eng", "url": "https://f/1", "enrichment": {"category": ["x"]}}),
+    ("freehire", {"public_slug": "s", "title": "Eng", "url": "https://f/1", "enrichment": {"category": {"a": 1}}}),
+    ("lever", {"id": "x", "text": "Eng", "hostedUrl": "https://l/x", "createdAt": 10**20}),
+])
+def test_malformed_shapes_never_raise(source, raw):
+    row = map_posting(source, "acme", raw)
+    assert row is None or isinstance(row, dict)
+    if row:
+        assert isinstance(row["category"], str)
+        assert row["posted_at"] is None or source != "lever"
