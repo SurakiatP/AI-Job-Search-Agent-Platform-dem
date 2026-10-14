@@ -121,12 +121,13 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
         <Button variant="outline" size="icon" aria-pressed={item.digest_enabled} aria-label={c.emailFor(item.name)} disabled={busy}
           onClick={() => void run(() => sendJson(`${base}/${item.id}`, 'PATCH', { digest_enabled: !item.digest_enabled }))}><Mail className="size-4" aria-hidden="true" /></Button>
         <Button variant="outline" size="icon" aria-pressed={item.push_enabled} aria-label={c.pushFor(item.name)} disabled={busy || (!pushReady && !item.push_enabled)}
-          title={pushReady ? undefined : c.pushHint}
+          aria-describedby={pushReady ? undefined : `push-hint-${item.id}`}
           onClick={() => void run(() => sendJson(`${base}/${item.id}`, 'PATCH', { push_enabled: !item.push_enabled }))}><BellRing className="size-4" aria-hidden="true" /></Button>
         <Button variant="outline" size="icon" aria-label={c.previewFor(item.name)} disabled={busy}
           onClick={() => void run(() => sendJson(`${base}/${item.id}/preview`, 'POST', {}), c.previewSent)}><Send className="size-4" aria-hidden="true" /></Button>
         <Button variant="ghost" size="icon" aria-label={c.deleteFor(item.name)} onClick={() => setDeleting(item)}><Trash2 className="size-4" aria-hidden="true" /></Button>
       </div>
+      {!pushReady && !item.push_enabled && <p id={`push-hint-${item.id}`} className="text-xs text-muted-foreground sm:col-span-2">{c.pushHint}</p>}
     </li>)}</ul>}
     <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
       <DialogContent>

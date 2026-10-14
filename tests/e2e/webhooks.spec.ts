@@ -6,7 +6,8 @@ type Delivery = { id: string; endpoint_id: string; event_type: string; status: '
 
 async function hooks(page: Page) {
   const list: Hook[] = [];
-  const deliveries: Delivery[] = [{ id: 'd1', endpoint_id: 'h0', event_type: 'run.completed', status: 'dead', attempts: 8, last_status_code: 503, last_error: null, created_at: '2026-10-14T00:00:00Z', delivered_at: null }];
+  const deliveries: Delivery[] = [{ id: 'd1', endpoint_id: 'h0', event_type: 'run.completed', status: 'dead', attempts: 8, last_status_code: 503, last_error: null, created_at: '2026-10-14T00:00:00Z', delivered_at: null },
+    { id: 'd0', endpoint_id: null, event_type: 'a2a.working', status: 'delivered', attempts: 1, last_status_code: 200, last_error: null, created_at: '2026-10-14T00:00:00Z', delivered_at: '2026-10-14T00:00:01Z' }];
   let redelivered = 0;
   await useSyntheticApplication(page);
   await page.route(`**/api/v1/projects/${projectId}/webhooks**`, async route => {
@@ -33,8 +34,10 @@ async function hooks(page: Page) {
 
 test('add a webhook, see the secret once, test, toggle, redeliver and delete', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await page.addInitScript(() => { (window as unknown as { copied: string[] }).copied = []; Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (v: string) => { (window as unknown as { copied: string[] }).copied.push(v); } } }); });
   const state = await hooks(page);
   await page.goto('/app/settings?section=webhooks');
+  await expect(page.getByRole('cell', { name: 'a2a.working' })).toBeVisible();
   await page.getByLabel('Endpoint URL').fill('http://insecure.example.test/hook');
   await page.getByLabel('Run completed').check();
   await page.getByRole('button', { name: 'Add webhook' }).click();
@@ -44,6 +47,9 @@ test('add a webhook, see the secret once, test, toggle, redeliver and delete', a
   await page.getByRole('button', { name: 'Add webhook' }).click();
   await expect(page.getByText('synthetic-secret-shown-once-0000000000000')).toBeVisible();
   await expect(page.getByText('This secret is shown only once')).toBeVisible();
+  await page.getByRole('button', { name: 'Copy', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Copied' })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { copied: string[] }).copied)).toEqual(['synthetic-secret-shown-once-0000000000000']);
   await page.getByRole('button', { name: 'Done, I saved it' }).click();
   await expect(page.getByText('synthetic-secret-shown-once-0000000000000')).toHaveCount(0);
   await expect(page.getByText('https://hooks.example.test/jsp')).toBeVisible();
@@ -67,5 +73,12 @@ test('webhooks section fits 320px in Thai', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto('/app/settings?section=webhooks');
   await expect(page.getByRole('heading', { name: 'Webhook' })).toBeVisible();
+  await page.getByLabel('URL ปลายทาง').fill('https://hooks.example.test/a-very-long-path/that-keeps-going/and-going/for-a-while');
+  await page.getByLabel('สรุปงานใหม่พร้อม').check();
+  await page.getByLabel('รออนุมัติ').check();
+  await page.getByRole('button', { name: 'เพิ่ม webhook' }).click();
+  await page.getByRole('button', { name: 'บันทึกแล้ว' }).click();
+  await expect(page.getByText('https://hooks.example.test/a-very-long-path', { exact: false })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'a2a.working' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
