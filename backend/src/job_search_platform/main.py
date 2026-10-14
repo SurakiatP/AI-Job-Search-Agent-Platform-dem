@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from job_search_platform import config
 from job_search_platform.api.dependencies import Services
 from job_search_platform.api.accounts import router as accounts_router
+from job_search_platform.api.mcp_tasks import mcp_request_state_key
 from job_search_platform.api.oauth import router as oauth_router
 from job_search_platform.api.rest import _http_error, router as rest_router
 from job_search_platform.api.sse import router as sse_router
@@ -153,7 +154,8 @@ def build_services() -> Services:
                     documents=documents, runs=runs, grants=grants, settings=settings,
                     approvals=approvals, supervisor=supervisor, runtime=runtime,
                     queue=queue, artifacts=artifacts, secret_store=secrets, engine=engine,
-                    accounts=accounts, mailer=mailer, saved_searches=saved_searches, webhooks=webhooks, oauth=oauth)
+                    accounts=accounts, mailer=mailer, saved_searches=saved_searches, webhooks=webhooks, oauth=oauth,
+                    mcp_request_state_key=mcp_request_state_key(PRIVATE_DIR))
 
 
 def _safe_field_names(exc: RequestValidationError) -> dict[str, str] | None:

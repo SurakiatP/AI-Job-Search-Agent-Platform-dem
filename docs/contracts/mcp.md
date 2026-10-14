@@ -35,3 +35,29 @@ The shared listener also serves an OAuth 2.1 authorization server so MCP clients
 - Each consent creates a `Grant` that the owner can revoke under Connected agents; revocation takes effect on the next request.
 - OAuth is off unless the shared origin (`SHARE_PUBLIC_ORIGIN`) is https or loopback with no path; with OAuth on, `/mcp` also accepts the `SHARE_PUBLIC_ORIGIN` host. Otherwise the OAuth routes are not mounted and `/mcp` advertises no resource metadata.
 - `jspg_` grant tokens keep working unchanged.
+
+## Tasks, MRTR and caching (FR-P02)
+
+Protocol `2026-07-28`. Clients that declare nothing see the previous behaviour unchanged.
+
+- `server/discover` advertises `capabilities.extensions["io.modelcontextprotocol/tasks"]`.
+- Six tools may return `resultType: "task"` instead of the run payload: `evaluate_job`, `draft_documents`, `tailor_cv`, `apply_prepare`, `apply_submit`, `draft_follow_up`. This happens only when the request declares the tasks extension and the grant has `results:read`; otherwise the normal result is returned. `taskId` is the run id. The create result carries the task fields only; details come from `tasks/get`.
+- Methods: `tasks/get`, `tasks/update`, `tasks/cancel` (protocol `2026-07-28` only; there is no `tasks/list`). Each requires the tasks extension on the request, otherwise `-32021` with `data.requiredCapabilities = {"extensions": {"io.modelcontextprotocol/tasks": {}}}`.
+- `tasks/get` reads any run of the grant's Project that `get_run` can read. An unknown, malformed or foreign task id returns `-32602` with the message `Failed to retrieve task: Task not found`.
+- `tasks/cancel` uses the same service as `cancel_run`: cancelling a run created by a different grant returns `-32001` `forbidden`.
+- `pollIntervalMs` is 2000; `ttlMs` is `null` because runs are durable. `statusMessage` is the run status; `createdAt`/`lastUpdatedAt` are ISO 8601 (`lastUpdatedAt` is the finish time, else the newest run event, else the creation time).
+
+| Run status | Task status | Extra fields on `tasks/get` |
+|---|---|---|
+| `queued`, `running` | `working` | none |
+| `waiting_approval` | `input_required` | `inputRequests["owner-approval-<run_id>"]`: URL elicitation to `<owner origin>/app/projects/<project_id>/console?tab=approvals` |
+| `needs_input` | `input_required` | `inputRequests["owner-input-<run_id>"]`: URL elicitation to `<owner origin>/app/projects/<project_id>/sessions/<session_id>` (the timeline tab when the run has no session) |
+| `completed` | `completed` | `result`: a `CallToolResult` whose `structuredContent` equals the `get_run` payload (including `artifact_resources`), with one JSON text block |
+| `failed`, `interrupted` | `failed` | `error: {"code": -32000, "message": "run_failed"}` (`"run_interrupted"` for interrupted) |
+| `cancelled` | `cancelled` | none |
+
+- The owner decides in the app, never over MCP. `tasks/update` only validates the task and acknowledges (`resultType: "complete"`); `inputResponses` are ignored. Elicitation keys are stable per run and status, so a client sees each owner step once.
+- MRTR on `apply_submit`: for a client that declares URL elicitation and a grant with `results:read`, the first call submits the run and, while it is not terminal, returns `input_required` with the owner-approval URL elicitation and a sealed `requestState` holding the run id. Each retry re-reads that same run and never submits again; a terminal run returns the `get_run` payload. Other clients get the plain submit result.
+- The SDK binds a sealed `requestState` to the method, tool name and arguments and expires it after 600 s. A retry with different arguments or after expiry is rejected with `-32602`; the client must start over, which creates a new run.
+- The sealing key is stored in the file `mcp-request-state-key` in the private runtime directory (mode 0600), created once so in-flight rounds survive a restart. An empty, symlinked or group/world-accessible file stops startup (`private_runtime_credentials_unavailable`).
+- Cache hints: `tools/list`, `prompts/list` and `resources/templates/list` are `public` with `ttlMs` 3600000 (1 hour); every other response is `private` with `ttlMs` 0.

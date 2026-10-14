@@ -2,20 +2,30 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from mcp.server.caching import CacheHint
+from mcp.server.extension import Extension, MethodBinding
 from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.request_state import RequestStateSecurity
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.shared.exceptions import MCPError
 from mcp.types import CallToolResult, TextContent
+from mcp_types import ElicitRequest, InputRequiredResult, RequestParams
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 
-from job_search_platform.db.models import Run
+from job_search_platform.api.mcp_tasks import (
+    TASKS_EXTENSION, client_declares_tasks, client_declares_url_elicitation, created_task, owner_action, task_view,
+)
+from job_search_platform.db.models import Run, RunEvent
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import Actor, Operation, RunView
 from job_search_platform.services.errors import ServiceError
@@ -60,9 +70,9 @@ def _run_result(run: RunView) -> dict[str, Any]:
     return result
 
 
-def _token_from_context(ctx: Context[Any, Any]) -> str:
+def _token_from_headers(headers: Any) -> str:
     authorization_header = next(
-        (value for key, value in ctx.headers.items() if key.lower() == "authorization"),
+        (value for key, value in (headers or {}).items() if key.lower() == "authorization"),
         "",
     )
     scheme, separator, token = authorization_header.partition(" ")
@@ -121,9 +131,9 @@ class _BearerAuthenticationMiddleware:
         await self.app(scope, receive, send)
 
 
-async def _authenticate(ctx: Context[Any, Any], grants: Any, resource: str | None = None) -> Actor:
+async def _authenticate_headers(headers: Any, grants: Any, resource: str | None = None) -> Actor:
     try:
-        actor = await grants.authenticate(_token_from_context(ctx), resource=resource)
+        actor = await grants.authenticate(_token_from_headers(headers), resource=resource)
     except ServiceError as exc:
         raise _error(exc) from None
     except Exception:
@@ -133,14 +143,146 @@ async def _authenticate(ctx: Context[Any, Any], grants: Any, resource: str | Non
     return actor
 
 
+async def _authenticate(ctx: Context[Any, Any], grants: Any, resource: str | None = None) -> Actor:
+    return await _authenticate_headers(ctx.headers, grants, resource)
+
+
+_TASK_SKILLS = frozenset(skill.id for skill in SKILLS if skill.kind == "task")
+_TERMINAL_RUN_STATUSES = frozenset({"completed", "failed", "cancelled", "interrupted"})
+# MRTR retries hold briefly for a status change so a client retry loop does not spin while the owner decides.
+_MRTR_HOLD_SECONDS = 5.0
+_MRTR_POLL_SECONDS = 0.5
+_LIST_HINT = CacheHint(ttl_ms=3_600_000, scope="public")
+_CACHE_HINTS = {"tools/list": _LIST_HINT, "prompts/list": _LIST_HINT, "resources/templates/list": _LIST_HINT}
+
+
+def _owner_origin(services: Any) -> str:
+    return getattr(getattr(services, "owner_sessions", None), "public_origin", None) or "http://127.0.0.1:8000"
+
+
+async def _run_result_with_artifacts(services: Any, actor: Actor, run_id: UUID) -> tuple[RunView, dict[str, Any]]:
+    """The get_run payload: run status plus published document resources from this run."""
+    run = await services.runs.get(actor, actor.project_id, run_id)
+    result = _run_result(run)
+    documents = await services.documents.list_ready(actor, actor.project_id)
+    resources = [f"job-search://documents/{document.id}" for document in documents if document.source_run_id == run.id]
+    if resources:
+        result["artifact_resources"] = resources
+    return run, result
+
+
+_TASK_NOT_FOUND = "Failed to retrieve task: Task not found"
+_TASK_VERSIONS = frozenset({"2026-07-28"})
+
+
+class _TaskParams(RequestParams):
+    task_id: str
+
+
+class _TaskUpdateParams(_TaskParams):
+    input_responses: dict[str, Any] = {}
+
+
+class _TasksExtension(Extension):
+    """io.modelcontextprotocol/tasks over durable runs. Owner decisions stay in the owner app (ADR-001, FR-A05)."""
+
+    identifier = TASKS_EXTENSION
+
+    def __init__(self, services: Any, resource: str | None, intake: ProtocolRuns) -> None:
+        self.services, self.resource, self.intake = services, resource, intake
+
+    async def _actor(self, ctx: Any) -> Actor:
+        return await _authenticate_headers(getattr(ctx.request, "headers", None), self.services.grants, self.resource)
+
+    @staticmethod
+    def _require_capability(ctx: Any) -> None:
+        if not client_declares_tasks(ctx.session.client_capabilities):
+            raise MCPError(-32021, "Missing required client capability",
+                           {"requiredCapabilities": {"extensions": {TASKS_EXTENSION: {}}}})
+
+    def _last_updated(self, run: RunView) -> datetime:
+        if run.finished_at is not None:
+            return run.finished_at
+        with self.services.sessions() as db:
+            newest = db.scalar(select(func.max(RunEvent.created_at)).where(
+                RunEvent.project_id == run.project_id, RunEvent.run_id == run.id))
+        return newest or run.created_at
+
+    async def _view(self, actor: Actor, task_id: str) -> dict[str, Any]:
+        try:
+            run, result = await _run_result_with_artifacts(self.services, actor, UUID(task_id))
+        except ValueError:
+            raise MCPError(-32602, _TASK_NOT_FOUND) from None
+        except ServiceError as exc:
+            if exc.code == "not_found":
+                raise MCPError(-32602, _TASK_NOT_FOUND) from None
+            raise _error(exc) from None
+        except Exception:
+            raise MCPError(-32000, "request_failed") from None
+        last = await asyncio.to_thread(self._last_updated, run)
+        return task_view(run, last, _owner_origin(self.services), result=result)
+
+    async def intercept_tool_call(self, params: Any, ctx: Any, call_next: Any) -> Any:
+        if params.name not in _TASK_SKILLS or not client_declares_tasks(ctx.session.client_capabilities):
+            return await call_next(ctx)
+        actor = await self._actor(ctx)
+        if "results:read" not in actor.capabilities:
+            return await call_next(ctx)  # it could never read the task back
+        skill = SKILL_BY_ID[params.name]
+        try:
+            request = skill.input_model.model_validate((params.arguments or {})["request"])
+            run = await self.intake.submit(actor, skill.id, request)
+        except ServiceError as exc:
+            raise _error(exc) from None
+        except (KeyError, ValidationError):
+            raise MCPError(-32602, "invalid_parameters") from None
+        except Exception:
+            raise MCPError(-32000, "request_failed") from None
+        return {"resultType": "task", **created_task(task_view(run, run.created_at, _owner_origin(self.services)))}
+
+    def methods(self) -> tuple[MethodBinding, ...]:
+        return (
+            MethodBinding("tasks/get", _TaskParams, self._get, protocol_versions=_TASK_VERSIONS),
+            MethodBinding("tasks/update", _TaskUpdateParams, self._update, protocol_versions=_TASK_VERSIONS),
+            MethodBinding("tasks/cancel", _TaskParams, self._cancel, protocol_versions=_TASK_VERSIONS),
+        )
+
+    async def _get(self, ctx: Any, params: _TaskParams) -> dict[str, Any]:
+        self._require_capability(ctx)
+        return {"resultType": "complete", **await self._view(await self._actor(ctx), params.task_id)}
+
+    async def _update(self, ctx: Any, params: _TaskUpdateParams) -> dict[str, Any]:
+        # Owner questions and approvals are answered in the owner app, never by the agent.
+        self._require_capability(ctx)
+        await self._view(await self._actor(ctx), params.task_id)
+        return {"resultType": "complete"}
+
+    async def _cancel(self, ctx: Any, params: _TaskParams) -> dict[str, Any]:
+        self._require_capability(ctx)
+        actor = await self._actor(ctx)
+        await self._view(actor, params.task_id)
+        try:
+            await self.services.runs.cancel(actor, actor.project_id, UUID(params.task_id))
+        except ServiceError as exc:
+            raise _error(exc) from None
+        except Exception:
+            raise MCPError(-32000, "request_failed") from None
+        return {"resultType": "complete"}
+
 def create_mcp_server(services: Any, resource: str | None = None) -> MCPServer:
     """Build one stateless official MCP server bound to shared backend services."""
+    intake = ProtocolRuns(services.sessions)
+    key = getattr(services, "mcp_request_state_key", None)
+    # None (tests, SimpleNamespace services) keeps the SDK's process-local key.
+    request_state = RequestStateSecurity(keys=[key], audience="job-search-platform-mcp") if key else None
     server = MCPServer(
         name="Job Search Platform",
         version="0.1.0",
         instructions="Use project-granted tools to evaluate job postings and draft application documents.",
+        extensions=[_TasksExtension(services, resource, intake)],
+        cache_hints=_CACHE_HINTS,
+        request_state_security=request_state,
     )
-    intake = ProtocolRuns(services.sessions)
 
     async def sanitize_invalid_tool_arguments(ctx: Any, call_next: Any) -> Any:
         if ctx.method == "tools/call":
@@ -193,6 +335,41 @@ def create_mcp_server(services: Any, resource: str | None = None) -> MCPServer:
             raise MCPError(-32000, "request_failed") from None
         return _run_result(run)
 
+    async def apply_submit_rounds(skill: Skill, request: Any, ctx: Context[Any, Any]) -> dict[str, Any] | InputRequiredResult:
+        """MRTR: the owner approves in the app; each retry re-reads the same run and never submits again."""
+        actor = await _authenticate(ctx, services.grants, resource)
+        if ctx.request_state is None:
+            if "results:read" not in actor.capabilities or not client_declares_url_elicitation(ctx.client_capabilities):
+                return await submit(skill.id, request, ctx)
+            run_id = UUID((await submit(skill.id, request, ctx))["run_id"])
+        else:
+            try:
+                run_id = UUID(json.loads(ctx.request_state)["run_id"])
+            except (ValueError, KeyError, TypeError):
+                raise MCPError(-32602, "invalid_request_state") from None
+        retry = ctx.request_state is not None
+        deadline = asyncio.get_running_loop().time() + _MRTR_HOLD_SECONDS
+        first_status = None
+        while True:
+            try:
+                run, result = await _run_result_with_artifacts(services, actor, run_id)
+            except ServiceError as exc:
+                raise _error(exc) from None
+            except Exception:
+                raise MCPError(-32000, "request_failed") from None
+            if run.operation != "apply_submit":
+                raise MCPError(-32001, "not_found")
+            first_status = run.status if first_status is None else first_status
+            if (not retry or run.status in _TERMINAL_RUN_STATUSES or run.status != first_status
+                    or asyncio.get_running_loop().time() >= deadline):
+                break
+            await asyncio.sleep(_MRTR_POLL_SECONDS)
+        if run.status in _TERMINAL_RUN_STATUSES:
+            return result
+        key, elicitation = owner_action(run, _owner_origin(services), approval=True)
+        return InputRequiredResult(input_requests={key: ElicitRequest.model_validate(elicitation)},
+                                   request_state=json.dumps({"run_id": str(run.id)}))
+
     def skill_tool(skill: Skill):
         async def tool(request, ctx: Context[Any, Any]) -> dict[str, Any]:
             require_arguments(ctx, {"request"})
@@ -208,6 +385,12 @@ def create_mcp_server(services: Any, resource: str | None = None) -> MCPServer:
         # The SDK derives the input schema from the signature, so bind the declared model.
         tool.__annotations__["request"] = skill.input_model
         tool.__name__ = tool.__qualname__ = skill.id
+        if skill.id == "apply_submit":
+            async def tool(request, ctx: Context[Any, Any]) -> dict[str, Any] | InputRequiredResult:
+                require_arguments(ctx, {"request"})
+                return await apply_submit_rounds(skill, request, ctx)
+            tool.__annotations__["request"] = skill.input_model
+            tool.__name__ = tool.__qualname__ = skill.id
         return tool
 
     for skill in SKILLS:
@@ -222,17 +405,7 @@ def create_mcp_server(services: Any, resource: str | None = None) -> MCPServer:
         require_arguments(ctx, {"run_id"})
         actor = await _authenticate(ctx, services.grants, resource)
         try:
-            run = await services.runs.get(actor, actor.project_id, run_id)
-            result = _run_result(run)
-            documents = await services.documents.list_ready(actor, actor.project_id)
-            resources = [
-                f"job-search://documents/{document.id}"
-                for document in documents
-                if document.source_run_id == run.id
-            ]
-            if resources:
-                result["artifact_resources"] = resources
-            return result
+            return (await _run_result_with_artifacts(services, actor, run_id))[1]
         except ServiceError as exc:
             raise _error(exc) from None
         except Exception:
