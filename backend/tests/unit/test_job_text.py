@@ -15,3 +15,8 @@ def test_escaped_html_from_greenhouse_is_unescaped_once():
 
 def test_javascript_links_drop_url():
     assert html_to_markdown('<a href="javascript:alert(1)">x</a>') == "x"
+
+
+def test_link_url_with_injection_characters_is_dropped():
+    assert html_to_markdown('<a href="https://x/a\n\n# Injected">t</a>') == "t"
+    assert html_to_markdown('<a href="https://x/a)b">t</a>') == "t"

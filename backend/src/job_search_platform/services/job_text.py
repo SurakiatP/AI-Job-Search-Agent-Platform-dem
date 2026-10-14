@@ -31,7 +31,8 @@ class _Converter(HTMLParser):
             self.out.append("*")
         elif tag == "a":
             href = dict(attrs).get("href") or ""
-            self.href.append(href if href.startswith(("https://", "http://")) else None)
+            ok = href.startswith(("https://", "http://")) and not re.search(r"[\s\x00-\x1f\x7f()]", href)
+            self.href.append(href if ok else None)
         elif tag in _BLOCK or tag in ("ul", "ol"):
             self.out.append("\n\n")
 

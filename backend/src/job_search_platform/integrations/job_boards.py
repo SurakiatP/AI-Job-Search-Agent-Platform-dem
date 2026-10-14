@@ -17,6 +17,7 @@ MAX_BYTES = 2 * 1024 * 1024
 GREENHOUSE_MAX_BYTES = 8 * 1024 * 1024
 PAUSE_SECONDS = 0.5
 PAGE = 100
+MAX_DETAIL_POSTINGS = 500  # one detail call per posting; refuse bigger boards
 MAX_PAGES = 100  # freehire: ~59 pages today; upstream offset+limit bound is 10,000
 _TOKEN = re.compile(r"^[A-Za-z0-9_.-]{1,100}$")
 _THAI_LOCATION = re.compile(r"thailand|bangkok|ประเทศไทย|กรุงเทพ", re.I)
@@ -122,6 +123,10 @@ def _smartrecruiters(call, board: str) -> list[dict]:
         rows += [p for p in content if isinstance(p, dict) and isinstance(p.get("id"), str) and valid_board(p["id"])]
         if len(rows) >= data["totalFound"] or len(content) < PAGE:
             break
+    else:
+        raise BoardError("too_many_pages")
+    if len(rows) > MAX_DETAIL_POSTINGS:
+        raise BoardError("too_many_postings")
     for posting in rows:
         detail = call(f"https://api.smartrecruiters.com/v1/companies/{board}/postings/{quote(posting['id'], safe='')}")
         if not isinstance(detail, dict):

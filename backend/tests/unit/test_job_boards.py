@@ -74,3 +74,22 @@ def test_pauses_between_requests_to_same_host():
     first = [{"id": f"a{i}", "text": "T", "country": "TH", "hostedUrl": "https://l"} for i in range(100)]
     jb.fetch_board("lever", "acme", get=Fake([first, []]), sleep=pauses.append)
     assert pauses == [0.5]
+
+
+def _sr_page(n):
+    return {"content": [{"id": f"p{i}"} for i in range(n)], "totalFound": 10_000}
+
+
+def test_smartrecruiters_exhausting_pages_is_failure_not_partial(monkeypatch):
+    monkeypatch.setattr(jb, "MAX_PAGES", 2)
+    fake = Fake([_sr_page(100), _sr_page(100)])
+    with pytest.raises(jb.BoardError, match="too_many_pages"):
+        jb.fetch_board("smartrecruiters", "Acme1", get=fake, sleep=lambda s: None)
+
+
+def test_smartrecruiters_too_many_postings_before_any_detail_call(monkeypatch):
+    monkeypatch.setattr(jb, "MAX_DETAIL_POSTINGS", 2)
+    fake = Fake([{"content": [{"id": f"p{i}"} for i in range(3)], "totalFound": 3}])
+    with pytest.raises(jb.BoardError, match="too_many_postings"):
+        jb.fetch_board("smartrecruiters", "Acme1", get=fake, sleep=lambda s: None)
+    assert len(fake.urls) == 1
