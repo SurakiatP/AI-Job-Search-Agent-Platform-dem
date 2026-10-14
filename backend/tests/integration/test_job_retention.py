@@ -135,23 +135,29 @@ def test_prune_drops_unseen_and_expired_tombstones_and_old_runs(db_session):
     tomb("kept", 1, 10)
     for name, days in (("old", 91), ("new", 89)):
         db_session.add(IngestRun(id=uuid.uuid4(), started_at=T0 - timedelta(days=days), status="ok", per_board={"n": name}))
+    for name, days in (("stuck", 2), ("live", 0)):  # SIGKILLed run left 'running'
+        db_session.add(IngestRun(id=uuid.uuid4(), started_at=T0 - timedelta(days=days), status="running", per_board={"n": name}))
     db_session.flush()
     job_store.prune(db_session, T0)
     assert [t.external_id for t in db_session.scalars(select(JobPostingTombstone))] == ["kept"]
-    assert [r.per_board["n"] for r in db_session.scalars(select(IngestRun))] == ["new"]
+    assert [r.per_board["n"] for r in db_session.scalars(select(IngestRun))
+            if r.per_board["n"] != "live"] == ["new"]
+    assert {r.per_board["n"] for r in db_session.scalars(select(IngestRun))} == {"new", "live"}
 
 
 @pytest.mark.integration
 def test_deleting_canonical_promotes_member_and_marks_it_dirty(db_session):
     url = "https://g/1"
-    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, url=url)], T0)
+    _other = map_posting("greenhouse", "acme", {"id": 99, "title": "Zz Other", "absolute_url": "https://zz/99",
+                                                "location": {"name": "Bangkok, Thailand"}})  # keeps the board non-empty
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, url=url), _other], T0)
     job_store.apply_board(db_session, "freehire", None, [_fh("fh-1", url)], T0 + timedelta(minutes=1))
     job_store.recompute_clusters(db_session, T0 + timedelta(minutes=1))
     fh = db_session.scalar(select(JobPosting).where(JobPosting.slug == "fh-1"))
     assert fh.canonical_id is not None
     for h in (1, 2):
         job_store.apply_board(db_session, "freehire", None, [_fh("fh-1", url)], T0 + timedelta(hours=h))
-        job_store.apply_board(db_session, "greenhouse", "acme", [], T0 + timedelta(hours=h))
+        job_store.apply_board(db_session, "greenhouse", "acme", [_other], T0 + timedelta(hours=h))
     fh.index_dirty = False
     job_store.recompute_clusters(db_session, T0 + timedelta(hours=2))
     assert fh.canonical_id is None and fh.index_dirty is True

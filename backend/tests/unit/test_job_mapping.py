@@ -89,3 +89,18 @@ def test_malformed_shapes_never_raise(source, raw):
     if row:
         assert isinstance(row["category"], str)
         assert row["posted_at"] is None or source != "lever"
+
+
+def _key(title, **extra):
+    return map_posting("greenhouse", "a", {"id": 1, "title": title, "absolute_url": "https://g/1",
+                                           "company_name": "Acme", "location": {"name": "Bangkok"}, **extra})["match_key"]
+
+
+def test_match_key_separates_seniority():
+    assert _key("Senior Software Engineer") != _key("Junior Software Engineer")
+    assert _key("Software Engineer Intern") != _key("Senior Software Engineer")
+
+
+def test_match_key_same_seniority_across_aliases_equal():
+    assert _key("Senior Software Engineer") == _key("Sr. Software Engineer")
+    assert _key("Senior Software Engineer") == _key("อาวุโส Software Engineer")

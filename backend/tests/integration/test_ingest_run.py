@@ -152,4 +152,15 @@ def test_final_step_failure_marks_run_failed_and_releases_lock(migrated_engine, 
     with migrated_engine.connect() as other:  # lock really free on a separate backend
         assert other.scalar(text("SELECT pg_try_advisory_lock(hashtext('ingest'))")) is True
         other.execute(text("SELECT pg_advisory_unlock(hashtext('ingest'))"))
-    assert _run(sessions, {}, T0 + timedelta(hours=1)).status == "ok"  # lock released
+    assert _run(sessions, {("greenhouse", "a"): [_raw(1)], ("greenhouse", "b"): []}, T0 + timedelta(hours=1)).status == "ok"  # lock released
+
+
+@pytest.mark.integration
+def test_empty_fetch_marks_board_suspicious_shrink(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    _run(sessions, {("greenhouse", "a"): [_raw(1)]}, T0, boards={"greenhouse": ["a"]})
+    for h in (1, 2, 3):
+        run = _run(sessions, {("greenhouse", "a"): []}, T0 + timedelta(hours=h), boards={"greenhouse": ["a"]})
+    assert run.per_board["greenhouse:a"] == {"state": "failed", "error": "suspicious_shrink"}
+    with sessions() as db:
+        assert db.scalar(select(JobPosting.missed_runs).where(JobPosting.external_id == "1")) == 0

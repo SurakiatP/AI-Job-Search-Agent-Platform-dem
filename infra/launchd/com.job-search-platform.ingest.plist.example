@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- WP5 hourly ingest. Copy to ~/Library/LaunchAgents/, replace REPO_DIR and PRIVATE_DIR, then (adjust PATH below if uv lives elsewhere: which uv):
+<!-- WP5 hourly ingest. Copy to ~/Library/LaunchAgents/, replace REPO_DIR, HOME_DIR (your $HOME) and PRIVATE_DIR, run mkdir -p ~/Library/Logs/job-search-platform, then (adjust PATH below if uv lives elsewhere: which uv):
      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.job-search-platform.ingest.plist -->
 <plist version="1.0">
 <dict>
@@ -18,7 +18,7 @@
   </dict>
   <key>StartInterval</key><integer>3600</integer>
   <key>RunAtLoad</key><true/>
-  <key>StandardOutPath</key><string>/tmp/jsp-ingest.log</string>
-  <key>StandardErrorPath</key><string>/tmp/jsp-ingest.log</string>
+  <key>StandardOutPath</key><string>HOME_DIR/Library/Logs/job-search-platform/ingest.log</string>
+  <key>StandardErrorPath</key><string>HOME_DIR/Library/Logs/job-search-platform/ingest.log</string>
 </dict>
 </plist>

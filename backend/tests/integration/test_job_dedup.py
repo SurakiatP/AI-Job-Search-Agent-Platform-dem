@@ -34,10 +34,17 @@ def _canon(db, slug):
     return row.canonical_id or row.id
 
 
+def _sentinels():  # a board never fetches empty (that is suspicious_shrink); these never cluster with anything
+    return {"freehire": _fh("fh-zz", "https://zz/fh", title="Zz Freehire"),
+            "greenhouse": _gh(99, "https://zz/gh", title="Zz Greenhouse"),
+            "lever": _lv("zz", "Zz Lever")}
+
+
 def _ingest(db, at, freehire=(), greenhouse=(), lever=()):
-    job_store.apply_board(db, "freehire", None, list(freehire), at)
-    job_store.apply_board(db, "greenhouse", "acme", list(greenhouse), at)
-    job_store.apply_board(db, "lever", "acme", list(lever), at)
+    s = _sentinels()
+    job_store.apply_board(db, "freehire", None, [*freehire, s["freehire"]], at)
+    job_store.apply_board(db, "greenhouse", "acme", [*greenhouse, s["greenhouse"]], at)
+    job_store.apply_board(db, "lever", "acme", [*lever, s["lever"]], at)
     return job_store.recompute_clusters(db, at)
 
 
@@ -103,7 +110,7 @@ def test_deleted_member_leaves_no_dangling_canonical(db_session):
     fh = db_session.scalar(select(JobPosting).where(JobPosting.slug == "fh-1"))
     assert fh.canonical_id is not None
     for h in (2, 3):  # freehire stops listing fh-1: deleted after two misses
-        job_store.apply_board(db_session, "freehire", None, [], T0 + timedelta(hours=h))
+        job_store.apply_board(db_session, "freehire", None, [_sentinels()["freehire"]], T0 + timedelta(hours=h))
     assert db_session.scalar(select(JobPosting).where(JobPosting.slug == "fh-1")) is None
     job_store.recompute_clusters(db_session, T0 + timedelta(hours=3))
     gh = db_session.scalar(select(JobPosting).where(JobPosting.slug == "gh-acme-1"))
@@ -122,3 +129,10 @@ def test_null_province_never_merges_on_match_key(db_session):
 def test_dedup_window_boundary(db_session, posted, merges):
     _ingest(db_session, T0, greenhouse=[_gh(1, "https://g/1", posted=posted)], lever=[_lv("a", "Backend Engineer")])
     assert (_canon(db_session, "gh-acme-1") == _canon(db_session, "lv-acme-a")) is merges
+
+
+@pytest.mark.integration
+def test_different_seniority_stays_separate(db_session):
+    _ingest(db_session, T0, greenhouse=[_gh(1, "https://g/1", "Senior Software Engineer")],
+            lever=[_lv("a", "Junior Software Engineer")])
+    assert _canon(db_session, "gh-acme-1") != _canon(db_session, "lv-acme-a")

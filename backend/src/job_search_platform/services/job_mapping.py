@@ -134,7 +134,7 @@ def map_posting(source: str, board: str | None, raw: dict) -> dict | None:
         salary_period=period, salary_thb_month_min=_thb_month(smin, currency, period),
         posting_language=language, description_markdown=description, source_url=url,
         url_key=_same_job_url(url),
-        match_key=f"{ckey}|{(role[0] if role else title).casefold()}|{province[0]}"[:700] if province and ckey else None,
+        match_key=f"{ckey}|{(role[0] if role else title).casefold()}|{province[0]}|{seniority or ''}"[:700] if province and ckey else None,
         posted_at=f.get("posted_at") if isinstance(f.get("posted_at"), str) else None,
         reality_stale=bool(f.get("reality_stale")),
     )

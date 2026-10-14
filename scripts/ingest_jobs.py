@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -41,7 +42,9 @@ def run(args) -> int:
 def discover(args) -> int:
     rows = job_boards.fetch_board("freehire", None)
     merged = job_store.discover_boards(rows, job_store.load_boards())
-    job_store.BOARDS_FILE.write_text(json.dumps(merged, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    tmp = job_store.BOARDS_FILE.with_suffix(".json.tmp")  # same directory: os.replace is atomic
+    tmp.write_text(json.dumps(merged, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(tmp, job_store.BOARDS_FILE)
     print(json.dumps({source: len(tokens) for source, tokens in merged.items()}))
     return 0
 

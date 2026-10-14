@@ -64,6 +64,12 @@ def test_freehire_pages_with_meta_total():
     assert all(u.startswith("https://freehire.me/api/v1/agent/jobs/search?") for u, _ in fake.urls)
 
 
+def test_freehire_short_read_is_failure():
+    fake = Fake([{"data": [{"public_slug": "a"}], "meta": {"total": 3}}, {"data": [], "meta": {"total": 3}}])
+    with pytest.raises(jb.BoardError, match="short_read"):
+        jb.fetch_board("freehire", None, get=fake, sleep=lambda s: None)
+
+
 def test_malformed_body_is_failure_not_empty():
     with pytest.raises(jb.BoardError):
         jb.fetch_board("greenhouse", "acme", get=Fake([{"unexpected": True}]), sleep=lambda s: None)

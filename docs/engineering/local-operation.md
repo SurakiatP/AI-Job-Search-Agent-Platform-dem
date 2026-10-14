@@ -161,17 +161,18 @@ rtk uv run --locked --project backend python scripts/ingest_jobs.py status     #
 rtk uv run --locked --project backend python scripts/ingest_jobs.py discover   # refresh data/job_boards.json from freehire, then commit it
 ```
 
-`run --source <name>` ingests one source. A failed board is recorded in `ingest_runs.per_board` and never counts toward deleting its postings. A posting is deleted only after it is missing from two successful runs. A posting older than 90 days is deleted and tombstoned so it is not re-ingested.
+`run --source <name>` ingests one source. A failed board is recorded in `ingest_runs.per_board` and never counts toward deleting its postings. A posting is deleted only after it is missing from two successful runs. A fetch that returns nothing, or under half of 20 or more stored postings, is treated as failed (`suspicious_shrink`). A posting older than 90 days is deleted and tombstoned so it is not re-ingested.
 
 To run it every hour, install the launchd template:
 
 ```sh
+mkdir -p ~/Library/Logs/job-search-platform
 cp infra/launchd/com.job-search-platform.ingest.plist.example ~/Library/LaunchAgents/com.job-search-platform.ingest.plist
-# edit the copy: replace REPO_DIR with this checkout and PRIVATE_DIR with CORE02_PRIVATE_DIR; check PATH (which uv)
+# edit the copy: replace REPO_DIR with this checkout, HOME_DIR with your home directory (launchd needs absolute paths) and PRIVATE_DIR with CORE02_PRIVATE_DIR; check PATH (which uv)
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.job-search-platform.ingest.plist
 ```
 
-Output goes to `/tmp/jsp-ingest.log`. Check it with `tail /tmp/jsp-ingest.log` and `ingest_jobs.py status`. Stop it with `launchctl bootout gui/$(id -u)/com.job-search-platform.ingest`.
+Output goes to `~/Library/Logs/job-search-platform/ingest.log`. Check it with `tail ~/Library/Logs/job-search-platform/ingest.log` and `ingest_jobs.py status`. Stop it with `launchctl bootout gui/$(id -u)/com.job-search-platform.ingest`.
 
 ## Verification on the operator machine
 

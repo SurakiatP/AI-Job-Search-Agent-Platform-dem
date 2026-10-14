@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import select
 
 from job_search_platform.db.models import JobPosting
+from job_search_platform.integrations.job_boards import BoardError
 from job_search_platform.services import job_store
 from job_search_platform.services.job_mapping import map_posting
 
@@ -28,7 +29,7 @@ def test_new_posting_created_then_seen_unchanged(db_session):
     row = _row(db_session, 1)
     row.index_dirty = False
     counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0 + timedelta(hours=1))
-    assert counts == {"fetched": 1, "created": 0, "updated": 0, "deleted": 0, "skipped_old": 0}
+    assert counts == {"fetched": 1, "created": 0, "updated": 0, "deleted": 0, "skipped_old": 0, "skipped_dup": 0}
     assert row.last_seen_at == T0 + timedelta(hours=1) and row.index_dirty is False
 
 
@@ -51,9 +52,9 @@ def test_deletes_after_two_missed_fetches(db_session):
 
 @pytest.mark.integration
 def test_deleted_posting_seen_again_is_created_fresh(db_session):
-    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0)
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(2)], T0)
     for h in (1, 2):
-        job_store.apply_board(db_session, "greenhouse", "acme", [], T0 + timedelta(hours=h))
+        job_store.apply_board(db_session, "greenhouse", "acme", [_gh(2)], T0 + timedelta(hours=h))
     assert _row(db_session, 1) is None
     counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0 + timedelta(hours=3))
     row = _row(db_session, 1)
@@ -89,3 +90,36 @@ def test_duplicate_external_id_in_rows_last_wins(db_session):
     counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(1, "Senior Engineer")], T0)
     rows = db_session.scalars(select(JobPosting).where(JobPosting.external_id == "1")).all()
     assert len(rows) == 1 and rows[0].title == "Senior Engineer" and counts["created"] == 1
+
+
+def _gh_board(board, i):
+    return map_posting("greenhouse", board, {"id": i, "title": "Engineer", "absolute_url": f"https://g/{board}/{i}",
+                                             "location": {"name": "Bangkok, Thailand"}})
+
+
+@pytest.mark.integration
+def test_same_external_id_under_other_board_is_skipped_not_integrity_error(db_session):
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh_board("acme", 1)], T0)
+    counts = job_store.apply_board(db_session, "greenhouse", "other", [_gh_board("other", 1), _gh_board("other", 2)],
+                                   T0 + timedelta(hours=1))
+    assert counts["skipped_dup"] == 1 and counts["created"] == 1
+    assert _row(db_session, 1).board == "acme"
+
+
+@pytest.mark.integration
+def test_empty_fetch_with_stored_rows_is_suspicious(db_session):
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(2)], T0)
+    for h in (1, 2, 3):
+        with pytest.raises(BoardError, match="suspicious_shrink"):
+            job_store.apply_board(db_session, "greenhouse", "acme", [], T0 + timedelta(hours=h))
+    assert _row(db_session, 1).missed_runs == 0 and _row(db_session, 2) is not None
+
+
+@pytest.mark.integration
+def test_large_shrink_is_suspicious_but_half_is_normal(db_session):
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(i) for i in range(1, 31)], T0)
+    with pytest.raises(BoardError, match="suspicious_shrink"):
+        job_store.apply_board(db_session, "greenhouse", "acme", [_gh(i) for i in range(1, 11)], T0 + timedelta(hours=1))
+    assert _row(db_session, 30).missed_runs == 0
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(i) for i in range(1, 21)], T0 + timedelta(hours=2))
+    assert _row(db_session, 30).missed_runs == 1 and _row(db_session, 20).missed_runs == 0

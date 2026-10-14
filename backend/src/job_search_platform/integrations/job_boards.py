@@ -86,8 +86,10 @@ def _freehire(call) -> list[dict]:
         if not isinstance(items, list) or not isinstance(meta, dict) or not isinstance(meta.get("total"), int):
             raise BoardError("bad_body")
         rows += [r for r in items if isinstance(r, dict)]
-        if len(rows) >= meta["total"] or not items:
+        if len(rows) >= meta["total"]:
             return rows
+        if not items:
+            raise BoardError("short_read")  # upstream stopped before its own total: never treat as complete
     raise BoardError("too_many_pages")
 
 

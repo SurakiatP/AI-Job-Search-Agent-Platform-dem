@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from sqlalchemy import delete, func, literal, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from job_search_platform.db.models import IngestRun, JobIndexDelete, JobPosting, JobPostingTombstone
 from job_search_platform.integrations import job_boards
@@ -24,6 +24,9 @@ TOMBSTONE_UNSEEN = timedelta(days=7)
 TOMBSTONE_MAX = timedelta(days=180)
 RUN_LOG_MAX = timedelta(days=90)
 DEDUP_WINDOW = timedelta(days=30)
+SHRINK_MIN_STORED = 20
+SHRINK_RATIO = 0.5
+STUCK_RUN = timedelta(days=1)
 
 
 def _parse_ts(value: object) -> datetime | None:
@@ -55,9 +58,13 @@ def delete_postings(db: Session, ids: list[uuid.UUID], now: datetime, *, tombsto
 def apply_board(db: Session, source: str, board: str | None, rows: list[dict], now: datetime) -> dict:
     """One successfully fetched board: upsert what was seen, count a miss for what was not, delete after two."""
     rows = list({r["external_id"]: r for r in rows}.values())  # last duplicate wins
-    counts = {"fetched": len(rows), "created": 0, "updated": 0, "deleted": 0, "skipped_old": 0}
+    counts = {"fetched": len(rows), "created": 0, "updated": 0, "deleted": 0, "skipped_old": 0, "skipped_dup": 0}
     existing = {p.external_id: p for p in db.scalars(select(JobPosting).where(
         JobPosting.source == source, JobPosting.board.is_(None) if board is None else JobPosting.board == board))}
+    if existing and (not rows or (len(existing) >= SHRINK_MIN_STORED and len(rows) < len(existing) * SHRINK_RATIO)):
+        raise job_boards.BoardError("suspicious_shrink")  # likely a truncated fetch: keep rows, count no misses
+    other_board = set(db.scalars(select(JobPosting.external_id).where(
+        JobPosting.source == source, JobPosting.board.is_distinct_from(board))))
     tombstoned = set(db.scalars(select(JobPostingTombstone.external_id).where(JobPostingTombstone.source == source)))
     seen, too_old = set(), []
     for values in rows:
@@ -74,6 +81,9 @@ def apply_board(db: Session, source: str, board: str | None, rows: list[dict], n
             db.execute(update(JobPostingTombstone).where(
                 JobPostingTombstone.source == source, JobPostingTombstone.external_id == external_id)
                 .values(last_seen_at=now))
+            continue
+        if row is None and external_id in other_board:  # same source id already stored under another board
+            counts["skipped_dup"] += 1
             continue
         if row is None:
             db.add(JobPosting(id=uuid.uuid4(), first_seen_at=now, last_seen_at=now, updated_at=now,
@@ -110,7 +120,9 @@ def retire(db: Session, now: datetime) -> int:
 def prune(db: Session, now: datetime) -> None:
     db.execute(delete(JobPostingTombstone).where(or_(
         JobPostingTombstone.last_seen_at < now - TOMBSTONE_UNSEEN, JobPostingTombstone.deleted_at < now - TOMBSTONE_MAX)))
-    db.execute(delete(IngestRun).where(IngestRun.started_at < now - RUN_LOG_MAX, IngestRun.status != "running"))
+    db.execute(delete(IngestRun).where(or_(
+        (IngestRun.started_at < now - RUN_LOG_MAX) & (IngestRun.status != "running"),
+        (IngestRun.started_at < now - STUCK_RUN) & (IngestRun.status == "running"))))  # SIGKILLed runs
 
 
 def recompute_clusters(db: Session, now: datetime) -> int:
@@ -119,7 +131,7 @@ def recompute_clusters(db: Session, now: datetime) -> int:
     ponytail: full recompute in Python over all postings each run (~10k rows); move to incremental
     when the store passes ~200k.
     """
-    rows = list(db.scalars(select(JobPosting)))
+    rows = list(db.scalars(select(JobPosting).options(defer(JobPosting.description_markdown))))
     parent = {r.id: r.id for r in rows}
 
     def find(x):
