@@ -55,6 +55,16 @@ rtk uv sync --locked --project backend --all-groups
 rtk uv run --locked --project backend python scripts/run_local.py --build-frontend --open-browser
 ```
 
+Machines without `uv` can install the same pinned backend runtime with pip into a Python 3.12 virtual environment, then run the same launcher with that interpreter instead of `uv run`:
+
+```sh
+python3.12 -m venv .venv && . .venv/bin/activate
+pip install --require-hashes -r requirements.txt
+python scripts/run_local.py --build-frontend --open-browser
+```
+
+`requirements.txt` is generated from `backend/uv.lock` (runtime only, no test tools) and a unit test fails when it drifts. After changing backend dependencies, regenerate it with `uv export --locked --project backend --no-dev --no-emit-project --format requirements-txt > requirements.txt`. The frontend still needs `npm ci --prefix frontend`; Docker services and upstream checkouts are unchanged.
+
 The session cookie `jsp_owner_session` is `HttpOnly` and `SameSite=Strict`, and `Secure` when `APP_PUBLIC_ORIGIN` is https. The app enforces same-origin CSRF protections. Keep the listener on loopback.
 
 In Settings, select OpenAI, Anthropic, or OpenRouter, choose a model, enter the key in the provider field, and save it. The browser sends the key to the local backend for Keychain storage; it is not retained in local browser storage or the database. Use the Settings connection check before submitting a run. The selected provider receives the CV and job details needed to perform the request. Do not configure a key in a grant or share workflow.

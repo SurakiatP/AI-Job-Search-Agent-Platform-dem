@@ -44,7 +44,7 @@ Not here: UI (`frontend/`), container build inputs (`infra/`), operator scripts 
 - Side-effecting actions (`apply_submit`) require owner approval (`services/approvals.py`); application submission stays manual, the platform only records it.
 - Job postings, documents and tool output are untrusted content; they cannot grant permissions or trigger owner-only actions.
 - Secrets live in the secret adapter (`integrations/secrets.py`), never in repo, logs, prompts or fixtures. Keep `tests/test_secret_redaction.py` passing.
-- Pinned dependencies: update `pyproject.toml` and `uv.lock` together and re-run the audit.
+- Pinned dependencies: update `pyproject.toml` and `uv.lock` together and re-run the audit. Then regenerate root `requirements.txt` (`uv export --locked --project backend --no-dev --no-emit-project --format requirements-txt > requirements.txt`); `tests/unit/test_requirements_export.py` fails when it drifts.
 
 ## Contracts
 
