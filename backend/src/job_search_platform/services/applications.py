@@ -11,17 +11,18 @@ from uuid import UUID
 from job_search_platform.services.evidence import claims
 import asyncio
 
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import exists, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from job_search_platform.db.models import ApplicationEvent, JobApplicationStatus, JobRevision
+from job_search_platform.db.models import ApplicationEvent, JobApplicationStatus, JobRevision, Project
 from job_search_platform.services.agent_jobs import _project
 from job_search_platform.services.contracts import (
     Actor, ApplicationCardView, ApplicationContact, ApplicationDetailView, ApplicationEmailLog,
     ApplicationEventView, ApplicationNote, ApplicationsListInput, ApplicationsListResult, ApplicationsUpdateInput,
 )
 from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.job_sources import _strip_utm
 
 MAX_ANSWER_CHARS = 4000
 MAX_EVIDENCE = 20
@@ -185,6 +186,22 @@ def application_recorded(db: Session, project_id: UUID, job_id: UUID) -> bool:
             & ApplicationEvent.payload["to"].as_string().in_(APPLIED_ONWARD))))))
 
 
+def applied_to_job(db: Session, project_id: UUID, job_id: UUID) -> bool:
+    """TOR FR-T02: one submission per (user, job). The same source URL in any of the user's projects is the same job."""
+    if application_recorded(db, project_id, job_id):
+        return True
+    url = _strip_utm(db.scalar(select(JobRevision.source_url).where(JobRevision.id == job_id)))
+    if url is None:
+        return False
+    user_id = db.scalar(select(Project.user_id).where(Project.id == project_id))
+    owned = Project.user_id == user_id if user_id is not None else Project.id == project_id
+    # ponytail: scans the user's linked jobs in Python; index a normalized URL column if a user holds thousands.
+    rows = db.execute(select(JobRevision.project_id, JobRevision.id, JobRevision.source_url)
+                      .join(Project, Project.id == JobRevision.project_id)
+                      .where(owned, JobRevision.id != job_id, JobRevision.source_url.is_not(None))).all()
+    return any(_strip_utm(source) == url and application_recorded(db, pid, jid) for pid, jid, source in rows)
+
+
 def event_view(event: ApplicationEvent) -> ApplicationEventView:
     scope = event.actor_scope
     actor = "user" if scope.startswith("user:") else "agent" if scope.startswith("grant:") else "system"
@@ -264,9 +281,11 @@ def add_event(db: Session, actor: Actor, project_id: UUID, job_id: UUID,
 
 def record_applied_via_approval(db: Session, project_id: UUID, job_id: UUID, scope: str,
                                 approval_id: UUID, pack_run_id: UUID) -> bool:
-    """Record the approved submission; False (no change) if the card already reached applied or later."""
+    """Record the approved submission; False (no change) if this user already applied to the job."""
+    owner = db.scalar(select(Project.user_id).where(Project.id == project_id)) or project_id
+    db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": f"apply:{owner}"})  # one user's projects serialize
     row = _lock_status(db, project_id, job_id)
-    if application_recorded(db, project_id, job_id):
+    if applied_to_job(db, project_id, job_id):
         return False
     _append(db, project_id, job_id, scope, "applied_via_approval",
             {"from": row.status, "approval_id": str(approval_id), "pack_run_id": str(pack_run_id)})

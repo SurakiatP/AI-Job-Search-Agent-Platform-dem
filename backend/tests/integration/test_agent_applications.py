@@ -17,9 +17,9 @@ from job_search_platform.db.models import Approval, JobRevision, Run, RunEvent
 from job_search_platform.services.contracts import ApplyPrepareInput, ApplySubmitInput, ProtocolJobInput
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.protocol_runs import ProtocolRuns
-from test_cv_tailoring import _Runtime, _execute_next, _run, _setup
+from test_cv_tailoring import JOB, _Runtime, _execute_next, _run, _setup
 from test_draft_kinds_manual_edit import _FakeRuntime, _execute_next as _execute_draft
-from test_paired_sessions import PREFIX
+from test_paired_sessions import PREFIX, _project
 from test_rest_api import _write_headers, api_context  # noqa: F401
 from test_smart_match_migration import _migrate
 
@@ -522,3 +522,24 @@ def test_follow_up_is_allowed_at_any_recorded_stage(api_context):
     path = f"{PREFIX}/{pid}/jobs/{session['job_revision_id']}/application-status"
     assert ctx.client.patch(path, headers=_write_headers(csrf), json={"application_status": "interview"}).status_code == 200
     assert _post(ctx, csrf, pid, session, "draft_follow_up", "f-interview").status_code == 202
+
+
+@pytest.mark.integration
+def test_a_job_applied_in_another_project_is_never_submitted_again(api_context, monkeypatch):
+    ctx = api_context
+    monkeypatch.setitem(JOB, "source_url", "https://jobs.example.test/twin")
+    csrf, pid, session, facts, runtime, pack_id = _ready_pack(ctx)
+    submit_id = _post(ctx, csrf, pid, session, "apply_submit", "s1").json()["id"]
+    _execute_next(ctx, runtime)
+    (approval,) = _approvals(ctx, pid)
+    other = _project(ctx, csrf, "B")
+    twin = ctx.client.post(f"{PREFIX}/{other}/jobs", headers=_write_headers(csrf), json={
+        **JOB, "source_url": "https://jobs.example.test/twin?utm_source=digest"}).json()["id"]
+    ctx.client.patch(f"{PREFIX}/{other}/jobs/{twin}/application-status",
+                     headers=_write_headers(csrf), json={"application_status": "applied"})
+
+    assert _decide(ctx, csrf, pid, approval["id"], "approve").status_code == 200
+    assert _run(ctx, submit_id).status == "cancelled"
+    assert _status(ctx, pid, session) == "saved"
+    again = _post(ctx, csrf, pid, session, "apply_submit", "s2")
+    assert again.status_code == 409 and again.json()["code"] == "already_applied"

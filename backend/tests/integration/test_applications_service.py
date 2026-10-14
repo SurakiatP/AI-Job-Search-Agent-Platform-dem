@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from uuid import uuid4
 
 import pytest
 from psycopg.errors import LockNotAvailable
@@ -106,6 +107,25 @@ def test_application_recorded_survives_moving_back(db_session):
 
 
 @pytest.mark.integration
+def test_applied_to_job_counts_every_project_of_the_same_user(db_session):
+    actor, record, job = _setup(db_session)
+    other = project(db_session, "Synthetic other", owner=actor)
+    twin = JobRevision(project_id=other.id, revision=1, title="Twin", description="Synthetic",
+                       source_url="https://jobs.example.test/1?utm_source=digest")
+    unlinked = JobRevision(project_id=other.id, revision=2, title="No URL", description="Synthetic")
+    db_session.add_all([twin, unlinked])
+    db_session.flush()
+    _, foreign = revisions(db_session, project(db_session, owner=owner(db_session)).id)
+    assert applications.applied_to_job(db_session, other.id, twin.id) is False
+    applications.set_stage(db_session, actor, record.id, job.id, "applied")
+    assert applications.applied_to_job(db_session, record.id, job.id) is True
+    assert applications.applied_to_job(db_session, other.id, twin.id) is True
+    assert applications.applied_to_job(db_session, other.id, unlinked.id) is False
+    assert applications.applied_to_job(db_session, foreign.project_id, foreign.id) is False
+    assert applications.record_applied_via_approval(db_session, other.id, twin.id, "user:x", uuid4(), uuid4()) is False
+
+
+@pytest.mark.integration
 def test_removed_or_foreign_job_is_not_found(db_session):
     actor, record, job = _setup(db_session)
     other = project(db_session, "Synthetic other", owner=actor)
@@ -136,4 +156,20 @@ def test_status_row_is_locked_during_a_write(migrated_engine):
             with pytest.raises(OperationalError) as caught:
                 second.execute(select(JobApplicationStatus).where(
                     JobApplicationStatus.project_id == record.id).with_for_update())
+            assert isinstance(caught.value.orig, LockNotAvailable)
+
+
+@pytest.mark.integration
+def test_submissions_of_one_user_serialize_across_projects(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    with sessions.begin() as db:
+        actor, record, job = _setup(db)
+        other = project(db, "Synthetic other", owner=actor)
+        _, twin = revisions(db, other.id)
+    with sessions.begin() as first:
+        assert applications.record_applied_via_approval(first, record.id, job.id, "user:x", uuid4(), uuid4())
+        with sessions() as second:
+            second.execute(text("SET lock_timeout = '200ms'"))
+            with pytest.raises(OperationalError) as caught:
+                applications.record_applied_via_approval(second, other.id, twin.id, "user:x", uuid4(), uuid4())
             assert isinstance(caught.value.orig, LockNotAvailable)
