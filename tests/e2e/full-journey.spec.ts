@@ -107,7 +107,7 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
   await page.goto('/app/settings');
-  await page.getByRole('button', { name: 'มืด' }).click();
+  await page.getByRole('button', { name: 'มืด', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByTestId('run-status')).toHaveText('เสร็จแล้ว');
