@@ -1,13 +1,20 @@
 """WP5 job store: upsert per board, close rule, dedup clusters, description purge (spec D6, D8, D9)."""
 from __future__ import annotations
 
+import json
+import logging
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
-from job_search_platform.db.models import JobPosting
+from job_search_platform.db.models import IngestRun, JobPosting
+from job_search_platform.integrations import job_boards
+from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.job_mapping import map_posting
 
 CLOSE_AFTER_MISSES = 2
 DEDUP_WINDOW = timedelta(days=30)
@@ -116,3 +123,64 @@ def purge_descriptions(db: Session, now: datetime) -> int:
     return db.execute(update(JobPosting).where(
         JobPosting.closed_at < now - PURGE_AFTER, JobPosting.description_markdown.is_not(None))
         .values(description_markdown=None)).rowcount
+
+
+
+RUN_DEADLINE = timedelta(minutes=20)
+BOARDS_FILE = Path(__file__).resolve().parents[1] / "data" / "job_boards.json"
+_log = logging.getLogger("jsp.ingest")
+
+
+def load_boards(path: Path | None = None) -> dict[str, list[str]]:
+    data = json.loads((path or BOARDS_FILE).read_text(encoding="utf-8"))
+    return {source: sorted({b for b in data.get(source, []) if job_boards.valid_board(b)})
+            for source in ("greenhouse", "lever", "smartrecruiters")}
+
+
+def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards.fetch_board,
+               clock=lambda: datetime.now(timezone.utc), sleep=time.sleep) -> IngestRun:
+    """One hourly run (spec D5): each board in its own transaction; failed/skipped boards never count as missing."""
+    with sessions() as lock:
+        if not lock.scalar(text("SELECT pg_try_advisory_lock(hashtext('ingest'))")):
+            raise ServiceError("ingest_running")
+        try:
+            started = clock()
+            run = IngestRun(id=uuid.uuid4(), started_at=started, status="running", per_board={})
+            with sessions.begin() as db:
+                db.add(run)
+            per_board, totals = {}, {"fetched": 0, "created": 0, "updated": 0, "closed": 0}
+            targets = [(s, None) for s in sources if s == "freehire"] + [
+                (s, b) for s in sources if s != "freehire" for b in boards.get(s, [])]
+            for source, board in targets:
+                key = f"{source}:{board or '-'}"
+                if clock() - started > RUN_DEADLINE:
+                    per_board[key] = {"state": "skipped"}
+                    continue
+                try:
+                    raw = fetch(source, board, sleep=sleep)
+                    rows = [r for r in (map_posting(source, board, item) for item in raw) if r]
+                    with sessions.begin() as db:
+                        counts = apply_board(db, source, board, rows, clock())
+                    per_board[key] = {"state": "ok", **counts}
+                    for name in totals:
+                        totals[name] += counts[name]
+                except job_boards.BoardError as exc:
+                    per_board[key] = {"state": "failed", "error": str(exc)[:80]}
+                except Exception as exc:  # one poison board must not abort the run (LEARNINGS 2026-10-14)
+                    per_board[key] = {"state": "failed", "error": type(exc).__name__}
+                    _log.exception("ingest_board_failed", extra={"route": key})
+            now = clock()
+            with sessions.begin() as db:
+                merged = recompute_clusters(db, now)
+                purge_descriptions(db, now)
+                row = db.get(IngestRun, run.id)
+                states = [v["state"] for v in per_board.values()]
+                row.status = ("failed" if states and all(s != "ok" for s in states)
+                              else "partial" if any(s != "ok" for s in states) else "ok")
+                row.per_board, row.finished_at, row.merged = per_board, now, merged
+                for name, value in totals.items():
+                    setattr(row, name, value)
+            _log.info("ingest_run_finished", extra={"status": row.status})
+            return row
+        finally:
+            lock.execute(text("SELECT pg_advisory_unlock(hashtext('ingest'))"))
