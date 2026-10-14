@@ -54,20 +54,26 @@ class OAuthRedirectView(_Body):
     redirect_url: str
 
 
+def _oauth(services: Services):
+    if services.oauth is None:  # OAuth is off (no SHARE_PUBLIC_ORIGIN)
+        raise ServiceError("not_found")
+    return services.oauth
+
+
 @router.get("/oauth/requests/{handle}", response_model=OAuthConsentView)
 async def consent_view(handle: str, actor=Depends(owner_actor), services: Services = Depends(get_services)):
-    return await asyncio.to_thread(services.oauth.consent_view, actor, handle)
+    return await asyncio.to_thread(_oauth(services).consent_view, actor, handle)
 
 
 @router.post("/oauth/requests/{handle}/approve", response_model=OAuthRedirectView)
 async def approve(handle: str, body: OAuthApproveRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    url = await asyncio.to_thread(services.oauth.approve, actor, handle, body.project_id, body.capabilities, body.expires_at)
+    url = await asyncio.to_thread(_oauth(services).approve, actor, handle, body.project_id, body.capabilities, body.expires_at)
     return {"redirect_url": url}
 
 
 @router.post("/oauth/requests/{handle}/deny", response_model=OAuthRedirectView)
 async def deny(handle: str, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    return {"redirect_url": await asyncio.to_thread(services.oauth.deny, actor, handle)}
+    return {"redirect_url": await asyncio.to_thread(_oauth(services).deny, actor, handle)}
 
 
 # The SDK models keep an empty path ("http://host:port"); a bare AnyHttpUrl() adds "/" and breaks RFC 8414 issuer matching.

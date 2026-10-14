@@ -117,3 +117,16 @@ def test_consent_routes_require_owner_session_and_csrf(api_context):
     assert client.get("/api/v1/oauth/requests/x").status_code == 401
     _owner(api_context)
     assert client.post("/api/v1/oauth/requests/abc/deny").status_code == 403  # no CSRF
+
+
+@pytest.mark.integration
+def test_consent_routes_404_when_oauth_disabled(api_context):
+    csrf = _owner(api_context)
+    api_context.client.app.state.services.oauth = None
+    client, headers = api_context.client, _write_headers(csrf)
+    expires = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+    assert client.get("/api/v1/oauth/requests/x").status_code == 404
+    assert client.post("/api/v1/oauth/requests/x/approve", headers=headers,
+                       json={"project_id": "00000000-0000-0000-0000-000000000001", "capabilities": ["results:read"],
+                             "expires_at": expires}).status_code == 404
+    assert client.post("/api/v1/oauth/requests/x/deny", headers=headers).status_code == 404
