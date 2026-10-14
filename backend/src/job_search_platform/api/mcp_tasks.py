@@ -5,6 +5,7 @@ import json
 import os
 import secrets
 import stat
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -71,13 +72,19 @@ def client_declares_url_elicitation(capabilities: Any) -> bool:
 def mcp_request_state_key(private_dir: Path) -> str:
     """Key sealing MRTR requestState, created once (0600) so in-flight rounds survive a restart."""
     path = private_dir / "mcp-request-state-key"
-    try:
-        descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0), 0o600)
-    except FileExistsError:
-        pass
-    else:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(secrets.token_urlsafe(32))
+    if not path.exists():
+        # Write a private temp file then hard-link it into place, so a crash never leaves a partial key.
+        descriptor, temp = tempfile.mkstemp(dir=private_dir, prefix=".mcp-request-state-key.")
+        try:
+            os.fchmod(descriptor, 0o600)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+                handle.write(secrets.token_urlsafe(32))
+            try:
+                os.link(temp, path)
+            except FileExistsError:
+                pass
+        finally:
+            os.unlink(temp)
     if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & 0o077:
         raise RuntimeError("private_runtime_credentials_unavailable")
     key = path.read_text(encoding="utf-8").strip()

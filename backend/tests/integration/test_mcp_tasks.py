@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy import update
 
 from helpers import provider_config, revisions, session as make_session
-from job_search_platform.api import mcp_tasks
+from job_search_platform.api import mcp as mcp_module, mcp_tasks
 from job_search_platform.api.mcp import _TASK_SKILLS, create_mcp_app, mcp_lifespan_context
 from job_search_platform.db.models import Run
 from job_search_platform.services.protocol_runs import ProtocolRuns
@@ -244,6 +244,7 @@ def _submit_args(job_id) -> dict:
 
 @pytest.mark.integration
 async def test_apply_submit_mrtr_rounds_until_terminal(api_context, monkeypatch):
+    monkeypatch.setattr(mcp_module, "_MRTR_HOLD_SECONDS", 0.0)
     services, pid, grant, cv_id, job_id, sid = await asyncio.to_thread(_setup, api_context)
     calls = _patch_submit(monkeypatch, api_context, pid, sid, cv_id, job_id, grant["id"])
     async with _mcp(services, grant["token"]) as mcp:
@@ -265,6 +266,29 @@ async def test_apply_submit_mrtr_rounds_until_terminal(api_context, monkeypatch)
         assert final.get("resultType", "complete") == "complete"
         assert final["structuredContent"]["run_id"] == str(run_id) and final["structuredContent"]["status"] == "completed"
     assert calls == [run_id]
+
+
+@pytest.mark.integration
+async def test_mrtr_retry_holds_until_status_changes(api_context, monkeypatch):
+    monkeypatch.setattr(mcp_module, "_MRTR_HOLD_SECONDS", 3.0)
+    monkeypatch.setattr(mcp_module, "_MRTR_POLL_SECONDS", 0.05)
+    services, pid, grant, cv_id, job_id, sid = await asyncio.to_thread(_setup, api_context)
+    calls = _patch_submit(monkeypatch, api_context, pid, sid, cv_id, job_id, grant["id"])
+    async with _mcp(services, grant["token"]) as mcp:
+        first = (await mcp.rpc("tools/call", {"name": "apply_submit", "arguments": _submit_args(job_id)}, caps=URL_ELICITATION))["result"]
+
+        async def finish_later():
+            await asyncio.sleep(0.3)
+            await asyncio.to_thread(_set_status, api_context, calls[0], "completed")
+
+        finisher = asyncio.create_task(finish_later())
+        started = asyncio.get_running_loop().time()
+        final = (await mcp.rpc("tools/call", {"name": "apply_submit", "arguments": _submit_args(job_id),
+                                              "requestState": first["requestState"], "inputResponses": {}}, caps=URL_ELICITATION))["result"]
+        elapsed = asyncio.get_running_loop().time() - started
+        await finisher
+        assert final["structuredContent"]["status"] == "completed"
+        assert 0.25 <= elapsed < 2.5
 
 
 @pytest.mark.integration

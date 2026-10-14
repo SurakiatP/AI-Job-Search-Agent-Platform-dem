@@ -149,6 +149,9 @@ async def _authenticate(ctx: Context[Any, Any], grants: Any, resource: str | Non
 
 _TASK_SKILLS = frozenset(skill.id for skill in SKILLS if skill.kind == "task")
 _TERMINAL_RUN_STATUSES = frozenset({"completed", "failed", "cancelled", "interrupted"})
+# MRTR retries hold briefly for a status change so a client retry loop does not spin while the owner decides.
+_MRTR_HOLD_SECONDS = 5.0
+_MRTR_POLL_SECONDS = 0.5
 _LIST_HINT = CacheHint(ttl_ms=3_600_000, scope="public")
 _CACHE_HINTS = {"tools/list": _LIST_HINT, "prompts/list": _LIST_HINT, "resources/templates/list": _LIST_HINT}
 
@@ -344,14 +347,23 @@ def create_mcp_server(services: Any, resource: str | None = None) -> MCPServer:
                 run_id = UUID(json.loads(ctx.request_state)["run_id"])
             except (ValueError, KeyError, TypeError):
                 raise MCPError(-32602, "invalid_request_state") from None
-        try:
-            run, result = await _run_result_with_artifacts(services, actor, run_id)
-        except ServiceError as exc:
-            raise _error(exc) from None
-        except Exception:
-            raise MCPError(-32000, "request_failed") from None
-        if run.operation != "apply_submit":
-            raise MCPError(-32001, "not_found")
+        retry = ctx.request_state is not None
+        deadline = asyncio.get_running_loop().time() + _MRTR_HOLD_SECONDS
+        first_status = None
+        while True:
+            try:
+                run, result = await _run_result_with_artifacts(services, actor, run_id)
+            except ServiceError as exc:
+                raise _error(exc) from None
+            except Exception:
+                raise MCPError(-32000, "request_failed") from None
+            if run.operation != "apply_submit":
+                raise MCPError(-32001, "not_found")
+            first_status = run.status if first_status is None else first_status
+            if (not retry or run.status in _TERMINAL_RUN_STATUSES or run.status != first_status
+                    or asyncio.get_running_loop().time() >= deadline):
+                break
+            await asyncio.sleep(_MRTR_POLL_SECONDS)
         if run.status in _TERMINAL_RUN_STATUSES:
             return result
         key, elicitation = owner_action(run, _owner_origin(services), approval=True)

@@ -119,6 +119,12 @@ def test_request_state_key_is_created_private_and_reused(tmp_path):
         mcp_tasks.mcp_request_state_key(tmp_path)
 
 
+def test_request_state_key_leaves_no_temp_files(tmp_path):
+    mcp_tasks.mcp_request_state_key(tmp_path)
+    mcp_tasks.mcp_request_state_key(tmp_path)
+    assert [p.name for p in tmp_path.iterdir()] == ["mcp-request-state-key"]
+
+
 def test_request_state_key_empty_file_is_refused(tmp_path):
     path = tmp_path / "mcp-request-state-key"
     path.write_text("")
