@@ -75,11 +75,11 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await page.getByLabel('Document language').selectOption('en');
   await page.getByRole('button', { name: 'Save preferences' }).click();
 
-  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'Saved jobs', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'Applications', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic data analyst' }).click();
   await expect(page.getByTestId('job-description')).toContainText('Synthetic posting description.');
   await page.goBack();
-  await expect(page).toHaveURL(`/app/projects/${projectId}/jobs`);
+  await expect(page).toHaveURL(`/app/projects/${projectId}/applications`);
 
   await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'First synthetic session', exact: true }).click();
   // The session is paired (CV and job) and has no free-text composer, so the output language is chosen

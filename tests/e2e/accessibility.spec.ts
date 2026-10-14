@@ -7,7 +7,7 @@ const routes = [
   '/app/projects/new',
   `/app/projects/${projectId}/profile`,
   `/app/projects/${projectId}/sessions/${sessionId}`,
-  `/app/projects/${projectId}/jobs`,
+  `/app/projects/${projectId}/applications`,
   `/app/projects/${projectId}/jobs/${jobId}`,
   `/app/projects/${projectId}/documents`,
   `/app/projects/${projectId}/documents/${documentId}`,

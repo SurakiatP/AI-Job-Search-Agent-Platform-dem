@@ -98,7 +98,7 @@ test('every page supports direct links, back/forward, locale changes and respons
   await expect(page.getByRole('heading', { name: 'Profile and CV' })).toBeVisible();
   const projectNavigation = page.getByRole('navigation', { name: 'Navigation' }).first();
   await expect(projectNavigation.getByRole('link', { name: 'CV & preferences', exact: true })).toBeVisible();
-  await expect(projectNavigation.getByRole('link', { name: 'Saved jobs', exact: true })).toBeVisible();
+  await expect(projectNavigation.getByRole('link', { name: 'Applications', exact: true })).toBeVisible();
   await expect(projectNavigation.getByRole('link', { name: 'Documents', exact: true })).toBeVisible();
   await page.screenshot({ path: '/tmp/ui02-profile-desktop.png', fullPage: true });
   await expect(page.getByRole('heading', { name: 'No CV yet' })).toBeVisible();
@@ -111,7 +111,7 @@ test('every page supports direct links, back/forward, locale changes and respons
   await expect(page.getByRole('heading', { name: 'First synthetic session', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Evaluation' })).toBeVisible();
   await page.screenshot({ path: '/tmp/ui02-chat-desktop.png', fullPage: true });
-  await page.goto(`/app/projects/${projectId}/jobs`);
+  await page.goto(`/app/projects/${projectId}/applications`);
   await page.getByRole('link', { name: 'Synthetic data analyst' }).click();
   await expect(page).toHaveURL(`/app/projects/${projectId}/jobs/${jobId}`);
   await page.getByRole('link', { name: 'View all documents' }).click();
@@ -242,14 +242,14 @@ test('unsaved preference fields survive route changes and remain project scoped'
   const navigation = page.getByRole('navigation', { name: 'Navigation' }).first();
   await page.getByLabel('Document language').selectOption('th');
   await page.getByLabel('Notifications').uncheck();
-  await navigation.getByRole('link', { name: 'Saved jobs' }).click();
+  await navigation.getByRole('link', { name: 'Applications' }).click();
   await navigation.getByRole('link', { name: 'CV & preferences' }).click();
   await expect(page.getByLabel('Document language')).toHaveValue('th');
   await expect(page.getByLabel('Notifications')).not.toBeChecked();
   await page.getByRole('button', { name: 'Save preferences' }).click();
   await expect(page.getByLabel('Document language')).toHaveValue('th');
   await expect(page.getByLabel('Notifications')).not.toBeChecked();
-  await navigation.getByRole('link', { name: 'Saved jobs', exact: true }).click();
+  await navigation.getByRole('link', { name: 'Applications', exact: true }).click();
   await navigation.getByRole('link', { name: 'CV & preferences', exact: true }).click();
   await expect(page.getByLabel('Document language')).toHaveValue('th');
   await expect(page.getByLabel('Notifications')).not.toBeChecked();

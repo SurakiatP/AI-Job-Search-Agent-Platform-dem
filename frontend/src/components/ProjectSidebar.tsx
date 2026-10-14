@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Bookmark, Bot, FileText, FolderOpen, LayoutDashboard, MessagesSquare, Search, Settings, UserCog, UserRound, type LucideIcon } from 'lucide-react';
+import { Bot, FileText, FolderOpen, Kanban, LayoutDashboard, MessagesSquare, Search, Settings, UserCog, UserRound, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { AppearanceControl } from './AppearanceControl';
@@ -35,7 +35,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
   const sections = [
     ['overview', LayoutDashboard, t('nav.overview')],
     ['console', Bot, t('nav.console')],
-    ['jobs', Bookmark, t('nav.savedJobs')],
+    ['applications', Kanban, t('nav.savedJobs')],
     ['search', Search, t('nav.search')],
     ['documents', FileText, t('nav.documents')],
     ['profile', UserRound, t('nav.cv')],

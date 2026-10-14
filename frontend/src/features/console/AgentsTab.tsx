@@ -11,8 +11,8 @@ import { apiRequest } from '@/lib/api';
 import type { Copy } from './copy';
 import { CopyButton, Empty, useNow, type Locale } from './shared';
 
-type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor' | 'jobs:search' | 'applications:apply';
-const CAPS: Capability[] = ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply'];
+type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor' | 'jobs:search' | 'applications:apply' | 'applications:write';
+const CAPS: Capability[] = ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write'];
 type Grant = { id: string; label?: string | null; project_id: string; capabilities: Capability[]; expires_at: string; revoked_at: string | null };
 type Issued = Grant & { token: string };
 
