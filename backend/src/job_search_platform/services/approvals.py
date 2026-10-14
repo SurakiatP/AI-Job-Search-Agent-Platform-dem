@@ -13,8 +13,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import (
-    CV, Approval, CVRevision, DocumentRevision, Grant, JobApplicationStatus, Project, ProjectPreference, Run, StoredFile,
+    CV, Approval, CVRevision, DocumentRevision, Grant, Project, ProjectPreference, Run, StoredFile,
 )
+from job_search_platform.services.applications import application_recorded, record_applied_via_approval
 from job_search_platform.services.authorization import authorize, user_scope_is_current
 from job_search_platform.services.contracts import Actor, ApprovalRequest, ApprovalView
 from job_search_platform.services.errors import ServiceError
@@ -288,11 +289,7 @@ class ApprovalService:
                          {"status": "cancelled", "message_key": "errors.approval_rejected", "approval_id": approval.id}, now=now)
             return
         job_id = db.scalar(select(Run.job_revision_id).where(Run.project_id == run.project_id, Run.id == approval.target_run_id))
-        row = db.get(JobApplicationStatus, (run.project_id, job_id))
-        if row is None:
-            db.add(JobApplicationStatus(project_id=run.project_id, job_revision_id=job_id, status="applied"))
-        else:
-            row.status = "applied"
+        record_applied_via_approval(db, run.project_id, job_id, run.actor_scope, approval.id, approval.target_run_id)
         run.status = "completed"
         run.result_payload = {"kind": "apply_submit", "state": "recorded",
                               "pack_run_id": str(approval.target_run_id), "job_revision_id": str(job_id)}
@@ -441,9 +438,7 @@ class ApprovalService:
             if (pack is None or pack.operation != "apply_prepare" or pack.status != "completed"
                     or not isinstance(payload, dict) or payload.get("state") != "ready"):
                 raise ServiceError("apply_pack_required")
-            if db.scalar(select(JobApplicationStatus.status).where(
-                    JobApplicationStatus.project_id == project_id,
-                    JobApplicationStatus.job_revision_id == pack.job_revision_id)) == "applied":
+            if application_recorded(db, project_id, pack.job_revision_id):
                 raise ServiceError("already_applied")
             return ({"action": request.action, "target_run_id": str(pack.id), "job_revision_id": str(pack.job_revision_id),
                      "pack_digest": _digest(payload)}, None)
