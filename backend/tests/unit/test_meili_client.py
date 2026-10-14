@@ -57,3 +57,21 @@ def test_transport_error_is_meili_error():
         raise OSError("refused")
     with pytest.raises(meili.MeiliError):
         meili.Meili("http://x", "k", transport=boom).search("jobs", {})
+
+
+def test_wait_deadline_uses_wall_clock():
+    ticks = iter(range(0, 1000, 50))
+    fake = Fake(*[(200, {"status": "processing"})] * 10)
+    client = meili.Meili("http://x", "k", transport=fake)
+    with pytest.raises(meili.MeiliError, match="task_timeout"):
+        client.wait(3, deadline_s=120, sleep=lambda s: None, clock=lambda: next(ticks))
+    assert len(fake.calls) == 3
+
+
+def test_unexpected_2xx_shapes_raise_bad_response():
+    with pytest.raises(meili.MeiliError, match="bad_response"):
+        meili.Meili("http://x", "k", transport=Fake((202, {}))).add_documents("jobs", [])
+    with pytest.raises(meili.MeiliError, match="bad_response"):
+        meili.Meili("http://x", "k", transport=Fake((200, []))).wait(1, sleep=lambda s: None)
+    with pytest.raises(meili.MeiliError, match="bad_response"):
+        meili.Meili("http://x", "k", transport=Fake((200, []))).search("jobs", {})

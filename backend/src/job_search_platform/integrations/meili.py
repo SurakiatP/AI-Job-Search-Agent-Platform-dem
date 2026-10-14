@@ -29,7 +29,10 @@ def _urllib_transport(method, url, headers, body, timeout):
     except Exception as exc:  # HTTPError is a response (status + body); 3xx lands here too (no redirects)
         if not hasattr(exc, "code") or not hasattr(exc, "read"):
             raise
-        status, raw = exc.code, exc.read(MAX_BYTES + 1)
+        try:
+            status, raw = exc.code, exc.read(MAX_BYTES + 1)
+        finally:
+            exc.close()
     if len(raw) > MAX_BYTES:
         raise ValueError("too_large")
     return status, raw
@@ -63,20 +66,24 @@ class Meili:
             raise MeiliError(type(exc).__name__) from None
 
     def _task(self, method, path, body=None) -> int:
-        return int(self.request(method, path, body)["taskUid"])
+        result = self.request(method, path, body)
+        if not isinstance(result, dict) or not isinstance(result.get("taskUid"), int):
+            raise MeiliError("bad_response")
+        return result["taskUid"]
 
-    def wait(self, task_uid: int, deadline_s: float = 120, sleep=time.sleep) -> None:
-        waited = 0.0
+    def wait(self, task_uid: int, deadline_s: float = 120, sleep=time.sleep, clock=time.monotonic) -> None:
+        end = clock() + deadline_s
         while True:
             task = self.request("GET", f"/tasks/{task_uid}")
+            if not isinstance(task, dict):
+                raise MeiliError("bad_response")
             if task.get("status") == "succeeded":
                 return
             if task.get("status") in ("failed", "canceled"):
                 raise MeiliError(f"task_{task['status']}")
-            if waited >= deadline_s:
+            if clock() >= end:
                 raise MeiliError("task_timeout")
             sleep(POLL_SECONDS)
-            waited += POLL_SECONDS
 
     def index_exists(self, index: str) -> bool:
         try:
@@ -97,7 +104,10 @@ class Meili:
         return self._task("POST", f"/indexes/{_urlquote(index, safe='')}/documents/delete-batch", ids)
 
     def search(self, index: str, payload: dict) -> dict:
-        return self.request("POST", f"/indexes/{_urlquote(index, safe='')}/search", payload)
+        result = self.request("POST", f"/indexes/{_urlquote(index, safe='')}/search", payload)
+        if not isinstance(result, dict):
+            raise MeiliError("bad_response")
+        return result
 
     def create_index(self, index: str) -> int:
         return self._task("POST", "/indexes", {"uid": index, "primaryKey": "id"})
