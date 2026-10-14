@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from job_search_platform.db.models import JobIndexDelete, JobPosting
 from job_search_platform.integrations.meili import Meili, MeiliError
 from job_search_platform.services import job_index, job_store
+from sqlalchemy import update
 from job_search_platform.services.job_mapping import map_posting
 
 T0 = datetime(2026, 10, 14, tzinfo=timezone.utc)
@@ -117,7 +118,7 @@ def test_rebuild_when_index_missing_writes_only_canonical(sessions):
     with sessions() as db, db.begin():
         db.add(JobIndexDelete(posting_id=_ids(sessions)["gh-acme-2"], deleted_at=T0 - timedelta(days=1)))
     meili = FakeMeili()
-    out = job_index.sync(sessions, meili, "jobs", now=NOW)
+    out = job_index.sync(sessions, meili, "jobs")
     assert out["state"] == "rebuilt"
     docs = meili.indexes["jobs"]
     assert len(docs) == 2 and "jobs_tmp" not in meili.indexes
@@ -131,10 +132,10 @@ def test_rebuild_when_index_missing_writes_only_canonical(sessions):
 def test_sync_upserts_dirty_and_clears_flag(sessions):
     meili = FakeMeili()
     _store(sessions, greenhouse=[_gh(1, "https://g/1")])
-    job_index.sync(sessions, meili, "jobs", now=NOW)
+    job_index.sync(sessions, meili, "jobs")
     _store(sessions, greenhouse=[_gh(1, "https://g/1"), _gh(2, "https://g/2", title="Data Scientist")])
     assert _dirty(sessions) == {"gh-acme-2"}
-    out = job_index.sync(sessions, meili, "jobs", now=NOW)
+    out = job_index.sync(sessions, meili, "jobs")
     assert out == {"upserted": 1, "deleted": 0, "state": "ok"}
     assert len(meili.indexes["jobs"]) == 2 and not _dirty(sessions)
 
@@ -143,12 +144,12 @@ def test_sync_upserts_dirty_and_clears_flag(sessions):
 def test_queued_deletes_are_sent_then_removed(sessions):
     meili = FakeMeili()
     _store(sessions, greenhouse=[_gh(1, "https://g/1")])
-    job_index.sync(sessions, meili, "jobs", now=NOW)
+    job_index.sync(sessions, meili, "jobs")
     pid = str(_ids(sessions)["gh-acme-1"])
     assert pid in meili.indexes["jobs"]
     with sessions() as db, db.begin():
         db.add(JobIndexDelete(posting_id=_ids(sessions)["gh-acme-1"], deleted_at=NOW))
-    out = job_index.sync(sessions, meili, "jobs", now=NOW)
+    out = job_index.sync(sessions, meili, "jobs")
     assert out["deleted"] == 1 and pid not in meili.indexes["jobs"] and not _queue(sessions)
 
 
@@ -156,14 +157,14 @@ def test_queued_deletes_are_sent_then_removed(sessions):
 def test_merged_posting_is_removed_from_index(sessions):
     meili = FakeMeili()
     _store(sessions, lever=[_lv("a", "Backend Engineer")], at=T0 + timedelta(days=1))  # A, alone
-    job_index.sync(sessions, meili, "jobs", now=NOW)
+    job_index.sync(sessions, meili, "jobs")
     a = _ids(sessions)["lv-acme-a"]
     assert str(a) in meili.indexes["jobs"]
     _store(sessions, greenhouse=[_gh(1, "https://g/1")], at=T0)  # B, earlier first_seen_at, becomes canonical
     b = _ids(sessions)["gh-acme-1"]
     with sessions() as db:
         assert db.get(JobPosting, a).canonical_id == b
-    job_index.sync(sessions, meili, "jobs", now=NOW)
+    job_index.sync(sessions, meili, "jobs")
     assert str(a) not in meili.indexes["jobs"] and str(b) in meili.indexes["jobs"]
 
 
@@ -171,23 +172,14 @@ def test_merged_posting_is_removed_from_index(sessions):
 def test_failed_task_keeps_rows_dirty_and_deletes_queued(sessions):
     meili = FakeMeili()
     _store(sessions, greenhouse=[_gh(1, "https://g/1")])
-    job_index.sync(sessions, meili, "jobs", now=NOW)
+    job_index.sync(sessions, meili, "jobs")
     _store(sessions, greenhouse=[_gh(1, "https://g/1"), _gh(2, "https://g/2", title="Data Scientist")])
     with sessions() as db, db.begin():
         db.add(JobIndexDelete(posting_id=_ids(sessions)["gh-acme-1"], deleted_at=NOW))
-    # settings task is first; let it pass, fail the delete task
-    real = meili.update_settings
-
-    def settings_then_fail(index, settings):
-        uid = real(index, settings)
-        meili.fail_next = True
-        return uid
-
-    meili.update_settings = settings_then_fail
-    assert job_index.sync(sessions, meili, "jobs", now=NOW)["state"] == "index_failed"
+    meili.fail_next = True  # the queued delete is the first task
+    assert job_index.sync(sessions, meili, "jobs")["state"] == "index_failed"
     assert _dirty(sessions) == {"gh-acme-2"} and len(_queue(sessions)) == 1
-    meili.update_settings = real
-    assert job_index.sync(sessions, meili, "jobs", now=NOW)["state"] == "ok"
+    assert job_index.sync(sessions, meili, "jobs")["state"] == "ok"
     assert not _dirty(sessions) and not _queue(sessions)
 
 
@@ -197,7 +189,7 @@ def test_unreachable_index_returns_index_failed(sessions):
         raise OSError("down")
 
     _store(sessions, greenhouse=[_gh(1, "https://g/1")])
-    out = job_index.sync(sessions, Meili("http://127.0.0.1:1", "k", transport=boom), "jobs", now=NOW)
+    out = job_index.sync(sessions, Meili("http://127.0.0.1:1", "k", transport=boom), "jobs")
     assert out["state"] == "index_failed" and _dirty(sessions)
 
 
@@ -213,3 +205,97 @@ def test_document_shape_and_posted_ts_fallback():
     assert set(d) == {"id", "slug", "title", "company", "location", "cities", "work_mode", "skills", "category",
                       "posted_at", "posted_ts", "seniority", "employment_type", "company_type", "posting_language",
                       "salary_thb_month_min", "source_url", "description_markdown", "reality_stale", "sources"}
+
+
+def _touch(sessions, slug, at):
+    with sessions() as db, db.begin():
+        db.execute(update(JobPosting).where(JobPosting.slug == slug).values(title="Changed", updated_at=at,
+                                                                           index_dirty=True))
+
+
+@pytest.mark.integration
+def test_row_redirtied_during_sync_stays_dirty(sessions):
+    meili = FakeMeili()
+    _store(sessions, greenhouse=[_gh(1, "https://g/1"), _gh(2, "https://g/2", title="Data Scientist")])
+    job_index.sync(sessions, meili, "jobs")
+    _store(sessions, greenhouse=[_gh(1, "https://g/1"), _gh(2, "https://g/2", title="Data Scientist"),
+                                 _gh(3, "https://g/3", title="Designer")])
+    _touch(sessions, "gh-acme-3", T0)  # dirty again, same updated_at baseline
+    real, hits = meili.add_documents, []
+
+    def racing(index, docs):
+        uid = real(index, docs)
+        if not hits:
+            hits.append(1)
+            _touch(sessions, "gh-acme-3", NOW + timedelta(hours=1))
+        return uid
+
+    meili.add_documents = racing
+    # the race fires on the first batch; the loop's next pass re-sends the row, so check right after the hook
+    seen = []
+    clear = job_index._clear
+    job_index._clear = lambda s_, rows: (clear(s_, rows), seen.append(_dirty(s_)))[0]
+    try:
+        assert job_index.sync(sessions, meili, "jobs")["state"] == "ok"
+    finally:
+        job_index._clear = clear
+    assert seen[0] == {"gh-acme-3"}
+
+
+@pytest.mark.integration
+def test_rebuild_keeps_rows_updated_after_start_dirty(sessions):
+    _store(sessions, greenhouse=[_gh(1, "https://g/1"), _gh(2, "https://g/2", title="Data Scientist")])
+    _touch(sessions, "gh-acme-2", datetime.now(timezone.utc) + timedelta(hours=1))
+    job_index.rebuild(sessions, FakeMeili(), "jobs")
+    assert _dirty(sessions) == {"gh-acme-2"}
+
+
+@pytest.mark.integration
+def test_rebuild_keeps_newer_queue_rows(sessions):
+    _store(sessions, greenhouse=[_gh(1, "https://g/1")])
+    pid = _ids(sessions)["gh-acme-1"]
+    with sessions() as db, db.begin():
+        db.add(JobIndexDelete(posting_id=pid, deleted_at=datetime.now(timezone.utc) + timedelta(hours=1)))
+    job_index.rebuild(sessions, FakeMeili(), "jobs")
+    assert _queue(sessions) == {pid}
+
+
+@pytest.mark.integration
+def test_sync_never_raises_on_database_error(sessions):
+    from sqlalchemy.exc import OperationalError
+
+    def broken():
+        raise OperationalError("x", {}, Exception("down"))
+
+    meili = FakeMeili()
+    meili.create_index("jobs")
+    assert job_index.sync(broken, meili, "jobs")["state"] == "index_failed"
+
+
+@pytest.mark.integration
+def test_budget_exhausted_stops_with_remaining_dirty(sessions, monkeypatch):
+    meili = FakeMeili()
+    meili.create_index("jobs")
+    _store(sessions, greenhouse=[_gh(1, "https://g/1"), _gh(2, "https://g/2", title="Data Scientist")])
+    clock = [0.0]
+    monkeypatch.setattr(job_index, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    real = meili.add_documents
+
+    def slow(index, docs):
+        clock[0] += 1000
+        return real(index, docs)
+
+    meili.add_documents = slow
+    out = job_index.sync(sessions, meili, "jobs", batch=1)
+    assert out["state"] == "index_failed" and out["upserted"] == 1 and len(_dirty(sessions)) == 1
+
+
+@pytest.mark.integration
+def test_batch_splitting_and_no_work_is_ok(sessions):
+    meili = FakeMeili()
+    meili.create_index("jobs")
+    _store(sessions, greenhouse=[_gh(1, "https://g/1"), _gh(2, "https://g/2", title="Data Scientist"),
+                                 _gh(3, "https://g/3", title="Designer")])
+    out = job_index.sync(sessions, meili, "jobs", batch=1)
+    assert out == {"upserted": 3, "deleted": 0, "state": "ok"} and len(meili.indexes["jobs"]) == 3
+    assert job_index.sync(sessions, meili, "jobs", budget_s=-1)["state"] == "ok"

@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timezone
 
 from sqlalchemy import delete, select, update
+from sqlalchemy.exc import SQLAlchemyError
 
 from job_search_platform.db.models import JobIndexDelete, JobPosting
 from job_search_platform.integrations.meili import MeiliError
@@ -47,13 +48,15 @@ def _docs(db, rows: list[JobPosting]) -> list[dict]:
     return [to_document(r, sorted(src.get(r.id, set()))) for r in rows]
 
 
-def _clear(sessions, ids: list) -> None:
+def _clear(sessions, rows: list) -> None:
+    """Clear index_dirty per row only where it was not re-dirtied since it was loaded."""
     with sessions() as db, db.begin():
-        db.execute(update(JobPosting).where(JobPosting.id.in_(ids)).values(index_dirty=False))
+        for r in rows:
+            db.execute(update(JobPosting).where(JobPosting.id == r.id, JobPosting.updated_at == r.updated_at)
+                       .values(index_dirty=False))
 
 
-def sync(sessions, client, index, *, now=None, budget_s=300, batch=1000) -> dict:
-    # `now` is accepted for caller symmetry; the budget uses the monotonic clock.
+def sync(sessions, client, index, *, budget_s=300, batch=1000) -> dict:
     out = {"upserted": 0, "deleted": 0, "state": "ok"}
     end = time.monotonic() + budget_s
 
@@ -64,7 +67,6 @@ def sync(sessions, client, index, *, now=None, budget_s=300, batch=1000) -> dict
         if not client.index_exists(index):
             rebuild(sessions, client, index, batch=batch)
             return {**out, "state": "rebuilt"}
-        client.wait(client.update_settings(index, SETTINGS))
         with sessions() as db:
             queued = [str(i) for i in db.scalars(select(JobIndexDelete.posting_id).order_by(JobIndexDelete.posting_id))]
         for i in range(0, len(queued), batch):
@@ -76,13 +78,13 @@ def sync(sessions, client, index, *, now=None, budget_s=300, batch=1000) -> dict
                 db.execute(delete(JobIndexDelete).where(JobIndexDelete.posting_id.in_(chunk)))
             out["deleted"] += len(chunk)
         while True:
-            if over():
-                return {**out, "state": "index_failed"}
             with sessions() as db:
                 rows = list(db.scalars(select(JobPosting).where(JobPosting.index_dirty).order_by(JobPosting.id)
                                        .limit(batch)))
                 if not rows:
                     return out
+                if over():
+                    return {**out, "state": "index_failed"}
                 canon = [r for r in rows if r.canonical_id is None]
                 gone = [str(r.id) for r in rows if r.canonical_id is not None]
                 docs = _docs(db, canon)
@@ -90,10 +92,10 @@ def sync(sessions, client, index, *, now=None, budget_s=300, batch=1000) -> dict
                 client.wait(client.add_documents(index, docs))
             if gone:
                 client.wait(client.delete_documents(index, gone))
-            _clear(sessions, [r.id for r in rows])
+            _clear(sessions, rows)
             out["upserted"] += len(docs)
             out["deleted"] += len(gone)
-    except MeiliError:
+    except (MeiliError, SQLAlchemyError, OSError):
         return {**out, "state": "index_failed"}
 
 
@@ -119,6 +121,6 @@ def rebuild(sessions, client, index, *, batch=1000) -> int:
     client.wait(client.swap(index, tmp))
     client.wait(client.delete_index(tmp))
     with sessions() as db, db.begin():
-        db.execute(update(JobPosting).values(index_dirty=False))
+        db.execute(update(JobPosting).where(JobPosting.updated_at <= started).values(index_dirty=False))
         db.execute(delete(JobIndexDelete).where(JobIndexDelete.deleted_at < started))
     return written
