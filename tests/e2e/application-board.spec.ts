@@ -101,12 +101,14 @@ test('job page edits stage and contact, offers mailto, logs correspondence and n
   await page.getByLabel('Direction').selectOption('received');
   await page.getByLabel('Subject').fill('Interview invite');
   await page.getByRole('button', { name: 'Log correspondence' }).click();
+  await page.getByLabel('Recruiter role').fill('Unsaved draft');
   await page.getByLabel('Note', { exact: true }).fill('Prepare portfolio');
   await page.getByRole('button', { name: 'Add note' }).click();
   const items = page.getByRole('list', { name: 'Timeline' }).getByRole('listitem');
   await expect(items.nth(0)).toContainText('Prepare portfolio');
   await expect(items.nth(1)).toContainText('Received email: Interview invite');
   await expect(items.nth(2)).toContainText('Contact updated');
+  await expect(page.getByLabel('Recruiter role')).toHaveValue('Unsaved draft');
 });
 
 test('job page fits 320px in Thai', async ({ page }) => {

@@ -19,18 +19,18 @@ type CvRevision = { id: string; revision: number; original_filename?: string; mi
 
 const copy = {
   th: {
-    subtitle: 'ภาพรวมโปรเจกต์ งานที่บันทึก เอกสาร และงานของเอเจนต์', evaluate: 'ประเมินงานใหม่',
-    saved: 'งานที่บันทึก', applied: 'สมัครแล้ว', documents: 'เอกสาร',
-    jobsTitle: 'งานที่บันทึกไว้', noJobs: 'ยังไม่มีงานที่บันทึก', noJobsNext: 'ไปที่หน้างานเพื่อเพิ่มประกาศงานแรก', addJob: 'เพิ่มงาน', viewAll: 'ดูทั้งหมด',
+    subtitle: 'ภาพรวมโปรเจกต์ ใบสมัคร เอกสาร และงานของเอเจนต์', evaluate: 'ประเมินงานใหม่',
+    saved: 'บันทึกไว้', applied: 'สมัครแล้ว', documents: 'เอกสาร',
+    jobsTitle: 'ใบสมัคร', noJobs: 'ยังไม่มีใบสมัคร', noJobsNext: 'ไปที่หน้าใบสมัครเพื่อเพิ่มประกาศงานแรก', addJob: 'เพิ่มงาน', viewAll: 'ดูทั้งหมด',
     docsTitle: 'เอกสารล่าสุด', noDocs: 'ยังไม่มีเอกสาร', noDocsNext: 'ประเมินงานแล้วให้เอเจนต์ร่างเอกสารให้', revision: 'ฉบับที่',
     cvTitle: 'CV ของคุณ', noCv: 'ยังไม่มี CV', noCvNext: 'เพิ่ม CV เพื่อให้เอเจนต์ประเมินงานได้', addCv: 'เพิ่ม CV', updateCv: 'อัปเดต CV',
     activity: 'งานของเอเจนต์', idle: 'ไม่มีงานที่กำลังทำ', approvals: 'รออนุมัติ', openSession: 'เปิดเซสชัน', untitled: 'งานไม่มีชื่อ', evaluating: 'ประเมินงาน', drafting: 'ร่างเอกสาร',
     cv: 'CV', cover_letter: 'จดหมายสมัครงาน', application_message: 'ข้อความสมัครงาน', other: 'เอกสารอื่น',
   },
   en: {
-    subtitle: 'Project overview: saved jobs, documents and agent activity', evaluate: 'Evaluate a new job',
-    saved: 'Saved jobs', applied: 'Applied', documents: 'Documents',
-    jobsTitle: 'Saved jobs', noJobs: 'No saved jobs yet', noJobsNext: 'Open Jobs to add your first posting.', addJob: 'Add a job', viewAll: 'View all',
+    subtitle: 'Project overview: applications, documents and agent activity', evaluate: 'Evaluate a new job',
+    saved: 'Saved', applied: 'Applied', documents: 'Documents',
+    jobsTitle: 'Applications', noJobs: 'No applications yet', noJobsNext: 'Open Applications to add your first posting.', addJob: 'Add a job', viewAll: 'View all',
     docsTitle: 'Latest documents', noDocs: 'No documents yet', noDocsNext: 'Evaluate a job, then ask the agent to draft documents.', revision: 'Revision',
     cvTitle: 'Your CV', noCv: 'No CV yet', noCvNext: 'Add a CV so the agent can evaluate jobs.', addCv: 'Add CV', updateCv: 'Update CV',
     activity: 'Agent activity', idle: 'Nothing running', approvals: 'Pending approvals', openSession: 'Open session', untitled: 'Untitled job', evaluating: 'Evaluating job', drafting: 'Drafting documents',

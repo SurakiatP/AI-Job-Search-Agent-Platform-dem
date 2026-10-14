@@ -16,7 +16,7 @@ const copy = {
     title: 'ใบสมัคร', stage: 'ขั้นตอน', contact: 'ผู้ติดต่อ (recruiter)', name: 'ชื่อผู้ติดต่อ', email: 'อีเมลผู้ติดต่อ', role: 'ตำแหน่งผู้ติดต่อ',
     saveContact: 'บันทึกผู้ติดต่อ', write: 'เขียนอีเมล', writeHelp: 'เปิดโปรแกรมอีเมลของคุณ ระบบไม่ส่งอีเมลเอง',
     log: 'บันทึกการติดต่อ', direction: 'ทิศทาง', sent: 'ส่งออก', received: 'ได้รับ', subject: 'หัวเรื่อง', date: 'วันที่', logNote: 'รายละเอียด (ไม่บังคับ)', logAction: 'บันทึกการติดต่อ',
-    note: 'โน้ต', addNote: 'เพิ่มโน้ต', timeline: 'ไทม์ไลน์', empty: 'ยังไม่มีความเคลื่อนไหว', error: 'บันทึกไม่สำเร็จ ลองอีกครั้ง',
+    note: 'โน้ต', addNote: 'เพิ่มโน้ต', timeline: 'ไทม์ไลน์', empty: 'ยังไม่มีความเคลื่อนไหว', error: 'บันทึกไม่สำเร็จ ลองอีกครั้ง', loadError: 'โหลดใบสมัครไม่สำเร็จ', retry: 'ลองอีกครั้ง',
     actor: { user: 'คุณ', agent: 'เอเจนต์', system: 'ระบบ' },
     contactUpdated: 'อัปเดตผู้ติดต่อ', sentEmail: 'ส่งอีเมล', receivedEmail: 'ได้รับอีเมล', viaApproval: 'สมัครผ่านการอนุมัติ',
   },
@@ -24,7 +24,7 @@ const copy = {
     title: 'Application', stage: 'Stage', contact: 'Recruiter contact', name: 'Recruiter name', email: 'Recruiter email', role: 'Recruiter role',
     saveContact: 'Save contact', write: 'Write email', writeHelp: 'Opens your own mail app. The platform never sends email.',
     log: 'Log correspondence', direction: 'Direction', sent: 'Sent', received: 'Received', subject: 'Subject', date: 'Date', logNote: 'Details (optional)', logAction: 'Log correspondence',
-    note: 'Note', addNote: 'Add note', timeline: 'Timeline', empty: 'No activity yet', error: 'Could not save. Try again.',
+    note: 'Note', addNote: 'Add note', timeline: 'Timeline', empty: 'No activity yet', error: 'Could not save. Try again.', loadError: 'Could not load the application.', retry: 'Retry',
     actor: { user: 'You', agent: 'Agent', system: 'System' },
     contactUpdated: 'Contact updated', sentEmail: 'Sent email', receivedEmail: 'Received email', viaApproval: 'Applied through approval',
   },
@@ -51,7 +51,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged }:
 
   useEffect(() => {
     if (data) setContact({ name: data.contact.name ?? '', email: data.contact.email ?? '', role: data.contact.role ?? '' });
-  }, [data]);
+  }, [data?.contact.name, data?.contact.email, data?.contact.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function run(action: () => Promise<unknown>, after?: () => void) {
     if (busy) return;
@@ -71,7 +71,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged }:
   };
   const when = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
 
-  if (!data) return null;
+  if (!data) return result.status === 'error' ? <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{c.loadError}<Button variant="outline" size="sm" onClick={result.reload}>{c.retry}</Button></p> : null;
   return <Card>
     <CardHeader><CardTitle>{c.title}</CardTitle></CardHeader>
     <CardContent className="grid min-w-0 gap-6">
