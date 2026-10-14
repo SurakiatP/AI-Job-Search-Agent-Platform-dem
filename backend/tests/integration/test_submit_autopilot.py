@@ -13,7 +13,8 @@ from datetime import datetime, timezone
 
 from helpers import grant as make_grant
 from helpers import project as make_project
-from job_search_platform.db.models import Approval, Run, RunEvent
+from helpers import user as make_user
+from job_search_platform.db.models import Approval, Project, Run, RunEvent, User
 from job_search_platform.services.contracts import RunRequest
 from job_search_platform.workers.queue import PostgresRunQueue
 from test_agent_applications import (
@@ -142,6 +143,31 @@ def test_revoked_creator_grant_blocks_autopilot(api_context):
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("lapse", ["disabled", "not_owner"])
+def test_creator_user_no_longer_current_blocks_autopilot(api_context, lapse):
+    ctx = api_context
+    csrf, pid, session, _, _, _ = _ready_pack(ctx)
+    _limit(ctx, csrf, pid, 3)
+    run_id = _post(ctx, csrf, pid, session, "apply_submit", "u1").json()["id"]
+    claimed = PostgresRunQueue(ctx.sessions).claim_next("w1")
+    assert claimed is not None and str(claimed.id) == run_id
+    with ctx.sessions.begin() as db:
+        if lapse == "disabled":
+            db.get(User, ctx.user_id).disabled_at = datetime.now(timezone.utc)
+        else:
+            db.get(Project, UUID(pid)).user_id = make_user(db).user_id
+    ctx.client.app.state.services.approvals.request_submission(claimed.id, "w1")
+    with ctx.sessions() as db:
+        rows = list(db.scalars(select(Approval).where(Approval.project_id == UUID(pid))))
+        assert rows and all(r.decided_by != "autopilot" and r.consumed_at is None for r in rows)
+        assert db.get(Run, UUID(run_id)).status == "waiting_approval"
+    # the stale approval cannot be approved by the lapsed creator scope either
+    with ctx.sessions.begin() as db:
+        run = db.get(Run, UUID(run_id))
+        assert ctx.client.app.state.services.approvals._creator_is_current(db, run, datetime.now(timezone.utc)) is False
+
+
+@pytest.mark.integration
 def test_grant_cannot_set_the_limit(api_context):
     ctx = api_context
     csrf, pid, *_ = _ready_pack(ctx)
@@ -174,7 +200,7 @@ def test_owner_approve_sets_decided_by_owner(api_context):
 def test_migration_0020_backfills_owner_on_existing_decisions(postgres_engine):
     _migrate(postgres_engine, command.upgrade, "0019_grant_label")
     factory = sessionmaker(bind=postgres_engine, expire_on_commit=False)
-    from helpers import project, revisions, session as make_session, provider_config
+    from helpers import legacy_project as project, revisions, session as make_session, provider_config
     from job_search_platform.db.models import Run
     with factory() as db:
         p = project(db)

@@ -30,13 +30,12 @@ from job_search_platform.services.contracts import (
     AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVPromoteRequest, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
     ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
-    OwnerBootstrapRequest, OwnerBootstrapView, PreferencesUpdate, ProjectCreate,
+    PreferencesUpdate, ProjectCreate,
     GatewayStatusView, PreferencesView, ProjectUpdate, ProjectView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
 )
 from job_search_platform.services import experience, job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
-from job_search_platform.services.owner_sessions import COOKIE_NAME
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
 from job_search_platform.services.runs import actor_scope
 from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
@@ -50,6 +49,7 @@ SAFE_FIELDS = frozenset({
     "session_id", "operation", "cv_revision_id", "job_revision_id", "idempotency_key",
     "retry_of_id", "cv_id", "document_id", "action", "revision_id", "expected_cv_revision_id", "target_file_id",
     "decision", "capabilities", "expires_at", "provider", "model", "credential", "enabled", "base_url",
+    "retry_after", "reset_at",
 })
 
 
@@ -70,6 +70,8 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "secret_store_unavailable": 503,
         "jev_unavailable": 409, "gateway_unconfigured": 409,
         "duplicate": 409, "bank_full": 409,
+        "email_unverified": 403, "quota_exceeded": 429, "rate_limited": 429, "invalid_credentials": 401,
+        "invalid_token": 400, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
     body = {
@@ -84,7 +86,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
 
 
 def _owner_only(actor) -> None:
-    if actor.kind != "owner":
+    if actor.kind != "user":
         raise ServiceError("forbidden")
 
 
@@ -174,43 +176,17 @@ def _job_view(row: JobRevision, application_status: str = "saved") -> dict[str, 
             "application_status": application_status}
 
 
-@router.post("/owner/bootstrap", response_model=OwnerBootstrapView)
-async def bootstrap(body: OwnerBootstrapRequest, request: Request, services: Services = Depends(get_services)):
-    origin = request.headers.get("origin", "")
-    host = request.headers.get("host", "")
-    exchange = await services.owner_sessions.exchange(body.nonce.get_secret_value(), origin=origin, host=host)
-    response = JSONResponse(OwnerBootstrapView(authenticated=True, csrf_token=exchange.csrf_token,
-                                               expires_at=exchange.expires_at).model_dump(mode="json"))
-    response.set_cookie(COOKIE_NAME, exchange.session_cookie, httponly=True, secure=False,
-                        samesite="strict", path="/", expires=exchange.expires_at)
-    response.headers["Cache-Control"] = "no-store"
-    return response
-
-
-@router.post("/owner/session", response_model=OwnerBootstrapView)
-async def restore_session(request: Request, services: Services = Depends(get_services)):
-    cookie = request.cookies.get(COOKIE_NAME)
-    if not cookie:
-        raise ServiceError("unauthorized")
-    session = await services.owner_sessions.current(cookie, origin=request.headers.get("origin", ""),
-                                                    host=request.headers.get("host", ""))
-    response = JSONResponse(OwnerBootstrapView(authenticated=True, csrf_token=session.csrf_token,
-                                               expires_at=session.expires_at).model_dump(mode="json"))
-    response.headers["Cache-Control"] = "no-store"
-    return response
-
-
 @router.get("/projects", response_model=list[ProjectView])
 async def list_projects(actor=Depends(owner_actor), services: Services = Depends(get_services)):
     with services.sessions() as db:
-        rows = db.scalars(select(Project).order_by(Project.created_at, Project.id)).all()
+        rows = db.scalars(select(Project).where(Project.user_id == actor.user_id).order_by(Project.created_at, Project.id)).all()
         return [{"id": row.id, "name": row.name, "created_at": row.created_at} for row in rows]
 
 
 @router.post("/projects", status_code=201, response_model=ProjectView)
 async def create_project(body: ProjectCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
     _owner_only(actor)
-    row = Project(name=body.name)
+    row = Project(name=body.name, user_id=actor.user_id)
     with services.sessions.begin() as db:
         db.add(row)
         db.flush()
@@ -949,7 +925,7 @@ async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Servic
         authorize(db, actor, project_id, "read", "run")
         query = select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())
         query = query.where(Run.operation.not_in(("profile_cv", "match_jobs", "extract_experience")))
-        if actor.kind != "owner":
+        if actor.kind != "user":
             query = query.where(Run.operation != "export_document")
         rows = db.scalars(query).all()
     result = []

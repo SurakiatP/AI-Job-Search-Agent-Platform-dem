@@ -12,6 +12,8 @@ import uvicorn
 from sqlalchemy.engine import URL
 from botocore.exceptions import ClientError
 
+from helpers import login_cookie
+from helpers import user as helpers_user
 from job_search_platform import main
 from job_search_platform.services.owner_sessions import CSRF_HEADER
 from job_search_platform.services.maintenance import acquire_maintenance_lock
@@ -104,13 +106,14 @@ async def test_production_factory_migrates_serves_owner_and_stops_dispatch(produ
         expected = services.runtime.workspace_root / str(project_id) / str(run_id) / "staging"
         assert services.artifacts.staging_root_for_run(project_id, run_id) == expected
         assert services.supervisor._dispatcher is not None
-        launch = await services.owner_sessions.create_launch_nonce("http://127.0.0.1:8000")
+        with services.sessions.begin() as db:
+            user_id = helpers_user(db).user_id
+        cookie, csrf = login_cookie(services, user_id)
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1:8000") as client:
             denied = await client.get("/api/v1/projects")
             assert denied.status_code == 401
-            response = await client.post("/api/v1/owner/bootstrap", json={"nonce": launch.nonce}, headers={"Origin": "http://127.0.0.1:8000"})
-            assert response.status_code == 200
-            headers = {"Origin": "http://127.0.0.1:8000", CSRF_HEADER: response.json()["csrf_token"]}
+            client.cookies.set("jsp_owner_session", cookie)
+            headers = {"Origin": "http://127.0.0.1:8000", CSRF_HEADER: csrf}
             project = await client.post("/api/v1/projects", json={"name": "Synthetic factory project"}, headers=headers)
             assert project.status_code == 201
             projects = await client.get("/api/v1/projects")
@@ -124,24 +127,18 @@ async def test_production_factory_migrates_serves_owner_and_stops_dispatch(produ
 @pytest.mark.integration
 @pytest.mark.asyncio
 @pytest.mark.parametrize("host", ["127.0.0.1", "::1"])
-@pytest.mark.parametrize("open_browser", [False, True])
-async def test_actual_launcher_serves_inside_running_loop_without_exposing_nonce(production_factory, tmp_path, monkeypatch, unused_tcp_port, host, open_browser):
+async def test_actual_launcher_serves_inside_running_loop_and_prints_login_url(production_factory, tmp_path, monkeypatch, unused_tcp_port, host):
     factory, created = production_factory
     script = Path(__file__).resolve().parents[3] / "scripts" / "run_local.py"
     spec = importlib.util.spec_from_file_location("production_launcher_probe", script)
     launcher = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(launcher)
     monkeypatch.setattr(launcher, "build_services", factory)
-    monkeypatch.setenv("JSP_ALLOWED_ORIGINS", "")
-    import webbrowser
-    opened = []
-    monkeypatch.setattr(webbrowser, "open", lambda _: opened.append(True) or True)
-    printed_launch_link = []
+    monkeypatch.delenv("APP_PUBLIC_ORIGIN", raising=False)
+    printed = []
 
     def private_output(*values, **_kwargs):
-        # A nonce may be printed to the owner's terminal, never test output.
-        if values and str(values[0]).startswith("One-use owner launch link"):
-            printed_launch_link.append(True)
+        printed.extend(str(value) for value in values)
 
     monkeypatch.setattr(launcher, "print", private_output, raising=False)
     servers = []
@@ -156,7 +153,7 @@ async def test_actual_launcher_serves_inside_running_loop_without_exposing_nonce
     dist = tmp_path / "dist"
     (dist / "assets").mkdir(parents=True)
     (dist / "index.html").write_text("<html><body>Synthetic launcher page</body></html>")
-    args = SimpleNamespace(frontend_dist=dist, build_frontend=False, host=host, port=unused_tcp_port, open_browser=open_browser)
+    args = SimpleNamespace(frontend_dist=dist, build_frontend=False, host=host, port=unused_tcp_port)
     task = asyncio.create_task(launcher._launch(args))
     try:
         async with asyncio.timeout(20):
@@ -171,11 +168,7 @@ async def test_actual_launcher_serves_inside_running_loop_without_exposing_nonce
             assert response.status_code == 200
             assert "Synthetic launcher page" in response.text
             assert (await client.get("/api/v1/projects")).status_code == 401
-        if open_browser:
-            async with asyncio.timeout(5):
-                while not opened:
-                    await asyncio.sleep(0.01)
-        assert printed_launch_link == ([] if open_browser else [True])
+        assert f"App: http://{url_host}:{unused_tcp_port}/login" in printed
     finally:
         if servers:
             servers[0].should_exit = True
@@ -235,10 +228,13 @@ async def test_actual_built_frontend_with_production_rest_upload_and_session_res
                 break
             await asyncio.sleep(0.05)
         assert server.started
-        launch = await app.state.services.owner_sessions.create_launch_nonce(origin)
+        services = app.state.services
+        with services.sessions.begin() as db:
+            user_id = helpers_user(db).user_id
+        cookie, csrf = login_cookie(services, user_id)
         import json
         config = tmp_path / "synthetic-owner-session.json"
-        config.write_text(json.dumps({"nonce": launch.nonce}))
+        config.write_text(json.dumps({"cookie": cookie, "csrf": csrf}))
         config.chmod(0o600)
         environment = dict(os.environ, JSP_E2E_BASE_URL=origin, JSP_E2E_SESSION_FILE=str(config),
                            PLAYWRIGHT_OUTPUT_DIR=str(tmp_path / "playwright-output"))

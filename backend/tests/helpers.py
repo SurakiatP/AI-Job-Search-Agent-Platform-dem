@@ -10,26 +10,50 @@ from uuid import uuid4
 
 from job_search_platform.db.models import (
     CV, CVRevision, ConversationSession, Grant, JobRevision, OwnerSession,
-    Project, ProviderConfiguration,
+    Project, ProviderConfiguration, User,
 )
 from job_search_platform.services.contracts import Actor, RunRequest
 
 
-def owner(db, *, expires_in: timedelta = timedelta(hours=1)) -> Actor:
+def user(db, *, email: str | None = None, verified: bool = True,
+         expires_in: timedelta = timedelta(hours=1)) -> Actor:
     now = datetime.now(timezone.utc)
-    owner_session_id = uuid4()
-    db.add(OwnerSession(id=owner_session_id, session_hash=hashlib.sha256(secrets.token_bytes(32)).digest(),
-                        csrf_hash=hashlib.sha256(secrets.token_bytes(32)).digest(),
-                        expires_at=now + expires_in))
+    row = User(email=email or f"u{uuid4().hex[:8]}@example.test", password_hash="x",
+               email_verified_at=now if verified else None)
+    db.add(row)
     db.flush()
-    return Actor("owner", owner_session_id, None, None, frozenset())
+    owner_session_id = uuid4()
+    db.add(OwnerSession(id=owner_session_id, user_id=row.id,
+                        session_hash=hashlib.sha256(secrets.token_bytes(32)).digest(),
+                        csrf_hash=hashlib.sha256(secrets.token_bytes(32)).digest(),
+                        expires_at=now + expires_in, last_seen_at=now))
+    db.flush()
+    return Actor("user", owner_session_id, None, None, frozenset(), row.id)
 
 
-def project(db, name: str = "Synthetic Project") -> Project:
-    value = Project(name=name)
+owner = user
+
+
+def project(db, name: str = "Synthetic Project", *, owner: Actor | None = None) -> Project:
+    value = Project(name=name, user_id=owner.user_id if owner is not None else None)
     db.add(value)
     db.flush()
     return value
+
+
+def legacy_project(db, name: str = "Synthetic Project"):
+    """Insert a project without ``user_id``, for tests that run against a pre-accounts schema."""
+    from sqlalchemy import insert
+    from types import SimpleNamespace
+    project_id = uuid4()
+    db.execute(insert(Project.__table__).values(id=project_id, name=name))
+    return SimpleNamespace(id=project_id, name=name)
+
+
+def login_cookie(services, user_id) -> tuple[str, str]:
+    """Cookie and CSRF token for a fresh session of ``user_id``."""
+    exchange = services.owner_sessions.create(user_id)
+    return exchange.session_cookie, exchange.csrf_token
 
 
 def grant(db, project_id, *, capabilities=("results:read",), expires_in=timedelta(hours=1)) -> tuple[Actor, Grant]:
@@ -39,7 +63,8 @@ def grant(db, project_id, *, capabilities=("results:read",), expires_in=timedelt
                   capabilities=list(capabilities), expires_at=now + expires_in)
     db.add(value)
     db.flush()
-    return Actor("grant", None, value.id, project_id, frozenset(capabilities)), value
+    owner_id = db.scalar(select(Project.user_id).where(Project.id == project_id))
+    return Actor("grant", None, value.id, project_id, frozenset(capabilities), owner_id), value
 
 
 def session(db, project_id, title: str = "Synthetic session") -> ConversationSession:

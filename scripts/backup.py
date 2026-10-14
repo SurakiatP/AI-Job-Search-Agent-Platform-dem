@@ -121,8 +121,8 @@ def _run_pg_dump(db_url: URL, private_dir: Path, args, destination: Path) -> Non
     command = [
         "pg_dump",
         "--format=custom", "--no-owner", "--no-acl", "--file", str(destination),
-        "--exclude-table-data=owner_sessions", "--exclude-table-data=owner_launch_nonces",
-            "--exclude-table-data=grants",
+        "--exclude-table-data=owner_sessions",
+        "--exclude-table-data=grants",
     ]
     try:
         result = subprocess.run(command, env=env, capture_output=True, timeout=900, check=False)

@@ -56,8 +56,8 @@ def test_llm_round_event_reports_usage_or_nulls(api_context, usage, expected):
 
 @pytest.mark.asyncio
 async def test_requester_for_owner_and_labelled_grant_and_label_listing(db_session):
-    p = project(db_session, "Synthetic telemetry")
     actor = owner(db_session)
+    p = project(db_session, "Synthetic telemetry", owner=actor)
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -88,8 +88,8 @@ def test_requester_label_ignores_a_grant_of_another_project(db_session):
 
 @pytest.mark.asyncio
 async def test_grant_issued_with_label_lists_it_back(db_session):
-    p = project(db_session, "Synthetic label")
     actor = owner(db_session)
+    p = project(db_session, "Synthetic label", owner=actor)
     db_session.commit()
     sessions = sessionmaker(bind=db_session.get_bind(), expire_on_commit=False)
     grants = Grants(sessions)

@@ -8,7 +8,7 @@ import secrets
 
 from sqlalchemy import select
 
-from job_search_platform.db.models import Grant
+from job_search_platform.db.models import Grant, Project
 from job_search_platform.db.repositories import Repositories
 from job_search_platform.services.authorization import authorize, GRANT_CAPABILITIES
 from job_search_platform.services.contracts import Actor, GrantIssuedView, GrantView
@@ -50,11 +50,13 @@ class Grants:
         def authenticate():
             digest = token_hash(token)
             with self.sessions() as db:
-                row = db.scalar(select(Grant).where(Grant.token_hash == digest))
-                if row is None or row.revoked_at is not None or row.expires_at <= datetime.now(timezone.utc):
+                found = db.execute(select(Grant, Project.user_id).join(
+                    Project, Project.id == Grant.project_id).where(Grant.token_hash == digest)).first()
+                if found is None or found[0].revoked_at is not None or found[0].expires_at <= datetime.now(timezone.utc):
                     raise ServiceError("unauthorized")
+                row, owner_id = found
                 return Actor("grant", None, row.id, row.project_id,
-                             frozenset(row.capabilities) & GRANT_CAPABILITIES)
+                             frozenset(row.capabilities) & GRANT_CAPABILITIES, owner_id)
         return await asyncio.to_thread(authenticate)
 
     async def list(self, actor, project_id):

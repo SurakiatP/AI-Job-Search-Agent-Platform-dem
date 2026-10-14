@@ -58,9 +58,9 @@ def _submit(service, actor, project_id, request):
 
 
 def _setup(db_session, *, capability="documents:draft"):
-    p = project(db_session, "Approval test")
-    creator, _ = grant(db_session, p.id, capabilities=(capability, "results:read"))
     owner_actor = owner(db_session)
+    p = project(db_session, "Approval test", owner=owner_actor)
+    creator, _ = grant(db_session, p.id, capabilities=(capability, "results:read"))
     chat = session(db_session, p.id)
     cv, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -178,7 +178,7 @@ def test_stale_cv_approval_cannot_promote_and_expiry_fails_run_durably(db_sessio
         assert db.get(Run, run.id).status == "waiting_approval"
 
     # Resolve expiry on a separate run because the stale request remains pending.
-    p2 = project(db_session, "Expiry test")
+    p2 = project(db_session, "Expiry test", owner=owner_actor)
     creator2, _ = grant(db_session, p2.id, capabilities=("documents:draft", "results:read"))
     chat = session(db_session, p2.id)
     cv2, job2 = revisions(db_session, p2.id)

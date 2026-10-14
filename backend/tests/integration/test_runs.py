@@ -43,8 +43,8 @@ def _submit(service, actor, project_id, request):
 
 
 def test_idempotent_replay_keeps_original_implicit_cv_and_config_snapshot(db_session):
-    p = project(db_session)
     actor = owner(db_session)
+    p = project(db_session, owner=actor)
     chat = session(db_session, p.id)
     cv, job = revisions(db_session, p.id)
     db_session.commit()
@@ -90,8 +90,8 @@ def test_grant_scopes_are_distinct_and_replay_does_not_create_another_run(db_ses
 
 
 def test_project_queue_limit_and_retry_create_a_new_run(db_session):
-    p = project(db_session)
     actor = owner(db_session)
+    p = project(db_session, owner=actor)
     chat = session(db_session, p.id)
     cv, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -126,8 +126,8 @@ def test_project_queue_limit_and_retry_create_a_new_run(db_session):
 def test_reload_retry_uses_durable_job_reference_and_original_cv(db_session):
     from job_search_platform.services.contracts import RunRequest
 
-    p = project(db_session)
     actor = owner(db_session)
+    p = project(db_session, owner=actor)
     chat = session(db_session, p.id)
     cv, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -230,8 +230,8 @@ def test_revoked_creator_grant_is_checked_again_at_dispatch(db_session):
 
 
 def test_concurrent_same_key_submission_uses_two_connections(db_session):
-    p = project(db_session)
     actor = owner(db_session)
+    p = project(db_session, owner=actor)
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -254,8 +254,8 @@ def test_concurrent_same_key_submission_uses_two_connections(db_session):
 def test_public_run_event_rejects_non_whitelisted_private_data(db_session):
     from job_search_platform.services.runs import append_event
 
-    p = project(db_session)
     actor = owner(db_session)
+    p = project(db_session, owner=actor)
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
     provider_config(db_session, p.id)
@@ -268,8 +268,8 @@ def test_public_run_event_rejects_non_whitelisted_private_data(db_session):
 
 
 def test_project_results_reader_sees_other_creator_run_and_only_published_files(db_session):
-    p = project(db_session, "Shared results")
     creator = owner(db_session)
+    p = project(db_session, "Shared results", owner=creator)
     reader, _ = grant(db_session, p.id, capabilities=("results:read",))
     chat = session(db_session, p.id)
     _, job = revisions(db_session, p.id)
@@ -421,7 +421,7 @@ async def test_events_reauthorize_between_yields_after_capability_removal(db_ses
 
 def test_admission_needs_gateway_key_not_a_provider_row(db_session, tmp_path, monkeypatch):
     actor = owner(db_session)
-    a, b = project(db_session, "A"), project(db_session, "B")
+    a, b = project(db_session, "A", owner=actor), project(db_session, "B", owner=actor)
     sa, sb = session(db_session, a.id), session(db_session, b.id)
     (_, ja), (_, jb) = revisions(db_session, a.id), revisions(db_session, b.id)
     db_session.commit()

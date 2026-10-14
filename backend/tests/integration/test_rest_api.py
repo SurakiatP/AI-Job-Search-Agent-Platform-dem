@@ -41,7 +41,8 @@ from job_search_platform.services.owner_sessions import OwnerSessions
 from job_search_platform.services.runs import RunService
 from job_search_platform.services.settings import Settings
 from job_search_platform.workers.queue import PostgresRunQueue
-from helpers import provider_config, revisions, primary_cv
+from helpers import login_cookie, primary_cv, provider_config, revisions
+from helpers import user as helpers_user
 
 
 ROOT_FOR_MIGRATIONS = Path(__file__).resolve().parents[2] / "migrations"
@@ -110,7 +111,7 @@ def api_context(migrated_engine, tmp_path):
     files = Files(sessions, store, parser)
     artifacts = Artifacts(sessions, store, lambda project_id, run_id: tmp_path / str(project_id) / str(run_id))
     secret_store = _Secrets()
-    owner_sessions = OwnerSessions(sessions, allowed_origins={"http://127.0.0.1:8765"}, allowed_hosts={"127.0.0.1:8765"})
+    owner_sessions = OwnerSessions(sessions, public_origin="http://127.0.0.1:8765")
     services = Services(
         sessions=sessions,
         owner_sessions=owner_sessions,
@@ -135,17 +136,13 @@ def api_context(migrated_engine, tmp_path):
 
 
 def _owner(context) -> str:
-    launch = asyncio.run(context.client.app.state.services.owner_sessions.create_launch_nonce("http://127.0.0.1:8765"))
-    response = context.client.post("/api/v1/owner/bootstrap", json={"nonce": launch.nonce},
-                                   headers={"Origin": "http://127.0.0.1:8765"})
-    assert response.status_code == 200
-    assert response.headers["cache-control"] == "no-store"
-    csrf = response.json()["csrf_token"]
-    replay = context.client.post("/api/v1/owner/bootstrap", json={"nonce": launch.nonce},
-                                 headers={"Origin": "http://127.0.0.1:8765"})
-    assert replay.status_code == 401
-    restored = context.client.post("/api/v1/owner/session", headers={"Origin": "http://127.0.0.1:8765"})
-    assert restored.status_code == 200 and restored.json()["csrf_token"] == csrf
+    if not hasattr(context, "user_id"):  # one user per test context; later calls log back in
+        with context.sessions.begin() as db:
+            context.user_id = helpers_user(db).user_id
+    cookie, csrf = login_cookie(context.client.app.state.services, context.user_id)
+    context.client.cookies.set("jsp_owner_session", cookie)
+    restored = context.client.get("/api/v1/projects")
+    assert restored.status_code == 200
     return csrf
 
 

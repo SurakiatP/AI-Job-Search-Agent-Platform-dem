@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from job_search_platform.db.models import Grant, OwnerSession
+from job_search_platform.db.models import Grant, OwnerSession, Project, User
 from job_search_platform.services.contracts import Actor, Capability
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
@@ -31,15 +31,19 @@ def authorize(db: Session, actor: Actor, project_id: UUID, action: str,
     capabilities, revocation and expiry are authoritative.
     """
     now = now or datetime.now(timezone.utc)
-    if actor.kind == "owner":
-        if actor.owner_session_id is None or actor.grant_id is not None:
+    if actor.kind == "user":
+        if actor.owner_session_id is None or actor.grant_id is not None or actor.user_id is None:
             raise ServiceError("unauthorized")
         owner_session = db.scalar(select(OwnerSession).where(
             OwnerSession.id == actor.owner_session_id,
         ).execution_options(populate_existing=True))
-        if (owner_session is None or owner_session.revoked_at is not None
-                or _utc(owner_session.expires_at) <= now):
+        if (owner_session is None or owner_session.user_id != actor.user_id
+                or owner_session.revoked_at is not None or _utc(owner_session.expires_at) <= now):
             raise ServiceError("unauthorized")
+        if db.scalar(select(User.disabled_at).where(User.id == actor.user_id)) is not None:
+            raise ServiceError("unauthorized")
+        if db.scalar(select(Project.user_id).where(Project.id == project_id)) != actor.user_id:
+            raise ServiceError("not_found")
         return
 
     if actor.kind != "grant" or actor.grant_id is None or actor.owner_session_id is not None:
@@ -53,6 +57,9 @@ def authorize(db: Session, actor: Actor, project_id: UUID, action: str,
         raise ServiceError("unauthorized")
     if actor.project_id != project_id or grant.project_id != project_id:
         raise ServiceError("not_found")
+    owner_id = db.scalar(select(Project.user_id).where(Project.id == project_id))
+    if owner_id is not None and db.scalar(select(User.disabled_at).where(User.id == owner_id)) is not None:
+        raise ServiceError("unauthorized")
     if resource_kind == "run" and action == "cancel":
         # RunService additionally verifies this is the original creating grant.
         return
@@ -74,6 +81,19 @@ def authorize(db: Session, actor: Actor, project_id: UUID, action: str,
             raise ServiceError("forbidden")
         return
     raise ServiceError("forbidden")
+
+
+def user_scope_is_current(db: Session, scope: str, project_id: UUID) -> bool:
+    """True for ``user:<id>`` when that user exists, is enabled and owns the project."""
+    if not scope.startswith("user:"):
+        return False
+    try:
+        user_id = UUID(scope.removeprefix("user:"))
+    except ValueError:
+        return False
+    return db.scalar(select(Project.id).join(User, User.id == Project.user_id).where(
+        Project.id == project_id, User.id == user_id, User.disabled_at.is_(None),
+    ).with_for_update(of=User)) is not None
 
 
 def require_scoped_id(db: Session, model: type, project_id: UUID, resource_id: UUID,

@@ -333,7 +333,7 @@ class Documents:
         await asyncio.to_thread(self._set_trashed, actor, project_id, document_id, trashed)
 
     def _set_trashed(self, actor: Actor, project_id: UUID, document_id: UUID, trashed: bool) -> None:
-        if actor.kind != "owner":
+        if actor.kind != "user":
             raise ServiceError("forbidden")
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "write", "document")
@@ -359,7 +359,7 @@ class Documents:
                 _log.warning("document_object_delete_failed")
 
     def _delete_rows(self, actor: Actor, project_id: UUID, document_id: UUID) -> list[str]:
-        if actor.kind != "owner":
+        if actor.kind != "user":
             raise ServiceError("forbidden")
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "write", "document")
@@ -417,7 +417,7 @@ class Documents:
 
     async def list_trashed(self, actor: Actor, project_id: UUID) -> list[DocumentView]:
         """Owner-only trash view, newest trashed first."""
-        if actor.kind != "owner":
+        if actor.kind != "user":
             raise ServiceError("forbidden")
         return self._list(actor, project_id, trashed=True)
 
@@ -490,7 +490,7 @@ class Documents:
                 )
             )
             # A trashed document stays previewable to its owner only.
-            if document is None or (document.trashed_at is not None and actor.kind != "owner"):
+            if document is None or (document.trashed_at is not None and actor.kind != "user"):
                 raise ServiceError("not_found")
             rows = list(
                 db.scalars(

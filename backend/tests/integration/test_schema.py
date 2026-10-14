@@ -34,7 +34,7 @@ def test_empty_database_migrates_and_repeat_upgrade_preserves_synthetic_rows(pos
     assert "future_model_probe" not in inspect(postgres_engine).get_table_names()
     assert {"projects", "sessions", "messages", "cv_revisions", "job_revisions", "documents",
             "document_revisions", "files", "provider_configurations", "owner_sessions",
-            "owner_launch_nonces", "grants", "runs", "run_events", "approvals", "job_submissions"}.issubset(
+            "grants", "runs", "run_events", "approvals", "job_submissions"}.issubset(
                 set(inspect(postgres_engine).get_table_names()))
     with postgres_engine.begin() as connection:
         p = Project(name="Migration synthetic")

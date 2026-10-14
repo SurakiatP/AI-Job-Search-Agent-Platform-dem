@@ -9,7 +9,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend" / "src"))
@@ -21,7 +20,6 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", choices=("127.0.0.1", "::1"), default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
-    parser.add_argument("--open-browser", action="store_true", help="open authenticated owner app when ready")
     parser.add_argument("--build-frontend", action="store_true", help="build the frontend before starting")
     parser.add_argument("--frontend-dist", type=Path, default=ROOT / "frontend" / "dist")
     parser.add_argument("--enable-sharing", action="store_true", help="enable project-token MCP/A2A listener")
@@ -41,37 +39,19 @@ async def _launch(args: argparse.Namespace) -> int:
 
     url_host = "[::1]" if args.host == "::1" else args.host
     scheme_host = f"http://{url_host}:{args.port}"
-    configured = {entry.strip() for entry in os.environ.get("JSP_ALLOWED_ORIGINS", "").split(",") if entry.strip()}
-    configured.add(scheme_host)
-    os.environ["JSP_ALLOWED_ORIGINS"] = ",".join(sorted(configured))
+    os.environ.setdefault("APP_PUBLIC_ORIGIN", scheme_host)
     services = build_services()
     guard = acquire_service_maintenance(services)
     try:
         await asyncio.to_thread(_migrate, services.engine)
-        launch = await services.owner_sessions.create_launch_nonce(scheme_host)
         app = create_app(services, frontend_dist=dist)
 
-        # The nonce lives only in the URL fragment. Browsers do not send fragments in
-        # HTTP requests, so it cannot enter application request logs.
-        link = f"{scheme_host}/#owner-nonce={quote(launch.nonce, safe='')}"
-        print(f"Local application: {scheme_host}", flush=True)
-        if not getattr(args, "open_browser", False):
-            print(f"One-use owner launch link (valid for 5 minutes): {link}", flush=True)
+        print(f"App: {scheme_host}/login", flush=True)
 
         import uvicorn
 
         server = uvicorn.Server(uvicorn.Config(app, host=args.host, port=args.port,
                                                access_log=False, log_config=None))
-        async def open_when_ready():
-            for _ in range(200):
-                if server.started:
-                    import webbrowser
-                    await asyncio.to_thread(webbrowser.open, link)
-                    return
-                await asyncio.sleep(0.05)
-            raise RuntimeError("owner_listener_start_timeout")
-
-        browser_task = asyncio.create_task(open_when_ready()) if getattr(args, "open_browser", False) else None
         shared_task = None
         shared_server = None
         try:
@@ -99,13 +79,6 @@ async def _launch(args: argparse.Namespace) -> int:
             if not server.started:
                 raise RuntimeError("owner_listener_start_failed")
         finally:
-            if browser_task is not None:
-                if not browser_task.done():
-                    browser_task.cancel()
-                try:
-                    await browser_task
-                except asyncio.CancelledError:
-                    pass
             if shared_server is not None:
                 shared_server.should_exit = True
             if shared_task is not None:

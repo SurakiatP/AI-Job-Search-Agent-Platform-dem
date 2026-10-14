@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 
-from helpers import owner, project, provider_config, revisions, run_request, session
+from helpers import login_cookie, owner, project, provider_config, revisions, run_request, session
 from job_search_platform.api.dependencies import Services
 from job_search_platform.db.models import Grant, JobApplicationStatus, JobRevision, Run
 from job_search_platform.main import create_app
@@ -36,9 +36,7 @@ class _Lifecycle:
 @pytest.fixture
 def status_api(migrated_engine):
     sessions = sessionmaker(migrated_engine, expire_on_commit=False)
-    owner_sessions = OwnerSessions(
-        sessions, allowed_origins={ORIGIN}, allowed_hosts={"127.0.0.1:8765"}
-    )
+    owner_sessions = OwnerSessions(sessions, public_origin=ORIGIN)
     lifecycle = _Lifecycle()
     services = Services(
         sessions=sessions,
@@ -57,13 +55,10 @@ def status_api(migrated_engine):
         yield SimpleNamespace(client=client, sessions=sessions, services=services)
 
 
-def _owner_csrf(context) -> str:
-    nonce = asyncio.run(context.services.owner_sessions.create_launch_nonce(ORIGIN))
-    response = context.client.post(
-        "/api/v1/owner/bootstrap", json={"nonce": nonce.nonce}, headers={"Origin": ORIGIN}
-    )
-    assert response.status_code == 200
-    return response.json()["csrf_token"]
+def _owner_csrf(context, user_id) -> str:
+    cookie, csrf = login_cookie(context.services, user_id)
+    context.client.cookies.set("jsp_owner_session", cookie)
+    return csrf
 
 
 def _write_headers(csrf: str) -> dict[str, str]:
@@ -73,18 +68,18 @@ def _write_headers(csrf: str) -> dict[str, str]:
 @pytest.mark.integration
 def test_owner_application_status_persists_per_job_revision_without_changing_run(status_api):
     with status_api.sessions.begin() as db:
-        record = project(db)
+        actor = owner(db)
+        record = project(db, owner=actor)
         conversation = session(db, record.id)
         cv, job = revisions(db, record.id)
         provider_config(db, record.id)
-        actor = owner(db)
         db.flush()
     run = asyncio.run(
         status_api.services.runs.submit(
             actor, record.id, run_request(conversation.id, job.id, cv_revision_id=cv.id)
         )
     )
-    csrf = _owner_csrf(status_api)
+    csrf = _owner_csrf(status_api, actor.user_id)
     path = f"/api/v1/projects/{record.id}/jobs/{job.id}/application-status"
 
     initial = status_api.client.get(path)
@@ -120,10 +115,11 @@ def test_owner_application_status_persists_per_job_revision_without_changing_run
 @pytest.mark.integration
 def test_application_status_requires_owner_csrf_and_rejects_project_scoped_foreign_job(status_api):
     with status_api.sessions.begin() as db:
-        first = project(db, "Synthetic first")
-        second = project(db, "Synthetic second")
+        actor = owner(db)
+        first = project(db, "Synthetic first", owner=actor)
+        second = project(db, "Synthetic second", owner=actor)
         _, foreign_job = revisions(db, second.id)
-    csrf = _owner_csrf(status_api)
+    csrf = _owner_csrf(status_api, actor.user_id)
     foreign_path = f"/api/v1/projects/{first.id}/jobs/{foreign_job.id}/application-status"
 
     assert status_api.client.get(foreign_path).status_code == 404

@@ -9,7 +9,8 @@ from job_search_platform.services.runs import RunService
 async def test_project_reader_can_read_owner_created_run_but_cannot_cancel(migrated_engine):
     factory = sessionmaker(migrated_engine, expire_on_commit=False)
     with factory.begin() as db:
-        actor, p = owner(db), project(db)
+        actor = owner(db)
+        p = project(db, owner=actor)
         s = session(db, p.id)
         cv, job = revisions(db, p.id)
         provider_config(db, p.id)

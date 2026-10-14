@@ -11,6 +11,8 @@ import pytest
 import uvicorn
 from sqlalchemy import func, select
 
+from helpers import login_cookie
+from helpers import user as helpers_user
 from job_search_platform.api.shared import create_shared_app
 from job_search_platform.db.models import Grant, Project, ProviderConfiguration
 from job_search_platform.services.owner_sessions import COOKIE_NAME
@@ -242,16 +244,11 @@ async def _exercise_owner_rest(app, port: int, server: uvicorn.Server):
         base_url = f"http://127.0.0.1:{port}"
         allowed_headers = {"Host": "127.0.0.1:8765", "Origin": "http://127.0.0.1:8765"}
         services = app.state.services
-        launch = await services.owner_sessions.create_launch_nonce("http://127.0.0.1:8765")
+        with services.sessions.begin() as db:
+            user_id = helpers_user(db).user_id
+        cookie, csrf = login_cookie(services, user_id)
+        cookies = {"jsp_owner_session": cookie}
         async with httpx.AsyncClient(timeout=5) as client:
-            bootstrapped = await client.post(
-                f"{base_url}/api/v1/owner/bootstrap",
-                json={"nonce": launch.nonce},
-                headers=allowed_headers,
-            )
-            assert bootstrapped.status_code == 200, bootstrapped.text
-            csrf = bootstrapped.json()["csrf_token"]
-            cookies = bootstrapped.cookies
 
             no_origin = await client.post(
                 f"{base_url}/api/v1/projects",

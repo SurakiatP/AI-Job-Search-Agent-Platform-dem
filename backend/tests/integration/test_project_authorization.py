@@ -69,8 +69,8 @@ def test_tool_connector_update_rejects_arbitrary_base_url():
 
 
 def test_owner_requires_live_persisted_session(db_session):
-    p = project(db_session)
     actor = owner(db_session)
+    p = project(db_session, owner=actor)
     authorize(db_session, actor, p.id, "manage", "project")
     db_session.get(OwnerSession, actor.owner_session_id).revoked_at = datetime.now(timezone.utc)
     db_session.flush()
@@ -81,9 +81,9 @@ def test_owner_requires_live_persisted_session(db_session):
 def test_reused_session_reloads_grant_and_owner_state_from_postgres(db_session):
     bind = db_session.get_bind()
     with Session(bind=bind, expire_on_commit=False) as auth_db, Session(bind=bind) as update_db:
-        p = project(auth_db)
-        grant_actor, persisted_grant = grant(auth_db, p.id, capabilities=("results:read",))
         owner_actor = owner(auth_db)
+        p = project(auth_db, owner=owner_actor)
+        grant_actor, persisted_grant = grant(auth_db, p.id, capabilities=("results:read",))
         auth_db.commit()
 
         authorize(auth_db, grant_actor, p.id, "results:read", "run")

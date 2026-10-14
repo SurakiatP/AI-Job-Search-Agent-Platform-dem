@@ -12,7 +12,7 @@ from alembic import command
 from sqlalchemy import select, text
 from sqlalchemy.orm import sessionmaker
 
-from helpers import grant as make_grant, project as make_project, provider_config, revisions, session as make_session
+from helpers import grant as make_grant, legacy_project as make_project, provider_config, revisions, session as make_session
 from job_search_platform.db.models import Approval, JobRevision, Run, RunEvent
 from job_search_platform.services.contracts import ApplyPrepareInput, ApplySubmitInput, ProtocolJobInput
 from job_search_platform.services.errors import ServiceError
