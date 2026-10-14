@@ -6,6 +6,7 @@ Signing keys (endpoint secrets, A2A tokens) are never logged or returned after c
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import hmac
 import json
@@ -21,7 +22,7 @@ from uuid import UUID, uuid4
 import httpx
 from sqlalchemy import delete, func, select, update
 
-from job_search_platform.db.models import A2APushConfig, Grant, Project, WebhookDelivery, WebhookEndpoint
+from job_search_platform.db.models import A2APushConfig, Grant, Project, Run, WebhookDelivery, WebhookEndpoint
 from job_search_platform.services.a2a_state import context_id, task_state
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
@@ -30,6 +31,13 @@ from job_search_platform.services.contracts import (
 from job_search_platform.services.errors import ServiceError
 
 logger = logging.getLogger("jsp.webhooks")
+
+MAX_PUSH_CONFIGS = 5
+MIN_TOKEN = 16
+
+
+def _config_view(row: A2APushConfig) -> dict:
+    return {"id": row.config_id, "task_id": str(row.run_id), "url": row.url}
 
 WEBHOOK_EVENTS = ("run.waiting_approval", "run.needs_input", "run.completed", "run.failed", "run.cancelled", "digest.ready")
 RUN_EVENT_MAP = {"run_waiting_approval": "run.waiting_approval", "run_needs_input": "run.needs_input",
@@ -336,3 +344,90 @@ class Webhooks:
                 raise ServiceError("delivery_not_dead")
             row.status, row.attempts, row.next_attempt_at = "pending", 0, datetime.now(timezone.utc)
             row.last_status_code = row.last_error = None
+
+    @staticmethod
+    def _own_run(db, actor, run_id: UUID) -> Run:
+        run = db.scalar(select(Run).where(Run.project_id == actor.project_id, Run.id == run_id,
+                                          Run.actor_scope == f"grant:{actor.grant_id}"))
+        if run is None:
+            raise ServiceError("not_found")
+        return run
+
+    async def set_push_config(self, actor, run_id: UUID, config_id: str, url: str, token: str) -> dict:
+        if not isinstance(token, str) or not MIN_TOKEN <= len(token) <= 256 or len(config_id) > 128:
+            raise ServiceError("invalid_push_config")
+        await asyncio.to_thread(self._check_run, actor, run_id)
+        try:
+            await validate_url(url)
+        except ServiceError:
+            raise ServiceError("invalid_push_config") from None
+
+        def upsert() -> dict:
+            with self.sessions.begin() as db:
+                run = db.scalar(select(Run).where(Run.project_id == actor.project_id, Run.id == run_id,
+                                                  Run.actor_scope == f"grant:{actor.grant_id}").with_for_update())
+                if run is None:
+                    raise ServiceError("not_found")
+                cid = config_id or uuid4().hex
+                row = db.scalar(select(A2APushConfig).where(A2APushConfig.run_id == run_id, A2APushConfig.config_id == cid))
+                if row is None:
+                    count = db.scalar(select(func.count()).select_from(A2APushConfig).where(A2APushConfig.run_id == run_id))
+                    if count >= MAX_PUSH_CONFIGS:
+                        raise ServiceError("invalid_push_config")
+                    row = A2APushConfig(project_id=run.project_id, run_id=run_id, grant_id=actor.grant_id, config_id=cid,
+                                        url=url, token=token)
+                    db.add(row)
+                else:
+                    row.url, row.token = url, token
+                db.flush()
+                return _config_view(row)
+        return await asyncio.to_thread(upsert)
+
+    def _check_run(self, actor, run_id: UUID) -> None:
+        with self.sessions() as db:
+            self._own_run(db, actor, run_id)
+
+    def get_push_config(self, actor, run_id: UUID, config_id: str) -> dict:
+        with self.sessions() as db:
+            self._own_run(db, actor, run_id)
+            row = db.scalar(select(A2APushConfig).where(A2APushConfig.run_id == run_id, A2APushConfig.config_id == config_id))
+            if row is None:
+                raise ServiceError("not_found")
+            return _config_view(row)
+
+    def list_push_configs(self, actor, run_id: UUID) -> list[dict]:
+        with self.sessions() as db:
+            self._own_run(db, actor, run_id)
+            rows = db.scalars(select(A2APushConfig).where(A2APushConfig.run_id == run_id).order_by(A2APushConfig.created_at)).all()
+            return [_config_view(r) for r in rows]
+
+    def delete_push_config(self, actor, run_id: UUID, config_id: str) -> None:
+        with self.sessions.begin() as db:
+            self._own_run(db, actor, run_id)
+            row = db.scalar(select(A2APushConfig).where(A2APushConfig.run_id == run_id, A2APushConfig.config_id == config_id))
+            if row is None:
+                raise ServiceError("not_found")
+            db.delete(row)
+
+    def list_runs(self, actor, *, statuses: set[str] | None, page_size: int, page_token: str) -> tuple[list[Run], str, int]:
+        size = page_size if 1 <= page_size <= 50 else 20
+        where = [Run.project_id == actor.project_id, Run.actor_scope == f"grant:{actor.grant_id}"]
+        if statuses:
+            where.append(Run.status.in_(statuses))
+        with self.sessions() as db:
+            total = db.scalar(select(func.count()).select_from(Run).where(*where))
+            query = select(Run).where(*where)
+            if page_token:
+                try:
+                    created, rid = json.loads(base64.urlsafe_b64decode(page_token.encode()))
+                    created_at, last_id = datetime.fromisoformat(created), UUID(rid)
+                except (ValueError, TypeError):
+                    raise ServiceError("invalid_push_config") from None
+                query = query.where((Run.created_at < created_at) | ((Run.created_at == created_at) & (Run.id < last_id)))
+            rows = db.scalars(query.order_by(Run.created_at.desc(), Run.id.desc()).limit(size + 1)).all()
+        token = ""
+        if len(rows) > size:
+            rows = rows[:size]
+            last = rows[-1]
+            token = base64.urlsafe_b64encode(json.dumps([last.created_at.isoformat(), str(last.id)]).encode()).decode()
+        return list(rows), token, total

@@ -36,10 +36,11 @@ from a2a.types import (
     SubscribeToTaskRequest,
     Task,
     TaskPushNotificationConfig,
+    TaskState,
 )
 from a2a.utils.errors import (
     A2AError,
-    PushNotificationNotSupportedError,
+    InvalidParamsError,
     TaskNotFoundError,
     UnsupportedOperationError,
 )
@@ -49,10 +50,11 @@ from google.protobuf.json_format import MessageToDict, ParseDict
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from job_search_platform.api.dependencies import Services
-from job_search_platform.services.a2a_state import context_id, task_state
+from job_search_platform.services.a2a_state import _STATES as _RUN_STATUSES, context_id, task_state
 from job_search_platform.services.contracts import Actor, RunView
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.protocol_runs import ProtocolRuns
+from job_search_platform.services.runs import run_view
 from job_search_platform.services.skills import SKILL_BY_ID, SKILLS, Skill
 
 _CARD_PATH = "/.well-known/agent-card.json"
@@ -396,20 +398,57 @@ class _PlatformRequestHandler(RequestHandler):
         raise UnsupportedOperationError("Task subscriptions are not supported")
         yield  # pragma: no cover
 
+    def _push_error(self, exc: Exception) -> A2AError:
+        if isinstance(exc, ServiceError) and exc.code == "invalid_push_config":
+            return InvalidParamsError("Invalid push notification config")
+        return self._not_found()
+
+    @staticmethod
+    def _push_config(view: dict[str, Any]) -> TaskPushNotificationConfig:
+        return _protobuf(TaskPushNotificationConfig, {"id": view["id"], "taskId": view["task_id"], "url": view["url"]})
+
+    async def _push_call(self, params, context, call):
+        self._check_tenant(params.tenant)
+        actor = await self._actor(context)
+        try:
+            return await call(actor, UUID(params.task_id))
+        except (ValueError, ServiceError) as exc:
+            raise self._push_error(exc) from None
+
     async def on_list_tasks(self, params: ListTasksRequest, context: ServerCallContext) -> ListTasksResponse:
-        raise UnsupportedOperationError("Task listing is not supported")
+        self._check_tenant(params.tenant)
+        actor = await self._actor(context)
+        statuses = None
+        if params.status:
+            name = TaskState.Name(params.status)
+            statuses = {s for s in _RUN_STATUSES if task_state(s)[0] == name}
+        try:
+            rows, token, total = await asyncio.to_thread(
+                self.services.webhooks.list_runs, actor, statuses=statuses,
+                page_size=params.page_size, page_token=params.page_token)
+        except ServiceError as exc:
+            raise self._push_error(exc) from None
+        return ListTasksResponse(tasks=[self._task(run_view(row)) for row in rows], next_page_token=token,
+                                 page_size=len(rows), total_size=total)
 
     async def on_create_task_push_notification_config(self, params: TaskPushNotificationConfig, context: ServerCallContext) -> TaskPushNotificationConfig:
-        raise PushNotificationNotSupportedError("Push notifications are not supported")
+        view = await self._push_call(params, context, lambda actor, run_id: self.services.webhooks.set_push_config(
+            actor, run_id, params.id, params.url, params.token))
+        return self._push_config(view)
 
     async def on_get_task_push_notification_config(self, params: GetTaskPushNotificationConfigRequest, context: ServerCallContext) -> TaskPushNotificationConfig:
-        raise PushNotificationNotSupportedError("Push notifications are not supported")
+        view = await self._push_call(params, context, lambda actor, run_id: asyncio.to_thread(
+            self.services.webhooks.get_push_config, actor, run_id, params.id))
+        return self._push_config(view)
 
     async def on_delete_task_push_notification_config(self, params: DeleteTaskPushNotificationConfigRequest, context: ServerCallContext) -> None:
-        raise PushNotificationNotSupportedError("Push notifications are not supported")
+        await self._push_call(params, context, lambda actor, run_id: asyncio.to_thread(
+            self.services.webhooks.delete_push_config, actor, run_id, params.id))
 
     async def on_list_task_push_notification_configs(self, params: ListTaskPushNotificationConfigsRequest, context: ServerCallContext) -> ListTaskPushNotificationConfigsResponse:
-        raise PushNotificationNotSupportedError("Push notifications are not supported")
+        views = await self._push_call(params, context, lambda actor, run_id: asyncio.to_thread(
+            self.services.webhooks.list_push_configs, actor, run_id))
+        return ListTaskPushNotificationConfigsResponse(configs=[self._push_config(v) for v in views])
 
     async def on_get_extended_agent_card(self, params: GetExtendedAgentCardRequest, context: ServerCallContext) -> AgentCard:
         actor = await self._actor(context)
@@ -429,7 +468,7 @@ def _agent_card(base_url: str, skills: Sequence[Skill]) -> AgentCard:
                 {"url": base_url, "protocolBinding": "HTTP+JSON", "protocolVersion": "1.0"},
             ],
             "version": "0.1.0",
-            "capabilities": {"streaming": False, "pushNotifications": False, "extendedAgentCard": True},
+            "capabilities": {"streaming": False, "pushNotifications": True, "extendedAgentCard": True},
             "securitySchemes": {
                 "bearerAuth": {
                     "httpAuthSecurityScheme": {
