@@ -28,6 +28,7 @@ The shared listener also serves an OAuth 2.1 authorization server so MCP clients
 
 - Discovery: `/.well-known/oauth-protected-resource/mcp` (RFC 9728) and `/.well-known/oauth-authorization-server` (RFC 8414). An unauthenticated `/mcp` request returns `401` with `WWW-Authenticate: Bearer resource_metadata="<origin>/.well-known/oauth-protected-resource/mcp"`.
 - Endpoints: `/authorize` (per-IP rate limited, 60/hour), `/token`, `/register` (per-IP rate limited, 20/hour), `/revoke`.
+- Rate limits key on the direct peer IP. Behind a reverse proxy every client shares one bucket, so rate-limit at the proxy as well.
 - Public clients only (`token_endpoint_auth_method: none`), registered by Client ID Metadata Document (an https `client_id` URL, fetched with an SSRF guard) or Dynamic Client Registration.
 - PKCE `S256` is required, and the `resource` parameter is required and must equal the `/mcp` URL.
 - Access tokens (`jspo_`) last 1 hour and are valid only at `/mcp` (A2A refuses them). Refresh tokens rotate; reuse of a rotated refresh token revokes the grant's tokens.
