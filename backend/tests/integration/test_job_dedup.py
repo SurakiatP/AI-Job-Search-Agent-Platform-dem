@@ -104,3 +104,31 @@ def test_purge_clears_description_after_90_days_only(db_session):
     assert job_store.purge_descriptions(db_session, T0) == 1
     rows = {r.external_id: r for r in db_session.scalars(select(JobPosting))}
     assert rows["1"].description_markdown is None and rows["2"].description_markdown is not None
+
+
+@pytest.mark.integration
+def test_closed_member_loses_canonical_and_is_marked_dirty(db_session):
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, "https://g/1")], T0)
+    _ingest(db_session, T0 + timedelta(hours=1), freehire=[_fh("fh-1", "https://g/1")], greenhouse=[_gh(1, "https://g/1")])
+    fh = db_session.scalar(select(JobPosting).where(JobPosting.slug == "fh-1"))
+    assert fh.canonical_id is not None
+    for h in (2, 3):  # freehire stops listing fh-1: closes after two misses
+        job_store.apply_board(db_session, "freehire", None, [], T0 + timedelta(hours=h))
+    assert fh.closed_at is not None and fh.canonical_id is not None
+    fh.index_dirty = False
+    job_store.recompute_clusters(db_session, T0 + timedelta(hours=3))
+    assert fh.canonical_id is None and fh.index_dirty is True
+
+
+@pytest.mark.integration
+def test_null_province_never_merges_on_match_key(db_session):
+    _ingest(db_session, T0, greenhouse=[_gh(1, "https://g/1", location="Atlantis")],
+            lever=[_lv("a", "Backend Engineer", location="Atlantis")])
+    assert _canon(db_session, "gh-acme-1") != _canon(db_session, "lv-acme-a")
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("posted, merges", [("2026-09-02T00:00:00Z", True), ("2026-09-01T23:59:59Z", False)])
+def test_dedup_window_boundary(db_session, posted, merges):
+    _ingest(db_session, T0, greenhouse=[_gh(1, "https://g/1", posted=posted)], lever=[_lv("a", "Backend Engineer")])
+    assert (_canon(db_session, "gh-acme-1") == _canon(db_session, "lv-acme-a")) is merges

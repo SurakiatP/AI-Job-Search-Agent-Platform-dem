@@ -107,7 +107,7 @@ def recompute_clusters(db: Session, now: datetime) -> int:
             merged += target is not None
     # closed postings never stay canonical of an open one, and never point at anything
     db.execute(update(JobPosting).where(JobPosting.closed_at.is_not(None), JobPosting.canonical_id.is_not(None))
-               .values(canonical_id=None))
+               .values(canonical_id=None, index_dirty=True, updated_at=now))
     db.flush()
     return merged
 
