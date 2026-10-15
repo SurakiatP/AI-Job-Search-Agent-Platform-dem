@@ -199,7 +199,7 @@ CI is unchanged. Unit tests run there. The Docker-based checks skip there.
 
 ## Amendment A1 (2026-10-15): zero High/Critical images and `.env` configuration
 
-Status: owner-approved decisions, 2026-10-15 (Q1–Q4 of the follow-up grill). The written amendment awaits owner review.
+Status: owner-approved decisions, 2026-10-15 (Q1–Q4 of the follow-up grill). Written amendment approved by the owner on 2026-10-15.
 
 The upstream images failed the DELIVERY.md security gate. Trivy 0.75.0 found the following (CVE-2026-78667, -78669 and -97031: Go stdlib 1.27.1/1.26.x and `golang.org/x/net` 0.58–0.59):
 - **`prom/prometheus:v3.15.0`:** 8 High, in `bin/prometheus` and `bin/promtool`.
