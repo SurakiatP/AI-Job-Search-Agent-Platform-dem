@@ -196,3 +196,45 @@ CI is unchanged. Unit tests run there. The Docker-based checks skip there.
 - Log aggregation (Loki).
 - Multi-process metrics.
 - IaC and deployment (WP1 part 2), and branding and domain (WP1 part 3).
+
+## Amendment A1 (2026-10-15): zero High/Critical images and `.env` configuration
+
+Status: owner-approved decisions, 2026-10-15 (Q1–Q4 of the follow-up grill). The written amendment awaits owner review.
+
+The upstream images failed the DELIVERY.md security gate. Trivy 0.75.0 found the following (CVE-2026-78667, -78669 and -97031: Go stdlib 1.27.1/1.26.x and `golang.org/x/net` 0.58–0.59):
+- **`prom/prometheus:v3.15.0`:** 8 High, in `bin/prometheus` and `bin/promtool`.
+- **`grafana/grafana:13.2.4`:** 56 High, all in bundled datasource plugin binaries. `grafana-server` itself is clean.
+
+Both images were already the latest releases, and no fixed release existed. The owner asked for the findings to be fixed rather than accepted, and for every configurable value to move to `.env`.
+
+### Decisions
+
+| # | Decision |
+|---|---|
+| A1.1 | Both images are built locally from pinned inputs, following the `infra/postgres` and `infra/minio` pattern (Dockerfile, `provenance.json`, a `job-search-platform/...` tag that encodes the pinned source). Merge requires 0 High and 0 Critical. |
+| A1.2 | Prometheus is v3.15.0 built from source, pinned by commit (not tag): Go 1.27.2 (`golang:1.27.2-bookworm` by digest, the same builder as `infra/postgres`) and `golang.org/x/net` v0.60.0. The web UI comes from the release asset `prometheus-web-ui-3.15.0.tar.gz`, checked by sha256, and is embedded with `scripts/compress_assets.sh` and `-tags netgo,builtinassets`, so no npm build is needed. The runtime base is `quay.io/prometheus/busybox` (multi-arch index digest), running as `nobody`. |
+| A1.3 | Grafana is derived from the pinned `grafana/grafana:13.2.4` image. Every bundled plugin except `prometheus` is removed. The Prometheus datasource backend (`grafana/grafana-prometheus-datasource` v13.2.3, commit `6d21418acde6ce31c9f7a6418a88758842a881bb`) is rebuilt with Go 1.27.2 and x/net v0.60.0, using the shipped binary's build flags (`-tags arrow_json_stdlib`). `GF_PLUGINS_PREINSTALL_DISABLED=true` stops Grafana from downloading plugins at startup. |
+| A1.4 | A rebuilt bundled plugin fails Grafana's signature check (`modified`). The image removes that plugin's `MANIFEST.txt` and allow-lists exactly one unsigned plugin id: `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=prometheus`. Trust in that binary rests on our pinned source build. No other plugin can load unsigned. Dashboards can only use the Prometheus datasource, and this is the only one the stack uses. |
+| A1.5 | `scripts/security_scan.py` gains the image scopes `prometheus_image` and `grafana_image`, scanned the same way as the others. |
+| A1.6 | Every published host port in `infra/compose.yaml` reads `${VAR:-current default}`: `CORE02_PROMETHEUS_PORT` (59090), `CORE02_GRAFANA_PORT` (53300), `CORE02_MAILPIT_SMTP_PORT` (51025) and `CORE02_MAILPIT_UI_PORT` (58025). Existing variables stay. `local_infra.compose_environment` sets the same defaults. Also configurable: `PROMETHEUS_RETENTION` (15d) and `GRAFANA_ADMIN_USER` (admin). Secrets stay in the private directory, never in `.env`. |
+| A1.7 | The app's `METRICS_PORT` and `METRICS_HOST` are documented in `.env`. `infra/prometheus/prometheus.yml` cannot read environment variables, so its scrape target stays `host.docker.internal:59464`. `.env.example` and the docs state that changing `METRICS_PORT` requires the same change in that file. |
+| A1.8 | `.env.example` is committed as the template (the owner overrode the earlier "leave it alone"). It lists every variable above with its default, and carries no secret values. The owner's `.env` gets the same additions, with values unchanged. |
+
+### Builds and checks
+
+- **Build time and resources:** the Prometheus compile takes about 20 minutes on the 4-CPU Colima VM. Never run two image builds at once (the VM ran out of memory during the spike). Keep at least 20 GB of free host disk before building (LEARNINGS 2026-10-11).
+- **Multi-arch:** both Dockerfiles use `--platform=$BUILDPLATFORM` and `GOARCH=$TARGETARCH`. The owner machine builds arm64. amd64 builds are verified in WP1 part 2 (IaC rehearsal).
+- **Tests:**
+  - **Unit (no Docker):** the compose services use `build:` with the expected local tags. Ports read `${CORE02_*_PORT:-default}`. The Grafana environment includes `GF_PLUGINS_PREINSTALL_DISABLED=true` and the exact one-id unsigned allow-list. `provenance.json` hashes match the files. `.env.example` lists every variable in A1.6–A1.7.
+  - **Live, on the owner machine:**
+    - Build both images, one at a time.
+    - Trivy: 0 High and 0 Critical for each.
+    - `prometheus --version` reports 3.15.0, and `/-/ready` and the UI return 200.
+    - Start them with `--no-deps` under `.env`. The Prometheus `app` target is up. The Grafana datasource health check is OK and the dashboard has data. Anonymous access returns 401. No plugin download appears in the Grafana log.
+    - LiteLLM keeps its provider key.
+
+### Docs
+
+- `docs/engineering/dependencies.md`: the image scan results before (8 and 56 High) and after (0), the pinned inputs, and the unsigned-plugin decision.
+- `docs/engineering/local-operation.md`: the build commands and duration, the `.env` variables, and the METRICS_PORT note.
+- `infra/AGENTS.md`: the new build inputs.
