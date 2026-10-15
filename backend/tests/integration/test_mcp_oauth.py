@@ -187,6 +187,23 @@ async def test_public_host_and_authorize_rate_limit(api_context, unused_tcp_port
 
 
 @pytest.mark.integration
+async def test_agent_card_served_on_public_host(api_context, unused_tcp_port):
+    services = api_context.client.app.state.services
+    services.oauth = OAuth(api_context.sessions, issuer="https://agents.example.test", resource="https://agents.example.test/mcp",
+                           consent_url="http://127.0.0.1:8765/app/oauth/consent")
+    server, task = await _serve(create_shared_app(services, host="127.0.0.1", port=unused_tcp_port), unused_tcp_port)
+    try:
+        async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{unused_tcp_port}", trust_env=False) as http:
+            public = await http.get("/.well-known/agent-card.json", headers={"host": "agents.example.test"})
+            assert public.status_code == 200 and "https://agents.example.test" in public.text and "127.0.0.1" not in public.text
+            assert (await http.get("/.well-known/agent-card.json")).status_code == 200  # bind authority still works
+            assert (await http.get("/.well-known/agent-card.json", headers={"host": "evil.example.test"})).status_code == 400
+    finally:
+        server.should_exit = True
+        await task
+
+
+@pytest.mark.integration
 async def test_issuer_with_path_leaves_oauth_off(api_context, unused_tcp_port):
     services = api_context.client.app.state.services
     services.oauth = OAuth(api_context.sessions, issuer="https://agents.example.test/base", resource="https://agents.example.test/base/mcp",
