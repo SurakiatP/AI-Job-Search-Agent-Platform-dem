@@ -5,7 +5,7 @@ Not here: backend unit/integration tests (`backend/tests/`), application code.
 
 ## Layout
 
-- `*.spec.ts` - one spec per area (accessibility, accounts, agent-tools, application-board, cv-tailoring, document-provenance, durable-runs, experience-bank, full-journey, gateway, navigation, oauth-consent, owner-instructions, saved-searches, settings, shell, webhooks, workflow); `workflow-regressions.spec.js`.
+- `*.spec.ts` - one spec per area (accessibility, accounts, agent-tools, application-board, cv-tailoring, document-provenance, durable-runs, experience-bank, full-journey, gateway, navigation, oauth-consent, owner-instructions, saved-searches, settings, shell, telegram, webhooks, workflow); `workflow-regressions.spec.js`.
 - `actual-backend.spec.ts` - runs against a real backend; skipped unless `JSP_E2E_SESSION_FILE` is set by the production-startup fixture (`backend/tests/integration/test_application_startup.py`).
 - `../fixtures/application.ts` - synthetic test fixture.
 - The synthetic suite loads `frontend/tests/shell.html` from the Vite dev server and intercepts API calls with `page.route`.

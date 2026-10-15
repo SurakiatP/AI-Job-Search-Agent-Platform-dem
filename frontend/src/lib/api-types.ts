@@ -172,9 +172,12 @@ export type ApprovalView = {
 };
 export type DigestFrequency = 'daily' | 'weekly';
 export type SavedSearchFilters = { q?: string; cities?: string[]; work_mode?: 'remote' | 'hybrid' | 'onsite' | null; category?: string | null; seniority?: string[]; employment_type?: string[]; company_type?: string[]; skills?: string[]; posting_language?: 'th' | null; salary_min?: number | null };
-export type SavedSearchView = { id: string; name: string; filters: SavedSearchFilters; frequency: DigestFrequency; digest_enabled: boolean; push_enabled: boolean; next_run_at: string; last_sent_at: string | null; created_at: string };
+export type SavedSearchView = { id: string; name: string; filters: SavedSearchFilters; frequency: DigestFrequency; digest_enabled: boolean; push_enabled: boolean; telegram_enabled: boolean; next_run_at: string; last_sent_at: string | null; created_at: string };
 export type SavedSearchList = { items: SavedSearchView[]; status: { email_verified: boolean; notifications_enabled: boolean } };
 
 export type WebhookEvent = 'run.waiting_approval' | 'run.needs_input' | 'run.completed' | 'run.failed' | 'run.cancelled' | 'digest.ready';
 export type WebhookView = { id: string; url: string; events: WebhookEvent[]; enabled: boolean; created_at: string };
 export type WebhookDeliveryView = { id: string; endpoint_id: string | null; event_type: string; status: 'pending' | 'delivered' | 'dead'; attempts: number; last_status_code: number | null; last_error: string | null; created_at: string; delivered_at: string | null };
+
+export type TelegramStatusView = { enabled: boolean; linked: boolean; bot_username: string | null; linked_at: string | null };
+export type TelegramLinkView = { url: string; expires_at: string };
