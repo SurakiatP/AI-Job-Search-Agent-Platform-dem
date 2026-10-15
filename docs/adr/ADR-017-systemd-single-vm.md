@@ -1,7 +1,7 @@
 # ADR-017 — Production runs on one VM with systemd and Compose, not Kubernetes
 
 Date: 2026-10-15
-Status: Proposed. Decisions approved by the owner on 2026-10-15 (WP1 IaC Q5–Q12); accepted when the owner approves the spec `docs/superpowers/specs/2026-10-15-iac-single-vm-design.md`.
+Status: Accepted. The owner approved it with the spec `docs/superpowers/specs/2026-10-15-iac-single-vm-design.md` on 2026-10-15.
 
 ## Context
 

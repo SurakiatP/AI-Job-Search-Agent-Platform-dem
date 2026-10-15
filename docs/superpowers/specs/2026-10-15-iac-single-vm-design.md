@@ -1,6 +1,6 @@
 # Single-VM infrastructure as code (TOR WP1, part 2 of 3) — design
 
-Status: owner-approved decisions, 2026-10-15 (Q5–Q12, sharing origin, design sections 1–2). Written spec awaiting owner review.
+Status: owner-approved decisions, 2026-10-15 (Q5–Q12, sharing origin, design sections 1–2). Written spec approved by the owner on 2026-10-15.
 Branch: `docs/iac-single-vm` from `origin/develop` (c3a82a3).
 ADR: [ADR-017](../../adr/ADR-017-systemd-single-vm.md) chooses systemd over Kubernetes, as TOR §7 requires.
 
