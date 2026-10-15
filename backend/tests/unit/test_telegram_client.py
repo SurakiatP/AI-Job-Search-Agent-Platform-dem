@@ -90,3 +90,29 @@ def test_telegram_text_has_no_unsubscribe_and_truncates_to_limit():
     assert "unsubscribe" not in short.lower() and "Stop this digest" not in short and "…" not in short
     long = telegram_text("en", "Data", items, "https://app.example.test/x")
     assert len(long) <= 4096 and "\n…\n" in long and long.endswith("https://app.example.test/x")
+
+
+def test_supervisor_poll_loop_repeats_survives_errors_and_is_off_without_token():
+    import asyncio
+
+    from job_search_platform.workers.supervisor import WorkerSupervisor
+
+    calls = []
+
+    async def poll():
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("boom")
+        return 0
+
+    async def go(poll_fn):
+        supervisor = WorkerSupervisor(None, None, object(), object(), telegram_poll=poll_fn, telegram_interval=0.01)
+        supervisor._telegram_task = asyncio.create_task(supervisor._telegram_loop()) if poll_fn else None
+        await asyncio.sleep(0.2)
+        await supervisor.close()
+        assert supervisor._telegram_task is None
+
+    asyncio.run(go(poll))
+    assert len(calls) >= 3  # kept polling after the first failure, and close() stopped it
+    assert WorkerSupervisor(None, None, object(), object())._telegram_task is None
+    asyncio.run(go(None))

@@ -158,13 +158,10 @@ def build_services() -> Services:
     telegram = Telegram(sessions, TelegramClient(bot_token) if bot_token else None)
     saved_searches = SavedSearches(sessions, mailer, public_origin=owner_sessions.public_origin, telegram=telegram)
     webhooks = Webhooks(sessions)
-    async def housekeeping() -> int:
-        await telegram.poll()  # a failed poll only logs; digests still run
-        return await saved_searches.housekeeping()
-
     supervisor = WorkerSupervisor(sessions, queue, executor, runtime, purge=lambda: accounts.purge_due(store),
-                                  digests=housekeeping, deliveries=webhooks.deliver_due,
-                                  prune_deliveries=webhooks.prune_async)
+                                  digests=saved_searches.housekeeping, deliveries=webhooks.deliver_due,
+                                  prune_deliveries=webhooks.prune_async,
+                                  telegram_poll=telegram.poll if telegram.enabled else None)
     return Services(sessions=sessions, owner_sessions=owner_sessions, files=files,
                     documents=documents, runs=runs, grants=grants, settings=settings,
                     approvals=approvals, supervisor=supervisor, runtime=runtime,
