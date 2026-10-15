@@ -217,6 +217,61 @@ services:
     labels:
       com.job-search-platform.task: accounts-mail
 
+  prometheus:
+    # prom/prometheus v3.15.0 (Apache-2.0), multi-arch index digest. WP1 observability: scrapes the app's loopback metrics listener.
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.listen-address=0.0.0.0:9090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:59090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    labels:
+      com.job-search-platform.task: observability
+
+  grafana:
+    # grafana/grafana v13.2.4 (OSS edition, AGPL-3.0; grafana/grafana-oss stopped at 13.0.2), multi-arch index digest. Unmodified, separate service.
+    image: grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana-admin-password
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    secrets:
+      - grafana-admin-password
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:53300:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    labels:
+      com.job-search-platform.task: observability
+
   langfuse-db:
     profiles: ["langfuse"]
     image: job-search-platform/postgres:17.11-alpine-gosu-1.19-6456aaa0f3c8
@@ -420,10 +475,18 @@ volumes:
   langfuse_minio_data:
     labels:
       com.job-search-platform.task: langfuse
+  prometheus-data:
+    labels:
+      com.job-search-platform.task: observability
+  grafana-data:
+    labels:
+      com.job-search-platform.task: observability
 
 secrets:
   meili-master-key:
     file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/meili-master-key
+  grafana-admin-password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/grafana-admin-password
   postgres_user:
     file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/postgres-user
   postgres_password:

@@ -45,6 +45,7 @@ SECRETS = {
     "langfuse-public-key": lambda: "pk-lf-" + secrets.token_hex(16),
     "langfuse-secret-key": lambda: "sk-lf-" + secrets.token_hex(16),
     "meili-master-key": lambda: secrets.token_urlsafe(32),
+    "grafana-admin-password": lambda: secrets.token_urlsafe(24),
 }
 SECRET_NAMES = tuple(SECRETS)
 DERIVED_NAMES = ("langfuse-clickhouse-users.xml", "langfuse-valkey.conf")

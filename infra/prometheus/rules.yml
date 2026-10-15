@@ -1,0 +1,38 @@
+# Visible in the Prometheus UI (Alerts); no Alertmanager until a server exists (spec O6).
+groups:
+  - name: platform
+    rules:
+      - alert: AppDown
+        expr: up{job="app"} == 0
+        for: 5m
+        annotations: {summary: "The app's metrics listener is not answering."}
+      - alert: DatabaseDown
+        expr: jsp_db_up == 0
+        for: 5m
+        annotations: {summary: "The app cannot read PostgreSQL."}
+      - alert: SearchDown
+        expr: jsp_search_up == 0
+        for: 10m
+        annotations: {summary: "Meilisearch is unreachable; job search returns job_source_unavailable."}
+      - alert: IngestStale
+        expr: time() - max(jsp_ingest_last_run_timestamp_seconds) > 2 * 3600
+        for: 15m
+        annotations: {summary: "No ingest run finished in 2 hours (is the hourly launchd/systemd job installed?)."}
+      - alert: SourceFailing
+        expr: jsp_ingest_source_state{state="failed"} == 1
+        for: 3h
+        annotations: {summary: "Source {{ $labels.source }} failed in every run for 3 hours."}
+      - alert: SourceSilent
+        expr: time() - jsp_ingest_source_last_success_timestamp_seconds > 6 * 3600
+        for: 15m
+        annotations: {summary: "Source {{ $labels.source }} has not succeeded for 6 hours."}
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(jsp_http_requests_total{status_class="5xx"}[10m])) / sum(rate(jsp_http_requests_total[10m])) > 0.05
+          and sum(rate(jsp_http_requests_total[10m])) > 1
+        for: 10m
+        annotations: {summary: "More than 5% of HTTP requests failed with 5xx."}
+      - alert: RunsStuckQueued
+        expr: jsp_runs_in_state{status="queued"} > 0 and on() sum(increase(jsp_runs_total[30m])) == 0
+        for: 30m
+        annotations: {summary: "Runs are queued but none finished in 30 minutes."}
