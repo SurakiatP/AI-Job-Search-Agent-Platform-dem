@@ -16,7 +16,7 @@ RUN test "$PROMETHEUS_SOURCE_COMMIT" = "5241a27fe3c6983549fccc32f6e65917408c63cd
  && test "$(sha256sum go.sum | awk '{ print $1 }')" = "$(sed -n 's/.*"go_sum_sha256": "\([0-9a-f]*\)".*/\1/p' provenance.json)" \
  && tar -xzf /ui.tgz -C web/ui \
  && bash scripts/compress_assets.sh \
- && GOTOOLCHAIN=local go mod verify \
+ && GOTOOLCHAIN=local go mod download && GOTOOLCHAIN=local go mod verify \
  && LD="-s -w \
  -X github.com/prometheus/common/version.Version=3.15.0 \
  -X github.com/prometheus/common/version.Revision=5241a27fe3c6983549fccc32f6e65917408c63cd \

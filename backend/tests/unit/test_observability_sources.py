@@ -81,12 +81,14 @@ def test_prometheus_dockerfile_pins_inputs():
     for value in ("go mod verify", "-mod=readonly", "GOTOOLCHAIN=local",
                   "--checksum=sha256:" + provenance["web_ui_sha256"]):
         assert value in text
+    assert "go mod download" in text and text.index("go mod download") < text.index("go mod verify")
     assert "|| exit 1" in text  # a failed go build must fail the image build
     assert "git clone" not in text
 
 
 def test_grafana_overlay_and_dockerfile():
     provenance, digests = _overlay(ROOT / "infra/grafana")
+    assert local_infra.GRAFANA_PROM_DS_COMMIT == "6d21418acde6ce31c9f7a6418a88758842a881bb"
     assert provenance["source_commit"] == local_infra.GRAFANA_PROM_DS_COMMIT
     assert provenance["builder_image"] == local_infra.PROMETHEUS_BUILDER_IMAGE
     assert provenance["unsigned_plugin_allowlist"] == ["prometheus"]
@@ -99,6 +101,11 @@ def test_grafana_overlay_and_dockerfile():
                   "--from=grafana_prom_ds_source", "MANIFEST.txt", "plugins-bundled", "--chmod=0755",
                   "GF_PLUGINS_PREINSTALL_DISABLED=true", "GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=prometheus"):
         assert value in text
+    for value in ("grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f",
+                  "rm -f /usr/share/grafana/data/plugins-bundled/prometheus/MANIFEST.txt",
+                  "USER 472", "--chown=472:0", "-tags arrow_json_stdlib", "go mod download"):
+        assert value in text
+    assert text.index("go mod download") < text.index("go mod verify")
     assert "git clone" not in text and "grafana-cli" not in text
 
 

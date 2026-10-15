@@ -11,7 +11,7 @@ RUN test "$GRAFANA_PROM_DS_SOURCE_COMMIT" = "6d21418acde6ce31c9f7a6418a88758842a
     && grep -F '"source_commit": "6d21418acde6ce31c9f7a6418a88758842a881bb"' provenance.json \
     && test "$(sha256sum go.mod | awk '{ print $1 }')" = "$(sed -n 's/.*"go_mod_sha256": "\([0-9a-f]*\)".*/\1/p' provenance.json)" \
     && test "$(sha256sum go.sum | awk '{ print $1 }')" = "$(sed -n 's/.*"go_sum_sha256": "\([0-9a-f]*\)".*/\1/p' provenance.json)" \
-    && GOTOOLCHAIN=local go mod verify \
+    && GOTOOLCHAIN=local go mod download && GOTOOLCHAIN=local go mod verify \
     && GOOS=linux GOARCH=$TARGETARCH CGO_ENABLED=0 GOTOOLCHAIN=local go build -mod=readonly -buildvcs=false -trimpath \
        -tags arrow_json_stdlib \
        -ldflags "-w -s -X 'github.com/grafana/grafana-plugin-sdk-go/build/buildinfo.buildInfoJSON={\"time\":1790683232186,\"pluginID\":\"prometheus\",\"version\":\"13.2.3\"}' -X 'main.pluginID=prometheus' -X 'main.version=13.2.3'" \
