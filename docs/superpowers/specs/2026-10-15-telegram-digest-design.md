@@ -1,6 +1,6 @@
 # Telegram channel for saved-search digests (TOR FR-J05) — design
 
-Status: design approved in chat by the owner on 2026-10-15 ("ตามที่คุณแนะนำ"); written spec awaiting owner review.
+Status: design approved in chat by the owner on 2026-10-15 ("ตามที่คุณแนะนำ"); written spec approved by the owner on 2026-10-15.
 Branch: `feat/telegram-digest` from `origin/develop` (d6d6ad7).
 
 ## Goal
