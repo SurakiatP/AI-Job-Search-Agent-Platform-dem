@@ -78,4 +78,8 @@ def test_prometheus_dockerfile_pins_inputs():
     for value in (local_infra.PROMETHEUS_BUILDER_IMAGE, provenance["base_image"], provenance["web_ui_sha256"],
                   local_infra.PROMETHEUS_COMMIT, "go1.27.2", "builtinassets", "--from=prometheus_source"):
         assert value in text
+    for value in ("go mod verify", "-mod=readonly", "GOTOOLCHAIN=local",
+                  "--checksum=sha256:" + provenance["web_ui_sha256"]):
+        assert value in text
+    assert "|| exit 1" in text  # a failed go build must fail the image build
     assert "git clone" not in text

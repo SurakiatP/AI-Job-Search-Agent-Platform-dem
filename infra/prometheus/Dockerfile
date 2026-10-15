@@ -8,6 +8,7 @@ COPY --from=prometheus_source / /src/
 COPY go.mod go.sum provenance.json /src/
 ADD --checksum=sha256:fa8c918ed05e3f89e232e9b69eccd6ed074602cd9e8a2cab7a92bec9651974ae \
     https://github.com/prometheus/prometheus/releases/download/v3.15.0/prometheus-web-ui-3.15.0.tar.gz /ui.tgz
+# The fixed BuildDate ldflag keeps the build reproducible.
 RUN test "$PROMETHEUS_SOURCE_COMMIT" = "5241a27fe3c6983549fccc32f6e65917408c63cd" \
  && test "$(go version | awk '{ print $3 }')" = "go1.27.2" \
  && grep -F '"source_commit": "5241a27fe3c6983549fccc32f6e65917408c63cd"' provenance.json \
@@ -15,6 +16,7 @@ RUN test "$PROMETHEUS_SOURCE_COMMIT" = "5241a27fe3c6983549fccc32f6e65917408c63cd
  && test "$(sha256sum go.sum | awk '{ print $1 }')" = "$(sed -n 's/.*"go_sum_sha256": "\([0-9a-f]*\)".*/\1/p' provenance.json)" \
  && tar -xzf /ui.tgz -C web/ui \
  && bash scripts/compress_assets.sh \
+ && GOTOOLCHAIN=local go mod verify \
  && LD="-s -w \
  -X github.com/prometheus/common/version.Version=3.15.0 \
  -X github.com/prometheus/common/version.Revision=5241a27fe3c6983549fccc32f6e65917408c63cd \
@@ -23,7 +25,7 @@ RUN test "$PROMETHEUS_SOURCE_COMMIT" = "5241a27fe3c6983549fccc32f6e65917408c63cd
  -X github.com/prometheus/common/version.BuildDate=20261015-00:00:00" \
  && for cmd in prometheus promtool; do \
       GOOS=linux GOARCH=$TARGETARCH CGO_ENABLED=0 GOTOOLCHAIN=local go build -mod=readonly -buildvcs=false -trimpath \
-        -tags netgo,builtinassets -ldflags "$LD" -o /out/$cmd ./cmd/$cmd; \
+        -tags netgo,builtinassets -ldflags "$LD" -o /out/$cmd ./cmd/$cmd || exit 1; \
     done \
  && install -D -m 0644 LICENSE /out/licenses/prometheus/LICENSE \
  && install -D -m 0644 NOTICE /out/licenses/prometheus/NOTICE
