@@ -12,6 +12,16 @@ check_app_env() {
   fi
 }
 
+# backup.py/restore.py run host pg_dump/pg_restore; pg_dump refuses a server newer than itself (database is 17).
+check_pg_client() {
+  local tool major
+  for tool in pg_dump pg_restore; do
+    command -v "$tool" >/dev/null || { echo "$tool not found; install postgresql-client-17 (PGDG apt repo, see cloud-init.yaml)" >&2; return 1; }
+  done
+  major=$(pg_dump --version | sed -E 's/^[^0-9]*([0-9]+).*/\1/')
+  (( major >= 17 )) || { echo "pg_dump is version $major but the database is 17; install postgresql-client-17 (PGDG apt repo, see cloud-init.yaml)" >&2; return 1; }
+}
+
 # Parse KEY=VALUE lines without executing them (systemd EnvironmentFile rules: one pair of quotes is stripped).
 load_app_env() {
   local line key value

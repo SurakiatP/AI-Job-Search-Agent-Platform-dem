@@ -8,6 +8,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=infra/deploy/lib.sh
 source "$here/lib.sh"
 check_app_env "$env_file"
+check_pg_client
 load_app_env "$env_file"
 [[ -z "${CADDY_TLS:-}" ]] || export CURL_EXTRA=-k  # rehearsal uses an internal CA; production keeps verification
 as_jsp() { sudo -u jsp --preserve-env -H bash -c "$*"; }  # releases are owned by jsp; git refuses root on them

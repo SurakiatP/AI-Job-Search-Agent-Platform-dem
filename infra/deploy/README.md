@@ -8,7 +8,7 @@ Paths: releases in `/opt/job-search-platform/releases/<tag>`, `current` symlink 
 
 Ubuntu 24.04, 4 vCPU, 8 GB RAM, 80 GB disk (the first image builds need about 20 GB free), your SSH public key. Open only 22, 80 and 443 at the provider firewall (cloud-init also enables `ufw` for the same three).
 
-Edit `REPO_URL` and `RELEASE_TAG` in `infra/deploy/cloud-init.yaml` (dev machine), then pass the file as the VM's user-data. cloud-init creates the `jsp` user, installs Docker, Node.js 24.18.0, uv and ufw, forbids SSH passwords, and clones the tag to `/opt/job-search-platform/releases/<tag>` with `current` pointing at it. It stops before `bootstrap.sh`: secrets must not travel in user-data. Wait for `cloud-init status --wait` to report `done`. If first boot fails, read `/var/log/cloud-init-output.log`.
+Edit `REPO_URL` and `RELEASE_TAG` in `infra/deploy/cloud-init.yaml` (dev machine), then pass the file as the VM's user-data. cloud-init creates the `jsp` user, installs Docker, PostgreSQL 17 client tools (backup/restore need pg_dump 17; Ubuntu ships 16), Node.js 24.18.0, uv and ufw, forbids SSH passwords, and clones the tag to `/opt/job-search-platform/releases/<tag>` with `current` pointing at it. It stops before `bootstrap.sh`: secrets must not travel in user-data. Wait for `cloud-init status --wait` to report `done`. If first boot fails, read `/var/log/cloud-init-output.log`.
 
 ## 2. DNS
 

@@ -13,6 +13,7 @@ install -d -o jsp -g jsp -m 0700 /etc/job-search-platform "$private" /var/backup
 install -d -o jsp -g jsp -m 0700 "$private/core02"
 [[ -f "$env_file" ]] || install -o jsp -g jsp -m 0600 "$here/app.env.example" "$env_file"
 check_app_env "$env_file"
+check_pg_client
 load_app_env "$env_file"
 [[ -z "${CADDY_TLS:-}" ]] || export CURL_EXTRA=-k  # rehearsal uses an internal CA; production keeps verification
 

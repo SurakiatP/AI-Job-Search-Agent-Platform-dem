@@ -159,6 +159,40 @@ def test_caddyfile_proxies_both_origins_to_loopback():
     assert "{$CADDY_TLS" in text
 
 
+def _fake_pg(tmp_path, major, tools=("pg_dump", "pg_restore")):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    for tool in tools:
+        f = bin_dir / tool
+        f.write_text(f'#!/bin/sh\necho "{tool} (PostgreSQL) {major}.4"\n')
+        f.chmod(0o755)
+    return {"PATH": f"{bin_dir}:/usr/bin:/bin"}
+
+
+def test_check_pg_client_accepts_17(tmp_path):
+    assert _sh("check_pg_client", _fake_pg(tmp_path, 17)).returncode == 0
+
+
+def test_check_pg_client_rejects_old_major(tmp_path):
+    result = _sh("check_pg_client", _fake_pg(tmp_path, 16))
+    assert result.returncode != 0 and "postgresql-client-17" in result.stderr
+
+
+def test_check_pg_client_rejects_missing_tool(tmp_path):
+    result = _sh("check_pg_client", _fake_pg(tmp_path, 17, tools=("pg_dump",)))
+    assert result.returncode != 0 and "pg_restore" in result.stderr
+
+
+def test_cloud_init_installs_pg_client_17():
+    text = (DEPLOY / "cloud-init.yaml").read_text()
+    assert "postgresql-client-17" in text and "apt.postgresql.org" in text
+
+
+def test_bootstrap_and_deploy_check_pg_client():
+    for name in ("bootstrap.sh", "deploy.sh"):
+        assert "check_pg_client" in (DEPLOY / name).read_text(), name
+
+
 def test_shell_scripts_parse():
     for name in ("lib.sh", "bootstrap.sh", "deploy.sh"):
         assert subprocess.run(["bash", "-n", str(DEPLOY / name)]).returncode == 0, name
