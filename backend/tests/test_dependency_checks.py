@@ -274,3 +274,24 @@ def test_image_arguments_accept_observability_scopes():
     refs = security_scan._image_arguments(["prometheus_image=job-search-platform/prometheus:x",
                                            "grafana_image=job-search-platform/grafana:y"])
     assert refs == {"prometheus_image": "job-search-platform/prometheus:x", "grafana_image": "job-search-platform/grafana:y"}
+
+
+def test_caddy_image_is_required_scan_and_local_source_build():
+    assert "caddy_image" in check_dependencies.REQUIRED_SCANS
+    assert "caddy_image" in security_scan.IMAGE_SCOPES
+    ref = (check_dependencies.ROOT / "infra/deploy/caddy-image.txt").read_text().strip()
+    assert ref == "job-search-platform/caddy:2.11.7-go1.27.2-72dd0fb067f6"
+    pins = check_dependencies._upstream_pins((check_dependencies.ROOT / "backend/pyproject.toml").read_text())
+    assert pins["caddy"] == "72dd0fb067f6d7826c7f79907670ba4a713bfe37"
+
+
+def test_caddy_dockerfile_requires_its_source_dir(tmp_path, monkeypatch):
+    infra = tmp_path / "infra"
+    infra.mkdir()
+    (infra / "Dockerfile.caddy").write_text(
+        "FROM golang:1.27.2@sha256:" + "a" * 64 + "\n# https://github.com/caddyserver/caddy\n", encoding="utf-8")
+    monkeypatch.setattr(check_dependencies, "ROOT", tmp_path)
+    monkeypatch.delenv("CADDY_SOURCE_DIR", raising=False)
+    problems = []
+    check_dependencies._check_container_build_inputs(problems)
+    assert any("set CADDY_SOURCE_DIR" in problem for problem in problems)

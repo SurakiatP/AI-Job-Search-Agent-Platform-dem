@@ -1,0 +1,1 @@
+job-search-platform/caddy:2.11.7-go1.27.2-72dd0fb067f6

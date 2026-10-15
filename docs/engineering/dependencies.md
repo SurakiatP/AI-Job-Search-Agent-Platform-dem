@@ -128,3 +128,14 @@ Result of the local builds: `trivy image --scanners vuln --severity HIGH,CRITICA
 Unsigned-plugin decision (spec A1.4): the rebuilt Prometheus datasource no longer matches Grafana's signed `MANIFEST.txt`, so it fails the signature check. The Grafana image deletes that manifest, removes every other bundled plugin, sets `GF_PLUGINS_PREINSTALL_DISABLED=true` and allows exactly one unsigned plugin id with `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=prometheus`. Consequence: Grafana loads a plugin that upstream did not sign, so its trust rests on the pinned commit, the hash-checked overlay and the local build, not on a signature. A test with a mounted fake unsigned plugin confirmed that other unsigned plugins are still rejected. Only the Prometheus datasource is available in this Grafana; any other datasource needs a reviewed image change.
 
 `scripts/security_scan.py` now has the image scopes `prometheus_image` and `grafana_image` (alongside `postgres_image`, `minio_image` and `hermes_image`), and `scripts/check_dependencies.py` checks both pinned commits. Re-scan on every Prometheus, Grafana, plugin or builder bump.
+
+## Caddy image (2026-10-15)
+
+The upstream `caddy:2.11.7` image (the newest release) failed the gate with 4 High findings on arm64 and amd64: CVE-2026-78669 in `golang.org/x/net` 0.59.0, and CVE-2026-78667, CVE-2026-78669 and CVE-2026-97031 in the Go standard library 1.26.8. The image is therefore built from pinned source, like Prometheus.
+
+- Source: `https://github.com/caddyserver/caddy` at `72dd0fb067f6d7826c7f79907670ba4a713bfe37` (tag v2.11.7, Apache-2.0), checkout outside the repository (`CADDY_SOURCE_DIR`, checked by `validate_caddy_build_inputs()` only when `CORE02_COMPOSE_OVERRIDE` is set).
+- Builder: `golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61`. Runtime base: `quay.io/prometheus/busybox:latest@sha256:0dcbf965a16f76d5aac8905769f72e43b22862cd01f6f42c7b62955aeb489c3c`, plus the builder's CA bundle.
+- Overlay reason: `golang.org/x/net` v0.60.0 and go1.27.2 fix CVE-2026-78667/78669/97031 (`infra/caddy/go.mod`/`go.sum`, hash-checked against `provenance.json`).
+- Image tag `job-search-platform/caddy:2.11.7-go1.27.2-72dd0fb067f6`; the binary reports go1.27.2 and x/net v0.60.0.
+- Result: `trivy image --scanners vuln --severity HIGH,CRITICAL` (Trivy 0.75.0, DB built 2026-10-15 01:13 UTC) on linux/arm64: 0 High, 0 Critical. amd64 pending rehearsal VM.
+- `scripts/security_scan.py` has the scope `caddy_image`; `scripts/check_dependencies.py` requires it and checks the pinned commit. Re-scan on every Caddy or builder bump.

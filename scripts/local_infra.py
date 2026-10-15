@@ -24,6 +24,9 @@ DEFAULT_PRIVATE_DIR = Path(os.environ.get("CORE02_PRIVATE_DIR") or Path.home() /
 DEFAULT_MINIO_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "minio"
 PROMETHEUS_COMMIT = "5241a27fe3c6983549fccc32f6e65917408c63cd"
 DEFAULT_PROMETHEUS_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "prometheus"
+CADDY_COMMIT = "72dd0fb067f6d7826c7f79907670ba4a713bfe37"  # caddy v2.11.7
+DEFAULT_CADDY_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "caddy"
+CADDY_BUILDER_IMAGE = GOSU_BUILDER_IMAGE  # same pinned golang:1.27.2-bookworm digest
 PROMETHEUS_BUILDER_IMAGE = GOSU_BUILDER_IMAGE  # same pinned golang:1.27.2-bookworm digest
 GRAFANA_PROM_DS_COMMIT = "6d21418acde6ce31c9f7a6418a88758842a881bb"  # grafana-prometheus-datasource v13.2.3
 DEFAULT_GRAFANA_PROM_DS_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "grafana-prometheus-datasource"
@@ -299,6 +302,8 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     environment["GOSU_SOURCE_COMMIT"] = GOSU_COMMIT
     environment["PROMETHEUS_SOURCE_DIR"] = str(Path(os.environ.get("PROMETHEUS_SOURCE_DIR", str(DEFAULT_PROMETHEUS_SOURCE))).expanduser().resolve())
     environment["PROMETHEUS_SOURCE_COMMIT"] = PROMETHEUS_COMMIT
+    environment["CADDY_SOURCE_DIR"] = str(Path(os.environ.get("CADDY_SOURCE_DIR", str(DEFAULT_CADDY_SOURCE))).expanduser().resolve())
+    environment["CADDY_SOURCE_COMMIT"] = CADDY_COMMIT
     environment["GRAFANA_PROM_DS_SOURCE_DIR"] = str(Path(os.environ.get("GRAFANA_PROM_DS_SOURCE_DIR", str(DEFAULT_GRAFANA_PROM_DS_SOURCE))).expanduser().resolve())
     environment["GRAFANA_PROM_DS_SOURCE_COMMIT"] = GRAFANA_PROM_DS_COMMIT
     environment.setdefault("CORE02_POSTGRES_PORT", "55432")
@@ -315,6 +320,12 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     environment["OPENROUTER_API_KEY"] = os.environ.get("OPENROUTER_API_KEY", "")  # reaches only litellm
     environment["OPENROUTER_KEY_PRESENT"] = "1" if environment["OPENROUTER_API_KEY"] else ""  # flag for the seed
     return environment
+
+
+def validate_caddy_build_inputs() -> None:
+    validate_pinned_source(Path(os.environ.get("CADDY_SOURCE_DIR", str(DEFAULT_CADDY_SOURCE))),
+                           CADDY_COMMIT, "caddy", ("go.mod", "go.sum", "LICENSE", "cmd/caddy/main.go"))
+    validate_go_overlay(ROOT / "infra" / "caddy", CADDY_COMMIT, "caddy")
 
 
 def validate_observability_build_inputs() -> None:
@@ -435,6 +446,8 @@ def start(private_dir: Path, source_dir: Path) -> dict[str, str]:
     langfuse = langfuse_enabled()
     profile = LANGFUSE_PROFILE if langfuse else []
     validate_observability_build_inputs()
+    if os.environ.get("CORE02_COMPOSE_OVERRIDE", "").strip():  # the prod override adds the source-built Caddy
+        validate_caddy_build_inputs()
     _compose([*profile, "up", "--detach", "--build", "--wait", "--wait-timeout", "300"], private_dir, source_dir, timeout=3600)
     try:  # one-shot seed is profiled out of `up --wait`, which treats its exit as failure
         _compose(["--profile", "seed", "run", "--rm", "litellm-seed"], private_dir, source_dir, timeout=300)

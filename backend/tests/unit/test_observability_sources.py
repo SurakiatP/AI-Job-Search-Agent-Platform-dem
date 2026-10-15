@@ -181,3 +181,49 @@ def test_grafana_datasource_url_comes_from_env():
     import yaml
     env = yaml.safe_load((ROOT / "infra/compose.yaml").read_text())["services"]["grafana"]["environment"]
     assert env["GRAFANA_PROMETHEUS_URL"] == "${GRAFANA_PROMETHEUS_URL:-http://prometheus:9090}"
+
+
+def test_caddy_overlay_matches_provenance():
+    provenance, digests = _overlay(ROOT / "infra/caddy")
+    assert provenance["source_commit"] == local_infra.CADDY_COMMIT
+    assert provenance["builder_image"] == local_infra.CADDY_BUILDER_IMAGE
+    assert provenance["go_mod_sha256"] == digests["go.mod"] and provenance["go_sum_sha256"] == digests["go.sum"]
+    assert "golang.org/x/net v0.60.0" in (ROOT / "infra/caddy/go.mod").read_text()
+    local_infra.validate_go_overlay(ROOT / "infra/caddy", local_infra.CADDY_COMMIT, "caddy")
+
+
+def test_caddy_dockerfile_pins_inputs():
+    text = (ROOT / "infra/caddy/Dockerfile").read_text()
+    provenance = json.loads((ROOT / "infra/caddy/provenance.json").read_text())
+    for value in (local_infra.CADDY_BUILDER_IMAGE, provenance["base_image"], local_infra.CADDY_COMMIT, "go1.27.2",
+                  "--from=caddy_source", "-mod=readonly", "-trimpath", "GOTOOLCHAIN=local", "go mod verify",
+                  "/etc/ssl/certs/ca-certificates.crt", "XDG_CONFIG_HOME=/config", "XDG_DATA_HOME=/data",
+                  "/licenses/caddy/LICENSE", "EXPOSE 80 443"):
+        assert value in text
+    assert "go mod download" in text and text.index("go mod download") < text.index("go mod verify")
+
+
+def test_caddy_build_inputs_are_checked_only_with_compose_override(monkeypatch, tmp_path):
+    calls = _stub_pre_a1(monkeypatch, tmp_path)
+    monkeypatch.setattr(local_infra, "validate_observability_build_inputs", lambda: None)
+    monkeypatch.setattr(local_infra, "langfuse_enabled", lambda: False)
+    monkeypatch.setattr(local_infra, "write_credentials_summary", lambda *a: None)
+    monkeypatch.delenv("CORE02_COMPOSE_OVERRIDE", raising=False)
+    monkeypatch.setenv("CADDY_SOURCE_DIR", str(tmp_path / "missing"))
+    local_infra.start(tmp_path, tmp_path)  # dev start never needs a Caddy checkout
+    assert calls
+    calls.clear()
+    (tmp_path / "compose.prod.yaml").write_text("services: {}\n")
+    monkeypatch.setenv("CORE02_COMPOSE_OVERRIDE", str(tmp_path / "compose.prod.yaml"))
+    with pytest.raises(local_infra.ConfigurationError, match="caddy_source"):
+        local_infra.start(tmp_path, tmp_path)
+    assert calls == []
+    local_infra.status(tmp_path, tmp_path)
+    local_infra.stop(tmp_path, tmp_path)  # status/stop never validate it
+
+
+def test_caddy_compose_environment_pins_source(monkeypatch, tmp_path):
+    monkeypatch.delenv("CADDY_SOURCE_DIR", raising=False)
+    env = local_infra.compose_environment(tmp_path, tmp_path)
+    assert env["CADDY_SOURCE_COMMIT"] == local_infra.CADDY_COMMIT
+    assert env["CADDY_SOURCE_DIR"] == str(local_infra.DEFAULT_CADDY_SOURCE.resolve())
