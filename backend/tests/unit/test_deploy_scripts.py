@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 import subprocess
 from pathlib import Path
@@ -166,7 +167,9 @@ def _fake_pg(tmp_path, major, tools=("pg_dump", "pg_restore")):
         f = bin_dir / tool
         f.write_text(f'#!/bin/sh\necho "{tool} (PostgreSQL) {major}.4"\n')
         f.chmod(0o755)
-    return {"PATH": f"{bin_dir}:/usr/bin:/bin"}
+    for helper in ("bash", "sh", "sed", "head"):  # hermetic: a host pg_restore (e.g. postgresql-common on CI) must not leak in
+        (bin_dir / helper).symlink_to(shutil.which(helper))
+    return {"PATH": str(bin_dir)}
 
 
 def test_check_pg_client_accepts_17(tmp_path):
