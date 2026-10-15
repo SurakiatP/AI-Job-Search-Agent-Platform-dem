@@ -29,7 +29,9 @@ _REDIRECT = (301, 302, 303, 307, 308)
 _LOC = re.compile(r"<loc>\s*([^<\s]+)\s*</loc>")
 _JOB_SITEMAP = re.compile(r"^https://www\.jobtopgun\.com/sitemaps/jobs-snapshot/sitemap/\d{1,6}\.xml$")
 _JTG_JOB = re.compile(r"^https://www\.jobtopgun\.com/th/jobs/(j\d{1,12}-\d{1,12})$")
-_LD = re.compile(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', re.S | re.I)
+_SCRIPT = re.compile(r"<script\b([^>]{0,500})>", re.I)  # bounded: unterminated tags in untrusted HTML stay linear
+_LD_TYPE = re.compile(r'type=["\']application/ld\+json["\']', re.I)
+_SCRIPT_END = re.compile(r"</script>", re.I)
 _PUSH = re.compile(r'self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)')
 _JOBPOST_LIST = re.compile(r'"jobpost_list":\s*')
 
@@ -128,16 +130,34 @@ def jobtopgun_ids(locs: list[str]) -> set[str]:
     return {m[1] for loc in locs if (m := _JTG_JOB.match(loc))}
 
 
+def _ld_blocks(page: str):
+    pos = 0
+    while (open_tag := _SCRIPT.search(page, pos)):
+        pos = open_tag.end()
+        if _LD_TYPE.search(open_tag[1]):
+            end = _SCRIPT_END.search(page, pos)
+            if end is None:
+                return  # no closing tag anywhere after this point
+            yield page[pos:end.start()]
+            pos = end.end()
+
+
+def _is_job_posting(kind) -> bool:
+    """schema.org @type: a string or a list, possibly prefixed ('schema:JobPosting', 'https://schema.org/JobPosting')."""
+    return any(isinstance(k, str) and (k == "JobPosting" or k.endswith((":JobPosting", "/JobPosting")))
+               for k in (kind if isinstance(kind, list) else [kind]))
+
+
 def job_posting(page: str) -> dict | None:
     """The schema.org JobPosting from the page's JSON-LD; None on a soft-404 page."""
-    for block in _LD.findall(page):
+    for block in _ld_blocks(page):
         try:
             data = json.loads(block)
         except ValueError:
             continue
         items = data.get("@graph", data) if isinstance(data, dict) else data
         for item in items if isinstance(items, list) else [items]:
-            if isinstance(item, dict) and item.get("@type") == "JobPosting":
+            if isinstance(item, dict) and _is_job_posting(item.get("@type")):
                 return item
     return None
 

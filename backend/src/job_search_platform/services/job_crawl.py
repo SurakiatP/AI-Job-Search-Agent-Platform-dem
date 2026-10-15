@@ -86,16 +86,21 @@ def _flush(sessions, source: str, batch: list, now: datetime, counts: dict, stat
 
 def _jobtopgun(sessions, client, clock, counts) -> None:
     """Sitemap snapshot every run, then up to MAX_DETAILS unseen ids, each company's newest first (spec, JobTopGun)."""
-    index = client.get(f"{JTG}/sitemap.xml")
-    if index is None:
-        raise crawler.CrawlStop("sitemap_blocked")
     snapshot, complete = set(), True
-    for url in crawler.job_sitemaps(crawler.sitemap_locs(index)):
-        page = client.get(url)
-        if page is None:
-            complete = False
-            continue
-        snapshot |= crawler.jobtopgun_ids(crawler.sitemap_locs(page))
+    try:
+        index = client.get(f"{JTG}/sitemap.xml")
+        if index is None:
+            raise crawler.CrawlStop("sitemap_blocked")
+        for url in crawler.job_sitemaps(crawler.sitemap_locs(index)):
+            page = client.get(url)
+            if page is None:
+                complete = False
+                continue
+            snapshot |= crawler.jobtopgun_ids(crawler.sitemap_locs(page))
+    except crawler.CrawlStop as stop:
+        if stop.reason == "cap":  # no snapshot, no detail work: a failure, not a normal end
+            raise crawler.CrawlStop("cap_in_discovery") from stop
+        raise
     now = clock()
     with sessions.begin() as db:
         stored, tombstoned = job_store.touch_seen(db, "jobtopgun", snapshot, now)

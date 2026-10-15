@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 import pytest
 
@@ -199,3 +200,19 @@ def test_jobpost_list_from_split_rsc_chunks():
     spaced = _rsc('5:{"jobpost_list": []}')
     assert crawler.jobpost_list(spaced) == []
     assert crawler.jobpost_list("<html>no list</html>") is None
+
+
+@pytest.mark.parametrize("kind", [["JobPosting"], "schema:JobPosting", ["Thing", "https://schema.org/JobPosting"]])
+def test_job_posting_accepts_list_and_prefixed_type(kind):
+    assert crawler.job_posting(_ld({"@type": kind, "title": "Synthetic Role"}))["title"] == "Synthetic Role"
+    assert crawler.job_posting(_ld({"@type": ["Organization"]})) is None
+
+
+def test_parsers_are_linear_on_unterminated_markup():
+    for page in ("<script " * 50000, "<script type='application/ld+json'>" * 20000,
+                 'self.__next_f.push([1,"' * 20000, "<loc>" * 50000):
+        start = time.perf_counter()
+        assert crawler.job_posting(page) is None
+        assert crawler.jobpost_list(page) is None
+        crawler.sitemap_locs(page)
+        assert time.perf_counter() - start < 1

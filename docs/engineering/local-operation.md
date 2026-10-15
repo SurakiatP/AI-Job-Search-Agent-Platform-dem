@@ -190,7 +190,7 @@ Output goes to `~/Library/Logs/job-search-platform/ingest.log`. Check it with `t
 
 The crawl runs after the ATS boards in the same `ingest run`, under ADR-016.
 
-- Each site gets up to 15 minutes and 300 requests. The whole run gets up to 50 minutes. A site that hits a cap ends normally; the next run continues.
+- Each site gets up to 15 minutes and 300 requests. The whole run gets up to 50 minutes. A site that hits a cap ends normally; the next run continues. A JobTopGun cap hit while reading the sitemaps (before any detail page) is a failure, `cap_in_discovery`.
 - robots.txt is re-read every run. If it cannot be read, the site is skipped with `robots_unavailable`.
 - Kill switch: remove a site from the `"crawl"` list in `backend/src/job_search_platform/data/job_boards.json`. It gets no requests from the next run. A missing `"crawl"` key means no crawling.
 - `run --source jobtopgun` or `run --source jobbkk` crawls one site only.

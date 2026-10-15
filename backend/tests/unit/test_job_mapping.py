@@ -150,3 +150,9 @@ def test_other_sources_have_no_valid_through_key():
     row = map_posting("greenhouse", "acme", {"id": 1, "title": "Engineer", "absolute_url": "https://g/1",
                                              "location": {"name": "Bangkok"}})
     assert "valid_through" not in row
+
+
+def test_crawled_posting_text_is_sanitised_for_postgres():
+    row = map_posting("jobtopgun", None, {"id": "1", "url": "https://www.jobtopgun.com/th/jobs/j1-1",
+                                          "posting": _ld(title="Data\x00 Eng\ud800ineer", description="<p>a\x00b\ud800c</p>")})
+    assert row["title"] == "Data Engineer" and row["description_markdown"] == "abc"

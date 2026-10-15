@@ -334,3 +334,17 @@ def test_jobbkk_soft_404_is_tombstoned_and_skipped_next_sweep(sessions):
     again = bkk_site(listing)
     crawl(sessions, "jobbkk", again, at=T0 + timedelta(hours=1))
     assert f"{BKK}/jobs/detail/7/1" not in again.requested
+
+
+@pytest.mark.integration
+def test_jobtopgun_poison_posting_is_stored_clean(sessions):
+    site = jtg_site({0: ["j1-1"]}, {"j1-1": posting_page(title="Data\x00 Engineer")})
+    result = crawl(sessions, "jobtopgun", site)
+    assert result["state"] == "ok" and stored(sessions)["j1-1"].title == "Data Engineer"
+
+
+@pytest.mark.integration
+def test_jobtopgun_cap_during_discovery_is_a_failure(sessions):
+    site = jtg_site({0: ["j1-1"], 1: ["j2-1"]}, {})
+    result = crawl(sessions, "jobtopgun", site, max_requests=3)  # robots, index, one child sitemap
+    assert result["state"] == "failed" and result["error"] == "cap_in_discovery"

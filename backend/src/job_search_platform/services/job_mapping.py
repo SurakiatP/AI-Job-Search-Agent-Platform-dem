@@ -26,6 +26,13 @@ _DATE_ONLY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _SECTIONS = (("responsibilities", "Responsibilities"), ("qualifications", "Qualifications"), ("jobBenefits", "Benefits"))
 
 
+def _clean(value):
+    """Postgres text rejects NUL and a lone surrogate cannot be UTF-8 encoded: drop both from crawled strings."""
+    if isinstance(value, str):
+        return value.replace("\x00", "").encode("utf-8", "ignore").decode("utf-8")
+    return [_clean(v) for v in value] if isinstance(value, list) else value
+
+
 def _first(value):
     return value[0] if isinstance(value, list) and value else value
 
@@ -172,5 +179,6 @@ def map_posting(source: str, board: str | None, raw: dict) -> dict | None:
     )
     if f.get("valid_through"):  # only crawled sources carry it; other rows keep their content_hash
         row["valid_through"] = f["valid_through"]
+    row = {k: _clean(v) for k, v in row.items()}
     row["content_hash"] = hashlib.sha256(json.dumps(row, sort_keys=True, default=str).encode()).hexdigest()
     return row
