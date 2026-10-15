@@ -24,6 +24,8 @@ REQUIRED_SCANS = {
     "postgres_image",
     "minio_image",
     "hermes_image",
+    "prometheus_image",
+    "grafana_image",
     "go_build_dependencies",
     "postgres_go_build_dependencies",
     "parser_source",

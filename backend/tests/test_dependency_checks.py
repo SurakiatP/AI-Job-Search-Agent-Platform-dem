@@ -264,3 +264,13 @@ def test_grafana_dockerfile_requires_its_source_dir(tmp_path, monkeypatch):
 def test_runtime_version_comparison_handles_patch_releases():
     assert check_dependencies.version_at_least("24.18.0", "24.0.0")
     assert not check_dependencies.version_at_least("23.11.0", "24.0.0")
+
+
+def test_observability_images_are_required_scans():
+    assert {"prometheus_image", "grafana_image"} <= check_dependencies.REQUIRED_SCANS
+
+
+def test_image_arguments_accept_observability_scopes():
+    refs = security_scan._image_arguments(["prometheus_image=job-search-platform/prometheus:x",
+                                           "grafana_image=job-search-platform/grafana:y"])
+    assert refs == {"prometheus_image": "job-search-platform/prometheus:x", "grafana_image": "job-search-platform/grafana:y"}
