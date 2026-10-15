@@ -17,9 +17,24 @@ _LEGAL = re.compile(r"\b(co\.?,?\s*ltd\.?|company limited|public company limited
                     r"บริษัท|จำกัด|\(มหาชน\)|มหาชน", re.I)
 _EMPLOYMENT = {"full-time": "full_time", "full_time": "full_time", "permanent": "full_time",
                "part-time": "part_time", "part_time": "part_time", "contract": "contract", "temporary": "contract",
-               "internship": "internship", "intern": "internship"}
+               "internship": "internship", "intern": "internship", "contractor": "contract"}
 _PERIOD = {"month": "month", "monthly": "month", "per-month-salary": "month",
            "year": "year", "yearly": "year", "annual": "year", "per-year-salary": "year"}
+
+CRAWLED = {"jobtopgun": "jtg", "jobbkk": "bkk"}  # spec 2026-10-15 (ADR-016): schema.org JobPosting from JSON-LD
+_DATE_ONLY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_SECTIONS = (("responsibilities", "Responsibilities"), ("qualifications", "Qualifications"), ("jobBenefits", "Benefits"))
+
+
+def _first(value):
+    return value[0] if isinstance(value, list) and value else value
+
+
+def _until(value):
+    """schema.org validThrough; a bare date means the end of that day in Bangkok."""
+    if not isinstance(value, str) or not value:
+        return None
+    return f"{value}T23:59:59+07:00" if _DATE_ONLY.match(value) else value
 
 
 def _text(value, limit=300):
@@ -83,6 +98,23 @@ def _fields(source, board, raw):
                     work_mode={"remote": "remote", "hybrid": "hybrid", "on-site": "onsite"}.get(raw.get("workplaceType")),
                     employment_type=categories.get("commitment"),
                     salary=(salary.get("min"), salary.get("max"), salary.get("currency"), salary.get("interval")))
+    if source in CRAWLED:
+        ld = _dict(raw.get("posting"))
+        ext = _text(raw.get("id"), 200)
+        address = _dict(_dict(_first(ld.get("jobLocation"))).get("address"))
+        pay = _dict(ld.get("baseSalary"))
+        amount = _dict(pay.get("value"))
+        body = (ld["description"] if isinstance(ld.get("description"), str) else "") + "".join(
+            f"<h3>{label}</h3>{ld[key]}" for key, label in _SECTIONS if isinstance(ld.get(key), str) and ld[key])
+        return dict(external_id=ext, slug=f"{CRAWLED[source]}-{ext}"[:SLUG_MAX], title=ld.get("title"),
+                    company=_dict(ld.get("hiringOrganization")).get("name"),
+                    location=", ".join(v for v in (address.get("addressLocality"), address.get("addressRegion"))
+                                       if isinstance(v, str) and v),
+                    url=raw.get("url"), description=body, html=True, posted_at=ld.get("datePosted"),
+                    employment_type=_first(ld.get("employmentType")),
+                    salary=(amount.get("minValue", amount.get("value")), amount.get("maxValue", amount.get("value")),
+                            pay.get("currency"), amount.get("unitText")),
+                    valid_through=_until(ld.get("validThrough")))
     detail = _dict(raw.get("detail"))
     location = _dict(raw.get("location"))
     sections = _dict(_dict(detail.get("jobAd")).get("sections"))
@@ -138,5 +170,7 @@ def map_posting(source: str, board: str | None, raw: dict) -> dict | None:
         posted_at=f.get("posted_at") if isinstance(f.get("posted_at"), str) else None,
         reality_stale=bool(f.get("reality_stale")),
     )
+    if f.get("valid_through"):  # only crawled sources carry it; other rows keep their content_hash
+        row["valid_through"] = f["valid_through"]
     row["content_hash"] = hashlib.sha256(json.dumps(row, sort_keys=True, default=str).encode()).hexdigest()
     return row
