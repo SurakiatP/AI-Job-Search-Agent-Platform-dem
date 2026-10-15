@@ -117,3 +117,57 @@ def test_metrics_config(monkeypatch):
         monkeypatch.setenv("METRICS_HOST", bad)
         with pytest.raises(ValueError, match="metrics_host_not_loopback"):
             config.metrics_host()
+
+
+def test_concurrent_scrape_does_not_wait_for_rebuild():
+    import threading
+    entered, release = threading.Event(), threading.Event()
+    collector, _ = _collector(_Db())
+
+    def slow():
+        entered.set()
+        release.wait(5)
+        return []
+    collector._build = slow
+    worker = threading.Thread(target=collector.collect)
+    worker.start()
+    assert entered.wait(5)
+    names = {f.name for f in collector.collect()}  # no cache yet
+    assert names == {"jsp_db_up", "jsp_search_up"}
+    release.set()
+    worker.join(5)
+    collector._families = [metrics.GaugeMetricFamily("jsp_db_up", "x", value=1)]
+    collector._at = None
+    entered.clear()
+    release.clear()
+    worker = threading.Thread(target=collector.collect)
+    worker.start()
+    assert entered.wait(5)
+    assert [f.name for f in collector.collect()] == ["jsp_db_up"]  # previous cache
+    release.set()
+    worker.join(5)
+
+
+def test_meili_probe_uses_two_second_timeout(monkeypatch):
+    from job_search_platform.integrations import meili
+    seen = []
+
+    def transport(method, url, headers, body, timeout):
+        seen.append(timeout)
+        return 200, b'{"numberOfDocuments": 7}'
+    monkeypatch.setattr(meili, "client", lambda: meili.Meili("http://x", "k", transport=transport))
+    assert metrics.meili_probe() == 7 and seen == [2]
+
+
+def test_failed_bind_does_not_leak_registration():
+    import socket
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        s.listen()
+        port = s.getsockname()[1]
+        with pytest.raises(OSError):
+            metrics.start_listener("127.0.0.1", port, _Db(), lambda: 1)
+    with socket.socket() as f:
+        f.bind(("127.0.0.1", 0))
+        free = f.getsockname()[1]
+    metrics.start_listener("127.0.0.1", free, _Db(), lambda: 1)()

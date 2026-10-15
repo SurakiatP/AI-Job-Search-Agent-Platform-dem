@@ -49,14 +49,14 @@ class Meili:
         self._key = key
         self._transport = transport or _urllib_transport
 
-    def request(self, method: str, path: str, body=None, *, ok=(200, 201, 202)) -> dict | list:
+    def request(self, method: str, path: str, body=None, *, ok=(200, 201, 202), timeout=TIMEOUT_SECONDS) -> dict | list:
         headers = {"Authorization": f"Bearer {self._key}", "Accept": "application/json"}
         data = None
         if body is not None:
             headers["Content-Type"] = "application/json"
             data = json.dumps(body).encode()
         try:
-            status, raw = self._transport(method, self._url + path, headers, data, TIMEOUT_SECONDS)
+            status, raw = self._transport(method, self._url + path, headers, data, timeout)
             if status not in ok:
                 raise MeiliError(f"status_{status}")
             return json.loads(raw) if raw else {}

@@ -219,7 +219,7 @@ def create_app(
             try:
                 if metrics_port:
                     stop_metrics = metrics.start_listener(metrics_host, metrics_port, current.sessions,
-                                                          metrics.meili_probe)
+                                                          metrics.meili_probe, base_engine=current.engine)
                 await current.files.reconcile_pending()
                 await current.supervisor.start()
                 yield

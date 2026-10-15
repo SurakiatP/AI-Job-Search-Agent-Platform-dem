@@ -124,11 +124,17 @@ class ScrapeCollector:
         return []
 
     def collect(self):
-        with self._lock:
+        if not self._lock.acquire(blocking=False):  # a rebuild is running: never queue behind it
+            return list(self._families) or [
+                GaugeMetricFamily("jsp_db_up", "Database reachable at the last scrape", value=0),
+                GaugeMetricFamily("jsp_search_up", "Search index reachable at the last scrape", value=0)]
+        try:
             now = self._clock()
             if self._at is None or now - self._at >= self._ttl:
                 self._families, self._at = self._build(), now
             return list(self._families)
+        finally:
+            self._lock.release()
 
     def _query(self, db) -> dict:
         from job_search_platform.db.models import IngestRun, JobPosting, Run  # lazy: keeps import light
@@ -205,20 +211,32 @@ def meili_probe() -> int:
     from job_search_platform import config
     from job_search_platform.integrations import meili
 
-    stats = meili.client().request("GET", f"/indexes/{meili.quote(config.meili_index())}/stats")
+    stats = meili.client().request("GET", f"/indexes/{meili.quote(config.meili_index())}/stats",
+                                    timeout=2)
     return int(stats["numberOfDocuments"])
 
 
-def start_listener(host: str, port: int, sessions, search_probe: Callable[[], int]) -> Callable[[], None]:
+def start_listener(host: str, port: int, sessions, search_probe: Callable[[], int], *,
+                   base_engine=None) -> Callable[[], None]:
     """Serve the default registry on host:port (loopback, checked by config); returns a stop function."""
+    engine = None
+    if base_engine is not None:  # dedicated 1-connection pool: a scrape never waits long or starves the app pool
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+
+        engine = create_engine(base_engine.url, pool_size=1, max_overflow=0, pool_timeout=2,
+                               connect_args={"connect_timeout": 2})
+        sessions = sessionmaker(engine, expire_on_commit=False)
     collector = ScrapeCollector(sessions, search_probe)
+    server, thread = start_http_server(port, addr=host)  # bind first: a failure must not leave a registration
     REGISTRY.register(collector)
-    server, thread = start_http_server(port, addr=host)
 
     def stop() -> None:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
         REGISTRY.unregister(collector)
+        if engine is not None:
+            engine.dispose()
 
     return stop
