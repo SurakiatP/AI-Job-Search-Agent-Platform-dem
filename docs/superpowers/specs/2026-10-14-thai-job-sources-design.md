@@ -27,7 +27,7 @@ Production hardening (monitoring, a server scheduler) belongs to WP1.
 
 | # | Decision |
 |---|---|
-| D1 | Only sources that explicitly permit automated access. JobsDB and LinkedIn forbid it. JobThai and JobBKK forbid reuse or commercial copying without consent. JobTopGun has no grant. None of these is built. JobThai and JobTopGun get adapters later, once the owner has written permission. |
+| D1 | Only sources that explicitly permit automated access. JobsDB and LinkedIn forbid it. JobThai and JobBKK forbid reuse or commercial copying without consent. JobTopGun has no grant. None of these is built. JobThai and JobTopGun get adapters later, once the owner has written permission. Amended 2026-10-15: JobTopGun and JobBKK are crawled under ADR-016 (client accepts the ToS risk); see 2026-10-15-thai-board-crawler-design.md. |
 | D2 | The three WP5 sources are the public ATS job-board APIs Greenhouse, Lever and SmartRecruiters, filtered to Thailand. Lever's API README says postings "may be scraped by third parties". Greenhouse documents its job-board GETs as public. Whether employer ATS boards count as "Thai job sources" is a client question (below). |
 | D3 | freehire is ingested as an extra source, outside the three. Its terms allow access through the documented API, within 600 requests/min, or 300/min for `/agent/jobs/search`. Every posting keeps its `source` and original URL. The owner emails hello@freehire.me to confirm re-serving. |
 | D4 | Postgres is the system of record (TOR §7). Part 2 indexes the open, canonical postings into Meilisearch. |

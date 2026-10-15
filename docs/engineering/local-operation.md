@@ -186,6 +186,18 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.job-search-platform.
 
 Output goes to `~/Library/Logs/job-search-platform/ingest.log`. Check it with `tail ~/Library/Logs/job-search-platform/ingest.log` and `ingest_jobs.py status`. Stop it with `launchctl bootout gui/$(id -u)/com.job-search-platform.ingest`.
 
+### Crawled boards (JobTopGun, JobBKK)
+
+The crawl runs after the ATS boards in the same `ingest run`, under ADR-016.
+
+- Each site gets up to 15 minutes and 300 requests. The whole run gets up to 50 minutes. A site that hits a cap ends normally; the next run continues.
+- robots.txt is re-read every run. If it cannot be read, the site is skipped with `robots_unavailable`.
+- Kill switch: remove a site from the `"crawl"` list in `backend/src/job_search_platform/data/job_boards.json`. It gets no requests from the next run. A missing `"crawl"` key means no crawling.
+- `run --source jobtopgun` or `run --source jobbkk` crawls one site only.
+- `ingest_runs.per_board` has the keys `crawl:jobtopgun` and `crawl:jobbkk`. Each holds `state`, `error` (on failure), `requests`, `blocked`, `fetched`, `created` and `deleted`.
+- The first fill takes days. JobTopGun fetches up to 130 new detail pages an hour (about 80 to 130). JobBKK's first sweep takes several days; later sweeps take a few runs. JobBKK reads listing pages 1 to 3 on every run, so new postings appear within the hour.
+- Progress lives in the table `crawl_state`. Deleting a site's row restarts it from scratch.
+
 ### Job search index (Meilisearch)
 
 The `meilisearch` service starts with `local_infra.py start` (loopback port 57700, key in the private file `meili-master-key`). The index (`MEILI_INDEX`, default `jobs`) is built on the first ingest run or by `reindex`, and synced after every later run. Search and facets are served only from the index: while it is unavailable, search returns 502 `job_source_unavailable`; there is no Postgres fallback. Run `reindex` to recover.
