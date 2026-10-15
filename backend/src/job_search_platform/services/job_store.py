@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -14,7 +15,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, defer
 
 from job_search_platform.db.models import IngestRun, JobIndexDelete, JobPosting, JobPostingTombstone
-from job_search_platform.integrations import job_boards
+from job_search_platform.integrations import crawler, job_boards
 from job_search_platform.services import job_index
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.job_mapping import map_posting
@@ -244,6 +245,7 @@ def recompute_clusters(db: Session, now: datetime) -> int:
 
 
 RUN_DEADLINE = timedelta(minutes=20)
+RUN_TOTAL = timedelta(minutes=50)  # ATS boards (RUN_DEADLINE) plus the crawl phase (spec C4)
 BOARDS_FILE = Path(__file__).resolve().parents[1] / "data" / "job_boards.json"
 _log = logging.getLogger("jsp.ingest")
 
@@ -254,8 +256,24 @@ def load_boards(path: Path | None = None) -> dict[str, list[str]]:
             for source in ("greenhouse", "lever", "smartrecruiters")}
 
 
+def load_crawl_sites(path: Path | None = None) -> list[str]:
+    """Kill switch (ADR-016): only sites named in the "crawl" list are contacted; a missing key means none."""
+    names = json.loads((path or BOARDS_FILE).read_text(encoding="utf-8")).get("crawl")
+    return [site for site in crawler.SITES if isinstance(names, list) and site in names]
+
+
+def write_boards(boards: dict[str, list[str]], path: Path | None = None) -> None:
+    """Replace the ATS lists atomically; every other key (the "crawl" kill switch) stays as the operator wrote it."""
+    path = path or BOARDS_FILE
+    data = {**json.loads(path.read_text(encoding="utf-8")), **boards}
+    tmp = path.with_suffix(".json.tmp")  # same directory: os.replace is atomic
+    tmp.write_text(json.dumps(data, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards.fetch_board,
-               clock=lambda: datetime.now(timezone.utc), sleep=time.sleep, index=None) -> IngestRun:
+               clock=lambda: datetime.now(timezone.utc), sleep=time.sleep, index=None,
+               crawl_sites=(), crawl=None) -> IngestRun:
     """One hourly run (spec D5): each board in its own transaction; failed/skipped boards never count as missing."""
     # dedicated autocommit connection: advisory lock is per backend, so it must stay on this one connection
     with sessions.kw["bind"].connect().execution_options(isolation_level="AUTOCOMMIT") as lock:
@@ -287,6 +305,21 @@ def run_ingest(sessions, *, boards, sources=job_boards.SOURCES, fetch=job_boards
                 except Exception as exc:  # one poison board must not abort the run (LEARNINGS 2026-10-14)
                     per_board[key] = {"state": "failed", "error": type(exc).__name__}
                     _log.exception("ingest_board_failed", extra={"route": key})
+            for site in crawl_sites if crawl else ():  # spec C4: sites one after another, after the ATS boards
+                key = f"crawl:{site}"
+                remaining = (started + RUN_TOTAL - clock()).total_seconds()
+                if remaining <= 0:
+                    per_board[key] = {"state": "skipped"}
+                    continue
+                try:
+                    per_board[key] = crawl(sessions, site, clock=clock, sleep=sleep,
+                                           budget_seconds=min(crawler.SITE_BUDGET_SECONDS, remaining))
+                except Exception as exc:  # a crawler bug must not abort the run
+                    per_board[key] = {"state": "failed", "error": type(exc).__name__}
+                    _log.exception("ingest_crawl_failed", extra={"route": key})
+                    continue
+                for name in ("fetched", "created", "deleted"):
+                    totals[name] += per_board[key].get(name, 0)
             now = clock()
             states = [v["state"] for v in per_board.values()]
             status = ("failed" if states and all(x != "ok" for x in states)

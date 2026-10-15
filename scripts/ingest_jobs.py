@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -19,10 +18,10 @@ from sqlalchemy.orm import sessionmaker  # noqa: E402
 from job_search_platform import config  # noqa: E402
 from job_search_platform.db.models import IngestRun  # noqa: E402
 from job_search_platform.db.session import make_engine  # noqa: E402
-from job_search_platform.integrations import job_boards, meili  # noqa: E402
+from job_search_platform.integrations import crawler, job_boards, meili  # noqa: E402
 from job_search_platform.integrations.logging import configure_logging  # noqa: E402
 from job_search_platform.main import _private_text  # noqa: E402
-from job_search_platform.services import job_index, job_store  # noqa: E402
+from job_search_platform.services import job_crawl, job_index, job_store  # noqa: E402
 from job_search_platform.services.errors import ServiceError  # noqa: E402
 
 
@@ -34,13 +33,15 @@ def _sessions() -> sessionmaker:
 
 
 def run(args) -> int:
-    sources = (args.source,) if args.source else job_boards.SOURCES
+    sources = tuple(s for s in job_boards.SOURCES if not args.source or s == args.source)
+    sites = [s for s in job_store.load_crawl_sites() if not args.source or s == args.source]
     try:
         index = (meili.client(), config.meili_index())
     except RuntimeError:
         logging.getLogger(__name__).warning("index_unconfigured")
         index = None
-    result = job_store.run_ingest(_sessions(), boards=job_store.load_boards(), sources=sources, index=index)
+    result = job_store.run_ingest(_sessions(), boards=job_store.load_boards(), sources=sources, index=index,
+                                  crawl_sites=sites, crawl=job_crawl.crawl_site)
     print(json.dumps({"status": result.status, "fetched": result.fetched, "created": result.created,
                       "updated": result.updated, "deleted": result.deleted, "merged": result.merged,
                       "index": (result.per_board or {}).get("index", {}).get("state")}))
@@ -50,9 +51,7 @@ def run(args) -> int:
 def discover(args) -> int:
     rows = job_boards.fetch_board("freehire", None)
     merged = job_store.discover_boards(rows, job_store.load_boards())
-    tmp = job_store.BOARDS_FILE.with_suffix(".json.tmp")  # same directory: os.replace is atomic
-    tmp.write_text(json.dumps(merged, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(tmp, job_store.BOARDS_FILE)
+    job_store.write_boards(merged)
     print(json.dumps({source: len(tokens) for source, tokens in merged.items()}))
     return 0
 
@@ -89,7 +88,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     one = sub.add_parser("run")
-    one.add_argument("--source", choices=job_boards.SOURCES)
+    one.add_argument("--source", choices=job_boards.SOURCES + crawler.SITES)
     one.set_defaults(func=run)
     sub.add_parser("discover").set_defaults(func=discover)
     sub.add_parser("reindex").set_defaults(func=reindex)

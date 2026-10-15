@@ -219,3 +219,92 @@ def test_no_index_configured_runs_as_before(migrated_engine):
     sessions = sessionmaker(migrated_engine, expire_on_commit=False)
     run = _run_idx(sessions, {("greenhouse", "a"): [_raw(1)]}, T0, None)
     assert run.status == "ok" and run.created == 1 and "index" not in run.per_board
+
+
+import functools
+import json as _json
+
+from job_search_platform.services import job_crawl
+
+
+def _crawl_result(**counts):
+    return {"state": "ok", "requests": 1, "blocked": 0, "fetched": 0, "created": 0, "deleted": 0, **counts}
+
+
+@pytest.mark.integration
+def test_crawl_phase_failure_isolated_and_counted(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    calls = []
+
+    def crawl(sessions_, site, **kw):
+        calls.append((site, kw["budget_seconds"]))
+        if site == "jobtopgun":
+            return {**_crawl_result(), "state": "failed", "error": "http_503"}
+        return _crawl_result(fetched=4, created=3)
+
+    run = job_store.run_ingest(sessions, boards={"greenhouse": ["a"]}, sources=("greenhouse",),
+                               fetch=Fetch({("greenhouse", "a"): [_raw(1)]}), clock=lambda: T0,
+                               sleep=lambda s: None, crawl_sites=["jobtopgun", "jobbkk"], crawl=crawl)
+    assert run.status == "partial" and run.created == 1 + 3
+    assert run.per_board["crawl:jobtopgun"]["error"] == "http_503"
+    assert run.per_board["crawl:jobbkk"]["state"] == "ok"
+    assert calls == [("jobtopgun", 900), ("jobbkk", 900)]
+
+
+@pytest.mark.integration
+def test_crawl_exception_does_not_abort_run(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+
+    def crawl(sessions_, site, **kw):
+        raise RuntimeError("bug")
+
+    run = job_store.run_ingest(sessions, boards={}, sources=(), clock=lambda: T0, sleep=lambda s: None,
+                               crawl_sites=["jobbkk"], crawl=crawl)
+    assert run.status == "failed" and run.per_board["crawl:jobbkk"] == {"state": "failed", "error": "RuntimeError"}
+
+
+@pytest.mark.integration
+def test_crawl_site_skipped_past_run_total(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    times = iter([T0] + [T0 + timedelta(minutes=51)] * 10)
+    run = job_store.run_ingest(sessions, boards={}, sources=(), clock=lambda: next(times), sleep=lambda s: None,
+                               crawl_sites=["jobbkk"], crawl=lambda *a, **k: pytest.fail("must not crawl"))
+    assert run.per_board["crawl:jobbkk"] == {"state": "skipped"}
+
+
+@pytest.mark.integration
+def test_same_job_on_both_boards_collapses_to_one_canonical(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    posting = {"@context": "https://schema.org", "@type": "JobPosting", "title": "Data Engineer",
+               "datePosted": (T0 - timedelta(days=1)).date().isoformat(),
+               "hiringOrganization": {"name": "Acme Co., Ltd."},
+               "jobLocation": {"address": {"addressRegion": "Bangkok"}}, "description": "<p>Synthetic</p>"}
+    detail = f'<script type="application/ld+json">{_json.dumps(posting)}</script>'
+    stamp = (T0 - timedelta(days=1)).astimezone(job_crawl.BANGKOK).strftime("%Y-%m-%d %H:%M:%S")
+    old = (T0 - timedelta(days=200)).astimezone(job_crawl.BANGKOK).strftime("%Y-%m-%d %H:%M:%S")
+
+    def rsc(items):
+        return ("<script>self.__next_f.push([1,"
+                + _json.dumps("5:" + _json.dumps({"jobpost_list": items}, separators=(",", ":"))) + "])</script>")
+
+    jtg, bkk = "https://www.jobtopgun.com", "https://www.jobbkk.com"
+    pages = {
+        f"{jtg}/robots.txt": "User-agent: *\n", f"{bkk}/robots.txt": "User-agent: *\n",
+        f"{jtg}/sitemap.xml": f"<sitemapindex><sitemap><loc>{jtg}/sitemaps/jobs-snapshot/sitemap/0.xml</loc></sitemap></sitemapindex>",
+        f"{jtg}/sitemaps/jobs-snapshot/sitemap/0.xml": f"<urlset><url><loc>{jtg}/th/jobs/j1-1</loc></url></urlset>",
+        f"{jtg}/th/jobs/j1-1": detail, f"{bkk}/jobs/detail/7/11": detail,
+        job_crawl._BKK_LIST.format(1): rsc([{"jobpost_id": 11, "company_id": 7, "created_at": stamp, "updated_at": stamp}]),
+        job_crawl._BKK_LIST.format(2): rsc([]), job_crawl._BKK_LIST.format(3): rsc([]),
+        job_crawl._BKK_LIST.format(4): rsc([{"jobpost_id": 1, "company_id": 7, "created_at": old, "updated_at": old}]),
+    }
+
+    def transport(url):
+        return (200, {}, pages[url].encode()) if url in pages else (404, {}, b"")
+
+    crawl = functools.partial(job_crawl.crawl_site, transport=transport, monotonic=lambda: 0.0)
+    run = job_store.run_ingest(sessions, boards={}, sources=(), clock=lambda: T0, sleep=lambda s: None,
+                               crawl_sites=["jobtopgun", "jobbkk"], crawl=crawl)
+    assert run.status == "ok" and run.created == 2 and run.merged == 1
+    with sessions() as db:
+        canonical = db.scalars(select(JobPosting).where(JobPosting.canonical_id.is_(None))).all()
+    assert len(canonical) == 1
