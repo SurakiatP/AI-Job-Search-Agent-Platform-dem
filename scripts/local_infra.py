@@ -333,6 +333,13 @@ def _compose(
     *,
     timeout: int = 120,
 ) -> subprocess.CompletedProcess[str]:
+    override = os.environ.get("CORE02_COMPOSE_OVERRIDE", "").strip()
+    extra: list[str] = []
+    if override:
+        path = Path(override) if Path(override).is_absolute() else ROOT / override
+        if not path.is_file():
+            raise ConfigurationError("compose_override_missing")
+        extra = ["--file", str(path)]
     command = [  # callers put global flags (--profile) first in `action`
         "docker",
         "compose",
@@ -340,6 +347,7 @@ def _compose(
         "jobsearch-core02",
         "--file",
         str(COMPOSE_FILE),
+        *extra,
         *action,
     ]
     validate_gosu_source(Path(os.environ.get("GOSU_SOURCE_DIR", str(DEFAULT_GOSU_SOURCE))))

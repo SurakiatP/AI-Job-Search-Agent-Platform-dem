@@ -152,3 +152,32 @@ def test_start_validates_observability_sources_before_compose(monkeypatch, tmp_p
 
 def test_start_timeout_covers_first_prometheus_build():
     assert "timeout=3600)" in (ROOT / "scripts/local_infra.py").read_text().split("def start(")[1].split("def status(")[0]
+
+
+def test_compose_override_appended_only_when_set(monkeypatch, tmp_path):
+    calls = _stub_pre_a1(monkeypatch, tmp_path)
+    monkeypatch.delenv("CORE02_COMPOSE_OVERRIDE", raising=False)
+    local_infra._compose(["ps"], tmp_path, tmp_path)
+    assert calls[-1].count("--file") == 1
+    override = tmp_path / "compose.prod.yaml"
+    override.write_text("services: {}\n")
+    monkeypatch.setenv("CORE02_COMPOSE_OVERRIDE", str(override))
+    local_infra._compose(["ps"], tmp_path, tmp_path)
+    files = [calls[-1][i + 1] for i, part in enumerate(calls[-1]) if part == "--file"]
+    assert files == [str(local_infra.COMPOSE_FILE), str(override)]
+    assert calls[-1][-1] == "ps"
+
+
+def test_compose_override_must_exist(monkeypatch, tmp_path):
+    _stub_pre_a1(monkeypatch, tmp_path)
+    monkeypatch.setenv("CORE02_COMPOSE_OVERRIDE", str(tmp_path / "missing.yaml"))
+    with pytest.raises(local_infra.ConfigurationError, match="compose_override_missing"):
+        local_infra._compose(["ps"], tmp_path, tmp_path)
+
+
+def test_grafana_datasource_url_comes_from_env():
+    ds = (ROOT / "infra/grafana/provisioning/datasources/prometheus.yml").read_text()
+    assert "url: ${GRAFANA_PROMETHEUS_URL}" in ds
+    import yaml
+    env = yaml.safe_load((ROOT / "infra/compose.yaml").read_text())["services"]["grafana"]["environment"]
+    assert env["GRAFANA_PROMETHEUS_URL"] == "${GRAFANA_PROMETHEUS_URL:-http://prometheus:9090}"
