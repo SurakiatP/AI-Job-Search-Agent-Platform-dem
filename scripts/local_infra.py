@@ -377,6 +377,8 @@ def _compose(
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ConfigurationError("compose_command_unavailable_or_timed_out") from exc
     if result.returncode:
+        tail = "\n".join((result.stderr or "").splitlines()[-40:])
+        print(f"compose stderr (last 40 lines):\n{tail}", file=sys.stderr)
         raise ConfigurationError(f"compose_{action[2] if action[0] == '--profile' else action[0]}_failed")
     return result
 

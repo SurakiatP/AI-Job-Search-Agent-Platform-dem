@@ -227,3 +227,15 @@ def test_caddy_compose_environment_pins_source(monkeypatch, tmp_path):
     env = local_infra.compose_environment(tmp_path, tmp_path)
     assert env["CADDY_SOURCE_COMMIT"] == local_infra.CADDY_COMMIT
     assert env["CADDY_SOURCE_DIR"] == str(local_infra.DEFAULT_CADDY_SOURCE.resolve())
+
+
+def test_compose_failure_shows_stderr(monkeypatch, tmp_path, capsys):
+    _stub_pre_a1(monkeypatch, tmp_path)
+    err = "\n".join(f"line{i}" for i in range(60)) + "\nmanifest not found"
+    monkeypatch.setattr(local_infra.subprocess, "run",
+                        lambda command, **k: subprocess.CompletedProcess(command, 1, "", err))
+    with pytest.raises(local_infra.ConfigurationError, match="compose_ps_failed"):
+        local_infra._compose(["ps"], tmp_path, tmp_path)
+    shown = capsys.readouterr().err
+    assert "compose stderr (last 40 lines):" in shown
+    assert "manifest not found" in shown and "line0\n" not in shown
