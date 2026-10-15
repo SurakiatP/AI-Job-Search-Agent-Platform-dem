@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 from urllib.parse import urlsplit
 import stat
 from contextlib import asynccontextmanager
@@ -89,6 +90,10 @@ def _owner_sessions(sessions) -> OwnerSessions:
     return OwnerSessions(sessions, public_origin=public or "http://127.0.0.1:8000", extra_origins=frozenset(extra))
 
 
+def _secret_store():
+    return MacOSKeychain() if sys.platform == "darwin" else None  # no caller reads it; Keychain exists only on macOS
+
+
 def build_services() -> Services:
     """Assemble pinned local infrastructure without returning credential values."""
     user = _private_text("postgres-user")
@@ -127,7 +132,7 @@ def build_services() -> Services:
     except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
         raise RuntimeError("native_runtime_metadata_unavailable") from None
     runtime = HermesRuntime(image)
-    secrets = MacOSKeychain()
+    secrets = _secret_store()
     settings = Settings(sessions)
     runs = RunService(sessions)
     files = Files(sessions, store, runtime)
