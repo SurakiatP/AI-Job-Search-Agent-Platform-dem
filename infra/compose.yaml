@@ -218,8 +218,15 @@ services:
       com.job-search-platform.task: accounts-mail
 
   prometheus:
-    # prom/prometheus v3.15.0 (Apache-2.0), multi-arch index digest. WP1 observability: scrapes the app's loopback metrics listener.
-    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    # Prometheus v3.15.0 built from pinned source (Go 1.27.2, x/net v0.60.0): 0 High/Critical (spec A1.2).
+    image: job-search-platform/prometheus:3.15.0-go1.27.2-5241a27fe3c6
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+      additional_contexts:
+        prometheus_source: ${PROMETHEUS_SOURCE_DIR:?Set PROMETHEUS_SOURCE_DIR to the pinned external Prometheus checkout}
+      args:
+        PROMETHEUS_SOURCE_COMMIT: ${PROMETHEUS_SOURCE_COMMIT:?Set PROMETHEUS_SOURCE_COMMIT using scripts/local_infra.py}
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml

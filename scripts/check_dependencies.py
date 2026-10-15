@@ -141,7 +141,7 @@ def _runtime_checks(problems: list[str]) -> None:
 
 
 def _check_upstream_sources(config: dict[str, str], problems: list[str]) -> None:
-    source_env = {'hermes': 'HERMES_SOURCE_DIR', 'career-ops': 'CAREER_OPS_SOURCE_DIR', 'minio': 'MINIO_SOURCE_DIR', 'gosu': 'GOSU_SOURCE_DIR'}
+    source_env = {'hermes': 'HERMES_SOURCE_DIR', 'career-ops': 'CAREER_OPS_SOURCE_DIR', 'minio': 'MINIO_SOURCE_DIR', 'gosu': 'GOSU_SOURCE_DIR', 'prometheus': 'PROMETHEUS_SOURCE_DIR'}
     for name, env_name in source_env.items():
         path = os.environ.get(env_name)
         if not path:
@@ -159,7 +159,8 @@ def _check_container_build_inputs(problems: list[str]) -> None:
     infra = ROOT / "infra"
     if not infra.exists():
         return
-    env_names = {'hermes': 'HERMES_SOURCE_DIR', 'career-ops': 'CAREER_OPS_SOURCE_DIR', 'minio': 'MINIO_SOURCE_DIR', 'gosu': 'GOSU_SOURCE_DIR'}
+    # Keys are substrings of a Dockerfile; "prometheus/prometheus" is the repo slug so Grafana's plugins-bundled/prometheus does not match.
+    env_names = {'hermes': 'HERMES_SOURCE_DIR', 'career-ops': 'CAREER_OPS_SOURCE_DIR', 'minio': 'MINIO_SOURCE_DIR', 'gosu': 'GOSU_SOURCE_DIR', 'prometheus/prometheus': 'PROMETHEUS_SOURCE_DIR'}
     for dockerfile in infra.rglob("Dockerfile*"):
         try:
             content = dockerfile.read_text(encoding="utf-8")
@@ -192,8 +193,8 @@ def _upstream_pins(pyproject: str) -> dict[str, str]:
     if not section:
         raise ValueError("missing [tool.job-search-platform.upstream]")
     pins = dict(re.findall(r'^([\w-]+)\s*=\s*"([0-9a-f]{40})"\s*$', section.group(1), re.M))
-    if set(pins) != {"hermes", "career-ops", "minio", "gosu"}:
-        raise ValueError("Hermes, Career Ops, MinIO, and gosu require exact 40-character commits")
+    if set(pins) != {"hermes", "career-ops", "minio", "gosu", "prometheus"}:
+        raise ValueError("Hermes, Career Ops, MinIO, gosu, and Prometheus require exact 40-character commits")
     return pins
 
 

@@ -14,7 +14,7 @@ from prometheus_client import REGISTRY
 from job_search_platform.integrations import metrics  # noqa: F401  registers the jsp_ metrics
 
 ROOT = Path(__file__).resolve().parents[3]
-PROM_IMAGE = "prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e"
+PROM_IMAGE = "job-search-platform/prometheus:3.15.0-go1.27.2-5241a27fe3c6"  # built locally from pinned source (A1)
 GRAFANA_IMAGE = "grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f"
 SCRAPE_TIME = {"jsp_db_up", "jsp_runs_in_state", "jsp_job_postings", "jsp_ingest_last_run_timestamp_seconds",
                "jsp_ingest_source_last_success_timestamp_seconds", "jsp_ingest_source_state",
@@ -30,6 +30,10 @@ def test_services_pinned_and_loopback_only():
     services = _compose()["services"]
     prom, grafana = services["prometheus"], services["grafana"]
     assert prom["image"] == PROM_IMAGE and grafana["image"] == GRAFANA_IMAGE
+    build = prom["build"]
+    assert build["context"] == "./prometheus"
+    assert build["additional_contexts"]["prometheus_source"].startswith("${PROMETHEUS_SOURCE_DIR:?")
+    assert build["args"]["PROMETHEUS_SOURCE_COMMIT"].startswith("${PROMETHEUS_SOURCE_COMMIT:?")
     assert prom["ports"] == ["127.0.0.1:59090:9090"] and grafana["ports"] == ["127.0.0.1:53300:3000"]
     assert "--storage.tsdb.retention.time=15d" in prom["command"]
     assert "host.docker.internal:host-gateway" in prom["extra_hosts"]
@@ -80,7 +84,11 @@ def _docker() -> bool:
     return subprocess.run(["docker", "info"], capture_output=True).returncode == 0
 
 
-@pytest.mark.skipif(not _docker(), reason="docker unavailable")
+def _prom_image_built() -> bool:
+    return _docker() and subprocess.run(["docker", "image", "inspect", PROM_IMAGE], capture_output=True).returncode == 0
+
+
+@pytest.mark.skipif(not _prom_image_built(), reason="locally built Prometheus image unavailable")
 def test_promtool_accepts_config_and_rules():
     result = subprocess.run(
         ["docker", "run", "--rm", "--entrypoint", "promtool", "-v", f"{ROOT / 'infra/prometheus'}:/etc/prometheus:ro",

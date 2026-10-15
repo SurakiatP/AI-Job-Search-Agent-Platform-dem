@@ -22,6 +22,9 @@ GOSU_BUILDER_IMAGE = "golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b1
 GOSU_COMMIT = "6456aaa0f3c854d199d0f037f068eb97515b7513"
 DEFAULT_PRIVATE_DIR = Path(os.environ.get("CORE02_PRIVATE_DIR") or Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003")
 DEFAULT_MINIO_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "minio"
+PROMETHEUS_COMMIT = "5241a27fe3c6983549fccc32f6e65917408c63cd"
+DEFAULT_PROMETHEUS_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "prometheus"
+PROMETHEUS_BUILDER_IMAGE = GOSU_BUILDER_IMAGE  # same pinned golang:1.27.2-bookworm digest
 DEFAULT_GOSU_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "gosu"
 # Name -> generator. Values embedded in URLs (DB, ClickHouse, Redis, MinIO) stay hex.
 SECRETS = {
@@ -88,6 +91,43 @@ def validate_gosu_source(path: Path) -> Path:
     if any(not (source / name).is_file() for name in ("go.mod", "go.sum", "LICENSE", "version.go")):
         raise ConfigurationError("gosu_source_incomplete")
     return source
+
+def validate_pinned_source(path: Path, commit: str, label: str, required: tuple[str, ...]) -> Path:
+    """A clean, detached upstream checkout at exactly `commit`, outside the repository (spec A1.1)."""
+    source = path.expanduser().resolve()
+    root = ROOT.resolve()
+    if source == root or root in source.parents:
+        raise ConfigurationError(f"{label}_source_must_be_external")
+    try:
+        revision = subprocess.run(["git", "-C", str(source), "rev-parse", "HEAD"],
+                                  capture_output=True, text=True, timeout=10, check=False)
+        status = subprocess.run(["git", "-C", str(source), "status", "--porcelain=v1", "--untracked-files=all", "--ignored"],
+                                capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ConfigurationError(f"{label}_source_unavailable") from error
+    if revision.returncode or revision.stdout.strip() != commit:
+        raise ConfigurationError(f"{label}_source_revision_mismatch")
+    if status.returncode:
+        raise ConfigurationError(f"{label}_source_status_unavailable")
+    if status.stdout.strip():
+        raise ConfigurationError(f"{label}_source_dirty")
+    if any(not (source / name).is_file() for name in required):
+        raise ConfigurationError(f"{label}_source_incomplete")
+    return source
+
+
+def validate_go_overlay(directory: Path, commit: str, label: str) -> None:
+    """go.mod/go.sum overlay hashes must match provenance.json for the pinned source (spec A1.1)."""
+    try:
+        provenance = json.loads((directory / "provenance.json").read_text(encoding="utf-8"))
+        if provenance.get("source_commit") != commit:
+            raise ConfigurationError(f"{label}_overlay_source_mismatch")
+        for file_name, key in (("go.mod", "go_mod_sha256"), ("go.sum", "go_sum_sha256")):
+            if hashlib.sha256((directory / file_name).read_bytes()).hexdigest() != provenance.get(key):
+                raise ConfigurationError(f"{label}_overlay_hash_mismatch")
+    except (OSError, json.JSONDecodeError) as error:
+        raise ConfigurationError(f"{label}_overlay_invalid") from error
+
 
 def validate_postgres_overlay() -> None:
     overlay = ROOT / "infra" / "postgres"
@@ -255,6 +295,8 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     environment["MINIO_SOURCE_COMMIT"] = MINIO_COMMIT
     environment["GOSU_SOURCE_DIR"] = str(Path(os.environ.get("GOSU_SOURCE_DIR", str(DEFAULT_GOSU_SOURCE))).expanduser().resolve())
     environment["GOSU_SOURCE_COMMIT"] = GOSU_COMMIT
+    environment["PROMETHEUS_SOURCE_DIR"] = str(Path(os.environ.get("PROMETHEUS_SOURCE_DIR", str(DEFAULT_PROMETHEUS_SOURCE))).expanduser().resolve())
+    environment["PROMETHEUS_SOURCE_COMMIT"] = PROMETHEUS_COMMIT
     environment.setdefault("CORE02_POSTGRES_PORT", "55432")
     environment.setdefault("CORE02_MINIO_PORT", "59000")
     environment.setdefault("CORE02_LITELLM_PORT", "54000")
@@ -283,6 +325,9 @@ def _compose(
     validate_gosu_source(Path(os.environ.get("GOSU_SOURCE_DIR", str(DEFAULT_GOSU_SOURCE))))
     validate_postgres_overlay()
     validate_dependency_overlay()
+    validate_pinned_source(Path(os.environ.get("PROMETHEUS_SOURCE_DIR", str(DEFAULT_PROMETHEUS_SOURCE))),
+                           PROMETHEUS_COMMIT, "prometheus", ("go.mod", "go.sum", "LICENSE", "NOTICE", "scripts/compress_assets.sh"))
+    validate_go_overlay(ROOT / "infra" / "prometheus", PROMETHEUS_COMMIT, "prometheus")
     try:
         result = subprocess.run(
             command,
