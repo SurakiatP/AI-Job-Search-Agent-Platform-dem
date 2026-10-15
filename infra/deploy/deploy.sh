@@ -37,21 +37,21 @@ upstream=/var/lib/job-search-platform/.cache/job-search-platform/upstream
 # Refresh everything infra/ depends on from release dir $1: pinned upstream sources, Hermes runtime, systemd units, containers.
 apply_infra() {
   local release="$1" # pin() reads $release
-  as_jsp "mkdir -p '$upstream'"
-  fetch_all_pinned
-  as_jsp "cd '$release' && uv run --locked --project backend python infra/hermes/setup.py --acquire --build"
-  install -m 0644 "$release"/infra/deploy/job-search-*.service "$release"/infra/deploy/job-search-*.timer /etc/systemd/system/
-  systemctl daemon-reload
+  as_jsp "mkdir -p '$upstream'" || return 1
+  fetch_all_pinned || return 1 # callers run this under if/||, where set -e is off
+  as_jsp "cd '$release' && uv run --locked --project backend python infra/hermes/setup.py --acquire --build" || return 1
+  install -m 0644 "$release"/infra/deploy/job-search-*.service "$release"/infra/deploy/job-search-*.timer /etc/systemd/system/ || return 1
+  systemctl daemon-reload || return 1
   as_jsp "cd '$release' && uv run --locked --project backend python scripts/local_infra.py start"
 }
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 archive="/var/backups/job-search-platform/pre-deploy-$tag-$stamp"
 # A consistent backup needs the maintenance lock the running app holds, so the app is stopped around it.
-systemctl stop job-search-platform
+systemctl stop job-search-platform || { echo "could not stop app for backup; nothing deployed, app state unknown" >&2; exit 1; }
 backup_ok=1
 as_jsp "cd '$previous' && uv run --locked --project backend python scripts/backup.py --archive '$archive'" || backup_ok=0
-systemctl start job-search-platform
+systemctl start job-search-platform || { echo "could not restart app after backup; app is DOWN on $previous, nothing deployed" >&2; exit 1; }
 [[ "$backup_ok" == 1 ]] || { echo "pre-deploy backup failed; nothing deployed, previous release restarted" >&2; exit 1; }
 
 as_jsp "cd '$release' && npm ci --prefix frontend && npm run build --prefix frontend"
@@ -74,15 +74,15 @@ if ! wait_ready "https://$DOMAIN/api/v1/health/ready" 60; then
     apply_infra "$previous" || echo "previous infra restart failed" >&2
   fi
   # If the new release already migrated the schema, the previous code must not run on it.
-  prev_db_head="$(as_jsp "cd '$previous' && uv run --locked --project backend python scripts/migration_state.py db-head")"
+  prev_db_head="$(as_jsp "cd '$previous' && uv run --locked --project backend python scripts/migration_state.py db-head")" || { echo "cannot read database head with previous release; app on $previous may be running against a migrated schema, check it and the pre-deploy backup $archive" >&2; exit 1; }
   if ! as_jsp "cd '$previous' && uv run --locked --project backend python scripts/migration_state.py knows '$prev_db_head'"; then
-    systemctl stop job-search-platform
+    systemctl stop job-search-platform || { echo "could not stop app; it may still run $previous on an incompatible schema" >&2; exit 1; }
     guard_schema "$prev_db_head" "$(as_jsp "cd '$previous' && uv run --locked --project backend python scripts/migration_state.py code-head")" || true
     echo "app left stopped; restore the pre-deploy backup:" >&2
     echo "  uv run --locked --project backend python scripts/restore.py --archive $archive --target-database <db> --target-bucket <bucket>" >&2
     exit 1
   fi
-  systemctl restart job-search-platform
+  systemctl restart job-search-platform || { echo "restart of previous release $previous failed; app is down, current points at it" >&2; exit 1; }
   if wait_ready "https://$DOMAIN/api/v1/health/ready" 60; then
     echo "previous release $previous is healthy again" >&2
   else

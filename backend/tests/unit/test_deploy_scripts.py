@@ -166,8 +166,11 @@ def test_shell_scripts_parse():
 def test_backup_stops_app_around_backup():
     unit = (DEPLOY / "job-search-backup.service").read_text()
     assert "After=docker.service" in unit
-    assert "ExecStartPre=+/usr/bin/systemctl stop job-search-platform" in unit
-    assert "ExecStopPost=+/usr/bin/systemctl start job-search-platform" in unit
+    assert "RuntimeDirectory=job-search-backup" in unit
+    pre = next(line for line in unit.splitlines() if line.startswith("ExecStartPre="))
+    post = next(line for line in unit.splitlines() if line.startswith("ExecStopPost="))
+    assert "is-active --quiet job-search-platform" in pre and "was-active" in pre and "systemctl stop job-search-platform" in pre
+    assert "-f /run/job-search-backup/was-active" in post and "systemctl start job-search-platform" in post
     assert "ExecStartPost=/usr/bin/find" in unit
     text = (DEPLOY / "deploy.sh").read_text()
     stop = text.index("systemctl stop job-search-platform")
@@ -201,3 +204,26 @@ def test_deploy_verifies_tag_not_branch_after_clone():
 def test_edge_hardening():
     assert "admin off" in (DEPLOY / "Caddyfile").read_text()
     assert "ufw allow 443/udp" in (DEPLOY / "cloud-init.yaml").read_text()
+
+
+def test_fetch_all_pinned_stops_at_first_failed_step(tmp_path):
+    log = tmp_path / "log"
+    for failing in ("pin", "fetch_pinned"):
+        log.write_text("")
+        pin_body = f'echo "pin $1" >> {log}; ' + ('return 1' if failing == "pin" else 'echo abc123')
+        fetch_body = f'echo "fetch $1" >> {log}; ' + ('return 1' if failing == "fetch_pinned" else 'true')
+        result = _sh(f"pin() {{ {pin_body}; }}; fetch_pinned() {{ {fetch_body}; }}; "
+                     "if ! fetch_all_pinned; then echo FAILED; fi")
+        assert "FAILED" in result.stdout, failing
+        assert len(log.read_text().splitlines()) == (1 if failing == "pin" else 2), (failing, log.read_text())
+    # empty commit from pin is also a failure
+    log.write_text("")
+    result = _sh(f"pin() {{ echo; }}; fetch_pinned() {{ echo fetch >> {log}; }}; if ! fetch_all_pinned; then echo FAILED; fi")
+    assert "FAILED" in result.stdout and log.read_text() == ""
+
+
+def test_apply_infra_propagates_every_step_failure():
+    text = (DEPLOY / "deploy.sh").read_text()
+    apply = text.split("apply_infra() {", 1)[1].split("\n}\n", 1)[0]
+    steps = [line for line in apply.splitlines()[2:-1] if line.strip() and not line.strip().startswith("#")]
+    assert all("|| return 1" in line for line in steps[:-1]), steps

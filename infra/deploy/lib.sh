@@ -57,9 +57,16 @@ fetch_pinned() {  # name url commit
 pin() { as_jsp "cd '$release' && uv run --locked --project backend python -c 'import sys; sys.path.insert(0, \"scripts\"); import local_infra; print(local_infra.$1)'"; }
 
 fetch_all_pinned() {
-  fetch_pinned minio https://github.com/minio/minio.git "$(pin MINIO_COMMIT)"
-  fetch_pinned gosu https://github.com/tianon/gosu.git "$(pin GOSU_COMMIT)"
-  fetch_pinned prometheus https://github.com/prometheus/prometheus.git "$(pin PROMETHEUS_COMMIT)"
-  fetch_pinned caddy https://github.com/caddyserver/caddy.git "$(pin CADDY_COMMIT)"
-  fetch_pinned grafana-prometheus-datasource https://github.com/grafana/grafana-prometheus-datasource.git "$(pin GRAFANA_PROM_DS_COMMIT)"
+  local entry name url key c
+  for entry in \
+    "minio https://github.com/minio/minio.git MINIO_COMMIT" \
+    "gosu https://github.com/tianon/gosu.git GOSU_COMMIT" \
+    "prometheus https://github.com/prometheus/prometheus.git PROMETHEUS_COMMIT" \
+    "caddy https://github.com/caddyserver/caddy.git CADDY_COMMIT" \
+    "grafana-prometheus-datasource https://github.com/grafana/grafana-prometheus-datasource.git GRAFANA_PROM_DS_COMMIT"; do
+    read -r name url key <<<"$entry"
+    c="$(pin "$key")" || return 1 # a failed pin must not pass an empty commit on
+    [[ -n "$c" ]] || return 1
+    fetch_pinned "$name" "$url" "$c" || return 1
+  done
 }
