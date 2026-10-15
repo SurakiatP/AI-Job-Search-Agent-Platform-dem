@@ -269,6 +269,7 @@ services:
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
       GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GRAFANA_PROMETHEUS_URL: ${GRAFANA_PROMETHEUS_URL:-http://prometheus:9090}
     secrets:
       - grafana-admin-password
     volumes:

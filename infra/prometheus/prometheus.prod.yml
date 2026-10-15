@@ -1,0 +1,13 @@
+# Production scrape config (host networking). Keep in step with prometheus.yml; only targets differ.
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+rule_files:
+  - /etc/prometheus/rules.yml
+scrape_configs:
+  - job_name: app
+    static_configs:
+      - targets: ["127.0.0.1:59464"]
+  - job_name: prometheus
+    static_configs:
+      - targets: ["127.0.0.1:59090"]

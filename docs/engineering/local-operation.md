@@ -23,11 +23,15 @@ export MINIO_SOURCE_DIR="$UPSTREAM_ROOT/minio"
 rtk git clone --no-checkout https://github.com/prometheus/prometheus.git "$UPSTREAM_ROOT/prometheus"
 rtk git -C "$UPSTREAM_ROOT/prometheus" fetch --depth 1 origin 5241a27fe3c6983549fccc32f6e65917408c63cd
 rtk git -C "$UPSTREAM_ROOT/prometheus" checkout --detach 5241a27fe3c6983549fccc32f6e65917408c63cd
+rtk git clone --no-checkout https://github.com/caddyserver/caddy.git "$UPSTREAM_ROOT/caddy"
+rtk git -C "$UPSTREAM_ROOT/caddy" fetch --depth 1 origin 72dd0fb067f6d7826c7f79907670ba4a713bfe37
+rtk git -C "$UPSTREAM_ROOT/caddy" checkout --detach 72dd0fb067f6d7826c7f79907670ba4a713bfe37
 rtk git clone --no-checkout https://github.com/grafana/grafana-prometheus-datasource.git "$UPSTREAM_ROOT/grafana-prometheus-datasource"
 rtk git -C "$UPSTREAM_ROOT/grafana-prometheus-datasource" fetch --depth 1 origin 6d21418acde6ce31c9f7a6418a88758842a881bb
 rtk git -C "$UPSTREAM_ROOT/grafana-prometheus-datasource" checkout --detach 6d21418acde6ce31c9f7a6418a88758842a881bb
 export GOSU_SOURCE_DIR="$UPSTREAM_ROOT/gosu"
 export PROMETHEUS_SOURCE_DIR="$UPSTREAM_ROOT/prometheus"
+export CADDY_SOURCE_DIR="$UPSTREAM_ROOT/caddy"  # production override only
 export GRAFANA_PROM_DS_SOURCE_DIR="$UPSTREAM_ROOT/grafana-prometheus-datasource"
 ```
 
@@ -37,7 +41,7 @@ The source paths must be clean. Do not place a checkout inside this repository. 
 rtk python3 infra/hermes/setup.py --acquire --build
 ```
 
-That operation needs network access, Docker, and the pinned build toolchains. Keep the emitted manifest in the private cache. For full dependency scans, set `HERMES_SOURCE_DIR` and `CAREER_OPS_SOURCE_DIR` to the corresponding acquired checkout paths and `HERMES_ENV_DIR` to the prepared Hermes environment path. Also set `MINIO_SOURCE_DIR`, `GOSU_SOURCE_DIR`, `PROMETHEUS_SOURCE_DIR` and `GRAFANA_PROM_DS_SOURCE_DIR` as above. No credential values are needed for these checks.
+That operation needs network access, Docker, and the pinned build toolchains. Keep the emitted manifest in the private cache. For full dependency scans, set `HERMES_SOURCE_DIR` and `CAREER_OPS_SOURCE_DIR` to the corresponding acquired checkout paths and `HERMES_ENV_DIR` to the prepared Hermes environment path. Also set `MINIO_SOURCE_DIR`, `GOSU_SOURCE_DIR`, `PROMETHEUS_SOURCE_DIR`, `CADDY_SOURCE_DIR` and `GRAFANA_PROM_DS_SOURCE_DIR` as above. No credential values are needed for these checks.
 
 ## Start the local services and app
 
@@ -311,3 +315,10 @@ rtk uv run --locked --project backend python scripts/run_local.py --open-browser
 ```
 
 Keep `CORE02_PRIVATE_DIR` pointing at the private infrastructure credentials for that target. These are local operator settings, never caller-selected protocol parameters. The same exact database/bucket identity controls maintenance and failed-restore quarantine. Only use targets whose restore completed; restarting does not clear an incomplete-restore marker.
+
+## Production on one VM
+
+The single-VM systemd deployment (Caddy HTTPS, timers, backups, rollback) is in [`infra/deploy/README.md`](../../infra/deploy/README.md). Two things differ from local operation:
+
+- `CORE02_COMPOSE_OVERRIDE=infra/compose.prod.yaml` makes `local_infra.py` layer the production Compose override (Caddy, host-networked Prometheus and Grafana on loopback). Unset locally.
+- `run_local.py` trusts `X-Forwarded-For` only from `127.0.0.1` (`proxy_headers=True, forwarded_allow_ips="127.0.0.1"`, set explicitly so `FORWARDED_ALLOW_IPS` cannot widen it), which is where Caddy connects from. Rate limiting therefore sees the real client address behind Caddy and ignores the header from any other peer.

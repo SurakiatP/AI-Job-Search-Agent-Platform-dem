@@ -24,6 +24,9 @@ DEFAULT_PRIVATE_DIR = Path(os.environ.get("CORE02_PRIVATE_DIR") or Path.home() /
 DEFAULT_MINIO_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "minio"
 PROMETHEUS_COMMIT = "5241a27fe3c6983549fccc32f6e65917408c63cd"
 DEFAULT_PROMETHEUS_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "prometheus"
+CADDY_COMMIT = "72dd0fb067f6d7826c7f79907670ba4a713bfe37"  # caddy v2.11.7
+DEFAULT_CADDY_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "caddy"
+CADDY_BUILDER_IMAGE = GOSU_BUILDER_IMAGE  # same pinned golang:1.27.2-bookworm digest
 PROMETHEUS_BUILDER_IMAGE = GOSU_BUILDER_IMAGE  # same pinned golang:1.27.2-bookworm digest
 GRAFANA_PROM_DS_COMMIT = "6d21418acde6ce31c9f7a6418a88758842a881bb"  # grafana-prometheus-datasource v13.2.3
 DEFAULT_GRAFANA_PROM_DS_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "grafana-prometheus-datasource"
@@ -195,18 +198,41 @@ def prepare_private_directory(path: Path = DEFAULT_PRIVATE_DIR, repo_root: Path 
     return validate_private_directory(expanded, repository)
 
 
+def group_read_enabled() -> bool:
+    """Servers set CORE02_SECRETS_GROUP_READ=1: containers read bind-mounted secrets through the owner's group."""
+    return os.environ.get("CORE02_SECRETS_GROUP_READ", "").strip() == "1"
+
+
+def secret_file_mode() -> int:
+    return 0o640 if group_read_enabled() else 0o600
+
+
+def secret_file_forbidden_bits() -> int:
+    return 0o037 if group_read_enabled() else 0o077
+
+
+def group_readable_private_files(private_dir: Path) -> None:
+    """Flag set: chmod existing secret and derived files 0640 (only ever from 0600, never wider)."""
+    if not group_read_enabled():
+        return
+    for name in (*SECRET_NAMES, *DERIVED_NAMES, APP_KEY_FILE):
+        path = private_dir / name
+        if path.is_file() and not path.is_symlink() and stat.S_IMODE(path.stat().st_mode) == 0o600:
+            path.chmod(0o640)
+
+
 def _check_secret_file(path: Path) -> None:
     if path.is_symlink() or not path.is_file():
         raise ConfigurationError("credential_file_invalid")
-    if stat.S_IMODE(path.stat().st_mode) & 0o077:
+    if stat.S_IMODE(path.stat().st_mode) & secret_file_forbidden_bits():
         raise ConfigurationError("credential_file_permissions")
 
 
 def _write_owner_only(path: Path, text: str) -> None:
-    """Create or replace a 0600 file without following a symlink."""
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    """Create or replace a 0600 (flag: 0640) file without following a symlink."""
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, secret_file_mode())
     with os.fdopen(descriptor, "w", encoding="utf-8") as output:
-        os.fchmod(output.fileno(), 0o600)
+        os.fchmod(output.fileno(), secret_file_mode())
         output.write(text)
         output.flush()
         os.fsync(output.fileno())
@@ -238,6 +264,7 @@ def ensure_credentials(private_dir: Path) -> None:
         if path.exists():
             continue
         descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.fchmod(descriptor, secret_file_mode())
         with os.fdopen(descriptor, "w", encoding="utf-8") as output:
             output.write(generate())
             output.write("\n")
@@ -254,6 +281,7 @@ def ensure_credentials(private_dir: Path) -> None:
         _check_secret_file(app_key)
     else:
         os.close(os.open(app_key, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600))
+        app_key.chmod(secret_file_mode())
 
 
 def validate_minio_source(path: Path) -> Path:
@@ -293,12 +321,15 @@ def validate_minio_source(path: Path) -> Path:
 def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     environment = os.environ.copy()
     environment["CORE02_PRIVATE_DIR"] = str(private_dir)
+    environment["CORE02_SECRETS_GID"] = str(os.stat(private_dir).st_gid)  # prod override group_adds it
     environment["MINIO_SOURCE_DIR"] = str(source_dir)
     environment["MINIO_SOURCE_COMMIT"] = MINIO_COMMIT
     environment["GOSU_SOURCE_DIR"] = str(Path(os.environ.get("GOSU_SOURCE_DIR", str(DEFAULT_GOSU_SOURCE))).expanduser().resolve())
     environment["GOSU_SOURCE_COMMIT"] = GOSU_COMMIT
     environment["PROMETHEUS_SOURCE_DIR"] = str(Path(os.environ.get("PROMETHEUS_SOURCE_DIR", str(DEFAULT_PROMETHEUS_SOURCE))).expanduser().resolve())
     environment["PROMETHEUS_SOURCE_COMMIT"] = PROMETHEUS_COMMIT
+    environment["CADDY_SOURCE_DIR"] = str(Path(os.environ.get("CADDY_SOURCE_DIR", str(DEFAULT_CADDY_SOURCE))).expanduser().resolve())
+    environment["CADDY_SOURCE_COMMIT"] = CADDY_COMMIT
     environment["GRAFANA_PROM_DS_SOURCE_DIR"] = str(Path(os.environ.get("GRAFANA_PROM_DS_SOURCE_DIR", str(DEFAULT_GRAFANA_PROM_DS_SOURCE))).expanduser().resolve())
     environment["GRAFANA_PROM_DS_SOURCE_COMMIT"] = GRAFANA_PROM_DS_COMMIT
     environment.setdefault("CORE02_POSTGRES_PORT", "55432")
@@ -317,6 +348,12 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     return environment
 
 
+def validate_caddy_build_inputs() -> None:
+    validate_pinned_source(Path(os.environ.get("CADDY_SOURCE_DIR", str(DEFAULT_CADDY_SOURCE))),
+                           CADDY_COMMIT, "caddy", ("go.mod", "go.sum", "LICENSE", "cmd/caddy/main.go"))
+    validate_go_overlay(ROOT / "infra" / "caddy", CADDY_COMMIT, "caddy")
+
+
 def validate_observability_build_inputs() -> None:
     validate_pinned_source(Path(os.environ.get("PROMETHEUS_SOURCE_DIR", str(DEFAULT_PROMETHEUS_SOURCE))),
                            PROMETHEUS_COMMIT, "prometheus", ("go.mod", "go.sum", "LICENSE", "NOTICE", "scripts/compress_assets.sh"))
@@ -333,6 +370,13 @@ def _compose(
     *,
     timeout: int = 120,
 ) -> subprocess.CompletedProcess[str]:
+    override = os.environ.get("CORE02_COMPOSE_OVERRIDE", "").strip()
+    extra: list[str] = []
+    if override:
+        path = Path(override) if Path(override).is_absolute() else ROOT / override
+        if not path.is_file():
+            raise ConfigurationError("compose_override_missing")
+        extra = ["--file", str(path)]
     command = [  # callers put global flags (--profile) first in `action`
         "docker",
         "compose",
@@ -340,6 +384,7 @@ def _compose(
         "jobsearch-core02",
         "--file",
         str(COMPOSE_FILE),
+        *extra,
         *action,
     ]
     validate_gosu_source(Path(os.environ.get("GOSU_SOURCE_DIR", str(DEFAULT_GOSU_SOURCE))))
@@ -358,6 +403,8 @@ def _compose(
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ConfigurationError("compose_command_unavailable_or_timed_out") from exc
     if result.returncode:
+        tail = "\n".join((result.stderr or "").splitlines()[-40:])
+        print(f"compose stderr (last 40 lines):\n{tail}", file=sys.stderr)
         raise ConfigurationError(f"compose_{action[2] if action[0] == '--profile' else action[0]}_failed")
     return result
 
@@ -415,6 +462,7 @@ Regenerated by `scripts/local_infra.py start` from `{private_dir}`; the files th
 - Internal services (langfuse-db, langfuse-clickhouse, langfuse-valkey, langfuse-minio) have no host port; their passwords are the `langfuse-*` files in the private dir.
 """
     _write_owner_only(target, text)
+    target.chmod(0o600)  # repo-root summary, never group-readable
     return target
 
 
@@ -422,11 +470,14 @@ def start(private_dir: Path, source_dir: Path) -> dict[str, str]:
     private_dir = prepare_private_directory(private_dir)
     source_dir = validate_minio_source(source_dir)
     ensure_credentials(private_dir)
+    group_readable_private_files(private_dir)
     if not os.environ.get("OPENROUTER_API_KEY"):
         print("warning: OPENROUTER_API_KEY not set; LiteLLM has no provider key and model calls will fail", file=sys.stderr)
     langfuse = langfuse_enabled()
     profile = LANGFUSE_PROFILE if langfuse else []
     validate_observability_build_inputs()
+    if os.environ.get("CORE02_COMPOSE_OVERRIDE", "").strip():  # the prod override adds the source-built Caddy
+        validate_caddy_build_inputs()
     _compose([*profile, "up", "--detach", "--build", "--wait", "--wait-timeout", "300"], private_dir, source_dir, timeout=3600)
     try:  # one-shot seed is profiled out of `up --wait`, which treats its exit as failure
         _compose(["--profile", "seed", "run", "--rm", "litellm-seed"], private_dir, source_dir, timeout=300)

@@ -15,7 +15,7 @@ from typing import Any
 
 from check_dependencies import REQUIRED_SCANS, evaluate_scan_coverage
 
-IMAGE_SCOPES = ("postgres_image", "minio_image", "hermes_image", "prometheus_image", "grafana_image")
+IMAGE_SCOPES = ("postgres_image", "minio_image", "hermes_image", "prometheus_image", "grafana_image", "caddy_image")
 
 
 ROOT = Path(__file__).resolve().parents[1]

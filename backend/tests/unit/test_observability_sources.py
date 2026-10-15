@@ -152,3 +152,90 @@ def test_start_validates_observability_sources_before_compose(monkeypatch, tmp_p
 
 def test_start_timeout_covers_first_prometheus_build():
     assert "timeout=3600)" in (ROOT / "scripts/local_infra.py").read_text().split("def start(")[1].split("def status(")[0]
+
+
+def test_compose_override_appended_only_when_set(monkeypatch, tmp_path):
+    calls = _stub_pre_a1(monkeypatch, tmp_path)
+    monkeypatch.delenv("CORE02_COMPOSE_OVERRIDE", raising=False)
+    local_infra._compose(["ps"], tmp_path, tmp_path)
+    assert calls[-1].count("--file") == 1
+    override = tmp_path / "compose.prod.yaml"
+    override.write_text("services: {}\n")
+    monkeypatch.setenv("CORE02_COMPOSE_OVERRIDE", str(override))
+    local_infra._compose(["ps"], tmp_path, tmp_path)
+    files = [calls[-1][i + 1] for i, part in enumerate(calls[-1]) if part == "--file"]
+    assert files == [str(local_infra.COMPOSE_FILE), str(override)]
+    assert calls[-1][-1] == "ps"
+
+
+def test_compose_override_must_exist(monkeypatch, tmp_path):
+    _stub_pre_a1(monkeypatch, tmp_path)
+    monkeypatch.setenv("CORE02_COMPOSE_OVERRIDE", str(tmp_path / "missing.yaml"))
+    with pytest.raises(local_infra.ConfigurationError, match="compose_override_missing"):
+        local_infra._compose(["ps"], tmp_path, tmp_path)
+
+
+def test_grafana_datasource_url_comes_from_env():
+    ds = (ROOT / "infra/grafana/provisioning/datasources/prometheus.yml").read_text()
+    assert "url: ${GRAFANA_PROMETHEUS_URL}" in ds
+    import yaml
+    env = yaml.safe_load((ROOT / "infra/compose.yaml").read_text())["services"]["grafana"]["environment"]
+    assert env["GRAFANA_PROMETHEUS_URL"] == "${GRAFANA_PROMETHEUS_URL:-http://prometheus:9090}"
+
+
+def test_caddy_overlay_matches_provenance():
+    provenance, digests = _overlay(ROOT / "infra/caddy")
+    assert provenance["source_commit"] == local_infra.CADDY_COMMIT
+    assert provenance["builder_image"] == local_infra.CADDY_BUILDER_IMAGE
+    assert provenance["go_mod_sha256"] == digests["go.mod"] and provenance["go_sum_sha256"] == digests["go.sum"]
+    assert "golang.org/x/net v0.60.0" in (ROOT / "infra/caddy/go.mod").read_text()
+    local_infra.validate_go_overlay(ROOT / "infra/caddy", local_infra.CADDY_COMMIT, "caddy")
+
+
+def test_caddy_dockerfile_pins_inputs():
+    text = (ROOT / "infra/caddy/Dockerfile").read_text()
+    provenance = json.loads((ROOT / "infra/caddy/provenance.json").read_text())
+    for value in (local_infra.CADDY_BUILDER_IMAGE, provenance["base_image"], local_infra.CADDY_COMMIT, "go1.27.2",
+                  "--from=caddy_source", "-mod=readonly", "-trimpath", "GOTOOLCHAIN=local", "go mod verify",
+                  "/etc/ssl/certs/ca-certificates.crt", "XDG_CONFIG_HOME=/config", "XDG_DATA_HOME=/data",
+                  "/licenses/caddy/LICENSE", "EXPOSE 80 443"):
+        assert value in text
+    assert "go mod download" in text and text.index("go mod download") < text.index("go mod verify")
+
+
+def test_caddy_build_inputs_are_checked_only_with_compose_override(monkeypatch, tmp_path):
+    calls = _stub_pre_a1(monkeypatch, tmp_path)
+    monkeypatch.setattr(local_infra, "validate_observability_build_inputs", lambda: None)
+    monkeypatch.setattr(local_infra, "langfuse_enabled", lambda: False)
+    monkeypatch.setattr(local_infra, "write_credentials_summary", lambda *a: None)
+    monkeypatch.delenv("CORE02_COMPOSE_OVERRIDE", raising=False)
+    monkeypatch.setenv("CADDY_SOURCE_DIR", str(tmp_path / "missing"))
+    local_infra.start(tmp_path, tmp_path)  # dev start never needs a Caddy checkout
+    assert calls
+    calls.clear()
+    (tmp_path / "compose.prod.yaml").write_text("services: {}\n")
+    monkeypatch.setenv("CORE02_COMPOSE_OVERRIDE", str(tmp_path / "compose.prod.yaml"))
+    with pytest.raises(local_infra.ConfigurationError, match="caddy_source"):
+        local_infra.start(tmp_path, tmp_path)
+    assert calls == []
+    local_infra.status(tmp_path, tmp_path)
+    local_infra.stop(tmp_path, tmp_path)  # status/stop never validate it
+
+
+def test_caddy_compose_environment_pins_source(monkeypatch, tmp_path):
+    monkeypatch.delenv("CADDY_SOURCE_DIR", raising=False)
+    env = local_infra.compose_environment(tmp_path, tmp_path)
+    assert env["CADDY_SOURCE_COMMIT"] == local_infra.CADDY_COMMIT
+    assert env["CADDY_SOURCE_DIR"] == str(local_infra.DEFAULT_CADDY_SOURCE.resolve())
+
+
+def test_compose_failure_shows_stderr(monkeypatch, tmp_path, capsys):
+    _stub_pre_a1(monkeypatch, tmp_path)
+    err = "\n".join(f"line{i}" for i in range(60)) + "\nmanifest not found"
+    monkeypatch.setattr(local_infra.subprocess, "run",
+                        lambda command, **k: subprocess.CompletedProcess(command, 1, "", err))
+    with pytest.raises(local_infra.ConfigurationError, match="compose_ps_failed"):
+        local_infra._compose(["ps"], tmp_path, tmp_path)
+    shown = capsys.readouterr().err
+    assert "compose stderr (last 40 lines):" in shown
+    assert "manifest not found" in shown and "line0\n" not in shown

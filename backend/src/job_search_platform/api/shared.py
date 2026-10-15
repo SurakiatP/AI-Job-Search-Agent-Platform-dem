@@ -49,7 +49,9 @@ def create_shared_app(services: Services, *, host: str, port: int) -> Starlette:
         async with mcp_lifespan_context(mcp):
             yield
 
-    a2a = create_a2a_app(services, base_url=f"http://{authority}", allowed_hosts=[authority])
+    # behind the proxy A2A is reached (and must advertise itself) on the public origin too
+    a2a = create_a2a_app(services, base_url=oauth.issuer if oauth else f"http://{authority}",
+                         allowed_hosts=[authority, *public])
     # ponytail: without OAuth the A2A catch-all would answer 401 on discovery paths; clients need a plain 404 there.
     off = [] if oauth else [Route(p, _not_found) for p in ("/.well-known/oauth-authorization-server", "/.well-known/oauth-protected-resource/mcp")]
     routes = [*(oauth_routes(oauth) if oauth else off), Mount("/mcp", app=mcp), Mount("/", app=a2a)]

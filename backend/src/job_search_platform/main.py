@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 from urllib.parse import urlsplit
 import stat
 from contextlib import asynccontextmanager
@@ -63,7 +64,7 @@ RUNTIME_METADATA = Path.home() / ".cache" / "job-search-platform" / "hermes-runt
 
 def _private_text(name: str) -> str:
     path = PRIVATE_DIR / name
-    if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & 0o077:
+    if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & config.secret_file_forbidden_bits():
         raise RuntimeError("private_runtime_credentials_unavailable")
     return path.read_text(encoding="utf-8").strip()
 
@@ -87,6 +88,10 @@ def _owner_sessions(sessions) -> OwnerSessions:
             raise RuntimeError("development_origin_must_be_loopback")
         extra.add(dev)
     return OwnerSessions(sessions, public_origin=public or "http://127.0.0.1:8000", extra_origins=frozenset(extra))
+
+
+def _secret_store():
+    return MacOSKeychain() if sys.platform == "darwin" else None  # no caller reads it; Keychain exists only on macOS
 
 
 def build_services() -> Services:
@@ -127,7 +132,7 @@ def build_services() -> Services:
     except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
         raise RuntimeError("native_runtime_metadata_unavailable") from None
     runtime = HermesRuntime(image)
-    secrets = MacOSKeychain()
+    secrets = _secret_store()
     settings = Settings(sessions)
     runs = RunService(sessions)
     files = Files(sessions, store, runtime)

@@ -16,6 +16,13 @@ sys.path.insert(0, str(ROOT / "backend" / "src"))
 from job_search_platform.main import _migrate, acquire_service_maintenance, build_services, create_app  # noqa: E402
 
 
+def _server_config(app, host: str, port: int):
+    import uvicorn
+    # Caddy proxies from loopback; pin trust so FORWARDED_ALLOW_IPS cannot widen it.
+    return uvicorn.Config(app, host=host, port=port, access_log=False, log_config=None,
+                          proxy_headers=True, forwarded_allow_ips="127.0.0.1")
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", choices=("127.0.0.1", "::1"), default="127.0.0.1")
@@ -57,8 +64,7 @@ async def _launch(args: argparse.Namespace) -> int:
 
         import uvicorn
 
-        server = uvicorn.Server(uvicorn.Config(app, host=args.host, port=args.port,
-                                               access_log=False, log_config=None))
+        server = uvicorn.Server(_server_config(app, args.host, args.port))
         shared_task = None
         shared_server = None
         try:
@@ -67,10 +73,9 @@ async def _launch(args: argparse.Namespace) -> int:
                 class SharedServer(uvicorn.Server):
                     def capture_signals(self):
                         return nullcontext()
-                shared_server = SharedServer(uvicorn.Config(
+                shared_server = SharedServer(_server_config(
                     create_shared_app(services, host=args.share_host, port=args.share_port),
-                    host=args.share_host, port=args.share_port, access_log=False, log_config=None,
-                ))
+                    args.share_host, args.share_port))
                 shared_task = asyncio.create_task(shared_server.serve())
                 for _ in range(100):
                     if shared_task.done():
