@@ -102,3 +102,29 @@ Accepted under the owner's option A (loopback only, private network, metadata-on
 
 - `prometheus-client==0.26.0` (Apache-2.0, pure Python, no required dependencies). App metrics for WP1 observability (spec 2026-10-15-observability-metrics-design.md).
 - `pip-audit --strict` over the exported all-groups requirements (2026-10-15 04:20 UTC): 0 advisories.
+
+## Prometheus and Grafana images (2026-10-15)
+
+Both images are built from pinned source. The upstream images are no longer used.
+
+Upstream scan before the change (Trivy 0.75.0, `--severity HIGH,CRITICAL`):
+
+| Image | High | Critical |
+|---|---|---|
+| `prom/prometheus:v3.15.0` | 8 | 0 |
+| `grafana/grafana:13.2.4` | 56 | 0 |
+
+The findings were CVE-2026-78667, CVE-2026-78669 and CVE-2026-97031 in the Go standard library (1.27.1 and 1.26.x) and in `golang.org/x/net` 0.58 to 0.59. All of Grafana's findings sit in the bundled datasource plugin binaries.
+
+Pinned inputs (from `infra/prometheus/provenance.json`, `infra/grafana/provenance.json` and `backend/pyproject.toml`):
+
+- Builder, both images: `golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61`, with `golang.org/x/net` `v0.60.0` in the `go.mod`/`go.sum` overlay (hash-checked against `provenance.json`).
+- Prometheus: source `https://github.com/prometheus/prometheus` at `5241a27fe3c6983549fccc32f6e65917408c63cd` (tag v3.15.0, Apache-2.0); web UI asset `prometheus-web-ui-3.15.0.tar.gz`, sha256 `fa8c918ed05e3f89e232e9b69eccd6ed074602cd9e8a2cab7a92bec9651974ae`; runtime base `quay.io/prometheus/busybox:latest@sha256:0dcbf965a16f76d5aac8905769f72e43b22862cd01f6f42c7b62955aeb489c3c` (multi-arch index). Image tag `job-search-platform/prometheus:3.15.0-go1.27.2-5241a27fe3c6`.
+- Grafana: base `grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f` (multi-arch index); plugin source `https://github.com/grafana/grafana-prometheus-datasource` at `6d21418acde6ce31c9f7a6418a88758842a881bb` (tag v13.2.3, AGPL-3.0-only). Image tag `job-search-platform/grafana:13.2.4-promds13.2.3-go1.27.2-6d21418acde6`.
+- The source checkouts live outside the repository (`PROMETHEUS_SOURCE_DIR`, `GRAFANA_PROM_DS_SOURCE_DIR`); `scripts/local_infra.py` requires them clean and detached at the pinned commit before any compose call.
+
+Result of the local builds: `trivy image --scanners vuln --severity HIGH,CRITICAL` (Trivy 0.75.0, DB built 2026-10-15 01:13 UTC) reports 0 High and 0 Critical for both images.
+
+Unsigned-plugin decision (spec A1.4): the rebuilt Prometheus datasource no longer matches Grafana's signed `MANIFEST.txt`, so it fails the signature check. The Grafana image deletes that manifest, removes every other bundled plugin, sets `GF_PLUGINS_PREINSTALL_DISABLED=true` and allows exactly one unsigned plugin id with `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=prometheus`. Consequence: Grafana loads a plugin that upstream did not sign, so its trust rests on the pinned commit, the hash-checked overlay and the local build, not on a signature. A test with a mounted fake unsigned plugin confirmed that other unsigned plugins are still rejected. Only the Prometheus datasource is available in this Grafana; any other datasource needs a reviewed image change.
+
+`scripts/security_scan.py` now has the image scopes `prometheus_image` and `grafana_image` (alongside `postgres_image`, `minio_image` and `hermes_image`), and `scripts/check_dependencies.py` checks both pinned commits. Re-scan on every Prometheus, Grafana, plugin or builder bump.
