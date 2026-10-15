@@ -201,6 +201,7 @@ Controller rulings made while planning and building; they supersede the text abo
 6. **`deploy.sh` re-applies infra and re-checks health after rollback.** When `infra/` changed it starts the previous release's stack again and polls readiness, and it still exits non-zero so the failure is visible.
 7. **`CORE02_PRIVATE_DIR` is `/etc/job-search-platform/private/core02`.** It sits under the secrets directory (0700, owned by `jsp`) instead of `~jsp/.cache`, so credentials back up and permission with the other secrets.
 8. **Caddy checkout is production-only.** `validate_caddy_build_inputs()` runs only when `CORE02_COMPOSE_OVERRIDE` is set, so local development needs no Caddy checkout.
+9. **The app is stopped around every backup.** Consistent backups need the maintenance lock (CORE-10), which the running app holds, so `job-search-backup.service` stops the app before and starts it after (success or failure), and `deploy.sh` does the same around its pre-deploy backup. Cost: a nightly downtime of a few minutes at 03:00 server time; in-flight runs follow the existing interruption handling.
 
 ## Out of scope
 
