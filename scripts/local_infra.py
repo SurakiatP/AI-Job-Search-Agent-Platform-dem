@@ -305,6 +305,13 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     environment.setdefault("CORE02_MINIO_PORT", "59000")
     environment.setdefault("CORE02_LITELLM_PORT", "54000")
     environment.setdefault("CORE02_LANGFUSE_PORT", "53000")
+    environment.setdefault("CORE02_MEILI_PORT", "57700")
+    environment.setdefault("CORE02_PROMETHEUS_PORT", "59090")
+    environment.setdefault("CORE02_GRAFANA_PORT", "53300")
+    environment.setdefault("CORE02_MAILPIT_SMTP_PORT", "51025")
+    environment.setdefault("CORE02_MAILPIT_UI_PORT", "58025")
+    environment.setdefault("PROMETHEUS_RETENTION", "15d")
+    environment.setdefault("GRAFANA_ADMIN_USER", "admin")
     environment["OPENROUTER_API_KEY"] = os.environ.get("OPENROUTER_API_KEY", "")  # reaches only litellm
     environment["OPENROUTER_KEY_PRESENT"] = "1" if environment["OPENROUTER_API_KEY"] else ""  # flag for the seed
     return environment

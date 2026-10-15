@@ -38,8 +38,10 @@ def test_services_pinned_and_loopback_only():
     assert gbuild["context"] == "./grafana"
     assert gbuild["additional_contexts"]["grafana_prom_ds_source"].startswith("${GRAFANA_PROM_DS_SOURCE_DIR:?")
     assert gbuild["args"]["GRAFANA_PROM_DS_SOURCE_COMMIT"].startswith("${GRAFANA_PROM_DS_SOURCE_COMMIT:?")
-    assert prom["ports"] == ["127.0.0.1:59090:9090"] and grafana["ports"] == ["127.0.0.1:53300:3000"]
-    assert "--storage.tsdb.retention.time=15d" in prom["command"]
+    assert prom["ports"] == ["127.0.0.1:${CORE02_PROMETHEUS_PORT:-59090}:9090"]
+    assert grafana["ports"] == ["127.0.0.1:${CORE02_GRAFANA_PORT:-53300}:3000"]
+    assert grafana["environment"]["GF_SECURITY_ADMIN_USER"] == "${GRAFANA_ADMIN_USER:-admin}"
+    assert "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}" in prom["command"]
     assert "host.docker.internal:host-gateway" in prom["extra_hosts"]
     env = grafana["environment"]
     for key in ("GF_AUTH_ANONYMOUS_ENABLED", "GF_USERS_ALLOW_SIGN_UP", "GF_ANALYTICS_REPORTING_ENABLED",
@@ -48,6 +50,17 @@ def test_services_pinned_and_loopback_only():
     assert env["GF_SECURITY_ADMIN_PASSWORD__FILE"] == "/run/secrets/grafana-admin-password"
     assert "grafana-admin-password" in grafana["secrets"]
     assert "grafana-admin-password" in _compose()["secrets"]
+
+
+def test_mailpit_ports_use_env():
+    assert _compose()["services"]["mailpit"]["ports"] == [
+        "127.0.0.1:${CORE02_MAILPIT_SMTP_PORT:-51025}:1025", "127.0.0.1:${CORE02_MAILPIT_UI_PORT:-58025}:8025"]
+
+
+def test_every_published_port_uses_env():
+    ports = [(name, p) for name, svc in _compose()["services"].items() for p in svc.get("ports", [])]
+    assert ports
+    assert all("${" in str(p) for _, p in ports), [x for x in ports if "${" not in str(x[1])]
 
 
 def test_admin_password_generated_by_local_infra():
