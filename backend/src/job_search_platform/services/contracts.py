@@ -681,11 +681,12 @@ class SavedSearchUpdate(DTO):
     frequency: DigestFrequency | None = None
     digest_enabled: bool | None = None
     push_enabled: bool | None = None
+    telegram_enabled: bool | None = None
 
     @model_validator(mode="after")
     def validate_intent(self):
         if (self.name is None and self.frequency is None and self.digest_enabled is None
-                and self.push_enabled is None):
+                and self.push_enabled is None and self.telegram_enabled is None):
             raise ValueError("one_field_required")
         return self
 
@@ -700,6 +701,7 @@ class SavedSearchView(DTO):
     last_sent_at: datetime | None = None
     created_at: datetime
     push_enabled: bool = False
+    telegram_enabled: bool = False
 
 
 class DigestStatusView(DTO):

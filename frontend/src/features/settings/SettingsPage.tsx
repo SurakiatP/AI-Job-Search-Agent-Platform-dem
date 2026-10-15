@@ -11,6 +11,7 @@ import { AppearanceSettings } from './AppearanceSettings';
 import { selectClass } from './Field';
 import { GatewaySettings } from './GatewaySettings';
 import { ProjectSharing } from './ProjectSharing';
+import { TelegramSettings } from './TelegramSettings';
 import { WebhookSettings } from './WebhookSettings';
 import { ToolSettings } from './ToolSettings';
 
@@ -52,6 +53,7 @@ export function SettingsPage() {
           {!projectId && <Link className="text-sm text-primary hover:underline" to="/app/projects/new">{t('pages.createProject', { defaultValue: 'Create a project' })}</Link>}
         </div>}
         {section === 'appearance' && <AppearanceSettings />}
+        {section === 'webhooks' && <TelegramSettings />}
         {section === 'gateway' && <GatewaySettings />}
         {(section === 'tools' || section === 'sharing' || section === 'webhooks') && projectId && (section === 'tools' ? <ToolSettings key={`tools:${projectId}`} projectId={projectId} /> : section === 'sharing' ? <ProjectSharing key={`sharing:${projectId}`} projectId={projectId} /> : <WebhookSettings key={`webhooks:${projectId}`} projectId={projectId} />)}
       </div>

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bookmark, BellRing, Mail, Send, Trash2 } from 'lucide-react';
+import { Bookmark, BellRing, Mail, Send, Trash2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { apiRequest } from '../../lib/api';
-import { ApiError, type DigestFrequency, type SavedSearchFilters, type SavedSearchList, type SavedSearchView, type WebhookView } from '../../lib/api-types';
+import { ApiError, type DigestFrequency, type SavedSearchFilters, type SavedSearchList, type SavedSearchView, type TelegramStatusView, type WebhookView } from '../../lib/api-types';
 import { selectClass } from '../settings/Field';
 import { sendJson, useResource } from '../projects/useResource';
 import { splitList } from './AdvancedFilters';
@@ -22,10 +22,11 @@ const copy = {
     saved: 'บันทึกการค้นหาแล้ว', previewSent: 'ส่งอีเมลตัวอย่างแล้ว', untitled: 'การค้นหาของฉัน',
     next: (d: string) => `สรุปครั้งถัดไป: ${d}`, off: 'ปิดอีเมลสรุปอยู่',
     frequencyFor: (n: string) => `ความถี่ของสรุป ${n}`, emailFor: (n: string) => `อีเมลสรุปของ ${n}`, pushFor: (n: string) => `ส่ง push สรุปของ ${n}`, pushHint: 'เพิ่ม webhook ที่เลือก "สรุปงานใหม่พร้อม" ในการตั้งค่าก่อน',
+    telegramFor: (n: string) => `ส่งสรุปของ ${n} ทาง Telegram`, telegramHint: 'เชื่อมต่อ Telegram ในการตั้งค่าก่อน',
     previewFor: (n: string) => `ส่งตัวอย่างของ ${n}`, deleteFor: (n: string) => `ลบ ${n}`,
     deleteTitle: (n: string) => `ลบ “${n}”?`, deleteBody: 'การค้นหานี้และอีเมลสรุปจะถูกลบ', deleteConfirm: 'ลบการค้นหา',
     unverified: 'ยืนยันอีเมลก่อนจึงจะได้รับสรุปงาน', notificationsOff: 'โปรเจกต์นี้ปิดการแจ้งเตือนอยู่ เปิดได้ที่การตั้งค่าโปรเจกต์',
-    errors: { saved_search_limit: 'บันทึกได้สูงสุด 10 การค้นหาต่อโปรเจกต์', saved_search_name_taken: 'ชื่อนี้ถูกใช้แล้ว', rate_limited: 'ส่งตัวอย่างบ่อยเกินไป ลองใหม่ภายหลัง', mail_unavailable: 'ส่งอีเมลไม่ได้ในตอนนี้', email_unverified: 'ยืนยันอีเมลก่อนจึงจะส่งตัวอย่างได้' } as Record<string, string>,
+    errors: { saved_search_limit: 'บันทึกได้สูงสุด 10 การค้นหาต่อโปรเจกต์', saved_search_name_taken: 'ชื่อนี้ถูกใช้แล้ว', rate_limited: 'ส่งตัวอย่างบ่อยเกินไป ลองใหม่ภายหลัง', mail_unavailable: 'ส่งอีเมลไม่ได้ในตอนนี้', telegram_not_linked: 'เชื่อมต่อ Telegram ในการตั้งค่าก่อน', email_unverified: 'ยืนยันอีเมลก่อนจึงจะส่งตัวอย่างได้' } as Record<string, string>,
     error: 'ทำรายการไม่สำเร็จ ลองอีกครั้ง',
   },
   en: {
@@ -35,10 +36,11 @@ const copy = {
     saved: 'Search saved', previewSent: 'Preview sent', untitled: 'My search',
     next: (d: string) => `Next digest: ${d}`, off: 'Email digest is off',
     frequencyFor: (n: string) => `Digest frequency for ${n}`, emailFor: (n: string) => `Email digest for ${n}`, pushFor: (n: string) => `Push digest for ${n}`, pushHint: 'Add a webhook subscribed to "Digest ready" in Settings first.',
+    telegramFor: (n: string) => `Telegram digest for ${n}`, telegramHint: 'Connect Telegram in Settings first.',
     previewFor: (n: string) => `Send a preview of ${n}`, deleteFor: (n: string) => `Delete ${n}`,
     deleteTitle: (n: string) => `Delete “${n}”?`, deleteBody: 'This search and its email digest will be removed.', deleteConfirm: 'Delete search',
     unverified: 'Verify your email to receive digests', notificationsOff: 'Notifications are off for this project. Turn them on in project settings.',
-    errors: { saved_search_limit: 'You can save up to 10 searches per project.', saved_search_name_taken: 'That name is already used.', rate_limited: 'Too many previews. Try again later.', mail_unavailable: 'Email cannot be sent right now.', email_unverified: 'Verify your email to send a preview.' } as Record<string, string>,
+    errors: { saved_search_limit: 'You can save up to 10 searches per project.', saved_search_name_taken: 'That name is already used.', rate_limited: 'Too many previews. Try again later.', mail_unavailable: 'Email cannot be sent right now.', telegram_not_linked: 'Connect Telegram in Settings first.', email_unverified: 'Verify your email to send a preview.' } as Record<string, string>,
     error: 'Something went wrong. Try again.',
   },
 };
@@ -76,6 +78,8 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
   const list = useResource<SavedSearchList>(base);
   const hooks = useResource<WebhookView[]>(`/projects/${projectId}/webhooks`);
   const pushReady = (hooks.data ?? []).some(h => h.enabled && h.events.includes('digest.ready'));
+  const telegram = useResource<TelegramStatusView>('/account/telegram');
+  const telegramReady = Boolean(telegram.data?.linked);
   const [saveOpen, setSaveOpen] = useState(false);
   const [name, setName] = useState('');
   const [frequency, setFrequency] = useState<DigestFrequency>('daily');
@@ -123,11 +127,15 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
         <Button variant="outline" size="icon" aria-pressed={item.push_enabled} aria-label={c.pushFor(item.name)} disabled={busy || (!pushReady && !item.push_enabled)}
           aria-describedby={pushReady ? undefined : `push-hint-${item.id}`}
           onClick={() => void run(() => sendJson(`${base}/${item.id}`, 'PATCH', { push_enabled: !item.push_enabled }))}><BellRing className="size-4" aria-hidden="true" /></Button>
+        {telegram.data?.enabled && <Button variant="outline" size="icon" aria-pressed={item.telegram_enabled} aria-label={c.telegramFor(item.name)} disabled={busy || (!telegramReady && !item.telegram_enabled)}
+          aria-describedby={telegramReady ? undefined : `telegram-hint-${item.id}`}
+          onClick={() => void run(() => sendJson(`${base}/${item.id}`, 'PATCH', { telegram_enabled: !item.telegram_enabled }))}><MessageCircle className="size-4" aria-hidden="true" /></Button>}
         <Button variant="outline" size="icon" aria-label={c.previewFor(item.name)} disabled={busy}
           onClick={() => void run(() => sendJson(`${base}/${item.id}/preview`, 'POST', {}), c.previewSent)}><Send className="size-4" aria-hidden="true" /></Button>
         <Button variant="ghost" size="icon" aria-label={c.deleteFor(item.name)} onClick={() => setDeleting(item)}><Trash2 className="size-4" aria-hidden="true" /></Button>
       </div>
       {!pushReady && !item.push_enabled && <p id={`push-hint-${item.id}`} className="text-xs text-muted-foreground sm:col-span-2">{c.pushHint}</p>}
+      {telegram.data?.enabled && !telegramReady && !item.telegram_enabled && <p id={`telegram-hint-${item.id}`} className="text-xs text-muted-foreground sm:col-span-2">{c.telegramHint}</p>}
     </li>)}</ul>}
     <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
       <DialogContent>

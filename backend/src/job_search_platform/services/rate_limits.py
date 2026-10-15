@@ -18,6 +18,7 @@ LIMITS: dict[str, tuple[int, int]] = {
     "resend_email": (3, 3600),
     "forgot_email": (3, 3600),
     "digest_preview": (5, 3600),
+    "telegram_link": (5, 3600),
     "digest_unsubscribe_ip": (30, 3600),
     "oauth_register_ip": (20, 3600),
     "oauth_authorize_ip": (60, 3600),

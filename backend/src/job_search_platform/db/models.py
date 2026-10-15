@@ -516,12 +516,23 @@ class SavedSearch(Base):
     last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     push_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    telegram_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     __table_args__ = (
         UniqueConstraint("project_id", "name", name="uq_saved_searches_name"),
         CheckConstraint("frequency IN ('daily','weekly')", name="ck_saved_searches_frequency"),
         CheckConstraint("length(btrim(name)) BETWEEN 1 AND 80", name="ck_saved_searches_name"),
-        Index("ix_saved_searches_due", "next_run_at", postgresql_where=text("(digest_enabled OR push_enabled)")),
+        Index("ix_saved_searches_due", "next_run_at", postgresql_where=text("(digest_enabled OR push_enabled OR telegram_enabled)")),
     )
+
+
+class TelegramLink(Base):
+    """FR-J05 one Telegram chat per account; ``code_hash`` is a pending single-use link code (10 minutes)."""
+    __tablename__ = "telegram_links"
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    chat_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)
+    code_hash: Mapped[bytes | None] = mapped_column(LargeBinary, unique=True)
+    code_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    linked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class SavedSearchSeen(Base):

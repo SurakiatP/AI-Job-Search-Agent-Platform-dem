@@ -404,7 +404,7 @@ paths:
         schema: {type: string, format: uuid}
     patch:
       tags: [jobs]
-      description: Owner-only. Renames, changes the frequency or switches the digest on or off; at least one field is required.
+      description: Owner-only. Renames, changes the frequency or switches the digest, push or Telegram on or off; at least one field is required.
       security: [{ownerSession: []}]
       requestBody:
         required: true
@@ -413,7 +413,7 @@ paths:
         '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchView'}}}}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: 'Name taken (code saved_search_name_taken)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '409': {description: 'Name taken (code saved_search_name_taken) or Telegram switched on without a link (code telegram_not_linked)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '422': {description: Invalid body}
     delete:
       tags: [jobs]
@@ -1247,6 +1247,30 @@ paths:
       description: Every grant on the caller's projects.
       responses:
         '200': {description: Connected agents, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AgentView'}}}}}
+  /account/telegram:
+    get:
+      tags: [account]
+      description: Owner-only. Whether the Telegram digest channel is configured (a bot token exists) and linked.
+      responses:
+        '200': {description: Telegram status, content: {application/json: {schema: {$ref: '#/components/schemas/TelegramStatusView'}}}}
+    delete:
+      tags: [account]
+      description: Owner-only. Unlinks the chat and switches Telegram off on every saved search. 404 telegram_disabled without a bot token.
+      responses:
+        '204': {description: Unlinked}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /account/telegram/link:
+    post:
+      tags: [account]
+      description: >-
+        Owner-only. Issues a single-use link code valid 10 minutes and replaces any pending one; open the returned
+        URL in Telegram and press Start. Rate-limited (429 rate_limited). 404 telegram_disabled without a bot token,
+        503 telegram_unavailable when the bot cannot be reached.
+      responses:
+        '200': {description: Link URL, content: {application/json: {schema: {$ref: '#/components/schemas/TelegramLinkView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {description: Rate limited (code rate_limited), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '503': {description: Bot unreachable (code telegram_unavailable), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /health:
     get:
       tags: [system]
@@ -1389,6 +1413,7 @@ components:
         frequency: {type: [string, 'null'], enum: [daily, weekly, null]}
         digest_enabled: {type: [boolean, 'null']}
         push_enabled: {type: [boolean, 'null']}
+        telegram_enabled: {type: [boolean, 'null']}
     SavedSearchView:
       type: object
       additionalProperties: false
@@ -1403,6 +1428,7 @@ components:
         last_sent_at: {type: [string, 'null'], format: date-time}
         created_at: {type: string, format: date-time}
         push_enabled: {type: boolean}
+        telegram_enabled: {type: boolean}
     DigestStatusView:
       type: object
       additionalProperties: false
@@ -2188,6 +2214,22 @@ components:
         csrf_token: {type: string}
         expires_at: {type: string, format: date-time}
         user: {$ref: '#/components/schemas/AccountView'}
+    TelegramStatusView:
+      type: object
+      additionalProperties: false
+      required: [enabled, linked]
+      properties:
+        enabled: {type: boolean}
+        linked: {type: boolean}
+        bot_username: {type: [string, 'null']}
+        linked_at: {type: [string, 'null'], format: date-time}
+    TelegramLinkView:
+      type: object
+      additionalProperties: false
+      required: [url, expires_at]
+      properties:
+        url: {type: string}
+        expires_at: {type: string, format: date-time}
     AgentView:
       type: object
       additionalProperties: false
