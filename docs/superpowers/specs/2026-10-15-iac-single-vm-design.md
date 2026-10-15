@@ -71,11 +71,15 @@ Kept to the minimum the deploy needs.
 ```text
 infra/compose.prod.yaml                 override, layered on infra/compose.yaml
 infra/prometheus/prometheus.prod.yml    scrape targets for host networking
+infra/caddy/                            Dockerfile, go.mod/go.sum overlay, provenance.json: Caddy built from pinned source
+scripts/migration_state.py              code-head | db-head | knows <rev>, used by deploy.sh's schema guard
 infra/deploy/
   cloud-init.yaml
   bootstrap.sh
   deploy.sh
   app.env.example
+  lib.sh                                shared helpers: app.env parser, readiness poll, schema guard
+  caddy-image.txt                       pinned Caddy image tag (equals the compose.prod.yaml image line)
   Caddyfile
   job-search-platform.service
   job-search-ingest.service  job-search-ingest.timer
@@ -191,7 +195,7 @@ Controller rulings made while planning and building; they supersede the text abo
 
 1. **No `--behind-proxy` flag.** uvicorn 0.41.0 already trusts `X-Forwarded-For` from `127.0.0.1` by default, and `run_local.py` now pins `proxy_headers=True, forwarded_allow_ips="127.0.0.1"` explicitly. A flag would add nothing, and the pin stops `FORWARDED_ALLOW_IPS` in the environment from widening the trust.
 2. **cloud-init stops before `bootstrap.sh`.** Secrets must not enter user-data, so the operator fills `app.env` and then runs `bootstrap.sh` by hand.
-3. **Caddy is built from pinned source, not the official image.** `caddy:2.11.7` failed the High/Critical gate (Go 1.26.8, `golang.org/x/net` 0.59.0); the overlay uses x/net v0.60.0 and go1.27.2, tag `job-search-platform/caddy:2.11.7-go1.27.2-72dd0fb067f6`, recorded in `infra/deploy/caddy-image.txt`.
+3. **Caddy is built from pinned source, not the official image.** `caddy:2.11.7` failed the High/Critical gate with 4 High findings (0 Critical) on arm64 and amd64 (Go 1.26.8, `golang.org/x/net` 0.59.0); the overlay uses x/net v0.60.0 and go1.27.2, tag `job-search-platform/caddy:2.11.7-go1.27.2-72dd0fb067f6`, recorded in `infra/deploy/caddy-image.txt`.
 4. **Schema guard uses `scripts/migration_state.py`.** `deploy.sh` refuses (before any backup or switch) when the target release does not know the database's current Alembic revision (`knows <db-head>` fails), so a code-only rollback across a migration never happens; an older release that still knows the revision is allowed.
 5. **`app.env` is parsed, not sourced.** `lib.sh` reads plain `KEY=VALUE` lines (the same format as systemd `EnvironmentFile`), so shell syntax in the file cannot run code as root.
 6. **`deploy.sh` re-applies infra and re-checks health after rollback.** When `infra/` changed it starts the previous release's stack again and polls readiness, and it still exits non-zero so the failure is visible.

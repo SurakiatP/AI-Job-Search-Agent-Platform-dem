@@ -53,17 +53,18 @@ sudo /opt/job-search-platform/current/infra/deploy/deploy.sh v1.2.3
 sudo /opt/job-search-platform/current/infra/deploy/deploy.sh <older tag>
 ```
 
-Migrations only go forward. If the older tag does not know the database's current Alembic revision, the script refuses (before any backup or switch) with `database <head> but release expects <head>; code-only rollback is unsafe.` Running old code on a newer schema could corrupt data, so this is never automatic. The same message appears if a failed deploy had already migrated the schema (the automatic rollback only restores code). In both cases restore the pre-deploy archive into a fresh database and bucket (section 7) and point the app at them.
+Migrations only go forward. If the older tag does not know the database's current Alembic revision, the script refuses (before any backup or switch) with `database is at <db head> but this release expects <code head>; code-only rollback is unsafe.` Running old code on a newer schema could corrupt data, so this is never automatic. The same message appears if a failed deploy had already migrated the schema (the automatic rollback only restores code). In both cases restore the pre-deploy archive into a fresh database and bucket (section 7) and point the app at them.
 
 ## 7. Restore from a backup
 
 Daily archives are `/var/backups/job-search-platform/daily-<UTC stamp>` (03:00, kept 7 days); deploy archives are `pre-deploy-*`. `restore.py` never overwrites: the target database and bucket must already exist and be empty, and must differ from the source (`jobsearch_platform_core02` and `job-search-platform-private` by default).
 
-Run restore as `jsp` with the app environment loaded. Stop the app first, because it holds the maintenance lock for the database and bucket it uses:
+Run the restore as `jsp` with the app environment loaded by the shipped parser (never `source` `app.env`; it is `KEY=VALUE` data, not shell). Use a root shell (`sudo -i`). Stop the app first, because it holds the maintenance lock for the database and bucket it uses:
 
 ```bash
-sudo systemctl stop job-search-platform
-rjsp() { sudo -u jsp -H bash -c "set -a; . /etc/job-search-platform/private/app.env; set +a; cd /opt/job-search-platform/current && $*"; }
+systemctl stop job-search-platform
+source /opt/job-search-platform/current/infra/deploy/lib.sh && load_app_env /etc/job-search-platform/private/app.env
+rjsp() { sudo -u jsp --preserve-env -H bash -c "cd /opt/job-search-platform/current && $*"; }
 ARCHIVE=/var/backups/job-search-platform/daily-<stamp>   # or pre-deploy-<tag>-<stamp>
 NEWDB=jsp_restore_$(date -u +%Y%m%d)
 NEWBUCKET=jsp-restore-$(date -u +%Y%m%d)
@@ -92,7 +93,7 @@ JSP_PRIVATE_BUCKET=jsp-restore-YYYYMMDD
 ```
 
 ```bash
-sudo systemctl start job-search-platform
+systemctl start job-search-platform
 ```
 
 Restore drops accounts, sessions, provider credentials and shares by design: create a user again (`uv run --locked --project backend python scripts/accounts.py create-user --email <email>`, see `docs/engineering/local-operation.md`), re-enter provider keys in Settings, and retry interrupted runs manually. After a schema rollback, finish by running `deploy.sh <older tag>` again. Details: `docs/engineering/recovery-proof.md`.
@@ -131,7 +132,7 @@ Ingest runs hourly, backup daily at 03:00; both are `Persistent=true`, so a miss
 Tracing is off by default. It adds about 2-3 GB RAM and 5 GB of images. Enable it with the existing profile switch: add `LANGFUSE_HOST=http://127.0.0.1:53000` to `app.env`, then re-apply the stack and restart the app:
 
 ```bash
-sudo -u jsp -H bash -c "set -a; . /etc/job-search-platform/private/app.env; set +a; cd /opt/job-search-platform/current && uv run --locked --project backend python scripts/local_infra.py start"
+sudo bash -c 'source /opt/job-search-platform/current/infra/deploy/lib.sh && load_app_env /etc/job-search-platform/private/app.env && sudo -u jsp --preserve-env -H bash -c "cd /opt/job-search-platform/current && uv run --locked --project backend python scripts/local_infra.py start"'
 sudo systemctl restart job-search-platform
 ```
 
