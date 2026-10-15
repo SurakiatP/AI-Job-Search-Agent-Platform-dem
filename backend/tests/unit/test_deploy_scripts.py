@@ -49,6 +49,34 @@ def test_check_app_env_accepts_complete_private_file(tmp_path):
     assert _sh(f"check_app_env '{path}'").returncode == 0
 
 
+def test_real_example_filled_in_passes_check(tmp_path):
+    lines = [ln.replace("CHANGE_ME", "x") if not ln.lstrip().startswith("#") else ln
+             for ln in (DEPLOY / "app.env.example").read_text().splitlines()]
+    path = _env_file(tmp_path, "\n".join(lines) + "\n")
+    assert _sh(f"check_app_env '{path}'").returncode == 0
+
+
+def test_load_app_env_parses_without_executing(tmp_path):
+    pwned = tmp_path / "pwned"
+    path = _env_file(tmp_path, "# c\n\nCADDY_TLS=tls internal\nSMTP_PASSWORD=a$b c\"d\nQUOTED=\"x y\"\n"
+                               f"EVIL=$(touch {pwned})\n")
+    result = _sh(f"load_app_env '{path}'; printf '%s|%s|%s|%s' \"$CADDY_TLS\" \"$SMTP_PASSWORD\" \"$QUOTED\" \"$EVIL\"")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == f'tls internal|a$b c"d|x y|$(touch {pwned})'
+    assert not pwned.exists()
+
+
+def test_load_app_env_rejects_bad_key(tmp_path):
+    path = _env_file(tmp_path, "bad key=1\n")
+    assert _sh(f"load_app_env '{path}'").returncode != 0
+
+
+def test_deploy_scripts_do_not_source_env():
+    for name in ("deploy.sh", "bootstrap.sh"):
+        text = (DEPLOY / name).read_text()
+        assert 'source "$env_file"' not in text and 'load_app_env "$env_file"' in text and "CURL_EXTRA=-k" in text
+
+
 def _stub(tmp_path: Path, name: str, body: str) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
@@ -85,6 +113,9 @@ def test_deploy_restores_previous_release_on_failed_health():
     assert "wait_ready" in text
     fail_branch = text.split("if ! wait_ready", 1)[1].split("\nfi", 1)[0]
     assert 'ln -sfn "$previous"' in fail_branch and "systemctl restart job-search-platform" in fail_branch
+    assert "local_infra.py start" in fail_branch and fail_branch.count("wait_ready") == 1 and "infra_reapplied" in fail_branch
+    assert "db-head" in text and "cd '$release' && uv run --locked --project backend python scripts/migration_state.py db-head" in text
+    assert '"$release.partial"' in text and 'mv "$release.partial" "$release"' in text
     assert "exit 1" in fail_branch
 
 

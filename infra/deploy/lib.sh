@@ -7,9 +7,21 @@ check_app_env() {
   local mode
   mode=$(stat -c %a "$file" 2>/dev/null || stat -f %Lp "$file")
   [[ "$mode" == "600" ]] || { echo "$file must be mode 0600 (is $mode)" >&2; return 1; }
-  if grep -n 'CHANGE_ME' "$file" >&2; then
+  if grep -nE '^[^#]*CHANGE_ME' "$file" >&2; then
     echo "replace every CHANGE_ME in $file" >&2; return 1
   fi
+}
+
+# Parse KEY=VALUE lines without executing them (systemd EnvironmentFile rules: one pair of quotes is stripped).
+load_app_env() {
+  local line key value
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "${line//[[:space:]]/}" || "$line" =~ ^[[:space:]]*# ]] && continue
+    key="${line%%=*}"; value="${line#*=}"
+    [[ "$line" == *=* && "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "invalid line in $1: $line" >&2; return 1; }
+    if [[ "$value" =~ ^\"(.*)\"$ || "$value" =~ ^\'(.*)\'$ ]]; then value="${BASH_REMATCH[1]}"; fi
+    export "$key=$value"
+  done < "$1"
 }
 
 wait_ready() {
