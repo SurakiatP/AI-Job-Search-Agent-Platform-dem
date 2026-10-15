@@ -1,0 +1,69 @@
+"""Prometheus metrics (WP1 observability). Labels never carry user ids, emails, query strings or raw paths.
+
+observe_* helpers never raise: metrics must not break a request, a run or an LLM call.
+"""
+from __future__ import annotations
+
+import logging
+import math
+
+from prometheus_client import Counter, Histogram
+
+logger = logging.getLogger(__name__)
+
+_METHODS = frozenset({"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
+_MODEL_MAX = 100
+
+HTTP_REQUESTS = Counter("jsp_http_requests_total", "HTTP requests", ["method", "route", "status_class"])
+HTTP_DURATION = Histogram("jsp_http_request_duration_seconds", "HTTP request duration", ["method", "route"])
+RUNS = Counter("jsp_runs_total", "Agent runs finished executing", ["operation", "outcome"])
+RUN_DURATION = Histogram("jsp_run_duration_seconds", "Agent run execution time", ["operation"],
+                         buckets=(1, 5, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600))
+LLM_REQUESTS = Counter("jsp_llm_requests_total", "LLM calls", ["kind", "model"])
+LLM_DURATION = Histogram("jsp_llm_duration_seconds", "LLM call duration", ["kind", "model"],
+                         buckets=(0.25, 0.5, 1, 2, 5, 10, 20, 40, 80, 160))
+LLM_TOKENS = Counter("jsp_llm_tokens_total", "LLM tokens reported by the provider", ["kind", "model", "direction"])
+
+
+def _seconds(value) -> float | None:
+    return float(value) if isinstance(value, (int, float)) and math.isfinite(value) and value >= 0 else None
+
+
+def _model(value) -> str:
+    return value[:_MODEL_MAX] if isinstance(value, str) and value else "unknown"
+
+
+def observe_request(method: str, route: str | None, status: int, seconds: float) -> None:
+    try:
+        method = method.upper() if isinstance(method, str) and method.upper() in _METHODS else "OTHER"
+        route = route if isinstance(route, str) and route else "other"
+        status_class = f"{status // 100}xx" if isinstance(status, int) and 100 <= status < 600 else "5xx"
+        HTTP_REQUESTS.labels(method, route, status_class).inc()
+        if (value := _seconds(seconds)) is not None:
+            HTTP_DURATION.labels(method, route).observe(value)
+    except Exception:
+        logger.debug("metric_dropped")
+
+
+def observe_run(operation: str | None, outcome: str | None, seconds: float) -> None:
+    try:
+        operation = operation if isinstance(operation, str) and operation else "unknown"
+        RUNS.labels(operation, outcome if isinstance(outcome, str) and outcome else "error").inc()
+        if (value := _seconds(seconds)) is not None:
+            RUN_DURATION.labels(operation).observe(value)
+    except Exception:
+        logger.debug("metric_dropped")
+
+
+def observe_llm(kind: str, model: str | None, seconds: float, input_tokens: int | None,
+                output_tokens: int | None) -> None:
+    try:
+        model = _model(model)
+        LLM_REQUESTS.labels(kind, model).inc()
+        if (value := _seconds(seconds)) is not None:
+            LLM_DURATION.labels(kind, model).observe(value)
+        for direction, tokens in (("input", input_tokens), ("output", output_tokens)):
+            if isinstance(tokens, int) and not isinstance(tokens, bool) and tokens > 0:
+                LLM_TOKENS.labels(kind, model, direction).inc(tokens)
+    except Exception:
+        logger.debug("metric_dropped")

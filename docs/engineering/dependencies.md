@@ -97,3 +97,8 @@ Accepted under the owner's option A (loopback only, private network, metadata-on
 
 - `protego==0.7.0` (BSD-3-Clause, pure Python, no dependencies). robots.txt parser for the WP5 part-3 crawler (ADR-016). Chosen over stdlib `urllib.robotparser`, which ignores `*` and `$` wildcards.
 - `pip-audit --strict` over the exported all-groups requirements (2026-10-15 02:59 UTC): 0 advisories.
+
+## prometheus-client (2026-10-15)
+
+- `prometheus-client==0.26.0` (Apache-2.0, pure Python, no required dependencies). App metrics for WP1 observability (spec 2026-10-15-observability-metrics-design.md).
+- `pip-audit --strict` over the exported all-groups requirements (2026-10-15 04:20 UTC): 0 advisories.
