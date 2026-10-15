@@ -167,6 +167,8 @@ def test_failed_bind_does_not_leak_registration():
         port = s.getsockname()[1]
         with pytest.raises(OSError):
             metrics.start_listener("127.0.0.1", port, _Db(), lambda: 1)
+    from prometheus_client import REGISTRY
+    assert REGISTRY.get_sample_value("jsp_db_up") is None  # failed bind registered nothing
     with socket.socket() as f:
         f.bind(("127.0.0.1", 0))
         free = f.getsockname()[1]

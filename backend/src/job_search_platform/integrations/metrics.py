@@ -224,7 +224,7 @@ def start_listener(host: str, port: int, sessions, search_probe: Callable[[], in
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
 
-        engine = create_engine(base_engine.url, pool_size=1, max_overflow=0, pool_timeout=2,
+        engine = create_engine(base_engine.url, pool_size=1, max_overflow=0, pool_timeout=2, pool_pre_ping=True,
                                connect_args={"connect_timeout": 2})
         sessions = sessionmaker(engine, expire_on_commit=False)
     collector = ScrapeCollector(sessions, search_probe)
