@@ -242,23 +242,60 @@ def test_jobbkk_cursor_resumes_and_head_pages_reread(sessions):
 
 
 @pytest.mark.integration
-def test_jobbkk_unreadable_listing_fails_and_deletes_nothing(sessions):
-    crawl(sessions, "jobbkk", bkk_site({1: [item(1)], 2: [item(2)], 3: [item(3)], 4: OLD_PAGE}))
+def test_jobbkk_unreadable_head_page_fails_and_deletes_nothing(sessions):
+    crawl(sessions, "jobbkk", bkk_site({1: [item(1)], 2: [item(2)], 3: [item(3)], 4: OLD_PAGE}), clock=ticking())
+    before = bkk_state(sessions)
     broken = bkk_site({1: [item(1)]})
     broken.pages[bkk_list_url(2)] = "<html>redesigned</html>"
-    for h in (1, 2, 3):
-        result = crawl(sessions, "jobbkk", broken, at=T0 + timedelta(hours=h))
+    result = crawl(sessions, "jobbkk", broken, at=T0 + timedelta(hours=1))
     assert result["state"] == "failed" and result["error"] == "listing_unreadable"
-    assert set(stored(sessions, "jobbkk")) == {"1", "2", "3"}
+    assert set(stored(sessions, "jobbkk")) == {"1", "2", "3"} and bkk_state(sessions) == before
+
+
+@pytest.mark.integration
+def test_jobbkk_unreadable_sweep_page_fails_and_deletes_nothing(sessions):
+    good = {1: [item(1)], 2: [item(2)], 3: [item(3)]}
+    crawl(sessions, "jobbkk", bkk_site({**good, 4: OLD_PAGE}), clock=ticking())
+    before = bkk_state(sessions)
+    broken = bkk_site(good)
+    broken.pages[bkk_list_url(4)] = "<html>redesigned</html>"
+    for h in (1, 2):
+        result = crawl(sessions, "jobbkk", broken, at=T0 + timedelta(hours=h))
+        assert result["state"] == "failed" and result["error"] == "listing_unreadable"
+    rows = stored(sessions, "jobbkk")
+    assert set(rows) == {"1", "2", "3"} and {r.missed_runs for r in rows.values()} == {0}
+    assert bkk_state(sessions) == before
+
+
+@pytest.mark.integration
+def test_jobbkk_head_pages_never_move_saved_cursor(sessions):
+    with sessions.begin() as db:
+        db.add(CrawlState(source="jobbkk", state={"cursor": 6, "sweep_started_at": T0.isoformat()}, updated_at=T0))
+    site = bkk_site({1: [item(1)], 2: [item(2)], 3: [item(3)], 6: OLD_PAGE})
+    result = crawl(sessions, "jobbkk", site, at=T0 + timedelta(hours=1), max_requests=4)  # robots, 3 head pages
+    assert result["state"] == "ok" and bkk_list_url(6) not in site.requested
+    assert bkk_state(sessions)["cursor"] == 6
 
 
 @pytest.mark.integration
 def test_jobbkk_missing_from_two_finished_sweeps_is_deleted(sessions):
     crawl(sessions, "jobbkk", bkk_site({1: [item(1)], 2: [item(2)], 3: [item(3)], 4: OLD_PAGE}), clock=ticking())
-    for h in (1, 2):
-        crawl(sessions, "jobbkk", bkk_site({1: [item(1)], 2: [item(2)], 3: [], 4: OLD_PAGE}),
-              at=T0 + timedelta(hours=h))
+    thinner = {1: [item(1)], 2: [item(2)], 3: [], 4: OLD_PAGE}
+    crawl(sessions, "jobbkk", bkk_site(thinner), at=T0 + timedelta(hours=1), clock=ticking(T0 + timedelta(hours=1)))
+    assert stored(sessions, "jobbkk")["3"].missed_runs == 1
+    crawl(sessions, "jobbkk", bkk_site(thinner), at=T0 + timedelta(hours=2), clock=ticking(T0 + timedelta(hours=2)))
     assert set(stored(sessions, "jobbkk")) == {"1", "2"} and tombstones(sessions, "jobbkk") == set()
+
+
+@pytest.mark.integration
+def test_jobbkk_stored_posting_listed_with_old_created_at_is_not_missed(sessions):
+    crawl(sessions, "jobbkk", bkk_site({1: [item(1)], 2: [], 3: [], 4: OLD_PAGE}), clock=ticking())
+    aged = {1: [item(1, created_days=200, updated_days=0)], 2: [], 3: [], 4: OLD_PAGE}
+    for h in (1, 2):
+        at = T0 + timedelta(hours=h)
+        crawl(sessions, "jobbkk", bkk_site(aged), at=at, clock=ticking(at))
+    row = stored(sessions, "jobbkk")["1"]
+    assert row.missed_runs == 0
 
 
 @pytest.mark.integration
