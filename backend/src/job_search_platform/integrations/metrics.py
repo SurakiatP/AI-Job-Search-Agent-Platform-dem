@@ -12,6 +12,8 @@ from prometheus_client import Counter, Histogram
 logger = logging.getLogger(__name__)
 
 _METHODS = frozenset({"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
+_KINDS = frozenset({"agent_round", "jev"})
+_OUTCOMES = frozenset({"completed", "failed", "cancelled", "interrupted", "waiting_approval", "needs_input"})
 _MODEL_MAX = 100
 
 HTTP_REQUESTS = Counter("jsp_http_requests_total", "HTTP requests", ["method", "route", "status_class"])
@@ -48,7 +50,7 @@ def observe_request(method: str, route: str | None, status: int, seconds: float)
 def observe_run(operation: str | None, outcome: str | None, seconds: float) -> None:
     try:
         operation = operation if isinstance(operation, str) and operation else "unknown"
-        RUNS.labels(operation, outcome if isinstance(outcome, str) and outcome else "error").inc()
+        RUNS.labels(operation, outcome if outcome in _OUTCOMES else "error").inc()
         if (value := _seconds(seconds)) is not None:
             RUN_DURATION.labels(operation).observe(value)
     except Exception:
@@ -59,6 +61,7 @@ def observe_llm(kind: str, model: str | None, seconds: float, input_tokens: int 
                 output_tokens: int | None) -> None:
     try:
         model = _model(model)
+        kind = kind if kind in _KINDS else "unknown"
         LLM_REQUESTS.labels(kind, model).inc()
         if (value := _seconds(seconds)) is not None:
             LLM_DURATION.labels(kind, model).observe(value)

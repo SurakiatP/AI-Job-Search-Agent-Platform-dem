@@ -50,3 +50,13 @@ def test_observers_never_raise():
     metrics.observe_request(None, None, "bad", "slow")  # type: ignore[arg-type]
     metrics.observe_run("x", "y", float("nan"))
     metrics.observe_llm("jev", "m", -1, -5, "many")  # type: ignore[arg-type]
+
+
+def test_kind_and_outcome_labels_are_bounded():
+    before = _value("jsp_llm_requests_total", kind="unknown", model="m")
+    metrics.observe_llm(None, "m", 0.1, None, None)  # type: ignore[arg-type]
+    metrics.observe_llm("weird", "m", 0.1, None, None)
+    assert _value("jsp_llm_requests_total", kind="unknown", model="m") == before + 2
+    before = _value("jsp_runs_total", operation="evaluate", outcome="error")
+    metrics.observe_run("evaluate", "bogus", 1)
+    assert _value("jsp_runs_total", operation="evaluate", outcome="error") == before + 1
