@@ -20,7 +20,7 @@ from job_search_platform.integrations import metrics
 REQUEST_ID_HEADER = "X-Request-ID"
 _SAFE_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")  # also matches a uuid
 _request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
-_EXTRAS = ("method", "route", "status", "duration_ms")
+_EXTRAS = ("method", "route", "status", "duration_ms", "port", "error")
 _log = logging.getLogger("jsp.request")
 
 

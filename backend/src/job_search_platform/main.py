@@ -222,8 +222,9 @@ def create_app(
                     try:
                         stop_metrics = metrics.start_listener(metrics_host, metrics_port, current.sessions,
                                                               metrics.meili_probe, base_engine=current.engine)
-                    except OSError:  # port taken: observability must not stop the app
-                        logging.getLogger(__name__).warning("metrics_listener_unavailable", exc_info=True)
+                    except OSError as exc:  # port taken: observability must not stop the app
+                        logging.getLogger(__name__).warning(
+                            "metrics_listener_unavailable", extra={"port": metrics_port, "error": type(exc).__name__})
                 await current.files.reconcile_pending()
                 await current.supervisor.start()
                 yield

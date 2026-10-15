@@ -159,6 +159,20 @@ def test_meili_probe_uses_two_second_timeout(monkeypatch):
     assert metrics.meili_probe() == 7 and seen == [2]
 
 
+def test_meili_probe_path_is_url_encoded_not_filter_quoted(monkeypatch):
+    from job_search_platform.integrations import meili
+    paths = []
+
+    def transport(method, url, headers, body, timeout):
+        paths.append(url)
+        return 200, b'{"numberOfDocuments": 1}'
+    monkeypatch.setattr(meili, "client", lambda: meili.Meili("http://x", "k", transport=transport))
+    for index, expected in (("jobs", "/indexes/jobs/stats"), ("a b/c%d", "/indexes/a%20b%2Fc%25d/stats")):
+        monkeypatch.setattr(config, "meili_index", lambda index=index: index)
+        metrics.meili_probe()
+        assert paths[-1] == "http://x" + expected
+
+
 def test_failed_bind_does_not_leak_registration():
     import socket
     with socket.socket() as s:

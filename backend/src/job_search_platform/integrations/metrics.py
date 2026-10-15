@@ -12,6 +12,7 @@ import sys
 import threading
 import time
 from collections.abc import Callable
+from urllib.parse import quote
 
 from prometheus_client import REGISTRY, Counter, Histogram, start_http_server
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
@@ -215,7 +216,7 @@ def meili_probe() -> int:
     from job_search_platform import config
     from job_search_platform.integrations import meili
 
-    stats = meili.client().request("GET", f"/indexes/{meili.quote(config.meili_index())}/stats",
+    stats = meili.client().request("GET", f"/indexes/{quote(config.meili_index(), safe='')}/stats",
                                     timeout=2)
     return int(stats["numberOfDocuments"])
 

@@ -86,7 +86,7 @@ def test_bad_metrics_host_fails_startup(monkeypatch):
             pass
 
 
-def test_listener_bind_failure_is_not_fatal(monkeypatch):
+def test_listener_bind_failure_is_not_fatal(monkeypatch, caplog):
     with socket.socket() as busy:
         busy.bind(("127.0.0.1", 0))
         busy.listen()
@@ -96,3 +96,9 @@ def test_listener_bind_failure_is_not_fatal(monkeypatch):
                             queue=None)
         with TestClient(create_app(services)) as client:
             assert client.get("/api/v1/health").status_code == 200
+        records = [r for r in caplog.records if r.getMessage() == "metrics_listener_unavailable"]
+        assert len(records) == 1 and not records[0].exc_info
+        assert records[0].port == busy.getsockname()[1] and records[0].error == "OSError"
+        from job_search_platform.integrations.logging import JsonFormatter
+        line = JsonFormatter().format(records[0])
+        assert f'"port":{busy.getsockname()[1]}' in line and '"error":"OSError"' in line
