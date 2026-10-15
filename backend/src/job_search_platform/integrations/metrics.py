@@ -6,12 +6,15 @@ from __future__ import annotations
 
 import logging
 import math
+import os
+import resource
+import sys
 import threading
 import time
 from collections.abc import Callable
 
 from prometheus_client import REGISTRY, Counter, Histogram, start_http_server
-from prometheus_client.core import GaugeMetricFamily
+from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from sqlalchemy import func, select, text
 
 logger = logging.getLogger(__name__)
@@ -20,6 +23,7 @@ _METHODS = frozenset({"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
 _KINDS = frozenset({"agent_round", "jev"})
 _OUTCOMES = frozenset({"completed", "failed", "cancelled", "interrupted", "waiting_approval", "needs_input"})
 _MODEL_MAX = 100
+_SPA_ROUTE = "/{path:path}"  # frontend catch-all: every unknown URL, so no real route template
 
 HTTP_REQUESTS = Counter("jsp_http_requests_total", "HTTP requests", ["method", "route", "status_class"])
 HTTP_DURATION = Histogram("jsp_http_request_duration_seconds", "HTTP request duration", ["method", "route"])
@@ -43,7 +47,7 @@ def _model(value) -> str:
 def observe_request(method: str, route: str | None, status: int, seconds: float) -> None:
     try:
         method = method.upper() if isinstance(method, str) and method.upper() in _METHODS else "OTHER"
-        route = route if isinstance(route, str) and route else "other"
+        route = route if isinstance(route, str) and route and route != _SPA_ROUTE else "other"
         status_class = f"{status // 100}xx" if isinstance(status, int) and 100 <= status < 600 else "5xx"
         HTTP_REQUESTS.labels(method, route, status_class).inc()
         if (value := _seconds(seconds)) is not None:
@@ -219,6 +223,7 @@ def meili_probe() -> int:
 def start_listener(host: str, port: int, sessions, search_probe: Callable[[], int], *,
                    base_engine=None) -> Callable[[], None]:
     """Serve the default registry on host:port (loopback, checked by config); returns a stop function."""
+    register_process_fallback()
     engine = None
     if base_engine is not None:  # dedicated 1-connection pool: a scrape never waits long or starves the app pool
         from sqlalchemy import create_engine
@@ -240,3 +245,37 @@ def start_listener(host: str, port: int, sessions, search_probe: Callable[[], in
             engine.dispose()
 
     return stop
+
+
+class FallbackProcessCollector:
+    """process_* series where prometheus_client's /proc based collector emits none (macOS)."""
+
+    def collect(self):
+        try:
+            usage = resource.getrusage(resource.RUSAGE_SELF)
+            cpu = CounterMetricFamily("process_cpu_seconds", "Total user and system CPU time in seconds")
+            cpu.add_metric([], usage.ru_utime + usage.ru_stime)
+            # ru_maxrss is bytes on macOS, kilobytes elsewhere; it is the peak, not current, resident size
+            peak = GaugeMetricFamily("jsp_process_peak_rss_bytes", "Peak resident memory in bytes")
+            peak.add_metric([], float(usage.ru_maxrss * (1 if sys.platform == "darwin" else 1024)))
+            families = [cpu, peak]
+        except Exception:
+            families = []
+        try:
+            fds = GaugeMetricFamily("process_open_fds", "Number of open file descriptors")
+            fds.add_metric([], float(len(os.listdir("/dev/fd"))))
+            families.append(fds)
+        except Exception:
+            pass
+        return families
+
+
+_fallback_registered = False
+
+
+def register_process_fallback() -> None:
+    """Register the fallback once, only when the stock ProcessCollector has no /proc to read."""
+    global _fallback_registered
+    if not _fallback_registered and not os.path.exists("/proc/self/stat"):
+        REGISTRY.register(FallbackProcessCollector())
+        _fallback_registered = True

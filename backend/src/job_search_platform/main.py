@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from urllib.parse import urlsplit
 import stat
@@ -218,8 +219,11 @@ def create_app(
             stop_metrics = None
             try:
                 if metrics_port:
-                    stop_metrics = metrics.start_listener(metrics_host, metrics_port, current.sessions,
-                                                          metrics.meili_probe, base_engine=current.engine)
+                    try:
+                        stop_metrics = metrics.start_listener(metrics_host, metrics_port, current.sessions,
+                                                              metrics.meili_probe, base_engine=current.engine)
+                    except OSError:  # port taken: observability must not stop the app
+                        logging.getLogger(__name__).warning("metrics_listener_unavailable", exc_info=True)
                 await current.files.reconcile_pending()
                 await current.supervisor.start()
                 yield

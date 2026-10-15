@@ -18,7 +18,8 @@ PROM_IMAGE = "prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461ad
 GRAFANA_IMAGE = "grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f"
 SCRAPE_TIME = {"jsp_db_up", "jsp_runs_in_state", "jsp_job_postings", "jsp_ingest_last_run_timestamp_seconds",
                "jsp_ingest_source_last_success_timestamp_seconds", "jsp_ingest_source_state",
-               "jsp_ingest_source_rows", "jsp_search_up", "jsp_search_documents"}
+               "jsp_ingest_source_rows", "jsp_search_up", "jsp_search_documents",
+               "jsp_process_peak_rss_bytes"}  # the last one exists only where /proc is absent (macOS)
 
 
 def _compose():
@@ -91,3 +92,10 @@ def test_promtool_accepts_config_and_rules():
          PROM_IMAGE, "test", "rules", "/etc/prometheus/rules_test.yml"],
         capture_output=True, text=True, timeout=180)
     assert unit.returncode == 0, unit.stdout + unit.stderr
+
+
+def test_memory_panel_falls_back_to_peak_rss_on_macos():
+    dashboard = json.loads((ROOT / "infra/grafana/dashboards/platform-overview.json").read_text())
+    panel = next(p for p in dashboard["panels"] if p.get("title") == "Memory (RSS; peak on macOS)")
+    assert panel["targets"][0]["expr"] == (
+        'process_resident_memory_bytes{job="app"} or jsp_process_peak_rss_bytes{job="app"}')

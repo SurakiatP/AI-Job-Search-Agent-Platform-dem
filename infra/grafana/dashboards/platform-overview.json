@@ -583,7 +583,7 @@
     {
       "id": 25,
       "type": "timeseries",
-      "title": "Resident memory",
+      "title": "Memory (RSS; peak on macOS)",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -595,7 +595,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "process_resident_memory_bytes{job=\"app\"}"
+          "expr": "process_resident_memory_bytes{job=\"app\"} or jsp_process_peak_rss_bytes{job=\"app\"}"
         }
       ],
       "gridPos": {

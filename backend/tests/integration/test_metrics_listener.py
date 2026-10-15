@@ -84,3 +84,15 @@ def test_bad_metrics_host_fails_startup(monkeypatch):
     with pytest.raises(ValueError, match="metrics_host_not_loopback"):
         with TestClient(create_app(services)):
             pass
+
+
+def test_listener_bind_failure_is_not_fatal(monkeypatch):
+    with socket.socket() as busy:
+        busy.bind(("127.0.0.1", 0))
+        busy.listen()
+        monkeypatch.setenv("METRICS_PORT", str(busy.getsockname()[1]))
+        services = Services(sessions=None, owner_sessions=None, files=_Async(), documents=None, runs=None,
+                            grants=None, settings=None, approvals=None, supervisor=_Async(), runtime=_Async(),
+                            queue=None)
+        with TestClient(create_app(services)) as client:
+            assert client.get("/api/v1/health").status_code == 200

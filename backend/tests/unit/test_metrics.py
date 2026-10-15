@@ -60,3 +60,38 @@ def test_kind_and_outcome_labels_are_bounded():
     before = _value("jsp_runs_total", operation="evaluate", outcome="error")
     metrics.observe_run("evaluate", "bogus", 1)
     assert _value("jsp_runs_total", operation="evaluate", outcome="error") == before + 1
+
+
+def test_spa_fallback_route_is_other():
+    before = _value("jsp_http_requests_total", method="GET", route="other", status_class="2xx")
+    metrics.observe_request("GET", "/{path:path}", 200, 0.01)
+    assert _value("jsp_http_requests_total", method="GET", route="other", status_class="2xx") == before + 1
+    assert _value("jsp_http_requests_total", method="GET", route="/{path:path}", status_class="2xx") == 0.0
+
+
+def test_fallback_process_collector_emits_three_families():
+    families = {f.name: f for f in metrics.FallbackProcessCollector().collect()}
+    assert set(families) == {"process_cpu_seconds", "process_open_fds", "jsp_process_peak_rss_bytes"}
+    for family in families.values():
+        assert isinstance(family.samples[0].value, float) and family.samples[0].value >= 0
+
+
+def test_fallback_process_collector_never_raises(monkeypatch):
+    def boom(*_):
+        raise OSError("no rusage")
+    monkeypatch.setattr(metrics.resource, "getrusage", boom)
+    monkeypatch.setattr(metrics.os, "listdir", boom)
+    assert list(metrics.FallbackProcessCollector().collect()) == []
+
+
+def test_fallback_registers_only_without_proc_and_only_once(monkeypatch):
+    registered = []
+    monkeypatch.setattr(metrics.REGISTRY, "register", registered.append)
+    monkeypatch.setattr(metrics, "_fallback_registered", False)
+    monkeypatch.setattr(metrics.os.path, "exists", lambda p: True)
+    metrics.register_process_fallback()
+    assert registered == []
+    monkeypatch.setattr(metrics.os.path, "exists", lambda p: False)
+    metrics.register_process_fallback()
+    metrics.register_process_fallback()
+    assert len(registered) == 1
