@@ -115,3 +115,40 @@ def test_unsigned_plugin_allowlist_is_exactly_prometheus():
     assert re.findall(r"GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=(\S+)", text) == ["prometheus"]
     compose = (ROOT / "infra/compose.yaml").read_text()
     assert "ALLOW_LOADING_UNSIGNED_PLUGINS" not in compose  # the allow-list lives only in the image
+
+
+def _stub_pre_a1(monkeypatch, tmp_path):
+    for name in ("validate_gosu_source", "validate_postgres_overlay", "validate_dependency_overlay"):
+        monkeypatch.setattr(local_infra, name, lambda *a, **k: None)
+    for name in ("prepare_private_directory", "validate_private_directory", "validate_minio_source"):
+        monkeypatch.setattr(local_infra, name, lambda p: p)
+    monkeypatch.setattr(local_infra, "ensure_credentials", lambda p: None)
+    monkeypatch.setattr(local_infra, "compose_environment", lambda *a: {})
+    monkeypatch.setenv("PROMETHEUS_SOURCE_DIR", str(tmp_path / "missing"))
+    calls = []
+
+    def fake_run(command, **kwargs):
+        if command[0] == "docker":
+            calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(local_infra.subprocess, "run", fake_run)
+    return calls
+
+
+def test_status_and_stop_do_not_need_observability_sources(monkeypatch, tmp_path):
+    calls = _stub_pre_a1(monkeypatch, tmp_path)
+    local_infra.status(tmp_path, tmp_path)
+    local_infra.stop(tmp_path, tmp_path)
+    assert len(calls) == 2
+
+
+def test_start_validates_observability_sources_before_compose(monkeypatch, tmp_path):
+    calls = _stub_pre_a1(monkeypatch, tmp_path)
+    with pytest.raises(local_infra.ConfigurationError, match="prometheus_source"):
+        local_infra.start(tmp_path, tmp_path)
+    assert calls == []
+
+
+def test_start_timeout_covers_first_prometheus_build():
+    assert "timeout=3600)" in (ROOT / "scripts/local_infra.py").read_text().split("def start(")[1].split("def status(")[0]

@@ -226,7 +226,7 @@ The app can expose Prometheus metrics, and the dev compose stack ships Prometheu
 - **Metrics URL:** `http://127.0.0.1:59464/metrics`. The listener is separate from the app port and is never proxied; the main app has no `/metrics` route. Scrape-time values (database, search, ingest state) are computed at most once every 30 s on a dedicated small DB engine, and concurrent scrapes get the cached values.
 - **Failures and macOS:** if the metrics port cannot be bound, the app logs a `metrics_listener_unavailable` warning and keeps running without metrics. On macOS, where `/proc` is absent, a small fallback emits `process_cpu_seconds_total`, `process_open_fds` and `jsp_process_peak_rss_bytes` (peak, not current, memory), which the dashboard memory panel uses.
 - **Route label:** the HTTP `route` label is the route template relative to the `/api/v1` prefix, for example `/health` or `/projects/{project_id}/job-search`. FastAPI 0.142 keeps included-router paths relative. All routers share `/api/v1`, so each endpoint still has a unique label. A request that matches no route (static assets, SPA fallback) is `other`.
-- **First build:** `prometheus` and `grafana` are built locally from the pinned checkouts (set `PROMETHEUS_SOURCE_DIR` and `GRAFANA_PROM_DS_SOURCE_DIR`, see "Requirements and pinned inputs"). Prometheus takes about 15 to 20 minutes on a 4-CPU VM (the Go build with the web UI); Grafana takes a few minutes. Do not build the two at once, the VM can run out of memory. Keep at least 20 GB free (`df -h /`) and run `rtk docker builder prune -f` afterwards. Later starts reuse the images.
+- **First build:** `prometheus` and `grafana` are built locally from the pinned checkouts (set `PROMETHEUS_SOURCE_DIR` and `GRAFANA_PROM_DS_SOURCE_DIR`, see "Requirements and pinned inputs"). Prometheus takes about 15–20 minutes on a 4-CPU VM (the Go build with the web UI); Grafana takes a few minutes. Do not build the two at once, the VM can run out of memory. Keep at least 20 GB free (`df -h /`) and run `rtk docker builder prune -f` afterwards. Later starts reuse the images.
 
 Start only the two services through the existing helper, so the compose environment matches the rest of the stack. Never start compose without `.env` loaded (LEARNINGS 2026-10-15), because an unset `OPENROUTER_API_KEY` leaves LiteLLM model calls failing once it is recreated.
 
@@ -239,11 +239,12 @@ import local_infra as li
 private = Path(os.environ.get("CORE02_PRIVATE_DIR") or li.DEFAULT_PRIVATE_DIR)
 minio = Path(os.environ.get("MINIO_SOURCE_DIR") or li.DEFAULT_MINIO_SOURCE)
 li.ensure_credentials(private)
+li.validate_observability_build_inputs()
 li._compose(["up", "--detach", "--no-deps", "prometheus", "grafana"], private, minio, timeout=2400)
 EOF
 ```
 
-The 2400 s timeout covers the first image builds (`up` builds a missing image; the timeout kills the command, so 600 s is too short for Prometheus). `ensure_credentials` creates `grafana-admin-password` (mode 0600) in the private directory when it is missing and leaves existing files alone. `_compose` also validates the MinIO, gosu, Prometheus and Grafana datasource source directories and the Go overlay hashes before it calls Compose.
+The 2400 s timeout covers the first image builds (`up` builds a missing image; the timeout kills the command, so 600 s is too short for Prometheus). `ensure_credentials` creates `grafana-admin-password` (mode 0600) in the private directory when it is missing and leaves existing files alone. `_compose` validates the MinIO, gosu and dependency inputs. The Prometheus and Grafana datasource source checks and Go overlay hashes are in `validate_observability_build_inputs()`, which `start` calls before `up --build` and the heredoc above calls before `_compose`; `status`, `stop` and `restart_minio` do not need those checkouts.
 
 - **URLs:** Prometheus `http://127.0.0.1:59090` (alerts under Alerts); Grafana `http://127.0.0.1:53300`, user `admin`, password in `$CORE02_PRIVATE_DIR/grafana-admin-password`, dashboard "Platform overview".
 - **Platform scope:** Prometheus reaches the loopback listener at `host.docker.internal:59464`. This works with Docker Desktop or Colima on macOS (`host-gateway` reaches the macOS host). On a Linux Docker engine `host-gateway` is expected to resolve to the docker0 bridge, so a loopback-only listener is unreachable and `AppDown` stays firing. The single-VM deploy in WP1 part 2 runs Prometheus on the host network.

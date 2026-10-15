@@ -275,6 +275,7 @@ def test_start_warns_on_stderr_when_openrouter_key_missing(tmp_path, monkeypatch
     monkeypatch.setattr(local_infra, "validate_minio_source", lambda p: p)
     monkeypatch.setattr(local_infra, "ensure_credentials", lambda p: None)
     monkeypatch.setattr(local_infra, "_compose", lambda *a, **k: None)
+    monkeypatch.setattr(local_infra, "validate_observability_build_inputs", lambda: None)
     monkeypatch.setattr(local_infra, "write_credentials_summary", lambda p, langfuse: None)
     monkeypatch.delenv("LANGFUSE_HOST", raising=False)
     monkeypatch.setenv("OPENROUTER_API_KEY", key)

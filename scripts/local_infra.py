@@ -317,6 +317,15 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     return environment
 
 
+def validate_observability_build_inputs() -> None:
+    validate_pinned_source(Path(os.environ.get("PROMETHEUS_SOURCE_DIR", str(DEFAULT_PROMETHEUS_SOURCE))),
+                           PROMETHEUS_COMMIT, "prometheus", ("go.mod", "go.sum", "LICENSE", "NOTICE", "scripts/compress_assets.sh"))
+    validate_go_overlay(ROOT / "infra" / "prometheus", PROMETHEUS_COMMIT, "prometheus")
+    validate_pinned_source(Path(os.environ.get("GRAFANA_PROM_DS_SOURCE_DIR", str(DEFAULT_GRAFANA_PROM_DS_SOURCE))),
+                           GRAFANA_PROM_DS_COMMIT, "grafana_prom_ds", ("go.mod", "go.sum", "LICENSE", "pkg/main.go"))
+    validate_go_overlay(ROOT / "infra" / "grafana", GRAFANA_PROM_DS_COMMIT, "grafana_prom_ds")
+
+
 def _compose(
     action: list[str],
     private_dir: Path,
@@ -336,12 +345,6 @@ def _compose(
     validate_gosu_source(Path(os.environ.get("GOSU_SOURCE_DIR", str(DEFAULT_GOSU_SOURCE))))
     validate_postgres_overlay()
     validate_dependency_overlay()
-    validate_pinned_source(Path(os.environ.get("PROMETHEUS_SOURCE_DIR", str(DEFAULT_PROMETHEUS_SOURCE))),
-                           PROMETHEUS_COMMIT, "prometheus", ("go.mod", "go.sum", "LICENSE", "NOTICE", "scripts/compress_assets.sh"))
-    validate_go_overlay(ROOT / "infra" / "prometheus", PROMETHEUS_COMMIT, "prometheus")
-    validate_pinned_source(Path(os.environ.get("GRAFANA_PROM_DS_SOURCE_DIR", str(DEFAULT_GRAFANA_PROM_DS_SOURCE))),
-                           GRAFANA_PROM_DS_COMMIT, "grafana_prom_ds", ("go.mod", "go.sum", "LICENSE", "pkg/main.go"))
-    validate_go_overlay(ROOT / "infra" / "grafana", GRAFANA_PROM_DS_COMMIT, "grafana_prom_ds")
     try:
         result = subprocess.run(
             command,
@@ -423,7 +426,8 @@ def start(private_dir: Path, source_dir: Path) -> dict[str, str]:
         print("warning: OPENROUTER_API_KEY not set; LiteLLM has no provider key and model calls will fail", file=sys.stderr)
     langfuse = langfuse_enabled()
     profile = LANGFUSE_PROFILE if langfuse else []
-    _compose([*profile, "up", "--detach", "--build", "--wait", "--wait-timeout", "300"], private_dir, source_dir, timeout=1800)
+    validate_observability_build_inputs()
+    _compose([*profile, "up", "--detach", "--build", "--wait", "--wait-timeout", "300"], private_dir, source_dir, timeout=3600)
     try:  # one-shot seed is profiled out of `up --wait`, which treats its exit as failure
         _compose(["--profile", "seed", "run", "--rm", "litellm-seed"], private_dir, source_dir, timeout=300)
     except ConfigurationError as exc:
