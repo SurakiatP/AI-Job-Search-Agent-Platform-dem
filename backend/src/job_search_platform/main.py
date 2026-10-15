@@ -37,7 +37,9 @@ from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.logging import RequestLogMiddleware, configure_logging
 from job_search_platform.integrations.mailer import SmtpMailer
 from job_search_platform.integrations.object_store import S3ObjectStore
+from job_search_platform.integrations import telegram as telegram_integration
 from job_search_platform.integrations.secrets import MacOSKeychain
+from job_search_platform.integrations.telegram import TelegramClient
 from job_search_platform.services.accounts import Accounts
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.documents import Artifacts, Documents
@@ -50,6 +52,7 @@ from job_search_platform.services.owner_sessions import OwnerSessions
 from job_search_platform.services.runs import RunService
 from job_search_platform.services.saved_searches import SavedSearches
 from job_search_platform.services.settings import Settings
+from job_search_platform.services.telegram import Telegram
 from job_search_platform.services.webhooks import Webhooks
 from job_search_platform.services import contracts
 from job_search_platform.workers.executor import RunExecutor
@@ -151,16 +154,22 @@ def build_services() -> Services:
     mailer = SmtpMailer.from_env()  # None without SMTP_HOST: Accounts logs mail_disabled and drops mail
     accounts = Accounts(sessions, owner_sessions, mailer, public_origin=owner_sessions.public_origin, runs=runs,
                         workspace_root=runtime.workspace_root)
-    saved_searches = SavedSearches(sessions, mailer, public_origin=owner_sessions.public_origin)
+    bot_token = telegram_integration.load_token(PRIVATE_DIR)  # None: the Telegram channel is off
+    telegram = Telegram(sessions, TelegramClient(bot_token) if bot_token else None)
+    saved_searches = SavedSearches(sessions, mailer, public_origin=owner_sessions.public_origin, telegram=telegram)
     webhooks = Webhooks(sessions)
+    async def housekeeping() -> int:
+        await telegram.poll()  # a failed poll only logs; digests still run
+        return await saved_searches.housekeeping()
+
     supervisor = WorkerSupervisor(sessions, queue, executor, runtime, purge=lambda: accounts.purge_due(store),
-                                  digests=saved_searches.housekeeping, deliveries=webhooks.deliver_due,
+                                  digests=housekeeping, deliveries=webhooks.deliver_due,
                                   prune_deliveries=webhooks.prune_async)
     return Services(sessions=sessions, owner_sessions=owner_sessions, files=files,
                     documents=documents, runs=runs, grants=grants, settings=settings,
                     approvals=approvals, supervisor=supervisor, runtime=runtime,
                     queue=queue, artifacts=artifacts, secret_store=secrets, engine=engine,
-                    accounts=accounts, mailer=mailer, saved_searches=saved_searches, webhooks=webhooks, oauth=oauth,
+                    accounts=accounts, mailer=mailer, saved_searches=saved_searches, telegram=telegram, webhooks=webhooks, oauth=oauth,
                     mcp_request_state_key=mcp_request_state_key(PRIVATE_DIR))
 
 

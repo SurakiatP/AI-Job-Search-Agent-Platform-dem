@@ -18,9 +18,11 @@ from sqlalchemy import delete, func, or_, select, true, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 
-from job_search_platform.db.models import Project, ProjectPreference, SavedSearch, SavedSearchSeen, User
+from job_search_platform.db.models import (
+    Project, ProjectPreference, SavedSearch, SavedSearchSeen, TelegramLink, User,
+)
 from job_search_platform.integrations.mailer import Mail
-from job_search_platform.services import job_sources, rate_limits, webhooks
+from job_search_platform.services import job_sources, rate_limits, telegram, webhooks
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
     Actor, DigestStatusView, SavedSearchCreate, SavedSearchListView, SavedSearchUpdate, SavedSearchView,
@@ -55,13 +57,14 @@ def _view(row: SavedSearch) -> SavedSearchView:
     return SavedSearchView(id=row.id, name=row.name, filters=row.filters, frequency=row.frequency,
                            digest_enabled=row.digest_enabled, next_run_at=row.next_run_at,
                            last_sent_at=row.last_sent_at, created_at=row.created_at,
-                           push_enabled=row.push_enabled)
+                           push_enabled=row.push_enabled, telegram_enabled=row.telegram_enabled)
 
 
 DIGEST_DAYS = 7
 DIGEST_LIMIT = 20
 SEEN_RETENTION = timedelta(days=90)
 DUE_BATCH = 20
+TELEGRAM_MAX = 4096
 RETRY_BACKOFF = timedelta(hours=1)  # failed rows wait this long so they cannot starve the batch
 
 DIGEST_MESSAGES = {
@@ -76,7 +79,9 @@ DIGEST_MESSAGES = {
 }
 
 
-def render_digest(locale: str, name: str, items: list[dict], app_link: str, unsubscribe_link: str) -> tuple[str, str]:
+def render_digest(locale: str, name: str, items: list[dict], app_link: str, unsubscribe_link: str | None = None,
+                  *, truncated: bool = False) -> tuple[str, str]:
+    """Subject and body; without ``unsubscribe_link`` (Telegram) the stop lines are left out."""
     m = DIGEST_MESSAGES.get(locale, DIGEST_MESSAGES["en"])
     lines: list[str] = []
     for number, item in enumerate(items, 1):
@@ -92,7 +97,17 @@ def render_digest(locale: str, name: str, items: list[dict], app_link: str, unsu
             lines.append(f"   {item['source_url']}")
     head = m["intro"].format(name=name) if items else m["empty"].format(name=name)
     subject = m["subject"].format(n=len(items), name=name) if items else m["empty_subject"].format(name=name)
-    return subject, "\n".join([head, "", *lines, "", m["open"], app_link, "", m["stop"], unsubscribe_link])
+    tail = ["", m["stop"], unsubscribe_link] if unsubscribe_link else []
+    return subject, "\n".join([head, "", *lines, *(["…"] if truncated else []), "", m["open"], app_link, *tail])
+
+
+def telegram_text(locale: str, name: str, items: list[dict], app_link: str) -> str:
+    """Digest text within Telegram's message limit: the item list is cut and marked with a "…" line."""
+    for count in range(len(items), -1, -1):
+        text = render_digest(locale, name, items[:count], app_link, truncated=count < len(items))[1]
+        if len(text) <= TELEGRAM_MAX:
+            return text
+    return text[:TELEGRAM_MAX]
 
 
 def _query(filters: dict) -> str:
@@ -124,11 +139,12 @@ def _deliverable(account: User | None, notifications: bool) -> bool:
 
 
 class SavedSearches:
-    def __init__(self, sessions, mailer, *, public_origin: str, search=None):
+    def __init__(self, sessions, mailer, *, public_origin: str, search=None, telegram=None):
         self.sessions = sessions
         self.mailer = mailer
         self.public_origin = public_origin.rstrip("/")
         self.search = search or job_sources.search_jobs
+        self.telegram = telegram  # services.telegram.Telegram or None
 
     @staticmethod
     def _row(db, project_id: UUID, saved_search_id: UUID) -> SavedSearch:
@@ -196,6 +212,12 @@ class SavedSearches:
                 if body.push_enabled is not None and body.push_enabled != row.push_enabled:
                     row.push_enabled = body.push_enabled
                     reschedule = reschedule or body.push_enabled  # never fire at once for a stale slot
+                if body.telegram_enabled is not None and body.telegram_enabled != row.telegram_enabled:
+                    if body.telegram_enabled and db.scalar(select(TelegramLink.chat_id).join(
+                            Project, Project.user_id == TelegramLink.user_id).where(Project.id == project_id)) is None:
+                        raise ServiceError("telegram_not_linked")
+                    row.telegram_enabled = body.telegram_enabled
+                    reschedule = reschedule or body.telegram_enabled  # never fire at once for a stale slot
                 if reschedule:
                     row.next_run_at = next_slot(now, row.frequency)
                 db.flush()
@@ -260,7 +282,8 @@ class SavedSearches:
         try:
             with self.sessions.begin() as db:
                 row = db.scalar(select(SavedSearch).where(
-                    or_(SavedSearch.digest_enabled, SavedSearch.push_enabled), SavedSearch.next_run_at <= now,
+                    or_(SavedSearch.digest_enabled, SavedSearch.push_enabled, SavedSearch.telegram_enabled),
+                    SavedSearch.next_run_at <= now,
                     SavedSearch.id.not_in(done) if done else true(),
                 ).order_by(SavedSearch.next_run_at).limit(1).with_for_update(skip_locked=True))
                 if row is None:
@@ -279,7 +302,15 @@ class SavedSearches:
                     if row.digest_enabled:
                         self._mail(account, row, items)
                     queued = webhooks.enqueue_digest(db, row.project_id, row.id, row.name, items, now) if row.push_enabled else 0
-                    if not row.digest_enabled and not queued:  # push-only with no receiver: keep items unseen
+                    chat = False
+                    if row.telegram_enabled and self.telegram is not None:
+                        app_link = f"{self.public_origin}/app/projects/{row.project_id}/search?{_query(row.filters)}"
+                        try:
+                            chat = self.telegram.deliver(db, account.id, telegram_text(account.locale, row.name, items, app_link))
+                        except telegram.DeliveryFailed:
+                            if not (row.digest_enabled or queued):  # another channel got it out: do not resend it
+                                raise _SendFailed from None
+                    if not (row.digest_enabled or queued or chat):  # push/chat-only with no receiver: keep items unseen
                         row.next_run_at = next_slot(now, row.frequency)
                         return row_id, 0
                     db.execute(pg_insert(SavedSearchSeen).values(

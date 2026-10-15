@@ -32,6 +32,7 @@ class Services:
     mailer: Any = None
     saved_searches: Any = None
     webhooks: Any = None
+    telegram: Any = None
     oauth: Any = None
     mcp_request_state_key: str | None = None
     secret_store: Any = None

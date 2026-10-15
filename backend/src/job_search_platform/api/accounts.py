@@ -86,6 +86,18 @@ class AgentView(_Body):
     client_id_host: str | None = None
 
 
+class TelegramStatusView(_Body):
+    enabled: bool
+    linked: bool
+    bot_username: str | None = None
+    linked_at: datetime | None = None
+
+
+class TelegramLinkView(_Body):
+    url: str
+    expires_at: datetime
+
+
 CHECK_EMAIL = {"status": "check_email"}
 
 
@@ -179,3 +191,27 @@ async def delete_account(body: DeleteAccountRequest, actor=Depends(write_actor),
 @router.get("/account/agents", response_model=list[AgentView])
 async def list_agents(actor=Depends(owner_actor), services: Services = Depends(get_services)):
     return await asyncio.to_thread(services.accounts.agents, actor.user_id)
+
+
+def _telegram(services: Services):
+    if services.telegram is None:
+        raise ServiceError("telegram_disabled")
+    return services.telegram
+
+
+@router.get("/account/telegram", response_model=TelegramStatusView)
+async def telegram_status(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    if services.telegram is None:
+        return TelegramStatusView(enabled=False, linked=False)
+    return await asyncio.to_thread(services.telegram.status, actor.user_id)
+
+
+@router.post("/account/telegram/link", response_model=TelegramLinkView)
+async def telegram_link(actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return await asyncio.to_thread(_telegram(services).link, actor.user_id)
+
+
+@router.delete("/account/telegram", status_code=204)
+async def telegram_unlink(actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(_telegram(services).unlink, actor.user_id)
+    return Response(status_code=204)
