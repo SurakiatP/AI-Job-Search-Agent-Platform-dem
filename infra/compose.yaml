@@ -249,8 +249,14 @@ services:
       com.job-search-platform.task: observability
 
   grafana:
-    # grafana/grafana v13.2.4 (OSS edition, AGPL-3.0; grafana/grafana-oss stopped at 13.0.2), multi-arch index digest. Unmodified, separate service.
-    image: grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
+    # grafana/grafana v13.2.4 (OSS edition, AGPL-3.0) keeping only the Prometheus datasource, rebuilt from pinned source (Go 1.27.2, x/net v0.60.0): 0 High/Critical (spec A1.3).
+    image: job-search-platform/grafana:13.2.4-promds13.2.3-go1.27.2-6d21418acde6
+    build:
+      context: ./grafana
+      additional_contexts:
+        grafana_prom_ds_source: ${GRAFANA_PROM_DS_SOURCE_DIR:?Set GRAFANA_PROM_DS_SOURCE_DIR to the pinned external grafana-prometheus-datasource checkout}
+      args:
+        GRAFANA_PROM_DS_SOURCE_COMMIT: ${GRAFANA_PROM_DS_SOURCE_COMMIT:?Set GRAFANA_PROM_DS_SOURCE_COMMIT using scripts/local_infra.py}
     restart: unless-stopped
     depends_on:
       - prometheus

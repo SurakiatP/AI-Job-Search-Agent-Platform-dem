@@ -83,3 +83,28 @@ def test_prometheus_dockerfile_pins_inputs():
         assert value in text
     assert "|| exit 1" in text  # a failed go build must fail the image build
     assert "git clone" not in text
+
+
+def test_grafana_overlay_and_dockerfile():
+    provenance, digests = _overlay(ROOT / "infra/grafana")
+    assert provenance["source_commit"] == local_infra.GRAFANA_PROM_DS_COMMIT
+    assert provenance["builder_image"] == local_infra.PROMETHEUS_BUILDER_IMAGE
+    assert provenance["unsigned_plugin_allowlist"] == ["prometheus"]
+    assert provenance["go_mod_sha256"] == digests["go.mod"] and provenance["go_sum_sha256"] == digests["go.sum"]
+    assert "golang.org/x/net v0.60.0" in (ROOT / "infra/grafana/go.mod").read_text()
+    local_infra.validate_go_overlay(ROOT / "infra/grafana", local_infra.GRAFANA_PROM_DS_COMMIT, "grafana_prom_ds")
+    text = (ROOT / "infra/grafana/Dockerfile").read_text()
+    for value in (local_infra.PROMETHEUS_BUILDER_IMAGE, provenance["base_image"], local_infra.GRAFANA_PROM_DS_COMMIT,
+                  "go1.27.2", "go mod verify", "-mod=readonly", "-trimpath", "GOTOOLCHAIN=local",
+                  "--from=grafana_prom_ds_source", "MANIFEST.txt", "plugins-bundled", "--chmod=0755",
+                  "GF_PLUGINS_PREINSTALL_DISABLED=true", "GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=prometheus"):
+        assert value in text
+    assert "git clone" not in text and "grafana-cli" not in text
+
+
+def test_unsigned_plugin_allowlist_is_exactly_prometheus():
+    import re
+    text = (ROOT / "infra/grafana/Dockerfile").read_text()
+    assert re.findall(r"GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=(\S+)", text) == ["prometheus"]
+    compose = (ROOT / "infra/compose.yaml").read_text()
+    assert "ALLOW_LOADING_UNSIGNED_PLUGINS" not in compose  # the allow-list lives only in the image

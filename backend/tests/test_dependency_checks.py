@@ -228,6 +228,7 @@ def test_container_build_manifest_rejects_live_upstream_checkout(tmp_path, monke
 def test_upstream_pins_include_observability_sources():
     pins = check_dependencies._upstream_pins((check_dependencies.ROOT / "backend/pyproject.toml").read_text())
     assert pins["prometheus"] == "5241a27fe3c6983549fccc32f6e65917408c63cd"
+    assert pins["grafana-prometheus-datasource"] == "6d21418acde6ce31c9f7a6418a88758842a881bb"
 
 
 def test_prometheus_dockerfile_requires_its_source_dir(tmp_path, monkeypatch):

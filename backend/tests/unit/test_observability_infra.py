@@ -15,7 +15,7 @@ from job_search_platform.integrations import metrics  # noqa: F401  registers th
 
 ROOT = Path(__file__).resolve().parents[3]
 PROM_IMAGE = "job-search-platform/prometheus:3.15.0-go1.27.2-5241a27fe3c6"  # built locally from pinned source (A1)
-GRAFANA_IMAGE = "grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f"
+GRAFANA_IMAGE = "job-search-platform/grafana:13.2.4-promds13.2.3-go1.27.2-6d21418acde6"  # built locally (A1)
 SCRAPE_TIME = {"jsp_db_up", "jsp_runs_in_state", "jsp_job_postings", "jsp_ingest_last_run_timestamp_seconds",
                "jsp_ingest_source_last_success_timestamp_seconds", "jsp_ingest_source_state",
                "jsp_ingest_source_rows", "jsp_search_up", "jsp_search_documents",
@@ -34,6 +34,10 @@ def test_services_pinned_and_loopback_only():
     assert build["context"] == "./prometheus"
     assert build["additional_contexts"]["prometheus_source"].startswith("${PROMETHEUS_SOURCE_DIR:?")
     assert build["args"]["PROMETHEUS_SOURCE_COMMIT"].startswith("${PROMETHEUS_SOURCE_COMMIT:?")
+    gbuild = grafana["build"]
+    assert gbuild["context"] == "./grafana"
+    assert gbuild["additional_contexts"]["grafana_prom_ds_source"].startswith("${GRAFANA_PROM_DS_SOURCE_DIR:?")
+    assert gbuild["args"]["GRAFANA_PROM_DS_SOURCE_COMMIT"].startswith("${GRAFANA_PROM_DS_SOURCE_COMMIT:?")
     assert prom["ports"] == ["127.0.0.1:59090:9090"] and grafana["ports"] == ["127.0.0.1:53300:3000"]
     assert "--storage.tsdb.retention.time=15d" in prom["command"]
     assert "host.docker.internal:host-gateway" in prom["extra_hosts"]

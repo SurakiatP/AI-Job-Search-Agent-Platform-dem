@@ -25,6 +25,8 @@ DEFAULT_MINIO_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstrea
 PROMETHEUS_COMMIT = "5241a27fe3c6983549fccc32f6e65917408c63cd"
 DEFAULT_PROMETHEUS_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "prometheus"
 PROMETHEUS_BUILDER_IMAGE = GOSU_BUILDER_IMAGE  # same pinned golang:1.27.2-bookworm digest
+GRAFANA_PROM_DS_COMMIT = "6d21418acde6ce31c9f7a6418a88758842a881bb"  # grafana-prometheus-datasource v13.2.3
+DEFAULT_GRAFANA_PROM_DS_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "grafana-prometheus-datasource"
 DEFAULT_GOSU_SOURCE = Path.home() / ".cache" / "job-search-platform" / "upstream" / "gosu"
 # Name -> generator. Values embedded in URLs (DB, ClickHouse, Redis, MinIO) stay hex.
 SECRETS = {
@@ -297,6 +299,8 @@ def compose_environment(private_dir: Path, source_dir: Path) -> dict[str, str]:
     environment["GOSU_SOURCE_COMMIT"] = GOSU_COMMIT
     environment["PROMETHEUS_SOURCE_DIR"] = str(Path(os.environ.get("PROMETHEUS_SOURCE_DIR", str(DEFAULT_PROMETHEUS_SOURCE))).expanduser().resolve())
     environment["PROMETHEUS_SOURCE_COMMIT"] = PROMETHEUS_COMMIT
+    environment["GRAFANA_PROM_DS_SOURCE_DIR"] = str(Path(os.environ.get("GRAFANA_PROM_DS_SOURCE_DIR", str(DEFAULT_GRAFANA_PROM_DS_SOURCE))).expanduser().resolve())
+    environment["GRAFANA_PROM_DS_SOURCE_COMMIT"] = GRAFANA_PROM_DS_COMMIT
     environment.setdefault("CORE02_POSTGRES_PORT", "55432")
     environment.setdefault("CORE02_MINIO_PORT", "59000")
     environment.setdefault("CORE02_LITELLM_PORT", "54000")
@@ -328,6 +332,9 @@ def _compose(
     validate_pinned_source(Path(os.environ.get("PROMETHEUS_SOURCE_DIR", str(DEFAULT_PROMETHEUS_SOURCE))),
                            PROMETHEUS_COMMIT, "prometheus", ("go.mod", "go.sum", "LICENSE", "NOTICE", "scripts/compress_assets.sh"))
     validate_go_overlay(ROOT / "infra" / "prometheus", PROMETHEUS_COMMIT, "prometheus")
+    validate_pinned_source(Path(os.environ.get("GRAFANA_PROM_DS_SOURCE_DIR", str(DEFAULT_GRAFANA_PROM_DS_SOURCE))),
+                           GRAFANA_PROM_DS_COMMIT, "grafana_prom_ds", ("go.mod", "go.sum", "LICENSE", "pkg/main.go"))
+    validate_go_overlay(ROOT / "infra" / "grafana", GRAFANA_PROM_DS_COMMIT, "grafana_prom_ds")
     try:
         result = subprocess.run(
             command,
