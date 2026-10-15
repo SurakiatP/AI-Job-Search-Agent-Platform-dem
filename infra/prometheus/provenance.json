@@ -5,7 +5,7 @@
   "version": "3.15.0",
   "license": "Apache-2.0",
   "builder_image": "golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61",
-  "base_image": "quay.io/prometheus/busybox:latest@sha256:0dcbf965a16f76d5aac8905769f72e43b22862cd01f6f42c7b62955aeb489c3c",
+  "base_image": "quay.io/prometheus/busybox:latest@sha256:5a1d320f7575acb92934a25ea4830bcbf27cc53e68fbf42c56f89c509e7602d2",
   "web_ui_asset": "prometheus-web-ui-3.15.0.tar.gz",
   "web_ui_sha256": "fa8c918ed05e3f89e232e9b69eccd6ed074602cd9e8a2cab7a92bec9651974ae",
   "overlay_reason": "golang.org/x/net v0.60.0 and builder go1.27.2 fix CVE-2026-78667/78669/97031 found by Trivy in upstream prom/prometheus:v3.15.0 (spec A1).",

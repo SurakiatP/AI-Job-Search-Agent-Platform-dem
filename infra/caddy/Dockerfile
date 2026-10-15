@@ -16,7 +16,7 @@ RUN mkdir -p /out/licenses/caddy && install -m 0644 LICENSE /out/licenses/caddy/
     && GOTOOLCHAIN=local CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH \
        go build -mod=readonly -buildvcs=false -trimpath -ldflags "-s -w" -o /out/caddy ./cmd/caddy
 
-FROM quay.io/prometheus/busybox:latest@sha256:0dcbf965a16f76d5aac8905769f72e43b22862cd01f6f42c7b62955aeb489c3c
+FROM quay.io/prometheus/busybox:latest@sha256:5a1d320f7575acb92934a25ea4830bcbf27cc53e68fbf42c56f89c509e7602d2
 LABEL org.opencontainers.image.title="Caddy" org.opencontainers.image.licenses="Apache-2.0" org.opencontainers.image.version="2.11.7" org.opencontainers.image.source="https://github.com/caddyserver/caddy" org.opencontainers.image.revision="72dd0fb067f6d7826c7f79907670ba4a713bfe37"
 # CA bundle for ACME and OCSP clients (busybox base has none).
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt

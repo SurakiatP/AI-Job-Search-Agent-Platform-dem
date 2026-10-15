@@ -30,7 +30,7 @@ RUN test "$PROMETHEUS_SOURCE_COMMIT" = "5241a27fe3c6983549fccc32f6e65917408c63cd
  && install -D -m 0644 LICENSE /out/licenses/prometheus/LICENSE \
  && install -D -m 0644 NOTICE /out/licenses/prometheus/NOTICE
 
-FROM quay.io/prometheus/busybox:latest@sha256:0dcbf965a16f76d5aac8905769f72e43b22862cd01f6f42c7b62955aeb489c3c
+FROM quay.io/prometheus/busybox:latest@sha256:5a1d320f7575acb92934a25ea4830bcbf27cc53e68fbf42c56f89c509e7602d2
 LABEL org.opencontainers.image.title="Prometheus" \
       org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.version="3.15.0" \
