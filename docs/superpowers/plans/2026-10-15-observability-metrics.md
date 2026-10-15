@@ -971,6 +971,8 @@ def _known_metrics() -> set[str]:
     names = set(SCRAPE_TIME)
     for family in REGISTRY.collect():
         names.add(family.name)
+        if family.type == "counter":  # a labelled counter with no observations yet has no _total sample
+            names.add(family.name + "_total")
         names.update(sample.name for sample in family.samples)
     return names
 
