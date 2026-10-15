@@ -1,6 +1,6 @@
 # Prometheus metrics and local Grafana (TOR WP1, part 1 of 3) — design
 
-Status: owner-approved decisions, 2026-10-15 (Q1–Q15). The written spec awaits owner review.
+Status: owner-approved decisions, 2026-10-15 (Q1–Q15). Written spec approved by the owner on 2026-10-15.
 Branch: `feat/observability-metrics` from `origin/develop` (e7eedfe).
 
 ## Goal
