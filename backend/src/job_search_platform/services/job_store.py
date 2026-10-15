@@ -1,4 +1,4 @@
-"""WP5 job store: upsert per board, delete rule, retention, dedup clusters (spec D6, D8, D9)."""
+"""WP5 job store: upsert per board, delete rule, retention, dedup clusters, crawler passes (spec D6, D8, D9; part 3)."""
 from __future__ import annotations
 
 import json
@@ -29,8 +29,15 @@ SHRINK_MIN_STORED = 20
 SHRINK_RATIO = 0.5
 STUCK_RUN = timedelta(days=1)
 
+CHUNK = 5000  # ids per IN (...) query; psycopg caps a statement at 65,535 parameters
 
-def _parse_ts(value: object) -> datetime | None:
+
+def _chunks(values) -> list[list]:
+    values = list(values)
+    return [values[i:i + CHUNK] for i in range(0, len(values), CHUNK)]
+
+
+def parse_ts(value: object) -> datetime | None:
     if not isinstance(value, str) or not value:
         return None
     try:
@@ -56,20 +63,27 @@ def delete_postings(db: Session, ids: list[uuid.UUID], now: datetime, *, tombsto
     return db.execute(delete(JobPosting).where(JobPosting.id.in_(ids))).rowcount
 
 
-def apply_board(db: Session, source: str, board: str | None, rows: list[dict], now: datetime) -> dict:
-    """One successfully fetched board: upsert what was seen, count a miss for what was not, delete after two."""
+def upsert_postings(db: Session, source: str, board: str | None, rows: list[dict], now: datetime,
+                    existing: dict[str, JobPosting] | None = None) -> tuple[dict, set[str], list[uuid.UUID]]:
+    """Upsert half of apply_board, shared with the crawler: (counts, external_ids seen, stored rows now too old).
+    `existing` defaults to this source's stored rows with the incoming ids."""
     rows = list({r["external_id"]: r for r in rows}.values())  # last duplicate wins
-    counts = {"fetched": len(rows), "created": 0, "updated": 0, "deleted": 0, "skipped_old": 0, "skipped_dup": 0}
-    existing = {p.external_id: p for p in db.scalars(select(JobPosting).where(
-        JobPosting.source == source, JobPosting.board.is_(None) if board is None else JobPosting.board == board))}
-    if existing and (not rows or (len(existing) >= SHRINK_MIN_STORED and len(rows) < len(existing) * SHRINK_RATIO)):
-        raise job_boards.BoardError("suspicious_shrink")  # likely a truncated fetch: keep rows, count no misses
-    other_board = set(db.scalars(select(JobPosting.external_id).where(
-        JobPosting.source == source, JobPosting.board.is_distinct_from(board))))
-    tombstoned = set(db.scalars(select(JobPostingTombstone.external_id).where(JobPostingTombstone.source == source)))
+    ids = [r["external_id"] for r in rows]
+    if existing is None:
+        existing = {p.external_id: p for chunk in _chunks(ids) for p in db.scalars(select(JobPosting).where(
+            JobPosting.source == source, JobPosting.external_id.in_(chunk)))}
+    other_board, tombstoned = set(), set()
+    for chunk in _chunks(ids):
+        other_board |= set(db.scalars(select(JobPosting.external_id).where(
+            JobPosting.source == source, JobPosting.board.is_distinct_from(board), JobPosting.external_id.in_(chunk))))
+        tombstoned |= set(db.scalars(select(JobPostingTombstone.external_id).where(
+            JobPostingTombstone.source == source, JobPostingTombstone.external_id.in_(chunk))))
+    counts = {"created": 0, "updated": 0, "skipped_old": 0, "skipped_dup": 0}
     seen, too_old = set(), []
     for values in rows:
-        values = dict(values, posted_at=_parse_ts(values.get("posted_at")))
+        values = dict(values, posted_at=parse_ts(values.get("posted_at")))
+        if "valid_through" in values:
+            values["valid_through"] = parse_ts(values["valid_through"])
         external_id = values["external_id"]
         seen.add(external_id)
         row = existing.get(external_id)
@@ -97,6 +111,19 @@ def apply_board(db: Session, source: str, board: str | None, rows: list[dict], n
                 setattr(row, key, value)
             row.index_dirty, row.updated_at = True, now
             counts["updated"] += 1
+    db.flush()
+    return counts, seen, too_old
+
+
+def apply_board(db: Session, source: str, board: str | None, rows: list[dict], now: datetime) -> dict:
+    """One successfully fetched board: upsert what was seen, count a miss for what was not, delete after two."""
+    rows = list({r["external_id"]: r for r in rows}.values())  # last duplicate wins
+    existing = {p.external_id: p for p in db.scalars(select(JobPosting).where(
+        JobPosting.source == source, JobPosting.board.is_(None) if board is None else JobPosting.board == board))}
+    if existing and (not rows or (len(existing) >= SHRINK_MIN_STORED and len(rows) < len(existing) * SHRINK_RATIO)):
+        raise job_boards.BoardError("suspicious_shrink")  # likely a truncated fetch: keep rows, count no misses
+    upserted, seen, too_old = upsert_postings(db, source, board, rows, now, existing)
+    counts = {"fetched": len(rows), **upserted, "deleted": 0}
     missing = []
     for external_id, row in existing.items():
         if external_id in seen:
@@ -111,10 +138,50 @@ def apply_board(db: Session, source: str, board: str | None, rows: list[dict], n
     return counts
 
 
+def touch_seen(db: Session, source: str, external_ids: set[str], now: datetime) -> tuple[set[str], set[str]]:
+    """Crawler discovery: mark listed postings and tombstones seen; returns (stored ids, tombstoned ids) among them."""
+    stored, tombstoned = set(), set()
+    for chunk in _chunks(sorted(external_ids)):
+        stored |= set(db.scalars(select(JobPosting.external_id).where(
+            JobPosting.source == source, JobPosting.external_id.in_(chunk))))
+        tombstoned |= set(db.scalars(select(JobPostingTombstone.external_id).where(
+            JobPostingTombstone.source == source, JobPostingTombstone.external_id.in_(chunk))))
+    for chunk in _chunks(sorted(stored)):
+        db.execute(update(JobPosting).where(JobPosting.source == source, JobPosting.external_id.in_(chunk))
+                   .values(last_seen_at=now, missed_runs=0))
+    for chunk in _chunks(sorted(tombstoned)):
+        db.execute(update(JobPostingTombstone).where(
+            JobPostingTombstone.source == source, JobPostingTombstone.external_id.in_(chunk)).values(last_seen_at=now))
+    return stored, tombstoned
+
+
+def miss_unseen(db: Session, source: str, since: datetime, now: datetime) -> int:
+    """A complete crawler discovery pass: a miss for postings not seen since `since`, delete at two (spec C7)."""
+    of_source = JobPosting.source == source
+    stored = db.scalar(select(func.count()).select_from(JobPosting).where(of_source))
+    seen = db.scalar(select(func.count()).select_from(JobPosting).where(of_source, JobPosting.last_seen_at >= since))
+    if stored and (not seen or (stored >= SHRINK_MIN_STORED and seen < stored * SHRINK_RATIO)):
+        raise job_boards.BoardError("suspicious_shrink")  # likely a broken listing: count no misses
+    db.execute(update(JobPosting).where(of_source, JobPosting.last_seen_at < since)
+               .values(missed_runs=JobPosting.missed_runs + 1))
+    ids = list(db.scalars(select(JobPosting.id).where(of_source, JobPosting.missed_runs >= DELETE_AFTER_MISSES)))
+    return delete_postings(db, ids, now, tombstone=False)
+
+
+def tombstone_ids(db: Session, source: str, external_ids: list[str], now: datetime) -> None:
+    """Crawler: a detail page with no live posting (removed, expired, older than 90 days) is not fetched again."""
+    ids = sorted(set(external_ids))  # one row per key: ON CONFLICT DO UPDATE cannot touch a row twice
+    if ids:
+        db.execute(pg_insert(JobPostingTombstone).values(
+            [{"source": source, "external_id": e, "deleted_at": now, "last_seen_at": now} for e in ids])
+            .on_conflict_do_update(index_elements=["source", "external_id"], set_={"last_seen_at": now}))
+
+
 def retire(db: Session, now: datetime) -> int:
-    """Delete postings older than MAX_AGE (posted_at, else first_seen_at); tombstone them so they stay gone."""
-    ids = list(db.scalars(select(JobPosting.id).where(
-        func.coalesce(JobPosting.posted_at, JobPosting.first_seen_at) < now - MAX_AGE)))
+    """Delete postings older than MAX_AGE (posted_at, else first_seen_at) or past validThrough; tombstone them."""
+    ids = list(db.scalars(select(JobPosting.id).where(or_(
+        func.coalesce(JobPosting.posted_at, JobPosting.first_seen_at) < now - MAX_AGE,
+        JobPosting.valid_through < now))))
     return delete_postings(db, ids, now, tombstone=True)
 
 

@@ -9,6 +9,7 @@ from sqlalchemy import (
     Index, Integer, JSON, LargeBinary, String, Text, UniqueConstraint,
     Uuid, func, text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -634,7 +635,7 @@ class OAuthToken(Base):
     __table_args__ = (CheckConstraint("kind IN ('access','refresh')", name="ck_oauth_tokens_kind"),)
 
 
-JOB_POSTING_SOURCES = ("freehire", "greenhouse", "lever", "smartrecruiters")
+JOB_POSTING_SOURCES = ("freehire", "greenhouse", "lever", "smartrecruiters", "jobtopgun", "jobbkk")
 
 
 class JobPosting(Base):
@@ -668,6 +669,7 @@ class JobPosting(Base):
     match_key: Mapped[str | None] = mapped_column(String(700))
     canonical_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("job_postings.id", ondelete="SET NULL"))
     posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    valid_through: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     missed_runs: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -700,6 +702,14 @@ class JobIndexDelete(Base):
     __tablename__ = "job_index_deletes"
     posting_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
     deleted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CrawlState(Base):
+    """Per-site crawler progress: JobTopGun company floors, JobBKK sweep cursor (spec 2026-10-15)."""
+    __tablename__ = "crawl_state"
+    source: Mapped[str] = mapped_column(String(20), primary_key=True)
+    state: Mapped[dict] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class IngestRun(Base):
