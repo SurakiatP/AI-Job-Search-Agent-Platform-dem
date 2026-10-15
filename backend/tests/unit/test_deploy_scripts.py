@@ -92,6 +92,14 @@ def test_wait_ready_fails_after_deadline(tmp_path):
     assert result.returncode != 0
 
 
+def test_wait_ready_resolves_domain_to_loopback(tmp_path):
+    _stub(tmp_path, "curl", 'echo "$@" > "$0.args"')
+    result = _sh("wait_ready https://example.test/api/v1/health/ready 5",
+                 {"PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}", "DOMAIN": "example.test"})
+    assert result.returncode == 0
+    assert "--resolve example.test:443:127.0.0.1" in (tmp_path / "bin" / "curl.args").read_text()
+
+
 def test_wait_ready_succeeds(tmp_path):
     _stub(tmp_path, "curl", "exit 0")
     result = _sh("wait_ready https://example.test/api/v1/health/ready 5",
@@ -113,7 +121,7 @@ def test_deploy_restores_previous_release_on_failed_health():
     assert "wait_ready" in text
     fail_branch = text.split("if ! wait_ready", 1)[1].split("\nfi", 1)[0]
     assert 'ln -sfn "$previous"' in fail_branch and "systemctl restart job-search-platform" in fail_branch
-    assert "local_infra.py start" in fail_branch and fail_branch.count("wait_ready") == 1 and "infra_reapplied" in fail_branch
+    assert 'apply_infra "$previous"' in fail_branch and fail_branch.count("wait_ready") == 1 and "infra_reapplied" in fail_branch
     assert "db-head" in text and "cd '$release' && uv run --locked --project backend python scripts/migration_state.py db-head" in text
     assert '"$release.partial"' in text and 'mv "$release.partial" "$release"' in text
     assert "exit 1" in fail_branch
@@ -153,3 +161,43 @@ def test_caddyfile_proxies_both_origins_to_loopback():
 def test_shell_scripts_parse():
     for name in ("lib.sh", "bootstrap.sh", "deploy.sh"):
         assert subprocess.run(["bash", "-n", str(DEPLOY / name)]).returncode == 0, name
+
+
+def test_backup_stops_app_around_backup():
+    unit = (DEPLOY / "job-search-backup.service").read_text()
+    assert "After=docker.service" in unit
+    assert "ExecStartPre=+/usr/bin/systemctl stop job-search-platform" in unit
+    assert "ExecStopPost=+/usr/bin/systemctl start job-search-platform" in unit
+    assert "ExecStartPost=/usr/bin/find" in unit
+    text = (DEPLOY / "deploy.sh").read_text()
+    stop = text.index("systemctl stop job-search-platform")
+    assert stop < text.index("scripts/backup.py") < text.index("systemctl start job-search-platform")
+    assert "backup_ok" in text
+
+
+def test_failed_deploy_leaves_app_stopped_when_previous_cannot_read_schema():
+    text = (DEPLOY / "deploy.sh").read_text()
+    fail_branch = text.split("if ! wait_ready", 1)[1].split("\nfi", 1)[0]
+    knows = fail_branch.index("migration_state.py knows")
+    assert fail_branch.index("db-head") < knows < fail_branch.index("systemctl stop job-search-platform")
+    assert "guard_schema" in fail_branch and "scripts/restore.py --archive $archive" in fail_branch
+    assert fail_branch.index("systemctl stop job-search-platform") < fail_branch.index("systemctl restart job-search-platform")
+
+
+def test_deploy_refreshes_infra_sources_and_recovers_from_failed_infra_start():
+    text = (DEPLOY / "deploy.sh").read_text()
+    apply = text.split("apply_infra() {", 1)[1].split("\n}\n", 1)[0]
+    for needle in ("fetch_all_pinned", "infra/hermes/setup.py --acquire --build", "/etc/systemd/system/", "daemon-reload", "local_infra.py start"):
+        assert needle in apply, needle
+    assert 'apply_infra "$release"' in text and 'apply_infra "$previous"' in text
+    assert "fetch_pinned" in (DEPLOY / "lib.sh").read_text() and "fetch_pinned()" not in (DEPLOY / "bootstrap.sh").read_text()
+
+
+def test_deploy_verifies_tag_not_branch_after_clone():
+    text = (DEPLOY / "deploy.sh").read_text()
+    assert "refs/tags/$tag^{commit}" in text and text.index("git clone") < text.index("refs/tags/$tag^{commit}") < text.index('mv "$release.partial"')
+
+
+def test_edge_hardening():
+    assert "admin off" in (DEPLOY / "Caddyfile").read_text()
+    assert "ufw allow 443/udp" in (DEPLOY / "cloud-init.yaml").read_text()

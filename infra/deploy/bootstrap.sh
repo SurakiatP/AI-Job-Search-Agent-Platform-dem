@@ -20,19 +20,8 @@ as_jsp() { sudo -u jsp --preserve-env -H bash -c "$*"; }
 
 upstream=/var/lib/job-search-platform/.cache/job-search-platform/upstream
 as_jsp "mkdir -p '$upstream'"
-fetch_pinned() {  # name url commit
-  local dir="$upstream/$1"
-  if [[ "$(as_jsp "git -C '$dir' rev-parse HEAD 2>/dev/null" || true)" != "$3" ]]; then
-    as_jsp "rm -rf '$dir' && git init -q '$dir' && git -C '$dir' fetch -q --depth 1 '$2' '$3' && git -C '$dir' checkout -q --detach '$3'"
-  fi
-}
-pin() { as_jsp "cd '$release' && uv run --locked --project backend python -c 'import sys; sys.path.insert(0, \"scripts\"); import local_infra; print(local_infra.$1)'"; }
 as_jsp "cd '$release' && uv sync --locked --project backend"
-fetch_pinned minio https://github.com/minio/minio.git "$(pin MINIO_COMMIT)"
-fetch_pinned gosu https://github.com/tianon/gosu.git "$(pin GOSU_COMMIT)"
-fetch_pinned prometheus https://github.com/prometheus/prometheus.git "$(pin PROMETHEUS_COMMIT)"
-fetch_pinned caddy https://github.com/caddyserver/caddy.git "$(pin CADDY_COMMIT)"
-fetch_pinned grafana-prometheus-datasource https://github.com/grafana/grafana-prometheus-datasource.git "$(pin GRAFANA_PROM_DS_COMMIT)"
+fetch_all_pinned
 
 as_jsp "cd '$release' && uv run --locked --project backend python infra/hermes/setup.py --acquire --build"
 as_jsp "cd '$release' && uv run --locked --project backend python scripts/local_infra.py start"

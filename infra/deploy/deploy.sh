@@ -19,6 +19,10 @@ git ls-remote --exit-code "$repo_url" "refs/tags/$tag" >/dev/null || { echo "no 
 if [[ ! -d "$release" ]]; then  # clone aside so a half-cloned directory is never reused
   rm -rf "$release.partial"
   as_jsp "git clone --quiet --depth 1 --branch '$tag' '$repo_url' '$release.partial'"
+  # a branch named like the tag must not be deployed: the tag itself has to resolve to HEAD
+  as_jsp "git -C '$release.partial' rev-parse -q --verify 'refs/tags/$tag^{commit}' >/dev/null || git -C '$release.partial' fetch -q --depth 1 origin 'refs/tags/$tag:refs/tags/$tag'"
+  [[ "$(as_jsp "git -C '$release.partial' rev-parse 'refs/tags/$tag^{commit}'")" == "$(as_jsp "git -C '$release.partial' rev-parse HEAD")" ]] \
+    || { echo "$tag is not a tag at the cloned commit" >&2; rm -rf "$release.partial"; exit 1; }
   mv "$release.partial" "$release"
 fi
 as_jsp "cd '$release' && uv sync --locked --project backend"
@@ -29,15 +33,36 @@ if ! as_jsp "cd '$release' && uv run --locked --project backend python scripts/m
   guard_schema "$db_head" "$(as_jsp "cd '$release' && uv run --locked --project backend python scripts/migration_state.py code-head")"
 fi
 
+upstream=/var/lib/job-search-platform/.cache/job-search-platform/upstream
+# Refresh everything infra/ depends on from release dir $1: pinned upstream sources, Hermes runtime, systemd units, containers.
+apply_infra() {
+  local release="$1" # pin() reads $release
+  as_jsp "mkdir -p '$upstream'"
+  fetch_all_pinned
+  as_jsp "cd '$release' && uv run --locked --project backend python infra/hermes/setup.py --acquire --build"
+  install -m 0644 "$release"/infra/deploy/job-search-*.service "$release"/infra/deploy/job-search-*.timer /etc/systemd/system/
+  systemctl daemon-reload
+  as_jsp "cd '$release' && uv run --locked --project backend python scripts/local_infra.py start"
+}
+
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 archive="/var/backups/job-search-platform/pre-deploy-$tag-$stamp"
-as_jsp "cd '$previous' && uv run --locked --project backend python scripts/backup.py --archive '$archive'"
+# A consistent backup needs the maintenance lock the running app holds, so the app is stopped around it.
+systemctl stop job-search-platform
+backup_ok=1
+as_jsp "cd '$previous' && uv run --locked --project backend python scripts/backup.py --archive '$archive'" || backup_ok=0
+systemctl start job-search-platform
+[[ "$backup_ok" == 1 ]] || { echo "pre-deploy backup failed; nothing deployed, previous release restarted" >&2; exit 1; }
 
 as_jsp "cd '$release' && npm ci --prefix frontend && npm run build --prefix frontend"
 infra_reapplied=0
 if ! diff -rq "$previous/infra" "$release/infra" >/dev/null; then
   infra_reapplied=1
-  as_jsp "cd '$release' && uv run --locked --project backend python scripts/local_infra.py start"
+  if ! apply_infra "$release"; then
+    echo "starting infrastructure of $tag failed; re-applying $previous (current still points at it, app untouched)" >&2
+    apply_infra "$previous" || echo "previous infra re-apply failed" >&2
+    exit 1
+  fi
 fi
 
 ln -sfn "$release" "$base/current"
@@ -46,7 +71,16 @@ if ! wait_ready "https://$DOMAIN/api/v1/health/ready" 60; then
   echo "health check failed; restoring $previous" >&2
   ln -sfn "$previous" "$base/current"
   if [[ "$infra_reapplied" == 1 ]]; then
-    as_jsp "cd '$previous' && uv run --locked --project backend python scripts/local_infra.py start" || echo "previous infra restart failed" >&2
+    apply_infra "$previous" || echo "previous infra restart failed" >&2
+  fi
+  # If the new release already migrated the schema, the previous code must not run on it.
+  prev_db_head="$(as_jsp "cd '$previous' && uv run --locked --project backend python scripts/migration_state.py db-head")"
+  if ! as_jsp "cd '$previous' && uv run --locked --project backend python scripts/migration_state.py knows '$prev_db_head'"; then
+    systemctl stop job-search-platform
+    guard_schema "$prev_db_head" "$(as_jsp "cd '$previous' && uv run --locked --project backend python scripts/migration_state.py code-head")" || true
+    echo "app left stopped; restore the pre-deploy backup:" >&2
+    echo "  uv run --locked --project backend python scripts/restore.py --archive $archive --target-database <db> --target-bucket <bucket>" >&2
+    exit 1
   fi
   systemctl restart job-search-platform
   if wait_ready "https://$DOMAIN/api/v1/health/ready" 60; then

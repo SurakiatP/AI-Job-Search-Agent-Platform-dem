@@ -2,13 +2,13 @@
 
 Runs the platform on one Ubuntu 24.04 VM under systemd with Caddy for HTTPS (ADR-017, spec `docs/superpowers/specs/2026-10-15-iac-single-vm-design.md`). Every command here runs on the server unless it says "dev machine".
 
-Paths: releases in `/opt/job-search-platform/releases/<tag>`, `current` symlink to the live one, secrets in `/etc/job-search-platform/private/` (`app.env`, and `core02/` for generated credentials), backups in `/var/backups/job-search-platform/`, service user `jsp`.
+Paths: releases in `/opt/job-search-platform/releases/<tag>`, `current` symlink to the live one, secrets in `/etc/job-search-platform/private/` (`app.env`, and `core02/` for generated credentials), backups in `/var/backups/job-search-platform/`, service user `jsp`. Never delete the release `current` points at, nor the one that last applied `infra/` (running containers bind-mount files from it).
 
 ## 1. Create the VM
 
 Ubuntu 24.04, 4 vCPU, 8 GB RAM, 80 GB disk (the first image builds need about 20 GB free), your SSH public key. Open only 22, 80 and 443 at the provider firewall (cloud-init also enables `ufw` for the same three).
 
-Edit `REPO_URL` and `RELEASE_TAG` in `infra/deploy/cloud-init.yaml` (dev machine), then pass the file as the VM's user-data. cloud-init creates the `jsp` user, installs Docker, Node.js 24.18.0, uv and ufw, forbids SSH passwords, and clones the tag to `/opt/job-search-platform/releases/<tag>` with `current` pointing at it. It stops before `bootstrap.sh`: secrets must not travel in user-data. Wait for `cloud-init status --wait` to report `done`.
+Edit `REPO_URL` and `RELEASE_TAG` in `infra/deploy/cloud-init.yaml` (dev machine), then pass the file as the VM's user-data. cloud-init creates the `jsp` user, installs Docker, Node.js 24.18.0, uv and ufw, forbids SSH passwords, and clones the tag to `/opt/job-search-platform/releases/<tag>` with `current` pointing at it. It stops before `bootstrap.sh`: secrets must not travel in user-data. Wait for `cloud-init status --wait` to report `done`. If first boot fails, read `/var/log/cloud-init-output.log`.
 
 ## 2. DNS
 
@@ -45,7 +45,7 @@ On the server:
 sudo /opt/job-search-platform/current/infra/deploy/deploy.sh v1.2.3
 ```
 
-`deploy.sh` refuses a tag that does not exist on the remote (never a branch), writes a backup to `/var/backups/job-search-platform/pre-deploy-<tag>-<timestamp>`, builds the frontend, re-applies the Compose stack only when `infra/` changed, switches `current`, restarts `job-search-platform` (migrations run at app start) and waits 60 s for `/api/v1/health/ready`. If the check fails it switches back to the previous release, restarts, and exits non-zero. The restart interrupts in-flight runs; they follow the normal interruption handling.
+`deploy.sh` refuses a tag that does not exist on the remote (never a branch), stops the app, writes a backup to `/var/backups/job-search-platform/pre-deploy-<tag>-<timestamp>` and starts the app again (a backup needs the maintenance lock, so it cannot run beside the app; if the backup fails the deploy aborts with the previous release running), builds the frontend, and, only when `infra/` changed, refreshes the pinned upstream sources, the Hermes runtime and the systemd units (`daemon-reload`) and re-applies the Compose stack (if that fails it re-applies the previous release's stack and exits non-zero with `current` unchanged), switches `current`, restarts `job-search-platform` (migrations run at app start) and waits 60 s for `/api/v1/health/ready`. If the check fails it switches `current` back and re-applies the previous infra, then checks whether the previous release knows the database's revision. If it does, it restarts, waits for ready and exits non-zero. If it does not (the new release already migrated), it leaves the app stopped, prints the schema refusal and the `restore.py` command with the pre-deploy archive path, and exits non-zero. The restart interrupts in-flight runs; they follow the normal interruption handling.
 
 ## 6. Rollback
 
@@ -53,7 +53,7 @@ sudo /opt/job-search-platform/current/infra/deploy/deploy.sh v1.2.3
 sudo /opt/job-search-platform/current/infra/deploy/deploy.sh <older tag>
 ```
 
-Migrations only go forward. If the older tag does not know the database's current Alembic revision, the script refuses (before any backup or switch) with `database is at <db head> but this release expects <code head>; code-only rollback is unsafe.` Running old code on a newer schema could corrupt data, so this is never automatic. The same message appears if a failed deploy had already migrated the schema (the automatic rollback only restores code). In both cases restore the pre-deploy archive into a fresh database and bucket (section 7) and point the app at them.
+Migrations only go forward. If the older tag does not know the database's current Alembic revision, the script refuses (before any backup or switch) with `database is at <db head> but this release expects <code head>; code-only rollback is unsafe.` Running old code on a newer schema could corrupt data, so this is never automatic. The same message appears, with the app left stopped, if a failed deploy had already migrated the schema (the automatic rollback only restores code and refuses to start old code on a newer schema). In both cases restore the pre-deploy archive into a fresh database and bucket (section 7) and point the app at them.
 
 ## 7. Restore from a backup
 
@@ -122,10 +122,10 @@ sudo journalctl -u job-search-ingest -u job-search-backup --since today
 systemctl list-timers 'job-search-*'
 sudo systemctl start job-search-backup   # run a backup now
 sudo systemctl start job-search-ingest   # run an ingest now
-docker compose -f /opt/job-search-platform/current/infra/compose.yaml ps
+docker ps --filter label=com.docker.compose.project=jobsearch-core02
 ```
 
-Ingest runs hourly, backup daily at 03:00; both are `Persistent=true`, so a missed run happens after boot.
+The backup stops the app for its duration (the maintenance lock, CORE-10, needs a stopped app for a consistent backup) and starts it again afterwards, success or failure: a few minutes of downtime nightly at 03:00 server time; in-flight runs follow the normal interruption handling. Ingest runs hourly, backup daily at 03:00; both are `Persistent=true`, so a missed run happens after boot.
 
 ## 10. Langfuse (optional)
 

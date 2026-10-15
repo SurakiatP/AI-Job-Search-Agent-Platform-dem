@@ -1,5 +1,6 @@
 [Unit]
 Description=Daily backup with 7-day local retention
+After=docker.service
 
 [Service]
 Type=oneshot
@@ -8,5 +9,7 @@ Group=jsp
 WorkingDirectory=/opt/job-search-platform/current
 EnvironmentFile=/etc/job-search-platform/private/app.env
 Environment=HOME=/var/lib/job-search-platform
+ExecStartPre=+/usr/bin/systemctl stop job-search-platform
 ExecStart=/bin/bash -c 'uv run --locked --project backend python scripts/backup.py --archive /var/backups/job-search-platform/daily-$(date -u +%%Y%%m%%dT%%H%%M%%SZ)'
 ExecStartPost=/usr/bin/find /var/backups/job-search-platform -mindepth 1 -maxdepth 1 -mtime +7 -exec rm -rf {} +
+ExecStopPost=+/usr/bin/systemctl start job-search-platform

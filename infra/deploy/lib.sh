@@ -27,8 +27,9 @@ load_app_env() {
 wait_ready() {
   local url="$1" seconds="$2" deadline=$((SECONDS + $2))
   while (( SECONDS < deadline )); do
-    # shellcheck disable=SC2086  # CURL_EXTRA is deliberately word-split
-    curl --silent --fail --max-time 5 ${CURL_EXTRA:-} "$url" >/dev/null && return 0
+    # shellcheck disable=SC2086  # CURL_EXTRA and the --resolve pair are deliberately word-split
+    # --resolve: poll this VM, not public DNS (no hairpin NAT needed); TLS still validates the hostname
+    curl --silent --fail --max-time 5 ${DOMAIN:+--resolve $DOMAIN:443:127.0.0.1} ${CURL_EXTRA:-} "$url" >/dev/null && return 0
     sleep 2
   done
   echo "not ready after ${seconds}s: $url" >&2
@@ -42,4 +43,23 @@ guard_schema() {
   echo "restore the pre-deploy backup instead:" >&2
   echo "  uv run --locked --project backend python scripts/restore.py --archive /var/backups/job-search-platform/<pre-deploy archive> --target-database <db> --target-bucket <bucket>" >&2
   return 1
+}
+
+# Needs as_jsp, $upstream and $release from the caller.
+# shellcheck disable=SC2154
+fetch_pinned() {  # name url commit
+  local dir="$upstream/$1"
+  if [[ "$(as_jsp "git -C '$dir' rev-parse HEAD 2>/dev/null" || true)" != "$3" ]]; then
+    as_jsp "rm -rf '$dir' && git init -q '$dir' && git -C '$dir' fetch -q --depth 1 '$2' '$3' && git -C '$dir' checkout -q --detach '$3'"
+  fi
+}
+# shellcheck disable=SC2154
+pin() { as_jsp "cd '$release' && uv run --locked --project backend python -c 'import sys; sys.path.insert(0, \"scripts\"); import local_infra; print(local_infra.$1)'"; }
+
+fetch_all_pinned() {
+  fetch_pinned minio https://github.com/minio/minio.git "$(pin MINIO_COMMIT)"
+  fetch_pinned gosu https://github.com/tianon/gosu.git "$(pin GOSU_COMMIT)"
+  fetch_pinned prometheus https://github.com/prometheus/prometheus.git "$(pin PROMETHEUS_COMMIT)"
+  fetch_pinned caddy https://github.com/caddyserver/caddy.git "$(pin CADDY_COMMIT)"
+  fetch_pinned grafana-prometheus-datasource https://github.com/grafana/grafana-prometheus-datasource.git "$(pin GRAFANA_PROM_DS_COMMIT)"
 }
