@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
+from job_search_platform.config import secret_file_forbidden_bits
 from job_search_platform.integrations.hermes_runtime import ProviderConfig
 from job_search_platform.integrations.jev import JevClient
 from job_search_platform.services.contracts import GatewayStatusView
@@ -41,7 +42,7 @@ def read_private_file(private_dir: Path, name: str) -> str | None:
     """Stripped contents of an owner-only regular file in the private dir, else None."""
     path = private_dir / name
     try:
-        if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & 0o077:
+        if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & secret_file_forbidden_bits():
             return None
         return path.read_text(encoding="utf-8").strip() or None
     except OSError:

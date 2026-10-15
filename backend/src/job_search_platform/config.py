@@ -53,3 +53,8 @@ def metrics_host() -> str:
     if not loopback:
         raise ValueError("metrics_host_not_loopback")
     return host
+
+
+def secret_file_forbidden_bits() -> int:
+    """Mode bits a secret file must not have: group-read is allowed on servers (CORE02_SECRETS_GROUP_READ=1)."""
+    return 0o037 if _env("CORE02_SECRETS_GROUP_READ", "") == "1" else 0o077

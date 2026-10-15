@@ -15,6 +15,7 @@ services:
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:${CORE02_PROMETHEUS_PORT:-59090}/-/ready"]
   grafana:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
     network_mode: host
     ports: !reset []
     environment:
@@ -23,6 +24,31 @@ services:
       GRAFANA_PROMETHEUS_URL: http://127.0.0.1:${CORE02_PROMETHEUS_PORT:-59090}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:${CORE02_GRAFANA_PORT:-53300}/api/health"]
+  # Bind-mounted secrets keep host owner and mode; jsp's private group (CORE02_SECRETS_GID) lets non-root containers read them.
+  postgres:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  minio:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  litellm-db:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  litellm:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  litellm-seed:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  meilisearch:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  langfuse-db:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  langfuse-clickhouse:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  langfuse-valkey:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  langfuse-minio:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  langfuse-worker:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
+  langfuse-web:
+    group_add: ["${CORE02_SECRETS_GID:?Set CORE02_SECRETS_GID using scripts/local_infra.py start}"]
   caddy:
     image: job-search-platform/caddy:2.11.7-go1.27.2-72dd0fb067f6
     build:

@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from job_search_platform.config import secret_file_forbidden_bits
+
 TASKS_EXTENSION = "io.modelcontextprotocol/tasks"
 POLL_INTERVAL_MS = 2000
 _TASK_KEYS = ("taskId", "status", "statusMessage", "createdAt", "lastUpdatedAt", "ttlMs", "pollIntervalMs")
@@ -76,7 +78,7 @@ def mcp_request_state_key(private_dir: Path) -> str:
         # Write a private temp file then hard-link it into place, so a crash never leaves a partial key.
         descriptor, temp = tempfile.mkstemp(dir=private_dir, prefix=".mcp-request-state-key.")
         try:
-            os.fchmod(descriptor, 0o600)
+            os.fchmod(descriptor, 0o600 | (0o040 if secret_file_forbidden_bits() == 0o037 else 0))
             with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
                 handle.write(secrets.token_urlsafe(32))
             try:
@@ -85,7 +87,7 @@ def mcp_request_state_key(private_dir: Path) -> str:
                 pass
         finally:
             os.unlink(temp)
-    if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & 0o077:
+    if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & secret_file_forbidden_bits():
         raise RuntimeError("private_runtime_credentials_unavailable")
     key = path.read_text(encoding="utf-8").strip()
     if not key:

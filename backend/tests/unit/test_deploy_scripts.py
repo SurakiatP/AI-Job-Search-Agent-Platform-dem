@@ -29,6 +29,7 @@ def test_example_has_every_name_and_only_placeholders():
     for name in ("DOMAIN", "ACME_EMAIL", "APP_PUBLIC_ORIGIN", "SHARE_PUBLIC_ORIGIN", "CORE02_PRIVATE_DIR",
                  "METRICS_PORT", "OPENROUTER_API_KEY", "SMTP_HOST", "SMTP_PASSWORD", "CORE02_COMPOSE_OVERRIDE"):
         assert f"\n{name}=" in "\n" + text, name
+    assert "\nCORE02_SECRETS_GROUP_READ=1\n" in "\n" + text
     assert "sk-or-" not in text and "CHANGE_ME" in text
 
 

@@ -18,7 +18,7 @@ def _merged(tmp_path: Path) -> dict:
     # Real account HOME (even under CI-parity empty HOME): the compose CLI plugin lives under ~/.docker on macOS. Empty --env-file: never read the owner's .env.
     empty = tmp_path / "empty.env"
     empty.write_text("")
-    env = {**os.environ, "HOME": pwd.getpwuid(os.getuid()).pw_dir, "CORE02_PRIVATE_DIR": str(tmp_path), "DOMAIN": "example.test", "ACME_EMAIL": "ops@example.test"}
+    env = {**os.environ, "HOME": pwd.getpwuid(os.getuid()).pw_dir, "CORE02_PRIVATE_DIR": str(tmp_path), "DOMAIN": "example.test", "ACME_EMAIL": "ops@example.test", "CORE02_SECRETS_GID": "988"}
     for name in ("MINIO", "GOSU", "PROMETHEUS", "GRAFANA_PROM_DS", "CADDY"):
         env[f"{name}_SOURCE_DIR"] = str(tmp_path)
         env[f"{name}_SOURCE_COMMIT"] = "0" * 40
@@ -62,3 +62,12 @@ def test_cloud_init_schema(tmp_path):
     result = subprocess.run(["cloud-init", "schema", "--config-file", str(ROOT / "infra/deploy/cloud-init.yaml")],
                             capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.skipif(not shutil.which("docker"), reason="docker compose CLI unavailable")
+def test_every_secret_service_adds_the_secrets_group(tmp_path):
+    services = _merged(tmp_path)["services"]
+    secret_users = {n for n, svc in services.items() if svc.get("secrets")}
+    assert secret_users
+    for name in secret_users:
+        assert "988" in [str(g) for g in services[name].get("group_add", [])], name

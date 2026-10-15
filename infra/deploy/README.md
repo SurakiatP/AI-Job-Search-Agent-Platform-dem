@@ -31,6 +31,8 @@ sudo /opt/job-search-platform/current/infra/deploy/bootstrap.sh
 
 It fetches the pinned upstream sources (MinIO, gosu, Prometheus, Caddy, Grafana datasource), builds the images (expect 30-60 minutes on the first run; Prometheus alone takes 15-20), starts the Compose services with `CORE02_COMPOSE_OVERRIDE=infra/compose.prod.yaml`, builds the frontend, installs the systemd units and enables the app and both timers. It ends with `ready: https://<domain>/login`. It is safe to re-run.
 
+Secret files and the server group. Compose bind-mounts secret files with the host owner and mode (it ignores `uid`/`gid`/`mode` on file secrets), so a non-root container (MinIO uid 10001, Grafana uid 472) could not read a `jsp`-owned 0600 file. On servers `app.env` sets `CORE02_SECRETS_GROUP_READ=1`: `scripts/local_infra.py` writes the secret and derived files in `core02/` as 0640 (and tightens nothing wider), accepts 0640 but nothing with group-write/execute or any other bit, and exports `CORE02_SECRETS_GID` (the group of `core02/`), which `infra/compose.prod.yaml` adds to each such service with `group_add`. The directory stays 0700, so only `jsp`'s own group, which only those containers join, can read the files. Development leaves the flag unset and keeps 0600.
+
 ## 5. Deploy
 
 On the dev machine, tag and push:

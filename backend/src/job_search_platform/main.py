@@ -64,7 +64,7 @@ RUNTIME_METADATA = Path.home() / ".cache" / "job-search-platform" / "hermes-runt
 
 def _private_text(name: str) -> str:
     path = PRIVATE_DIR / name
-    if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & 0o077:
+    if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & config.secret_file_forbidden_bits():
         raise RuntimeError("private_runtime_credentials_unavailable")
     return path.read_text(encoding="utf-8").strip()
 

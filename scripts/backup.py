@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend" / "src"))
+from job_search_platform.config import secret_file_forbidden_bits  # noqa: E402
 from job_search_platform.db.models import ProviderConfiguration, Run, StoredFile  # noqa: E402
 from job_search_platform.services.maintenance import (  # noqa: E402
     acquire_maintenance_lock, assert_restore_ready,
@@ -49,7 +50,7 @@ class RecoveryError(RuntimeError):
 
 def _read_secret(private_dir: Path, name: str) -> str:
     path = private_dir / name
-    if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & 0o077:
+    if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & secret_file_forbidden_bits():
         raise RecoveryError("private_runtime_credentials_unavailable")
     return path.read_text(encoding="utf-8").strip()
 

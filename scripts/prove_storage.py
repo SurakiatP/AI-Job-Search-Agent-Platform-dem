@@ -7,6 +7,7 @@ import base64
 import hashlib
 import json
 import os
+import stat
 import sys
 import time
 import urllib.error
@@ -25,6 +26,7 @@ from local_infra import (
     POSTGRES_IMAGE,
     ConfigurationError,
     restart_minio,
+    secret_file_forbidden_bits,
     validate_minio_source,
     validate_private_directory,
 )
@@ -32,7 +34,7 @@ from local_infra import (
 
 def _secret(private_dir: Path, name: str) -> str:
     path = private_dir / name
-    if path.is_symlink() or not path.is_file() or path.stat().st_mode & 0o077:
+    if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & secret_file_forbidden_bits():
         raise ConfigurationError("credential_file_invalid_or_permissions")
     return path.read_text(encoding="utf-8").strip()
 
