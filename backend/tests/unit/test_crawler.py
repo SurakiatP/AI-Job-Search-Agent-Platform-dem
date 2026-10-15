@@ -216,3 +216,11 @@ def test_parsers_are_linear_on_unterminated_markup():
         assert crawler.jobpost_list(page) is None
         crawler.sitemap_locs(page)
         assert time.perf_counter() - start < 1
+
+
+def test_over_nested_json_is_an_unparseable_block():
+    deep = "[" * 100000
+    page = f'<script type="application/ld+json">{deep}</script>' + _ld({"@type": "JobPosting", "title": "Synthetic Role"})
+    assert crawler.job_posting(page)["title"] == "Synthetic Role"
+    assert crawler.job_posting(f'<script type="application/ld+json">{deep}</script>') is None
+    assert crawler.jobpost_list(_rsc('5:{"jobpost_list":' + deep)) is None

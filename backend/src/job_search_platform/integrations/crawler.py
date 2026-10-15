@@ -153,7 +153,7 @@ def job_posting(page: str) -> dict | None:
     for block in _ld_blocks(page):
         try:
             data = json.loads(block)
-        except ValueError:
+        except (ValueError, RecursionError):
             continue
         items = data.get("@graph", data) if isinstance(data, dict) else data
         for item in items if isinstance(items, list) else [items]:
@@ -165,7 +165,7 @@ def job_posting(page: str) -> dict | None:
 def _chunk(literal: str) -> str:
     try:
         value = json.loads(literal)
-    except ValueError:
+    except (ValueError, RecursionError):
         return ""
     return value if isinstance(value, str) else ""
 
@@ -178,6 +178,6 @@ def jobpost_list(page: str) -> list[dict] | None:
         return None
     try:
         items, _ = json.JSONDecoder().raw_decode(text, found.end())
-    except ValueError:
+    except (ValueError, RecursionError):
         return None
     return [item for item in items if isinstance(item, dict)] if isinstance(items, list) else None
