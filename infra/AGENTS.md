@@ -5,11 +5,13 @@ Not here: backend/frontend code, secrets, credentials, upstream checkouts (these
 
 ## Layout
 
-- `compose.yaml` - services: `postgres`, `minio`, `litellm-db`, `litellm`, `mailpit`, `meilisearch` (job search index, pinned `getmeili/meilisearch:v1.55.0` digest, loopback port 57700 / `CORE02_MEILI_PORT`, key from private file `meili-master-key`); profile `seed` (`litellm-seed`); profile `langfuse` (`langfuse-db`, `langfuse-clickhouse`, `langfuse-valkey`, `langfuse-minio`, and more).
+- `compose.yaml` - services: `postgres`, `minio`, `litellm-db`, `litellm`, `mailpit`, `meilisearch` (job search index, pinned `getmeili/meilisearch:v1.55.0` digest, loopback port 57700 / `CORE02_MEILI_PORT`, key from private file `meili-master-key`); `prometheus` (pinned `prom/prometheus` digest, loopback port 59090, 15d retention, scrapes the app's metrics listener at `host.docker.internal:59464`) and `grafana` (pinned `grafana/grafana` digest, loopback port 53300, anonymous access off, admin password from private file `grafana-admin-password`); profile `seed` (`litellm-seed`); profile `langfuse` (`langfuse-db`, `langfuse-clickhouse`, `langfuse-valkey`, `langfuse-minio`, and more).
 - `postgres/` - `Dockerfile`, `go.mod`, `go.sum`, `provenance.json` (PostgreSQL 17.11 alpine + gosu built from pinned source).
 - `minio/` - `Dockerfile`, `go.mod`, `go.sum`, `provenance.json` (MinIO OSS built from pinned source commit).
 - `litellm/` - `config.yaml`, `seed.py` (LiteLLM gateway config and seeding).
 - `langfuse/` - `env.sh`.
+- `prometheus/` - `prometheus.yml` (scrape config), `rules.yml` (alerts), `rules_test.yml` (promtool unit tests).
+- `grafana/` - `provisioning/` (datasource and dashboard provider) and `dashboards/platform-overview.json` ("Platform overview").
 - `launchd/` - `com.job-search-platform.ingest.plist.example`, the hourly job-ingest template (copy, replace `REPO_DIR`/`PRIVATE_DIR`).
 - `hermes/` - `Dockerfile`, `setup.py` (acquire and build), `pyproject.toml`, `uv.lock`, `package.json`/`package-lock.json`, `parse_document.py`, `tool_gate.py`, `native_bridge.py`, `typst_render.py`, `export_pdf.mjs`.
 

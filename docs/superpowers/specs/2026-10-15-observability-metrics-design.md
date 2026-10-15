@@ -48,7 +48,7 @@ All names carry the prefix `jsp_`. "Counter", "Histogram" and "Gauge" are the `p
 | `jsp_llm_tokens_total` | Counter | `kind`, `model`, `direction` (`input`, `output`) | same, when the provider reports tokens |
 
 Rules for labels:
-- `route` is `scope["route"].path` (for example `/api/v1/projects/{project_id}/job-search`). When no route matched, it is `other`. Static assets (`/assets/...`) and the SPA fallback use `other`.
+- `route` is `scope["route"].path` (for example `/projects/{project_id}/job-search`, relative to `/api/v1`). When no route matched, it is `other`. Static assets (`/assets/...`) and the SPA fallback use `other`.
 - `method` is limited to the standard HTTP verbs; anything else becomes `OTHER`.
 - `model` is the configured model name, cut to 100 characters. Unknown becomes `unknown`.
 - `operation` is the run's operation id from the skill registry. `outcome` is the run's final status (`completed`, `failed`, `cancelled`, `interrupted`, `waiting_approval`, `needs_input`) read after execution, else `error`.

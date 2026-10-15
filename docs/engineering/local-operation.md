@@ -204,6 +204,43 @@ The `meilisearch` service starts with `local_infra.py start` (loopback port 5770
 
 Never run `local_infra.py start` without the owner's `.env` loaded (it recreates LiteLLM, and an unset `OPENROUTER_API_KEY` leaves model calls failing). To add or restart one service, load `.env`, export `CORE02_PRIVATE_DIR` (and `MINIO_SOURCE_DIR`/`GOSU_SOURCE_DIR` if compose asks), then run `docker compose -f infra/compose.yaml up --detach --no-deps <service>`.
 
+## Metrics and Grafana
+
+The app can expose Prometheus metrics, and the dev compose stack ships Prometheus and Grafana to read them.
+
+- **Enable:** set `METRICS_PORT=59464` in `.env`. Unset means no listener. `METRICS_HOST` defaults to `127.0.0.1`; any non-loopback host makes startup fail with `metrics_host_not_loopback`.
+- **Metrics URL:** `http://127.0.0.1:59464/metrics`. The listener is separate from the app port and is never proxied; the main app has no `/metrics` route. Scrape-time values (database, search, ingest state) are computed at most once every 30 s on a dedicated small DB engine, and concurrent scrapes get the cached values.
+- **Route label:** the HTTP `route` label is the route template relative to the `/api/v1` prefix, for example `/health` or `/projects/{project_id}/job-search`. FastAPI 0.142 keeps included-router paths relative. All routers share `/api/v1`, so each endpoint still has a unique label. A request that matches no route (static assets, SPA fallback) is `other`.
+- **Start only the two services,** through the existing helper, so the compose environment matches the rest of the stack: Never start compose without `.env` loaded (LEARNINGS 2026-10-15): an unset `OPENROUTER_API_KEY` leaves LiteLLM model calls failing once it is recreated.
+
+```sh
+rtk uv run --env-file .env --locked --project backend python - <<'EOF'
+import os, sys
+from pathlib import Path
+sys.path.insert(0, "scripts")
+import local_infra as li
+private = Path(os.environ.get("CORE02_PRIVATE_DIR") or li.DEFAULT_PRIVATE_DIR)
+minio = Path(os.environ.get("MINIO_SOURCE_DIR") or li.DEFAULT_MINIO_SOURCE)
+li.ensure_credentials(private)
+li._compose(["up", "--detach", "--no-deps", "prometheus", "grafana"], private, minio, timeout=600)
+EOF
+```
+
+  `ensure_credentials` creates `grafana-admin-password` (mode 0600) in the private directory when it is missing and leaves existing files alone. `_compose` also validates the MinIO and gosu source directories.
+- **URLs:** Prometheus `http://127.0.0.1:59090` (alerts under Alerts); Grafana `http://127.0.0.1:53300`, user `admin`, password in `$CORE02_PRIVATE_DIR/grafana-admin-password`, dashboard "Platform overview".
+- **Platform scope:** Prometheus reaches the loopback listener at `host.docker.internal:59464`. This works with Docker Desktop on macOS (the owner machine). On a Linux Docker engine `host-gateway` resolves to the docker0 bridge, so a loopback-only listener is unreachable and `AppDown` stays firing. The single-VM deploy in WP1 part 2 runs Prometheus on the host network.
+- **Alerts** (`infra/prometheus/rules.yml`, visible in the Prometheus UI; there is no Alertmanager yet):
+  - `AppDown`: the app's metrics listener has not answered for 5 minutes.
+  - `DatabaseDown`: `jsp_db_up` is 0 for 5 minutes.
+  - `SearchDown`: `jsp_search_up` is 0 for 10 minutes.
+  - `IngestStale`: no ingest run finished in 2 hours.
+  - `SourceFailing`: a source failed in every run for 3 hours.
+  - `SourceSilent`: a source has not succeeded for 6 hours.
+  - `HighErrorRate`: more than 5% of HTTP requests returned 5xx over 10 minutes, with more than 1 request/s.
+  - `RunsStuckQueued`: runs are queued but none finished in 30 minutes.
+
+  `IngestStale` stays silent if no ingest run has ever finished, and `SourceSilent` ignores sources that have never succeeded. Once runs exist, both fire when the hourly job is not installed.
+
 ## Verification on the operator machine
 
 After preparing the clean pinned source checkouts described above, set their `*_SOURCE_DIR` variables in this shell and run the lock/runtime/source checks before use. The checker reports missing upstream checkouts as incomplete; a local run with those paths unset is not a pass.
