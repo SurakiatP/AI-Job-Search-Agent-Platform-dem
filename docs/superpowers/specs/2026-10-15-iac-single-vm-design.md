@@ -180,10 +180,23 @@ Both run as `jsp` from `/opt/job-search-platform/current` with `EnvironmentFile=
 ## Docs to update
 
 - `infra/deploy/README.md` (new runbook).
-- `docs/engineering/local-operation.md`: link to the runbook; note `--behind-proxy` and `CORE02_COMPOSE_OVERRIDE`.
+- `docs/engineering/local-operation.md`: link to the runbook; note `CORE02_COMPOSE_OVERRIDE` and the pinned proxy trust.
 - `infra/AGENTS.md`: the production override and Caddy pin.
 - `README.md`: link ADR-017.
 - `docs/engineering/dependencies.md`: Caddy image pin and scan evidence.
+
+## Planning amendments
+
+Controller rulings made while planning and building; they supersede the text above where they differ.
+
+1. **No `--behind-proxy` flag.** uvicorn 0.41.0 already trusts `X-Forwarded-For` from `127.0.0.1` by default, and `run_local.py` now pins `proxy_headers=True, forwarded_allow_ips="127.0.0.1"` explicitly. A flag would add nothing, and the pin stops `FORWARDED_ALLOW_IPS` in the environment from widening the trust.
+2. **cloud-init stops before `bootstrap.sh`.** Secrets must not enter user-data, so the operator fills `app.env` and then runs `bootstrap.sh` by hand.
+3. **Caddy is built from pinned source, not the official image.** `caddy:2.11.7` failed the High/Critical gate (Go 1.26.8, `golang.org/x/net` 0.59.0); the overlay uses x/net v0.60.0 and go1.27.2, tag `job-search-platform/caddy:2.11.7-go1.27.2-72dd0fb067f6`, recorded in `infra/deploy/caddy-image.txt`.
+4. **Schema guard uses `scripts/migration_state.py`.** `deploy.sh` refuses (before any backup or switch) when the target release does not know the database's current Alembic revision (`knows <db-head>` fails), so a code-only rollback across a migration never happens; an older release that still knows the revision is allowed.
+5. **`app.env` is parsed, not sourced.** `lib.sh` reads plain `KEY=VALUE` lines (the same format as systemd `EnvironmentFile`), so shell syntax in the file cannot run code as root.
+6. **`deploy.sh` re-applies infra and re-checks health after rollback.** When `infra/` changed it starts the previous release's stack again and polls readiness, and it still exits non-zero so the failure is visible.
+7. **`CORE02_PRIVATE_DIR` is `/etc/job-search-platform/private/core02`.** It sits under the secrets directory (0700, owned by `jsp`) instead of `~jsp/.cache`, so credentials back up and permission with the other secrets.
+8. **Caddy checkout is production-only.** `validate_caddy_build_inputs()` runs only when `CORE02_COMPOSE_OVERRIDE` is set, so local development needs no Caddy checkout.
 
 ## Out of scope
 

@@ -315,3 +315,10 @@ rtk uv run --locked --project backend python scripts/run_local.py --open-browser
 ```
 
 Keep `CORE02_PRIVATE_DIR` pointing at the private infrastructure credentials for that target. These are local operator settings, never caller-selected protocol parameters. The same exact database/bucket identity controls maintenance and failed-restore quarantine. Only use targets whose restore completed; restarting does not clear an incomplete-restore marker.
+
+## Production on one VM
+
+The single-VM systemd deployment (Caddy HTTPS, timers, backups, rollback) is in [`infra/deploy/README.md`](../../infra/deploy/README.md). Two things differ from local operation:
+
+- `CORE02_COMPOSE_OVERRIDE=infra/compose.prod.yaml` makes `local_infra.py` layer the production Compose override (Caddy, host-networked Prometheus and Grafana on loopback). Unset locally.
+- `run_local.py` trusts `X-Forwarded-For` only from `127.0.0.1` (`proxy_headers=True, forwarded_allow_ips="127.0.0.1"`, set explicitly so `FORWARDED_ALLOW_IPS` cannot widen it), which is where Caddy connects from. Rate limiting therefore sees the real client address behind Caddy and ignores the header from any other peer.

@@ -15,3 +15,5 @@ See [local operation](docs/engineering/local-operation.md) for pinned setup, loc
 ## Architecture decisions
 
 [ADR-015](docs/adr/ADR-015-python-stack-deviation.md) records how the delivered stack (Python/FastAPI, React) deviates from TOR §7 and when each deviation should be revisited.
+
+[ADR-017](docs/adr/ADR-017-systemd-single-vm.md) records the single-VM systemd deployment (instead of Kubernetes); the runbook is [infra/deploy/README.md](infra/deploy/README.md).

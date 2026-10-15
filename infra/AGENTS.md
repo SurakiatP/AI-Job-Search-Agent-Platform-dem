@@ -39,3 +39,4 @@ Not here: backend/frontend code, secrets, credentials, upstream checkouts (these
 - Secrets and credentials never in repo, logs or images; they are generated into the private dir outside the repo.
 - Project execution containers get only their own workspace: no Docker socket, host home or infrastructure/provider secrets.
 - Backup/restore must cover PostgreSQL and MinIO together; see `docs/engineering/recovery-proof.md`.
+- Production override: `compose.prod.yaml` is layered on `compose.yaml` when `CORE02_COMPOSE_OVERRIDE=infra/compose.prod.yaml` (host-networked Caddy/Prometheus/Grafana on loopback, Mailpit dev-only). Caddy is source-built (`caddy/`); its image tag is pinned in `deploy/caddy-image.txt`, and the image line in `compose.prod.yaml` must equal it. Runbook: `infra/deploy/README.md`.
