@@ -30,3 +30,5 @@ htmlcov/
 /AGENTS.md
 /CLAUDE.md
 /DESIGN.md
+__pycache__/
+*.pyc

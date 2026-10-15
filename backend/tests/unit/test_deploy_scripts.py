@@ -225,5 +225,10 @@ def test_fetch_all_pinned_stops_at_first_failed_step(tmp_path):
 def test_apply_infra_propagates_every_step_failure():
     text = (DEPLOY / "deploy.sh").read_text()
     apply = text.split("apply_infra() {", 1)[1].split("\n}\n", 1)[0]
-    steps = [line for line in apply.splitlines()[2:-1] if line.strip() and not line.strip().startswith("#")]
+    steps = [line for line in apply.splitlines()[2:] if line.strip() and not line.strip().startswith("#")]
+    assert len(steps) == 6 and "local_infra.py start" in steps[-1], steps
     assert all("|| return 1" in line for line in steps[:-1]), steps
+
+
+def test_infra_diff_ignores_runtime_bytecode():
+    assert 'diff -rq -x __pycache__ "$previous/infra" "$release/infra"' in (DEPLOY / "deploy.sh").read_text()

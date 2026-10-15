@@ -56,7 +56,7 @@ systemctl start job-search-platform || { echo "could not restart app after backu
 
 as_jsp "cd '$release' && npm ci --prefix frontend && npm run build --prefix frontend"
 infra_reapplied=0
-if ! diff -rq "$previous/infra" "$release/infra" >/dev/null; then
+if ! diff -rq -x __pycache__ "$previous/infra" "$release/infra" >/dev/null; then
   infra_reapplied=1
   if ! apply_infra "$release"; then
     echo "starting infrastructure of $tag failed; re-applying $previous (current still points at it, app untouched)" >&2
