@@ -174,3 +174,126 @@ def test_robots_unavailable_fails_site_without_other_requests(sessions):
     result = crawl(sessions, "jobtopgun", site)
     assert result["state"] == "failed" and result["error"] == "robots_unavailable"
     assert site.requested == [f"{JTG}/robots.txt"]
+
+
+BKK = "https://www.jobbkk.com"
+BKK_ROBOTS = "User-agent: *\nDisallow: /jobs/apply/\n"
+
+
+def bkk_list_url(n):
+    return job_crawl._BKK_LIST.format(n)
+
+
+def item(job, created_days=1, updated_days=0, company=7):
+    def stamp(days):
+        return (T0 - timedelta(days=days)).astimezone(job_crawl.BANGKOK).strftime("%Y-%m-%d %H:%M:%S")
+    return {"jobpost_id": job, "company_id": company, "created_at": stamp(created_days),
+            "updated_at": stamp(updated_days)}
+
+
+def rsc_page(items):
+    payload = json.dumps({"jobpost_list": items}, separators=(",", ":"))
+    return f"<script>self.__next_f.push([1,{json.dumps('5:' + payload)}])</script>"
+
+
+OLD_PAGE = [item(900, created_days=200, updated_days=120)]
+
+
+def bkk_site(listing, details=None, robots=BKK_ROBOTS):
+    """listing: page number -> items; details: job id -> page (default: a fresh posting)."""
+    pages = {f"{BKK}/robots.txt": robots}
+    pages.update({bkk_list_url(n): rsc_page(items) for n, items in listing.items()})
+    for items in listing.values():
+        for i in items:
+            pages.setdefault(f"{BKK}/jobs/detail/{i['company_id']}/{i['jobpost_id']}", posting_page())
+    pages.update({f"{BKK}/jobs/detail/7/{job}": body for job, body in (details or {}).items()})
+    return Site(pages)
+
+
+def bkk_state(sessions):
+    with sessions() as db:
+        row = db.get(CrawlState, "jobbkk")
+        return row.state if row else None
+
+
+@pytest.mark.integration
+def test_jobbkk_head_pages_and_sweep_finish_at_all_old_page(sessions):
+    site = bkk_site({1: [item(1)], 2: [item(2)], 3: [item(3)], 4: [item(4), item(5, created_days=95)], 5: OLD_PAGE})
+    result = crawl(sessions, "jobbkk", site)
+    assert result["state"] == "ok" and set(stored(sessions, "jobbkk")) == {"1", "2", "3", "4"}
+    assert f"{BKK}/jobs/detail/7/5" not in site.requested and f"{BKK}/jobs/detail/7/900" not in site.requested
+    assert bkk_list_url(6) not in site.requested
+    assert bkk_state(sessions) == {"cursor": 4, "sweep_started_at": T0.isoformat()}
+    assert stored(sessions, "jobbkk")["4"].slug == "bkk-4"
+
+
+@pytest.mark.integration
+def test_jobbkk_cursor_resumes_and_head_pages_reread(sessions):
+    listing = {1: [item(1)], 2: [item(2)], 3: [item(3)], 4: [item(4)], 5: [item(5)], 6: OLD_PAGE}
+    first = bkk_site(listing)
+    crawl(sessions, "jobbkk", first, max_requests=9)  # robots, 3 heads + 3 details, page 4 + detail -> cap at page 5
+    assert bkk_state(sessions)["cursor"] == 5 and set(stored(sessions, "jobbkk")) == {"1", "2", "3", "4"}
+    second = bkk_site(listing)
+    result = crawl(sessions, "jobbkk", second, at=T0 + timedelta(hours=1))
+    lists = [u for u in second.requested if "/jobs/lists/" in u]
+    assert lists == [bkk_list_url(n) for n in (1, 2, 3, 5, 6)] and result["state"] == "ok"
+    assert set(stored(sessions, "jobbkk")) == {"1", "2", "3", "4", "5"}
+    assert bkk_state(sessions)["cursor"] == 4
+
+
+@pytest.mark.integration
+def test_jobbkk_unreadable_listing_fails_and_deletes_nothing(sessions):
+    crawl(sessions, "jobbkk", bkk_site({1: [item(1)], 2: [item(2)], 3: [item(3)], 4: OLD_PAGE}))
+    broken = bkk_site({1: [item(1)]})
+    broken.pages[bkk_list_url(2)] = "<html>redesigned</html>"
+    for h in (1, 2, 3):
+        result = crawl(sessions, "jobbkk", broken, at=T0 + timedelta(hours=h))
+    assert result["state"] == "failed" and result["error"] == "listing_unreadable"
+    assert set(stored(sessions, "jobbkk")) == {"1", "2", "3"}
+
+
+@pytest.mark.integration
+def test_jobbkk_missing_from_two_finished_sweeps_is_deleted(sessions):
+    crawl(sessions, "jobbkk", bkk_site({1: [item(1)], 2: [item(2)], 3: [item(3)], 4: OLD_PAGE}), clock=ticking())
+    for h in (1, 2):
+        crawl(sessions, "jobbkk", bkk_site({1: [item(1)], 2: [item(2)], 3: [], 4: OLD_PAGE}),
+              at=T0 + timedelta(hours=h))
+    assert set(stored(sessions, "jobbkk")) == {"1", "2"} and tombstones(sessions, "jobbkk") == set()
+
+
+@pytest.mark.integration
+def test_jobbkk_shrink_guard_fails_but_restarts_sweep(sessions):
+    many = {1: [item(i) for i in range(1, 21)], 2: [], 3: [], 4: OLD_PAGE}
+    crawl(sessions, "jobbkk", bkk_site(many), clock=ticking())
+    few = {1: [item(i) for i in range(1, 6)], 2: [], 3: [], 4: OLD_PAGE}
+    later = T0 + timedelta(hours=1)
+    result = crawl(sessions, "jobbkk", bkk_site(few), at=later)
+    assert result["state"] == "failed" and result["error"] == "suspicious_shrink"
+    assert len(stored(sessions, "jobbkk")) == 20
+    assert bkk_state(sessions) == {"cursor": 4, "sweep_started_at": later.isoformat()}
+
+
+@pytest.mark.integration
+def test_jobbkk_429_mid_page_keeps_details_and_cursor(sessions):
+    listing = {1: [], 2: [], 3: [], 4: [item(1), item(2)], 5: OLD_PAGE}
+    site = bkk_site(listing, details={2: (429, {}, b"")})
+    result = crawl(sessions, "jobbkk", site)
+    assert result["state"] == "failed" and result["error"] == "http_429"
+    assert set(stored(sessions, "jobbkk")) == {"1"} and bkk_state(sessions)["cursor"] == 4
+
+
+@pytest.mark.integration
+def test_jobbkk_same_id_on_two_pages_fetched_once(sessions):
+    site = bkk_site({1: [item(1), item(1)], 2: [], 3: [], 4: [item(1)], 5: OLD_PAGE})
+    crawl(sessions, "jobbkk", site)
+    assert site.requested.count(f"{BKK}/jobs/detail/7/1") == 1
+
+
+@pytest.mark.integration
+def test_jobbkk_soft_404_is_tombstoned_and_skipped_next_sweep(sessions):
+    listing = {1: [item(1)], 2: [], 3: [], 4: OLD_PAGE}
+    crawl(sessions, "jobbkk", bkk_site(listing, details={1: "<html>not found</html>"}))
+    assert tombstones(sessions, "jobbkk") == {"1"}
+    again = bkk_site(listing)
+    crawl(sessions, "jobbkk", again, at=T0 + timedelta(hours=1))
+    assert f"{BKK}/jobs/detail/7/1" not in again.requested

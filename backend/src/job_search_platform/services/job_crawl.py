@@ -4,9 +4,11 @@ Work is committed as it goes, so a stop (cap, 429, crash) keeps what was fetched
 """
 from __future__ import annotations
 
+import itertools
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -19,6 +21,12 @@ MAX_DETAILS = 130  # JobTopGun detail pages per run
 COMMIT_EVERY = 10
 JTG = "https://www.jobtopgun.com"
 _JTG_ID = re.compile(r"^j(\d+)-(\d+)$")
+HEAD_PAGES = 3  # JobBKK pages read every run, so new postings appear within the hour
+AGE_MARGIN = timedelta(days=1)  # JobBKK listing timestamps are skewed by hours
+BANGKOK = timezone(timedelta(hours=7))
+BKK = "https://www.jobbkk.com"
+_BKK_LIST = BKK + "/jobs/lists/{}/" + quote("หางาน,ทั้งหมด,ทุกจังหวัด,ทั้งหมด.html", safe=",.")
+_DIGITS = re.compile(r"^\d{1,12}$")
 
 
 def crawl_site(sessions, site: str, *, clock, sleep=time.sleep, monotonic=time.monotonic,
@@ -128,5 +136,68 @@ def _jobtopgun(sessions, client, clock, counts) -> None:
         _flush(sessions, "jobtopgun", batch, clock(), counts, progress())
 
 
+def _bkk_time(value) -> datetime | None:
+    try:
+        return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").replace(tzinfo=BANGKOK)
+    except (TypeError, ValueError):
+        return None
+
+
 def _jobbkk(sessions, client, clock, counts) -> None:
-    raise NotImplementedError("Task 5")
+    """Head pages every run, then the sweep from its cursor until a page of only >91-day-old updates (spec, JobBKK)."""
+    saved = _load_state(sessions, "jobbkk")
+    state = {"cursor": saved.get("cursor", HEAD_PAGES + 1),
+             "sweep_started_at": saved.get("sweep_started_at") or clock().isoformat()}
+    for number in itertools.chain(range(1, HEAD_PAGES + 1), itertools.count(state["cursor"])):
+        page = client.get(_BKK_LIST.format(number))
+        items = crawler.jobpost_list(page) if page is not None else None
+        if items is None:
+            raise crawler.CrawlStop("listing_unreadable")  # blocked or markup changed: never an empty listing
+        cutoff = clock() - job_store.MAX_AGE - AGE_MARGIN
+        sweeping = number > HEAD_PAGES
+        if sweeping and all((t := _bkk_time(i.get("updated_at"))) is not None and t < cutoff for i in items):
+            _finish_sweep(sessions, job_store.parse_ts(state["sweep_started_at"]), clock(), counts)
+            return
+        done = dict(state, cursor=number + 1) if sweeping else state
+        _bkk_page(sessions, client, items, clock, counts, cutoff, state, done)
+        state = done
+
+
+def _bkk_page(sessions, client, items, clock, counts, cutoff, state, done) -> None:
+    """One listing page: mark listed ids seen, fetch details of new ones; a stop keeps the page as the cursor."""
+    listed = {}
+    for item in items:
+        job, company = str(item.get("jobpost_id", "")), str(item.get("company_id", ""))
+        if _DIGITS.match(job) and _DIGITS.match(company):
+            listed.setdefault(job, (company, item))
+    with sessions.begin() as db:
+        stored, tombstoned = job_store.touch_seen(db, "jobbkk", set(listed), clock())
+    batch: list = []
+    try:
+        for job, (company, item) in listed.items():
+            created = _bkk_time(item.get("created_at"))
+            if job in stored or job in tombstoned or created is None or created < cutoff:
+                continue
+            url = f"{BKK}/jobs/detail/{company}/{job}"
+            page = client.get(url)
+            if page is None:
+                continue  # robots.txt disallows it: blocked is not gone
+            counts["fetched"] += 1
+            batch.append((job, *_classify("jobbkk", job, url, page, clock())))
+    except crawler.CrawlStop:
+        _flush(sessions, "jobbkk", batch, clock(), counts, state)  # page unfinished: read it again next run
+        raise
+    _flush(sessions, "jobbkk", batch, clock(), counts, done)
+
+
+def _finish_sweep(sessions, started: datetime, now: datetime, counts: dict) -> None:
+    """A finished sweep has seen every live posting: count misses, then start the next sweep."""
+    fresh = {"cursor": HEAD_PAGES + 1, "sweep_started_at": now.isoformat()}
+    try:
+        with sessions.begin() as db:
+            counts["deleted"] += job_store.miss_unseen(db, "jobbkk", started, now)
+            _save_state(db, "jobbkk", fresh, now)
+    except job_boards.BoardError:
+        with sessions.begin() as db:  # shrink guard: no misses counted, but the next sweep still starts
+            _save_state(db, "jobbkk", fresh, now)
+        raise
