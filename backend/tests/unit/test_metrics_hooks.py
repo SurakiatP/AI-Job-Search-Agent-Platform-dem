@@ -1,6 +1,7 @@
 """WP1 observability hooks: middleware, LLM tracing helpers, run executor. Synthetic values only."""
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from types import SimpleNamespace
@@ -89,12 +90,12 @@ def _executor(sessions):
 def test_executor_records_final_status():
     run = SimpleNamespace(id=uuid.uuid4(), operation="evaluate")
     before = _value("jsp_runs_total", operation="evaluate", outcome="completed")
-    _executor(_Sessions("completed"))._record_metrics(run, time.monotonic() - 3)
+    asyncio.run(_executor(_Sessions("completed"))._record_metrics(run, time.monotonic() - 3))
     assert _value("jsp_runs_total", operation="evaluate", outcome="completed") == before + 1
 
 
 def test_executor_metrics_never_raise_when_db_fails():
     run = SimpleNamespace(id=uuid.uuid4(), operation="evaluate")
     before = _value("jsp_runs_total", operation="evaluate", outcome="error")
-    _executor(_Sessions(fail=True))._record_metrics(run, time.monotonic())
+    asyncio.run(_executor(_Sessions(fail=True))._record_metrics(run, time.monotonic()))
     assert _value("jsp_runs_total", operation="evaluate", outcome="error") == before + 1

@@ -166,15 +166,25 @@ class RunExecutor:
         finally:
             monitor.cancel()
             await asyncio.gather(monitor, return_exceptions=True)
-            self._record_metrics(run, began)
+            await self._record_metrics(run, began)
 
-    def _record_metrics(self, run: Run, began: float) -> None:
-        """One run metric with the run's final status; a short read, never raises (WP1 observability)."""
-        outcome = None
+    def _final_status(self, run_id: Any) -> str | None:
         try:
             with self.sessions() as db:
-                row = db.get(Run, run.id)
-                outcome = getattr(row, "status", None)
+                return getattr(db.get(Run, run_id), "status", None)
+        except Exception:
+            logging.getLogger(__name__).debug("run_metric_status_unavailable")
+            return None
+
+    async def _record_metrics(self, run: Run, began: float) -> None:
+        """One run metric with the run's final status; the status read runs off the event loop, never raises."""
+        outcome = None
+        try:
+            outcome = await asyncio.shield(asyncio.to_thread(self._final_status, run.id))
+        except asyncio.CancelledError:
+            # cancelled mid-read: still count the run, then let the cancellation continue
+            metrics.observe_run(getattr(run, "operation", None), None, time.monotonic() - began)
+            raise
         except Exception:
             outcome = None
         metrics.observe_run(getattr(run, "operation", None), outcome, time.monotonic() - began)
