@@ -15,10 +15,12 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from job_search_platform.integrations import metrics
+
 REQUEST_ID_HEADER = "X-Request-ID"
 _SAFE_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")  # also matches a uuid
 _request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
-_EXTRAS = ("method", "route", "status", "duration_ms")
+_EXTRAS = ("method", "route", "status", "duration_ms", "port", "error")
 _log = logging.getLogger("jsp.request")
 
 
@@ -71,7 +73,9 @@ class RequestLogMiddleware:
         try:
             await self.app(scope, receive, send_with_id)
         finally:
-            route = getattr(scope.get("route"), "path", "unmatched")
-            _log.info("request", extra={"method": scope["method"], "route": route, "status": status,
-                                        "duration_ms": round((time.perf_counter() - started) * 1000, 1)})
+            route = getattr(scope.get("route"), "path", None)
+            duration = time.perf_counter() - started
+            _log.info("request", extra={"method": scope["method"], "route": route or "unmatched", "status": status,
+                                        "duration_ms": round(duration * 1000, 1)})
+            metrics.observe_request(scope["method"], route, status, duration)
             _request_id.reset(token)

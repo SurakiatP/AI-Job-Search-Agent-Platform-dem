@@ -5,11 +5,13 @@ Not here: backend/frontend code, secrets, credentials, upstream checkouts (these
 
 ## Layout
 
-- `compose.yaml` - services: `postgres`, `minio`, `litellm-db`, `litellm`, `mailpit`, `meilisearch` (job search index, pinned `getmeili/meilisearch:v1.55.0` digest, loopback port 57700 / `CORE02_MEILI_PORT`, key from private file `meili-master-key`); profile `seed` (`litellm-seed`); profile `langfuse` (`langfuse-db`, `langfuse-clickhouse`, `langfuse-valkey`, `langfuse-minio`, and more).
+- `compose.yaml` - services: `postgres`, `minio`, `litellm-db`, `litellm`, `mailpit`, `meilisearch` (job search index, pinned `getmeili/meilisearch:v1.55.0` digest, loopback port 57700 / `CORE02_MEILI_PORT`, key from private file `meili-master-key`); `prometheus` (source-built image `job-search-platform/prometheus:3.15.0-go1.27.2-5241a27fe3c6`, loopback port 59090 / `CORE02_PROMETHEUS_PORT`, 15d retention, scrapes the app's metrics listener at `host.docker.internal:59464`) and `grafana` (source-built image `job-search-platform/grafana:13.2.4-promds13.2.3-go1.27.2-6d21418acde6`, loopback port 53300 / `CORE02_GRAFANA_PORT`, anonymous access off, admin password from private file `grafana-admin-password`); profile `seed` (`litellm-seed`); profile `langfuse` (`langfuse-db`, `langfuse-clickhouse`, `langfuse-valkey`, `langfuse-minio`, and more).
 - `postgres/` - `Dockerfile`, `go.mod`, `go.sum`, `provenance.json` (PostgreSQL 17.11 alpine + gosu built from pinned source).
 - `minio/` - `Dockerfile`, `go.mod`, `go.sum`, `provenance.json` (MinIO OSS built from pinned source commit).
 - `litellm/` - `config.yaml`, `seed.py` (LiteLLM gateway config and seeding).
 - `langfuse/` - `env.sh`.
+- `prometheus/` - `Dockerfile`, `go.mod`, `go.sum`, `provenance.json` (Prometheus 3.15.0 built from pinned source), `prometheus.yml` (scrape config), `rules.yml` (alerts), `rules_test.yml` (promtool unit tests).
+- `grafana/` - `Dockerfile`, `go.mod`, `go.sum`, `provenance.json` (Grafana 13.2.4 with a source-built Prometheus datasource plugin), `provisioning/` (datasource and dashboard provider) and `dashboards/platform-overview.json` ("Platform overview").
 - `launchd/` - `com.job-search-platform.ingest.plist.example`, the hourly job-ingest template (copy, replace `REPO_DIR`/`PRIVATE_DIR`).
 - `hermes/` - `Dockerfile`, `setup.py` (acquire and build), `pyproject.toml`, `uv.lock`, `package.json`/`package-lock.json`, `parse_document.py`, `tool_gate.py`, `native_bridge.py`, `typst_render.py`, `export_pdf.mjs`.
 
@@ -25,14 +27,15 @@ Not here: backend/frontend code, secrets, credentials, upstream checkouts (these
 ## Commands
 
 - Compose directly: `docker compose -f infra/compose.yaml up -d mailpit` (example from local-operation.md); prefer `scripts/local_infra.py` for postgres/minio.
-- Setup, upstream checkouts and env vars (`CORE02_PRIVATE_DIR`, `MINIO_SOURCE_DIR`, `GOSU_SOURCE_DIR`, `HERMES_SOURCE_DIR`, `CAREER_OPS_SOURCE_DIR`, `HERMES_ENV_DIR`): `docs/engineering/local-operation.md`.
+- Setup, upstream checkouts and env vars (`CORE02_PRIVATE_DIR`, `MINIO_SOURCE_DIR`, `GOSU_SOURCE_DIR`, `PROMETHEUS_SOURCE_DIR`, `GRAFANA_PROM_DS_SOURCE_DIR`, `HERMES_SOURCE_DIR`, `CAREER_OPS_SOURCE_DIR`, `HERMES_ENV_DIR`): `docs/engineering/local-operation.md`.
 
 ## Rules
 
-- Pin everything: upstream images by `@sha256:` digest, locally built images (`job-search-platform/postgres`, `job-search-platform/minio-oss`) by a tag that encodes the pinned source, source commits in `backend/pyproject.toml` (`[tool.job-search-platform.upstream]`: hermes, career-ops, minio, gosu). No floating tags. Keep the full Career Ops and Hermes checkouts pinned; do not vendor third-party source or nested repositories.
+- Pin everything: upstream images by `@sha256:` digest, locally built images (`job-search-platform/postgres`, `job-search-platform/minio-oss`, `job-search-platform/prometheus`, `job-search-platform/grafana`) by a tag that encodes the pinned source, source commits in `backend/pyproject.toml` (`[tool.job-search-platform.upstream]`: hermes, career-ops, minio, gosu, prometheus, grafana-prometheus-datasource). No floating tags. Keep the full Career Ops and Hermes checkouts pinned; do not vendor third-party source or nested repositories.
 - Changing a pinned input or image means re-running dependency and image scans (`pip-audit`, `npm audit`, Trivy, SBOM) before merge; see `docs/engineering/DELIVERY.md` and `docs/engineering/dependencies.md`. Known exploitable Critical/High findings block delivery; do not hide them by disabling checks or ignoring advisories without evidence. Unknown scan coverage must stay visible.
 - `go.mod`/`go.sum` overlays are hash-checked against `provenance.json`; update both together.
 - MinIO stays open source under AGPLv3: keep the license notice copied into the image, keep the pinned source build; do not silently substitute another product. Upstream is archived, so this project owns patches.
+- The observability images are source-built (Go 1.27.2, `golang.org/x/net` v0.60.0) because the upstream `prom/prometheus` and `grafana/grafana` images carried High CVEs. Do not switch back to the upstream images without a Trivy scan. Grafana runs only the rebuilt `prometheus` datasource, allowed as the one unsigned plugin (`GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=prometheus`); do not widen that list.
 - Secrets and credentials never in repo, logs or images; they are generated into the private dir outside the repo.
 - Project execution containers get only their own workspace: no Docker socket, host home or infrastructure/provider secrets.
 - Backup/restore must cover PostgreSQL and MinIO together; see `docs/engineering/recovery-proof.md`.

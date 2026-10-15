@@ -8,7 +8,7 @@ Command examples use the installed `rtk` wrapper. It is an operator tool, not an
 
 Use macOS for the supported owner Keychain path. Install Git, Docker with Compose, `uv` 0.12.2, Python 3.12, Node 24.18.0 with npm 11.16.0, Trivy 0.75.0 for reproducing the recorded scan, and the Go toolchains declared by the pinned container builds. The Hermes environment uses its own locked Python 3.14.7 runtime. PostgreSQL is 17.11; backend dependencies are in `backend/uv.lock`, and frontend and browser-test dependencies are in their package locks. `scripts/check_dependencies.py` checks lock drift and runtime versions.
 
-Before starting storage, acquire clean detached upstream checkouts outside this repository. The MinIO, gosu, Hermes, and Career Ops revisions are recorded in `backend/pyproject.toml`; the source-built MinIO and PostgreSQL dependency overlays are hash-checked by the setup scripts. For example, create the MinIO and gosu source directories under a private cache and check out the exact commits declared by the repository:
+Before starting storage, acquire clean detached upstream checkouts outside this repository. The MinIO, gosu, Prometheus, Grafana Prometheus datasource, Hermes, and Career Ops revisions are recorded in `backend/pyproject.toml`; the source-built MinIO and PostgreSQL dependency overlays are hash-checked by the setup scripts. For example, create the MinIO, gosu, Prometheus and Grafana datasource source directories under a private cache and check out the exact commits declared by the repository:
 
 ```sh
 export UPSTREAM_ROOT="$HOME/.cache/job-search-platform/upstream"
@@ -20,7 +20,15 @@ rtk git clone --no-checkout https://github.com/tianon/gosu.git "$UPSTREAM_ROOT/g
 rtk git -C "$UPSTREAM_ROOT/gosu" fetch --depth 1 origin 6456aaa0f3c854d199d0f037f068eb97515b7513
 rtk git -C "$UPSTREAM_ROOT/gosu" checkout --detach 6456aaa0f3c854d199d0f037f068eb97515b7513
 export MINIO_SOURCE_DIR="$UPSTREAM_ROOT/minio"
+rtk git clone --no-checkout https://github.com/prometheus/prometheus.git "$UPSTREAM_ROOT/prometheus"
+rtk git -C "$UPSTREAM_ROOT/prometheus" fetch --depth 1 origin 5241a27fe3c6983549fccc32f6e65917408c63cd
+rtk git -C "$UPSTREAM_ROOT/prometheus" checkout --detach 5241a27fe3c6983549fccc32f6e65917408c63cd
+rtk git clone --no-checkout https://github.com/grafana/grafana-prometheus-datasource.git "$UPSTREAM_ROOT/grafana-prometheus-datasource"
+rtk git -C "$UPSTREAM_ROOT/grafana-prometheus-datasource" fetch --depth 1 origin 6d21418acde6ce31c9f7a6418a88758842a881bb
+rtk git -C "$UPSTREAM_ROOT/grafana-prometheus-datasource" checkout --detach 6d21418acde6ce31c9f7a6418a88758842a881bb
 export GOSU_SOURCE_DIR="$UPSTREAM_ROOT/gosu"
+export PROMETHEUS_SOURCE_DIR="$UPSTREAM_ROOT/prometheus"
+export GRAFANA_PROM_DS_SOURCE_DIR="$UPSTREAM_ROOT/grafana-prometheus-datasource"
 ```
 
 The source paths must be clean. Do not place a checkout inside this repository. Prepare Hermes and its complete Career Ops integrations with the repository's pinned acquisition/build script; it uses an external cache and writes no credentials:
@@ -29,7 +37,7 @@ The source paths must be clean. Do not place a checkout inside this repository. 
 rtk python3 infra/hermes/setup.py --acquire --build
 ```
 
-That operation needs network access, Docker, and the pinned build toolchains. Keep the emitted manifest in the private cache. For full dependency scans, set `HERMES_SOURCE_DIR` and `CAREER_OPS_SOURCE_DIR` to the corresponding acquired checkout paths and `HERMES_ENV_DIR` to the prepared Hermes environment path. Also set `MINIO_SOURCE_DIR` and `GOSU_SOURCE_DIR` as above. No credential values are needed for these checks.
+That operation needs network access, Docker, and the pinned build toolchains. Keep the emitted manifest in the private cache. For full dependency scans, set `HERMES_SOURCE_DIR` and `CAREER_OPS_SOURCE_DIR` to the corresponding acquired checkout paths and `HERMES_ENV_DIR` to the prepared Hermes environment path. Also set `MINIO_SOURCE_DIR`, `GOSU_SOURCE_DIR`, `PROMETHEUS_SOURCE_DIR` and `GRAFANA_PROM_DS_SOURCE_DIR` as above. No credential values are needed for these checks.
 
 ## Start the local services and app
 
@@ -141,9 +149,15 @@ Every address the app uses comes from the environment, with the local-stack defa
 | `APP_PUBLIC_ORIGIN` / `JSP_DEV_ORIGIN` | the launcher sets it to the listener origin (default `http://127.0.0.1:8000`; with it unset both `127.0.0.1:8000` and `localhost:8000` are allowed) / unset. `JSP_DEV_ORIGIN` must be an `http` loopback origin, e.g. the Vite dev server. An `https` `APP_PUBLIC_ORIGIN` makes the session cookie `Secure`. | no |
 | `CORE02_PRIVATE_DIR` | `~/.cache/job-search-platform/core02-runtime-20261003` | no (the directory holds secrets) |
 | `MINIO_SOURCE_DIR` / `GOSU_SOURCE_DIR` | `~/.cache/job-search-platform/upstream/{minio,gosu}` | no |
+| `PROMETHEUS_SOURCE_DIR` / `GRAFANA_PROM_DS_SOURCE_DIR` | `~/.cache/job-search-platform/upstream/{prometheus,grafana-prometheus-datasource}` | no |
 | `CORE02_POSTGRES_PORT` / `CORE02_MINIO_PORT` / `CORE02_LITELLM_PORT` / `CORE02_LANGFUSE_PORT` | `55432` / `59000` / `54000` / `53000` (host ports published by compose) | no |
+| `CORE02_MEILI_PORT` / `CORE02_PROMETHEUS_PORT` / `CORE02_GRAFANA_PORT` | `57700` / `59090` / `53300` (host ports published by compose) | no |
+| `CORE02_MAILPIT_SMTP_PORT` / `CORE02_MAILPIT_UI_PORT` | `51025` / `58025` (host ports published by compose) | no |
+| `PROMETHEUS_RETENTION` | `15d` | no |
+| `GRAFANA_ADMIN_USER` | `admin` (the password is the private file `grafana-admin-password`, never in `.env`) | no |
+| `METRICS_PORT` / `METRICS_HOST` | unset (no listener), documented value `59464` / `127.0.0.1` (loopback only) | no |
 
-`CORE02_PRIVATE_DIR`, `MINIO_SOURCE_DIR` and `GOSU_SOURCE_DIR` are optional overrides: `local_infra.py`, the app, backup and restore share one default. To run the app on another host, point `JSP_POSTGRES_*`, `JSP_MINIO_ENDPOINT` and `LITELLM_BASE_URL` at the service host and copy the credential files into that host's `CORE02_PRIVATE_DIR`.
+`CORE02_PRIVATE_DIR` and the `*_SOURCE_DIR` variables are optional overrides: `local_infra.py`, the app, backup and restore share one default. To run the app on another host, point `JSP_POSTGRES_*`, `JSP_MINIO_ENDPOINT` and `LITELLM_BASE_URL` at the service host and copy the credential files into that host's `CORE02_PRIVATE_DIR`.
 
 Health and logs:
 
@@ -203,6 +217,48 @@ The crawl runs after the ATS boards in the same `ingest run`, under ADR-016.
 The `meilisearch` service starts with `local_infra.py start` (loopback port 57700, key in the private file `meili-master-key`). The index (`MEILI_INDEX`, default `jobs`) is built on the first ingest run or by `reindex`, and synced after every later run. Search and facets are served only from the index: while it is unavailable, search returns 502 `job_source_unavailable`; there is no Postgres fallback. Run `reindex` to recover.
 
 Never run `local_infra.py start` without the owner's `.env` loaded (it recreates LiteLLM, and an unset `OPENROUTER_API_KEY` leaves model calls failing). To add or restart one service, load `.env`, export `CORE02_PRIVATE_DIR` (and `MINIO_SOURCE_DIR`/`GOSU_SOURCE_DIR` if compose asks), then run `docker compose -f infra/compose.yaml up --detach --no-deps <service>`.
+
+## Metrics and Grafana
+
+The app can expose Prometheus metrics, and the dev compose stack ships Prometheus and Grafana to read them.
+
+- **Enable:** set `METRICS_PORT=59464` in `.env` (the Prometheus scrape target in `infra/prometheus/prometheus.yml` is `host.docker.internal:59464`; if you change the port, change that target too, and restart `prometheus`). `PROMETHEUS_RETENTION`, `GRAFANA_ADMIN_USER` and the `CORE02_*_PORT` variables in the table above are also read from `.env`. Unset means no listener. `METRICS_HOST` defaults to `127.0.0.1`; any non-loopback host makes startup fail with `metrics_host_not_loopback`.
+- **Metrics URL:** `http://127.0.0.1:59464/metrics`. The listener is separate from the app port and is never proxied; the main app has no `/metrics` route. Scrape-time values (database, search, ingest state) are computed at most once every 30 s on a dedicated small DB engine, and concurrent scrapes get the cached values.
+- **Failures and macOS:** if the metrics port cannot be bound, the app logs a `metrics_listener_unavailable` warning and keeps running without metrics. On macOS, where `/proc` is absent, a small fallback emits `process_cpu_seconds_total`, `process_open_fds` and `jsp_process_peak_rss_bytes` (peak, not current, memory), which the dashboard memory panel uses.
+- **Route label:** the HTTP `route` label is the route template relative to the `/api/v1` prefix, for example `/health` or `/projects/{project_id}/job-search`. FastAPI 0.142 keeps included-router paths relative. All routers share `/api/v1`, so each endpoint still has a unique label. A request that matches no route (static assets, SPA fallback) is `other`.
+- **First build:** `prometheus` and `grafana` are built locally from the pinned checkouts (set `PROMETHEUS_SOURCE_DIR` and `GRAFANA_PROM_DS_SOURCE_DIR`, see "Requirements and pinned inputs"). Prometheus takes about 15–20 minutes on a 4-CPU VM (the Go build with the web UI); Grafana takes a few minutes. Do not build the two at once, the VM can run out of memory. Keep at least 20 GB free (`df -h /`) and run `rtk docker builder prune -f` afterwards. Later starts reuse the images.
+
+Start only the two services through the existing helper, so the compose environment matches the rest of the stack. Never start compose without `.env` loaded (LEARNINGS 2026-10-15), because an unset `OPENROUTER_API_KEY` leaves LiteLLM model calls failing once it is recreated.
+
+```sh
+rtk uv run --env-file .env --locked --project backend python - <<'EOF'
+import os, sys
+from pathlib import Path
+sys.path.insert(0, "scripts")
+import local_infra as li
+private = Path(os.environ.get("CORE02_PRIVATE_DIR") or li.DEFAULT_PRIVATE_DIR)
+minio = Path(os.environ.get("MINIO_SOURCE_DIR") or li.DEFAULT_MINIO_SOURCE)
+li.ensure_credentials(private)
+li.validate_observability_build_inputs()
+li._compose(["up", "--detach", "--no-deps", "prometheus", "grafana"], private, minio, timeout=2400)
+EOF
+```
+
+The 2400 s timeout covers the first image builds (`up` builds a missing image; the timeout kills the command, so 600 s is too short for Prometheus). `ensure_credentials` creates `grafana-admin-password` (mode 0600) in the private directory when it is missing and leaves existing files alone. `_compose` validates the MinIO, gosu and dependency inputs. The Prometheus and Grafana datasource source checks and Go overlay hashes are in `validate_observability_build_inputs()`, which `start` calls before `up --build` and the heredoc above calls before `_compose`; `status`, `stop` and `restart_minio` do not need those checkouts.
+
+- **URLs:** Prometheus `http://127.0.0.1:59090` (alerts under Alerts); Grafana `http://127.0.0.1:53300`, user `admin`, password in `$CORE02_PRIVATE_DIR/grafana-admin-password`, dashboard "Platform overview".
+- **Platform scope:** Prometheus reaches the loopback listener at `host.docker.internal:59464`. This works with Docker Desktop or Colima on macOS (`host-gateway` reaches the macOS host). On a Linux Docker engine `host-gateway` is expected to resolve to the docker0 bridge, so a loopback-only listener is unreachable and `AppDown` stays firing. The single-VM deploy in WP1 part 2 runs Prometheus on the host network.
+- **Alerts** (`infra/prometheus/rules.yml`, visible in the Prometheus UI; there is no Alertmanager yet):
+  - `AppDown`: the app's metrics listener has not answered for 5 minutes.
+  - `DatabaseDown`: `jsp_db_up` is 0 for 5 minutes.
+  - `SearchDown`: `jsp_search_up` is 0 for 10 minutes.
+  - `IngestStale`: no ingest run finished in 2 hours.
+  - `SourceFailing`: a source failed in every run for 3 hours.
+  - `SourceSilent`: a source has not succeeded for 6 hours.
+  - `HighErrorRate`: more than 5% of HTTP requests returned 5xx over 10 minutes, with more than 1 request/s.
+  - `RunsStuckQueued`: runs are queued but none finished in 30 minutes.
+
+  `IngestStale` stays silent if no ingest run has ever finished, and `SourceSilent` ignores sources that have never succeeded. Once runs exist, both fire when the hourly job is not installed.
 
 ## Verification on the operator machine
 

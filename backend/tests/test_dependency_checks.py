@@ -225,6 +225,52 @@ def test_container_build_manifest_rejects_live_upstream_checkout(tmp_path, monke
     assert any("set MINIO_SOURCE_DIR" in problem for problem in problems)
 
 
+def test_upstream_pins_include_observability_sources():
+    pins = check_dependencies._upstream_pins((check_dependencies.ROOT / "backend/pyproject.toml").read_text())
+    assert pins["prometheus"] == "5241a27fe3c6983549fccc32f6e65917408c63cd"
+    assert pins["grafana-prometheus-datasource"] == "6d21418acde6ce31c9f7a6418a88758842a881bb"
+
+
+def test_prometheus_dockerfile_requires_its_source_dir(tmp_path, monkeypatch):
+    infra = tmp_path / "infra"
+    infra.mkdir()
+    (infra / "Dockerfile.prom").write_text(
+        "FROM golang:1.27.2@sha256:" + "a" * 64 + "\n# https://github.com/prometheus/prometheus\n", encoding="utf-8")
+    monkeypatch.setattr(check_dependencies, "ROOT", tmp_path)
+    monkeypatch.delenv("PROMETHEUS_SOURCE_DIR", raising=False)
+    problems = []
+    check_dependencies._check_container_build_inputs(problems)
+    assert any("set PROMETHEUS_SOURCE_DIR" in problem for problem in problems)
+    # Grafana's bundled datasource path is not the Prometheus server source.
+    (infra / "Dockerfile.prom").write_text(
+        "FROM golang:1.27.2@sha256:" + "a" * 64 + "\nCOPY x plugins-bundled/prometheus/\n", encoding="utf-8")
+    problems = []
+    check_dependencies._check_container_build_inputs(problems)
+    assert not problems
+
+
+def test_grafana_dockerfile_requires_its_source_dir(tmp_path, monkeypatch):
+    infra = tmp_path / "infra"
+    infra.mkdir()
+    (infra / "Dockerfile").write_text(
+        "FROM golang:1.27.2@sha256:" + "a" * 64 + "\n# https://github.com/grafana/grafana-prometheus-datasource\n", encoding="utf-8")
+    monkeypatch.setattr(check_dependencies, "ROOT", tmp_path)
+    monkeypatch.delenv("GRAFANA_PROM_DS_SOURCE_DIR", raising=False)
+    problems = []
+    check_dependencies._check_container_build_inputs(problems)
+    assert any("set GRAFANA_PROM_DS_SOURCE_DIR" in problem for problem in problems)
+
+
 def test_runtime_version_comparison_handles_patch_releases():
     assert check_dependencies.version_at_least("24.18.0", "24.0.0")
     assert not check_dependencies.version_at_least("23.11.0", "24.0.0")
+
+
+def test_observability_images_are_required_scans():
+    assert {"prometheus_image", "grafana_image"} <= check_dependencies.REQUIRED_SCANS
+
+
+def test_image_arguments_accept_observability_scopes():
+    refs = security_scan._image_arguments(["prometheus_image=job-search-platform/prometheus:x",
+                                           "grafana_image=job-search-platform/grafana:y"])
+    assert refs == {"prometheus_image": "job-search-platform/prometheus:x", "grafana_image": "job-search-platform/grafana:y"}

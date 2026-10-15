@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from urllib.parse import urlsplit
 import stat
@@ -31,7 +32,7 @@ from job_search_platform.api.rest import _http_error, router as rest_router
 from job_search_platform.api.sse import router as sse_router
 from job_search_platform.db.session import make_engine
 from job_search_platform.integrations.hermes_runtime import HermesRuntime
-from job_search_platform.integrations import tracing
+from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.logging import RequestLogMiddleware, configure_logging
 from job_search_platform.integrations.mailer import SmtpMailer
 from job_search_platform.integrations.object_store import S3ObjectStore
@@ -205,6 +206,8 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        metrics_port = config.metrics_port()
+        metrics_host = config.metrics_host()  # fails startup before anything needs cleaning up
         current = services or service_factory()
         owns_guard = current.maintenance_lock is None or not current.maintenance_lock.held
         guard = acquire_service_maintenance(current)
@@ -213,11 +216,21 @@ def create_app(
                 await __import__("asyncio").to_thread(_migrate, current.engine)
             app.state.services = current
             current.shutdown_confirmed = False
+            stop_metrics = None
             try:
+                if metrics_port:
+                    try:
+                        stop_metrics = metrics.start_listener(metrics_host, metrics_port, current.sessions,
+                                                              metrics.meili_probe, base_engine=current.engine)
+                    except OSError as exc:  # port taken: observability must not stop the app
+                        logging.getLogger(__name__).warning(
+                            "metrics_listener_unavailable", extra={"port": metrics_port, "error": type(exc).__name__})
                 await current.files.reconcile_pending()
                 await current.supervisor.start()
                 yield
             finally:
+                if stop_metrics is not None:
+                    stop_metrics()
                 supervisor_stopped = False
                 runtime_stopped = False
                 try:

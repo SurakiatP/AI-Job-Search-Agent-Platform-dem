@@ -15,6 +15,8 @@ from typing import Any
 
 from check_dependencies import REQUIRED_SCANS, evaluate_scan_coverage
 
+IMAGE_SCOPES = ("postgres_image", "minio_image", "hermes_image", "prometheus_image", "grafana_image")
+
 
 ROOT = Path(__file__).resolve().parents[1]
 TIMEOUT_SECONDS = 900
@@ -328,7 +330,7 @@ def scan(image_refs: dict[str, str]) -> tuple[dict[str, str], list[str], dict[st
             statuses[scope] = "failed"
         image_findings.extend(findings)
 
-    for scope in ("postgres_image", "minio_image", "hermes_image"):
+    for scope in IMAGE_SCOPES:
         reference = image_refs.get(scope)
         if not reference:
             continue
@@ -408,8 +410,8 @@ def _image_arguments(values: list[str]) -> dict[str, str]:
     image_refs: dict[str, str] = {}
     for value in values:
         scope, separator, reference = value.partition("=")
-        if not separator or scope not in {"postgres_image", "minio_image", "hermes_image"} or not reference:
-            raise ValueError("each --image must be postgres_image=REF, minio_image=REF, or hermes_image=REF")
+        if not separator or scope not in IMAGE_SCOPES or not reference:
+            raise ValueError("each --image must be " + ", ".join(f"{s}=REF" for s in IMAGE_SCOPES))
         if scope in image_refs:
             raise ValueError(f"duplicate image scope: {scope}")
         image_refs[scope] = reference

@@ -275,6 +275,7 @@ def test_start_warns_on_stderr_when_openrouter_key_missing(tmp_path, monkeypatch
     monkeypatch.setattr(local_infra, "validate_minio_source", lambda p: p)
     monkeypatch.setattr(local_infra, "ensure_credentials", lambda p: None)
     monkeypatch.setattr(local_infra, "_compose", lambda *a, **k: None)
+    monkeypatch.setattr(local_infra, "validate_observability_build_inputs", lambda: None)
     monkeypatch.setattr(local_infra, "write_credentials_summary", lambda p, langfuse: None)
     monkeypatch.delenv("LANGFUSE_HOST", raising=False)
     monkeypatch.setenv("OPENROUTER_API_KEY", key)
@@ -295,6 +296,8 @@ def test_start_runs_seed_after_up_and_maps_failure(tmp_path, monkeypatch, seed_r
     monkeypatch.setattr(local_infra, "validate_gosu_source", lambda p: None)
     monkeypatch.setattr(local_infra, "validate_postgres_overlay", lambda: None)
     monkeypatch.setattr(local_infra, "validate_dependency_overlay", lambda: None)
+    monkeypatch.setattr(local_infra, "validate_pinned_source", lambda *a, **k: None)
+    monkeypatch.setattr(local_infra, "validate_go_overlay", lambda *a, **k: None)
     monkeypatch.setattr(local_infra, "compose_environment", lambda *a: {})
     monkeypatch.setattr(local_infra, "write_credentials_summary", lambda p, langfuse: None)
     monkeypatch.delenv("LANGFUSE_HOST", raising=False)
@@ -333,6 +336,8 @@ def _stub_compose_checks(local_infra, monkeypatch) -> list[list[str]]:
     monkeypatch.setattr(local_infra, "validate_gosu_source", lambda p: None)
     monkeypatch.setattr(local_infra, "validate_postgres_overlay", lambda: None)
     monkeypatch.setattr(local_infra, "validate_dependency_overlay", lambda: None)
+    monkeypatch.setattr(local_infra, "validate_pinned_source", lambda *a, **k: None)
+    monkeypatch.setattr(local_infra, "validate_go_overlay", lambda *a, **k: None)
     monkeypatch.setattr(local_infra, "compose_environment", lambda *a: {})
     commands: list[list[str]] = []
 

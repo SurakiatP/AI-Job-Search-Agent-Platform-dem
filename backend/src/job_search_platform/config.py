@@ -1,6 +1,7 @@
 """Service addresses read from the environment, with the local-stack defaults."""
 from __future__ import annotations
 
+import ipaddress
 import os
 
 
@@ -35,3 +36,20 @@ def meili_url() -> str:
 
 def meili_index() -> str:
     return _env("MEILI_INDEX", "jobs")
+
+
+def metrics_port() -> int | None:
+    value = _env("METRICS_PORT", "")
+    return int(value) if value else None
+
+
+def metrics_host() -> str:
+    """Loopback only: the metrics listener has no auth and must never be reachable from outside (WP1, spec O4)."""
+    host = _env("METRICS_HOST", "127.0.0.1")
+    try:
+        loopback = ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        loopback = False
+    if not loopback:
+        raise ValueError("metrics_host_not_loopback")
+    return host

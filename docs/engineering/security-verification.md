@@ -24,7 +24,9 @@ Run the full scanner against the image tags built from the checked-in Compose an
 rtk uv run --locked --project backend python scripts/security_scan.py \
   --image postgres_image=job-search-platform/postgres:17.11-alpine-gosu-1.19-6456aaa0f3c8 \
   --image minio_image=job-search-platform/minio-oss:7aac2a2c5b7c882e68c1ce017d8256be2feea27f \
-  --image hermes_image=job-search-platform-hermes:core-03
+  --image hermes_image=job-search-platform-hermes:core-03 \
+  --image prometheus_image=job-search-platform/prometheus:3.15.0-go1.27.2-5241a27fe3c6 \
+  --image grafana_image=job-search-platform/grafana:13.2.4-promds13.2.3-go1.27.2-6d21418acde6
 ```
 
 The scanner records the immutable image ID behind each local tag before scanning, verifies it did not change, produces SBOMs, and keeps raw reports in the private cache. It requires independent scopes for backend and Hermes Python, frontend and Hermes Node, test dependencies, the Hermes environment, PostgreSQL, MinIO, Hermes image, MinIO Go/build dependencies, PostgreSQL gosu Go/build dependencies, and the parser source inventory. Missing source paths, unavailable scanner databases, malformed output, image drift, or failed scopes must be reported as incomplete/failed; a partial scan is not a full pass. The source inventory for the parser does not attest that the compiled wheel was built from that source.
