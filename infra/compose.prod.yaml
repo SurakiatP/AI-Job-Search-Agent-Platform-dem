@@ -1,0 +1,46 @@
+# Production override for one VM (spec 2026-10-15-iac-single-vm-design.md). Layered on compose.yaml via
+# CORE02_COMPOSE_OVERRIDE=infra/compose.prod.yaml. Only Caddy listens on public ports.
+services:
+  mailpit:
+    profiles: ["dev"]
+  prometheus:
+    network_mode: host
+    ports: !reset []
+    extra_hosts: !reset []
+    command:
+      - --config.file=/etc/prometheus/prometheus.prod.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      - --web.listen-address=127.0.0.1:${CORE02_PROMETHEUS_PORT:-59090}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:${CORE02_PROMETHEUS_PORT:-59090}/-/ready"]
+  grafana:
+    network_mode: host
+    ports: !reset []
+    environment:
+      GF_SERVER_HTTP_ADDR: 127.0.0.1
+      GF_SERVER_HTTP_PORT: ${CORE02_GRAFANA_PORT:-53300}
+      GRAFANA_PROMETHEUS_URL: http://127.0.0.1:${CORE02_PROMETHEUS_PORT:-59090}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:${CORE02_GRAFANA_PORT:-53300}/api/health"]
+  caddy:
+    image: job-search-platform/caddy:2.11.7-go1.27.2-72dd0fb067f6
+    build:
+      context: ./caddy
+      additional_contexts:
+        caddy_source: ${CADDY_SOURCE_DIR:?Set CADDY_SOURCE_DIR (see scripts/local_infra.py)}
+      args:
+        CADDY_SOURCE_COMMIT: ${CADDY_SOURCE_COMMIT:?Set CADDY_SOURCE_COMMIT using scripts/local_infra.py}
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in app.env}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in app.env}
+      CADDY_TLS: ${CADDY_TLS:-}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+volumes:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,19 @@
+[Unit]
+Description=AI Job Search Agent Platform
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+User=jsp
+Group=jsp
+WorkingDirectory=/opt/job-search-platform/current
+EnvironmentFile=/etc/job-search-platform/private/app.env
+Environment=HOME=/var/lib/job-search-platform
+ExecStart=/usr/local/bin/uv run --locked --project backend python scripts/run_local.py --enable-sharing --share-host 127.0.0.1
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

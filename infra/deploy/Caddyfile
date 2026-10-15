@@ -1,0 +1,13 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	{$CADDY_TLS}
+	reverse_proxy 127.0.0.1:8000
+}
+
+agents.{$DOMAIN} {
+	{$CADDY_TLS}
+	reverse_proxy 127.0.0.1:8001
+}
