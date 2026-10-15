@@ -1,7 +1,7 @@
 # ADR-016 — Crawl JobTopGun and JobBKK under the client's Terms of Service acceptance
 
 Date: 2026-10-15
-Status: Proposed. It becomes Accepted when the owner approves the part-3 spec (`docs/superpowers/specs/2026-10-15-thai-board-crawler-design.md`).
+Status: Accepted. The owner approved it with the part-3 spec (`docs/superpowers/specs/2026-10-15-thai-board-crawler-design.md`) on 2026-10-15.
 
 ## Context
 

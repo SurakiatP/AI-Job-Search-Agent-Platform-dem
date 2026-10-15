@@ -1,6 +1,6 @@
 # Thai job-board crawler for JobTopGun and JobBKK (TOR WP5) — design
 
-Status: owner-approved decisions, 2026-10-14 and 2026-10-15. The written spec awaits owner review.
+Status: owner-approved decisions, 2026-10-14 and 2026-10-15. Written spec approved by the owner on 2026-10-15.
 Branch: `feat/thai-board-crawler` from `origin/develop`. This is part 3 of WP5. Part 1 (`2026-10-14-thai-job-sources-design.md`) built the job store, the dictionary, dedup and the hourly `ingest run`. Part 2 (`2026-10-14-job-search-index-design.md`) serves every job search from Meilisearch.
 
 ## Goal
