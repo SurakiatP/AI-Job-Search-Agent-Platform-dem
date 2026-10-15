@@ -19,6 +19,8 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+from job_search_platform.integrations import metrics
+
 logger = logging.getLogger(__name__)
 SERVICE_NAME = "job-search-platform"
 _tracer = trace.get_tracer(SERVICE_NAME)
@@ -77,6 +79,7 @@ def record(name: str, **attrs: Any) -> None:
 
 def llm_round(*, run_id: Any, model: str | None, latency_ms: int, input_tokens: int | None, output_tokens: int | None) -> None:
     """One llm.round span that Langfuse renders as a generation. Metadata only; never raises."""
+    metrics.observe_llm("agent_round", model, latency_ms / 1000, input_tokens, output_tokens)
     try:
         with span("llm.round", model=model, latency_ms=latency_ms, input_tokens=input_tokens,
                   output_tokens=output_tokens, run_id=run_id, start_time=time.time_ns() - latency_ms * 1_000_000,
@@ -103,9 +106,10 @@ def _cost(value: Any) -> float | None:
 
 def jev_decision(*, model: str, served_model: str | None, latency_ms: int, usage: Any) -> None:
     """One jev.decide generation with OpenRouter's reported tokens and cost. Never state, questions or answers; never raises."""
+    usage = usage if isinstance(usage, dict) else {}
+    input_tokens, output_tokens = _count(usage.get("input_tokens")), _count(usage.get("output_tokens"))
+    metrics.observe_llm("jev", model, latency_ms / 1000, input_tokens, output_tokens)
     try:
-        usage = usage if isinstance(usage, dict) else {}
-        input_tokens, output_tokens = _count(usage.get("input_tokens")), _count(usage.get("output_tokens"))
         cost = _cost(usage.get("cost"))
         with span("jev.decide", model=model, served_model=served_model, latency_ms=latency_ms,
                   input_tokens=input_tokens, output_tokens=output_tokens, cost_usd=cost,
