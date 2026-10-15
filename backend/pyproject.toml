@@ -13,6 +13,7 @@ dependencies = [
     "opentelemetry-api==1.45.1",
     "opentelemetry-exporter-otlp-proto-http==1.45.1",
     "opentelemetry-sdk==1.45.1",
+    "protego==0.7.0",
     "psycopg[binary]==3.3.6",
     "pydantic==2.13.5",
     "python-multipart==0.0.32",

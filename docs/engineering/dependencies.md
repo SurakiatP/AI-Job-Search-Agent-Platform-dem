@@ -92,3 +92,8 @@ Accepted under the owner's option A (loopback only, private network, metadata-on
 
 - `getmeili/meilisearch:v1.55.0@sha256:ff546679970126f8822e15d1b6a06bfbff1f2ce2e43f810cfb5258012f92de5c` (Community Edition, MIT, multi-arch index digest, Alpine 3.22.6). Job search index (FR-J01). Loopback port only, private master key file, analytics off.
 - `trivy image --scanners vuln --severity HIGH,CRITICAL` (Trivy 0.75.0, DB pulled 2026-10-14 17:14 UTC): 0 High/Critical findings.
+
+## Protego (2026-10-15)
+
+- `protego==0.7.0` (BSD-3-Clause, pure Python, no dependencies). robots.txt parser for the WP5 part-3 crawler (ADR-016). Chosen over stdlib `urllib.robotparser`, which ignores `*` and `$` wildcards.
+- `pip-audit --strict` over the exported all-groups requirements (2026-10-15 02:59 UTC): 0 advisories.

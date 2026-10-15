@@ -104,3 +104,55 @@ def test_match_key_separates_seniority():
 def test_match_key_same_seniority_across_aliases_equal():
     assert _key("Senior Software Engineer") == _key("Sr. Software Engineer")
     assert _key("Senior Software Engineer") == _key("อาวุโส Software Engineer")
+
+
+def _ld(**extra):
+    posting = {"@type": "JobPosting", "title": "Data Engineer", "datePosted": "2026-10-14",
+               "hiringOrganization": {"name": "Acme Co., Ltd."},
+               "jobLocation": {"address": {"addressLocality": "Pathum Wan", "addressRegion": "Bangkok"}},
+               "description": "<p>Build pipelines. Call 080-000-0000</p>", "employmentType": "FULL_TIME"}
+    posting.update(extra)
+    return posting
+
+
+def test_jobtopgun_posting_maps_json_ld():
+    row = map_posting("jobtopgun", None, {"id": "j12-254", "url": "https://www.jobtopgun.com/th/jobs/j12-254",
+                                          "posting": _ld(validThrough="2026-10-22", employmentType="INTERN",
+                                                         responsibilities="<li>Write SQL</li>",
+                                                         baseSalary={"currency": "THB", "value": {
+                                                             "value": "negotiable", "unitText": "MONTH"}})})
+    assert row["slug"] == "jtg-j12-254" and row["external_id"] == "j12-254" and row["board"] is None
+    assert row["company"] == "Acme Co., Ltd." and row["location"] == "Pathum Wan, Bangkok"
+    assert row["cities"] == ["Bangkok"] and row["employment_type"] == "internship"
+    assert row["valid_through"] == "2026-10-22T23:59:59+07:00" and row["posted_at"] == "2026-10-14"
+    assert row["salary_min"] is None and row["salary_thb_month_min"] is None
+    assert "Responsibilities" in row["description_markdown"] and "080-000-0000" in row["description_markdown"]
+
+
+def test_jobbkk_posting_maps_numeric_salary_and_location_list():
+    row = map_posting("jobbkk", None, {"id": "1331612", "url": "https://www.jobbkk.com/jobs/detail/157154/1331612",
+                                       "posting": _ld(jobLocation=[{"address": {"addressRegion": "Bangkok"}}],
+                                                      validThrough="2027-04-18T00:00:00+07:00",
+                                                      employmentType=["CONTRACTOR"],
+                                                      baseSalary={"currency": "THB", "value": {
+                                                          "minValue": 16000, "maxValue": 17000, "unitText": "MONTH"}})})
+    assert row["slug"] == "bkk-1331612" and row["source_url"].endswith("/157154/1331612")
+    assert (row["salary_min"], row["salary_max"], row["salary_thb_month_min"]) == (16000, 17000, 16000)
+    assert row["employment_type"] == "contract" and row["valid_through"] == "2027-04-18T00:00:00+07:00"
+
+
+def test_crawled_posting_without_title_is_rejected():
+    assert map_posting("jobbkk", None, {"id": "1", "url": "https://www.jobbkk.com/jobs/detail/1/1",
+                                        "posting": _ld(title="")}) is None
+
+
+def test_other_sources_have_no_valid_through_key():
+    row = map_posting("greenhouse", "acme", {"id": 1, "title": "Engineer", "absolute_url": "https://g/1",
+                                             "location": {"name": "Bangkok"}})
+    assert "valid_through" not in row
+
+
+def test_crawled_posting_text_is_sanitised_for_postgres():
+    row = map_posting("jobtopgun", None, {"id": "1", "url": "https://www.jobtopgun.com/th/jobs/j1-1",
+                                          "posting": _ld(title="Data\x00 Eng\ud800ineer", description="<p>a\x00b\ud800c</p>")})
+    assert row["title"] == "Data Engineer" and row["description_markdown"] == "abc"
