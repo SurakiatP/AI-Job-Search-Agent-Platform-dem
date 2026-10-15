@@ -1,0 +1,17 @@
+rule_files:
+  - rules.yml
+evaluation_interval: 1m
+tests:
+  # Queued run, no jsp_runs_total series at all (e.g. after a restart): the alert must still fire.
+  - interval: 1m
+    input_series:
+      - series: 'jsp_runs_in_state{status="queued"}'
+        values: "1x40"
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: RunsStuckQueued
+        exp_alerts:
+          - exp_labels:
+              status: queued
+            exp_annotations:
+              summary: "Runs are queued but none finished in 30 minutes."

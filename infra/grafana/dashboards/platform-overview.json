@@ -131,7 +131,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (status_class) (rate(jsp_http_requests_total[5m]))"
+          "expr": "sum by (status_class) (rate(jsp_http_requests_total[5m]))",
+          "legendFormat": "{{status_class}}"
         }
       ],
       "gridPos": {
@@ -227,7 +228,8 @@
           },
           "expr": "topk(10, sum by (route) (rate(jsp_http_requests_total[15m])))",
           "instant": true,
-          "format": "table"
+          "format": "table",
+          "legendFormat": "{{route}}"
         }
       ],
       "gridPos": {
@@ -265,7 +267,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "jsp_runs_in_state"
+          "expr": "jsp_runs_in_state",
+          "legendFormat": "{{status}}"
         }
       ],
       "gridPos": {
@@ -290,7 +293,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (outcome) (increase(jsp_runs_total[1h]))"
+          "expr": "sum by (outcome) (increase(jsp_runs_total[1h]))",
+          "legendFormat": "{{outcome}}"
         }
       ],
       "gridPos": {
@@ -315,7 +319,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(jsp_run_duration_seconds_bucket[1h])))"
+          "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(jsp_run_duration_seconds_bucket[1h])))",
+          "legendFormat": "{{operation}}"
         }
       ],
       "gridPos": {
@@ -353,7 +358,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (kind, model) (rate(jsp_llm_requests_total[5m]))"
+          "expr": "sum by (kind, model) (rate(jsp_llm_requests_total[5m]))",
+          "legendFormat": "{{kind}} {{model}}"
         }
       ],
       "gridPos": {
@@ -378,7 +384,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le, kind, model) (rate(jsp_llm_duration_seconds_bucket[15m])))"
+          "expr": "histogram_quantile(0.95, sum by (le, kind, model) (rate(jsp_llm_duration_seconds_bucket[15m])))",
+          "legendFormat": "{{kind}} {{model}}"
         }
       ],
       "gridPos": {
@@ -403,7 +410,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (direction) (rate(jsp_llm_tokens_total[5m]))"
+          "expr": "sum by (direction) (rate(jsp_llm_tokens_total[5m]))",
+          "legendFormat": "{{direction}}"
         }
       ],
       "gridPos": {
@@ -441,7 +449,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(time() - jsp_ingest_source_last_success_timestamp_seconds) / 3600"
+          "expr": "(time() - jsp_ingest_source_last_success_timestamp_seconds) / 3600",
+          "legendFormat": "{{source}}"
         }
       ],
       "gridPos": {
@@ -468,7 +477,8 @@
           },
           "expr": "jsp_ingest_source_state == 1",
           "instant": true,
-          "format": "table"
+          "format": "table",
+          "legendFormat": "{{source}}"
         }
       ],
       "gridPos": {
@@ -495,7 +505,8 @@
           },
           "expr": "jsp_ingest_source_rows",
           "instant": true,
-          "format": "table"
+          "format": "table",
+          "legendFormat": "{{source}}"
         }
       ],
       "gridPos": {
@@ -520,7 +531,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "jsp_job_postings"
+          "expr": "jsp_job_postings",
+          "legendFormat": "{{source}}"
         }
       ],
       "gridPos": {

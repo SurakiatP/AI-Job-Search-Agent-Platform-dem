@@ -86,3 +86,8 @@ def test_promtool_accepts_config_and_rules():
          PROM_IMAGE, "check", "config", "/etc/prometheus/prometheus.yml"],
         capture_output=True, text=True, timeout=180)
     assert result.returncode == 0, result.stdout + result.stderr
+    unit = subprocess.run(
+        ["docker", "run", "--rm", "--entrypoint", "promtool", "-v", f"{ROOT / 'infra/prometheus'}:/etc/prometheus:ro",
+         PROM_IMAGE, "test", "rules", "/etc/prometheus/rules_test.yml"],
+        capture_output=True, text=True, timeout=180)
+    assert unit.returncode == 0, unit.stdout + unit.stderr

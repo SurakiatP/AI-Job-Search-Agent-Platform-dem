@@ -33,6 +33,6 @@ groups:
         for: 10m
         annotations: {summary: "More than 5% of HTTP requests failed with 5xx."}
       - alert: RunsStuckQueued
-        expr: jsp_runs_in_state{status="queued"} > 0 and on() sum(increase(jsp_runs_total[30m])) == 0
+        expr: jsp_runs_in_state{status="queued"} > 0 and on() (sum(increase(jsp_runs_total[30m])) or vector(0)) == 0
         for: 30m
         annotations: {summary: "Runs are queued but none finished in 30 minutes."}
