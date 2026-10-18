@@ -42,6 +42,8 @@ test('409 gateway_unconfigured on a run shows guidance pointing to Settings > AI
     : r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
   await page.route(`${api}/runs/*/events`, r => r.fulfill({ status: 200, contentType: 'text/event-stream', body: '' }));
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await page.getByRole('tab', { name: 'Prepare documents', exact: true }).click();
   await page.getByRole('button', { name: 'Tailor CV', exact: true }).click();
-  await expect(page.getByText(/AI gateway is not configured/).first()).toBeVisible();
+  await expect(page.getByText(/AI is unavailable because the gateway is not configured/).first()).toBeVisible();
+  await expect(page.getByText('OPENROUTER_API_KEY')).toHaveCount(0);
 });

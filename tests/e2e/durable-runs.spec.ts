@@ -16,11 +16,11 @@ const stream = ev(1, 'run_progress', { step: 'llm_round', model: 'hermes-x', lat
   + ev(3, 'run_progress', { step: 'llm_round', model: 'hermes-x', latency_ms: 2500, input_tokens: null, output_tokens: null });
 const nullStream = ev(1, 'run_progress', { step: 'llm_round', model: 'hermes-x', latency_ms: 1000, input_tokens: null, output_tokens: null });
 
-async function mock(page: Page, locale: 'en' | 'th', events = stream) {
+async function mock(page: Page, locale: 'en' | 'th', events = stream, status = 'needs_input') {
   await page.addInitScript(l => { localStorage.setItem('ui.locale', l); }, locale);
   await useSyntheticApplication(page);
   const seen = { input: null as unknown, grant: null as unknown };
-  let current = run();
+  let current = run(status === 'needs_input' ? {} : { status, finished_at: '2026-10-10T00:01:00Z' });
   const api = `**/api/v1/projects/${projectId}`;
   await page.route(`${api}/sessions/${sessionId}`, r => r.fulfill(json({ id: sessionId, project_id: projectId, title: 'First synthetic session', created_at: '2026-10-01T00:00:00Z', cv_revision_id: 'c1', job_revision_id: jobId, cv_name: 'Data CV', cv_revision: 1, job_title: 'Synthetic data analyst', job_company: 'Example Co' })));
   await page.route(`${api}/runs`, r => r.fulfill(json([current])));
@@ -36,25 +36,30 @@ async function mock(page: Page, locale: 'en' | 'th', events = stream) {
 }
 
 test('timeline shows the requester, llm_round stats with a total, and the resumed line', async ({ page }) => {
-  await mock(page, 'en');
+  await mock(page, 'en', stream, 'completed');
   await page.goto(`/app/projects/${projectId}/console`);
   await expect(page.getByText('Agent · eeeeeeee')).toBeVisible();
   await page.getByRole('button', { name: 'Run details' }).click();
-  await expect(page.getByText('Resumed after a server restart')).toBeVisible();
-  await expect(page.getByText('LLM round · hermes-x · 1.5 s · 100 tokens in / 20 tokens out')).toBeVisible();
-  await expect(page.getByText('LLM round · hermes-x · 2.5 s · — tokens in / — tokens out')).toBeVisible();
+  await expect(page.getByText('Resumed after a system restart')).toBeVisible();
+  await expect(page.getByText('AI round · hermes-x · 1.5 s · 100 tokens in / 20 tokens out')).toBeVisible();
+  await expect(page.getByText('AI round · hermes-x · 2.5 s · — tokens in / — tokens out')).toBeVisible();
   await expect(page.getByText('Total: 2 rounds · 4.0 s · 100 tokens in / 20 tokens out')).toBeVisible();
 });
 
-test('console shows a needs_input run as waiting, in its own filter, and omits unreported token totals', async ({ page }) => {
+test('console groups a needs_input run under needs your decision, not running', async ({ page }) => {
   await mock(page, 'en', nullStream);
   await page.goto(`/app/projects/${projectId}/console`);
-  const row = page.getByRole('row').filter({ hasText: 'Synthetic data analyst' });
-  await expect(row.getByText('Running', { exact: true })).toHaveCount(0);
-  await expect(row.getByText('Waiting for your input')).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Needs you 1$/ })).toBeVisible();
-  await page.getByRole('button', { name: /^Needs you/ }).click();
-  await expect(row).toBeVisible();
+  const decision = page.getByRole('region', { name: 'Needs your decision (1)' });
+  const row = decision.getByRole('listitem').filter({ hasText: 'Synthetic data analyst' });
+  await expect(row.getByText('Needs input', { exact: true })).toBeVisible();
+  await expect(row.getByText('The agent is waiting for your answers.')).toBeVisible();
+  await expect(page.getByText('Running', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Run details' })).toHaveCount(0);
+});
+
+test('console run details omit unreported token totals', async ({ page }) => {
+  await mock(page, 'en', nullStream, 'completed');
+  await page.goto(`/app/projects/${projectId}/console`);
   await page.getByRole('button', { name: 'Run details' }).click();
   await expect(page.getByText('Total: 1 rounds · 1.0 s', { exact: true })).toBeVisible();
 });
@@ -62,14 +67,15 @@ test('console shows a needs_input run as waiting, in its own filter, and omits u
 test('console waiting label is localised (Thai)', async ({ page }) => {
   await mock(page, 'th');
   await page.goto(`/app/projects/${projectId}/console`);
-  await expect(page.getByRole('row').filter({ hasText: 'Synthetic data analyst' }).getByRole('cell').nth(4)).toHaveText('รอข้อมูลจากคุณ');
-  await expect(page.getByRole('button', { name: /^ต้องการคุณ 1$/ })).toBeVisible();
+  const row = page.getByRole('region', { name: 'ต้องการการตัดสินใจจากคุณ (1)' }).getByRole('listitem').filter({ hasText: 'Synthetic data analyst' });
+  await expect(row.getByText('รอข้อมูลจากคุณ', { exact: true })).toBeVisible();
+  await expect(row.getByText('เอเจนต์รอคำตอบจากคุณ')).toBeVisible();
 });
 
 test('needs_input pack renders per-kind inputs and saving POSTs the answers', async ({ page }) => {
   const seen = await mock(page, 'en');
-  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
-  await expect(page.getByRole('button', { name: 'Request submit' })).toBeDisabled();
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(2).click();
+  await expect(page.getByRole('button', { name: 'Record as applied' })).toBeDisabled();
   await expect(page.getByText('Still missing required answers: Authorised to work?, Notice period?')).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
   await expect(page.getByRole('radio', { name: 'No' })).toBeVisible();
@@ -80,7 +86,7 @@ test('needs_input pack renders per-kind inputs and saving POSTs the answers', as
   await expect.poll(() => seen.input).toEqual({ answers: { q2: true, q3: '30 days' } });
   await expect(page.getByText('Saved. The answer pack is ready.')).toBeVisible();
   await expect(page.getByText('Your answer')).toHaveCount(2);
-  await expect(page.getByRole('button', { name: 'Request submit' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Record as applied' })).toBeEnabled();
 });
 
 for (const [locale, label] of [['en', 'Suggested from your facts — confirm'], ['th', 'แนะนำจากข้อเท็จจริงของคุณ — โปรดยืนยัน']] as const) {
@@ -88,7 +94,7 @@ for (const [locale, label] of [['en', 'Suggested from your facts — confirm'], 
     const seen = await mock(page, locale);
     const suggested = { ...pack, missing_required: ['q2'], answers: [pack.answers[0], { ...pack.answers[1], suggestion: true, evidence_ids: ['f1'], reason: 'needs_confirmation' }] };
     await page.route(`**/api/v1/projects/${projectId}/runs`, r => r.fulfill(json([run({ result_payload: suggested })])));
-    await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+    await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(2).click();
     await expect(page.getByText(label)).toBeVisible();
     await expect(page.getByRole('group', { name: 'Authorised to work?' })).toHaveAccessibleDescription(label);
     await expect(page.getByRole('radio', { name: locale === 'en' ? 'Yes' : 'ใช่', exact: true })).toBeChecked();
@@ -101,7 +107,7 @@ test('an optional suggested answer in a ready pack is not described as needing c
   await mock(page, 'en');
   const ready = { ...pack, state: 'ready', missing_required: [], answers: [pack.answers[0], { ...pack.answers[1], required: false, suggestion: true, evidence_ids: ['f1'], reason: 'needs_confirmation' }] };
   await page.route(`**/api/v1/projects/${projectId}/runs`, r => r.fulfill(json([run({ status: 'completed', result_payload: ready })])));
-  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(2).click();
   await expect(page.getByText('Authorised to work?')).toBeVisible();
   await expect(page.getByText('A suggestion was made; nothing is included until you answer.')).toBeVisible();
   await expect(page.getByText('You need to confirm this answer')).toHaveCount(0);

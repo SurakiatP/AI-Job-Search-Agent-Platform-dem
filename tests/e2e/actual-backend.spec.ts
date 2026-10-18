@@ -10,7 +10,6 @@ test('actual owner API persists project, CV, posting and separate sessions throu
   await page.getByRole('link', { name: 'Get started', exact: true }).click();
   await page.getByRole('link', { name: 'Create a project', exact: true }).last().click();
   await page.locator('#project-name').fill('Synthetic actual browser project');
-  await page.locator('#project-goal').fill('Synthetic data analyst search');
   await page.getByRole('button', { name: 'Create a project', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Profile and CV', exact: true })).toBeVisible();
   const projectId = new URL(page.url()).pathname.split('/')[3];

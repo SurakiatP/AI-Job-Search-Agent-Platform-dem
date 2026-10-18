@@ -69,7 +69,7 @@ test('mobile drawer opens and closes by keyboard with focus returned to its trig
   await expect(drawer).toBeVisible();
   await expect(drawer.getByRole('button', { name: 'Close menu' })).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(drawer).toContainText('Projects');
+  await expect(drawer.getByRole('button', { name: /Switch project/ })).toBeVisible();
   await expect(drawer.locator(':focus')).toHaveCount(1);
   await page.keyboard.press('Escape');
   await expect(drawer).toHaveCount(0);

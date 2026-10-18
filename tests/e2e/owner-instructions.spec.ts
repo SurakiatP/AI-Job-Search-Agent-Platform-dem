@@ -45,7 +45,7 @@ test('submission ambiguity keeps the instruction and reload retries from the imm
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) });
   });
 
-  await page.goto('http://127.0.0.1:4175/tests/shell.html');
+  await page.goto(`${process.env.JSP_E2E_BASE_URL ?? 'http://127.0.0.1:4175'}/tests/shell.html`);
   await page.evaluate(async () => {
     const r = await import('/node_modules/.vite/deps/react.js');
     const React = r.default ?? r;

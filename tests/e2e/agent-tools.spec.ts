@@ -48,12 +48,12 @@ test('submit approval shows answers, evidence, missing list and approving POSTs 
 
 test('answer pack has copy buttons, parked reason, and submit is disabled until ready', async ({ page }) => {
   const seen = await mock(page, 'en');
-  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(2).click();
   await expect(page.getByRole('button', { name: 'Copy', exact: true })).toHaveCount(1);
   await expect(page.getByText('Why this job?')).toBeVisible();
   await expect(page.getByText('q1', { exact: true })).toHaveCount(0);
   await expect(page.getByText('No fact in your experience bank supports an answer.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Request submit' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Record as applied' })).toBeDisabled();
   await page.getByLabel('Question').fill('Why this job?');
   await page.getByRole('button', { name: 'Prepare application' }).click();
   await expect.poll(() => seen.runs[0]).toMatchObject({ operation: 'apply_prepare', questions: [{ id: 'q1', label: 'Why this job?', required: true, kind: 'text' }] });
@@ -61,11 +61,11 @@ test('answer pack has copy buttons, parked reason, and submit is disabled until 
 
 test('follow-up action appears only for applied jobs', async ({ page }) => {
   await mock(page, 'en', false);
-  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(2).click();
   await expect(page.getByRole('button', { name: 'Prepare application' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Draft follow-up' })).toHaveCount(0);
   const seen = await mock(page, 'en', true);
-  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(2).click();
   await page.getByRole('button', { name: 'Draft follow-up' }).click();
   await expect.poll(() => seen.runs[0]).toMatchObject({ operation: 'draft_follow_up' });
 });
@@ -87,7 +87,7 @@ const reasonPack = { kind: 'apply_pack', state: 'parked', missing_required: [], 
 test('every parked-pack reason the backend emits is translated, never shown as a raw code', async ({ page }) => {
   for (const locale of ['en', 'th'] as const) {
     await mock(page, locale, false, reasonPack);
-    await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+    await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(2).click();
     const items = page.getByRole('listitem').filter({ hasText: /q[1-4]|เหตุผล|Reason/ });
     await expect(items.first()).toBeVisible();
     for (const code of ['not_answerable', 'invalid_answer', 'evidence_required', 'unsupported_claim']) {
@@ -105,8 +105,8 @@ test('settings field saves the autopilot limit and the approvals tab badges auto
   await page.route(`**/api/v1/projects/${projectId}/experience**`, r => r.fulfill(json({ items: [], extraction: null, provider_configured: true })));
   const patches: unknown[] = [];
   page.on('request', r => { if (r.method() === 'PATCH' && r.url().endsWith('/preferences')) patches.push(r.postDataJSON()); });
-  await page.goto(`/app/projects/${projectId}/profile`);
-  const field = page.getByLabel('Auto-approve up to N submissions per day (empty = off)');
+  await page.goto(`/app/settings?project=${projectId}&section=preferences`);
+  const field = page.getByLabel('Automatically approve recording “Applied”: daily limit (blank = off)');
   await expect(field).toHaveValue('');
   await expect(page.getByText(/nothing is ever sent/)).toBeVisible();
   await expect(page.getByText(/Agents you have given application access can also use this, up to N per day\./)).toBeVisible();
@@ -126,6 +126,6 @@ test('autopilot hint names the agent risk in Thai', async ({ page }) => {
   await useSyntheticApplication(page);
   await page.route(`**/api/v1/projects/${projectId}/cvs`, r => r.fulfill(json([])));
   await page.route(`**/api/v1/projects/${projectId}/experience**`, r => r.fulfill(json({ items: [], extraction: null, provider_configured: true })));
-  await page.goto(`/app/projects/${projectId}/profile`);
+  await page.goto(`/app/settings?project=${projectId}&section=preferences`);
   await expect(page.getByText(/เอเจนต์ที่คุณให้สิทธิ์เข้าถึงใบสมัครก็ใช้ฟังก์ชันนี้ได้ สูงสุด N ใบต่อวัน/)).toBeVisible();
 });

@@ -39,7 +39,7 @@ test('landing start leads to login; wrong then right password reaches the reques
   await page.getByLabel('Password', { exact: true }).fill('correct-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
-  await expect(page.getByText('No connected agents')).toBeVisible();
+  await expect(page.getByText('No connected assistants')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Resend email' })).toHaveCount(0);
 });
 
@@ -113,6 +113,7 @@ test('agents list shows given date and revoke calls the grant route', async ({ p
   await expect(page.getByText('client.example.test')).toBeVisible();
   await expect(page.getByText(/Given\s+Oct 3, 2026/)).toBeVisible();
   await page.getByRole('button', { name: 'Revoke', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Revoke access', exact: true }).click();
   await expect.poll(() => revoked).toBe(`DELETE /api/v1/projects/${projectId}/grants/${grantId}`);
 });
 
@@ -188,7 +189,65 @@ for (const [name, status, body, message] of [
     await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.request().method() === 'POST'
       ? route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) }) : route.fallback());
     await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+    await page.getByRole('tab', { name: 'Prepare documents', exact: true }).click();
     await page.getByRole('button', { name: 'Cover letter', exact: true }).click();
     await expect(page.getByRole('alert').filter({ hasText: message })).toBeVisible();
   });
 }
+
+test('login explains a rate limit with the wait time', async ({ page }) => {
+  await mockApi(page, true);
+  await page.route('**/api/v1/auth/login', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'rate_limited', message_key: 'errors.rate_limited', retryable: true, fields: { retry_after: '42' } }) }));
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('synthetic@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('whatever-password');
+  await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Too many attempts. Try again in 42 seconds.');
+});
+
+test('an expired reset link offers a new one; a good reset returns to login with a notice', async ({ page }) => {
+  await mockApi(page, true);
+  let used = false;
+  await page.route('**/api/v1/auth/password/reset', route => used
+    ? route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_token', message_key: 'errors.invalid_token', retryable: false }) })
+    : (used = true, route.fulfill({ status: 204 })));
+  for (const expected of ['notice', 'expired']) {
+    await page.goto('/reset-password?token=one-use');
+    await page.getByLabel('Password', { exact: true }).fill('long-enough-password');
+    await page.getByLabel('Confirm password').fill('long-enough-password');
+    await page.getByRole('button', { name: 'Save new password' }).click();
+    if (expected === 'notice') { await expect(page).toHaveURL(/\/login\?notice=password-reset$/); await expect(page.getByRole('status')).toContainText('Your password was changed.'); }
+    else { await expect(page.getByRole('alert')).toContainText('expired or was already used'); await expect(page.getByRole('link', { name: 'Request a new link' })).toBeVisible(); }
+  }
+});
+
+test('verify success says log in when signed out and continue to projects when signed in', async ({ page }) => {
+  await mockApi(page, true);
+  await page.goto('/verify-email?token=good-token');
+  await expect(page.getByText('Log in to continue.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Log in to continue' })).toBeVisible();
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('synthetic@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('correct-password');
+  await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await expect(page).toHaveURL(/\/app/);
+  await page.goto('/verify-email?token=good-token');
+  await expect(page.getByRole('button', { name: 'Continue to your projects' })).toBeVisible();
+});
+
+test('a failed verify link offers a new link only when signed in', async ({ page }) => {
+  await mockApi(page, false);
+  let resent = false;
+  await page.route('**/api/v1/auth/resend-verification', route => { resent = true; return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email' }) }); });
+  await page.goto('/verify-email?token=bad');
+  await expect(page.getByRole('link', { name: 'Log in to request a new link' })).toBeVisible();
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('synthetic@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('correct-password');
+  await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await expect(page).toHaveURL(/\/app/);
+  await page.goto('/verify-email?token=bad');
+  await page.getByRole('button', { name: 'Request a new link' }).click();
+  await expect(page.getByText('New link sent. Check your email.')).toBeVisible();
+  expect(resent).toBe(true);
+});
