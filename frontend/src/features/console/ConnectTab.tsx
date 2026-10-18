@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAccount } from '../../lib/api';
 import type { Copy } from './copy';
 import { CopyButton } from './shared';
 
@@ -12,14 +13,15 @@ function Block({ text, c, label }: { text: string; c: Copy; label: string }) {
 }
 
 export function ConnectTab({ c }: { c: Copy }) {
+  const isAdmin = useAccount()?.is_admin === true; // the listener start command is for whoever runs the server
   const origin = `http://${window.location.hostname}:8001`;
   const endpoints = [[c.mcp, `${origin}/mcp`], [c.card, `${origin}/.well-known/agent-card.json`], [c.a2a, `${origin}/`]] as const;
   const snippet = JSON.stringify({ mcpServers: { 'job-search-platform': { type: 'http', url: `${origin}/mcp`, headers: { Authorization: 'Bearer <ACCESS_TOKEN>' } } } }, null, 2);
   const curl = `curl ${origin}/.well-known/agent-card.json`;
   return <div className="grid gap-6">
     <p className="max-w-prose text-sm text-muted-foreground">{c.connectIntro}</p>
-    <Card><CardHeader><CardTitle>{c.startTitle}</CardTitle><p className="text-sm text-muted-foreground">{c.startNote}</p></CardHeader>
-      <CardContent><Block text={START} c={c} label={c.startTitle} /></CardContent></Card>
+    {isAdmin && <Card><CardHeader><CardTitle>{c.startTitle}</CardTitle><p className="text-sm text-muted-foreground">{c.startNote}</p></CardHeader>
+      <CardContent><Block text={START} c={c} label={c.startTitle} /></CardContent></Card>}
     <Card><CardHeader><CardTitle>{c.endpoints}</CardTitle></CardHeader>
       <CardContent><ul className="grid gap-4">{endpoints.map(([label, url]) => <li key={label} className="grid gap-1.5">
         <span className="text-sm font-medium">{label}</span>

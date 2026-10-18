@@ -50,7 +50,7 @@ function useCopy(): Copy { return copy[useTranslation().i18n.language.startsWith
 
 const rowClass = 'group relative flex items-center gap-0.5 rounded-md text-sm transition-colors hover:bg-accent/60';
 // Only the project that matches the route gets the background and accent bar; the active session row is a lighter highlight.
-const currentProjectClass = 'bg-accent text-accent-foreground before:absolute before:inset-y-1.5 before:start-0 before:w-1 before:rounded-full before:bg-primary';
+const currentProjectClass = 'bg-accent text-accent-foreground';
 const activeSessionClass = 'has-[a[aria-current=page]]:bg-accent/60 has-[a[aria-current=page]]:font-medium';
 
 function RowMenu({ name, onRename, onDelete }: { name: string; onRename: () => void; onDelete: () => void }) {
@@ -149,8 +149,8 @@ function ProjectRow({ project, current, sessionId, expanded, version, onToggle, 
   </li>;
 }
 
-export function ProjectTree({ projects, projectId, sessionId, onNavigate, onReload }: {
-  projects: SidebarProject[]; projectId?: string; sessionId?: string; onNavigate?: () => void; onReload?: () => void;
+export function ProjectTree({ projects, projectId, sessionId, onNavigate, onReload, preserveUndo = false }: {
+  projects: SidebarProject[]; projectId?: string; sessionId?: string; onNavigate?: () => void; onReload?: () => void; preserveUndo?: boolean;
 }) {
   const c = useCopy();
   const { t } = useTranslation();
@@ -182,10 +182,11 @@ export function ProjectTree({ projects, projectId, sessionId, onNavigate, onRelo
     if (hidden) setUndo({ projectId: state.target.projectId, id: state.target.id, message: c.sessionDeleted, retry: true });
     const { kind, id, projectId: owner } = state.target;
     if (state.mode !== 'delete') return;
-    if (kind === 'session' && id === sessionId) { onNavigate?.(); navigate(`/app/projects/${owner}/overview`); }
+    // Keep the switcher mounted so its restore action survives deleting the current session.
+    if (kind === 'session' && id === sessionId) { if (!preserveUndo) onNavigate?.(); navigate(`/app/projects/${owner}/overview`); }
     if (kind === 'project' && id === projectId) { onNavigate?.(); navigate('/app/projects'); }
   }
-  return <section aria-labelledby="sidebar-projects-heading" className="grid grid-cols-1 gap-1">
+  return <section aria-labelledby="sidebar-projects-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1">
     <div className="flex items-center justify-between gap-1">
       <h2 id="sidebar-projects-heading" className="min-w-0 text-sm font-medium">
         <button type="button" aria-expanded={listOpen} aria-label={`${c.projects}: ${c.toggleList}`} onClick={() => setListOpen(value => !value)} className="flex items-center gap-1 rounded-md px-2 py-1.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">

@@ -97,7 +97,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
         </label>)}</div>
       </fieldset>
       {message && <Notice ok={message.ok}>{message.text}</Notice>}
-      <div><Button type="submit" disabled={busy || !url.trim() || !events.length}>{c.add}</Button></div>
+      <div><Button type="submit" busy={busy} disabled={busy || !url.trim() || !events.length}>{c.add}</Button></div>
     </form>
     <p className="text-sm text-muted-foreground">{c.verify}</p>
     {hooks.status === 'error' ? <div className="flex flex-wrap items-center gap-2"><Notice>{c.loadError}</Notice><Button variant="outline" onClick={hooks.reload}>{c.retry}</Button></div> :
@@ -115,11 +115,11 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
           <Button variant="ghost" size="icon" aria-label={c.remove(hook.url)} onClick={() => setDeleting(hook)}><Trash2 className="size-4" aria-hidden="true" /></Button>
         </div>
       </li>)}</ul>}
-    <div className="grid gap-2">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
       <h3 className="text-sm font-semibold">{c.deliveries}</h3>
       {deliveries.status === 'error' ? <div className="flex flex-wrap items-center gap-2"><Notice>{c.loadError}</Notice><Button variant="outline" onClick={deliveries.reload}>{c.retry}</Button></div> :
       (deliveries.data ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.noDeliveries}</p> :
-        <div className="overflow-x-auto"><table className="w-full min-w-[32rem] text-left text-sm">
+        <div className="relative min-w-0 max-w-full overflow-x-auto"><table className="w-full min-w-[32rem] text-left text-sm">
           <thead><tr>{c.cols.map((col, i) => <th key={i} scope="col" className="px-2 py-1 font-medium text-muted-foreground">{i === c.cols.length - 1 ? <span className="sr-only">{col}</span> : col}</th>)}</tr></thead>
           <tbody>{(deliveries.data ?? []).map(d => <tr key={d.id} className="border-t">
             <td className="px-2 py-1">{d.event_type}</td>

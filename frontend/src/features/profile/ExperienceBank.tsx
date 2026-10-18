@@ -1,5 +1,6 @@
-import { useRunGate } from '../../lib/accountGate';
-import { useEffect, useState } from 'react';
+import { BusyNote } from '@/components/BusyNote';
+import { useGatewayHelp, useRunGate } from '../../lib/accountGate';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +34,7 @@ function FactForm({ c, initial, submitLabel, onSubmit, onCancel }: { c: Copy; in
     <label className="grid gap-1.5 text-sm font-medium">{c.role}<Input value={draft.role} maxLength={200} onChange={set('role')} /></label>
     <label className="grid gap-1.5 text-sm font-medium">{c.org}<Input value={draft.organization} maxLength={200} onChange={set('organization')} /></label>
     <label className="grid gap-1.5 text-sm font-medium">{c.period}<Input value={draft.period} maxLength={60} onChange={set('period')} /></label>
-    <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">{onCancel && <Button type="button" variant="outline" onClick={onCancel}>{c.cancel}</Button>}<Button type="submit" disabled={busy || !draft.text.trim()}>{submitLabel}</Button></div>
+    <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">{onCancel && <Button type="button" variant="outline" onClick={onCancel}>{c.cancel}</Button>}<Button type="submit" busy={busy} disabled={busy || !draft.text.trim()}>{submitLabel}</Button></div>
   </form>;
 }
 
@@ -41,12 +42,13 @@ const toBody = (d: Draft) => ({ kind: d.kind, text: d.text.trim(), role: d.role.
 
 export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { projectId: string; locale: 'th' | 'en'; primaryCvId: string | null; bank: ReturnType<typeof useResource<ExperienceView>> }) {
   const c = copy[locale];
+  const gatewayHelp = useGatewayHelp(locale);
   const gate = useRunGate();
   const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const status = bank.data?.extraction?.status;
   const active = status === 'queued' || status === 'running';
-  useEffect(() => { if (!active) return; const timer = window.setInterval(bank.reload, 3000); return () => window.clearInterval(timer); }, [active, bank.reload]);
+  // The page polls while an extraction is queued or running.
 
   async function act(work: () => Promise<unknown>) {
     setError(null);
@@ -65,8 +67,8 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
   return <section aria-labelledby="experience-bank-title" className="grid gap-4">
     <div><h2 id="experience-bank-title" className="text-lg font-semibold">{c.title}</h2><p className="text-sm text-muted-foreground">{c.hint}</p></div>
     <div role="status" aria-live="polite" className="text-sm">
-      {bank.data && !bank.data.provider_configured && <p className="flex flex-wrap items-center gap-2">{c.noProvider} <Link className="underline" to="/app/settings?section=gateway">{c.settings}</Link></p>}
-      {extraction && active && <p className="flex flex-wrap items-center gap-2">{status === 'queued' ? c.queued : c.running}<Button size="sm" variant="outline" onClick={() => void act(() => apiRequest(`/projects/${projectId}/runs/${extraction.run_id}/cancel`, { method: 'POST' })).catch(() => undefined)}>{c.stop}</Button></p>}
+      {bank.data && !bank.data.provider_configured && <p className="flex flex-wrap items-center gap-2">{gatewayHelp.isAdmin ? c.noProvider : gatewayHelp.contactText} {gatewayHelp.isAdmin && <Link className="underline" to="/app/settings?section=gateway">{c.settings}</Link>}</p>}
+      {extraction && active && <BusyNote announce={false} bar label={status === 'queued' ? c.queued : c.running} action={<Button size="sm" variant="outline" onClick={() => void act(() => apiRequest(`/projects/${projectId}/runs/${extraction.run_id}/cancel`, { method: 'POST' })).catch(() => undefined)}>{c.stop}</Button>} />}
       {extraction?.status === 'completed' && extraction.summary && <p>{c.done(extraction.summary)}</p>}
       {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && <p className="flex flex-wrap items-center gap-2">{c.failed}{cvForRun && <Button size="sm" variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}>{c.retry}</Button>}</p>}
     </div>

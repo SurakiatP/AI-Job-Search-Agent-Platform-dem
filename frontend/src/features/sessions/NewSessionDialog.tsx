@@ -7,13 +7,14 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } fr
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiRequest } from '../../lib/api';
+import { useGatewayHelp } from '../../lib/accountGate';
 import { ApiError, type CVView, type JobRevisionView, type SessionView } from '../../lib/api-types';
 import { useResource } from '../projects/useResource';
 
 export type InlineJobDraft = { title: string; company?: string | null; description: string; source_url?: string | null };
 export type SessionJob = { savedId?: string; inline?: InlineJobDraft };
 
-const selectClass = 'flex min-h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
+const selectClass = 'flex min-h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 const copy = {
   th: { title: 'เริ่มเซสชันใหม่', desc: 'จับคู่ CV หนึ่งฉบับกับประกาศงานหนึ่งรายการ ระบบจะเริ่มประเมินความเหมาะสมให้ทันที', cv: 'CV', job: 'ประกาศงาน', saved: 'ใบสมัคร', paste: 'วางประกาศงานใหม่', pick: 'เลือกงาน', jtitle: 'ตำแหน่งงาน', company: 'บริษัท (ไม่บังคับ)', url: 'ลิงก์ต้นทาง (ไม่บังคับ)', jdesc: 'รายละเอียดงาน', start: 'เริ่มเซสชัน', starting: 'กำลังสร้าง…', cancel: 'ยกเลิก', noCv: 'ยังไม่มี CV', noCvBody: 'เพิ่ม CV ก่อนจึงจะเริ่มเซสชันได้', addCv: 'ไปหน้า CV', exists: 'มีเซสชันสำหรับ CV เวอร์ชันนี้กับงานนี้อยู่แล้ว', open: 'เปิดเซสชันที่มีอยู่', provider: 'ยังไม่ได้ตั้งค่า AI gateway ใส่ OPENROUTER_API_KEY แล้วดูที่ ตั้งค่า > เกตเวย์ AI', settings: 'ไปที่การตั้งค่า', failed: 'สร้างเซสชันไม่สำเร็จ ลองอีกครั้ง', notFound: 'ไม่พบ CV หรืองานที่เลือก ลองโหลดหน้าใหม่', loadFailed: 'โหลดข้อมูลไม่สำเร็จ', loading: 'กำลังโหลด…' },
   en: { title: 'New session', desc: 'Pair one CV with one job posting. The fit evaluation starts right away.', cv: 'CV', job: 'Job posting', saved: 'Application', paste: 'Paste a new job', pick: 'Choose a job', jtitle: 'Job title', company: 'Company (optional)', url: 'Source link (optional)', jdesc: 'Job description', start: 'Start session', starting: 'Creating…', cancel: 'Cancel', noCv: 'No CV yet', noCvBody: 'Add a CV before starting a session.', addCv: 'Go to CV page', exists: 'A session for this CV version and job already exists.', open: 'Open existing session', provider: 'The AI gateway is not configured. Set OPENROUTER_API_KEY, then see Settings > AI gateway.', settings: 'Open settings', failed: 'Could not create the session. Try again.', notFound: 'The CV or job was not found. Reload the page and try again.', loadFailed: 'Could not load data', loading: 'Loading…' },
@@ -22,8 +23,10 @@ const copy = {
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="grid gap-1.5 text-sm font-medium">{label}{children}</label>; }
 
 export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectId: string; job?: SessionJob; cvName?: string; onClose: () => void }) {
-  const locale = useTranslation().i18n.language.startsWith('th') ? 'th' : 'en';
-  const c = copy[locale];
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language.startsWith('th') ? 'th' : 'en';
+  const c = { ...copy[locale], provider: t('workspace.providerUnavailable') };
+  const gatewayHelp = useGatewayHelp(locale);
   const navigate = useNavigate();
   const base = `/app/projects/${projectId}`;
   const cvs = useResource<CVView[]>(`/projects/${projectId}/cvs`);
@@ -61,7 +64,7 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
     <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
       <DialogTitle>{c.title}</DialogTitle>
       <DialogDescription>{c.desc}</DialogDescription>
-      {cvs.status === 'error' || jobs.status === 'error' ? <p role="alert" className="text-sm text-destructive">{c.loadFailed}</p>
+      {cvs.status === 'error' || jobs.status === 'error' ? <div role="alert" className="grid justify-items-start gap-3"><p className="text-sm text-destructive">{c.loadFailed}</p><Button type="button" variant="outline" onClick={() => { cvs.reload(); jobs.reload(); }}>{t('pages.retry')}</Button></div>
         : !ready ? <p role="status" className="text-sm text-muted-foreground">{c.loading}</p>
         : !usable.length ? <div className="grid gap-3 rounded-lg border border-dashed p-4"><p className="font-medium">{c.noCv}</p><p className="text-sm text-muted-foreground">{c.noCvBody}</p><Button asChild className="justify-self-start" onClick={onClose}><Link to={`${base}/profile`}>{c.addCv}</Link></Button></div>
         : <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
@@ -82,11 +85,11 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
                 <Field label={c.jdesc}><Textarea required rows={6} maxLength={50000} value={form.description} onChange={set('description')} /></Field></div>}
           </fieldset>
           {existing && <div role="alert" className="grid gap-2 rounded-lg border border-warning/50 p-3 text-sm"><p>{c.exists}</p><Button asChild size="sm" className="justify-self-start"><Link to={`${base}/sessions/${existing}`} onClick={onClose}>{c.open}</Link></Button></div>}
-          {error === 'provider' && <div role="alert" className="grid gap-2 rounded-lg border border-warning/50 p-3 text-sm"><p>{c.provider}</p><Button asChild size="sm" className="justify-self-start"><Link to="/app/settings?section=gateway" onClick={onClose}>{c.settings}</Link></Button></div>}
+          {error === 'provider' && <div role="alert" className="grid gap-2 rounded-lg border border-warning/50 p-3 text-sm"><p>{gatewayHelp.isAdmin ? c.provider : gatewayHelp.contactText}</p>{gatewayHelp.isAdmin && <Button asChild size="sm" className="justify-self-start"><Link to="/app/settings?section=gateway" onClick={onClose}>{c.settings}</Link></Button>}</div>}
           {(error === 'failed' || error === 'notFound') && <p role="alert" className="text-sm text-destructive">{error === 'notFound' ? c.notFound : c.failed}</p>}
           <div className="flex flex-wrap justify-end gap-2">
             <DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{c.cancel}</Button></DialogClose>
-            <Button type="submit" disabled={busy || !valid}>{busy ? c.starting : c.start}</Button>
+            <Button type="submit" busy={busy} disabled={busy || !valid}>{busy ? c.starting : c.start}</Button>
           </div>
         </form>}
     </DialogContent>

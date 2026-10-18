@@ -103,9 +103,9 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
   }
   const notice = message && <p role={message.ok ? 'status' : 'alert'} className={`text-sm ${message.ok ? 'text-success' : 'text-destructive'}`}>{message.text}</p>;
 
-  return <section aria-labelledby="saved-searches-title" className="grid min-w-0 gap-3 rounded-lg border p-4">
+  return <section aria-labelledby="saved-searches-title" className="grid min-w-0 gap-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h2 id="saved-searches-title" className="text-base font-semibold">{c.title}</h2>
+      <h2 id="saved-searches-title" className={items.length > 0 ? "text-base font-semibold" : "sr-only"}>{c.title}</h2>
       <Button variant="outline" disabled={!savable} onClick={openSave}><Bookmark className="size-4" aria-hidden="true" />{c.save}</Button>
     </div>
     {!savable && items.length === 0 && <p className="text-sm text-muted-foreground">{c.hint}</p>}
@@ -155,7 +155,7 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
           {saveOpen && message && !message.ok && notice}
           <div className="flex flex-wrap justify-end gap-2">
             <DialogClose asChild><Button type="button" variant="outline">{c.cancel}</Button></DialogClose>
-            <Button type="submit" disabled={busy || !name.trim()}>{c.confirmSave}</Button>
+            <Button type="submit" busy={busy} disabled={busy || !name.trim()}>{c.confirmSave}</Button>
           </div>
         </form>
       </DialogContent>

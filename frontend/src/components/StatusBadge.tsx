@@ -1,6 +1,7 @@
 import type { ApplicationStage, RunStatus } from '@/lib/api-types';
 import { stageLabel } from '@/lib/applicationStages';
 import { Badge } from './ui/badge';
+import { Spinner } from './ui/spinner';
 
 type Status = RunStatus | ApplicationStage;
 type Variant = 'default' | 'secondary' | 'success' | 'warning' | 'danger';
@@ -21,5 +22,6 @@ const config: Record<Status, { variant: Variant; th: string; en: string }> = {
 
 export function StatusBadge({ status, locale }: { status: Status; locale: 'th' | 'en' }) {
   const { variant, ...labels } = config[status];
-  return <Badge variant={variant}>{labels[locale]}</Badge>;
+  const working = status === 'queued' || status === 'running';
+  return <Badge variant={variant} className={working ? 'gap-1.5' : undefined}>{working && <Spinner className="size-3" />}{labels[locale]}</Badge>;
 }

@@ -41,7 +41,7 @@ export function LanguageSwitch() {
 }
 
 export function Header({ menu, actions }: { menu?: ReactNode; actions?: ReactNode }) {
-  return <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-background/90 px-4 py-2 backdrop-blur sm:px-6">
+  return <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-background px-4 py-2 sm:px-6">
     <div className="flex min-w-0 items-center gap-2">{menu}<HomeLink /></div>
     <div className="flex shrink-0 items-center gap-1 sm:gap-2">
       {actions}

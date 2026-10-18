@@ -21,3 +21,9 @@ export function accountErrorText(t: TFunction, error: unknown, locale: string): 
   }
   return null;
 }
+
+// Only operators can open the AI gateway settings; everyone else is told to contact them instead of being sent to a hidden page.
+export function useGatewayHelp(locale: 'th' | 'en'): { isAdmin: boolean; contactText: string } {
+  const isAdmin = useAccount()?.is_admin === true;
+  return { isAdmin, contactText: locale === 'th' ? 'ตอนนี้ยังใช้ AI ไม่ได้ โปรดติดต่อผู้ดูแลระบบ' : 'AI is not available right now. Please contact your administrator.' };
+}

@@ -1,0 +1,52 @@
+{
+  "controls": {
+    "location": "สถานที่",
+    "anyLocation": "ทุกพื้นที่",
+    "filters": "ตัวกรองเพิ่มเติม",
+    "source": "แหล่งข้อมูล",
+    "liveSource": "แหล่งข้อมูลงานจริง",
+    "checkingSavedJob": "กำลังตรวจสอบว่าบันทึกประกาศนี้ไว้แล้วหรือไม่…",
+    "clearFilters": "ล้างตัวกรอง",
+    "activeFilters": "ตัวกรองที่ใช้อยู่",
+    "removeFilter": "นำตัวกรอง {{label}} ออก",
+    "backToResults": "กลับไปยังผลการค้นหา",
+    "keywordCoverage": "ทักษะที่พบใน CV",
+    "aiEstimate": "ความเหมาะสมโดย AI (1–5)",
+    "sourceUnavailable": "ไม่มีแหล่งประกาศต้นฉบับ",
+    "salaryNotListed": "ไม่ได้ระบุเงินเดือน",
+    "partialRank": "AI จัดอันดับ {{scored}} จาก {{total}} งานในชุดผลลัพธ์นี้",
+    "aiUncertain": "ผลประเมินจาก AI ยังไม่แน่ชัด",
+    "poolLimited": "Smart match ใช้เฉพาะ {{count}} งานแรกจาก {{total}} งานที่ตรงกับตัวกรอง",
+    "sourceSample": "ข้อมูลตัวอย่าง",
+    "currentPool": "ชุดผลลัพธ์ปัจจุบัน",
+    "filterValue": "{{name}}: {{value}}",
+    "queryValue": "คำค้น: {{value}}",
+    "postedValue": "ลงประกาศภายใน {{days}} วัน",
+    "seniority": "ระดับตำแหน่ง",
+    "employmentType": "ประเภทการจ้าง",
+    "companyType": "ประเภทบริษัท",
+    "skills": "ทักษะ",
+    "postingLanguage": "ประกาศภาษาไทย",
+    "minimumSalary": "เงินเดือนขั้นต่ำ",
+    "modeHintSearch": "ค้นหางานตามคำสำคัญ",
+    "modeHintMatch": "จัดอันดับงานเทียบกับ CV ของคุณ (ใช้ AI)",
+    "cvChangeNote": "การเปลี่ยน CV มีผลกับการประเมินครั้งใหม่เท่านั้น",
+    "matchEvidence": "หลักฐานความเหมาะสม",
+    "aiFit": "ความเหมาะสมโดย AI",
+    "skillsFound": "พบ {{found}} จาก {{total}} ทักษะ",
+    "aiUnavailable": "ยังไม่มีผลจัดอันดับโดย AI — แสดงการจัดอันดับตามคำสำคัญ",
+    "evaluateWith": "ประเมินกับ {{cv}}",
+    "evalNote": "การประเมินจะใช้ประกาศงานนี้และ {{cv}}",
+    "examplesLabel": "ลองค้นหา",
+    "examples": [
+      "Data analyst",
+      "Frontend",
+      "Product manager"
+    ]
+  },
+  "methods": {
+    "keywordNote": "ความครอบคลุมแบบกำหนดแน่นอนนับทักษะที่ตรวจพบในประกาศและ CV ที่เลือก ไม่ใช่ผลประเมินจาก AI หรือคำทำนายว่า ATS จะผ่านหรือไม่",
+    "aiNote": "ค่าประเมินจาก AI สำหรับงานนี้และ CV ฉบับที่เลือก ผลอาจไม่แน่นอนและไม่ใช่โอกาสได้งาน",
+    "keywordOnly": "แสดงการจัดอันดับตามคำสำคัญระหว่างที่การจัดอันดับด้วย AI ยังไม่เสร็จหรือไม่พร้อมใช้งาน"
+  }
+}

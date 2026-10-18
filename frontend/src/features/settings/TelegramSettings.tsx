@@ -76,7 +76,7 @@ export function TelegramSettings() {
     {message && <Notice>{message}</Notice>}
     <div>{current.linked
       ? <Button variant="outline" className="min-h-10" disabled={busy} onClick={() => setConfirming(true)}>{c.disconnect}</Button>
-      : <Button className="min-h-10" disabled={busy} onClick={() => void connect()}>{c.connect}</Button>}</div>
+      : <Button className="min-h-10" busy={busy} disabled={busy} onClick={() => void connect()}>{c.connect}</Button>}</div>
     {confirming && <ConfirmDeleteDialog title={c.deleteTitle} description={c.deleteBody} confirmLabel={c.deleteConfirm}
       onConfirm={() => apiRequest('/account/telegram', { method: 'DELETE' }).then(() => undefined)}
       onDone={() => { setConfirming(false); setStatus({ ...current, linked: false, linked_at: null }); }} onClose={() => setConfirming(false)} />}

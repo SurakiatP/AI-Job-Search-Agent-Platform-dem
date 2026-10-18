@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
+import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog';
 import { PasswordInput } from '../../components/PasswordInput';
 import { Label } from '../../components/ui/label';
 import { apiRequest, deleteAccount, logout, resendVerification, useAccount } from '../../lib/api';
@@ -35,39 +36,50 @@ function EmailSection() {
 
 function AgentsSection() {
   const { t, i18n } = useTranslation();
+  const { t: tu } = useTranslation('utilitiesWorkspace');
   const agents = useResource<AccountAgent[]>('/account/agents');
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
-  async function revoke(agent: AccountAgent) {
-    setBusy(true); setFailed(false);
-    try { await apiRequest<void>(`/projects/${encodeURIComponent(agent.project_id)}/grants/${encodeURIComponent(agent.id)}`, { method: 'DELETE' }); }
-    catch (caught) { if (!(caught instanceof ApiError && caught.status === 404)) setFailed(true); }
-    finally { setBusy(false); agents.reload(); }
-  }
+  const [revoking, setRevoking] = useState<AccountAgent | null>(null);
   const fmt = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
   const stateOf = (a: AccountAgent) => a.revoked_at ? 'revoked' : Date.parse(a.expires_at) <= Date.now() ? 'expired' : 'active';
+  const all = agents.data ?? [];
+  const active = all.filter(a => stateOf(a) === 'active');
+  const inactive = all.filter(a => stateOf(a) !== 'active');
+  const appName = (a: AccountAgent) => a.label ?? t('account.untitledAgent');
+  const item = (agent: AccountAgent) => {
+    const state = stateOf(agent);
+    return <li key={agent.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${state === 'active' ? '' : 'text-muted-foreground'}`}>
+      <div className="grid min-w-0 gap-1.5">
+        <p className="break-words text-sm font-medium">{appName(agent)}</p>
+        {agent.client_id_host && <p className="break-words text-sm text-muted-foreground">{t('account.oauthClient', { host: agent.client_id_host })}</p>}
+        <p className="break-words text-sm">{t('account.project')}: {agent.project_name}</p>
+        <div className="flex flex-wrap gap-1.5">{agent.capabilities.map(cap => <Badge key={cap} variant="outline">{cap}</Badge>)}</div>
+        <p className="text-sm">{t('account.created')} <time dateTime={agent.created_at}>{fmt.format(new Date(agent.created_at))}</time> · {t('account.expires')} <time dateTime={agent.expires_at}>{fmt.format(new Date(agent.expires_at))}</time></p>
+      </div>
+      <div className="flex items-center gap-3">
+        <Badge variant={state === 'active' ? 'success' : 'secondary'}>{t(`account.${state}`)}</Badge>
+        {state === 'active' && <Button type="button" size="sm" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setRevoking(agent)}>{t('account.revoke')}</Button>}
+      </div>
+    </li>;
+  };
   return <section aria-labelledby="account-agents" className="grid gap-3">
     <div className="grid gap-1"><h2 id="account-agents" className="text-lg font-semibold">{t('account.agentsSection')}</h2><p className="text-sm text-muted-foreground">{t('account.agentsIntro')}</p></div>
-    {failed && <p role="alert" className="text-sm text-destructive">{t('account.revokeFailed')}</p>}
     {agents.status === 'error' ? <ErrorState onRetry={agents.reload} />
       : agents.status === 'loading' && !agents.data ? <LoadingState />
-      : (agents.data ?? []).length === 0 ? <div className="grid gap-1 rounded-xl border border-dashed bg-card p-6"><p className="font-medium">{t('account.noAgents')}</p><p className="text-sm text-muted-foreground">{t('account.noAgentsNext')}</p></div>
-      : <ul className="divide-y rounded-xl border bg-card">{(agents.data ?? []).map(agent => {
-        const state = stateOf(agent);
-        return <li key={agent.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${state === 'active' ? '' : 'text-muted-foreground'}`}>
-          <div className="grid min-w-0 gap-1.5">
-            <p className="break-words text-sm font-medium">{agent.label ?? t('account.untitledAgent')}</p>
-            {agent.client_id_host && <p className="break-words text-sm text-muted-foreground">{t('account.oauthClient', { host: agent.client_id_host })}</p>}
-            <p className="break-words text-sm">{t('account.project')}: {agent.project_name}</p>
-            <div className="flex flex-wrap gap-1.5">{agent.capabilities.map(cap => <Badge key={cap} variant="outline">{cap}</Badge>)}</div>
-            <p className="text-sm">{t('account.created')} <time dateTime={agent.created_at}>{fmt.format(new Date(agent.created_at))}</time> · {t('account.expires')} <time dateTime={agent.expires_at}>{fmt.format(new Date(agent.expires_at))}</time></p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Badge variant={state === 'active' ? 'success' : 'secondary'}>{t(`account.${state}`)}</Badge>
-            {state === 'active' && <Button type="button" size="sm" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} onClick={() => void revoke(agent)}>{t('account.revoke')}</Button>}
-          </div>
-        </li>;
-      })}</ul>}
+      : all.length === 0 ? <div className="grid gap-1 rounded-xl border border-dashed bg-card p-6"><p className="font-medium">{t('account.noAgents')}</p><p className="text-sm text-muted-foreground">{t('account.noAgentsNext')}</p></div>
+      : <>
+        {active.length > 0 ? <ul className="divide-y rounded-xl border bg-card">{active.map(item)}</ul> : <p className="text-sm text-muted-foreground">{tu('account.noActive')}</p>}
+        {inactive.length > 0 && <details className="group">
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{tu('account.expiredToggle', { count: inactive.length })}</summary>
+          <ul className="mt-2 divide-y rounded-xl border bg-card">{inactive.map(item)}</ul>
+        </details>}
+      </>}
+    {revoking && <ConfirmDeleteDialog
+      title={tu('account.revokeTitle', { app: appName(revoking), project: revoking.project_name })}
+      description={tu('account.revokeBody', { app: appName(revoking), project: revoking.project_name })}
+      confirmLabel={tu('account.revokeConfirm')}
+      onConfirm={() => apiRequest<void>(`/projects/${encodeURIComponent(revoking.project_id)}/grants/${encodeURIComponent(revoking.id)}`, { method: 'DELETE' })}
+      onDone={() => { setRevoking(null); agents.reload(); }}
+      onClose={() => setRevoking(null)} />}
   </section>;
 }
 
@@ -101,7 +113,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
         {error && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{error}</p>}
         <div className="flex flex-wrap justify-end gap-2">
           <DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{t('account.cancel')}</Button></DialogClose>
-          <Button type="submit" variant="destructive" disabled={busy || !password || confirm.trim().toLowerCase() !== email.trim().toLowerCase()}>{t('account.deleteConfirm')}</Button>
+          <Button type="submit" variant="destructive" busy={busy} disabled={busy || !password || confirm.trim().toLowerCase() !== email.trim().toLowerCase()}>{t('account.deleteConfirm')}</Button>
         </div>
       </form>
     </DialogContent>
