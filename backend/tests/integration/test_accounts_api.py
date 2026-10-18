@@ -201,3 +201,36 @@ def test_is_admin_comes_only_from_admin_emails(ctx, monkeypatch):
     monkeypatch.setenv("ADMIN_EMAILS", "Other@example.test, ALICE@example.test")
     assert ctx.client.get("/api/v1/account").json()["is_admin"] is True
     assert ctx.client.get("/api/v1/gateway").status_code == 200
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
+
+def test_avatar_upload_preset_and_removal(ctx):
+    csrf = verified_login(ctx).json()["csrf_token"]
+    h = {"Origin": ctx.origin, "X-CSRF-Token": csrf}
+    assert ctx.client.get("/api/v1/account").json()["has_avatar_image"] is False
+    assert ctx.client.get("/api/v1/account/avatar").status_code == 404
+    assert ctx.client.put("/api/v1/account/avatar", headers=h, content=PNG).status_code == 204
+    me = ctx.client.get("/api/v1/account").json()
+    assert me["has_avatar_image"] is True and me["avatar_version"]
+    img = ctx.client.get("/api/v1/account/avatar")
+    assert img.status_code == 200 and img.headers["content-type"] == "image/png" and img.content == PNG
+    assert img.headers["x-content-type-options"] == "nosniff"
+    assert ctx.client.put("/api/v1/account/avatar-preset", headers=h, json={"preset": "spark"}).status_code == 204
+    me = ctx.client.get("/api/v1/account").json()
+    assert me["avatar_preset"] == "spark" and me["has_avatar_image"] is False  # a preset replaces the upload
+    assert ctx.client.put("/api/v1/account/avatar-preset", headers=h, json={"preset": "evil"}).status_code == 422
+    assert ctx.client.put("/api/v1/account/avatar", headers=h, content=PNG).status_code == 204
+    assert ctx.client.delete("/api/v1/account/avatar", headers=h).status_code == 204
+    assert ctx.client.get("/api/v1/account").json()["has_avatar_image"] is False
+
+
+def test_avatar_rejects_svg_wrong_bytes_and_oversize_and_needs_csrf(ctx):
+    csrf = verified_login(ctx).json()["csrf_token"]
+    h = {"Origin": ctx.origin, "X-CSRF-Token": csrf}
+    for bad in (b"<svg xmlns='http://www.w3.org/2000/svg'><script>1</script></svg>", b"GIF89a....", b"", b"not an image"):
+        r = ctx.client.put("/api/v1/account/avatar", headers=h, content=bad)
+        assert r.status_code == 422 and r.json()["code"] == "invalid_image"
+    assert ctx.client.put("/api/v1/account/avatar", headers=h, content=PNG + b"\x00" * 262_144).status_code == 422
+    assert ctx.client.put("/api/v1/account/avatar", headers={"Origin": ctx.origin}, content=PNG).status_code in (401, 403)

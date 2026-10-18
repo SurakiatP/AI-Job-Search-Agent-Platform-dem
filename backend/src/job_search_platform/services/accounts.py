@@ -37,6 +37,19 @@ logger = logging.getLogger(__name__)
 VERIFY_TTL = timedelta(hours=24)
 RESET_TTL = timedelta(minutes=30)
 CODE_TTL = timedelta(minutes=10)
+AVATAR_PRESETS = ("compass", "briefcase", "spark", "mountain")
+AVATAR_MAX_BYTES = 262_144
+
+
+def _image_mime(data: bytes) -> str | None:
+    """By content, never by the name or header the client sent. SVG is refused on purpose: it can carry script."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
 # kind -> (subject, body); the body holds a {link} placeholder where a link applies.
 MESSAGES = {
     "en": {
@@ -195,6 +208,33 @@ class Accounts:
             if user.email_verified_at is None:
                 user.email_verified_at = datetime.now(timezone.utc)
 
+    # -- avatar ----------------------------------------------------------------------------------
+    def set_avatar_image(self, user_id: UUID, data: bytes) -> None:
+        mime = _image_mime(data)
+        if mime is None or not 0 < len(data) <= AVATAR_MAX_BYTES:
+            raise ServiceError("invalid_image")
+        with self.sessions.begin() as db:
+            user = db.get(User, user_id)
+            user.avatar_image, user.avatar_mime, user.avatar_updated_at = data, mime, datetime.now(timezone.utc)
+
+    def set_avatar_preset(self, user_id: UUID, preset: str) -> None:
+        if preset not in AVATAR_PRESETS:
+            raise ServiceError("invalid_image")
+        with self.sessions.begin() as db:
+            user = db.get(User, user_id)  # choosing a built-in avatar replaces any uploaded picture
+            user.avatar_preset, user.avatar_image, user.avatar_mime = preset, None, None
+            user.avatar_updated_at = datetime.now(timezone.utc)
+
+    def clear_avatar_image(self, user_id: UUID) -> None:
+        with self.sessions.begin() as db:
+            user = db.get(User, user_id)
+            user.avatar_image, user.avatar_mime, user.avatar_updated_at = None, None, datetime.now(timezone.utc)
+
+    def avatar_image(self, user_id: UUID) -> tuple[bytes, str] | None:
+        with self.sessions() as db:
+            user = db.get(User, user_id)
+            return (bytes(user.avatar_image), user.avatar_mime) if user and user.avatar_image else None
+
     def send_deletion_code(self, user_id: UUID) -> None:
         with self.sessions.begin() as db:
             user = db.get(User, user_id)
@@ -272,6 +312,8 @@ class Accounts:
                 raise ServiceError("unauthorized")
             return {"id": user.id, "email": user.email, "locale": user.locale,
                     "email_verified": user.email_verified_at is not None, "is_admin": is_admin(user),
+                    "avatar_preset": user.avatar_preset, "has_avatar_image": user.avatar_image is not None,
+                    "avatar_version": user.avatar_updated_at.isoformat() if user.avatar_updated_at else None,
                     "created_at": user.created_at}
 
     def agents(self, user_id: UUID) -> list[dict]:

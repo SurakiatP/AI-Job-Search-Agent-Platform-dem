@@ -1182,6 +1182,30 @@ paths:
         '204': {description: Done}
         '400': {description: 'Invalid code (code invalid_code)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '429': {$ref: '#/components/responses/RateLimited'}
+  /account/avatar:
+    get:
+      tags: [account]
+      description: Session. The uploaded picture (PNG, JPEG or WebP). 404 when none.
+      responses:
+        '200': {description: Image bytes, content: {image/png: {schema: {type: string, format: binary}}}}
+    put:
+      tags: [account]
+      description: Session and CSRF. Raw image bytes as the body, at most 256 KiB. Type is detected from the content; SVG is refused. 422 invalid_image.
+      requestBody: {required: true, content: {application/octet-stream: {schema: {type: string, format: binary}}}}
+      responses:
+        '204': {description: Saved}
+    delete:
+      tags: [account]
+      description: Session and CSRF. Removes the uploaded picture.
+      responses:
+        '204': {description: Removed}
+  /account/avatar-preset:
+    put:
+      tags: [account]
+      description: Session and CSRF. Picks a built-in avatar and removes any uploaded picture.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AvatarPresetRequest'}}}}
+      responses:
+        '204': {description: Saved}
   /account/delete-code:
     post:
       tags: [account]
@@ -2223,7 +2247,17 @@ components:
         email: {type: string}
         locale: {type: string, enum: [th, en]}
         email_verified: {type: boolean}
+        is_admin: {type: boolean, description: True only for verified accounts listed in ADMIN_EMAILS}
+        avatar_preset: {type: string, nullable: true, enum: [compass, briefcase, spark, mountain]}
+        has_avatar_image: {type: boolean}
+        avatar_version: {type: string, nullable: true, description: Changes whenever the picture changes; use it to refresh caches}
         created_at: {type: string, format: date-time}
+    AvatarPresetRequest:
+      type: object
+      additionalProperties: false
+      required: [preset]
+      properties:
+        preset: {type: string, enum: [compass, briefcase, spark, mountain]}
     LoginView:
       type: object
       additionalProperties: false

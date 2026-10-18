@@ -50,6 +50,10 @@ class CodeRequest(_Body):
     code: str = Field(pattern=r"^\d{6}$")
 
 
+class AvatarPresetRequest(_Body):
+    preset: Literal["compass", "briefcase", "spark", "mountain"]
+
+
 class DeleteAccountRequest(_Body):
     password: str = Field(max_length=256)
     confirm_email: str = Field(max_length=254)
@@ -66,6 +70,9 @@ class AccountView(_Body):
     locale: Literal["th", "en"]
     email_verified: bool
     is_admin: bool = False
+    avatar_preset: Literal["compass", "briefcase", "spark", "mountain"] | None = None
+    has_avatar_image: bool = False
+    avatar_version: str | None = None
     created_at: datetime
 
 
@@ -127,6 +134,42 @@ async def verify_email(body: TokenRequest, services: Services = Depends(get_serv
 @router.post("/auth/verify-email/code", status_code=204)
 async def verify_email_code(body: CodeRequest, services: Services = Depends(get_services)):
     await asyncio.to_thread(services.accounts.verify_email_code, body.email, body.code)
+    return Response(status_code=204)
+
+
+@router.get("/account/avatar")
+async def get_avatar(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    found = await asyncio.to_thread(services.accounts.avatar_image, actor.user_id)
+    if found is None:
+        raise ServiceError("not_found")
+    data, mime = found
+    return Response(content=data, media_type=mime, headers={"Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff",
+                                                            "Content-Security-Policy": "default-src 'none'; sandbox"})
+
+
+@router.put("/account/avatar", status_code=204)
+async def put_avatar(request: Request, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    limit = 262_144
+    if int(request.headers.get("content-length") or 0) > limit:
+        raise ServiceError("invalid_image")
+    data = b""
+    async for chunk in request.stream():
+        data += chunk
+        if len(data) > limit:
+            raise ServiceError("invalid_image")
+    await asyncio.to_thread(services.accounts.set_avatar_image, actor.user_id, data)
+    return Response(status_code=204)
+
+
+@router.delete("/account/avatar", status_code=204)
+async def delete_avatar(actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.clear_avatar_image, actor.user_id)
+    return Response(status_code=204)
+
+
+@router.put("/account/avatar-preset", status_code=204)
+async def put_avatar_preset(body: AvatarPresetRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.set_avatar_preset, actor.user_id, body.preset)
     return Response(status_code=204)
 
 
