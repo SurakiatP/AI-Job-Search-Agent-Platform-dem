@@ -23,7 +23,7 @@ export function RunTimeline({ locale, run, events, cancellationPending, historic
   const progress = events.length ? events[events.length - 1].data.progress_percent : null;
   const working = !historical && (run.status === 'queued' || run.status === 'running');
   const hasPercent = progress !== null && progress !== undefined;
-  const busyLabel = run.status === 'queued' ? (locale === 'th' ? `เข้าคิวแล้ว: ${operation}` : `Queued: ${operation}`) : (locale === 'th' ? `กำลังทำงาน: ${operation}` : `Working on: ${operation}`);
+  const busyLabel = run.status === 'queued' ? (locale === 'th' ? `เอเจนต์รับงานแล้ว รอคิว: ${operation}` : `The agent has the task and is queued: ${operation}`) : (locale === 'th' ? `เอเจนต์กำลังประมวลผล: ${operation}` : `The agent is processing: ${operation}`);
   const busyDetail = locale === 'th' ? 'หน้านี้อัปเดตเองเมื่อมีความคืบหน้า ไม่ต้องรีเฟรช' : 'This page updates by itself as work progresses, no need to refresh';
   return <section aria-labelledby={headingId} className="grid gap-3">
     <div className="flex flex-wrap items-start justify-between gap-2">

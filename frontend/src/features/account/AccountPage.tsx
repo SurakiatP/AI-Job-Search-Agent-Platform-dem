@@ -8,7 +8,8 @@ import { Input } from '../../components/ui/input';
 import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog';
 import { PasswordInput } from '../../components/PasswordInput';
 import { Label } from '../../components/ui/label';
-import { apiRequest, deleteAccount, logout, resendVerification, useAccount } from '../../lib/api';
+import { apiRequest, deleteAccount, logout, resendVerification, sendDeletionCode, useAccount } from '../../lib/api';
+import { CodeInput } from '../../components/CodeInput';
 import { ApiError, type AccountAgent } from '../../lib/api-types';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
@@ -89,17 +90,28 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [code, setCode] = useState('');
+  const [codeState, setCodeState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const thai = useTranslation().i18n.language.startsWith('th');
+  const otp = thai
+    ? { label: 'รหัส 6 หลักจากอีเมล', send: 'ส่งรหัสไปที่อีเมลของฉัน', resend: 'ส่งรหัสอีกครั้ง', sent: `ส่งรหัสไปที่ ${email} แล้ว รหัสหมดอายุใน 10 นาที`, first: 'ต้องขอรหัสทางอีเมลก่อน เพื่อยืนยันว่าเป็นคุณจริง' }
+    : { label: '6-digit code from the email', send: 'Email me a code', resend: 'Send a new code', sent: `We sent a code to ${email}. It expires in 10 minutes.`, first: 'Request an emailed code first, to confirm it is really you.' };
+  async function requestCode() {
+    setCodeState('sending'); setError('');
+    try { await sendDeletionCode(); setCodeState('sent'); setCode(''); }
+    catch (caught) { setCodeState('idle'); setError(caught instanceof ApiError && caught.code === 'rate_limited' ? t('errors.rate_limited', { seconds: caught.fields?.retry_after ?? '60' }) : t('errors.request_failed')); }
+  }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || code.length !== 6) return;
     setBusy(true); setError('');
     try {
-      await deleteAccount(password, confirm.trim());
+      await deleteAccount(password, confirm.trim(), code);
       // Full reload: the session is gone, and a soft navigation races the login gate's redirect.
       window.location.replace('/');
     } catch (caught) {
       const key = caught instanceof ApiError ? `errors.${caught.code}` : '';
-      setError(key && ['errors.invalid_credentials', 'errors.confirmation_mismatch', 'errors.rate_limited'].includes(key) ? t(key, { seconds: caught instanceof ApiError ? caught.fields?.retry_after ?? '60' : '60' }) : t('errors.request_failed'));
+      setError(key && ['errors.invalid_credentials', 'errors.confirmation_mismatch', 'errors.rate_limited', 'errors.invalid_code'].includes(key) ? t(key, { seconds: caught instanceof ApiError ? caught.fields?.retry_after ?? '60' : '60' }) : t('errors.request_failed'));
       setBusy(false);
     }
   }
@@ -110,10 +122,18 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
         <DialogDescription>{t('account.deleteBody')}</DialogDescription>
         <div className="grid gap-1.5"><Label htmlFor="delete-password">{t('auth.password')}</Label><PasswordInput id="delete-password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
         <div className="grid gap-1.5"><Label htmlFor="delete-email">{t('account.confirmEmail')}</Label><Input id="delete-email" type="email" autoComplete="off" placeholder={email} required value={confirm} onChange={e => setConfirm(e.target.value)} /></div>
+        <div className="grid gap-2 rounded-lg border p-3">
+          {codeState !== 'sent' ? <p className="text-sm text-muted-foreground">{otp.first}</p> : <>
+            <Label htmlFor="delete-code">{otp.label}</Label>
+            <CodeInput id="delete-code" required value={code} onChange={setCode} />
+            <p role="status" className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{otp.sent}</p>
+          </>}
+          <Button type="button" variant="outline" className="justify-self-start" busy={codeState === 'sending'} disabled={busy || codeState === 'sending'} onClick={() => void requestCode()}>{codeState === 'sent' ? otp.resend : otp.send}</Button>
+        </div>
         {error && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{error}</p>}
         <div className="flex flex-wrap justify-end gap-2">
           <DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{t('account.cancel')}</Button></DialogClose>
-          <Button type="submit" variant="destructive" busy={busy} disabled={busy || !password || confirm.trim().toLowerCase() !== email.trim().toLowerCase()}>{t('account.deleteConfirm')}</Button>
+          <Button type="submit" variant="destructive" busy={busy} disabled={busy || !password || code.length !== 6 || confirm.trim().toLowerCase() !== email.trim().toLowerCase()}>{t('account.deleteConfirm')}</Button>
         </div>
       </form>
     </DialogContent>

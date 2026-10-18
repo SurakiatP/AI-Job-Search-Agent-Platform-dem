@@ -11,7 +11,7 @@ export const copy = {
     grantName: 'ชื่อ (ไม่บังคับ)', grantNameHint: 'ใช้แสดงในไทม์ไลน์ว่างานมาจากเอเจนต์ตัวไหน',
     opaction: 'ไม่สามารถดำเนินการได้ ลองโหลดสถานะใหม่',
     // timeline
-    ops: { evaluate_job: 'ประเมินงาน', draft_documents: 'ร่างเอกสาร', export_document: 'สร้างไฟล์เอกสาร', profile_cv: 'วิเคราะห์ CV', match_jobs: 'จัดอันดับงานด้วย AI', extract_experience: 'ดึงประสบการณ์จาก CV', tailor_cv: 'ปรับ CV ให้เข้ากับงาน', apply_prepare: 'เตรียมคำตอบใบสมัคร', apply_submit: 'ขอบันทึกว่าสมัครแล้ว', draft_follow_up: 'ร่างข้อความติดตามผล' },
+    ops: { evaluate_job: 'ประเมินงาน', draft_documents: 'ร่างเอกสาร', export_document: 'สร้างไฟล์เอกสาร', profile_cv: 'วิเคราะห์ CV', match_jobs: 'จัดอันดับงานด้วย AI', extract_experience: 'สกัดประสบการณ์จาก CV', tailor_cv: 'ปรับ CV ให้เข้ากับงาน', apply_prepare: 'เตรียมคำตอบใบสมัคร', apply_submit: 'ขอบันทึกว่าสมัครแล้ว', draft_follow_up: 'ร่างข้อความติดตามผล' },
     filters: { all: 'ทั้งหมด', active: 'กำลังทำ', waiting: 'รออนุมัติ', needsYou: 'ต้องการคุณ', done: 'เสร็จ', failed: 'ล้มเหลว' },
     cols: { op: 'งาน', job: 'ตำแหน่ง', status: 'สถานะ', created: 'เริ่มเมื่อ', duration: 'ใช้เวลา', score: 'คะแนน', session: 'เซสชัน' },
     running: 'กำลังทำงาน', waitingInput: 'รอข้อมูลจากคุณ', untitled: 'งานไม่มีชื่อ', openSession: 'เปิดเซสชัน', retry: 'ลองใหม่', retryOf: 'ลองใหม่จากงานก่อนหน้า',

@@ -72,14 +72,14 @@ test('a new CV version refreshes the bank to the queued extraction', async ({ pa
   await page.goto(`/app/projects/${projectId}/profile`);
   await page.getByRole('tab', { name: 'Experience bank' }).click();
   const section = page.getByRole('region', { name: 'Experience bank' });
-  await expect(section.getByRole('button', { name: 'Extract experience', exact: true })).toBeVisible();
+  await expect(section.getByRole('button', { name: 'Extract experience from CV with AI', exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'CV library' }).click();
   const chooser = page.waitForEvent('filechooser');
   await page.locator('button', { hasText: 'Upload new version' }).click();
   await (await chooser).setFiles({ name: 'cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic CV') });
-  await expect(page.getByRole('status').filter({ hasText: 'Extracting facts' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'extracting experience' })).toBeVisible();
   await page.getByRole('tab', { name: 'Experience bank' }).click();
-  await expect(section.getByRole('status')).toContainText('Waiting to extract experience from your CV');
+  await expect(section.getByRole('status')).toContainText('The agent is queued to extract experience from your CV');
 });
 
 test('each CV card can start an extraction for that CV', async ({ page }) => {
@@ -93,12 +93,12 @@ test('each CV card can start an extraction for that CV', async ({ page }) => {
     return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'r-other', status: 'queued' }) });
   });
   await page.goto(`/app/projects/${projectId}/profile`);
-  await expect(page.getByRole('button', { name: 'Extract facts: Older CV' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Extract experience with AI: Older CV' })).toBeVisible();
   const request = page.waitForRequest(r => r.method() === 'POST' && r.url().endsWith(`/cvs/${other.id}/experience-runs`));
-  await page.getByRole('button', { name: 'Extract facts: Older CV' }).click();
+  await page.getByRole('button', { name: 'Extract experience with AI: Older CV' }).click();
   await request;
   await page.getByRole('tab', { name: 'Experience bank' }).click();
-  await expect(page.getByRole('region', { name: 'Experience bank' }).getByRole('status')).toContainText('Waiting to extract experience from your CV');
+  await expect(page.getByRole('region', { name: 'Experience bank' }).getByRole('status')).toContainText('The agent is queued to extract experience from your CV');
   await page.setViewportSize({ width: 320, height: 800 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

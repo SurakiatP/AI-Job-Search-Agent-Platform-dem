@@ -133,6 +133,7 @@
     "quota_exceeded": "You reached today's run limit. It resets at {{time}}.",
     "unauthorized": "Your session ended. Log in again.",
     "invalid_credentials": "The email or password is not correct.",
+    "invalid_code": "That code is wrong or has expired. Check the email or ask for a new one.",
     "invalid_token": "This link is invalid or has expired.",
     "weak_password": "Use a password of 10 to 128 characters.",
     "invalid_email": "Enter a valid email address.",

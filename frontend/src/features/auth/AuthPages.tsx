@@ -8,7 +8,8 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { PasswordInput } from '../../components/PasswordInput';
 import { Label } from '../../components/ui/label';
-import { forgotPassword, login, refreshOwnerSession, resendVerification, resetPassword, signup, useOwnerSession, verifyEmail } from '../../lib/api';
+import { forgotPassword, login, refreshOwnerSession, resendVerification, resetPassword, signup, useOwnerSession, verifyEmail, verifyEmailCode } from '../../lib/api';
+import { CodeInput } from '../../components/CodeInput';
 import { ApiError } from '../../lib/api-types';
 import { authCopy } from './copy';
 
@@ -115,6 +116,7 @@ export function LoginPage() {
     <ul className="grid gap-2 text-muted-foreground">{c.loginSide.points.map(point => <li key={point}>{point}</li>)}</ul>
   </SidePoints>}>
     {params.get('notice') === 'password-reset' && <p role="status" className="text-sm text-success">{c.loginNotice}</p>}
+    {params.get('notice') === 'verified' && <p role="status" className="text-sm text-success">{locale === 'th' ? 'ยืนยันอีเมลแล้ว เข้าสู่ระบบได้เลย' : 'Email verified. You can log in now.'}</p>}
     <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
       <Field id="login-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} />
       <Field id="login-password" label={t('auth.password')} type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} />
@@ -134,10 +136,23 @@ export function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [sent, setSent] = useState(false);
+  const [code, setCode] = useState('');
+  const navigate = useNavigate();
   const { busy, error, submit } = useSubmit(async () => { await signup(email.trim(), password, locale); setSent(true); });
+  const verify = useSubmit(async () => { await verifyEmailCode(email.trim(), code); navigate('/login?notice=verified', { replace: true }); });
+  const otp = locale === 'th'
+    ? { label: 'รหัส 6 หลักจากอีเมล', hint: 'กรอกรหัสที่เราส่งให้ หรือกดลิงก์ในอีเมลก็ได้ รหัสหมดอายุใน 10 นาที', action: 'ยืนยันอีเมล' }
+    : { label: '6-digit code from the email', hint: 'Enter the code we sent, or use the link in the email. The code expires in 10 minutes.', action: 'Verify email' };
   if (session.status === 'ready') return <Navigate to="/app" replace />;
   if (sent) return <AuthLayout title={t('auth.checkEmailTitle')} intro={t('auth.checkEmailBody')} icon={<MailCheck className="size-8 text-primary" aria-hidden="true" />}>
     <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{c.sentTo} <span className="font-medium text-foreground">{email.trim()}</span></p>
+    <form className="grid gap-3 rounded-lg border bg-card p-4" onSubmit={event => void verify.submit(event)} noValidate>
+      <Label htmlFor="signup-code">{otp.label}</Label>
+      <CodeInput id="signup-code" value={code} onChange={setCode} aria-describedby="signup-code-hint" />
+      <p id="signup-code-hint" className="text-xs text-muted-foreground">{otp.hint}</p>
+      <Alert>{verify.error}</Alert>
+      <Button type="submit" busy={verify.busy} disabled={verify.busy || code.length !== 6} className="justify-self-start">{otp.action}</Button>
+    </form>
     <p className="text-sm text-muted-foreground">{c.noMail}</p>
     <Button variant="outline" onClick={() => setSent(false)}>{c.differentEmail}</Button>
     <p className="text-sm"><Link className={linkClass} to="/login">{t('auth.toLogin')}</Link></p>

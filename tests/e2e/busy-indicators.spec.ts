@@ -9,7 +9,7 @@ test('a running run shows a turning ring, what it is doing, and a moving bar; no
   await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([running]) }));
   await page.route(`**/api/v1/projects/${projectId}/runs/${running.id}/events`, () => new Promise(() => undefined)); // stays open: work never finishes in this test
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
-  const note = page.getByText(/^Working on:/);
+  const note = page.getByText(/^The agent is processing:/);
   await expect(note).toBeVisible();
   await expect(page.getByText('This page updates by itself as work progresses, no need to refresh')).toBeVisible();
   await expect(page.locator('.busy-bar:visible')).toHaveCount(1); // the small-screen banner is hidden on desktop
@@ -24,7 +24,7 @@ test('queued CV experience extraction shows the working row with its elapsed wai
   await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([cv]) }));
   await page.route(`**/api/v1/projects/${projectId}/experience**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], provider_configured: true, extraction: { run_id: 'r1', status: 'queued', cv_id: cv.id, summary: null } }) }));
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
-  await expect(page.getByText('รอคิวดึงประสบการณ์จาก CV').first()).toBeVisible();
+  await expect(page.getByText('เอเจนต์รอคิวสกัดประสบการณ์จาก CV').first()).toBeVisible();
   await expect(page.locator('.busy-bar').first()).toBeVisible();
   await expect(page.getByText(/รอมา \d+ วินาที/)).toBeVisible({ timeout: 8000 });
 });
@@ -36,7 +36,7 @@ test('reduced motion keeps the label and stills the ring and bar', async ({ page
   await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([running]) }));
   await page.route(`**/api/v1/projects/${projectId}/runs/${running.id}/events`, () => new Promise(() => undefined));
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
-  await expect(page.getByText(/^Working on:/)).toBeVisible();
+  await expect(page.getByText(/^The agent is processing:/)).toBeVisible();
   const names = await page.locator('svg.animate-spin:visible').first().evaluate(el => getComputedStyle(el).animationName);
   expect(names).toBe('none');
   expect(await page.locator('.busy-bar:visible').evaluate(el => getComputedStyle(el, '::after').animationName)).toBe('none');

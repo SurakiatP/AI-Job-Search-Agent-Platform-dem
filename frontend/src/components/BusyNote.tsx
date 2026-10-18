@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { Spinner } from './ui/spinner';
+import { AiSpinner } from './AiMark';
 
 // Shows how long this wait has lasted, measured in the browser; it is not an estimate of what is left.
 function useElapsed(): number {
@@ -29,7 +29,7 @@ export function BusyNote({ label, detail, bar = false, announce = true, action, 
   const thai = locale ? locale === 'th' : (i18n?.language ?? 'th').startsWith('th');
   return <div {...(announce ? { role: 'status', 'aria-live': 'polite' as const } : { 'aria-hidden': true })} className={cn('grid min-w-0 gap-2 rounded-lg border border-primary/25 bg-accent/50 px-3 py-2.5 text-sm', className)}>
     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-      <Spinner className="text-primary" />
+      <AiSpinner />
       <span className="min-w-0 break-words font-medium">{label}</span>
       {seconds >= 3 && <span className="text-xs tabular-nums text-muted-foreground">· {thai ? 'รอมา ' : 'waiting '}{formatElapsed(seconds, thai)}</span>}
       {action && <span className="ms-auto">{action}</span>}

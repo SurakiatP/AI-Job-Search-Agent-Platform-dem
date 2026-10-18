@@ -202,7 +202,8 @@ test('Smart match labels deterministic coverage and reports a partial AI pool', 
   });
   await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   await page.goto(`/app/projects/${projectId}/search?mode=match`);
-  await expect(page.getByRole('status').filter({ hasText: 'Ranking with AI' })).toBeVisible();
+  await page.getByRole('button', { name: /^Start Smart match/ }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'ranking jobs for you' })).toBeVisible();
   await expect(page.getByText('Keyword ranking is shown while AI ranking is pending or unavailable.')).toBeVisible();
   await expect(page.getByText('Rank jobs against your CV (uses AI).')).toBeVisible();
   await expect(page.getByText('Changing the CV affects new estimates only.')).toBeVisible();
@@ -240,7 +241,8 @@ test('Smart match keeps its CV profiling state visible while processing', async 
   await page.route(`**/api/v1/projects/${projectId}/runs/profile-run`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'profile-run', status: 'running' }) }));
   await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   await page.goto(`/app/projects/${projectId}/search?mode=match`);
-  await expect(page.getByRole('status').filter({ hasText: 'Analyzing your CV' })).toBeVisible();
+  await page.getByRole('button', { name: /^Start Smart match/ }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'analyzing your CV' })).toBeVisible();
 });
 
 test('capture Search workspace font-loaded evidence matrix', async ({ page }) => {
@@ -292,4 +294,31 @@ test('capture Search workspace font-loaded evidence matrix', async ({ page }) =>
       await capturePage.close();
     }
   }
+});
+
+
+test('Smart match never calls the AI until the user presses Start, and asks again when the CV changes', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const calls = { match: 0, rank: 0, profile: 0 };
+  await page.route(`**/api/v1/projects/${projectId}/job-search/match**`, route => { calls.match += 1; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], total: 0, pool: 0, ai: { status: 'ready', categories: [], scored: 0 } }) }); });
+  await page.route(`**/api/v1/projects/${projectId}/job-search/rank**`, route => { calls.rank += 1; return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }); });
+  await page.route(`**/api/v1/projects/${projectId}/runs`, route => { if (route.request().method() === 'POST') calls.profile += 1; return route.fallback(); });
+  await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
+    { id: 'cv-a', name: 'CV A', is_primary: true, in_use: false, revision_count: 1, latest_revision: { id: 'rev-a', revision: 1, created_at: '2026-10-10T00:00:00Z', original_filename: 'a.txt', mime_type: 'text/plain', size_bytes: 10, file_id: null } },
+    { id: 'cv-b', name: 'CV B', is_primary: false, in_use: false, revision_count: 1, latest_revision: { id: 'rev-b', revision: 1, created_at: '2026-10-10T00:00:00Z', original_filename: 'b.txt', mime_type: 'text/plain', size_bytes: 10, file_id: null } },
+  ]) }));
+  await page.goto(`/app/projects/${projectId}/search?mode=match`);
+  await expect(page.getByRole('heading', { name: 'Let the agent rank jobs for you' })).toBeVisible();
+  await expect(page.getByText('It uses AI every time it runs, so it waits for you to start it.')).toBeVisible();
+  await page.waitForTimeout(800);
+  expect(calls).toEqual({ match: 0, rank: 0, profile: 0 });
+  await page.getByRole('button', { name: /^Start Smart match/ }).click();
+  await expect(page.getByRole('heading', { name: 'Let the agent rank jobs for you' })).toHaveCount(0);
+  await expect.poll(() => calls.match).toBe(1);
+  await page.locator('#match-cv').selectOption('cv-b');
+  await expect(page.getByRole('heading', { name: 'Let the agent rank jobs for you' })).toBeVisible();
+  const before = calls.match;
+  await page.waitForTimeout(500);
+  expect(calls.match).toBe(before);
 });

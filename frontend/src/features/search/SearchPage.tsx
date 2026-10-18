@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { AiSpinner } from '@/components/AiMark';
+import { SmartMatchStart } from './SmartMatchStart';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { ItemMenu } from '@/components/ItemMenu';
 import { apiRequest } from '../../lib/api';
@@ -72,7 +74,7 @@ const copy = {
     description: 'รายละเอียดงาน', untitled: 'ไม่ระบุบริษัท',
     modeSearch: 'ค้นหาทั่วไป', modeMatch: 'Smart match', modeLabel: 'โหมดการค้นหา',
     cvLabel: 'CV ที่ใช้จับคู่', noCv: 'ยังไม่มี CV ในโปรเจกต์นี้', noCvBody: 'เพิ่ม CV ก่อน เพื่อให้ระบบเทียบทักษะกับประกาศงานได้', addCv: 'ไปที่หน้า CV',
-    analyzing: 'กำลังวิเคราะห์ CV…', analyzeError: 'วิเคราะห์ CV ไม่สำเร็จ ลองอีกครั้ง',
+    analyzing: 'เอเจนต์กำลังประมวลผล: วิเคราะห์ CV ของคุณ…', analyzeError: 'วิเคราะห์ CV ไม่สำเร็จ ลองอีกครั้ง',
     poolNote: (n: string) => `จัดอันดับจาก ${n} ตำแหน่งล่าสุดที่ตรงกับตัวกรอง`,
     matchBadge: (p: number, m: number, n: number) => `ตรงกับ CV ${p}% · ${m}/${n} ทักษะ`, noSkills: 'ข้อมูลทักษะไม่พอ',
     matchedSkills: 'ทักษะที่ตรงกับ CV', missingSkills: 'ทักษะที่ยังขาด', noneMatched: 'ไม่มี', matchNote: 'คำนวณจากคำสำคัญในประกาศและ CV โดยไม่ใช้ AI',
@@ -80,7 +82,7 @@ const copy = {
     bands: { 5: 'เหมาะมาก', 4: 'เหมาะ', 3: 'พอได้', 2: 'น้อย', 1: 'ไม่เหมาะ' } as Record<number, string>, ats: (p: number) => `ทักษะที่พบ ${p}%`,
     unsure: 'ไม่แน่ใจ', blocker: 'ขาดคุณสมบัติบังคับ', seniorityLabel: 'ระดับประสบการณ์', seniority: { far_below: 'ต่ำกว่ามาก', below: 'ต่ำกว่าเล็กน้อย', meets: 'ตรง', above: 'สูงกว่า' } as Record<string, string>,
     evidenced: 'มีหลักฐานใน CV', mustMissing: 'ขาด (บังคับ)', niceMissing: 'ขาด (มีก็ดี)', inCv: '(มีใน CV)', notInCv: '(ขาด)',
-    ranking: (n: number, t: number) => `กำลังจัดอันดับด้วย AI… ${n}/${t}`, finding: 'กำลังหางานที่เหมาะกับ CV…', rankFailed: 'จัดอันดับด้วย AI ไม่สำเร็จ',
+    ranking: (n: number, t: number) => `เอเจนต์กำลังประมวลผล: จัดอันดับงานให้ ${n}/${t}`, finding: 'เอเจนต์กำลังประมวลผล: หางานที่เหมาะกับ CV…', rankFailed: 'จัดอันดับด้วย AI ไม่สำเร็จ',
     autoCats: 'หมวดที่ AI เลือกจาก CV:', unavailable: 'ตอนนี้ยังจัดอันดับด้วย AI ไม่ได้ โปรดติดต่อผู้ดูแลระบบ', toSettings: 'ไปที่การตั้งค่า',
     privacy: 'ระบบส่งเนื้อหา CV ไปยังบริการ AI เพื่อจัดอันดับ', menuLabel: 'ตัวเลือกของงานนี้', hideJob: 'ซ่อนงานนี้', hideCompany: 'ซ่อนบริษัทนี้',
     hiddenDone: 'ซ่อนแล้ว', undo: 'เลิกทำ', hideFailed: 'ซ่อนไม่สำเร็จ ลองอีกครั้ง', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง',
@@ -102,7 +104,7 @@ const copy = {
     description: 'Job description', untitled: 'Company not listed',
     modeSearch: 'Search', modeMatch: 'Smart match', modeLabel: 'Search mode',
     cvLabel: 'CV to match against', noCv: 'This project has no CV yet', noCvBody: 'Add a CV first so skills can be compared with each posting.', addCv: 'Go to the CV page',
-    analyzing: 'Analyzing your CV…', analyzeError: 'Could not analyze the CV. Try again.',
+    analyzing: 'The agent is processing: analyzing your CV…', analyzeError: 'Could not analyze the CV. Try again.',
     poolNote: (n: string) => `Ranked from the ${n} latest jobs matching your filters`,
     matchBadge: (p: number, m: number, n: number) => `${p}% CV match · ${m}/${n} skills`, noSkills: 'Not enough skill data',
     matchedSkills: 'Skills matching your CV', missingSkills: 'Skills missing from your CV', noneMatched: 'None', matchNote: 'Calculated from keywords in the posting and your CV, without AI',
@@ -110,7 +112,7 @@ const copy = {
     bands: { 5: 'Great fit', 4: 'Good fit', 3: 'Fair', 2: 'Weak', 1: 'Poor fit' } as Record<number, string>, ats: (p: number) => `Skills found ${p}%`,
     unsure: 'Unsure', blocker: 'Missing a must-have', seniorityLabel: 'Seniority', seniority: { far_below: 'Well below', below: 'Slightly below', meets: 'Meets', above: 'Above' } as Record<string, string>,
     evidenced: 'Evidenced in your CV', mustMissing: 'Missing (must-have)', niceMissing: 'Missing (nice-to-have)', inCv: '(in your CV)', notInCv: '(missing)',
-    ranking: (n: number, t: number) => `Ranking with AI… ${n}/${t}`, finding: 'Finding jobs that fit this CV…', rankFailed: 'AI ranking failed',
+    ranking: (n: number, t: number) => `The agent is processing: ranking jobs for you ${n}/${t}`, finding: 'The agent is processing: finding jobs that fit this CV…', rankFailed: 'AI ranking failed',
     autoCats: 'Categories picked from the CV:', unavailable: 'AI ranking is not available right now. Please contact your administrator.', toSettings: 'Open settings',
     privacy: 'Your CV text is sent to an AI service for ranking', menuLabel: 'Options for this job', hideJob: 'Hide this job', hideCompany: 'Hide this company',
     hiddenDone: 'Hidden', undo: 'Undo', hideFailed: 'Could not hide. Try again.', undoFailed: 'Could not restore. Try again.',
@@ -322,6 +324,9 @@ export function SearchPage() {
   const cvId = cv?.id ?? '';
   const revisionId = cv?.latest_revision?.id ?? '';
   const needsCv = smartActive && cvs.status === 'ready' && usable.length === 0;
+  // Smart match calls the AI, so each CV revision must be started by the user; changing the CV asks again.
+  const [armedFor, setArmedFor] = useState('');
+  const awaiting = smartActive && usable.length > 0 && armedFor !== revisionId;
   const [profiling, setProfiling] = useState(false);
   const [profileFailed, setProfileFailed] = useState(false);
   const profiled = useRef('');
@@ -407,6 +412,7 @@ export function SearchPage() {
     if (sample) return;
     setStatus('loading'); setItems([]); setTotal(0); setPoolCount(0); setAi(null); setRanking(false); setRankFailed(false); setMoreError(false); setProfiling(false); setProfileFailed(false); setNextOffset(POOL_SIZE);
     if (smart && !revisionId) return;
+    if (smart && armedFor !== revisionId) { setStatus('ready'); return; }
     const controller = new AbortController();
     apiRequest<Page>(buildPath(0), { signal: controller.signal })
       .then(page => {
@@ -426,7 +432,7 @@ export function SearchPage() {
         setStatus('error');
       });
     return () => controller.abort();
-  }, [buildPath, sample, version, smart, revisionId, cvId, gateBlocked]);
+  }, [buildPath, sample, version, smart, revisionId, cvId, gateBlocked, armedFor]);
 
   const hideTimer = useRef(0);
   useEffect(() => {
@@ -577,7 +583,7 @@ export function SearchPage() {
   </div>;
 
   const failed = (!sample && status === 'error') || (smartActive && cvs.status === 'error');
-  const waiting = !sample && (status === 'loading' || (smartActive && cvs.status === 'loading'));
+  const waiting = !sample && !awaiting && (status === 'loading' || (smartActive && cvs.status === 'loading'));
   const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < total;
 
   return <section className="grid gap-4 sm:gap-6">
@@ -689,11 +695,11 @@ export function SearchPage() {
       <p className="font-medium">{c.noCv}</p>
       <p className="text-sm text-muted-foreground">{c.noCvBody}</p>
       <Button asChild><Link to={`/app/projects/${projectId}/profile`}>{c.addCv}</Link></Button>
-    </div> : <div className="grid gap-3">
+    </div> : awaiting ? <SmartMatchStart locale={locale} cvName={cv ? `${cv.name} · v${cv.latest_revision?.revision}` : ''} disabled={gate.blocked} title={gate.title} onStart={() => setArmedFor(revisionId)} /> : <div className="grid gap-3">
       {sample && smart && <p className="text-sm text-muted-foreground">{c.sampleMatch}</p>}
       {(sample || !waiting) && <p role="status" className="text-sm text-muted-foreground">{c.found(number.format(shownTotal))}{smartActive ? ` · ${c.poolNote(number.format(poolCount || items.length))}` : ''}</p>}
       {smartActive && ai?.status === 'unavailable' && <div className="grid gap-1 text-sm text-muted-foreground"><p className="flex flex-wrap items-center gap-x-2">{c.unavailable}</p><p className="text-xs">{tSearch('methods.keywordOnly')}</p></div>}
-      {smartActive && ranking && <div role="status" className="grid gap-1 text-sm text-muted-foreground"><span className="flex items-center gap-2"><Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />{c.ranking(ai?.scored ?? 0, items.length)}</span><span className="text-xs">{tSearch('methods.keywordOnly')}</span></div>}
+      {smartActive && ranking && <div role="status" className="grid gap-1 text-sm text-muted-foreground"><span className="flex items-center gap-2"><AiSpinner size="sm" />{c.ranking(ai?.scored ?? 0, items.length)}</span><span className="text-xs">{tSearch('methods.keywordOnly')}</span></div>}
       {smartActive && !ranking && ai?.status === 'partial' && <p role="status" className="text-sm text-muted-foreground">{tSearch('controls.partialRank', { scored: ai.scored, total: items.length })}</p>}
       {smartActive && poolCount > 0 && total > poolCount && <p className="text-xs text-muted-foreground">{tSearch('controls.poolLimited', { count: number.format(poolCount), total: number.format(total) })}</p>}
       {smartActive && rankFailed && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/40 p-3 text-sm text-destructive">
@@ -708,7 +714,7 @@ export function SearchPage() {
         <span className="[overflow-wrap:anywhere]">{undo.message}</span>
         {undo.retry && <Button type="button" size="sm" variant="outline" onClick={() => void unhide(undo.id)}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
       </div>}
-      {profiling ? <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.analyzing}</div> : waiting ? loadingList : visible.length === 0 && smartActive && ranking && !q && !category && ai?.status === 'missing' ? <div role="status" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.finding}</div> : visible.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
+      {profiling ? <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><AiSpinner />{c.analyzing}</div> : waiting ? loadingList : visible.length === 0 && smartActive && ranking && !q && !category && ai?.status === 'missing' ? <div role="status" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.finding}</div> : visible.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
         <p className="font-medium">{c.none}</p>
         <p className="text-sm text-muted-foreground">{c.noneNext}</p>
         <Button variant="outline" size="sm" onClick={clear} disabled={!filtered}>{c.clear}</Button>
