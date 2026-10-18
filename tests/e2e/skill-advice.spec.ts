@@ -16,7 +16,7 @@ async function open(page: Page, locale: 'en' | 'th', missing: string[], bank: un
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
 }
 
-test('advice splits missing skills into what the bank backs and what the user does not have, with learning links', async ({ page }) => {
+test('advice splits missing skills into what the bank backs and what the user does not have, without any learning links', async ({ page }) => {
   await open(page, 'en', ['dbt', 'Docker', 'rapid prototyping'], [item('1', 'Built dbt models for the finance team'), item('2', 'Prototyped rapidly with Figma')]);
   const add = page.getByTestId('advice-can-add'), cannot = page.getByTestId('advice-cannot-add');
   await expect(add.getByText('dbt')).toBeVisible();
@@ -25,9 +25,8 @@ test('advice splits missing skills into what the bank backs and what the user do
   await expect(cannot.getByText('rapid prototyping')).toBeVisible(); // "rapidly" must not count as a match
   await expect(add.getByText('Docker')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Agent advice' })).toBeVisible();
-  const link = cannot.getByRole('link', { name: /Find ways to learn/ }).first();
-  await expect(link).toHaveAttribute('href', /learn%20Docker/);
-  await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(cannot.getByRole('link')).toHaveCount(0); // no course or learning suggestions
+  await expect(cannot).toContainText('add them to your experience bank');
 });
 
 test('with an empty experience bank nothing can be added (Thai)', async ({ page }) => {
