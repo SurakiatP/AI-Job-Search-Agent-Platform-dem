@@ -41,3 +41,27 @@ test('reduced motion keeps the label and stills the ring and bar', async ({ page
   expect(names).toBe('none');
   expect(await page.locator('.busy-bar:visible').evaluate(el => getComputedStyle(el, '::after').animationName)).toBe('none');
 });
+
+const ev = (sequence: number, event_type: string, data: Record<string, unknown>) => ({ sequence, event_type, created_at: `2026-10-10T00:0${sequence}:00Z`, data: { approval_id: null, step: null, status: null, artifact_ids: [], message_key: null, progress_percent: null, ...data } });
+const tailoringEvents = [
+  ev(1, 'run_queued', {}), ev(2, 'run_started', {}), ev(3, 'run_progress', { step: 'agent_running' }),
+  ev(4, 'run_progress', { step: 'llm_round', model: 'x', latency_ms: 900 }), ev(5, 'run_progress', { step: 'llm_round', model: 'x', latency_ms: 800 }),
+  ev(6, 'run_progress', { step: 'tailor_round', round: 1, coverage: 0.72 }), ev(7, 'run_progress', { step: 'agent_running' }),
+];
+
+test('run progress reads as plain sentences, merges repeated AI rounds and shows no internal step names', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await useSyntheticApplication(page);
+  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ ...running, operation: 'tailor_cv' }]) }));
+  await page.route(`**/api/v1/projects/${projectId}/runs/${running.id}/events`, route => route.fulfill({ status: 200, contentType: 'text/event-stream', body: tailoringEvents.map(e => `id: ${e.sequence}\nevent: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`).join('') }));
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  const list = page.getByRole('list', { name: 'ความคืบหน้า' });
+  await expect(list.getByText('เข้าคิวแล้ว', { exact: true })).toBeVisible();
+  await expect(list.getByText('เริ่มทำงานแล้ว', { exact: true })).toBeVisible();
+  await expect(list.getByText('AI กำลังคิดและเขียน', { exact: true })).toBeVisible();
+  await expect(list.getByText('คิดไปแล้ว 2 รอบ', { exact: true })).toBeVisible();
+  await expect(list.getByText('ปรับ CV รอบที่ 1', { exact: true })).toBeVisible();
+  await expect(list.getByText('ทักษะที่ตรงกับประกาศ 72%', { exact: true })).toBeVisible();
+  await expect(list.getByText('เอเจนต์กำลังอ่านข้อมูลและวางแผน')).toHaveCount(2);
+  await expect(page.getByText(/run_queued|run_started|agent_running|tailor_round|llm_round/)).toHaveCount(0);
+});

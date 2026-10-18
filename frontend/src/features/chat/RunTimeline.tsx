@@ -4,6 +4,7 @@ import { BusyNote } from '@/components/BusyNote';
 import { StatusBadge } from '@/components/StatusBadge';
 import { cn } from '@/lib/utils';
 import { relativeTime } from '../console/shared';
+import { RunSteps } from './RunSteps';
 import type { Locale, RunEvent, RunStatus, RunView } from '../../lib/api-types';
 
 const statuses: Record<Locale, Record<RunStatus, string>> = {
@@ -33,13 +34,6 @@ export function RunTimeline({ locale, run, events, cancellationPending, historic
     <p className={cn('text-sm', !cancellationPending && 'sr-only')} data-testid={historical ? undefined : 'run-status'} role="status">{t[run.status]}{cancellationPending ? ` · ${cancelText}` : ''}</p>
     <p className="text-xs text-muted-foreground"><time dateTime={run.created_at}>{relativeTime(run.created_at, Date.now(), locale)}</time></p>
     {progress !== null && progress !== undefined && <div className="flex items-center gap-3"><Progress value={progress} className="flex-1" /><span className="w-10 text-right text-sm tabular-nums text-muted-foreground">{progress}%</span></div>}
-    {events.length > 0 && <ol className="grid gap-3" aria-label={locale === 'th' ? 'ความคืบหน้า' : 'Progress'}>
-      {events.map((event, index) => <li key={`${run.id}:${event.sequence}`} className="flex items-start gap-3 text-sm">
-        <span aria-hidden="true" className={cn('mt-2 size-2 shrink-0 rounded-full', index === events.length - 1 ? 'bg-primary ring-4 ring-primary/20' : 'bg-muted-foreground/40')} />
-        <span className={cn('min-w-0 break-words', index === events.length - 1 ? 'font-medium' : 'text-muted-foreground')}>
-          {event.event_type === 'run_resumed' ? (locale === 'th' ? 'เริ่มรอบใหม่หลังระบบรีสตาร์ท โดยยังนับการใช้งานก่อนหน้า' : 'Restarted the round after a system restart; previous work limits still apply') : event.data.step === 'llm_round' ? (locale === 'th' ? 'รอบ AI' : 'AI round') : event.data.step === 'autopilot_approved' ? (locale === 'th' ? 'อนุมัติอัตโนมัติ' : 'Auto-approved') : event.data.step ?? (event.data.message_key ? translate(event.data.message_key, { defaultValue: locale === 'th' ? 'อัปเดตสถานะ' : 'Status updated' }) : event.event_type)}
-        </span>
-      </li>)}
-    </ol>}
+    <RunSteps events={events} locale={locale} status={run.status} />
   </section>;
 }
