@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 import logging
 import os
 import secrets
@@ -35,11 +36,16 @@ logger = logging.getLogger(__name__)
 
 VERIFY_TTL = timedelta(hours=24)
 RESET_TTL = timedelta(minutes=30)
+CODE_TTL = timedelta(minutes=10)
 # kind -> (subject, body); the body holds a {link} placeholder where a link applies.
 MESSAGES = {
     "en": {
         "verify": ("Verify your email", "Welcome! Confirm your email address to finish signing up:\n{link}\n\n"
-                   "The link expires in 24 hours. If you did not sign up, ignore this message."),
+                   "Or enter this 6-digit code on the sign-up page: {code}\n\n"
+                   "The link expires in 24 hours and the code in 10 minutes. If you did not sign up, ignore this message."),
+        "delete": ("Confirm deleting your account", "Someone asked to delete your account and all its projects and documents. "
+                   "To confirm, enter this 6-digit code: {code}\n\nIt expires in 10 minutes. If this was not you, ignore this "
+                   "message and change your password."),
         "exists": ("You already have an account", "Someone tried to sign up with this email, but you already have "
                    "an account. Log in at {link}\nForgot your password? Use the reset link on the login page."),
         "reset": ("Reset your password", "Choose a new password here:\n{link}\n\n"
@@ -47,7 +53,10 @@ MESSAGES = {
     },
     "th": {
         "verify": ("ยืนยันอีเมลของคุณ", "ยินดีต้อนรับ! ยืนยันอีเมลเพื่อสมัครให้เสร็จสิ้น:\n{link}\n\n"
-                   "ลิงก์หมดอายุใน 24 ชั่วโมง หากคุณไม่ได้สมัคร โปรดละเว้นอีเมลนี้"),
+                   "หรือกรอกรหัส 6 หลักนี้ในหน้าสมัครสมาชิก: {code}\n\n"
+                   "ลิงก์หมดอายุใน 24 ชั่วโมง ส่วนรหัสหมดอายุใน 10 นาที หากคุณไม่ได้สมัคร โปรดละเว้นอีเมลนี้"),
+        "delete": ("ยืนยันการลบบัญชีของคุณ", "มีการขอลบบัญชีของคุณ รวมถึงโปรเจกต์และเอกสารทั้งหมด "
+                   "หากต้องการยืนยัน กรอกรหัส 6 หลักนี้: {code}\n\nรหัสหมดอายุใน 10 นาที หากไม่ใช่คุณ โปรดละเว้นอีเมลนี้และเปลี่ยนรหัสผ่าน"),
         "exists": ("คุณมีบัญชีอยู่แล้ว", "มีผู้พยายามสมัครด้วยอีเมลนี้ แต่คุณมีบัญชีอยู่แล้ว "
                    "เข้าสู่ระบบได้ที่ {link}\nลืมรหัสผ่าน? ใช้ลิงก์รีเซ็ตในหน้าเข้าสู่ระบบ"),
         "reset": ("รีเซ็ตรหัสผ่านของคุณ", "ตั้งรหัสผ่านใหม่ที่นี่:\n{link}\n\n"
@@ -84,13 +93,13 @@ class Accounts:
         self.public_origin = public_origin.rstrip("/")
 
     # -- mail ------------------------------------------------------------------------------------
-    def _send(self, kind: str, locale: str, to: str, link: str) -> None:
+    def _send(self, kind: str, locale: str, to: str, link: str, code: str = "") -> None:
         if self.mailer is None:
             logger.warning("mail_disabled", extra={"kind": kind})
             return
         subject, body = MESSAGES.get(locale, MESSAGES["en"])[kind]
         try:
-            self.mailer.send(Mail(to, subject, body.format(link=link)))
+            self.mailer.send(Mail(to, subject, body.format(link=link, code=code)))
         except Exception:  # noqa: BLE001 - mail must never change the HTTP answer
             logger.warning("mail_send_failed", extra={"kind": kind})
 
@@ -103,6 +112,28 @@ class Accounts:
         db.add(UserToken(user_id=user_id, purpose=purpose, token_hash=_digest(token), expires_at=now + ttl))
         db.flush()
         return token
+
+    @staticmethod
+    def _issue_code(db, user_id: UUID, purpose: str) -> str:
+        """A six-digit code, stored only as a hash. One row per account and purpose, so a new code replaces the old one."""
+        db.execute(delete(UserToken).where(UserToken.user_id == user_id, UserToken.purpose == purpose))
+        code = f"{secrets.randbelow(10 ** 6):06d}"
+        db.add(UserToken(user_id=user_id, purpose=purpose, token_hash=_digest(f"{user_id}:{code}"),
+                         expires_at=datetime.now(timezone.utc) + CODE_TTL))
+        db.flush()
+        return code
+
+    def _consume_code(self, user_id: UUID, purpose: str, code: str) -> None:
+        """Checks a code; five tries per ten minutes for the account, counted whether or not the code is right."""
+        self._rate_limit("otp_attempt", f"{user_id}:{purpose}")
+        with self.sessions.begin() as db:
+            row = db.scalar(select(UserToken).where(UserToken.user_id == user_id, UserToken.purpose == purpose).with_for_update())
+            now = datetime.now(timezone.utc)
+            ok = row is not None and row.used_at is None and row.expires_at > now and hmac.compare_digest(
+                bytes(row.token_hash), _digest(f"{user_id}:{code.strip()}"))
+            if not ok:
+                raise ServiceError("invalid_code")
+            row.used_at = now
 
     def _consume(self, db, token: str, purpose: str) -> User:
         row = db.scalar(select(UserToken).where(
@@ -135,7 +166,8 @@ class Accounts:
                     db.add(user)
                     db.flush()
                     token = self._issue(db, user.id, "verify_email", VERIFY_TTL)
-                    mail = ("verify", locale, email, f"{self.public_origin}/verify-email?token={token}")
+                    code = self._issue_code(db, user.id, "verify_code")
+                    mail = ("verify", locale, email, f"{self.public_origin}/verify-email?token={token}", code)
         except IntegrityError:  # concurrent signup of the same email won the race
             mail = ("exists", locale, email, f"{self.public_origin}/login")
         self._send(*mail)
@@ -146,6 +178,32 @@ class Accounts:
             if user.email_verified_at is None:
                 user.email_verified_at = datetime.now(timezone.utc)
 
+    def verify_email_code(self, email: str, code: str) -> None:
+        """Sign-up check with the emailed six-digit code. Unknown or already verified addresses answer like a wrong code."""
+        try:
+            email = normalize_email(email)
+        except ServiceError:
+            raise ServiceError("invalid_code") from None
+        with self.sessions() as db:
+            user_id = db.scalar(select(User.id).where(User.email == email))
+        if user_id is None:
+            self._rate_limit("otp_attempt", f"unknown:{email}")
+            raise ServiceError("invalid_code")
+        self._consume_code(user_id, "verify_code", code)
+        with self.sessions.begin() as db:
+            user = db.get(User, user_id)
+            if user.email_verified_at is None:
+                user.email_verified_at = datetime.now(timezone.utc)
+
+    def send_deletion_code(self, user_id: UUID) -> None:
+        with self.sessions.begin() as db:
+            user = db.get(User, user_id)
+            if user is None:
+                raise ServiceError("unauthorized")
+            rate_limits.hit(db, "otp_send", str(user_id))
+            mail = ("delete", user.locale, user.email, "", self._issue_code(db, user.id, "delete_account"))
+        self._send(*mail)
+
     def resend_verification(self, user_id: UUID) -> None:
         with self.sessions.begin() as db:
             user = db.get(User, user_id)
@@ -153,7 +211,8 @@ class Accounts:
                 return
             rate_limits.hit(db, "resend_email", user.email)
             mail = ("verify", user.locale, user.email,
-                    f"{self.public_origin}/verify-email?token={self._issue(db, user.id, 'verify_email', VERIFY_TTL)}")
+                    f"{self.public_origin}/verify-email?token={self._issue(db, user.id, 'verify_email', VERIFY_TTL)}",
+                    self._issue_code(db, user.id, "verify_code"))
         self._send(*mail)
 
     # -- login / logout --------------------------------------------------------------------------
@@ -225,7 +284,7 @@ class Accounts:
                      "client_id_host": (urlsplit(grant.oauth_client_id).hostname or grant.oauth_client_id) if grant.oauth_client_id else None}
                     for grant, name in rows]
 
-    def request_deletion(self, user_id: UUID, password: str, confirm_email: str) -> None:
+    def request_deletion(self, user_id: UUID, password: str, confirm_email: str, code: str) -> None:
         with self.sessions() as db:
             user = db.get(User, user_id)
             if user is None:
@@ -239,6 +298,7 @@ class Accounts:
             raise ServiceError("confirmation_mismatch")
         if not verify_password(password, stored):
             raise ServiceError("invalid_credentials")
+        self._consume_code(user_id, "delete_account", code)
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
             # Lock order: projects (by id), then the user row, then runs (by id) - projects before user, as

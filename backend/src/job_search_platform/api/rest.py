@@ -75,7 +75,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "jev_unavailable": 409, "gateway_unconfigured": 409,
         "duplicate": 409, "bank_full": 409,
         "email_unverified": 403, "quota_exceeded": 429, "rate_limited": 429, "invalid_credentials": 401,
-        "invalid_token": 400, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
+        "invalid_token": 400, "invalid_code": 400, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
         "saved_search_limit": 409, "invalid_webhook_url": 422, "webhook_limit": 409, "delivery_not_dead": 409, "saved_search_name_taken": 409, "mail_unavailable": 503,
         "telegram_disabled": 404, "telegram_not_linked": 409, "telegram_unavailable": 503,
     }.get(code, 400)

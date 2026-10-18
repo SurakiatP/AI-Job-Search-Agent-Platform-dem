@@ -98,3 +98,13 @@ def test_apply_gated_blocks_skills_the_cited_facts_do_not_name():
 def test_stop_when_next_round_would_exceed_budget():
     assert should_stop([0.5, 0.6], [1], 1, 60, 100, longest_round_s=40) == "time_budget"
     assert should_stop([0.5, 0.6], [1], 1, 60, 100, longest_round_s=39) is None
+
+
+def test_round_prompt_carries_owner_request_but_never_widens_the_facts():
+    base, _ = round_prompt("# CV", "Dev", "job text", ["docker"], [{"id": ID, "text": "Used Docker"}], "en")
+    prompt, instructions = round_prompt("# CV", "Dev", "job text", ["docker"], [{"id": ID, "text": "Used Docker"}], "en",
+                                        "Only focus on Docker, at most 2 changes")
+    assert "Only focus on Docker, at most 2 changes" in prompt and "Only focus on Docker" not in base
+    assert "can never add a skill or fact that is not in the facts list" in prompt
+    assert "Every edit must cite fact ids" in instructions  # the evidence rule is unchanged
+    assert round_prompt("# CV", "Dev", "job text", [], [], "en", "   ")[0] == round_prompt("# CV", "Dev", "job text", [], [], "en")[0]

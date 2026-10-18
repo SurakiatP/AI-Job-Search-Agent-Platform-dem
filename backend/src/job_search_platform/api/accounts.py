@@ -45,9 +45,15 @@ class ResetPasswordRequest(_Body):
     password: str = Field(max_length=256)
 
 
+class CodeRequest(_Body):
+    email: str = Field(max_length=254)
+    code: str = Field(pattern=r"^\d{6}$")
+
+
 class DeleteAccountRequest(_Body):
     password: str = Field(max_length=256)
     confirm_email: str = Field(max_length=254)
+    code: str = Field(pattern=r"^\d{6}$")
 
 
 class CheckEmailView(_Body):
@@ -118,6 +124,18 @@ async def verify_email(body: TokenRequest, services: Services = Depends(get_serv
     return Response(status_code=204)
 
 
+@router.post("/auth/verify-email/code", status_code=204)
+async def verify_email_code(body: CodeRequest, services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.verify_email_code, body.email, body.code)
+    return Response(status_code=204)
+
+
+@router.post("/account/delete-code", status_code=202, response_model=CheckEmailView)
+async def send_deletion_code(actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.send_deletion_code, actor.user_id)
+    return CHECK_EMAIL
+
+
 @router.post("/digest/unsubscribe", status_code=204)
 async def digest_unsubscribe(body: TokenRequest, request: Request, services: Services = Depends(get_services)):
     await asyncio.to_thread(services.saved_searches.unsubscribe, body.token, _ip(request))
@@ -183,7 +201,7 @@ async def get_account(actor=Depends(owner_actor), services: Services = Depends(g
 @router.delete("/account", status_code=204)
 async def delete_account(body: DeleteAccountRequest, actor=Depends(write_actor),
                          services: Services = Depends(get_services)):
-    await asyncio.to_thread(services.accounts.request_deletion, actor.user_id, body.password, body.confirm_email)
+    await asyncio.to_thread(services.accounts.request_deletion, actor.user_id, body.password, body.confirm_email, body.code)
     response = Response(status_code=204)
     response.delete_cookie(COOKIE_NAME, path="/")
     return response

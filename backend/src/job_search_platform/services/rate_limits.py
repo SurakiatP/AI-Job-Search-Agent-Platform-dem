@@ -16,6 +16,8 @@ LIMITS: dict[str, tuple[int, int]] = {
     "login_ip": (10, 900),
     "login_email": (10, 900),
     "resend_email": (3, 3600),
+    "otp_attempt": (5, 600),  # wrong or right: at most 5 tries per 10 minutes for one account and purpose
+    "otp_send": (3, 3600),
     "forgot_email": (3, 3600),
     "digest_preview": (5, 3600),
     "telegram_link": (5, 3600),

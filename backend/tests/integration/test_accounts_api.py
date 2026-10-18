@@ -96,19 +96,74 @@ def test_login_cookie_is_secure_for_https_origin(migrated_engine):
         assert "secure" in response.headers["set-cookie"].lower().replace("samesite", "")
 
 
-def test_delete_account_requires_matching_email_and_password(ctx):
+def _code(ctx):
+    import re
+    return re.search(r"\b(\d{6})\b", ctx.mailer.sent[-1].text).group(1)
+
+
+def test_delete_account_requires_matching_email_password_and_emailed_code(ctx):
     csrf = verified_login(ctx).json()["csrf_token"]
     headers = {"Origin": ctx.origin, "X-CSRF-Token": csrf}
-    mismatch = ctx.client.request("DELETE", "/api/v1/account", headers=headers,
-                                  json={"password": PW, "confirm_email": "other@example.test"})
+    sent = ctx.client.post("/api/v1/account/delete-code", headers=headers)
+    assert sent.status_code == 202 and sent.json() == {"status": "check_email"}
+    code = _code(ctx)
+    assert ctx.mailer.sent[-1].to == "alice@example.test"
+    delete = lambda **body: ctx.client.request("DELETE", "/api/v1/account", headers=headers, json=body)
+    mismatch = delete(password=PW, confirm_email="other@example.test", code=code)
     assert mismatch.status_code == 422 and mismatch.json()["code"] == "confirmation_mismatch"
-    wrong = ctx.client.request("DELETE", "/api/v1/account", headers=headers,
-                               json={"password": "wrong-password", "confirm_email": "alice@example.test"})
+    wrong = delete(password="wrong-password", confirm_email="alice@example.test", code=code)
     assert wrong.status_code == 401 and wrong.json()["code"] == "invalid_credentials"
-    ok = ctx.client.request("DELETE", "/api/v1/account", headers=headers,
-                            json={"password": PW, "confirm_email": "alice@example.test"})
+    no_code = ctx.client.request("DELETE", "/api/v1/account", headers=headers, json={"password": PW, "confirm_email": "alice@example.test"})
+    assert no_code.status_code == 422  # the code is required
+    bad = delete(password=PW, confirm_email="alice@example.test", code="000000" if code != "000000" else "111111")
+    assert bad.status_code == 400 and bad.json()["code"] == "invalid_code"
+    ok = delete(password=PW, confirm_email="alice@example.test", code=code)
     assert ok.status_code == 204
     assert ctx.client.get("/api/v1/account").status_code == 401
+
+
+def test_deletion_code_is_single_use_and_a_new_code_replaces_the_old_one(ctx):
+    csrf = verified_login(ctx).json()["csrf_token"]
+    headers = {"Origin": ctx.origin, "X-CSRF-Token": csrf}
+    ctx.client.post("/api/v1/account/delete-code", headers=headers)
+    first = _code(ctx)
+    ctx.client.post("/api/v1/account/delete-code", headers=headers)
+    second = _code(ctx)
+    body = {"password": PW, "confirm_email": "alice@example.test"}
+    if first != second:
+        stale = ctx.client.request("DELETE", "/api/v1/account", headers=headers, json={**body, "code": first})
+        assert stale.status_code == 400 and stale.json()["code"] == "invalid_code"
+
+
+def test_signup_code_verifies_the_email_and_is_limited_to_five_tries(ctx):
+    ctx.client.post("/api/v1/auth/signup", json={"email": "bob@example.test", "password": PW, "locale": "th"})
+    mail = ctx.mailer.sent[-1]
+    code = _code(ctx)
+    assert "bob@example.test" == mail.to and code in mail.text
+    wrong = "000000" if code != "000000" else "111111"
+    for _ in range(4):
+        r = ctx.client.post("/api/v1/auth/verify-email/code", json={"email": "bob@example.test", "code": wrong})
+        assert r.status_code == 400 and r.json()["code"] == "invalid_code"
+    last = ctx.client.post("/api/v1/auth/verify-email/code", json={"email": "bob@example.test", "code": code})
+    assert last.status_code == 204  # the fifth try is still allowed
+    login = ctx.client.post("/api/v1/auth/login", json={"email": "bob@example.test", "password": PW})
+    assert login.status_code == 200 and login.json()["user"]["email_verified"] is True
+
+
+def test_code_guessing_is_blocked_after_five_tries_even_with_the_right_code(ctx):
+    ctx.client.post("/api/v1/auth/signup", json={"email": "carol@example.test", "password": PW, "locale": "en"})
+    code = _code(ctx)
+    wrong = "000000" if code != "000000" else "111111"
+    for _ in range(5):
+        assert ctx.client.post("/api/v1/auth/verify-email/code", json={"email": "carol@example.test", "code": wrong}).status_code == 400
+    blocked = ctx.client.post("/api/v1/auth/verify-email/code", json={"email": "carol@example.test", "code": code})
+    assert blocked.status_code == 429 and blocked.json()["code"] == "rate_limited"
+
+
+def test_code_for_an_unknown_email_looks_like_a_wrong_code(ctx):
+    r = ctx.client.post("/api/v1/auth/verify-email/code", json={"email": "nobody@example.test", "code": "123456"})
+    assert r.status_code == 400 and r.json()["code"] == "invalid_code"
+    assert ctx.client.post("/api/v1/auth/verify-email/code", json={"email": "nobody@example.test", "code": "12345"}).status_code == 422
 
 
 @pytest.fixture

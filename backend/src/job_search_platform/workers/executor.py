@@ -555,7 +555,8 @@ class RunExecutor:
                 round_began = time.monotonic()
                 # One fresh Hermes session per round (the bridge builds a new agent on every submit).
                 prompt, instructions = tailoring.round_prompt(
-                    text, job["title"], job_text, coverage["missing"] if coverage else [], facts, run.output_language)
+                    text, job["title"], job_text, coverage["missing"] if coverage else [], facts, run.output_language,
+                    run.input_snapshot.get("owner_instructions") if interactive else None)
                 began = time.monotonic()
                 await self.runtime.submit(run.project_id, uuid.uuid5(run.id, f"round-{round_no}"), prompt, instructions,
                                           provider, operation="tailor_cv", tool_gate=deny_tool)

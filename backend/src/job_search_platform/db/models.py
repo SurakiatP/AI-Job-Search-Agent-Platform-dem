@@ -41,7 +41,7 @@ class UserToken(Base):
     token_hash: Mapped[bytes] = mapped_column(LargeBinary, unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    __table_args__ = (CheckConstraint("purpose IN ('verify_email','reset_password')", name="ck_user_tokens_purpose"),)
+    __table_args__ = (CheckConstraint("purpose IN ('verify_email','reset_password','verify_code','delete_account')", name="ck_user_tokens_purpose"),)
 
 
 class RateLimitEvent(Base):
