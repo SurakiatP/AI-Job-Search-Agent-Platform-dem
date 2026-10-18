@@ -1,0 +1,35 @@
+{
+  "page_id": "21",
+  "page": "OAuth Consent",
+  "version": "v4",
+  "round": "review-led-round2",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "21-oauth-consent-desktop-light-v4.png",
+  "width": 1512,
+  "height": 1040,
+  "sha256": "87a623a3d6f980b0cf26b4a88d20e58ed21578384ca6e1018968beb3c0772c4c",
+  "embedded_prompt": true,
+  "handoff": "../21_OAUTH_CONSENT_DESIGN_V4.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Informed OAuth consent"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/21-oauth-consent-desktop-light-v1.png",
+  "previous_handoff": "21_OAUTH_CONSENT_DESIGN.md",
+  "previous_version_approved": false,
+  "motion_implemented": false,
+  "generation_mode": "edit",
+  "reference_image_paths": [
+    "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/21-oauth-consent-desktop-light-v3.png"
+  ],
+  "pixel_art_specified": false,
+  "animation_asset_generated": false,
+  "selected_for_current_review": true
+}

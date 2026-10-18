@@ -1,0 +1,34 @@
+{
+  "page_id": "09",
+  "page": "Document Detail",
+  "version": "v2",
+  "round": "review-led-round2",
+  "status": "superseded-round2-candidate",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "09-document-detail-desktop-light-v2.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "4a4c7a3284a87c615b17751396eae5ba6ad9a75f3ddfac0dfac8d350aa9cdae2",
+  "embedded_prompt": true,
+  "handoff": "../09_DOCUMENT_DETAIL_DESIGN_V2.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Historical document revision inspection"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/09-document-detail-desktop-light-v1.png",
+  "previous_handoff": "09_DOCUMENT_DETAIL_DESIGN.md",
+  "previous_version_approved": false,
+  "motion_implemented": false,
+  "pixel_art": false,
+  "generation_mode": "edit",
+  "reference_image_paths": [
+    "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/01-overview-desktop-light-v2.png"
+  ],
+  "selected_for_current_review": false
+}

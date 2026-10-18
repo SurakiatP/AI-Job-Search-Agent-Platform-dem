@@ -1,0 +1,22 @@
+{
+  "page_id": "14",
+  "page": "Public Landing",
+  "version": "v1",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "14-landing-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "0c3cd284d3888d7b38ab84d24b31df0bf805ffc11236796b8fe46995ae531817",
+  "embedded_prompt": true,
+  "handoff": "../14_LANDING_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false
+}

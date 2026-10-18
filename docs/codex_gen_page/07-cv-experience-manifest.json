@@ -1,0 +1,22 @@
+{
+  "page_id": "07",
+  "page": "CV & Experience",
+  "version": "v1",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "07-cv-experience-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "06d196807989c82b630c83908cc611b1ece39952b56c70cd39c911d40d037d96",
+  "embedded_prompt": true,
+  "handoff": "../07_CV_EXPERIENCE_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false
+}

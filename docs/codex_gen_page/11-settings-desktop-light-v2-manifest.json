@@ -1,0 +1,31 @@
+{
+  "page_id": "11",
+  "page": "Settings",
+  "version": "v2",
+  "round": "review-led-round2",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "11-settings-desktop-light-v2.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "3a83fb8b726d95bf140edaa2ac32a92666b273090f2d9dbd13bed23b481486bf",
+  "embedded_prompt": true,
+  "handoff": "../11_SETTINGS_DESIGN_V2.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Scoped Settings with readable AI setup"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/11-settings-desktop-light-v1.png",
+  "previous_handoff": "11_SETTINGS_DESIGN.md",
+  "previous_version_approved": false,
+  "motion_implemented": false,
+  "pixel_art_specified": false,
+  "animation_asset_generated": false,
+  "selected_for_current_review": true
+}

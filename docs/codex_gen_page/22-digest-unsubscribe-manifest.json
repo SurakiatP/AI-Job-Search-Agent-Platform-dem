@@ -1,0 +1,22 @@
+{
+  "page_id": "22",
+  "page": "Digest Unsubscribe",
+  "version": "v1",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "22-digest-unsubscribe-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "a60c3c7fa1070790a5385837b7f8ad433cb48162ffe75eeb43954377e37b6c14",
+  "embedded_prompt": true,
+  "handoff": "../22_DIGEST_UNSUBSCRIBE_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false
+}

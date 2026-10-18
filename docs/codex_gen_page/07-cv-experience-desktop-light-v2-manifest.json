@@ -1,0 +1,34 @@
+{
+  "page_id": "07",
+  "page": "CV & Experience",
+  "version": "v2",
+  "round": "review-led-round2",
+  "status": "superseded-round2-candidate",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "07-cv-experience-desktop-light-v2.png",
+  "width": 1512,
+  "height": 1040,
+  "sha256": "67524e8c631604080d1469f9d0023538037316a7eb85958fadcfded731937a4a",
+  "embedded_prompt": true,
+  "handoff": "../07_CV_EXPERIENCE_DESIGN_V2.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "CV library with visible reading action"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/07-cv-experience-desktop-light-v1.png",
+  "previous_handoff": "07_CV_EXPERIENCE_DESIGN.md",
+  "previous_version_approved": false,
+  "motion_implemented": false,
+  "pixel_art": true,
+  "generation_mode": "edit",
+  "reference_image_paths": [
+    "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/01-overview-desktop-light-v2.png"
+  ],
+  "selected_for_current_review": false
+}

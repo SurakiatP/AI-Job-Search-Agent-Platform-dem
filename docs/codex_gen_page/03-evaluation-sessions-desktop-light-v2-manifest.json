@@ -1,0 +1,30 @@
+{
+  "page_id": "03",
+  "page": "Evaluation Sessions index",
+  "version": "v2",
+  "round": "review-led-round2",
+  "status": "superseded-round2-candidate",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "03-evaluation-sessions-desktop-light-v2.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "21137789532aae70d28259188ea299c0c1586157d75980da7d38e09e6080d064",
+  "embedded_prompt": true,
+  "handoff": "../03_EVALUATION_SESSIONS_DESIGN_V2.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Evaluation index with derived run states"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/03-evaluation-sessions-desktop-light-v1.png",
+  "previous_handoff": "03_EVALUATION_SESSIONS_DESIGN.md",
+  "previous_version_approved": true,
+  "motion_implemented": false,
+  "pixel_art": false,
+  "selected_for_current_review": false
+}

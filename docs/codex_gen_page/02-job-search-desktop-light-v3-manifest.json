@@ -1,0 +1,34 @@
+{
+  "page_id": "02",
+  "page": "Job Search Workspace",
+  "version": "v3",
+  "round": "review-led-round2",
+  "status": "superseded-round2-candidate",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "02-job-search-desktop-light-v3.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "33a3e1985a795d494d7397e34ae7c5591433676cc326b5cc2c98996e9856a589",
+  "embedded_prompt": true,
+  "handoff": "../02_JOB_SEARCH_DESIGN_V3.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Results with explicit CV context"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/02-job-search-desktop-light-v1.png",
+  "previous_handoff": "02_JOB_SEARCH_DESIGN.md",
+  "previous_version_approved": true,
+  "motion_implemented": false,
+  "pixel_art": false,
+  "generation_mode": "edit",
+  "reference_image_paths": [
+    "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/02-job-search-desktop-light-v2.png"
+  ],
+  "selected_for_current_review": false
+}

@@ -1,0 +1,22 @@
+{
+  "page_id": "08",
+  "page": "Documents",
+  "version": "v1",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "08-documents-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "634e7bedfff5e836bc287d3675a7da5df1eebbf3a9e816cc39f8e6528882a1e6",
+  "embedded_prompt": true,
+  "handoff": "../08_DOCUMENTS_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false
+}

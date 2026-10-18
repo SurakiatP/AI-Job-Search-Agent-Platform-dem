@@ -1,0 +1,22 @@
+{
+  "page_id": "16",
+  "page": "Sign Up",
+  "version": "v1",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "16-signup-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "2639cd9cfb68cb0ff458b3582767efcdfbd37329a6d90a3f81edde4727f8c7a1",
+  "embedded_prompt": true,
+  "handoff": "../16_SIGNUP_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false
+}

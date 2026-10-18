@@ -1,0 +1,25 @@
+{
+  "page_id": "01",
+  "page": "Overview / Dashboard",
+  "version": "v1",
+  "status": "owner-approved",
+  "created_date": "2026-10-16",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "01-overview-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "7364dbf108edbbb9e33f8306ae913b8de2a2616087061bd5601cbdb6ccee0d2c",
+  "embedded_prompt": true,
+  "handoff": "../01_OVERVIEW_DESIGN.md",
+  "variant": {
+    "device": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "other_image_variants": "not generated",
+  "application_source_changed": false,
+  "approved_date": "2026-10-16"
+}

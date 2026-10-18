@@ -1,0 +1,31 @@
+{
+  "page_id": "01",
+  "page": "Overview / Dashboard",
+  "version": "v2",
+  "round": "review-led-round2",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "01-overview-desktop-light-v2.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "84f648c6ce37b1a3059c15731a2aea2566f3206233c9b08cc167864020d590fd",
+  "embedded_prompt": true,
+  "handoff": "../01_OVERVIEW_DESIGN_V2.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "First project / no CV"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/01-overview-desktop-light-v1.png",
+  "previous_handoff": "01_OVERVIEW_DESIGN.md",
+  "previous_version_approved": true,
+  "motion_implemented": false,
+  "pixel_art_specified": true,
+  "animation_asset_generated": false,
+  "selected_for_current_review": true
+}

@@ -1,0 +1,35 @@
+{
+  "page_id": "10",
+  "page": "Agent Activity / Console",
+  "version": "v3",
+  "round": "review-led-round2",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "10-agent-activity-desktop-light-v3.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "1220016199985ffc1e5e02cc092bf25d0cf10d5bb1fc16360f0b9a62ea19109a",
+  "embedded_prompt": true,
+  "handoff": "../10_AGENT_ACTIVITY_DESIGN_V3.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Mixed run types with correct destinations"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/10-agent-activity-desktop-light-v1.png",
+  "previous_handoff": "10_AGENT_ACTIVITY_DESIGN.md",
+  "previous_version_approved": false,
+  "motion_implemented": false,
+  "generation_mode": "edit",
+  "reference_image_paths": [
+    "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/10-agent-activity-desktop-light-v2.png"
+  ],
+  "pixel_art_specified": true,
+  "animation_asset_generated": false,
+  "selected_for_current_review": true
+}

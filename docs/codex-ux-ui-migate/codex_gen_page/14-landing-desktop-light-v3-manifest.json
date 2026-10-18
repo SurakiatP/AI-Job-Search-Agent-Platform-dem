@@ -1,0 +1,35 @@
+{
+  "page_id": "14",
+  "page": "Public Landing",
+  "version": "v3",
+  "round": "review-led-round2",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "14-landing-desktop-light-v3.png",
+  "width": 1512,
+  "height": 1040,
+  "sha256": "4a4642cd136d15213c50e760db5779d916528ff77bc7ef565b9fc01d2e8292d5",
+  "embedded_prompt": true,
+  "handoff": "../14_LANDING_DESIGN_V3.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Landing with truthful fixed-source preview"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/14-landing-desktop-light-v1.png",
+  "previous_handoff": "14_LANDING_DESIGN.md",
+  "previous_version_approved": false,
+  "motion_implemented": false,
+  "generation_mode": "edit",
+  "reference_image_paths": [
+    "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/14-landing-desktop-light-v2.png"
+  ],
+  "pixel_art_specified": true,
+  "animation_asset_generated": false,
+  "selected_for_current_review": true
+}

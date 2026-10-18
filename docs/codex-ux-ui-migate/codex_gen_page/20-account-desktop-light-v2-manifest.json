@@ -1,0 +1,35 @@
+{
+  "page_id": "20",
+  "page": "Account",
+  "version": "v2",
+  "round": "review-led-round2",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "20-account-desktop-light-v2.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "0bb7535aaed272d6855e17bb97bc83707b7c28e9c8a7d4090e23e3a559d95682",
+  "embedded_prompt": true,
+  "handoff": "../20_ACCOUNT_DESIGN_V2.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Account with coherent expiry and safe deletion"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/20-account-desktop-light-v1.png",
+  "previous_handoff": "20_ACCOUNT_DESIGN.md",
+  "previous_version_approved": false,
+  "motion_implemented": false,
+  "generation_mode": "edit",
+  "reference_image_paths": [
+    "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/11-settings-desktop-light-v2.png"
+  ],
+  "pixel_art_specified": false,
+  "animation_asset_generated": false,
+  "selected_for_current_review": true
+}
