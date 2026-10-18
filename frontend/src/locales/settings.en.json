@@ -1,7 +1,7 @@
 {
   "projectScope": "Project settings for",
   "appearance": "Appearance",
-  "appearanceDescription": "Choose the theme and language used on this device.",
+  "appearanceDescription": "Choose the theme and language used in this browser.",
   "light": "Light",
   "dark": "Dark",
   "system": "System",
@@ -37,7 +37,7 @@
   "createGrant": "Create project token",
   "activeGrants": "Project tokens",
   "tokenShownOnce": "Copy this token now",
-  "tokenWarning": "This value is shown once. Closing this view discards it; it cannot be recovered.",
+  "tokenWarning": "This value is shown once. Copy it before closing or pressing Escape; the value cannot be recovered.",
   "accessToken": "Project access token",
   "copyToken": "Copy token",
   "copied": "Token copied.",
@@ -50,7 +50,17 @@
   "hours_one": "{{count}} hour",
   "hours_other": "{{count}} hours",
   "navLabel": "Settings sections",
+  "scope": {
+    "preferences": "This project: language of generated documents, notifications and the daily “Applied” auto-approval limit.",
+    "appearance": "This browser: theme and language apply only here.",
+    "gateway": "Whole app (admin): the AI gateway is shared by every project and user of this app.",
+    "tools": "This project: connector access is set separately for each project.",
+    "sharing": "This project: tokens grant the selected permissions for this project only.",
+    "webhooks": "This project: webhooks belong to the selected project; Telegram is linked to your account."
+  },
+  "telegramScope": "Telegram connection and digest delivery are account-level settings.",
   "nav": {
+    "preferences": "Documents & notifications",
     "appearance": "Appearance",
     "tools": "Tools",
     "sharing": "Project sharing",
@@ -60,7 +70,7 @@
   "themeHeading": "Theme",
   "languageHeading": "Language",
   "themeTile": "{{name}} theme",
-  "appliesNow": "Changes apply immediately and are stored on this device only.",
+  "appliesNow": "Changes apply immediately and are stored in this browser only.",
   "activeGrantsHint": "Tokens issued for this project and their status.",
   "noGrants": "No tokens yet.",
   "gateway": {
@@ -76,5 +86,17 @@
       "reachable": "The AI gateway is configured and reachable.",
       "unreachable": "The AI gateway is configured but not reachable right now."
     }
-  }
+  },
+  "groups": {
+    "you": "You",
+    "project": "This project",
+    "admin": "Admin"
+  },
+  "scopeLabel": {
+    "browser": "This browser",
+    "project": "This project",
+    "app": "Whole app (admin)"
+  },
+  "accountSecurity": "Account security",
+  "accountSecurityHint": "Email, connected assistants and account deletion are on the Account page."
 }

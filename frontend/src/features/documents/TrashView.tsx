@@ -61,7 +61,7 @@ export function TrashView({ projectId, items, typeLabel, onChanged }: { projectI
     setFailure(failed.length ? (th ? `ลบถาวรไม่สำเร็จ ${failed.length} รายการ (อาจมีคำขออนุมัติค้างอยู่): ${failed.join(', ')}` : `${failed.length} could not be deleted (an approval may be pending): ${failed.join(', ')}`) : '');
     setEmptying(false); onChanged();
   }
-  if (!items.length) return <p className="text-sm text-muted-foreground">{th ? 'ถังขยะว่าง' : 'Trash is empty'}</p>;
+  if (!items.length) return <p className="text-sm text-muted-foreground">{th ? 'ถังขยะว่าง เอกสารที่ย้ายมาไว้ที่นี่สามารถกู้คืนได้' : 'Trash is empty. Documents you move to the trash can be restored from here.'}</p>;
   return <div className="grid gap-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm text-muted-foreground">{th ? 'เอกสารในถังขยะซ่อนอยู่จากผลลัพธ์ที่แชร์ กู้คืนหรือลบถาวรได้ที่นี่' : 'Trashed documents are hidden from shared results. Restore or delete them permanently here.'}</p>

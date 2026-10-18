@@ -6,6 +6,16 @@ import th from '../locales/common.th.json';
 import en from '../locales/common.en.json';
 import settingsTh from '../locales/settings.th.json';
 import settingsEn from '../locales/settings.en.json';
+import searchEn from '../locales/search-workspace.en.json';
+import searchTh from '../locales/search-workspace.th.json';
+import sessionEn from '../locales/session-workspace.en.json';
+import sessionTh from '../locales/session-workspace.th.json';
+import materialsEn from '../locales/materials-workspace.en.json';
+import materialsTh from '../locales/materials-workspace.th.json';
+import applicationsEn from '../locales/applications-workspace.en.json';
+import applicationsTh from '../locales/applications-workspace.th.json';
+import utilitiesEn from '../locales/utilities-workspace.en.json';
+import utilitiesTh from '../locales/utilities-workspace.th.json';
 import { DraftProvider } from './drafts';
 import { readPreference, savePreference, ThemeProvider } from './theme';
 
@@ -17,8 +27,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
   const [i18n] = useState(() => {
     const instance = i18next.createInstance();
     void instance.init({
-      lng: locale, fallbackLng: 'th', initAsync: false,
-      resources: { th: { common: th, settings: settingsTh }, en: { common: en, settings: settingsEn } },
+      lng: locale, fallbackLng: 'th', fallbackNS: 'common', initAsync: false,
+      resources: { th: { common: th, settings: settingsTh, searchWorkspace: searchTh, sessionWorkspace: sessionTh, materialsWorkspace: materialsTh, applicationsWorkspace: applicationsTh, utilitiesWorkspace: utilitiesTh }, en: { common: en, settings: settingsEn, searchWorkspace: searchEn, sessionWorkspace: sessionEn, materialsWorkspace: materialsEn, applicationsWorkspace: applicationsEn, utilitiesWorkspace: utilitiesEn } },
       defaultNS: 'common', interpolation: { escapeValue: false },
     });
     return instance;

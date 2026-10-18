@@ -1,0 +1,184 @@
+{
+  "date": "2026-10-17",
+  "reviewer_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "evidence": "static-generated-desktop-light-English-concepts",
+  "pages": [
+    {
+      "page_id": "01",
+      "page": "Overview / Dashboard",
+      "handoff": "01_OVERVIEW_DESIGN.md",
+      "image": "codex_gen_page/01-overview-desktop-light-v1.png",
+      "sha256": "7364dbf108edbbb9e33f8306ae913b8de2a2616087061bd5601cbdb6ccee0d2c",
+      "owner_approved": true
+    },
+    {
+      "page_id": "02",
+      "page": "Job Search Workspace",
+      "handoff": "02_JOB_SEARCH_DESIGN.md",
+      "image": "codex_gen_page/02-job-search-desktop-light-v1.png",
+      "sha256": "b5383db7828c3f943f256ff628224c2cb9a0224831662731a88b68c2dc73f1be",
+      "owner_approved": true
+    },
+    {
+      "page_id": "03",
+      "page": "Evaluation Sessions index",
+      "handoff": "03_EVALUATION_SESSIONS_DESIGN.md",
+      "image": "codex_gen_page/03-evaluation-sessions-desktop-light-v1.png",
+      "sha256": "52f6824e4874a9999c3ddd85fcba4aaa20fd60500f35d14a54178815c16e59da",
+      "owner_approved": true
+    },
+    {
+      "page_id": "04",
+      "page": "Evaluation Session Workspace",
+      "handoff": "04_EVALUATION_WORKSPACE_DESIGN.md",
+      "image": "codex_gen_page/04-evaluation-workspace-desktop-light-v2.png",
+      "sha256": "3bcc9bfd33c744ae2849657de3c5905b73247f39e19ecd2ec47eadb77697fe6d",
+      "owner_approved": true
+    },
+    {
+      "page_id": "05",
+      "page": "Applications",
+      "handoff": "05_APPLICATIONS_DESIGN.md",
+      "image": "codex_gen_page/05-applications-list-desktop-light-v1.png",
+      "sha256": "279694432a32e8293d7ceb15bbf531e859a5533bcbd7e4397aefbf6b605b7036",
+      "owner_approved": true
+    },
+    {
+      "page_id": "06",
+      "page": "Job Detail",
+      "handoff": "06_JOB_DETAIL_DESIGN.md",
+      "image": "codex_gen_page/06-job-detail-desktop-light-v1.png",
+      "sha256": "be1473745a15b549546ff229986f882a0738f0fd491c13c6f54cbf421d0fcd37",
+      "owner_approved": true
+    },
+    {
+      "page_id": "07",
+      "page": "CV & Experience",
+      "handoff": "07_CV_EXPERIENCE_DESIGN.md",
+      "image": "codex_gen_page/07-cv-experience-desktop-light-v1.png",
+      "sha256": "06d196807989c82b630c83908cc611b1ece39952b56c70cd39c911d40d037d96",
+      "owner_approved": false
+    },
+    {
+      "page_id": "08",
+      "page": "Documents library",
+      "handoff": "08_DOCUMENTS_DESIGN.md",
+      "image": "codex_gen_page/08-documents-desktop-light-v1.png",
+      "sha256": "634e7bedfff5e836bc287d3675a7da5df1eebbf3a9e816cc39f8e6528882a1e6",
+      "owner_approved": false
+    },
+    {
+      "page_id": "09",
+      "page": "Document Detail",
+      "handoff": "09_DOCUMENT_DETAIL_DESIGN.md",
+      "image": "codex_gen_page/09-document-detail-desktop-light-v1.png",
+      "sha256": "21f376eacb11b33f68ce91cefce9141344ce78bde9f8247f67fb7cf9b8c2c5f0",
+      "owner_approved": false
+    },
+    {
+      "page_id": "10",
+      "page": "Agent Activity / Console",
+      "handoff": "10_AGENT_ACTIVITY_DESIGN.md",
+      "image": "codex_gen_page/10-agent-activity-desktop-light-v1.png",
+      "sha256": "0093a0b4cfd854727eba81095e0aabc6b783f7b9726a6883cd4ab343baeb1840",
+      "owner_approved": false
+    },
+    {
+      "page_id": "11",
+      "page": "Settings",
+      "handoff": "11_SETTINGS_DESIGN.md",
+      "image": "codex_gen_page/11-settings-desktop-light-v1.png",
+      "sha256": "6bc429311b03540dcccaa39f8a0b5973051bda7f30a688d2c5dffca3f8e5a1d0",
+      "owner_approved": false
+    },
+    {
+      "page_id": "12",
+      "page": "Projects",
+      "handoff": "12_PROJECTS_DESIGN.md",
+      "image": "codex_gen_page/12-projects-desktop-light-v1.png",
+      "sha256": "2469fc59677b3fd4f31ca378edcf8a840995679a1f8ed32f79800a44928939e2",
+      "owner_approved": false
+    },
+    {
+      "page_id": "13",
+      "page": "New Project",
+      "handoff": "13_NEW_PROJECT_DESIGN.md",
+      "image": "codex_gen_page/13-new-project-desktop-light-v1.png",
+      "sha256": "a8aab2dd26caa858e40bc11057d6dce0f3cfc0c33fd9ebf850d02ee2fbedeb9e",
+      "owner_approved": false
+    },
+    {
+      "page_id": "14",
+      "page": "Public Landing",
+      "handoff": "14_LANDING_DESIGN.md",
+      "image": "codex_gen_page/14-landing-desktop-light-v1.png",
+      "sha256": "0c3cd284d3888d7b38ab84d24b31df0bf805ffc11236796b8fe46995ae531817",
+      "owner_approved": false
+    },
+    {
+      "page_id": "15",
+      "page": "Login",
+      "handoff": "15_LOGIN_DESIGN.md",
+      "image": "codex_gen_page/15-login-desktop-light-v1.png",
+      "sha256": "853352a941335e46ee32b02d32667ba477fa6a1001e988190451fda9e8cbb0ce",
+      "owner_approved": false
+    },
+    {
+      "page_id": "16",
+      "page": "Sign Up",
+      "handoff": "16_SIGNUP_DESIGN.md",
+      "image": "codex_gen_page/16-signup-desktop-light-v1.png",
+      "sha256": "2639cd9cfb68cb0ff458b3582767efcdfbd37329a6d90a3f81edde4727f8c7a1",
+      "owner_approved": false
+    },
+    {
+      "page_id": "17",
+      "page": "Forgot Password",
+      "handoff": "17_FORGOT_PASSWORD_DESIGN.md",
+      "image": "codex_gen_page/17-forgot-password-desktop-light-v1.png",
+      "sha256": "7024ccd4367fd074077bcb48a544e83d299d389046abf43cd61bffff2ef5eba7",
+      "owner_approved": false
+    },
+    {
+      "page_id": "18",
+      "page": "Reset Password",
+      "handoff": "18_RESET_PASSWORD_DESIGN.md",
+      "image": "codex_gen_page/18-reset-password-desktop-light-v1.png",
+      "sha256": "a6e2bfb0d3397572d79bb9f6e20b0599b6044c0245c4251c659f258c66ffaae1",
+      "owner_approved": false
+    },
+    {
+      "page_id": "19",
+      "page": "Verify Email",
+      "handoff": "19_VERIFY_EMAIL_DESIGN.md",
+      "image": "codex_gen_page/19-verify-email-desktop-light-v1.png",
+      "sha256": "8912804a18dcadf5b71b6ae777a33262f33fa603497946e9ecd0f3b9b9b97f99",
+      "owner_approved": false
+    },
+    {
+      "page_id": "20",
+      "page": "Account",
+      "handoff": "20_ACCOUNT_DESIGN.md",
+      "image": "codex_gen_page/20-account-desktop-light-v1.png",
+      "sha256": "8f832f29e4ed1bbccb82c44462e1af6b419e73fdfc24306e1e6c80688f0c38ab",
+      "owner_approved": false
+    },
+    {
+      "page_id": "21",
+      "page": "OAuth Consent",
+      "handoff": "21_OAUTH_CONSENT_DESIGN.md",
+      "image": "codex_gen_page/21-oauth-consent-desktop-light-v1.png",
+      "sha256": "7d35779e5b6a1bf0f9c2f0767467c894d1d97ff6c6c34050d7de057f9928bed6",
+      "owner_approved": false
+    },
+    {
+      "page_id": "22",
+      "page": "Digest Unsubscribe",
+      "handoff": "22_DIGEST_UNSUBSCRIBE_DESIGN.md",
+      "image": "codex_gen_page/22-digest-unsubscribe-desktop-light-v1.png",
+      "sha256": "a60c3c7fa1070790a5385837b7f8ad433cb48162ffe75eeb43954377e37b6c14",
+      "owner_approved": false
+    }
+  ]
+}

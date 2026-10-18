@@ -1,13 +1,12 @@
 import { Link } from 'react-router';
-import { ExternalLink } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { useLocale } from '../../app/providers';
+import { useOwnerSession } from '../../lib/api';
 import { Header } from '../../components/Header';
 import { Button } from '../../components/ui/button';
-import { Card } from '../../components/ui/card';
 import { landingCopy } from './copy';
-import { AgentMini, HeroCards, LocalMini } from './LandingPreview';
+import { DemoCard } from './LandingPreview';
 import { Reveal } from './Reveal';
-import { SearchTeaser } from './SearchTeaser';
 import { Tour } from './Tour';
 import './landing.css';
 
@@ -16,75 +15,77 @@ const wrap = 'mx-auto w-full max-w-6xl px-4 sm:px-6';
 export function LandingPage() {
   const { locale } = useLocale();
   const c = landingCopy[locale];
+  // Signed-in visitors get one "Open app" button instead of sign-up / log-in; nothing shows until the session is known.
+  const status = useOwnerSession().status;
+  const cta = (size: 'sm' | 'lg') => status === 'ready'
+    ? <Button asChild size={size}><Link to="/app/projects">{c.openApp}</Link></Button>
+    : status === 'loading' ? null : <Button asChild size={size}><Link to="/signup">{size === 'sm' ? c.signup : c.cta}</Link></Button>;
   return <div className="landing text-foreground">
     <Header actions={<>
-      <Button asChild className="rounded-full bg-amber-400 px-3 text-neutral-950 shadow-none hover:bg-amber-500 active:bg-amber-600 max-[399px]:hidden sm:px-5"><Link to="/signup">{c.signup}</Link></Button>
-      <Button asChild variant="outline" className="rounded-full border-foreground bg-transparent px-3 shadow-none sm:px-5"><Link to="/login">{c.login}</Link></Button>
+      {cta('sm')}
+      {status !== 'ready' && status !== 'loading' && <Button asChild size="sm" variant="outline"><Link to="/login">{c.login}</Link></Button>}
     </>} />
-    <main className="grid gap-24 pb-16 lg:gap-32">
-      <section className="relative">
-        <div className="landing-hero-bg" aria-hidden="true" />
-        <div className={`${wrap} relative py-16 text-center lg:py-32`}>
-          <HeroCards />
-          <div className="mx-auto grid max-w-xl justify-items-center gap-6 xl:max-w-2xl">
-            <h1 className="text-4xl font-semibold leading-[1.35] not-italic [text-wrap:balance] sm:text-5xl lg:text-4xl xl:text-5xl">
-              <span className="block">{c.headlineA}</span><span className="landing-gradient-text">{c.headlineB}</span>
-            </h1>
-            <p className="max-w-xl text-lg text-muted-foreground">{c.sub}</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Button asChild size="lg"><Link to="/login">{c.cta}</Link></Button>
-              <Button asChild size="lg" variant="outline"><a href="#how">{c.secondary}</a></Button>
-            </div>
+    <main className="grid gap-16 pb-12 sm:gap-20 sm:pb-16">
+      <section className={`${wrap} grid items-center gap-10 pt-10 sm:pt-14 lg:grid-cols-2 lg:gap-12 lg:pt-16`}>
+        <div className="grid content-start justify-items-start gap-5">
+          <h1 className="landing-headline max-w-2xl not-italic [text-wrap:balance]">
+            <span className="block">{c.headlineA}</span><span>{c.headlineB}</span>
+          </h1>
+          <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">{c.sub}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            {cta('lg')}
+            <Button asChild size="lg" variant="outline"><a href="#steps">{c.secondary}</a></Button>
           </div>
-          <p className="mt-12 hidden text-xs text-muted-foreground lg:block">{c.caption}</p>
         </div>
+        <div className="min-w-0"><DemoCard /></div>
       </section>
 
-      <SearchTeaser locale={locale} className={wrap} />
-
-      <Reveal className={wrap}>
-        <p className="mx-auto max-w-4xl text-3xl font-semibold leading-[1.5] not-italic sm:text-4xl lg:text-5xl lg:leading-[1.5]">
-          <span className="landing-fade text-muted-foreground">{c.statement.muted}</span>{' '}
-          <span className="landing-fade text-primary" style={{ ['--d' as string]: '350ms' }}>{c.statement.accent}</span>
-        </p>
-      </Reveal>
+      <section id="steps" aria-labelledby="steps-title" className={`${wrap} grid scroll-mt-16 gap-6`}>
+        <h2 id="steps-title" className="text-2xl font-semibold not-italic sm:text-3xl">{c.stepsTitle}</h2>
+        <Reveal className="landing-reveal">
+          <ol className="grid gap-6 md:grid-cols-3 md:gap-0">
+            {c.how.map((step, index) => <li key={step.title} className="grid grid-cols-[2rem_minmax(0,1fr)] content-start gap-x-3 gap-y-1 md:border-l md:px-6 md:first:border-l-0 md:first:pl-0">
+              <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">{index + 1}</span>
+              <h3 className="self-center text-lg font-semibold leading-snug not-italic">{step.title}</h3>
+              <p className="col-start-2 text-sm leading-relaxed text-muted-foreground sm:text-base">{step.body}</p>
+            </li>)}
+          </ol>
+        </Reveal>
+        <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>{c.noSubmit}</span></p>
+      </section>
 
       <Tour />
 
-      <section className={`${wrap} grid gap-10`} aria-labelledby="diff-title">
-        <h2 id="diff-title" className="text-center text-3xl font-semibold not-italic">{c.diffTitle}</h2>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {([[c.local, <LocalMini key="l" />], [c.agent, <AgentMini key="a" />]] as const).map(([d, mini], i) => <Reveal key={d.title} className="landing-rise" style={{ ['--d' as string]: `${i * 120}ms` }}>
-            <Card className="grid h-full min-w-0 content-start gap-5 p-6 sm:p-8">
-              <h3 className="text-2xl font-semibold not-italic">{d.title}</h3>
-              <p className="text-muted-foreground">{d.body}</p>
-              {mini}
-            </Card>
-          </Reveal>)}
+      <section className={`${wrap} grid gap-7`} aria-labelledby="diff-title">
+        <h2 id="diff-title" className="text-2xl font-semibold not-italic sm:text-3xl">{c.diffTitle}</h2>
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
+          <section className="grid content-start gap-4" aria-labelledby="local-title">
+            <h3 id="local-title" className="text-xl font-semibold not-italic">{c.local.title}</h3>
+            <p className="max-w-prose leading-relaxed text-muted-foreground">{c.local.body}</p>
+            <ul className="grid gap-2 text-sm">
+              {c.local.rows.map(row => <li key={row} className="border-t pt-2">{row}</li>)}
+              <li className="border-t pt-2"><span className="font-medium">{c.local.submit}</span><span className="text-muted-foreground"> · {c.local.submitNote}</span></li>
+            </ul>
+          </section>
+          <section className="grid content-start gap-4 border-t pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8" aria-labelledby="agent-title">
+            <h3 id="agent-title" className="text-xl font-semibold not-italic">{c.agent.title}</h3>
+            <p className="max-w-prose leading-relaxed text-muted-foreground">{c.agent.body}</p>
+            <ul className="grid gap-2 text-sm">
+              <li className="border-t pt-2"><span className="font-medium">{c.agent.token}</span><span className="text-muted-foreground"> · {c.agent.scopes}</span></li>
+              <li className="border-t pt-2">{c.agent.request}</li>
+              <li className="border-t pt-2">{c.agent.approve} / {c.agent.reject}</li>
+            </ul>
+          </section>
         </div>
       </section>
 
-      <Reveal className={`${wrap} landing-rise`}>
-        <ul className="grid gap-6 sm:grid-cols-3">
-          {c.facts.map(f => <li key={f.label} className="grid gap-1 text-center">
-            <span className="landing-gradient-text text-5xl font-semibold tabular-nums">{f.value}</span>
-            <span className="text-sm text-muted-foreground">{f.label}</span>
-          </li>)}
-        </ul>
-      </Reveal>
-
-      <section className={wrap}>
-        <Reveal className="landing-rise">
-          <div className="landing-cta-bg grid justify-items-center gap-6 rounded-3xl border px-6 py-16 text-center">
-            <h2 className="max-w-2xl text-3xl font-semibold not-italic sm:text-4xl">{c.closing}</h2>
-            <Button asChild size="lg"><Link to="/login">{c.cta}</Link></Button>
-          </div>
-        </Reveal>
+      <section className={`${wrap} grid justify-items-start gap-5`}>
+        <h2 className="max-w-2xl text-2xl font-semibold not-italic sm:text-3xl">{c.closing}</h2>
+        {cta('lg')}
       </section>
     </main>
-    <footer className={`${wrap} flex flex-wrap items-center justify-between gap-3 pb-8 text-sm text-muted-foreground`}>
+    <footer className={`${wrap} flex flex-wrap items-center justify-between gap-3 border-t py-5 text-sm text-muted-foreground`}>
       <span>AI Job Search Agent Platform · {new Date().getFullYear()}</span>
-      <a className="inline-flex items-center gap-1 rounded-md hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="https://freehire.me" target="_blank" rel="noreferrer">{c.credit}<ExternalLink aria-hidden="true" size={14} /></a>
     </footer>
   </div>;
 }

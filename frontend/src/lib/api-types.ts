@@ -51,7 +51,7 @@ function isSafeMessageKey(value: unknown): value is string {
   return typeof value === 'string' && /^[a-z][a-z0-9_.]{0,119}$/.test(value);
 }
 
-export type Account = { id: string; email: string; locale: Locale; email_verified: boolean; created_at: string };
+export type Account = { id: string; email: string; locale: Locale; email_verified: boolean; is_admin?: boolean; created_at: string };
 export type AccountAgent = {
   id: string; project_id: string; project_name: string; label: string | null; capabilities: string[];
   created_at: string; expires_at: string; revoked_at: string | null; client_id_host: string | null;

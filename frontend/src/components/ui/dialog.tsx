@@ -1,14 +1,26 @@
-import type { ComponentProps } from 'react';
+import { useRef, type ComponentProps } from 'react';
 import * as Primitive from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
 
 export const Dialog = Primitive.Root;
 export const DialogClose = Primitive.Close;
 
-export function DialogContent({ className, ...props }: ComponentProps<typeof Primitive.Content>) {
+export function DialogContent({ className, onOpenAutoFocus, onCloseAutoFocus, ...props }: ComponentProps<typeof Primitive.Content>) {
+  const previousFocus = useRef<HTMLElement | null>(null);
   return <Primitive.Portal>
     <Primitive.Overlay className="drawer-overlay z-50" />
-    <Primitive.Content className={cn('fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border bg-card p-6 text-card-foreground shadow-lg', className)} {...props} />
+    <Primitive.Content className={cn('fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border bg-card p-6 text-card-foreground shadow-lg', className)} {...props}
+      onOpenAutoFocus={event => {
+        previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        onOpenAutoFocus?.(event);
+      }}
+      onCloseAutoFocus={event => {
+        onCloseAutoFocus?.(event);
+        if (!onCloseAutoFocus && !event.defaultPrevented && previousFocus.current?.isConnected) {
+          event.preventDefault();
+          previousFocus.current.focus();
+        }
+      }} />
   </Primitive.Portal>;
 }
 

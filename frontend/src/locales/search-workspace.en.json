@@ -1,0 +1,52 @@
+{
+  "controls": {
+    "location": "Location",
+    "anyLocation": "All locations",
+    "filters": "More filters",
+    "source": "Source",
+    "liveSource": "Live job source",
+    "checkingSavedJob": "Checking whether this posting is already saved…",
+    "clearFilters": "Clear filters",
+    "activeFilters": "Active filters",
+    "removeFilter": "Remove filter: {{label}}",
+    "backToResults": "Back to results",
+    "keywordCoverage": "Skills found in your CV",
+    "aiEstimate": "AI fit (1–5)",
+    "sourceUnavailable": "Source unavailable",
+    "salaryNotListed": "Salary not listed",
+    "partialRank": "AI ranked {{scored}} of {{total}} jobs in this result pool",
+    "aiUncertain": "AI estimate is uncertain",
+    "poolLimited": "Only the first {{count}} matching jobs are in the Smart match pool; {{total}} match your filters.",
+    "sourceSample": "Sample data",
+    "currentPool": "current result pool",
+    "filterValue": "{{name}}: {{value}}",
+    "queryValue": "Search: {{value}}",
+    "postedValue": "Posted within {{days}} days",
+    "seniority": "Seniority",
+    "employmentType": "Employment type",
+    "companyType": "Company type",
+    "skills": "Skills",
+    "postingLanguage": "Thai postings",
+    "minimumSalary": "Minimum salary",
+    "modeHintSearch": "Find jobs by keyword.",
+    "modeHintMatch": "Rank jobs against your CV (uses AI).",
+    "cvChangeNote": "Changing the CV affects new estimates only.",
+    "matchEvidence": "Match evidence",
+    "aiFit": "AI fit",
+    "skillsFound": "{{found}} of {{total}} skills found",
+    "aiUnavailable": "AI ranking unavailable — keyword ranking shown",
+    "evaluateWith": "Evaluate with {{cv}}",
+    "evalNote": "The evaluation uses this job posting and {{cv}}.",
+    "examplesLabel": "Try",
+    "examples": [
+      "Data analyst",
+      "Frontend",
+      "Product manager"
+    ]
+  },
+  "methods": {
+    "keywordNote": "Deterministic coverage counts recognizable required skills in the posting and selected CV. It is not an AI estimate or an ATS pass prediction.",
+    "aiNote": "AI-assisted estimate for this job and the selected CV revision. It may be uncertain and is not a hiring probability.",
+    "keywordOnly": "Keyword ranking is shown while AI ranking is pending or unavailable."
+  }
+}

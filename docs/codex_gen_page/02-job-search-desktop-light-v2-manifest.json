@@ -1,0 +1,30 @@
+{
+  "page_id": "02",
+  "page": "Job Search Workspace",
+  "version": "v2",
+  "round": "review-led-round2",
+  "status": "superseded-round2-candidate",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "02-job-search-desktop-light-v2.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "d0ea3b7beb900ada2ba59633061330d86a7fdb8377fa836a7210107d249b3106",
+  "embedded_prompt": true,
+  "handoff": "../02_JOB_SEARCH_DESIGN_V2.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Results with explicit CV context"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/02-job-search-desktop-light-v1.png",
+  "previous_handoff": "02_JOB_SEARCH_DESIGN.md",
+  "previous_version_approved": true,
+  "motion_implemented": false,
+  "pixel_art": false,
+  "selected_for_current_review": false
+}

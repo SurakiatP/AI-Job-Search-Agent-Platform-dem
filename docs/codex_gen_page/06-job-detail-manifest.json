@@ -1,0 +1,23 @@
+{
+  "page_id": "06",
+  "page": "Job Detail",
+  "version": "v1",
+  "status": "owner-approved",
+  "date": "2026-10-16",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "06-job-detail-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "be1473745a15b549546ff229986f882a0738f0fd491c13c6f54cbf421d0fcd37",
+  "embedded_prompt": true,
+  "handoff": "../06_JOB_DETAIL_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "approval_date": "2026-10-17"
+}

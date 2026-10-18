@@ -23,7 +23,7 @@ test('board shows stage columns and moves a card by keyboard, surviving an error
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await boardWithState(page);
   await page.goto(`/app/projects/${projectId}/jobs`);
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/applications$`));
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/applications$`)); await page.getByRole("button", { name: "Board" }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Applications' })).toBeVisible();
   for (const name of ['Saved', 'Applied', 'Responded', 'Interview', 'Offer', 'Hired']) {
     await expect(page.getByRole('heading', { level: 2, name: new RegExp(`^${name}`) })).toBeVisible();
@@ -44,23 +44,23 @@ test('board shows stage columns and moves a card by keyboard, surviving an error
 
   await page.getByRole('button', { name: `Move to: ${longTitle}` }).click();
   await page.getByRole('menuitem', { name: 'Rejected' }).click();
-  const closed = page.getByText(/^Closed \(1\)$/);
+  const closed = page.getByRole("button", { name: /^Closed \(1\)/ });
   await expect(closed).toBeVisible();
   await closed.click();
   await expect(page.getByRole('link', { name: longTitle })).toBeVisible();
-  await expect(page.getByText('Rejected', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Applications board').getByText('Rejected', { exact: true })).toBeVisible();
   // Moving a closed card must not remount the board: Closed stays open.
   await page.getByRole('button', { name: `Move to: ${longTitle}` }).click();
   await page.getByRole('menuitem', { name: 'Withdrawn' }).click();
-  await expect(page.getByText('Withdrawn', { exact: true })).toBeVisible();
-  await expect(page.locator('details')).toHaveJSProperty('open', true);
+  await expect(page.getByLabel('Applications board').getByText('Withdrawn', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Closed/ })).toHaveAttribute('aria-expanded', 'true');
 });
 
 test('board fits 320px in Thai with long titles', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await boardWithState(page);
   await page.setViewportSize({ width: 320, height: 800 });
-  await page.goto(`/app/projects/${projectId}/applications`);
+  await page.goto(`/app/projects/${projectId}/applications`); await page.getByRole("button", { name: "บอร์ด" }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'ใบสมัคร' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: /^บันทึกไว้/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -90,7 +90,7 @@ test('job page edits stage and contact, offers mailto, logs correspondence and n
 
   await page.goto(`/app/projects/${projectId}/jobs/${jobId}`);
   await page.getByLabel('Stage').selectOption('interview');
-  await expect(page.getByRole('list', { name: 'Timeline' }).getByRole('listitem').first()).toContainText('Saved → Interview');
+  await expect(page.getByRole('list', { name: 'Activity' }).getByRole('listitem').first()).toContainText('Saved → Interview');
 
   await expect(page.getByRole('link', { name: 'Write email' })).toHaveCount(0);
   await page.getByLabel('Recruiter name').fill('สมหญิง ใจดี');
@@ -98,13 +98,16 @@ test('job page edits stage and contact, offers mailto, logs correspondence and n
   await page.getByRole('button', { name: 'Save contact' }).click();
   await expect(page.getByRole('link', { name: 'Write email' })).toHaveAttribute('href', 'mailto:a%2Bjobs@example.co.th?subject=Re%3A%20Synthetic%20data%20analyst');
 
+  await page.getByRole('button', { name: 'Log email' }).click();
   await page.getByLabel('Direction').selectOption('received');
   await page.getByLabel('Subject').fill('Interview invite');
-  await page.getByRole('button', { name: 'Log correspondence' }).click();
+  await page.getByRole('button', { name: 'Save email' }).click();
+  await expect(page.getByLabel('Subject')).toHaveCount(0);
   await page.getByLabel('Recruiter role').fill('Unsaved draft');
-  await page.getByLabel('Note', { exact: true }).fill('Prepare portfolio');
   await page.getByRole('button', { name: 'Add note' }).click();
-  const items = page.getByRole('list', { name: 'Timeline' }).getByRole('listitem');
+  await page.getByLabel('Note', { exact: true }).fill('Prepare portfolio');
+  await page.getByRole('button', { name: 'Save note' }).click();
+  const items = page.getByRole('list', { name: 'Activity' }).getByRole('listitem');
   await expect(items.nth(0)).toContainText('Prepare portfolio');
   await expect(items.nth(1)).toContainText('Received email: Interview invite');
   await expect(items.nth(2)).toContainText('Contact updated');

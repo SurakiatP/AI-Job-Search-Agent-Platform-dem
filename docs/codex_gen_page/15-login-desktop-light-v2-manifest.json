@@ -1,0 +1,31 @@
+{
+  "page_id": "15",
+  "page": "Login",
+  "version": "v2",
+  "round": "review-led-round2",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "15-login-desktop-light-v2.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "182469c7bf0e9f9b28b1ff02c8ea879b6780512b5927cedc5c2d0bf31c7affa4",
+  "embedded_prompt": true,
+  "handoff": "../15_LOGIN_DESIGN_V2.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Login with consistent shared auth shell"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/15-login-desktop-light-v1.png",
+  "previous_handoff": "15_LOGIN_DESIGN.md",
+  "previous_version_approved": false,
+  "motion_implemented": false,
+  "pixel_art_specified": false,
+  "animation_asset_generated": false,
+  "selected_for_current_review": true
+}

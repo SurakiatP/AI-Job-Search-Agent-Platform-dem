@@ -5,7 +5,7 @@ const owner = { authenticated: true, csrf_token: 'synthetic-only', expires_at: '
 const approval = id => ({ id, run_id: baseRun.id, action: 'promote_cv', revision_id: `revision-${id}`, expected_cv_revision_id: `base-${id}`, change_digest: `digest-${id}`, expires_at: '2030-01-01T00:00:00Z', consumed_at: null, decision: null });
 async function setup(page, handler) {
   await page.route('**/api/v1/**', handler ?? (route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(owner) })));
-  await page.goto('http://127.0.0.1:4175/tests/shell.html');
+  await page.goto(`${process.env.JSP_E2E_BASE_URL ?? 'http://127.0.0.1:4175'}/tests/shell.html`);
   await page.evaluate(async () => {
     const r = await import('/node_modules/.vite/deps/react.js'); const React = r.default ?? r;
     const d = await import('/node_modules/.vite/deps/react-dom_client.js'); const dom = d.default ?? d;
@@ -30,7 +30,7 @@ async function mountHook(page) {
 }
 async function components(browser) {
   const page = await browser.newPage(); const errors = [];
-  page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+  page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text() + " [" + msg.location().url + "]"); });
   page.on('pageerror', error => errors.push(error.message));
   await setup(page);
   await page.evaluate(async () => {

@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import os
 import secrets
 from urllib.parse import urlsplit
 import shutil
@@ -57,6 +58,19 @@ MESSAGES = {
 
 def _digest(token: str) -> bytes:
     return hashlib.sha256(token.encode("utf-8")).digest()
+
+
+def is_admin(user: User) -> bool:
+    """Operator access comes only from ADMIN_EMAILS (comma-separated); the address must be verified and enabled."""
+    allowed = {item.strip().lower() for item in os.environ.get("ADMIN_EMAILS", "").split(",") if item.strip()}
+    return user.email_verified_at is not None and user.disabled_at is None and user.email.lower() in allowed
+
+
+def require_admin(sessions, user_id: UUID | None) -> None:
+    with sessions() as db:
+        user = db.get(User, user_id) if user_id else None
+        if user is None or not is_admin(user):
+            raise ServiceError("forbidden")
 
 
 class Accounts:
@@ -198,7 +212,8 @@ class Accounts:
             if user is None:
                 raise ServiceError("unauthorized")
             return {"id": user.id, "email": user.email, "locale": user.locale,
-                    "email_verified": user.email_verified_at is not None, "created_at": user.created_at}
+                    "email_verified": user.email_verified_at is not None, "is_admin": is_admin(user),
+                    "created_at": user.created_at}
 
     def agents(self, user_id: UUID) -> list[dict]:
         with self.sessions() as db:

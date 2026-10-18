@@ -1,39 +1,73 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { ArrowRight, FileText, Info, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FitScore } from '@/components/FitScore';
-import { SkillCount } from '@/components/SkillCoverage';
 import { StatusBadge } from '@/components/StatusBadge';
-import type { JobRevisionView, RunEventView, RunStatus, RunView } from '@/lib/api-types';
-import { fetchRunEvents } from '@/lib/run-events';
+import type { JobRevisionView, RunEventView, RunOperation, RunStatus, RunView } from '@/lib/api-types';
+import { fetchRunEvents, watchRun } from '@/lib/run-events';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import type { Copy } from './copy';
 import { Empty, relativeTime, useNow, type Locale } from './shared';
 
 const ACTIVE: RunStatus[] = ['queued', 'running', 'waiting_approval'];
-const groups = {
-  all: () => true,
-  active: (s: RunStatus) => s === 'queued' || s === 'running',
-  waiting: (s: RunStatus) => s === 'waiting_approval',
-  needsYou: (s: RunStatus) => s === 'needs_input',
-  done: (s: RunStatus) => s === 'completed',
-  failed: (s: RunStatus) => s === 'failed' || s === 'interrupted' || s === 'cancelled',
-};
-type Group = keyof typeof groups;
+const GROUPS = [
+  { key: 'decision', statuses: ['waiting_approval', 'needs_input'] },
+  { key: 'running', statuses: ['queued', 'running'] },
+  { key: 'finished', statuses: ['completed', 'failed', 'interrupted', 'cancelled'] },
+] as const;
 
-function duration(run: RunView, c: Copy) {
-  if (!run.finished_at) return run.status === 'needs_input' ? c.waitingInput : c.running;
-  const seconds = Math.max(0, Math.round((Date.parse(run.finished_at) - Date.parse(run.created_at)) / 1000));
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  return minutes < 60 ? `${minutes}m ${seconds % 60}s` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+// Where a run's one button really goes: runs without a session of their own never claim one.
+function destination(run: RunView, base: string, c: Copy) {
+  if (run.status === 'waiting_approval') return { to: `${base}/console?tab=approvals`, label: c.dest.approvals };
+  const op: RunOperation = run.operation;
+  if (op === 'profile_cv' || op === 'extract_experience') return { to: `${base}/profile`, label: c.dest.cv };
+  if (op === 'match_jobs') return { to: `${base}/search`, label: c.dest.search };
+  return { to: `${base}/sessions/${encodeURIComponent(run.session_id)}`, label: c.dest.session };
+}
+
+const unit = (locale: Locale, value: number, name: 'second' | 'minute' | 'hour') => new Intl.NumberFormat(locale, { style: 'unit', unit: name, unitDisplay: 'narrow' }).format(value);
+
+function span(ms: number, locale: Locale) {
+  const minutes = Math.max(0, Math.floor(ms / 60000));
+  return minutes < 60 ? unit(locale, minutes, 'minute') : `${unit(locale, Math.floor(minutes / 60), 'hour')} ${unit(locale, minutes % 60, 'minute')}`;
+}
+
+function duration(run: RunView, locale: Locale) {
+  const ms = Date.parse(run.finished_at ?? run.created_at) - Date.parse(run.created_at);
+  return ms < 60000 ? unit(locale, Math.max(0, Math.round(ms / 1000)), 'second') : span(ms, locale);
 }
 
 function requesterLabel(run: RunView, c: Copy) {
   const r = run.requester;
-  if (!r || r.kind === 'owner') return c.you;
+  if (!r || r.kind === 'owner') return null;
   return `${c.agentBy} · ${r.label || (r.grant_id ?? '').slice(0, 8)}`;
+}
+
+// Live step text comes from the run's SSE stream; only mounted for running rows.
+function LiveStep({ projectId, run, c, onDone }: { projectId: string; run: RunView; c: Copy; onDone: () => void }) {
+  const [step, setStep] = useState<string | null>(null);
+  useEffect(() => watchRun(projectId, run.id, 0, event => {
+    if (event.data.step) setStep(event.data.step);
+    if (event.data.status && event.data.status !== 'running' && event.data.status !== 'queued') onDone();
+  }), [projectId, run.id, onDone]);
+  return <span>{step ? c.steps[step] ?? c.working : run.status === 'queued' ? c.queuedNote : c.working}</span>;
+}
+
+// One-line failure reason from the event payload (message_key) when the run recorded one.
+function FailureReason({ projectId, run, c }: { projectId: string; run: RunView; c: Copy }) {
+  const { t, i18n } = useTranslation();
+  const [reason, setReason] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetchRunEvents(projectId, run.id).then(events => {
+      const key = [...events].reverse().find(event => event.data.message_key)?.data.message_key;
+      if (live && key && i18n.exists(key)) setReason(t(key));
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [projectId, run.id, i18n, t]);
+  return <>{run.status === 'failed' ? c.failedNote : c.interruptedNote}{reason && <> {c.failedReason}: {reason}</>}</>;
 }
 
 function RunDetails({ projectId, run, c }: { projectId: string; run: RunView; c: Copy }) {
@@ -62,9 +96,8 @@ export function TimelineTab({ projectId, locale, c }: { projectId: string; local
   const base = `/app/projects/${encodeURIComponent(projectId)}`;
   const runs = useResource<RunView[]>(`/projects/${encodeURIComponent(projectId)}/runs`);
   const jobs = useResource<JobRevisionView[]>(`/projects/${encodeURIComponent(projectId)}/jobs`);
-  const [group, setGroup] = useState<Group>('all');
   const [open, setOpen] = useState<string | null>(null);
-  const now = useNow(30000);
+  const now = useNow(15000);
   const anyActive = (runs.data ?? []).some(run => ACTIVE.includes(run.status));
   const reload = runs.reload;
   useEffect(() => {
@@ -76,39 +109,60 @@ export function TimelineTab({ projectId, locale, c }: { projectId: string; local
 
   if (runs.status === 'error') return <ErrorState onRetry={runs.reload} />;
   if (runs.status === 'loading' && !runs.data) return <LoadingState />;
-  const all = runs.data ?? [];
+  const all = [...(runs.data ?? [])].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   if (all.length === 0) return <Empty title={c.noRuns} next={c.noRunsNext} />;
-  const shown = all.filter(run => groups[group](run.status));
   const medium = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
-  return <div className="grid gap-4">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div role="group" aria-label={c.filterLabel} className="flex flex-wrap gap-2">
-        {(Object.keys(groups) as Group[]).map(key => <Button key={key} type="button" size="sm" variant="outline" aria-pressed={group === key} onClick={() => setGroup(key)}>
-          {c.filters[key]} <span className="tabular-nums text-muted-foreground">{all.filter(run => groups[key](run.status)).length}</span>
-        </Button>)}
+  const idle = !all.some(run => run.status === 'queued' || run.status === 'running');
+
+  function row(run: RunView, primary: boolean) {
+    const dest = destination(run, base, c);
+    const meta = [run.job_revision_id ? titles.get(run.job_revision_id) ?? c.untitled : null, requesterLabel(run, c)].filter((part): part is string => !!part);
+    const finished = run.status === 'completed' || run.status === 'failed' || run.status === 'interrupted' || run.status === 'cancelled';
+    const note = run.status === 'waiting_approval' ? c.needsDecisionNote : run.status === 'needs_input' ? c.needsInputNote : run.status === 'cancelled' ? c.cancelledNote : null;
+    return <li key={run.id} className="grid gap-3 py-4 first:pt-3 last:pb-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+      <div className="flex min-w-0 gap-3">
+        <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground" aria-hidden="true">
+          {run.operation === 'evaluate_job' || run.operation === 'match_jobs' ? <Search className="size-4" /> : <FileText className="size-4" />}
+        </span>
+        <div className="grid min-w-0 gap-1">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+            <span className="[overflow-wrap:anywhere]">{c.ops[run.operation]}</span>
+            <StatusBadge status={run.status} locale={locale} />
+            {run.retry_of_id && <span className="rounded-md border px-1.5 py-0.5 text-xs font-normal text-muted-foreground" title={c.retryOf}>{c.retry}</span>}
+          </p>
+          <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
+            {meta.join(' · ')}{meta.length > 0 && ' · '}
+            <time dateTime={run.created_at} title={medium.format(new Date(run.created_at))}>{relativeTime(run.created_at, now, locale)}</time>
+            {run.status === 'running' && <> · {span(now - Date.parse(run.created_at), locale)} {c.elapsed}</>}
+            {finished && run.finished_at && <> · {duration(run, locale)}</>}
+          </p>
+          <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
+            {run.status === 'running' || run.status === 'queued' ? <LiveStep projectId={projectId} run={run} c={c} onDone={reload} />
+              : run.status === 'failed' || run.status === 'interrupted' ? <FailureReason projectId={projectId} run={run} c={c} /> : note}
+          </p>
+          {finished && run.status !== 'cancelled' && <div>
+            <Button type="button" variant="ghost" size="sm" className="-ms-3 text-muted-foreground" aria-expanded={open === run.id} onClick={() => setOpen(open === run.id ? null : run.id)}>{open === run.id ? c.hideDetails : c.details}</Button>
+            {open === run.id && <div className="rounded-lg bg-muted/40 p-3"><RunDetails projectId={projectId} run={run} c={c} /></div>}
+          </div>}
+        </div>
       </div>
-      {anyActive && <p className="text-xs text-muted-foreground" role="status">{c.autoRefresh}</p>}
-    </div>
-    {shown.length === 0 ? <Empty title={c.noMatch} /> : <div className="overflow-x-auto rounded-xl border bg-card">
-      <table className="w-full min-w-[52rem] text-sm">
-        <thead><tr className="border-b text-start text-muted-foreground">
-          {[c.cols.op, c.cols.job, c.cols.status, c.cols.created, c.cols.duration, c.cols.score, c.cols2, c.cols.session].map(label => <th key={label} scope="col" className="px-3 py-2 text-start font-medium">{label}</th>)}
-        </tr></thead>
-        <tbody className="divide-y">{shown.map(run => <Fragment key={run.id}><tr className="align-middle">
-          <td className="px-3 py-3 font-medium">{c.ops[run.operation]}
-            {run.retry_of_id && <span className="ms-2 inline-block rounded-md border px-1.5 py-0.5 text-xs font-normal text-muted-foreground" title={c.retryOf}>{c.retry}</span>}
-          </td>
-          <td className="max-w-56 px-3 py-3 [overflow-wrap:anywhere]">{run.job_revision_id ? <Link className="hover:underline" to={`${base}/jobs/${encodeURIComponent(run.job_revision_id)}`}>{titles.get(run.job_revision_id) ?? c.untitled}</Link> : '—'}</td>
-          <td className="px-3 py-3"><StatusBadge status={run.status} locale={locale} /></td>
-          <td className="px-3 py-3 whitespace-nowrap"><time dateTime={run.created_at} title={medium.format(new Date(run.created_at))}>{relativeTime(run.created_at, now, locale)}</time></td>
-          <td className="px-3 py-3 whitespace-nowrap tabular-nums">{duration(run, c)}</td>
-          <td className="px-3 py-3">{run.evaluation_result ? <div className="flex flex-col items-start gap-1"><FitScore score={run.evaluation_result.score} locale={locale} /><SkillCount coverage={run.evaluation_result.skill_coverage} locale={locale} /></div> : '—'}</td>
-          <td className="px-3 py-3 [overflow-wrap:anywhere]">{requesterLabel(run, c)}</td>
-          <td className="px-3 py-3 whitespace-nowrap"><Link className="text-primary hover:underline" to={`${base}/sessions/${encodeURIComponent(run.session_id)}`}>{c.openSession}</Link>
-            {run.status !== 'queued' && run.status !== 'running' && <Button type="button" variant="ghost" size="sm" className="ms-2" aria-expanded={open === run.id} onClick={() => setOpen(open === run.id ? null : run.id)}>{open === run.id ? c.hideDetails : c.details}</Button>}
-          </td>
-        </tr>{open === run.id && <tr><td colSpan={8} className="bg-muted/40 px-3 py-3"><RunDetails projectId={projectId} run={run} c={c} /></td></tr>}</Fragment>)}</tbody>
-      </table>
-    </div>}
+      <Button asChild variant={primary ? 'default' : 'outline'} className="w-full sm:w-auto"><Link to={dest.to}>{dest.label}<ArrowRight className="size-4" aria-hidden="true" /></Link></Button>
+    </li>;
+  }
+
+  return <div className="grid gap-4">
+    {anyActive && <p className="text-xs text-muted-foreground" role="status">{c.autoRefresh}</p>}
+    {idle && <p className="text-sm text-muted-foreground">{c.nothingRunning}</p>}
+    {GROUPS.map(({ key, statuses }) => {
+      const items = all.filter(run => (statuses as readonly RunStatus[]).includes(run.status));
+      if (items.length === 0) return null;
+      const [title, hint] = c.groups[key];
+      return <section key={key} aria-labelledby={`activity-${key}`} className="rounded-xl border bg-card px-4 py-4 sm:px-5">
+        <h2 id={`activity-${key}`} className="text-lg font-semibold">{title} <span className="tabular-nums text-muted-foreground">({items.length})</span></h2>
+        <p className="text-sm text-muted-foreground">{hint}</p>
+        <ul className="mt-2 divide-y">{items.map(run => row(run, key === 'decision'))}</ul>
+      </section>;
+    })}
+    <p className="flex items-start gap-2 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />{c.footer}</p>
   </div>;
 }

@@ -38,7 +38,7 @@ async function mock(page: Page, locale: 'en' | 'th', body: Record<string, unknow
 
 test('interactive tailor: review proposals, apply one, restore an older CV revision', async ({ page }) => {
   const seen = await mock(page, 'en');
-  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(1).click();
   await page.getByLabel('Interactive').check();
   await page.getByRole('button', { name: 'Tailor CV', exact: true }).click();
   expect(seen.runs[0]).toMatchObject({ operation: 'tailor_cv', tailor_mode: 'interactive' });
@@ -61,14 +61,14 @@ test('interactive tailor: review proposals, apply one, restore an older CV revis
 test('tailor card is Thai and fits 320px', async ({ page }) => {
   await mock(page, 'th');
   await page.setViewportSize({ width: 320, height: 800 });
-  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(1).click();
   await expect(page.getByRole('button', { name: 'ปรับ CV', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test('autopilot result shows the backend stop reason in words', async ({ page }) => {
   await mock(page, 'en', { ...payload, mode: 'autopilot', stop_reason: 'full_coverage' });
-  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(1).click();
   await page.getByRole('button', { name: 'Tailor CV', exact: true }).click();
   await expect(page.getByText('Every required skill is covered')).toBeVisible();
 });

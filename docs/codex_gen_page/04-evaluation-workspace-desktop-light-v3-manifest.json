@@ -1,0 +1,34 @@
+{
+  "page_id": "04",
+  "page": "Evaluation Session Workspace",
+  "version": "v3",
+  "round": "review-led-round2",
+  "status": "superseded-round2-candidate",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "04-evaluation-workspace-desktop-light-v3.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "296b8f774c4595b0d3d5d4df761a8742129f0a6ab43fef1b87f8e88b4907f1dc",
+  "embedded_prompt": true,
+  "handoff": "../04_EVALUATION_WORKSPACE_DESIGN_V3.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Result available / waiting for review"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/04-evaluation-workspace-desktop-light-v2.png",
+  "previous_handoff": "04_EVALUATION_WORKSPACE_DESIGN.md",
+  "previous_version_approved": true,
+  "motion_implemented": false,
+  "pixel_art": true,
+  "generation_mode": "edit",
+  "reference_image_paths": [
+    "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/01-overview-desktop-light-v2.png"
+  ],
+  "selected_for_current_review": false
+}

@@ -12,7 +12,7 @@ const session = { id: sessionId, project_id: projectId, title: 'First synthetic 
 const job = { id: jobId, revision: 1, created_at: '2026-10-01T00:00:00Z', title: 'Synthetic data analyst', company: 'Example Co', source_url: 'https://jobs.example.test/analyst', description: 'Synthetic posting description.' };
 const preview = '**Synthetic Thai experience** <img src=x onerror=alert(1)> Draft is incomplete.';
 
-export async function useSyntheticApplication(page: Page, options: { emptyProjects?: boolean; missingJob?: boolean; unsafeJobSource?: boolean; emptyDocuments?: boolean; sessionErrorOnce?: boolean; projectErrorOnce?: boolean; revisionErrorOnce?: boolean } = {}) {
+export async function useSyntheticApplication(page: Page, options: { admin?: boolean; emptyProjects?: boolean; missingJob?: boolean; unsafeJobSource?: boolean; emptyDocuments?: boolean; sessionErrorOnce?: boolean; projectErrorOnce?: boolean; revisionErrorOnce?: boolean } = {}) {
   let sessionFailuresRemaining = options.sessionErrorOnce ? 1 : 0;
   // StrictMode mounts resources twice during development, so fail both mount requests.
   let projectFailuresRemaining = options.projectErrorOnce ? 1 : 0;
@@ -20,7 +20,7 @@ export async function useSyntheticApplication(page: Page, options: { emptyProjec
   let currentPreferences = { project_id: projectId, locale: 'th', output_language: 'th', notifications_enabled: true, updated_at: '2026-10-01T00:00:00Z' };
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
-    if (path === '/auth/session') { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrf_token: 'synthetic-test-csrf', expires_at: '2030-01-01T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, created_at: '2026-10-01T00:00:00Z' } }) }); return; }
+    if (path === '/auth/session') { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrf_token: 'synthetic-test-csrf', expires_at: '2030-01-01T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, is_admin: options.admin !== false, created_at: '2026-10-01T00:00:00Z' } }) }); return; }
     if (path.endsWith('/runs') || path.endsWith('/approvals') || path.endsWith('/messages')) { await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }); return; }
     if (path === `/projects/${projectId}/sessions` && sessionFailuresRemaining > 0) {
       sessionFailuresRemaining -= 1;

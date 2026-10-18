@@ -1,0 +1,22 @@
+{
+  "page_id": "20",
+  "page": "Account",
+  "version": "v1",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "20-account-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "8f832f29e4ed1bbccb82c44462e1af6b419e73fdfc24306e1e6c80688f0c38ab",
+  "embedded_prompt": true,
+  "handoff": "../20_ACCOUNT_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false
+}

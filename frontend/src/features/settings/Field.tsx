@@ -2,6 +2,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 
 export const selectClass = 'flex min-h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
@@ -20,7 +21,7 @@ export function Notice({ ok, children }: { ok?: boolean; children: ReactNode }) 
 }
 
 export function LoadingBlock({ label }: { label: string }) {
-  return <div role="status"><span className="sr-only">{label}</span><Skeleton className="h-24 w-full" /></div>;
+  return <div role="status" className="grid gap-2"><span className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />{label}</span><Skeleton className="h-24 w-full" /></div>;
 }
 
 export function SectionCard({ title, description, footer, onSubmit, children }: { title: string; description: string; footer?: ReactNode; onSubmit?: (event: FormEvent) => void; children: ReactNode }) {

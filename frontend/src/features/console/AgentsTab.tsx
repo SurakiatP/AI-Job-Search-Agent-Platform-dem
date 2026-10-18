@@ -71,7 +71,7 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
               <option value="1">{c.h1}</option><option value="24">{c.h24}</option><option value="168">{c.d7}</option>
             </select>
           </div>
-          <div><Button type="submit" disabled={busy || caps.length === 0 || gate.blocked} title={gate.title}>{c.create}</Button></div>
+          <div><Button type="submit" busy={busy} disabled={busy || caps.length === 0 || gate.blocked} title={gate.title}>{c.create}</Button></div>
         </form>
       </CardContent>
     </Card>

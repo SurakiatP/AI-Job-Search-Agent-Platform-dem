@@ -80,5 +80,7 @@ test('webhooks section fits 320px in Thai', async ({ page }) => {
   await page.getByRole('button', { name: 'บันทึกแล้ว' }).click();
   await expect(page.getByText('https://hooks.example.test/a-very-long-path', { exact: false })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'a2a.working' })).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const overflow = await page.evaluate(() => ({ width: innerWidth, document: document.documentElement.scrollWidth, elements: [...document.querySelectorAll('main,section,div,form,fieldset,ul,table')].filter(el => el.getBoundingClientRect().width > innerWidth - 16 || el.scrollWidth > el.clientWidth + 2).slice(-35).map(el => ({ tag: el.tagName, class: el.className, width: el.getBoundingClientRect().width, right: el.getBoundingClientRect().right, scroll: el.scrollWidth, client: el.clientWidth })) }));
+  await page.screenshot({ path: '/tmp/jsp-webhook-overflow.png', fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), JSON.stringify(overflow)).toBe(true);
 });

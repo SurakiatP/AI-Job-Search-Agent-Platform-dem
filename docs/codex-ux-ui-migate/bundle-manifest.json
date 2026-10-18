@@ -1,0 +1,754 @@
+{
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "source_checkout": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem",
+  "destination": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex-ux-ui-migate",
+  "selected_pages": 22,
+  "selected_pngs": 22,
+  "page_markdown": 22,
+  "shared_markdown": 6,
+  "generated_readme": true,
+  "application_code_changed": false,
+  "images_byte_identical": true,
+  "markdown_link_adjustments": 69,
+  "local_links_checked": 443,
+  "external_source_reference_count": 24,
+  "pages": [
+    {
+      "page_id": "01",
+      "page": "Overview / Dashboard",
+      "handoff": "01_OVERVIEW_DESIGN_V2.md",
+      "image": "codex_gen_page/01-overview-desktop-light-v2.png",
+      "sha256": "84f648c6ce37b1a3059c15731a2aea2566f3206233c9b08cc167864020d590fd",
+      "version": "v2",
+      "state": "First project / no CV",
+      "pixel_art": true,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/01-overview-desktop-light-v1.png",
+      "previous_version_approved": true
+    },
+    {
+      "page_id": "02",
+      "page": "Job Search Workspace",
+      "handoff": "02_JOB_SEARCH_DESIGN_V4.md",
+      "image": "codex_gen_page/02-job-search-desktop-light-v4.png",
+      "sha256": "90dc83df756a828b094b98fb8ec05380088a930dac8b4a5e6ffbfb5213b05267",
+      "version": "v4",
+      "state": "Results with explicit CV context",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/02-job-search-desktop-light-v1.png",
+      "previous_version_approved": true
+    },
+    {
+      "page_id": "03",
+      "page": "Evaluation Sessions index",
+      "handoff": "03_EVALUATION_SESSIONS_DESIGN_V3.md",
+      "image": "codex_gen_page/03-evaluation-sessions-desktop-light-v3.png",
+      "sha256": "4ccd9dda0b7e2088db0fd9fc8188766c4bb2cd8b2796dff8b419f6db4f10d277",
+      "version": "v3",
+      "state": "Evaluation index with derived run states",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/03-evaluation-sessions-desktop-light-v1.png",
+      "previous_version_approved": true
+    },
+    {
+      "page_id": "04",
+      "page": "Evaluation Session Workspace",
+      "handoff": "04_EVALUATION_WORKSPACE_DESIGN_V4.md",
+      "image": "codex_gen_page/04-evaluation-workspace-desktop-light-v4.png",
+      "sha256": "f74157247991293675acf3610145639ce60b27e520ffc1456439d3f9255e9beb",
+      "version": "v4",
+      "state": "Result available / waiting for review",
+      "pixel_art": true,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/04-evaluation-workspace-desktop-light-v2.png",
+      "previous_version_approved": true
+    },
+    {
+      "page_id": "05",
+      "page": "Applications",
+      "handoff": "05_APPLICATIONS_DESIGN_V2.md",
+      "image": "codex_gen_page/05-applications-list-desktop-light-v2.png",
+      "sha256": "ceeefca63acb57ea76622b53d3c176566e65644a60f58e9218e3b757f9b325db",
+      "version": "v2",
+      "state": "Applications List; Board retained",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/05-applications-list-desktop-light-v1.png",
+      "previous_version_approved": true
+    },
+    {
+      "page_id": "06",
+      "page": "Job Detail",
+      "handoff": "06_JOB_DETAIL_DESIGN_V4.md",
+      "image": "codex_gen_page/06-job-detail-desktop-light-v4.png",
+      "sha256": "6aff57188a2bc2892535f415bee2624a3da999d7718fed7c4b9a85189bed2d25",
+      "version": "v4",
+      "state": "Job detail with calibrated evaluation",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/06-job-detail-desktop-light-v1.png",
+      "previous_version_approved": true
+    },
+    {
+      "page_id": "07",
+      "page": "CV & Experience",
+      "handoff": "07_CV_EXPERIENCE_DESIGN_V3.md",
+      "image": "codex_gen_page/07-cv-experience-desktop-light-v3.png",
+      "sha256": "fa2d172774ff57cf9d49f4722ec4038ec67a162fb4362997b4a933c41c537707",
+      "version": "v3",
+      "state": "CV library with visible reading action",
+      "pixel_art": true,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/07-cv-experience-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "08",
+      "page": "Documents library",
+      "handoff": "08_DOCUMENTS_DESIGN_V2.md",
+      "image": "codex_gen_page/08-documents-desktop-light-v2.png",
+      "sha256": "824fa1ca0cf9813355a98fd1f33d9aa6067e53f83683fc20c1aeecfa1bc24488",
+      "version": "v2",
+      "state": "Documents grouped by useful opportunity labels",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/08-documents-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "09",
+      "page": "Document Detail",
+      "handoff": "09_DOCUMENT_DETAIL_DESIGN_V4.md",
+      "image": "codex_gen_page/09-document-detail-desktop-light-v4.png",
+      "sha256": "9cd5ba60ce332ffafee805a6075822a42b64c7ea7a0ae5134b7b105d0a361a2a",
+      "version": "v4",
+      "state": "Historical document revision inspection",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/09-document-detail-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "10",
+      "page": "Agent Activity / Console",
+      "handoff": "10_AGENT_ACTIVITY_DESIGN_V3.md",
+      "image": "codex_gen_page/10-agent-activity-desktop-light-v3.png",
+      "sha256": "1220016199985ffc1e5e02cc092bf25d0cf10d5bb1fc16360f0b9a62ea19109a",
+      "version": "v3",
+      "state": "Mixed run types with correct destinations",
+      "pixel_art": true,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/10-agent-activity-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "11",
+      "page": "Settings",
+      "handoff": "11_SETTINGS_DESIGN_V2.md",
+      "image": "codex_gen_page/11-settings-desktop-light-v2.png",
+      "sha256": "3a83fb8b726d95bf140edaa2ac32a92666b273090f2d9dbd13bed23b481486bf",
+      "version": "v2",
+      "state": "Scoped Settings with readable AI setup",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/11-settings-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "12",
+      "page": "Projects",
+      "handoff": "12_PROJECTS_DESIGN_V3.md",
+      "image": "codex_gen_page/12-projects-desktop-light-v3.png",
+      "sha256": "5e291157f9101754cd421b7b195a2181ce73057fa9aa457af37f2212294760fd",
+      "version": "v3",
+      "state": "Projects with clear opening target",
+      "pixel_art": true,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/12-projects-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "13",
+      "page": "New Project",
+      "handoff": "13_NEW_PROJECT_DESIGN_V2.md",
+      "image": "codex_gen_page/13-new-project-desktop-light-v2.png",
+      "sha256": "507c07c0e2d6c420f45e0a30d5abdb36512106103044cc2298255ab49fc2dd8e",
+      "version": "v2",
+      "state": "Single-field project creation",
+      "pixel_art": true,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/13-new-project-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "14",
+      "page": "Public Landing",
+      "handoff": "14_LANDING_DESIGN_V3.md",
+      "image": "codex_gen_page/14-landing-desktop-light-v3.png",
+      "sha256": "4a4642cd136d15213c50e760db5779d916528ff77bc7ef565b9fc01d2e8292d5",
+      "version": "v3",
+      "state": "Landing with truthful fixed-source preview",
+      "pixel_art": true,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/14-landing-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "15",
+      "page": "Login",
+      "handoff": "15_LOGIN_DESIGN_V2.md",
+      "image": "codex_gen_page/15-login-desktop-light-v2.png",
+      "sha256": "182469c7bf0e9f9b28b1ff02c8ea879b6780512b5927cedc5c2d0bf31c7affa4",
+      "version": "v2",
+      "state": "Login with consistent shared auth shell",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/15-login-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "16",
+      "page": "Sign Up",
+      "handoff": "16_SIGNUP_DESIGN_V3.md",
+      "image": "codex_gen_page/16-signup-desktop-light-v3.png",
+      "sha256": "9c8f11843101bd3a810ddf00d5c81ce6ee3fd0690e69af5af2d9e819ab2e6970",
+      "version": "v3",
+      "state": "Signup without unsupported promises",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/16-signup-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "17",
+      "page": "Forgot Password",
+      "handoff": "17_FORGOT_PASSWORD_DESIGN_V2.md",
+      "image": "codex_gen_page/17-forgot-password-desktop-light-v2.png",
+      "sha256": "3a38dbde624dbcfb90fab2e7905d1b32f68cceea306c71644b0c0a5e9b2529fb",
+      "version": "v2",
+      "state": "Forgot-password form",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/17-forgot-password-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "18",
+      "page": "Reset Password",
+      "handoff": "18_RESET_PASSWORD_DESIGN_V2.md",
+      "image": "codex_gen_page/18-reset-password-desktop-light-v2.png",
+      "sha256": "c04f86bbc848b26b33b6432fb409ab02efc6fa1d5bc3ef88ceddd42b8ce3614b",
+      "version": "v2",
+      "state": "Reset form with recovery path",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/18-reset-password-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "19",
+      "page": "Verify Email",
+      "handoff": "19_VERIFY_EMAIL_DESIGN_V2.md",
+      "image": "codex_gen_page/19-verify-email-desktop-light-v2.png",
+      "sha256": "0a9375c34ab66e1880406548eb4bbd2cd02e9eba9dc584e6c335f4712a2fcc21",
+      "version": "v2",
+      "state": "Verified with honest session gate",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/19-verify-email-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "20",
+      "page": "Account",
+      "handoff": "20_ACCOUNT_DESIGN_V2.md",
+      "image": "codex_gen_page/20-account-desktop-light-v2.png",
+      "sha256": "0bb7535aaed272d6855e17bb97bc83707b7c28e9c8a7d4090e23e3a559d95682",
+      "version": "v2",
+      "state": "Account with coherent expiry and safe deletion",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/20-account-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "21",
+      "page": "OAuth Consent",
+      "handoff": "21_OAUTH_CONSENT_DESIGN_V4.md",
+      "image": "codex_gen_page/21-oauth-consent-desktop-light-v4.png",
+      "sha256": "87a623a3d6f980b0cf26b4a88d20e58ed21578384ca6e1018968beb3c0772c4c",
+      "version": "v4",
+      "state": "Informed OAuth consent",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/21-oauth-consent-desktop-light-v1.png",
+      "previous_version_approved": false
+    },
+    {
+      "page_id": "22",
+      "page": "Digest Unsubscribe",
+      "handoff": "22_DIGEST_UNSUBSCRIBE_DESIGN_V2.md",
+      "image": "codex_gen_page/22-digest-unsubscribe-desktop-light-v2.png",
+      "sha256": "bcd857f829b542aba186f9b8586e019a0eb865830db275ac04d49d15d262b8e9",
+      "version": "v2",
+      "state": "Digest confirmation without login barrier",
+      "pixel_art": false,
+      "owner_approved": false,
+      "previous_image": "codex_gen_page/22-digest-unsubscribe-desktop-light-v1.png",
+      "previous_version_approved": false
+    }
+  ],
+  "files": [
+    {
+      "path": "01_OVERVIEW_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/01_OVERVIEW_DESIGN_V2.md",
+      "source_sha256": "10e998d591cec404ae52c32f64ec960a4f46daf3abff519c687281f26601621f",
+      "bundled_sha256": "4dc25a7861802b1b960f563a0160fee0ec118b90bae3b12f9ab58c064fad9fe8"
+    },
+    {
+      "path": "02_JOB_SEARCH_DESIGN_V4.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/02_JOB_SEARCH_DESIGN_V4.md",
+      "source_sha256": "aa8aef7dfb60e9bb96079abd81543882463712de14f8bfc505ceca48e0c2c6fd",
+      "bundled_sha256": "09198e7f53f318d2c4bdd04c15a7b4f77ace20df3506a4d37c4d932886dff632"
+    },
+    {
+      "path": "03_EVALUATION_SESSIONS_DESIGN_V3.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/03_EVALUATION_SESSIONS_DESIGN_V3.md",
+      "source_sha256": "78cae01dcd480a81cd5af5b67539456e82ff9654add5e6728a672b8ea65aadd2",
+      "bundled_sha256": "aaa72fa98f4c6f90402af7970f0b54269eff74ff72a443593a66e30f31d5c688"
+    },
+    {
+      "path": "04_EVALUATION_WORKSPACE_DESIGN_V4.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/04_EVALUATION_WORKSPACE_DESIGN_V4.md",
+      "source_sha256": "3375ae4ffa3fb8ee17171e08d5b5e61f931b630abe395cbfbb6c428b360190ef",
+      "bundled_sha256": "786adb89ace20b74b74e0cdedd07baaf8045661da5a4d29610de0844ca0721b7"
+    },
+    {
+      "path": "05_APPLICATIONS_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/05_APPLICATIONS_DESIGN_V2.md",
+      "source_sha256": "126bccceefc426579746f0175453061b27a702a9a32ded62b8e3816626093e86",
+      "bundled_sha256": "92295daa0ddc598f12690cb704b32b609f9a9c92834c5ad8c0fb414b85303071"
+    },
+    {
+      "path": "06_JOB_DETAIL_DESIGN_V4.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/06_JOB_DETAIL_DESIGN_V4.md",
+      "source_sha256": "c859f4ef48a50b5c5cdf571879a6cbb7c8a340a3b08c3eefa1984a142edcea72",
+      "bundled_sha256": "0b8c20255b81cd9dc467718594ade2b0559fe21f9f2d3e3e5cc11a49f58efd5c"
+    },
+    {
+      "path": "07_CV_EXPERIENCE_DESIGN_V3.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/07_CV_EXPERIENCE_DESIGN_V3.md",
+      "source_sha256": "e9a1202e43587241b0fe1f197965f7a78eb5968914125eb920e9fb1da36211b7",
+      "bundled_sha256": "04451af98447f4780a0562f35279c375d1c91ba461b51540b473b9342a0388ec"
+    },
+    {
+      "path": "08_DOCUMENTS_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/08_DOCUMENTS_DESIGN_V2.md",
+      "source_sha256": "2ef279cf33c0422e5c2acf15c7c3e74bb0527e3b71a4cd7b500975419bfbe1d5",
+      "bundled_sha256": "944c4e02180bf3828a6f9cda783402d2091af3ad9de7acff0ce96e1beacbe360"
+    },
+    {
+      "path": "09_DOCUMENT_DETAIL_DESIGN_V4.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/09_DOCUMENT_DETAIL_DESIGN_V4.md",
+      "source_sha256": "b59c8f90985785463ddb64e3401348c0ddffca6ae7fee3d6a29a79efed672164",
+      "bundled_sha256": "f9dd864de7b61c3c76e44a470f0166bba62938b55bfcda2ce568a197bcf8d356"
+    },
+    {
+      "path": "10_AGENT_ACTIVITY_DESIGN_V3.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/10_AGENT_ACTIVITY_DESIGN_V3.md",
+      "source_sha256": "bcb46cbebbd0e30141120c9d05445b4a960b5fefbc543539d30ec88ca9ebc733",
+      "bundled_sha256": "b9c0b4aaece83610fdb03e7a0cd61a12a7021c22a12cadcf8b183f7bcd097bb8"
+    },
+    {
+      "path": "11_SETTINGS_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/11_SETTINGS_DESIGN_V2.md",
+      "source_sha256": "fd8e33457b5bbff89a4fd71583580840015f65f8419c992583835a5f05dbe189",
+      "bundled_sha256": "958b2069b83e6adf579204bd39ed757cff184fef8954b6ccd7f752175d682dc3"
+    },
+    {
+      "path": "12_PROJECTS_DESIGN_V3.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/12_PROJECTS_DESIGN_V3.md",
+      "source_sha256": "85866bd05320622709f1a14cf0f2fe5b9920a8976d568760f7bfd14858caf01e",
+      "bundled_sha256": "d732f18bd04a747bc63068c19bdccb67e95d0261eb0adef5a7659fc9be183032"
+    },
+    {
+      "path": "13_NEW_PROJECT_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/13_NEW_PROJECT_DESIGN_V2.md",
+      "source_sha256": "6ef635858a912295af5b926d43121c881390a22c1eef9a72220fdf487ce6ae2a",
+      "bundled_sha256": "af699148a55db30f027ed52edb281efa6d80821182c334c47062af7236bf4cf2"
+    },
+    {
+      "path": "14_LANDING_DESIGN_V3.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/14_LANDING_DESIGN_V3.md",
+      "source_sha256": "87d311dedc175023ceadbba08da2f3ce89cefe48787b77e8df39f6d0d98ce782",
+      "bundled_sha256": "ab47b5faad61bf45587c126af942f03c181d1b4de64c335a0347e8553d59ce32"
+    },
+    {
+      "path": "15_LOGIN_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/15_LOGIN_DESIGN_V2.md",
+      "source_sha256": "7ff4f64952ce57b9deeb3dea20f4d98b184b2be3e95c98eac8af8e98a642e3f2",
+      "bundled_sha256": "ca389c514ca3ca7ecc5a8274468408b5f295c4d3ab013c2caca6947e57ae5a0e"
+    },
+    {
+      "path": "16_SIGNUP_DESIGN_V3.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/16_SIGNUP_DESIGN_V3.md",
+      "source_sha256": "9593a83c9a878bd290d3c25fff4fbbe39090a47199f9d11e354a4088e4316468",
+      "bundled_sha256": "7b2c6e4489f62c18ec2694c8c8a455d5972f8e0fa04e780bbb8216e7ae6aa248"
+    },
+    {
+      "path": "17_FORGOT_PASSWORD_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/17_FORGOT_PASSWORD_DESIGN_V2.md",
+      "source_sha256": "a1684613bf0906e7f6ac37825e33c2d4b5757624cb947467a078e8047879e009",
+      "bundled_sha256": "d56fc105a9023c2825399f3e8173f133c7b2527b19ace59995b1f61ebfe12444"
+    },
+    {
+      "path": "18_RESET_PASSWORD_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/18_RESET_PASSWORD_DESIGN_V2.md",
+      "source_sha256": "fdfe4789accc20171a2d3c825d1cc501ef6ca73be4388efb59d3d60241bd1c20",
+      "bundled_sha256": "eed3916df52af00ebb6d60174cf52b571d8322a6c0a3c3093c25ed480fa1bf2a"
+    },
+    {
+      "path": "19_VERIFY_EMAIL_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/19_VERIFY_EMAIL_DESIGN_V2.md",
+      "source_sha256": "c162afdbd39ccb7c2951c264c9515cdbb58b35cd23fd069fa636f9af55bd6bd8",
+      "bundled_sha256": "f3e5782f902a1f8af05947a2f6227dcf407e86e4194bbd200e27a1c10f213cbf"
+    },
+    {
+      "path": "20_ACCOUNT_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/20_ACCOUNT_DESIGN_V2.md",
+      "source_sha256": "da50352406f3dd73774d0a7747f14ceee978dd06ef1f41bb944b2712d1294ffc",
+      "bundled_sha256": "5d10bfb3334f35f65068b15290b8334df4f5087066a8ac5a64bfd49a9dd7e862"
+    },
+    {
+      "path": "21_OAUTH_CONSENT_DESIGN_V4.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/21_OAUTH_CONSENT_DESIGN_V4.md",
+      "source_sha256": "43b0c5a27cf14407f35686da7804f9ef913156460f7e88816d6433f7932330aa",
+      "bundled_sha256": "4c5e45fd16f61173a0b385316c9f6100ded2e7aebb91c0c2eae3ffe6264e6cec"
+    },
+    {
+      "path": "22_DIGEST_UNSUBSCRIBE_DESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/22_DIGEST_UNSUBSCRIBE_DESIGN_V2.md",
+      "source_sha256": "cc1dd389bf436f0a0e87070353469e04c5474b3b1924c6f60cea660346bb259c",
+      "bundled_sha256": "7168b2eb0917685a8f1812926abf2b686a9c7d7775ba9fed00008781bf822eba"
+    },
+    {
+      "path": "CODEX_22_PAGE_DESIGN_REVIEW_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/CODEX_22_PAGE_DESIGN_REVIEW_V2.md",
+      "source_sha256": "98760f4b7ca2210e2dce0b642e52c0aa1f2089ca381a84593118ae28fda04670",
+      "bundled_sha256": "16b91bec4a174208b5953b23d49b102a50c9bb61b7285662c8dc78b1267ad472"
+    },
+    {
+      "path": "CODEX_22_PAGE_REVIEW_EVIDENCE_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/CODEX_22_PAGE_REVIEW_EVIDENCE_V2.md",
+      "source_sha256": "f8bbafbb73db6b5c86e1b904a84c7028ab4d4a5a22bcdebcddf818e6cf878065",
+      "bundled_sha256": "f8bbafbb73db6b5c86e1b904a84c7028ab4d4a5a22bcdebcddf818e6cf878065"
+    },
+    {
+      "path": "CODEX_ALL_PAGES_REDESIGN_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/CODEX_ALL_PAGES_REDESIGN_V2.md",
+      "source_sha256": "5e96526aed21b5a54788208abf955011443bcd74793d4d5fb0e475b2bcb9ebc4",
+      "bundled_sha256": "da4d0d5e47c377d38929c90a361c7abc56e203443bbebd44b61de02cbbb1ade8"
+    },
+    {
+      "path": "CODEX_PAGE_DESIGN_CHECKLIST.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/CODEX_PAGE_DESIGN_CHECKLIST.md",
+      "source_sha256": "d9b61653c3a8f3d8a70e20b0a9fd9f0b61514ca4761fa949bf1de2800d1e0ed5",
+      "bundled_sha256": "d9b61653c3a8f3d8a70e20b0a9fd9f0b61514ca4761fa949bf1de2800d1e0ed5"
+    },
+    {
+      "path": "CODEX_PIXEL_MOTION_V2.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/CODEX_PIXEL_MOTION_V2.md",
+      "source_sha256": "75071909b7400e0288a07d897a46d17a83e41c485aba166896791031e2ae5ebf",
+      "bundled_sha256": "75071909b7400e0288a07d897a46d17a83e41c485aba166896791031e2ae5ebf"
+    },
+    {
+      "path": "CODEX_REDESIGN_V2_GALLERY.md",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/CODEX_REDESIGN_V2_GALLERY.md",
+      "source_sha256": "dd0c38c0e20acb918427f2e1f5ed5b2837efb1cd53f07d8ef39cbe1fa3ee3482",
+      "bundled_sha256": "dd0c38c0e20acb918427f2e1f5ed5b2837efb1cd53f07d8ef39cbe1fa3ee3482"
+    },
+    {
+      "path": "codex_gen_page/01-overview-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/01-overview-desktop-light-v2-manifest.json",
+      "source_sha256": "1c572e87fe9c62520e436ff4d1e5754d75f2746d60667ddeee2d984b7d3942bd",
+      "bundled_sha256": "1c572e87fe9c62520e436ff4d1e5754d75f2746d60667ddeee2d984b7d3942bd"
+    },
+    {
+      "path": "codex_gen_page/01-overview-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/01-overview-desktop-light-v2.png",
+      "source_sha256": "84f648c6ce37b1a3059c15731a2aea2566f3206233c9b08cc167864020d590fd",
+      "bundled_sha256": "84f648c6ce37b1a3059c15731a2aea2566f3206233c9b08cc167864020d590fd"
+    },
+    {
+      "path": "codex_gen_page/02-job-search-desktop-light-v4-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/02-job-search-desktop-light-v4-manifest.json",
+      "source_sha256": "f8351923b244bedd98bca2db5506e6a06e681ef450d76dc5d04183b84e32f173",
+      "bundled_sha256": "f8351923b244bedd98bca2db5506e6a06e681ef450d76dc5d04183b84e32f173"
+    },
+    {
+      "path": "codex_gen_page/02-job-search-desktop-light-v4.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/02-job-search-desktop-light-v4.png",
+      "source_sha256": "90dc83df756a828b094b98fb8ec05380088a930dac8b4a5e6ffbfb5213b05267",
+      "bundled_sha256": "90dc83df756a828b094b98fb8ec05380088a930dac8b4a5e6ffbfb5213b05267"
+    },
+    {
+      "path": "codex_gen_page/03-evaluation-sessions-desktop-light-v3-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/03-evaluation-sessions-desktop-light-v3-manifest.json",
+      "source_sha256": "3cdde7366a4546e0bdad59eb8a1c0dd0d3614c3841dc02ca2ed22de48060433d",
+      "bundled_sha256": "3cdde7366a4546e0bdad59eb8a1c0dd0d3614c3841dc02ca2ed22de48060433d"
+    },
+    {
+      "path": "codex_gen_page/03-evaluation-sessions-desktop-light-v3.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/03-evaluation-sessions-desktop-light-v3.png",
+      "source_sha256": "4ccd9dda0b7e2088db0fd9fc8188766c4bb2cd8b2796dff8b419f6db4f10d277",
+      "bundled_sha256": "4ccd9dda0b7e2088db0fd9fc8188766c4bb2cd8b2796dff8b419f6db4f10d277"
+    },
+    {
+      "path": "codex_gen_page/04-evaluation-workspace-desktop-light-v4-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/04-evaluation-workspace-desktop-light-v4-manifest.json",
+      "source_sha256": "5efa81de107f931bf37c1a4c1d4111c73cf5bd4ac5dd200c7e761421bd738915",
+      "bundled_sha256": "5efa81de107f931bf37c1a4c1d4111c73cf5bd4ac5dd200c7e761421bd738915"
+    },
+    {
+      "path": "codex_gen_page/04-evaluation-workspace-desktop-light-v4.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/04-evaluation-workspace-desktop-light-v4.png",
+      "source_sha256": "f74157247991293675acf3610145639ce60b27e520ffc1456439d3f9255e9beb",
+      "bundled_sha256": "f74157247991293675acf3610145639ce60b27e520ffc1456439d3f9255e9beb"
+    },
+    {
+      "path": "codex_gen_page/05-applications-list-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/05-applications-list-desktop-light-v2-manifest.json",
+      "source_sha256": "71327b993d3db7adb5dbd51c9addeb87fcd8e34cad0eb29caff32e76ce0d208f",
+      "bundled_sha256": "71327b993d3db7adb5dbd51c9addeb87fcd8e34cad0eb29caff32e76ce0d208f"
+    },
+    {
+      "path": "codex_gen_page/05-applications-list-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/05-applications-list-desktop-light-v2.png",
+      "source_sha256": "ceeefca63acb57ea76622b53d3c176566e65644a60f58e9218e3b757f9b325db",
+      "bundled_sha256": "ceeefca63acb57ea76622b53d3c176566e65644a60f58e9218e3b757f9b325db"
+    },
+    {
+      "path": "codex_gen_page/06-job-detail-desktop-light-v4-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/06-job-detail-desktop-light-v4-manifest.json",
+      "source_sha256": "096f0179fe8c9adc94c7c3e21c899de1e87dd44269bf4dabf711f8115d65173c",
+      "bundled_sha256": "096f0179fe8c9adc94c7c3e21c899de1e87dd44269bf4dabf711f8115d65173c"
+    },
+    {
+      "path": "codex_gen_page/06-job-detail-desktop-light-v4.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/06-job-detail-desktop-light-v4.png",
+      "source_sha256": "6aff57188a2bc2892535f415bee2624a3da999d7718fed7c4b9a85189bed2d25",
+      "bundled_sha256": "6aff57188a2bc2892535f415bee2624a3da999d7718fed7c4b9a85189bed2d25"
+    },
+    {
+      "path": "codex_gen_page/07-cv-experience-desktop-light-v3-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/07-cv-experience-desktop-light-v3-manifest.json",
+      "source_sha256": "73cb3bb2784eb75c257edd2c1a31d4bb9661d0dc8da47f7e73d7ba239a9229d2",
+      "bundled_sha256": "73cb3bb2784eb75c257edd2c1a31d4bb9661d0dc8da47f7e73d7ba239a9229d2"
+    },
+    {
+      "path": "codex_gen_page/07-cv-experience-desktop-light-v3.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/07-cv-experience-desktop-light-v3.png",
+      "source_sha256": "fa2d172774ff57cf9d49f4722ec4038ec67a162fb4362997b4a933c41c537707",
+      "bundled_sha256": "fa2d172774ff57cf9d49f4722ec4038ec67a162fb4362997b4a933c41c537707"
+    },
+    {
+      "path": "codex_gen_page/08-documents-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/08-documents-desktop-light-v2-manifest.json",
+      "source_sha256": "d451328c7d0e514a4ab9f3cec2822537fc4a93b7253aecdd656236b24a916075",
+      "bundled_sha256": "d451328c7d0e514a4ab9f3cec2822537fc4a93b7253aecdd656236b24a916075"
+    },
+    {
+      "path": "codex_gen_page/08-documents-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/08-documents-desktop-light-v2.png",
+      "source_sha256": "824fa1ca0cf9813355a98fd1f33d9aa6067e53f83683fc20c1aeecfa1bc24488",
+      "bundled_sha256": "824fa1ca0cf9813355a98fd1f33d9aa6067e53f83683fc20c1aeecfa1bc24488"
+    },
+    {
+      "path": "codex_gen_page/09-document-detail-desktop-light-v4-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/09-document-detail-desktop-light-v4-manifest.json",
+      "source_sha256": "6405768fc6aa3c506a5a65a3ac8b0cde4656abb95c9b260eed26b6d10144a6a9",
+      "bundled_sha256": "6405768fc6aa3c506a5a65a3ac8b0cde4656abb95c9b260eed26b6d10144a6a9"
+    },
+    {
+      "path": "codex_gen_page/09-document-detail-desktop-light-v4.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/09-document-detail-desktop-light-v4.png",
+      "source_sha256": "9cd5ba60ce332ffafee805a6075822a42b64c7ea7a0ae5134b7b105d0a361a2a",
+      "bundled_sha256": "9cd5ba60ce332ffafee805a6075822a42b64c7ea7a0ae5134b7b105d0a361a2a"
+    },
+    {
+      "path": "codex_gen_page/10-agent-activity-desktop-light-v3-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/10-agent-activity-desktop-light-v3-manifest.json",
+      "source_sha256": "a79fefa1312204e594a65aa731c59571dd327568f9bc9ce89cb5c80cb5774f83",
+      "bundled_sha256": "a79fefa1312204e594a65aa731c59571dd327568f9bc9ce89cb5c80cb5774f83"
+    },
+    {
+      "path": "codex_gen_page/10-agent-activity-desktop-light-v3.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/10-agent-activity-desktop-light-v3.png",
+      "source_sha256": "1220016199985ffc1e5e02cc092bf25d0cf10d5bb1fc16360f0b9a62ea19109a",
+      "bundled_sha256": "1220016199985ffc1e5e02cc092bf25d0cf10d5bb1fc16360f0b9a62ea19109a"
+    },
+    {
+      "path": "codex_gen_page/11-settings-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/11-settings-desktop-light-v2-manifest.json",
+      "source_sha256": "72351751709064c96c9e7ae1153a4a6f8da078522f470544deb9f78d6b1d2a75",
+      "bundled_sha256": "72351751709064c96c9e7ae1153a4a6f8da078522f470544deb9f78d6b1d2a75"
+    },
+    {
+      "path": "codex_gen_page/11-settings-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/11-settings-desktop-light-v2.png",
+      "source_sha256": "3a83fb8b726d95bf140edaa2ac32a92666b273090f2d9dbd13bed23b481486bf",
+      "bundled_sha256": "3a83fb8b726d95bf140edaa2ac32a92666b273090f2d9dbd13bed23b481486bf"
+    },
+    {
+      "path": "codex_gen_page/12-projects-desktop-light-v3-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/12-projects-desktop-light-v3-manifest.json",
+      "source_sha256": "2523660247fb1fe932933421a63080c39e91b4cf5cfa6056704890d828464acd",
+      "bundled_sha256": "2523660247fb1fe932933421a63080c39e91b4cf5cfa6056704890d828464acd"
+    },
+    {
+      "path": "codex_gen_page/12-projects-desktop-light-v3.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/12-projects-desktop-light-v3.png",
+      "source_sha256": "5e291157f9101754cd421b7b195a2181ce73057fa9aa457af37f2212294760fd",
+      "bundled_sha256": "5e291157f9101754cd421b7b195a2181ce73057fa9aa457af37f2212294760fd"
+    },
+    {
+      "path": "codex_gen_page/13-new-project-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/13-new-project-desktop-light-v2-manifest.json",
+      "source_sha256": "53ba5e7035f02a8e480ce9f84d6cecc6dec57412b5299e1d950847f7ce0b54cc",
+      "bundled_sha256": "53ba5e7035f02a8e480ce9f84d6cecc6dec57412b5299e1d950847f7ce0b54cc"
+    },
+    {
+      "path": "codex_gen_page/13-new-project-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/13-new-project-desktop-light-v2.png",
+      "source_sha256": "507c07c0e2d6c420f45e0a30d5abdb36512106103044cc2298255ab49fc2dd8e",
+      "bundled_sha256": "507c07c0e2d6c420f45e0a30d5abdb36512106103044cc2298255ab49fc2dd8e"
+    },
+    {
+      "path": "codex_gen_page/14-landing-desktop-light-v3-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/14-landing-desktop-light-v3-manifest.json",
+      "source_sha256": "32d0cdf470bf10f584920b354857ab19c61bb6cc3420e6b91b2d249342ddc9a4",
+      "bundled_sha256": "32d0cdf470bf10f584920b354857ab19c61bb6cc3420e6b91b2d249342ddc9a4"
+    },
+    {
+      "path": "codex_gen_page/14-landing-desktop-light-v3.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/14-landing-desktop-light-v3.png",
+      "source_sha256": "4a4642cd136d15213c50e760db5779d916528ff77bc7ef565b9fc01d2e8292d5",
+      "bundled_sha256": "4a4642cd136d15213c50e760db5779d916528ff77bc7ef565b9fc01d2e8292d5"
+    },
+    {
+      "path": "codex_gen_page/15-login-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/15-login-desktop-light-v2-manifest.json",
+      "source_sha256": "ebc0f7de6c13c40e4f6e898bd7a6f645658b6c1447981b19e2e4c4aa13857d66",
+      "bundled_sha256": "ebc0f7de6c13c40e4f6e898bd7a6f645658b6c1447981b19e2e4c4aa13857d66"
+    },
+    {
+      "path": "codex_gen_page/15-login-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/15-login-desktop-light-v2.png",
+      "source_sha256": "182469c7bf0e9f9b28b1ff02c8ea879b6780512b5927cedc5c2d0bf31c7affa4",
+      "bundled_sha256": "182469c7bf0e9f9b28b1ff02c8ea879b6780512b5927cedc5c2d0bf31c7affa4"
+    },
+    {
+      "path": "codex_gen_page/16-signup-desktop-light-v3-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/16-signup-desktop-light-v3-manifest.json",
+      "source_sha256": "df5d2c85bc4408148748222fc06c8c100f0452e8993d8c5fb19b2a9ecffabe51",
+      "bundled_sha256": "df5d2c85bc4408148748222fc06c8c100f0452e8993d8c5fb19b2a9ecffabe51"
+    },
+    {
+      "path": "codex_gen_page/16-signup-desktop-light-v3.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/16-signup-desktop-light-v3.png",
+      "source_sha256": "9c8f11843101bd3a810ddf00d5c81ce6ee3fd0690e69af5af2d9e819ab2e6970",
+      "bundled_sha256": "9c8f11843101bd3a810ddf00d5c81ce6ee3fd0690e69af5af2d9e819ab2e6970"
+    },
+    {
+      "path": "codex_gen_page/17-forgot-password-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/17-forgot-password-desktop-light-v2-manifest.json",
+      "source_sha256": "316bb5a33105f03191a76bae4e031a43631fad631c7db7762eb0960696a19a24",
+      "bundled_sha256": "316bb5a33105f03191a76bae4e031a43631fad631c7db7762eb0960696a19a24"
+    },
+    {
+      "path": "codex_gen_page/17-forgot-password-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/17-forgot-password-desktop-light-v2.png",
+      "source_sha256": "3a38dbde624dbcfb90fab2e7905d1b32f68cceea306c71644b0c0a5e9b2529fb",
+      "bundled_sha256": "3a38dbde624dbcfb90fab2e7905d1b32f68cceea306c71644b0c0a5e9b2529fb"
+    },
+    {
+      "path": "codex_gen_page/18-reset-password-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/18-reset-password-desktop-light-v2-manifest.json",
+      "source_sha256": "cd3c04865f1bcbab5ada75ad682469f4c848a4d35ec72fb1d69bb8d83b553903",
+      "bundled_sha256": "cd3c04865f1bcbab5ada75ad682469f4c848a4d35ec72fb1d69bb8d83b553903"
+    },
+    {
+      "path": "codex_gen_page/18-reset-password-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/18-reset-password-desktop-light-v2.png",
+      "source_sha256": "c04f86bbc848b26b33b6432fb409ab02efc6fa1d5bc3ef88ceddd42b8ce3614b",
+      "bundled_sha256": "c04f86bbc848b26b33b6432fb409ab02efc6fa1d5bc3ef88ceddd42b8ce3614b"
+    },
+    {
+      "path": "codex_gen_page/19-verify-email-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/19-verify-email-desktop-light-v2-manifest.json",
+      "source_sha256": "bc6f6dad3978d528c22263afb1a6015989d4c5d923aab671e97821786ac9805e",
+      "bundled_sha256": "bc6f6dad3978d528c22263afb1a6015989d4c5d923aab671e97821786ac9805e"
+    },
+    {
+      "path": "codex_gen_page/19-verify-email-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/19-verify-email-desktop-light-v2.png",
+      "source_sha256": "0a9375c34ab66e1880406548eb4bbd2cd02e9eba9dc584e6c335f4712a2fcc21",
+      "bundled_sha256": "0a9375c34ab66e1880406548eb4bbd2cd02e9eba9dc584e6c335f4712a2fcc21"
+    },
+    {
+      "path": "codex_gen_page/20-account-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/20-account-desktop-light-v2-manifest.json",
+      "source_sha256": "8e7db4c32e6887713070e4225365184b6493507fb4e0ba7207ba2840fea5e001",
+      "bundled_sha256": "8e7db4c32e6887713070e4225365184b6493507fb4e0ba7207ba2840fea5e001"
+    },
+    {
+      "path": "codex_gen_page/20-account-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/20-account-desktop-light-v2.png",
+      "source_sha256": "0bb7535aaed272d6855e17bb97bc83707b7c28e9c8a7d4090e23e3a559d95682",
+      "bundled_sha256": "0bb7535aaed272d6855e17bb97bc83707b7c28e9c8a7d4090e23e3a559d95682"
+    },
+    {
+      "path": "codex_gen_page/21-oauth-consent-desktop-light-v4-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/21-oauth-consent-desktop-light-v4-manifest.json",
+      "source_sha256": "89b048e25acd2d19d43a2244ca3b191155f5427715241b4bf061f690c2caba16",
+      "bundled_sha256": "89b048e25acd2d19d43a2244ca3b191155f5427715241b4bf061f690c2caba16"
+    },
+    {
+      "path": "codex_gen_page/21-oauth-consent-desktop-light-v4.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/21-oauth-consent-desktop-light-v4.png",
+      "source_sha256": "87a623a3d6f980b0cf26b4a88d20e58ed21578384ca6e1018968beb3c0772c4c",
+      "bundled_sha256": "87a623a3d6f980b0cf26b4a88d20e58ed21578384ca6e1018968beb3c0772c4c"
+    },
+    {
+      "path": "codex_gen_page/22-digest-unsubscribe-desktop-light-v2-manifest.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/22-digest-unsubscribe-desktop-light-v2-manifest.json",
+      "source_sha256": "e70e5693f3f8f6bc19c590150dbcb2710413c406bc8e603d5e3a761c85ac8759",
+      "bundled_sha256": "e70e5693f3f8f6bc19c590150dbcb2710413c406bc8e603d5e3a761c85ac8759"
+    },
+    {
+      "path": "codex_gen_page/22-digest-unsubscribe-desktop-light-v2.png",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/22-digest-unsubscribe-desktop-light-v2.png",
+      "source_sha256": "bcd857f829b542aba186f9b8586e019a0eb865830db275ac04d49d15d262b8e9",
+      "bundled_sha256": "bcd857f829b542aba186f9b8586e019a0eb865830db275ac04d49d15d262b8e9"
+    },
+    {
+      "path": "codex_gen_page/review-scores-round2-2026-10-17.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/review-scores-round2-2026-10-17.json",
+      "source_sha256": "c30934936b449e57f3c1d7f73efb2db8bf39be5aab98c58f9e8c0ac03590f477",
+      "bundled_sha256": "c30934936b449e57f3c1d7f73efb2db8bf39be5aab98c58f9e8c0ac03590f477"
+    },
+    {
+      "path": "codex_gen_page/review-snapshot-round2-2026-10-17.json",
+      "source": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/review-snapshot-round2-2026-10-17.json",
+      "source_sha256": "8f157fc741e36f1fc738f6795ae3610566584c990e61ac27003567687f690133",
+      "bundled_sha256": "8f157fc741e36f1fc738f6795ae3610566584c990e61ac27003567687f690133"
+    },
+    {
+      "path": "README.md",
+      "bundled_sha256": "99a78895689cfbb43ea5cfbb8a0d35191a8e56cfbe22036dc066a3bee8a733ca"
+    }
+  ]
+}

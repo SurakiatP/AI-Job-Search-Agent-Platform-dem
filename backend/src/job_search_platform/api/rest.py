@@ -43,6 +43,7 @@ from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, 
 from job_search_platform.services.runs import actor_scope
 from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
 from job_search_platform.integrations.gateway import GatewaySettings
+from job_search_platform.services.accounts import require_admin
 
 router = APIRouter()
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -1185,7 +1186,8 @@ async def health_ready(request: Request, services: Services = Depends(get_servic
 
 
 @router.get("/gateway", response_model=GatewayStatusView)
-async def gateway_status(actor=Depends(owner_actor)):
+async def gateway_status(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(require_admin, services.sessions, actor.user_id)  # operator-only: internal gateway URL and models
     return await GatewaySettings.from_env().status()
 
 

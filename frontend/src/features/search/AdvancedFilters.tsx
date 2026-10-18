@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,13 +61,14 @@ export function Presets({ locale, get, setMany }: { locale: 'th' | 'en'; get: (k
   </div>;
 }
 
-export function AdvancedFilters({ locale, get, setMany, facets, number }: {
+export function AdvancedFilters({ locale, get, setMany, facets, number, additionalCount = 0, children }: {
   locale: 'th' | 'en'; get: (k: string) => string; setMany: (changes: Record<string, string>) => void; facets?: AdvFacets; number: Intl.NumberFormat;
+  additionalCount?: number; children?: ReactNode;
 }) {
   const c = copy[locale];
   const [open, setOpen] = useState(false);
   const [skillInput, setSkillInput] = useState('');
-  const count = advancedCount(get);
+  const count = advancedCount(get) + additionalCount;
   const skills = splitList(get('skills'));
   const toggle = (key: string, value: string) => {
     const list = splitList(get(key));
@@ -136,6 +137,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number }: {
           <p className="text-xs text-muted-foreground">{c.salaryHint}</p>
         </div>
       </div>
+      {children}
     </div>}
   </div>;
 }

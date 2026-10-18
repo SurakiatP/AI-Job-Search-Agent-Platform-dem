@@ -1,0 +1,35 @@
+{
+  "page_id": "19",
+  "page": "Verify Email",
+  "version": "v2",
+  "round": "review-led-round2",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "19-verify-email-desktop-light-v2.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "0a9375c34ab66e1880406548eb4bbd2cd02e9eba9dc584e6c335f4712a2fcc21",
+  "embedded_prompt": true,
+  "handoff": "../19_VERIFY_EMAIL_DESIGN_V2.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Verified with honest session gate"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/19-verify-email-desktop-light-v1.png",
+  "previous_handoff": "19_VERIFY_EMAIL_DESIGN.md",
+  "previous_version_approved": false,
+  "motion_implemented": false,
+  "generation_mode": "edit",
+  "reference_image_paths": [
+    "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/17-forgot-password-desktop-light-v2.png"
+  ],
+  "pixel_art_specified": false,
+  "animation_asset_generated": false,
+  "selected_for_current_review": true
+}

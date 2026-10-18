@@ -33,7 +33,7 @@ test('experience bank groups facts, adds and removes, and shows extraction resul
   await useSyntheticApplication(page);
   await bank(page, { items: [fact('a', 'Built Airflow pipelines'), fact('b', 'Ran BigQuery')], provider_configured: true,
     extraction: { run_id: 'r1', status: 'completed', cv_id: cv.id, summary: { added: 2, duplicates: 1, rejected: 1 } } });
-  await page.goto(`/app/projects/${projectId}/profile`);
+  await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
   const section = page.getByRole('region', { name: 'Experience bank' });
   await expect(section.getByRole('heading', { name: 'Data Engineer · SCB · 2022–2024' })).toBeVisible();
   await expect(section.getByText('From CV: Data CV').first()).toBeVisible();
@@ -50,7 +50,7 @@ test('experience bank empty states and Thai at 320px', async ({ page }) => {
   await useSyntheticApplication(page);
   await bank(page, { items: [], extraction: null, provider_configured: false });
   await page.setViewportSize({ width: 320, height: 800 });
-  await page.goto(`/app/projects/${projectId}/profile`);
+  await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
   const section = page.getByRole('region', { name: 'คลังประสบการณ์' });
   await expect(section.getByText('ยังไม่ได้ตั้งค่า AI gateway')).toBeVisible();
   await expect(section.getByRole('link', { name: 'ไปที่การตั้งค่า' })).toHaveAttribute('href', '/app/settings?section=gateway');
@@ -70,11 +70,15 @@ test('a new CV version refreshes the bank to the queued extraction', async ({ pa
     return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(current.latest_revision) });
   });
   await page.goto(`/app/projects/${projectId}/profile`);
+  await page.getByRole('tab', { name: 'Experience bank' }).click();
   const section = page.getByRole('region', { name: 'Experience bank' });
   await expect(section.getByRole('button', { name: 'Extract experience', exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'CV library' }).click();
   const chooser = page.waitForEvent('filechooser');
   await page.locator('button', { hasText: 'Upload new version' }).click();
   await (await chooser).setFiles({ name: 'cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic CV') });
+  await expect(page.getByRole('status').filter({ hasText: 'Extracting facts' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Experience bank' }).click();
   await expect(section.getByRole('status')).toContainText('Waiting to extract experience from your CV');
 });
 
@@ -89,12 +93,12 @@ test('each CV card can start an extraction for that CV', async ({ page }) => {
     return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'r-other', status: 'queued' }) });
   });
   await page.goto(`/app/projects/${projectId}/profile`);
-  const section = page.getByRole('region', { name: 'Experience bank' });
-  await expect(section.getByRole('button', { name: 'Extract from CV again' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Extract facts: Older CV' })).toBeVisible();
   const request = page.waitForRequest(r => r.method() === 'POST' && r.url().endsWith(`/cvs/${other.id}/experience-runs`));
-  await page.getByRole('button', { name: 'Extract experience: Older CV' }).click();
+  await page.getByRole('button', { name: 'Extract facts: Older CV' }).click();
   await request;
-  await expect(section.getByRole('status')).toContainText('Waiting to extract experience from your CV');
+  await page.getByRole('tab', { name: 'Experience bank' }).click();
+  await expect(page.getByRole('region', { name: 'Experience bank' }).getByRole('status')).toContainText('Waiting to extract experience from your CV');
   await page.setViewportSize({ width: 320, height: 800 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
@@ -107,7 +111,7 @@ test('a failed bank load offers a retry', async ({ page }) => {
   await page.route(`**/api/v1/projects/${projectId}/experience`, route => failures-- > 0
     ? route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'internal_error' } }) })
     : route.fallback());
-  await page.goto(`/app/projects/${projectId}/profile`);
+  await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
   const section = page.getByRole('region', { name: 'Experience bank' });
   await expect(section.getByRole('alert')).toContainText('Could not load the experience bank');
   await section.getByRole('button', { name: 'Retry' }).click();

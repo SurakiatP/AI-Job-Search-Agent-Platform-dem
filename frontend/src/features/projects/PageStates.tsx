@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { EmptyState } from '../../components/EmptyState';
 import { Button } from '../../components/ui/button';
 import { Skeleton } from '../../components/ui/skeleton';
+import { Spinner } from '../../components/ui/spinner';
 
 export function LoadingState() {
   const { t } = useTranslation();
   return <div className="mx-auto grid max-w-3xl gap-4 py-4" role="status" aria-live="polite">
-    <span className="sr-only">{t('pages.loading', { defaultValue: 'Loading…' })}</span>
+    <span className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />{t('pages.loading', { defaultValue: 'Loading…' })}</span>
     <Skeleton className="h-8 w-1/3" />
     <Skeleton className="h-24 w-full" />
     <Skeleton className="h-24 w-full" />

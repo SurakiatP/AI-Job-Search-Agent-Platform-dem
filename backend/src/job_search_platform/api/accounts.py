@@ -59,6 +59,7 @@ class AccountView(_Body):
     email: str
     locale: Literal["th", "en"]
     email_verified: bool
+    is_admin: bool = False
     created_at: datetime
 
 
