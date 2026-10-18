@@ -28,6 +28,7 @@ const NewProjectPage = lazy(() => import('../features/projects/NewProjectPage').
 const SearchPage = lazy(() => import('../features/search/SearchPage').then(module => ({ default: module.SearchPage })));
 const SettingsPage = lazy(() => import('../features/settings/SettingsPage').then(module => ({ default: module.SettingsPage })));
 const ConsentPage = lazy(() => import('../features/oauth/ConsentPage').then(module => ({ default: module.ConsentPage })));
+const DocsPage = lazy(() => import('../features/docs/DocsPage').then(module => ({ default: module.DocsPage })));
 const AccountPage = lazy(() => import('../features/account/AccountPage').then(module => ({ default: module.AccountPage })));
 const DigestUnsubscribePage = lazy(() => import('../features/digest/UnsubscribePage').then(module => ({ default: module.DigestUnsubscribePage })));
 const ForgotPasswordPage = lazy(() => import('../features/auth/AuthPages').then(module => ({ default: module.ForgotPasswordPage })));
@@ -121,6 +122,7 @@ function RouteLoading() {
 export function AppRoutes() {
   return <Suspense fallback={<RouteLoading />}><Routes>
     <Route path="/" element={<LandingPage />} />
+    <Route path="/docs" element={<DocsPage />} />
     <Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route path="/verify-email" element={<VerifyEmailPage />} /><Route path="/digest/unsubscribe" element={<DigestUnsubscribePage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route element={<OwnerGate />}><Route path="/app" element={<AppStart />} /><Route path="/app/search" element={<AppSearchStart />} />

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -8,11 +8,67 @@ import { Input } from '../../components/ui/input';
 import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog';
 import { PasswordInput } from '../../components/PasswordInput';
 import { Label } from '../../components/ui/label';
-import { apiRequest, deleteAccount, logout, resendVerification, sendDeletionCode, useAccount } from '../../lib/api';
+import { apiRequest, chooseAvatarPreset, deleteAccount, logout, refreshOwnerSession, removeAvatar, resendVerification, sendDeletionCode, uploadAvatar, useAccount } from '../../lib/api';
+import { Avatar, AVATAR_PRESETS, PresetArt } from '../../components/Avatar';
 import { CodeInput } from '../../components/CodeInput';
 import { ApiError, type AccountAgent } from '../../lib/api-types';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
+
+const avatarCopy = {
+  th: { title: 'รูปโปรไฟล์', hint: 'แสดงที่มุมขวาบนทุกหน้า ถ้าไม่ใส่รูป จะใช้ตัวอักษรแรกของอีเมล หรือเลือกรูปสำเร็จรูปด้านล่าง', upload: 'อัปโหลดรูป', remove: 'ลบรูปที่อัปโหลด', choose: 'หรือเลือกรูปสำเร็จรูป', rule: 'PNG, JPEG หรือ WebP ขนาดไม่เกิน 256 KB',
+    tooBig: 'ไฟล์ใหญ่เกิน 256 KB ลองย่อรูปก่อน', badType: 'ใช้ได้เฉพาะ PNG, JPEG หรือ WebP', failed: 'บันทึกรูปไม่สำเร็จ ลองอีกครั้ง', saved: 'บันทึกรูปแล้ว',
+    names: { compass: 'เข็มทิศ', briefcase: 'กระเป๋าเอกสาร', spark: 'ประกาย', mountain: 'ภูเขา' } },
+  en: { title: 'Profile picture', hint: 'Shown at the top right of every page. Without a picture we use the first letter of your email, or pick a built-in one below.', upload: 'Upload a picture', remove: 'Remove uploaded picture', choose: 'Or choose a built-in picture', rule: 'PNG, JPEG or WebP, up to 256 KB',
+    tooBig: 'That file is over 256 KB. Make it smaller first.', badType: 'Only PNG, JPEG or WebP can be used.', failed: 'Could not save the picture. Try again.', saved: 'Picture saved',
+    names: { compass: 'Compass', briefcase: 'Briefcase', spark: 'Spark', mountain: 'Mountain' } },
+};
+
+function AvatarSection() {
+  const { i18n } = useTranslation();
+  const account = useAccount();
+  const c = avatarCopy[i18n.language.startsWith('th') ? 'th' : 'en'];
+  const input = useRef<HTMLInputElement>(null);
+  const [state, setState] = useState<{ kind: 'idle' | 'busy' | 'ok' | 'error'; text?: string }>({ kind: 'idle' });
+  if (!account) return null;
+  async function run(action: () => Promise<void>) {
+    setState({ kind: 'busy' });
+    try { await action(); await refreshOwnerSession(); setState({ kind: 'ok', text: c.saved }); } catch { setState({ kind: 'error', text: c.failed }); }
+  }
+  function pick(file: File | undefined) {
+    if (input.current) input.current.value = '';
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { setState({ kind: 'error', text: c.badType }); return; }
+    if (file.size > 262_144) { setState({ kind: 'error', text: c.tooBig }); return; }
+    void run(() => uploadAvatar(file));
+  }
+  const busy = state.kind === 'busy';
+  return <Card>
+    <CardHeader><CardTitle className="text-lg">{c.title}</CardTitle></CardHeader>
+    <CardContent className="grid gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <Avatar account={account} size={72} />
+        <div className="grid min-w-0 gap-2">
+          <p className="max-w-prose text-sm text-muted-foreground">{c.hint}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" tabIndex={-1} aria-label={c.upload} onChange={event => pick(event.target.files?.[0])} />
+            <Button type="button" variant="outline" size="sm" busy={busy} disabled={busy} onClick={() => input.current?.click()}>{c.upload}</Button>
+            {account.has_avatar_image && <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void run(removeAvatar)}>{c.remove}</Button>}
+            <span className="text-xs text-muted-foreground">{c.rule}</span>
+          </div>
+        </div>
+      </div>
+      <fieldset className="grid gap-2" disabled={busy}>
+        <legend className="mb-1 text-sm font-medium">{c.choose}</legend>
+        <div className="flex flex-wrap gap-3">{AVATAR_PRESETS.map(preset => <label key={preset} className="grid cursor-pointer justify-items-center gap-1 text-xs">
+          <input type="radio" name="avatar-preset" className="peer sr-only" checked={!account.has_avatar_image && account.avatar_preset === preset} onChange={() => void run(() => chooseAvatarPreset(preset))} aria-label={c.names[preset]} />
+          <span className="block size-14 overflow-hidden rounded-full ring-offset-2 ring-offset-background transition peer-checked:ring-2 peer-checked:ring-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring"><PresetArt preset={preset} /></span>{c.names[preset]}
+        </label>)}</div>
+      </fieldset>
+      <p role={state.kind === 'error' ? 'alert' : 'status'} className={`min-h-5 text-sm ${state.kind === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>{state.text}</p>
+    </CardContent>
+  </Card>;
+}
 
 function EmailSection() {
   const { t } = useTranslation();
@@ -151,6 +207,7 @@ export function AccountPage() {
       <Button type="button" variant="outline" onClick={() => void logout()}>{t('auth.logout')}</Button>
     </div>
     <EmailSection />
+    <AvatarSection />
     <AgentsSection />
     <Card className="border-destructive/50">
       <CardHeader><CardTitle className="text-lg">{t('account.dangerSection')}</CardTitle><CardDescription>{t('account.dangerBody')}</CardDescription></CardHeader>

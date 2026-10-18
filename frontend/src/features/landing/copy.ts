@@ -6,6 +6,7 @@ const th = {
   signup: 'เริ่มใช้งาน',
   login: 'เข้าสู่ระบบ',
   openApp: 'เปิดแอป',
+  docs: 'คู่มือ',
   secondary: 'ดูวิธีทำงาน',
   noSubmit: 'ไม่ส่งใบสมัครอัตโนมัติ คุณตรวจเองและสมัครเองทุกครั้ง',
   demo: {
@@ -76,6 +77,7 @@ const en: typeof th = {
   signup: 'Get started',
   login: 'Log in',
   openApp: 'Open app',
+  docs: 'Docs',
   secondary: 'See how it works',
   noSubmit: 'No automatic submission. You review everything and apply yourself.',
   demo: {

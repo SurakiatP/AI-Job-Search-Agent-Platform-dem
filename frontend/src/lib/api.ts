@@ -110,6 +110,9 @@ export const unsubscribeDigest = (token: string) => authRequest<void>('/digest/u
 export const resendVerification = () => authRequest<{ status: 'check_email' }>('/auth/resend-verification');
 export const forgotPassword = (email: string) => authRequest<{ status: 'check_email' }>('/auth/password/forgot', { email });
 export const resetPassword = (token: string, password: string) => authRequest<void>('/auth/password/reset', { token, password });
+export const uploadAvatar = (file: File) => apiRequest<void>('/account/avatar', { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: file });
+export const removeAvatar = () => apiRequest<void>('/account/avatar', { method: 'DELETE' });
+export const chooseAvatarPreset = (preset: string) => apiRequest<void>('/account/avatar-preset', { method: 'PUT', body: JSON.stringify({ preset }) });
 export const getAccount = () => apiRequest<Account>('/account');
 export const listAccountAgents = () => apiRequest<AccountAgent[]>('/account/agents');
 export const sendDeletionCode = () => apiRequest<{ status: 'check_email' }>('/account/delete-code', { method: 'POST' });

@@ -22,6 +22,7 @@ export function LandingPage() {
     : status === 'loading' ? null : <Button asChild size={size}><Link to="/signup">{size === 'sm' ? c.signup : c.cta}</Link></Button>;
   return <div className="landing text-foreground">
     <Header actions={<>
+      <Button asChild size="sm" variant="ghost"><Link to="/docs">{c.docs}</Link></Button>
       {cta('sm')}
       {status !== 'ready' && status !== 'loading' && <Button asChild size="sm" variant="outline"><Link to="/login">{c.login}</Link></Button>}
     </>} />
