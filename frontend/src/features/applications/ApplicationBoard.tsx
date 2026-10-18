@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, ChevronRight, Columns3, List, Search } from 'lucide-react';
+import { ArrowRight, ChevronRight, Columns3, GripVertical, List, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -55,6 +55,9 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
   const [stageFilter, setStageFilter] = useState<ApplicationStage | ''>('');
   const [sort, setSort] = useState<'recent' | 'title'>('recent');
   const [moved, setMoved] = useState<{ card: ApplicationCardView; from: ApplicationStage } | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overStage, setOverStage] = useState<ApplicationStage | null>(null);
+  const inFlight = useRef(0);
   const visibleCards = optimisticCards ?? cards;
   const dateFormat = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
 
@@ -72,8 +75,32 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
     setSearchParams(next, { replace: true });
   }
 
+  // Keeps the board in step with the server (other tabs, connected assistants): refresh while visible, never mid-drag or mid-save.
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible' && !dragId && inFlight.current === 0) onChanged(); };
+    const timer = window.setInterval(refresh, 15000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
+  }, [dragId, onChanged]);
+
+  // Drop zones for a stage: native drag and drop, so no new dependency; the menu and select stay for keyboard and touch.
+  const zone = (stage: ApplicationStage) => ({
+    'data-drop-stage': stage,
+    onDragOver: (event: DragEvent) => { if (!dragId) return; event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setOverStage(stage); },
+    onDragLeave: (event: DragEvent) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOverStage(current => (current === stage ? null : current)); },
+    onDrop: (event: DragEvent) => {
+      event.preventDefault();
+      const id = event.dataTransfer.getData('text/plain') || dragId;
+      const card = visibleCards.find(entry => entry.job_revision_id === id);
+      setDragId(null); setOverStage(null);
+      if (card && card.stage !== stage) void move(card, stage);
+    },
+  });
+  const zoneClass = (stage: ApplicationStage) => cn('transition-colors', overStage === stage && 'bg-accent ring-2 ring-primary');
+
   async function move(card: ApplicationCardView, stage: ApplicationStage, isUndo = false) {
     setError(false);
+    inFlight.current += 1;
     const before = visibleCards;
     setOptimisticCards(before.map(item => item.job_revision_id === card.job_revision_id ? { ...item, stage, last_activity_at: new Date().toISOString() } : item));
     try {
@@ -83,15 +110,19 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
     } catch {
       setOptimisticCards(before);
       setError(true);
-    }
+    } finally { inFlight.current -= 1; }
   }
 
   const updatedLabel = (value: string) => {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? '' : t('updated', { date: dateFormat.format(date) });
   };
-  const item = (card: ApplicationCardView) => <div key={card.job_revision_id} className="min-w-0 rounded-md border border-border bg-card px-3 py-2.5">
-    <div className="flex min-w-0 items-start gap-2">
+  const item = (card: ApplicationCardView) => <div key={card.job_revision_id} draggable data-card={card.job_revision_id}
+    onDragStart={event => { event.dataTransfer.setData('text/plain', card.job_revision_id); event.dataTransfer.effectAllowed = 'move'; setDragId(card.job_revision_id); }}
+    onDragEnd={() => { setDragId(null); setOverStage(null); }}
+    className={cn('min-w-0 cursor-grab rounded-md border border-border bg-card px-3 py-2.5 shadow-sm transition-[opacity,box-shadow] active:cursor-grabbing hover:shadow', dragId === card.job_revision_id && 'opacity-40')}>
+    <div className="flex min-w-0 items-start gap-1">
+      <GripVertical className="mt-0.5 size-4 shrink-0 text-muted-foreground/60 max-md:hidden" aria-hidden="true" />
       <div className="min-w-0 flex-1">
         <Link className="block break-words font-medium leading-snug text-foreground hover:text-primary hover:underline" to={`/app/projects/${projectId}/jobs/${card.job_revision_id}`}>{card.title}</Link>
         {card.company && <p className="mt-0.5 break-words text-sm text-muted-foreground">{card.company}</p>}
@@ -153,18 +184,22 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
         {shown.map(card => <OpportunityRow key={card.job_revision_id} projectId={projectId} card={card} locale={locale} onMove={(row, stage) => void move(row, stage)} updatedLabel={updatedLabel} />)}
       </ul>
     </section> : <div className="grid min-w-0 gap-4" aria-label={t('boardLabel')}>
+      <p className="text-xs text-muted-foreground max-md:hidden">{t('dragHint')}</p>
       <div className="grid min-w-0 gap-4 md:grid-flow-col md:auto-cols-[minmax(15rem,1fr)] md:overflow-x-auto md:pb-2">
         {ACTIVE_STAGES.map(stage => {
           const inStage = shown.filter(card => card.stage === stage);
-          return <section key={stage} aria-labelledby={`stage-${stage}`} className="grid min-w-0 content-start gap-3 rounded-lg bg-muted/40 p-3">
+          return <section key={stage} aria-labelledby={`stage-${stage}`} {...zone(stage)} className={cn('grid min-w-0 content-start gap-3 rounded-lg bg-muted/40 p-3', zoneClass(stage))}>
             <h2 id={`stage-${stage}`} className="flex items-center justify-between gap-2 text-sm font-semibold">{stageLabel[stage][locale]}<span className="font-normal text-muted-foreground">{inStage.length}</span></h2>
-            {inStage.length ? inStage.map(item) : <p className="text-xs text-muted-foreground">{t('noApplications')}</p>}
+            {inStage.length ? inStage.map(item) : <p className="rounded-md border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">{dragId ? t('dropHere') : t('noApplications')}</p>}
           </section>;
         })}
       </div>
       <section aria-labelledby="closed-stage-heading" className="min-w-0 rounded-lg bg-muted/40 p-3">
         <h2 id="closed-stage-heading"><button type="button" aria-expanded={closedOpen} onClick={() => setClosedOpen(value => !value)} className="flex min-h-10 w-full items-center justify-between gap-2 text-start text-sm font-semibold">{t('closedStages')} ({closed.length})<span aria-hidden="true">{closedOpen ? '−' : '+'}</span></button></h2>
-        {closedOpen && <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{closed.map(item)}</div>}
+        {(closedOpen || dragId) && <div className="mt-3 grid gap-3">
+          {dragId && <div className="grid gap-2 sm:grid-cols-2">{CLOSED_STAGES.map(stage => <div key={stage} {...zone(stage)} className={cn('rounded-md border border-dashed px-3 py-4 text-center text-sm font-medium', zoneClass(stage))}>{t('dropTo', { stage: stageLabel[stage][locale] })}</div>)}</div>}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{closed.map(item)}</div>
+        </div>}
       </section>
     </div>}
   </div>;

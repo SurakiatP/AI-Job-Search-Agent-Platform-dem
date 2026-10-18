@@ -120,5 +120,8 @@
   "noRelatedDocumentsNext": "Documents you prepare for this job appear here.",
   "logEmail": "Log email",
   "saveNote": "Save note",
-  "saveEmail": "Save email"
+  "saveEmail": "Save email",
+  "dragHint": "Drag a card to another column to change its stage. It is saved right away; this only tracks your application and does not contact the employer.",
+  "dropHere": "Drop here",
+  "dropTo": "Drop to move to {{stage}}"
 }
