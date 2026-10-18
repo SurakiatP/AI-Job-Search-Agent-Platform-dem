@@ -26,6 +26,7 @@ from sqlalchemy.orm import sessionmaker
 from job_search_platform.api.dependencies import Services
 from job_search_platform.integrations import logging as jsp_logging
 from job_search_platform.db.models import (
+    User,
     Approval, CVRevision, ConversationSession, Document, DocumentRevision, Grant, JobRevision, Message, Project, Run, RunArtifact, StoredFile,
 )
 from job_search_platform.integrations.hermes_runtime import ParsedInput
@@ -720,10 +721,14 @@ REMOVED_ROUTES = (("get", "/providers"), ("get", "/settings/provider"), ("put", 
 
 
 @pytest.mark.integration
-def test_provider_routes_are_gone_and_gateway_status_is_owner_only(api_context):
+def test_provider_routes_are_gone_and_gateway_status_is_admin_only(api_context, monkeypatch):
     client = api_context.client
     csrf = _owner(api_context)
     headers = _write_headers(csrf)
+    assert client.get("/api/v1/gateway").status_code == 403  # signed in, but not listed in ADMIN_EMAILS
+    with api_context.sessions() as db:
+        email = db.get(User, api_context.user_id).email
+    monkeypatch.setenv("ADMIN_EMAILS", f" Other@example.test , {email.upper()} ")
     for method, path in REMOVED_ROUTES:
         assert getattr(client, method)("/api/v1" + path, headers=headers).status_code in (404, 405)
     owner_view = client.get("/api/v1/gateway")

@@ -134,3 +134,15 @@ def test_agents_show_oauth_client_host(api_context):
                      capabilities=["results:read"], expires_at=datetime.now(timezone.utc) + timedelta(days=1), label="Synthetic"))
     agents = api_context.client.get("/api/v1/account/agents").json()
     assert [a["client_id_host"] for a in agents] == ["client.example.test"]
+
+
+@pytest.mark.integration
+def test_is_admin_comes_only_from_admin_emails(ctx, monkeypatch):
+    first = verified_login(ctx)
+    assert first.json()["user"]["is_admin"] is False
+    assert ctx.client.get("/api/v1/gateway").status_code == 403
+    monkeypatch.setenv("ADMIN_EMAILS", "somebody-else@example.test")
+    assert ctx.client.get("/api/v1/account").json()["is_admin"] is False
+    monkeypatch.setenv("ADMIN_EMAILS", "Other@example.test, ALICE@example.test")
+    assert ctx.client.get("/api/v1/account").json()["is_admin"] is True
+    assert ctx.client.get("/api/v1/gateway").status_code == 200
