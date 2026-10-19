@@ -511,7 +511,7 @@ export function SearchPage() {
   const catLabel = (slug: string) => categoryLabel(locale, slug);
   // Thai app: a posting listed in Thai provinces shows their Thai names; anything else keeps the source text.
   const provinceTh = useMemo(() => new Map((facetsRes.data?.cities ?? []).map(f => [f.value, f.name_th ?? f.value])), [facetsRes.data]);
-  const placeOf = (job: JobSearchItem) => { const names = locale === 'th' ? job.cities.map(v => provinceTh.get(v)).filter(Boolean) : []; return names.length ? names.join(', ') : job.location; };
+  const placeOf = (job: JobSearchItem) => { const names = locale === 'th' ? (job.cities ?? []).map(v => provinceTh.get(v)).filter(Boolean) : []; return names.length ? names.join(', ') : job.location; };
   const saves = useSavedJobs(projectId);
   const detailCv = cv?.latest_revision ? { name: cv.name, revision: cv.latest_revision.revision } : undefined;
   const detail = (job: JobSearchItem) => <JobDetail job={job} place={placeOf(job)} c={c} projectId={projectId} scored={smartActive} tSearch={tSearch} cv={smartActive ? detailCv : undefined} saves={saves} ranking={ranking} />;
