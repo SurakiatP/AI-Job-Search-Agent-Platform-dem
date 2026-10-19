@@ -14,6 +14,10 @@ class Mail:
     text: str
 
 
+# SMTP_PROVIDER presets (port 587 with STARTTLS); the account needs an app password.
+PROVIDERS = {"gmail": "smtp.gmail.com", "outlook": "smtp-mail.outlook.com"}
+
+
 @dataclass
 class SmtpMailer:
     host: str
@@ -25,12 +29,20 @@ class SmtpMailer:
 
     @classmethod
     def from_env(cls) -> "SmtpMailer | None":
-        host = os.environ.get("SMTP_HOST")
+        provider = os.environ.get("SMTP_PROVIDER", "").strip().lower()
+        if provider and provider not in PROVIDERS:
+            raise ValueError("smtp_provider_unknown")
+        host = os.environ.get("SMTP_HOST") or (PROVIDERS[provider] if provider else None)
         if not host:
             return None
-        return cls(host, int(os.environ.get("SMTP_PORT", "587")), os.environ.get("SMTP_USERNAME") or None,
-                   os.environ.get("SMTP_PASSWORD") or None,
-                   os.environ.get("SMTP_FROM", "no-reply@localhost"),
+        username = os.environ.get("SMTP_USERNAME") or None
+        password = os.environ.get("SMTP_PASSWORD") or None
+        if not password and os.environ.get("SMTP_PASSWORD_FILE"):
+            with open(os.path.expanduser(os.environ["SMTP_PASSWORD_FILE"]), encoding="utf-8") as handle:
+                password = "".join(handle.read().split())  # Google shows app passwords in groups of four
+        # Gmail and Outlook only send as the signed-in address.
+        sender = os.environ.get("SMTP_FROM") or (username if provider else None) or "no-reply@localhost"
+        return cls(host, int(os.environ.get("SMTP_PORT", "587")), username, password or None, sender,
                    os.environ.get("SMTP_STARTTLS", "true").lower() == "true")
 
     def send(self, mail: Mail) -> None:

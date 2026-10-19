@@ -62,6 +62,7 @@ class DeleteAccountRequest(_Body):
 
 class CheckEmailView(_Body):
     status: Literal["check_email"]
+    mail_enabled: bool  # server-wide: false when no SMTP is set up, so no message was sent to anyone
 
 
 class AccountView(_Body):
@@ -112,7 +113,8 @@ class TelegramLinkView(_Body):
     expires_at: datetime
 
 
-CHECK_EMAIL = {"status": "check_email"}
+def _check_email(services: Services) -> dict:
+    return {"status": "check_email", "mail_enabled": services.accounts.mailer is not None}
 
 
 def _ip(request: Request) -> str:
@@ -122,7 +124,7 @@ def _ip(request: Request) -> str:
 @router.post("/auth/signup", status_code=202, response_model=CheckEmailView)
 async def signup(body: SignupRequest, request: Request, services: Services = Depends(get_services)):
     await asyncio.to_thread(services.accounts.signup, body.email, body.password, body.locale, _ip(request))
-    return CHECK_EMAIL
+    return _check_email(services)
 
 
 @router.post("/auth/verify-email", status_code=204)
@@ -176,7 +178,7 @@ async def put_avatar_preset(body: AvatarPresetRequest, actor=Depends(write_actor
 @router.post("/account/delete-code", status_code=202, response_model=CheckEmailView)
 async def send_deletion_code(actor=Depends(write_actor), services: Services = Depends(get_services)):
     await asyncio.to_thread(services.accounts.send_deletion_code, actor.user_id)
-    return CHECK_EMAIL
+    return _check_email(services)
 
 
 @router.post("/digest/unsubscribe", status_code=204)
@@ -188,7 +190,7 @@ async def digest_unsubscribe(body: TokenRequest, request: Request, services: Ser
 @router.post("/auth/resend-verification", status_code=202, response_model=CheckEmailView)
 async def resend_verification(actor=Depends(owner_actor), services: Services = Depends(get_services)):
     await asyncio.to_thread(services.accounts.resend_verification, actor.user_id)
-    return CHECK_EMAIL
+    return _check_email(services)
 
 
 @router.post("/auth/login", response_model=LoginView)
@@ -227,7 +229,7 @@ async def logout(request: Request, actor=Depends(write_actor), services: Service
 @router.post("/auth/password/forgot", status_code=202, response_model=CheckEmailView)
 async def forgot_password(body: ForgotPasswordRequest, services: Services = Depends(get_services)):
     await asyncio.to_thread(services.accounts.forgot_password, body.email)
-    return CHECK_EMAIL
+    return _check_email(services)
 
 
 @router.post("/auth/password/reset", status_code=204)

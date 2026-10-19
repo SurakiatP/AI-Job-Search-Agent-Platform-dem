@@ -2392,9 +2392,10 @@ components:
     CheckEmailView:
       type: object
       additionalProperties: false
-      required: [status]
+      required: [status, mail_enabled]
       properties:
         status: {type: string, enum: [check_email]}
+        mail_enabled: {type: boolean, description: 'Server-wide. False when no SMTP is set up, so no message was sent to anyone.'}
     AccountView:
       type: object
       additionalProperties: false

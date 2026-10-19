@@ -103,19 +103,20 @@ export async function logout(): Promise<void> {
   csrfToken = null;
   setSession({ status: 'anonymous' });
 }
-export const signup = (email: string, password: string, locale: 'th' | 'en') => authRequest<{ status: 'check_email' }>('/auth/signup', { email, password, locale });
+export type CheckEmail = { status: 'check_email'; mail_enabled?: boolean };
+export const signup = (email: string, password: string, locale: 'th' | 'en') => authRequest<CheckEmail>('/auth/signup', { email, password, locale });
 export const verifyEmail = (token: string) => authRequest<void>('/auth/verify-email', { token });
 export const verifyEmailCode = (email: string, code: string) => authRequest<void>('/auth/verify-email/code', { email, code });
 export const unsubscribeDigest = (token: string) => authRequest<void>('/digest/unsubscribe', { token });
-export const resendVerification = () => authRequest<{ status: 'check_email' }>('/auth/resend-verification');
-export const forgotPassword = (email: string) => authRequest<{ status: 'check_email' }>('/auth/password/forgot', { email });
+export const resendVerification = () => authRequest<CheckEmail>('/auth/resend-verification');
+export const forgotPassword = (email: string) => authRequest<CheckEmail>('/auth/password/forgot', { email });
 export const resetPassword = (token: string, password: string) => authRequest<void>('/auth/password/reset', { token, password });
 export const uploadAvatar = (file: File) => apiRequest<void>('/account/avatar', { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: file });
 export const removeAvatar = () => apiRequest<void>('/account/avatar', { method: 'DELETE' });
 export const chooseAvatarPreset = (preset: string) => apiRequest<void>('/account/avatar-preset', { method: 'PUT', body: JSON.stringify({ preset }) });
 export const getAccount = () => apiRequest<Account>('/account');
 export const listAccountAgents = () => apiRequest<AccountAgent[]>('/account/agents');
-export const sendDeletionCode = () => apiRequest<{ status: 'check_email' }>('/account/delete-code', { method: 'POST' });
+export const sendDeletionCode = () => apiRequest<CheckEmail>('/account/delete-code', { method: 'POST' });
 export async function deleteAccount(password: string, confirmEmail: string, code: string): Promise<void> {
   await apiRequest<void>('/account', { method: 'DELETE', body: JSON.stringify({ password, confirm_email: confirmEmail, code }) });
   csrfToken = null; // caller reloads the app, which drops all session state
