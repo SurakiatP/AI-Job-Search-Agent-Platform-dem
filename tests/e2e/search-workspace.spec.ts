@@ -348,3 +348,21 @@ test('the location list shows Thai provinces in the app language', async ({ page
     await expect(options.filter({ hasText: other })).toHaveCount(0);
   }
 });
+
+test('every list filter reaches the search request, and clearing removes it', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await installSearchFixture(page);
+  const seen: string[] = [];
+  page.on('request', r => { const u = new URL(r.url()); if (u.pathname.endsWith('/job-search')) seen.push(u.search); });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/app/projects/${projectId}/search`);
+  await expect(page.locator('#job-city')).toBeVisible();
+  await page.locator('#job-city').selectOption('Chiang Mai');
+  await expect.poll(() => seen.some(s => s.includes('cities=Chiang+Mai'))).toBe(true);
+  await page.getByLabel('Work mode', { exact: true }).selectOption('remote');
+  await expect.poll(() => seen.some(s => s.includes('cities=Chiang+Mai') && s.includes('work_mode=remote'))).toBe(true);
+  await page.getByRole('button', { name: /Clear filters|Clear all/ }).first().click();
+  const before = seen.length;
+  await expect.poll(() => seen.length).toBeGreaterThan(before - 1);
+  await expect.poll(() => /cities=|work_mode=/.test(seen[seen.length - 1] ?? '')).toBe(false);
+});

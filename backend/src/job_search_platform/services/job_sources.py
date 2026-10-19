@@ -20,7 +20,7 @@ DESCRIPTION_MAX = 50000
 STALE_AFTER_DAYS = 60
 RETRIEVE = ["slug", "title", "company", "location", "cities", "work_mode", "skills", "category", "posted_at",
             "posted_ts", "source_url", "description_markdown", "reality_stale", "missed_runs"]
-FACETS = ["category", "province", "seniority", "employment_type", "company_type", "skills", "posting_language"]
+FACETS = ["category", "provinces", "seniority", "employment_type", "company_type", "skills", "posting_language"]
 
 
 def _search(payload: dict) -> dict:
@@ -138,9 +138,11 @@ def build_filter(*, cities=(), work_mode=None, posted_within_days=None, category
     def one(field, value):
         return [f"{field} = {q(value)}"] if value else []
 
-    def places(values):  # a province name or alias also matches rows indexed by province code
+    def places(values):  # a province name or alias matches by province code (same as the facet count); other values by city
         codes = sorted({code for code in map(jd.province_code, values) if code})
-        return [f"(province IN [{', '.join(q(c) for c in codes)}] OR cities IN [{', '.join(q(v) for v in values)}])"] if codes else many("cities", values)
+        rest = [v for v in values if not jd.province_code(v)]
+        parts = ([f"provinces IN [{', '.join(q(c) for c in codes)}]"] if codes else []) + ([f"cities IN [{', '.join(q(v) for v in rest)}]"] if rest else [])
+        return [parts[0] if len(parts) == 1 else f"({' OR '.join(parts)})"] if parts else []
 
     return [*places(cities), *one("work_mode", work_mode),
             *([f"posted_ts >= {int(now.timestamp()) - posted_within_days * 86400}"] if posted_within_days else []),
@@ -198,7 +200,7 @@ def job_facets(*, now=None) -> dict:
     except ServiceError:
         new_7d = None
     return {"total": total, "categories": _top(facets.get("category"), 12),
-            "cities": _provinces(facets.get("province")), "seniority": _top(facets.get("seniority"), 12),
+            "cities": _provinces(facets.get("provinces")), "seniority": _top(facets.get("seniority"), 12),
             "employment_type": _top(facets.get("employment_type"), 12),
             "company_type": _top(facets.get("company_type"), 12), "skills": _top(facets.get("skills"), 20),
             "thai_postings": thai if isinstance(thai, int) and not isinstance(thai, bool) else 0,

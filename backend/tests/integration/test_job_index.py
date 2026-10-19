@@ -202,10 +202,10 @@ def test_document_shape_and_posted_ts_fallback():
     d = job_index.to_document(p, ["lever"])
     assert d["posted_ts"] == int(T0.timestamp()) and d["posted_at"] is None
     assert d["description_markdown"] == "" and d["sources"] == ["lever"] and d["id"] == p.id and d["missed_runs"] == 1
-    assert d["province"] == "TH-10"  # no stored province: found from the listed city
+    assert d["provinces"] == ["TH-10"]  # no stored province: found from the listed city
     assert set(d) == {"id", "slug", "title", "company", "location", "cities", "work_mode", "skills", "category",
                       "posted_at", "posted_ts", "seniority", "employment_type", "company_type", "posting_language",
-                      "salary_thb_month_min", "source_url", "description_markdown", "reality_stale", "missed_runs", "province", "sources"}
+                      "salary_thb_month_min", "source_url", "description_markdown", "reality_stale", "missed_runs", "provinces", "sources"}
 
 
 def _touch(sessions, slug, at):

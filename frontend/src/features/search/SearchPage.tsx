@@ -365,7 +365,7 @@ export function SearchPage() {
     if (mode) search.set('work_mode', mode);
     if (posted) search.set('posted_within_days', posted);
     if (category) search.set('category', category);
-    if (smartActive && city) search.set('cities', city);
+    if (city) search.set('cities', city);
     ADV_KEYS.forEach((key, i) => { const v = advKey.split('|')[i]; if (v) search.set(key, v); });
     if (!smartActive) search.set('limit', String(PAGE_SIZE));
     search.set('offset', String(offset));
