@@ -1,0 +1,93 @@
+"""Resume data helpers and the three Typst templates (TC-CVB-04/06, template render checks)."""
+from __future__ import annotations
+
+import asyncio
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from resume_samples import english_short, thai_long  # noqa: E402
+from job_search_platform.services import resume as rs  # noqa: E402
+
+IMAGE_ID = Path.home() / ".cache/job-search-platform/hermes-image-build/image-id"
+
+
+def _luminance(hexcode: str) -> float:
+    def channel(value: int) -> float:
+        c = value / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (int(hexcode[i:i + 2], 16) for i in (1, 3, 5))
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+
+
+def test_accents_pass_wcag_aa_on_white_both_ways():
+    for name, hexcode in rs.ACCENTS.items():
+        ratio = (1.0 + 0.05) / (_luminance(hexcode) + 0.05)
+        assert ratio >= 4.5, (name, round(ratio, 2))
+
+
+def test_tc_cvb_06_plain_text_and_facts_skip_references_and_hidden_sections():
+    data = rs.ResumeData.model_validate(thai_long())
+    data.sections.projects.hidden = True
+    text = rs.plain_text(data, "th")
+    assert "สมหญิง" not in text and "referee@example.test" not in text
+    assert "ระบบพยากรณ์ยอดขาย" not in text and "ประสบการณ์ทำงาน" in text
+    facts = rs.bank_facts(data, "th")
+    assert facts and not any("สมหญิง" in fact["text"] for fact in facts)
+    assert all(1 <= len(fact["text"]) <= 1000 for fact in facts)
+
+
+def test_order_keeps_every_section_once():
+    data = rs.ResumeData.model_validate({"order": ["skills", "summary"]})
+    assert data.order[:2] == ["skills", "summary"] and sorted(data.order) == sorted(rs.SECTIONS)
+
+
+def _docker_ready() -> bool:
+    if not IMAGE_ID.exists() or shutil.which("docker") is None:
+        return False
+    return subprocess.run(["docker", "info"], capture_output=True, timeout=20).returncode == 0
+
+
+@pytest.mark.skipif(not _docker_ready(), reason="needs Docker and the built Hermes image")
+@pytest.mark.parametrize("template", sorted(rs.TEMPLATES))
+@pytest.mark.parametrize("sample,lang", [(thai_long, "th"), (english_short, "en")])
+def test_template_renders_a_pdf_with_every_heading(template, sample, lang, tmp_path):
+    from job_search_platform.integrations.hermes_runtime import HermesRuntime
+
+    runtime = HermesRuntime(IMAGE_ID.read_text().strip())
+    data = rs.ResumeData.model_validate(sample())
+    pdf = asyncio.run(runtime.render_typst(rs.render_bundle(data, template, "teal", lang)))
+    assert pdf.startswith(b"%PDF-")
+    path = tmp_path / "cv.pdf"
+    path.write_bytes(pdf)
+    pdftotext = shutil.which("pdftotext") or "/opt/homebrew/bin/pdftotext"
+    if not os.path.exists(pdftotext):
+        pytest.skip("pdftotext not installed")
+    text = subprocess.run([pdftotext, str(path), "-"], capture_output=True, text=True).stdout
+    labels = rs.LABELS[lang]
+    for name in data.order:
+        section_items = [] if name == "summary" else getattr(data.sections, name).items
+        if (name == "summary" and data.summary.content) or section_items:
+            assert labels[name] in text, (template, name)
+    assert data.basics.email in text
+
+
+def test_tc_cvb_08_edits_land_only_in_summary_and_bullets():
+    data = rs.ResumeData.model_validate(thai_long())
+    first = data.sections.experience.items[0].highlights[0]
+    edits = [{"find": first, "text": first + "\n- ใช้ Python วิเคราะห์ข้อมูล", "evidence_ids": []},
+             {"find": "", "text": "- นำเสนอผลต่อผู้บริหาร", "evidence_ids": []},
+             {"find": "สมชาย ตัวอย่าง", "text": "คนอื่น", "evidence_ids": []},
+             {"find": "บริษัท ตัวอย่าง จำกัด", "text": "บริษัทอื่น", "evidence_ids": []},
+             {"find": "2023-01", "text": "2019-01", "evidence_ids": []}]
+    new, placed, unplaced = rs.apply_text_edits(data, edits)
+    highlights = new.sections.experience.items[0].highlights
+    assert highlights[0] == first and highlights[1] == "ใช้ Python วิเคราะห์ข้อมูล"
+    assert highlights[-1] == "นำเสนอผลต่อผู้บริหาร" and len(placed) == 2 and len(unplaced) == 3
+    assert new.basics == data.basics and new.sections.experience.items[0].company == "บริษัท ตัวอย่าง จำกัด"
+    assert new.sections.experience.items[0].start == "2023-01"

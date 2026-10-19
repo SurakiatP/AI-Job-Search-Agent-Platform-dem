@@ -24,6 +24,8 @@ LIMITS: dict[str, tuple[int, int]] = {
     "digest_unsubscribe_ip": (30, 3600),
     "oauth_register_ip": (20, 3600),
     "oauth_authorize_ip": (60, 3600),
+    "resume_draft_save": (60, 60),  # CV builder autosave, per user
+    "resume_preview": (20, 60),
 }
 RETENTION = timedelta(hours=24)
 

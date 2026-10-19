@@ -947,6 +947,122 @@ paths:
               required: [file]
               properties: {file: {type: string, format: binary}, name: {type: string, maxLength: 120}}
       responses: {'201': {description: Created CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}}
+  /resume-templates:
+    get:
+      tags: [files]
+      description: Owner-only list of CV builder templates (id, ats_safe) and the 6 accent colours (id, hex).
+      responses:
+        '200': {description: Templates and accents}
+  /projects/{project_id}/cvs/builder:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [files]
+      description: Owner-only. Creates a CV with an empty builder draft, or one filled from the live experience bank when from_experience is true.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/BuilderCreate'}}}
+      responses:
+        '201': {description: New CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}
+  /projects/{project_id}/cvs/{cv_id}/draft:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, description: CV id, schema: {type: string, format: uuid}}
+    get:
+      tags: [files]
+      description: Owner-only builder draft of a CV (resume_data, template_id, accent, document_language, ats_safe, updated_at). 404 when the CV has no draft.
+      responses:
+        '200': {description: Draft}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      tags: [files]
+      description: >-
+        Owner-only autosave. resume_data is validated (unknown keys, links other than http/https/mailto, dates other than YYYY or YYYY-MM,
+        more than 50 items per section, 20 highlights per item, texts over 1000 characters, 200 KB in total) and refused 422 resume_invalid
+        with fields.path. updated_at must equal the stored value, else 409 draft_conflict. Rate limit resume_draft_save 60 per minute.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DraftUpdate'}}}
+      responses:
+        '200': {description: Saved draft}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: draft_conflict}
+        '422': {description: resume_invalid}
+  /projects/{project_id}/cvs/{cv_id}/draft/preview:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. Renders the saved draft with its template in the network-disabled sandbox and returns the PDF (not stored). 502 render_failed leaves the draft unchanged. Rate limit resume_preview 20 per minute.
+      responses:
+        '200': {description: PDF, content: {application/pdf: {}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '502': {description: render_failed}
+  /projects/{project_id}/cvs/{cv_id}/draft/publish:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only "save as new version": renders the draft and creates a CV revision (PDF file, resume_data, resume_style) in one transaction; for a CV also the CV text (no references) and the owner facts of this CV in the experience bank.
+        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 502 render_failed writes nothing.
+      responses:
+        '201': {description: New revision}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: draft_conflict or document_busy}
+        '422': {description: resume_incomplete}
+        '502': {description: render_failed}
+  /projects/{project_id}/documents/{document_id}/draft:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: document_id, in: path, required: true, description: tailored document id, schema: {type: string, format: uuid}}
+    get:
+      tags: [files]
+      description: Owner-only builder draft of a tailored document (resume_data, template_id, accent, document_language, ats_safe, updated_at). 404 when the tailored document has no draft.
+      responses:
+        '200': {description: Draft}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      tags: [files]
+      description: >-
+        Owner-only autosave. resume_data is validated (unknown keys, links other than http/https/mailto, dates other than YYYY or YYYY-MM,
+        more than 50 items per section, 20 highlights per item, texts over 1000 characters, 200 KB in total) and refused 422 resume_invalid
+        with fields.path. updated_at must equal the stored value, else 409 draft_conflict. Rate limit resume_draft_save 60 per minute.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DraftUpdate'}}}
+      responses:
+        '200': {description: Saved draft}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: draft_conflict}
+        '422': {description: resume_invalid}
+  /projects/{project_id}/documents/{document_id}/draft/preview:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: document_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. Renders the saved draft with its template in the network-disabled sandbox and returns the PDF (not stored). 502 render_failed leaves the draft unchanged. Rate limit resume_preview 20 per minute.
+      responses:
+        '200': {description: PDF, content: {application/pdf: {}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '502': {description: render_failed}
+  /projects/{project_id}/documents/{document_id}/draft/publish:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: document_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only "save as new version": renders the draft and creates a document revision in one transaction.
+        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 502 render_failed writes nothing.
+      responses:
+        '201': {description: New revision}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: draft_conflict or document_busy}
+        '422': {description: resume_incomplete}
+        '502': {description: render_failed}
   /projects/{project_id}/cvs/{cv_id}:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -1588,7 +1704,7 @@ components:
       additionalProperties: false
       required: [kind, text]
       properties:
-        kind: {type: string, enum: [experience, education, skill, certification, project, other]}
+        kind: {type: string, enum: [experience, education, skill, certification, project, other, award, publication, volunteer, interest, language]}
         text: {type: string, minLength: 1, maxLength: 1000}
         role: {anyOf: [{type: string, maxLength: 200}, {type: 'null'}]}
         organization: {anyOf: [{type: string, maxLength: 200}, {type: 'null'}]}
@@ -1854,6 +1970,24 @@ components:
             file_id: {type: [string, 'null'], format: uuid}
             skill_profile_ready: {type: boolean, default: false}
             skill_count: {type: [integer, 'null'], minimum: 0}
+    BuilderCreate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+        from_experience: {type: boolean, default: false}
+        document_language: {type: string, enum: [th, en], default: th}
+    DraftUpdate:
+      type: object
+      additionalProperties: false
+      required: [resume_data, template_id, accent, document_language, updated_at]
+      properties:
+        resume_data: {type: object, additionalProperties: true}
+        template_id: {type: string, enum: [onyx, kakuna, ditgar]}
+        accent: {type: string, enum: [indigo, blue, teal, green, rose, slate]}
+        document_language: {type: string, enum: [th, en]}
+        updated_at: {type: string, format: date-time}
     CVUpdate:
       type: object
       additionalProperties: false
@@ -1872,6 +2006,7 @@ components:
         latest_revision: {oneOf: [{$ref: '#/components/schemas/CVRevisionView'}, {type: 'null'}]}
         revision_count: {type: integer, minimum: 0}
         in_use: {type: boolean}
+        has_builder_draft: {type: boolean, default: false, description: The CV can be edited in the builder}
     DocumentView:
       type: object
       additionalProperties: false
@@ -1885,6 +2020,7 @@ components:
         source_run_id: {type: [string, 'null'], format: uuid}
         partial: {type: boolean, default: false}
         trashed_at: {type: [string, 'null'], format: date-time}
+        has_builder_draft: {type: boolean, default: false, description: A tailored builder CV that can be edited in the builder}
         latest_revision: {oneOf: [{$ref: '#/components/schemas/RevisionView'}, {type: 'null'}]}
     DocumentRevisionView:
       allOf:

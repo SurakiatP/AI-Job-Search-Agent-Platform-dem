@@ -2,11 +2,13 @@
 from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
+import io
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
+import tarfile
 from typing import AsyncIterator, Awaitable, Callable, Literal
 from uuid import UUID, uuid4
 
@@ -76,6 +78,18 @@ class ProjectRuntime:
     sequence: int = 0
     terminal_received: bool = False
     tool_gate: Callable[[str, str], Awaitable[bool]] | None = field(default=None, repr=False)
+
+RENDER_TIMEOUT_S = 30
+_RENDER_SLOTS = asyncio.Semaphore(2)  # ponytail: per-process cap; a shared limit if several backends run
+
+
+def _docker_env() -> dict[str, str]:
+    environment = {"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+                   "DOCKER_CONFIG": os.environ.get("DOCKER_CONFIG", str(Path.home() / ".docker"))}
+    if os.environ.get("DOCKER_HOST"):
+        environment["DOCKER_HOST"] = os.environ["DOCKER_HOST"]
+    return environment
+
 
 class HermesRuntime:
     def __init__(self, image: str, *, hermes_source: Path | None = None,
@@ -319,6 +333,35 @@ class HermesRuntime:
         if response.get("alive") is not True or not isinstance(response.get("running"), bool):
             raise RuntimeErrorCode("native_response_invalid")
         return response
+
+    async def render_typst(self, files: dict[str, bytes], main: str = "main.typ") -> bytes:
+        """Compile one Typst document in a throwaway container of the pinned image: no network, no capabilities,
+        read-only root, files in through stdin as a tar and the PDF out on stdout. Used for CV builder previews."""
+        archive = io.BytesIO()
+        with tarfile.open(fileobj=archive, mode="w") as tar:
+            for name, body in files.items():
+                if "/" in name or name.startswith("."):
+                    raise RuntimeErrorCode("render_input_invalid")
+                info = tarfile.TarInfo(name)
+                info.size = len(body)
+                tar.addfile(info, io.BytesIO(body))
+        script = f"cd /tmp/r && tar x && typst compile --font-path /usr/share/fonts {main} out.pdf >/dev/null 2>&1 && cat out.pdf"
+        async with _RENDER_SLOTS:
+            process = await asyncio.create_subprocess_exec(
+                "docker", "run", "--rm", "-i", "--network", "none", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+                "--pids-limit=64", "--memory=512m", "--cpus=1", "--read-only", "--tmpfs", "/tmp/r:rw,size=64m",
+                "--label", "job-search-platform.render=1", "--entrypoint", "sh", self.image, "-c", script,
+                env=_docker_env(), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL)
+            try:
+                output, _ = await asyncio.wait_for(process.communicate(archive.getvalue()), timeout=RENDER_TIMEOUT_S)
+            except TimeoutError:
+                process.kill()
+                await process.wait()
+                raise RuntimeErrorCode("render_failed") from None
+        if process.returncode != 0 or not output.startswith(b"%PDF-") or len(output) > 20 * 1024 * 1024:
+            raise RuntimeErrorCode("render_failed")
+        return output
 
     async def _docker(self, *args: str) -> str:
         environment = {"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",

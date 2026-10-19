@@ -20,8 +20,9 @@ import { sendJson, useResource } from '../projects/useResource';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { DocumentDeleteMenu } from './DocumentDeleteMenu';
 import { TrashView, deletePermanently, inUseMessage, permanentDescription, permanentTitle, restoreDocument } from './TrashView';
+import { useFilePreview } from '../../components/CvPreview';
 
-type DocumentItem = { id: string; document_type: 'cv' | 'cover_letter' | 'application_message' | 'other'; title: string; content_markdown?: string | null; output_language?: 'th' | 'en' | null; source_run_id?: string | null; partial?: boolean; trashed_at?: string | null; latest_revision?: { id: string; revision: number } | null };
+type DocumentItem = { id: string; has_builder_draft?: boolean; document_type: 'cv' | 'cover_letter' | 'application_message' | 'other'; title: string; content_markdown?: string | null; output_language?: 'th' | 'en' | null; source_run_id?: string | null; partial?: boolean; trashed_at?: string | null; latest_revision?: { id: string; revision: number } | null };
 type DocumentRevision = { document_id: string; id?: string; revision?: number; created_at?: string; source_cv_revision_id?: string | null; source_job_revision_id?: string | null; file_id?: string | null; content_markdown?: string | null; origin?: 'agent' | 'manual' };
 type CVRevision = { id: string; revision: number };
 type SessionItem = Pick<SessionView, 'id' | 'title' | 'job_title' | 'job_company'>;
@@ -281,13 +282,19 @@ export function DocumentDetailPage() {
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <Card className="min-w-0"><CardContent className="p-5 sm:p-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{t('pages.documentContent', { defaultValue: 'Document content' })}</h2>
-          {canEdit && <Button type="button" size="sm" className="min-h-11" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{historical ? w('editFromThis') : w('editCurrent')}</Button>}
+          {document.has_builder_draft && !isTrashed
+            ? <Button asChild size="sm" className="min-h-11"><Link to={`/app/projects/${projectId}/documents/${document.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{w('editInBuilder')}</Link></Button>
+            : canEdit && <Button type="button" size="sm" className="min-h-11" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{historical ? w('editFromThis') : w('editCurrent')}</Button>}
+          {document.document_type === 'cv' && !document.has_builder_draft && <p className="w-full text-xs text-muted-foreground">{w('templateHint')}</p>}
           {versions.length > 1 && <label className="flex items-center gap-2 text-sm"><span className="text-muted-foreground">{w('colVersion')}</span>
             <select className="min-h-9 rounded-md border border-input bg-card px-2 text-sm" value={viewed?.id ?? ''} onChange={event => setPickedId(event.target.value)}>
               {newestFirst.map(({ revision, number }) => <option key={revision.id ?? number} value={revision.id ?? ''}>{number}{revision === latestRevision ? ` · ${c.current}` : ''}{revision.origin === 'manual' ? ` · ${c.manual}` : ''}</option>)}</select></label>}</div>
         {historical && <div role="status" data-testid="historical-banner" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm"><span className="flex items-start gap-2"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />{w('historicalBanner', { n: viewedNumber })}</span>
           <Button type="button" size="sm" variant="outline" className="min-h-11" onClick={() => setPickedId('')}>{w('backToCurrent')}</Button></div>}
-        <div ref={contentRef}><Markdown className={cn('max-w-[68ch]', document.output_language === 'en' && 'document-english')} data-testid="document-content">{preview ?? t('pages.docPreviewUnavailable', { defaultValue: 'A text preview is unavailable. Download the authorized file to review this revision.' })}</Markdown></div>
+        {document.has_builder_draft && viewed?.file_id && <div className="mb-4 overflow-hidden rounded-lg border bg-white" style={{ aspectRatio: '1 / 1.414' }}>
+          <PdfFrame url={downloadUrl(projectId, viewed.file_id)} title={w('templatePreview')} />
+        </div>}
+        <div ref={contentRef} className={document.has_builder_draft ? 'sr-only' : undefined}><Markdown className={cn('max-w-[68ch]', document.output_language === 'en' && 'document-english')} data-testid="document-content">{preview ?? t('pages.docPreviewUnavailable', { defaultValue: 'A text preview is unavailable. Download the authorized file to review this revision.' })}</Markdown></div>
         {preview && <CopyButton className="mt-4" source={contentRef} markdown={preview} />}
       </CardContent></Card>
 
@@ -345,4 +352,12 @@ export function DocumentDetailPage() {
       </div>
     </div>}
   </article>;
+}
+
+// A template document's real PDF, retyped so the browser shows it inline instead of downloading it.
+function PdfFrame({ url, title }: { url: string; title: string }) {
+  const preview = useFilePreview(url, 'application/pdf');
+  return preview.status === 'pdf'
+    ? <iframe title={title} src={`${preview.url}#view=FitH&toolbar=0&navpanes=0`} className="size-full border-0" />
+    : <div className="grid size-full place-items-center text-sm text-gray-600">{preview.status === 'loading' ? '…' : '—'}</div>;
 }

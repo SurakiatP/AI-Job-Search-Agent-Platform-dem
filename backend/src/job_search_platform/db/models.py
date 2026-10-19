@@ -137,6 +137,8 @@ class CVRevision(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     # {"skills": [canonical names], "method": ...}; names only, never CV text. NULL until a run parsed the CV.
     skill_profile: Mapped[dict | None] = mapped_column(JSON)
+    resume_data: Mapped[dict | None] = mapped_column(JSON)  # set only for CVs made in the builder
+    resume_style: Mapped[dict | None] = mapped_column(JSON)  # {"template_id", "accent"}
     __table_args__ = (ForeignKeyConstraint(["project_id", "file_id"], ["files.project_id", "files.id"]), ForeignKeyConstraint(["project_id", "cv_id"], ["cvs.project_id", "cvs.id"]), UniqueConstraint("project_id", "id", name="uq_cv_revisions_project_id"), UniqueConstraint("cv_id", "revision", name="uq_cv_revisions_number"), CheckConstraint("revision > 0", name="ck_cv_revision_positive"))
 
 
@@ -163,6 +165,7 @@ class ExperienceItem(Base):
     period: Mapped[str | None] = mapped_column(String(60))
     source: Mapped[str] = mapped_column(String(10), nullable=False)
     source_cv_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    builder_cv_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("cvs.id", ondelete="SET NULL"))
     text_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -170,7 +173,8 @@ class ExperienceItem(Base):
         ForeignKeyConstraint(["project_id", "source_cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"], ondelete="CASCADE"),
         UniqueConstraint("project_id", "text_hash", name="uq_experience_items_hash"),
         UniqueConstraint("project_id", "id", name="uq_experience_items_project_id"),
-        CheckConstraint("kind IN ('experience','education','skill','certification','project','other')", name="ck_experience_items_kind"),
+        CheckConstraint("kind IN ('experience','education','skill','certification','project','other','award','publication',"
+                        "'volunteer','interest','language')", name="ck_experience_items_kind"),
         CheckConstraint("char_length(text) BETWEEN 1 AND 1000", name="ck_experience_items_text_length"),
         CheckConstraint("source IN ('cv','owner')", name="ck_experience_items_source"),
         CheckConstraint("(source = 'owner') = (source_cv_revision_id IS NULL)", name="ck_experience_items_source_revision"),
@@ -297,7 +301,7 @@ class StoredFile(Base):
     mime_type: Mapped[str] = mapped_column(String(200), nullable=False)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    __table_args__ = (UniqueConstraint("project_id", "id", name="uq_files_project_id"), CheckConstraint("kind IN ('cv_original','job_source','generated_document','chat_attachment')", name="ck_files_kind"), CheckConstraint("publication_state IN ('pending','published','unavailable','deleting')", name="ck_files_publication_state"), CheckConstraint("size_bytes >= 0", name="ck_files_nonnegative_size"), CheckConstraint("length(checksum_sha256) = 64", name="ck_files_checksum_length"))
+    __table_args__ = (UniqueConstraint("project_id", "id", name="uq_files_project_id"), CheckConstraint("kind IN ('cv_original','job_source','generated_document','chat_attachment','resume_render')", name="ck_files_kind"), CheckConstraint("publication_state IN ('pending','published','unavailable','deleting')", name="ck_files_publication_state"), CheckConstraint("size_bytes >= 0", name="ck_files_nonnegative_size"), CheckConstraint("length(checksum_sha256) = 64", name="ck_files_checksum_length"))
 
 
 class Document(Base):
@@ -321,6 +325,8 @@ class DocumentRevision(Base):
     source_cv_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     source_job_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     content_markdown: Mapped[str | None] = mapped_column(Text)
+    resume_data: Mapped[dict | None] = mapped_column(JSON)  # tailored builder CV: rendered from a template
+    resume_style: Mapped[dict | None] = mapped_column(JSON)  # {"template_id", "accent"}
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     __table_args__ = (
         ForeignKeyConstraint(["project_id", "document_id"], ["documents.project_id", "documents.id"], ondelete="CASCADE"),
@@ -741,3 +747,24 @@ class IngestRun(Base):
     deleted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     merged: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     __table_args__ = (CheckConstraint("status IN ('running','ok','partial','failed')", name="ck_ingest_runs_status"),)
+
+
+class ResumeDraft(Base):
+    """Editable resume data of a builder CV or of a tailored builder document; revisions stay immutable."""
+    __tablename__ = "resume_drafts"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    cv_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, unique=True)
+    document_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, unique=True)
+    resume_data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    template_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    accent: Mapped[str] = mapped_column(String(20), nullable=False)
+    document_language: Mapped[str] = mapped_column(String(2), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "cv_id"], ["cvs.project_id", "cvs.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["project_id", "document_id"], ["documents.project_id", "documents.id"], ondelete="CASCADE"),
+        CheckConstraint("(cv_id IS NULL) <> (document_id IS NULL)", name="ck_resume_drafts_owner"),
+        CheckConstraint("template_id IN ('onyx','kakuna','ditgar')", name="ck_resume_drafts_template"),
+        CheckConstraint("document_language IN ('th','en')", name="ck_resume_drafts_language"),
+    )

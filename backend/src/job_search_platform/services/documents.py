@@ -18,6 +18,7 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import (
+    ResumeDraft,
     Approval,
     CVRevision,
     Document,
@@ -120,6 +121,8 @@ class Artifacts:
                     source_cv_revision_id=source_cv_id,
                     source_job_revision_id=source_job_id,
                     content_markdown=output["content_markdown"],
+                    resume_data=output["resume_data"],
+                    resume_style=output["resume_style"],
                 )
                 association = RunArtifact(
                     project_id=project_id,
@@ -316,6 +319,9 @@ class Artifacts:
                     "display_name": display_name,
                     "body": body,
                     "content_markdown": preview,
+                    # Builder CV: structured data and template, written with the revision (revisions are immutable).
+                    "resume_data": item.get("resume_data") if isinstance(item.get("resume_data"), dict) else None,
+                    "resume_style": item.get("resume_style") if isinstance(item.get("resume_style"), dict) else None,
                 }
             )
         return outputs, source_cv_id, source_job_id, lease_owner
@@ -539,8 +545,10 @@ def _document_view(document: Document, revision: DocumentRevision, db: Session, 
         content_markdown=revision.content_markdown if include_content else None,
         output_language=source.output_language if source is not None else None,
         source_run_id=source.id if source is not None else None,
-        partial=source is None or source.status != "completed",
+        # An owner-published builder revision has no producing run and is complete.
+        partial=source.status != "completed" if source is not None else revision.resume_data is None,
         trashed_at=document.trashed_at,
+        has_builder_draft=db.scalar(select(ResumeDraft.id).where(ResumeDraft.document_id == document.id)) is not None,
         latest_revision=RevisionView(
             id=revision.id,
             revision=revision.revision,

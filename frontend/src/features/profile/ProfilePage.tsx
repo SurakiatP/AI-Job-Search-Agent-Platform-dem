@@ -20,10 +20,11 @@ import { apiRequest } from '../../lib/api';
 import { ApiError, type CVRevisionInfo, type CVView, type ExperienceView } from '../../lib/api-types';
 import { ExperienceBank } from './ExperienceBank';
 import { sendJson, useResource } from '../projects/useResource';
+import { BuildCvButton } from '../builder/BuildCvButton';
 
 const copy = {
-  th: { cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ลบ CV “${n}”?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้อีก เซสชันที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง' },
-  en: { cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Make primary', rename: 'Rename', delete: 'Delete', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Delete CV “${n}”?`, delBody: 'This CV leaves the list and can no longer be paired. Sessions that used it keep their results and documents.', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.' },
+  th: { editBuilder: 'แก้ไขในตัวสร้าง', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ลบ CV “${n}”?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้อีก เซสชันที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง' },
+  en: { editBuilder: 'Edit in builder', cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Make primary', rename: 'Rename', delete: 'Delete', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Delete CV “${n}”?`, delBody: 'This CV leaves the list and can no longer be paired. Sessions that used it keep their results and documents.', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.' },
 };
 const formatSize = (bytes: number) => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 const fileType = (filename: string) => filename.split('.').pop()?.toUpperCase() ?? '';
@@ -153,7 +154,7 @@ export function ProfilePage() {
     <PageBack to={`${base}/overview`}>{t('nav.overview')}</PageBack>
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{w('title')}</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">{w('subtitle')}</p></div>
-      <Button className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button>
+      <div className="flex flex-wrap gap-2"><Button className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button><BuildCvButton projectId={projectId} /></div>
       <input ref={addInput} className="sr-only" tabIndex={-1} aria-label={c.add} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], '/cvs'); event.target.value = ''; }} />
       <input ref={versionInput} className="sr-only" tabIndex={-1} aria-label={c.upload} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], `/cvs/${versionTarget.current}/revisions`); event.target.value = ''; }} />
     </div>
@@ -169,7 +170,7 @@ export function ProfilePage() {
         {list.length === 0 ? <div {...dropProps} className={cn('grid justify-items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12', dragging && 'border-primary bg-accent')}>
           <FileText className="size-10 text-muted-foreground" aria-hidden="true" />
           <div className="grid gap-1"><h2 className="text-lg font-semibold">{dragging ? w('dropActive') : w('dropTitle')}</h2><p className="mx-auto max-w-md text-sm text-muted-foreground">{w('firstUploadHelp')}</p></div>
-          <Button type="button" className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Upload className="size-4" aria-hidden="true" />{w('firstUpload')}</Button>
+          <div className="flex flex-wrap justify-center gap-2"><Button type="button" className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Upload className="size-4" aria-hidden="true" />{w('firstUpload')}</Button><BuildCvButton projectId={projectId} /></div>
           <p className="text-sm text-muted-foreground">{w('dropHere')} · {w('accepted')}</p>
         </div>
           : <Card><CardContent className="grid gap-3 p-4 sm:p-5">
@@ -188,7 +189,9 @@ export function ProfilePage() {
                 <p className="text-sm"><span className="text-muted-foreground xl:hidden">{w('colType')}: </span>{latest ? fileType(latest.original_filename) : '—'}</p>
                 <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                   {latest && <CvPreviewButton projectId={projectId} fileId={latest.file_id} name={cv.name} revision={latest.revision} filename={latest.original_filename} mimeType={latest.mime_type} className="min-h-11" />}
-                  <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>
+                  {cv.has_builder_draft
+                    ? <Button asChild size="sm" variant="outline" className="min-h-11"><Link to={`/app/projects/${projectId}/cvs/${cv.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{c.editBuilder}</Link></Button>
+                    : <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>}
                   {latest && bank.data?.provider_configured && <Button type="button" size="sm" variant="outline" className="min-h-11" aria-label={`${w('extractFacts')}: ${cv.name}`} disabled={gate.blocked} title={gate.title} onClick={() => void extract(cv)}><Sparkles className="size-4" aria-hidden="true" />{w('extractFacts')}</Button>}
                   <CvRowMenu cv={cv} c={c} label={w('rowMenu', { name: cv.name })} help={w('makePrimaryHelp')} onMakePrimary={() => void makePrimary(cv)} onRename={() => setRename(cv)} onDelete={() => setRemove(cv)} />
                 </div>

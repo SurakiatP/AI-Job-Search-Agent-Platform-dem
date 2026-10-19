@@ -246,6 +246,8 @@ class Files:
                     )
                     if row is None:
                         continue
+                    if kind == "resume_render":  # published only with its revision; a pending one is an aborted publish
+                        valid = False
                     if not valid:
                         row.publication_state = "unavailable"
                     else:
@@ -538,7 +540,10 @@ def _add_cv_revision(
 
 
 def _authorize_file(db: Session, actor: Actor, project_id: UUID, row: StoredFile) -> None:
-    if row.kind == "generated_document":
+    if row.kind == "resume_render" and db.scalar(select(DocumentRevision.id).where(
+            DocumentRevision.project_id == project_id, DocumentRevision.file_id == row.id).limit(1)) is None:
+        authorize(db, actor, project_id, "read", "cv_original")  # a builder CV version, like an uploaded CV
+    elif row.kind in ("generated_document", "resume_render"):
         authorize(db, actor, project_id, "results:read", "generated_document")
         # Owners may still preview a trashed draft; grants never reach it.
         if actor.kind != "user" and db.scalar(
