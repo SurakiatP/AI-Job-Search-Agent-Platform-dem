@@ -492,6 +492,8 @@ export function SearchPage() {
     const list = sample ? [...new Set(sampleItems.map(j => j.location ?? ''))].map(value => ({ value, count: 0 })) : facetsRes.data?.cities ?? [];
     return city && !list.some(f => f.value === city) ? [{ value: city, count: 0 }, ...list] : list;
   }, [sample, facetsRes.data, city]);
+  // Provinces come from the server with both names; show the one for the app language (the URL keeps the English name).
+  const provinceName = (f: Facet) => (locale === 'th' && f.name_th) || f.value;
   const categories: Facet[] = useMemo(() => {
     if (sample) return [];
     const top = (facetsRes.data?.categories ?? []).slice(0, 12);
@@ -513,7 +515,7 @@ export function SearchPage() {
 
   const activeFilterChips: { key: string; label: string }[] = [];
   if (q) activeFilterChips.push({ key: 'q', label: tSearch('controls.queryValue', { value: q }) });
-  if (city) activeFilterChips.push({ key: 'cities', label: tSearch('controls.filterValue', { name: tSearch('controls.location'), value: city }) });
+  if (city) activeFilterChips.push({ key: 'cities', label: tSearch('controls.filterValue', { name: tSearch('controls.location'), value: provinceName(cities.find(f => f.value === city) ?? { value: city, count: 0 }) }) });
   if (mode) activeFilterChips.push({ key: 'work_mode', label: tSearch('controls.filterValue', { name: c.mode, value: mode === 'remote' ? c.remote : mode === 'hybrid' ? c.hybrid : mode === 'onsite' ? c.onsite : mode }) });
   if (posted) activeFilterChips.push({ key: 'posted_within_days', label: tSearch('controls.postedValue', { days: posted }) });
   if (category) activeFilterChips.push({ key: 'category', label: tSearch('controls.filterValue', { name: c.categories, value: catLabel(category) }) });
@@ -641,7 +643,7 @@ export function SearchPage() {
         <Label htmlFor="job-city">{tSearch('controls.location')}</Label>
         <select id="job-city" className={selectClass} value={city} onChange={e => setFilter('cities', e.target.value)}>
           <option value="">{tSearch('controls.anyLocation')}</option>
-          {cities.map(f => <option key={f.value} value={f.value}>{f.count ? `${f.value} (${number.format(f.count)})` : f.value}</option>)}
+          {cities.map(f => { const name = provinceName(f); return <option key={f.value} value={f.value}>{f.count ? `${name} (${number.format(f.count)})` : name}</option>; })}
         </select>
       </div>
       <div className="grid min-w-0 gap-2">

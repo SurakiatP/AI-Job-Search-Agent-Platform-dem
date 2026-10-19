@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export type Facet = { value: string; count: number };
+export type Facet = { value: string; count: number; name_th?: string };
 export type AdvFacets = { seniority?: Facet[]; employment_type?: Facet[]; company_type?: Facet[]; skills?: Facet[] };
 
 export const ADV_KEYS = ['seniority', 'employment_type', 'company_type', 'skills', 'posting_language', 'salary_min'] as const;

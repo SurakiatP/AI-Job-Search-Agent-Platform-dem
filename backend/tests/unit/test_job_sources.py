@@ -52,11 +52,13 @@ def test_filter_for_every_parameter():
                                  category="backend", seniority=["senior"], employment_type=["full_time"],
                                  company_type=["product"], skills=["python", "go"], posting_language="th",
                                  salary_min=50000, company="Acme", now=NOW)
-    assert f == ['cities IN ["Bangkok", "Chon Buri"]', 'work_mode = "remote"', f"posted_ts >= {NOW_TS - 7 * 86400}",
+    assert f == ['(province IN ["TH-10", "TH-20"] OR cities IN ["Bangkok", "Chon Buri"])', 'work_mode = "remote"', f"posted_ts >= {NOW_TS - 7 * 86400}",
                  'category = "backend"', 'seniority IN ["senior"]', 'employment_type IN ["full_time"]',
                  'company_type IN ["product"]', 'skills IN ["python", "go"]', 'posting_language = "th"',
                  "salary_thb_month_min >= 50000", 'company = "Acme"']
     assert job_sources.build_filter(now=NOW) == []
+    assert job_sources.build_filter(cities=["กรุงเทพฯ"], now=NOW) == ['(province IN ["TH-10"] OR cities IN ["กรุงเทพฯ"])']
+    assert job_sources.build_filter(cities=["Bengaluru"], now=NOW) == ['cities IN ["Bengaluru"]']
     assert job_sources.build_filter(company='A"cme', now=NOW) == ['company = "A\\"cme"']
 
 
@@ -128,7 +130,7 @@ def test_cache_is_bounded(monkeypatch):
 
 
 def facet_dist():
-    dist = {"category": {f"c{i}": i for i in range(20)}, "cities": {f"t{i}": i for i in range(15)}}
+    dist = {"category": {f"c{i}": i for i in range(20)}, "province": {"TH-10": 50, "TH-20": 9, "TH-50": 20, "XX-99": 99, "TH-11": True}}
     return dist | {"seniority": {"junior": 2, "intern": 5}, "employment_type": {"full_time": 3},
                    "company_type": {"startup": 1}, "skills": {f"k{i}": i for i in range(30)},
                    "posting_language": {"th": 77, "en": 5}}
@@ -138,12 +140,15 @@ def test_facets_shape_counts_and_new_7d(monkeypatch):
     calls = serve(monkeypatch, lambda p: result(total=42) if p["limit"] == 1
                   else {"hits": [], "estimatedTotalHits": 9, "facetDistribution": facet_dist()})
     out = job_sources.job_facets(now=NOW)
-    assert out["total"] == 9 and len(out["categories"]) == 12 and len(out["cities"]) == 10
+    assert out["total"] == 9 and len(out["categories"]) == 12
     assert out["categories"][0] == {"value": "c19", "count": 19}
+    assert out["cities"] == [{"value": "Bangkok", "name_th": "กรุงเทพมหานคร", "count": 50},
+                             {"value": "Chiang Mai", "name_th": "เชียงใหม่", "count": 20},
+                             {"value": "Chon Buri", "name_th": "ชลบุรี", "count": 9}]  # no foreign place, no bool count
     assert out["seniority"] == [{"value": "intern", "count": 5}, {"value": "junior", "count": 2}]
     assert out["employment_type"] == [{"value": "full_time", "count": 3}] and out["company_type"][0]["value"] == "startup"
     assert len(out["skills"]) == 20 and out["thai_postings"] == 77 and out["new_7d"] == 42
-    assert calls[0] == {"q": "", "limit": 0, "facets": ["category", "cities", "seniority", "employment_type",
+    assert calls[0] == {"q": "", "limit": 0, "facets": ["category", "province", "seniority", "employment_type",
                                                           "company_type", "skills", "posting_language"]}
     assert calls[1]["filter"] == [f"posted_ts >= {NOW_TS - 7 * DAY}"] and calls[1]["limit"] == 1
     job_sources._cache.clear()

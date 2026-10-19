@@ -662,9 +662,12 @@ paths:
     get:
       tags: [jobs]
       description: >-
-        Owner-only Thailand facets {total, categories (top 12), cities (top 10), seniority, employment_type,
+        Owner-only Thailand facets {total, categories (top 12), cities, seniority, employment_type,
         company_type, skills (top 20)} as [{value, count}], plus thai_postings (int) and new_7d (int|null, postings
-        from the last 7 days; null when that count is unavailable).
+        from the last 7 days; null when that count is unavailable). cities lists Thai provinces only, most
+        postings first, as [{value (English RTGS name, the value to send as the cities filter), name_th, count}];
+        places that are not a Thai province are left out. A cities filter value that is a province name or
+        alias (English or Thai) also matches postings indexed by that province.
       security: [{ownerSession: []}]
       responses:
         '200': {description: Job search facets}

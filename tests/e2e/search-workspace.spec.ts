@@ -12,7 +12,7 @@ async function installSearchFixture(page: Page, items = searchItems) {
   await page.route(`**/api/v1/projects/${projectId}/job-search**`, route => {
     const url = new URL(route.request().url());
     const body = url.pathname.endsWith('/facets')
-      ? { total: 124, categories: [{ value: 'data_analytics', count: 38 }, { value: 'software_engineering', count: 31 }], cities: [{ value: 'Bangkok', count: 72 }, { value: 'Chiang Mai', count: 14 }], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 16, thai_postings: 21 }
+      ? { total: 124, categories: [{ value: 'data_analytics', count: 38 }, { value: 'software_engineering', count: 31 }], cities: [{ value: 'Bangkok', name_th: 'กรุงเทพมหานคร', count: 72 }, { value: 'Chiang Mai', name_th: 'เชียงใหม่', count: 14 }], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 16, thai_postings: 21 }
       : { items, total: 124, limit: 20, offset: Number(url.searchParams.get('offset') ?? 0), pool: 124, hidden_count: 2 };
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
@@ -335,4 +335,16 @@ test('a stale result lists the evidence behind the warning', async ({ page }) =>
   await expect(reasons).toContainText('Not found on the source at the last check');
   await page.locator('[data-job-slug="northstar"]').click();
   await expect(page.getByTestId('ghost-reasons')).toHaveCount(0);
+});
+
+test('the location list shows Thai provinces in the app language', async ({ page }) => {
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const [locale, label, other] of [['th', 'กรุงเทพมหานคร (72)', 'Bangkok'], ['en', 'Bangkok (72)', 'กรุงเทพมหานคร']] as const) {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await page.goto(`/app/projects/${projectId}/search?q=analyst`);
+    const options = page.locator('#job-city option');
+    await expect(options.filter({ hasText: label })).toHaveCount(1);
+    await expect(options.filter({ hasText: other })).toHaveCount(0);
+  }
 });
