@@ -243,3 +243,14 @@ Requested by the owner on 2026-10-19: the earlier draft listed as a risk that a 
 | Agents (MCP/A2A) | `tailor_cv` skill output for builder CVs now yields a template document; skill input unchanged. |
 | Options considered | (a) do nothing: tailored builder CVs lose their template (rejected by owner); (b) this CR; (c) wait for part 3 (rejected: builder users would see the old flat PDF meanwhile). |
 | Decided by | Owner, 2026-10-19. |
+
+## As built (2026-10-19)
+
+Differences from the design above, decided during implementation and verified with tests and a live run:
+
+- **Preview does not go through the run queue.** `HermesRuntime.render_typst` compiles in a throwaway container of the pinned Hermes image (no network, no capabilities, read-only root, 512 MB, 1 CPU, 30 s), files in through stdin and the PDF out on stdout. Measured 0.2–0.7 s per render; the queued export path measured 4.1–4.7 s. No `resume_preview` run operation exists; previews are not stored.
+- **Template and accent live in one JSON column `resume_style`** on `cv_revisions` and `document_revisions` (not two varchar columns), so older migration tests that seed revisions with raw SQL keep working.
+- **Tailoring keeps the find/replace edit format.** For a builder CV the prompt is told only the summary and bullets may change, and `resume.apply_text_edits` places each gated edit into the summary or a highlight; an edit whose text is anywhere else (name, dates, employer, school) is rejected. A multi-line edit becomes several bullets. Same outcome as B13, no new model output format.
+- **Owner facts carry `experience_items.builder_cv_id`**, so republishing a builder CV soft-removes only its own stale facts.
+- **Generated PDFs use file kind `resume_render`.** A pending one left by an aborted publish is marked unavailable by reconciliation.
+- **Known limitation, unchanged:** copied text of some Thai syllables is doubled by Typst 0.14.2 with Noto Thai fonts; the rendered page is correct.
