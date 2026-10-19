@@ -58,8 +58,10 @@ def parse_resume(raw: dict[str, Any]) -> rs.ResumeData:
         raise ServiceError("resume_invalid", fields={"path": location[:200]}) from None
 
 
-def _view(draft: ResumeDraft) -> dict[str, Any]:
-    return {"id": draft.id, "cv_id": draft.cv_id, "document_id": draft.document_id, "resume_data": draft.resume_data,
+def _view(db, draft: ResumeDraft) -> dict[str, Any]:
+    name = db.scalar(select(CV.name).where(CV.id == draft.cv_id)) if draft.cv_id else \
+        db.scalar(select(Document.title).where(Document.id == draft.document_id))
+    return {"id": draft.id, "cv_id": draft.cv_id, "document_id": draft.document_id, "name": name, "resume_data": draft.resume_data,
             "template_id": draft.template_id, "accent": draft.accent, "document_language": draft.document_language,
             "ats_safe": rs.TEMPLATES[draft.template_id], "updated_at": draft.updated_at}
 
@@ -91,8 +93,11 @@ async def _render(services: Services, draft_data: rs.ResumeData, template: str, 
 
 @router.get("/resume-templates")
 async def resume_templates(actor=Depends(owner_actor)):
+    from job_search_platform.services.job_dictionary import PROVINCE_NAMES
+
     return {"templates": [{"id": key, "ats_safe": safe} for key, safe in rs.TEMPLATES.items()],
-            "accents": [{"id": key, "hex": value} for key, value in rs.ACCENTS.items()]}
+            "accents": [{"id": key, "hex": value} for key, value in rs.ACCENTS.items()],
+            "provinces": [{"id": code, "en": en, "th": th} for code, (en, th) in PROVINCE_NAMES.items()]}
 
 
 @router.post("/projects/{project_id}/cvs/builder", status_code=201)
@@ -125,7 +130,7 @@ def _key(kind: str, owner_id: UUID) -> dict[str, UUID]:
 
 async def _get(kind, project_id, owner_id, actor, services):
     with services.sessions() as db:
-        return _view(_draft(db, actor, project_id, **_key(kind, owner_id)))
+        return _view(db, _draft(db, actor, project_id, **_key(kind, owner_id)))
 
 
 async def _put(kind, project_id, owner_id, body: DraftUpdate, actor, services):
@@ -138,7 +143,7 @@ async def _put(kind, project_id, owner_id, body: DraftUpdate, actor, services):
         draft.resume_data, draft.template_id, draft.accent = data.model_dump(), body.template_id, body.accent
         draft.document_language, draft.updated_at = body.document_language, datetime.now(timezone.utc)
         db.flush()
-        return _view(draft)
+        return _view(db, draft)
 
 
 async def _preview(kind, project_id, owner_id, actor, services):

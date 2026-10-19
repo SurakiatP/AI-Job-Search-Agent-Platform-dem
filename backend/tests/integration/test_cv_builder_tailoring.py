@@ -152,3 +152,21 @@ def test_tc_cvb_12_owner_edit_of_tailored_cv_makes_a_version_and_leaves_the_bank
     assert after == bank
     listed = {d["id"]: d for d in ctx.client.get(f"{PREFIX}/{pid}/documents").json()}
     assert listed[document_id]["has_builder_draft"] is True and listed[document_id]["partial"] is False
+
+
+@pytest.mark.integration
+def test_cr02_tailored_cv_title_can_be_renamed(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, runtime = _builder_session(ctx, [])
+    runtime.script = [[_edit("Packaged services with Docker", facts["docker"])]]
+    _tailor(ctx, csrf, pid, session, "auto-rename")
+    _execute_next(ctx, runtime)
+    document_id = str(_tailored(ctx, pid).document_id)
+    draft = ctx.client.get(f"{PREFIX}/{pid}/documents/{document_id}/draft").json()
+    assert draft["name"]
+    renamed = ctx.client.patch(f"{PREFIX}/{pid}/documents/{document_id}", json={"title": "CV สำหรับ Example Co"},
+                               headers=_write_headers(csrf))
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["title"] == "CV สำหรับ Example Co"
+    assert ctx.client.get(f"{PREFIX}/{pid}/documents/{document_id}/draft").json()["name"] == "CV สำหรับ Example Co"
+    assert ctx.client.patch(f"{PREFIX}/{pid}/documents/{document_id}", json={"title": ""}, headers=_write_headers(csrf)).status_code == 422

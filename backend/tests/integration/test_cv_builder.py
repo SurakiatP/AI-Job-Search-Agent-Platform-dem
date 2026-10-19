@@ -243,3 +243,39 @@ def test_tc_cvb_01_start_from_experience_bank(ctx):
     data = ctx.client.get(_url(ctx, cv_id)).json()["resume_data"]
     item = data["sections"]["experience"]["items"][0]
     assert item["position"] == "Data Analyst" and item["highlights"] == ["ทำรายงานยอดขาย"]
+
+
+@pytest.mark.integration
+def test_cr02_draft_carries_the_cv_name_and_rename_works_from_the_builder(ctx):
+    cv_id = _new_cv(ctx)
+    assert ctx.client.get(_url(ctx, cv_id)).json()["name"] == "CV ทดลอง"
+    renamed = ctx.client.patch(f"/api/v1/projects/{ctx.pid}/cvs/{cv_id}", json={"name": "CV สาย AI"}, headers=_write_headers(ctx.csrf))
+    assert renamed.status_code == 200, renamed.text
+    assert ctx.client.get(_url(ctx, cv_id)).json()["name"] == "CV สาย AI"
+    assert ctx.client.patch(f"/api/v1/projects/{ctx.pid}/cvs/{cv_id}", json={"name": "  "}, headers=_write_headers(ctx.csrf)).status_code == 422
+
+
+@pytest.mark.integration
+def test_cr02_templates_list_provinces(ctx):
+    provinces = ctx.client.get("/api/v1/resume-templates").json()["provinces"]
+    assert len(provinces) == 77 and {"id": "TH-10", "en": "Bangkok", "th": "กรุงเทพมหานคร"} in provinces
+
+
+@pytest.mark.integration
+def test_cr02_address_and_personal_details_round_trip_but_stay_out_of_ai_text(ctx):
+    cv_id = _new_cv(ctx)
+    data = english_short()
+    data["basics"]["address"] = {"line": "99/1", "subdistrict": "Bang Na Tai", "district": "Bang Na", "province": "TH-10", "postcode": "10260"}
+    data["personal"] = {"line_id": "secret-line-id", "nationality": "Thai"}
+    data["personal_hidden"] = False
+    assert _save(ctx, cv_id, data).status_code == 200
+    saved = ctx.client.get(_url(ctx, cv_id)).json()["resume_data"]
+    assert saved["basics"]["address"]["postcode"] == "10260" and saved["personal"]["line_id"] == "secret-line-id"
+    published = ctx.client.post(_url(ctx, cv_id, "/publish"), headers=_write_headers(ctx.csrf))
+    assert published.status_code == 201, published.text
+    with ctx.sessions() as db:
+        text = db.scalar(select(CVRevisionText.text).where(CVRevisionText.cv_revision_id == published.json()["id"]))
+    assert "secret-line-id" not in text and "10260" not in text and "Bang Na, กรุงเทพมหานคร" in text  # draft language is th
+    bad = dict(data, basics=dict(data["basics"], address=dict(data["basics"]["address"], province="Bangkok")))
+    response = _save(ctx, cv_id, bad)
+    assert response.status_code == 422 and response.json()["fields"]["path"] == "basics.address.province"

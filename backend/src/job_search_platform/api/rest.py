@@ -30,7 +30,7 @@ from job_search_platform.db.models import (
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
     ApplicationCardView, ApplicationContact, ApplicationDetailView, ApplicationEntry, ApplicationEventView,
-    AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVPromoteRequest, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
+    AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVPromoteRequest, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRename, DocumentRevisionView, DocumentView,
     DigestPreviewView, SavedSearchCreate, SavedSearchListView, SavedSearchUpdate, SavedSearchView,
     ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
@@ -861,6 +861,14 @@ async def remove_job(project_id: UUID, job_revision_id: UUID, actor=Depends(writ
 async def trash_document(project_id: UUID, document_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     """Move a drafted document to the trash. Idempotent."""
     await services.documents.set_trashed(actor, project_id, document_id, True)
+
+
+@router.patch("/projects/{project_id}/documents/{document_id}", response_model=DocumentView)
+async def rename_document(project_id: UUID, document_id: UUID, body: DocumentRename, actor=Depends(write_actor),
+                          services: Services = Depends(get_services)):
+    """Owner renames a live document (for example a tailored CV from the builder)."""
+    await services.documents.rename(actor, project_id, document_id, body.title)
+    return await services.documents.get(actor, project_id, document_id)
 
 
 @router.post("/projects/{project_id}/documents/{document_id}/restore", response_model=DocumentView)

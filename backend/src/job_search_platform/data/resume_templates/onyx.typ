@@ -1,7 +1,7 @@
 // Onyx: single column, serif name, rule under the header, skills in two columns.
 #import "common.typ": *
 #show: setup
-#set page(paper: "a4", margin: (x: 1.6cm, y: 1.4cm))
+#set page(paper: "a4", margin: (x: 1.6cm, y: 1.4cm), footer: page-footer)
 
 #text(font: serif, size: 24pt, weight: "bold")[#data.basics.name]
 #if filled(data.basics.headline) { v(-6pt); text(size: 11pt, fill: muted)[#data.basics.headline] }
@@ -11,9 +11,9 @@
 #line(length: 100%, stroke: 0.8pt + muted)
 
 #for name in data.order.filter(shown) {
-  block(breakable: true, above: 12pt, below: 0pt, width: 100%)[
+  v(12pt, weak: true)
+  heading-block[
     #text(font: serif, size: 12.5pt, weight: "bold", fill: accent)[#labels.at(name)]
-    #v(-3pt)
-    #body(name)
   ]
+  body(name)
 }

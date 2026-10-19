@@ -254,3 +254,30 @@ Differences from the design above, decided during implementation and verified wi
 - **Owner facts carry `experience_items.builder_cv_id`**, so republishing a builder CV soft-removes only its own stale facts.
 - **Generated PDFs use file kind `resume_render`.** A pending one left by an aborted publish is marked unavailable by reconciliation.
 - **Known limitation, unchanged:** copied text of some Thai syllables is doubled by Typst 0.14.2 with Noto Thai fonts; the rendered page is correct.
+
+## CR-02 — Thai address, personal details, page flow, faster preview, CV name (owner approved 2026-10-20)
+
+Asked by the owner after using the builder: the address was one free-text line, the page felt 1–2 s slow,
+long CVs had no page rules, and the CV name was not shown or editable in the builder.
+
+| ID | Requirement |
+|---|---|
+| FR-CVB-18 | The system must store a Thai address (house/road, subdistrict, district, province as ISO `TH-nn`, 5-digit postcode). The CV shows district and province unless the owner ticks "show the full address"; drafts from before CR-02 keep using their free-text location. |
+| FR-CVB-19 | The system must offer a "personal details" section (date of birth or age, nationality, military status, LINE ID, driving licence, expected salary, available from), hidden by default and never sent to AI. |
+| FR-CVB-20 | Text sent to AI (`plain_text`) must contain only district and province from the address, never the full address or personal details. |
+| FR-CVB-21 | When the CV is longer than one page, a section heading must not end a page alone, entries of up to 4 bullets must not split across pages, and pages from 2 on must show the owner's name and "page n/total". Ditgar shows its sidebar on page 1 only. |
+| FR-CVB-22 | After an edit the draft must be saved 0.4 s after typing stops and the preview rebuilt right after the save, at most once per 3 s (server limit 20 previews a minute). The preview shows the page count and advises 1–2 pages when longer than 2. |
+| FR-CVB-23 | The builder must show the CV name (or the tailored document's title) under the page title; the owner can edit it there (Enter or leaving saves, Esc cancels, empty is not saved). |
+
+Impact: `resume_data` gains `basics.address`, `basics.address_full`, `personal`, `personal_hidden` and the
+section name `personal` (defaults fill old drafts; the frontend normalises them on load). New route
+`PATCH /projects/{id}/documents/{document_id}` (`DocumentRename`); `GET /resume-templates` also lists the
+77 provinces; draft responses carry `name`. Measured render time 0.17 s, so the old delay was the 1 s save
+wait plus the 1 s preview wait.
+
+Known limit: Typst cannot widen a grid column per page, so on Ditgar pages 2+ the main column keeps its
+width (the tint stops after page 1).
+
+Tests: `backend/tests/unit/test_resume.py` (`test_cr02_*`), `backend/tests/integration/test_cv_builder.py`
+and `test_cv_builder_tailoring.py` (`test_cr02_*`), `tests/e2e/cv-builder.spec.ts` (`CR-02 …`). The
+keyboard-order e2e test now expects `personal` after `summary` (changed by this CR).

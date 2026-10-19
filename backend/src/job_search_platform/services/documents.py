@@ -334,6 +334,20 @@ class Documents:
         self.sessions = sessions
         self.object_store = object_store
 
+    async def rename(self, actor: Actor, project_id: UUID, document_id: UUID, title: str) -> None:
+        await asyncio.to_thread(self._rename, actor, project_id, document_id, title)
+
+    def _rename(self, actor: Actor, project_id: UUID, document_id: UUID, title: str) -> None:
+        if actor.kind != "user":
+            raise ServiceError("forbidden")
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "write", "document")
+            document = db.scalar(select(Document).where(
+                Document.project_id == project_id, Document.id == document_id, Document.trashed_at.is_(None)).with_for_update())
+            if document is None:
+                raise ServiceError("not_found")
+            document.title = title
+
     async def set_trashed(self, actor: Actor, project_id: UUID, document_id: UUID, trashed: bool) -> None:
         """Owner move to / restore from trash. Idempotent: repeating either keeps the first timestamp."""
         await asyncio.to_thread(self._set_trashed, actor, project_id, document_id, trashed)

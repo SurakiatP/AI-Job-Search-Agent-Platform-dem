@@ -765,6 +765,16 @@ paths:
         in: path
         required: true
         schema: {type: string, format: uuid}
+    patch:
+      tags: [files]
+      description: Owner-only rename of a live document (for example a tailored CV opened in the builder). 422 for an empty title.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DocumentRename'}
+      responses:
+        '200': {description: The renamed document, content: {application/json: {schema: {$ref: '#/components/schemas/DocumentView'}}}}
     delete:
       tags: [files]
       description: >-
@@ -950,7 +960,7 @@ paths:
   /resume-templates:
     get:
       tags: [files]
-      description: Owner-only list of CV builder templates (id, ats_safe) and the 6 accent colours (id, hex).
+      description: Owner-only list of CV builder templates (id, ats_safe), the 6 accent colours (id, hex) and the 77 Thai provinces (id TH-nn, en, th) for the address province field.
       responses:
         '200': {description: Templates and accents}
   /projects/{project_id}/cvs/builder:
@@ -2389,6 +2399,12 @@ components:
       properties:
         email: {type: string, maxLength: 254}
         code: {type: string, pattern: '^\\d{6}$'}
+    DocumentRename:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 300}
     CheckEmailView:
       type: object
       additionalProperties: false

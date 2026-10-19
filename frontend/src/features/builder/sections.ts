@@ -1,17 +1,21 @@
 // Form schema of the CV builder: one entry per section, mirroring backend services/resume.py.
 export type Lang = 'th' | 'en';
-export type SectionName = 'summary' | 'experience' | 'education' | 'skills' | 'projects' | 'certifications' | 'languages'
+export type SectionName = 'summary' | 'personal' | 'experience' | 'education' | 'skills' | 'projects' | 'certifications' | 'languages'
   | 'awards' | 'publications' | 'volunteer' | 'references' | 'interests';
 export type FieldKind = 'text' | 'month' | 'url' | 'textarea' | 'lines' | 'level' | 'bool' | 'keywords';
 export type Field = { key: string; kind: FieldKind; th: string; en: string; placeholder?: { th: string; en: string } };
 export type Item = Record<string, unknown> & { id: string };
-export type Basics = { name: string; headline: string; email: string; phone: string; location: string; profiles: { id: string; network: string; url: string }[] };
+export type ListSection = Exclude<SectionName, 'summary' | 'personal'>;
+export type Address = { line: string; subdistrict: string; district: string; province: string; postcode: string };
+export type Basics = { name: string; headline: string; email: string; phone: string; location: string; address: Address; address_full: boolean; profiles: { id: string; network: string; url: string }[] };
+export const PERSONAL_KEYS = ['birth_date', 'nationality', 'military_status', 'line_id', 'driving_license', 'expected_salary', 'available_from'] as const;
+export type Personal = Record<(typeof PERSONAL_KEYS)[number], string>;
 export type ResumeData = {
-  basics: Basics; summary: { content: string }; summary_hidden: boolean;
-  sections: Record<Exclude<SectionName, 'summary'>, { hidden: boolean; items: Item[] }>;
+  basics: Basics; summary: { content: string }; summary_hidden: boolean; personal: Personal; personal_hidden: boolean;
+  sections: Record<ListSection, { hidden: boolean; items: Item[] }>;
   order: SectionName[]; references_on_request: boolean;
 };
-export type Draft = { id: string; cv_id: string | null; document_id: string | null; resume_data: ResumeData; template_id: TemplateId; accent: AccentId; document_language: Lang; ats_safe: boolean; updated_at: string };
+export type Draft = { id: string; cv_id: string | null; document_id: string | null; name?: string; resume_data: ResumeData; template_id: TemplateId; accent: AccentId; document_language: Lang; ats_safe: boolean; updated_at: string };
 export type TemplateId = 'onyx' | 'kakuna' | 'ditgar';
 export type AccentId = 'indigo' | 'blue' | 'teal' | 'green' | 'rose' | 'slate';
 
@@ -26,7 +30,7 @@ const END = f('end', 'month', 'สิ้นสุด', 'End');
 const HIGHLIGHTS = f('highlights', 'lines', 'รายละเอียด (บรรทัดละ 1 ข้อ)', 'Details (one per line)',
   { th: 'สร้างแดชบอร์ดยอดขายด้วย SQL\nลดเวลาทำรายงานจาก 2 วันเหลือ 2 ชั่วโมง', en: 'Built a sales dashboard in SQL\nCut reporting time from 2 days to 2 hours' });
 
-export const FIELDS: Record<Exclude<SectionName, 'summary'>, Field[]> = {
+export const FIELDS: Record<ListSection, Field[]> = {
   experience: [f('position', 'text', 'ตำแหน่ง', 'Position', { th: 'นักวิเคราะห์ข้อมูล', en: 'Data Analyst' }),
     f('company', 'text', 'บริษัท', 'Company'), f('location', 'text', 'สถานที่', 'Location'), START, END,
     f('current', 'bool', 'ยังทำงานอยู่', 'I work here now'), HIGHLIGHTS],
@@ -44,8 +48,18 @@ export const FIELDS: Record<Exclude<SectionName, 'summary'>, Field[]> = {
   interests: [f('name', 'text', 'ความสนใจ', 'Interest')],
 };
 
-export function emptyItem(section: Exclude<SectionName, 'summary'>): Item {
+export function emptyItem(section: ListSection): Item {
   const item: Item = { id: crypto.randomUUID() };
   for (const field of FIELDS[section]) item[field.key] = field.kind === 'lines' || field.kind === 'keywords' ? [] : field.kind === 'bool' ? false : field.kind === 'level' ? null : '';
   return item;
+}
+
+/** Drafts saved before CR-02 have no address, personal details or "personal" in the order; fill the defaults. */
+export function normalize(data: ResumeData): ResumeData {
+  const saved = (data.basics as { address?: Partial<Address> }).address;
+  const address: Address = { line: '', subdistrict: '', district: '', province: '', postcode: '', ...saved };
+  const personal = Object.fromEntries(PERSONAL_KEYS.map(k => [k, data.personal?.[k] ?? ''])) as Personal;
+  const order = data.order.includes('personal') ? data.order : [data.order[0], 'personal' as const, ...data.order.slice(1)];
+  return { ...data, basics: { ...data.basics, address, address_full: data.basics.address_full ?? false }, personal,
+    personal_hidden: data.personal_hidden ?? true, order };
 }

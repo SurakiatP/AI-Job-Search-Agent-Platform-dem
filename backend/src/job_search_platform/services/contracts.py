@@ -287,6 +287,10 @@ class CVRevisionView(RevisionView):
     skill_count: int | None = None
 
 
+class DocumentRename(DTO):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+
+
 class CVUpdate(DTO):
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)] | None = None
     is_primary: Literal[True] | None = None
