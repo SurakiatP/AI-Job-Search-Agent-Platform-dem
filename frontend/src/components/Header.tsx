@@ -50,7 +50,7 @@ export function Header({ menu, nav, actions }: { menu?: ReactNode; nav?: ReactNo
     {nav}
     <div className="flex shrink-0 items-center gap-1 sm:gap-2">
       {actions}
-      {session.status === 'ready' && <Link to="/app/account" aria-label={`${t('account.menu')}: ${session.user.email}`} title={session.user.email} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"><Avatar account={session.user} size={36} /></Link>}
+      {session.status === 'ready' && <Link to="/app/account" aria-label={`${t('account.menu')}: ${session.user.email}`} title={session.user.email} className="flex shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"><Avatar account={session.user} size={40} /></Link>}
       <AppearanceControl compact />
       <LanguageSwitch />
     </div>

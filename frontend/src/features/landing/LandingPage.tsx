@@ -1,4 +1,5 @@
-import { Link } from 'react-router';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router';
 import { Info } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { useOwnerSession } from '../../lib/api';
@@ -18,6 +19,9 @@ export function LandingPage() {
   const c = landingCopy[locale];
   // Signed-in visitors get one "Open app" button instead of sign-up / log-in; nothing shows until the session is known.
   const status = useOwnerSession().status;
+  // Menu links from other public pages arrive here with the section to show.
+  const scrollTo = (useLocation().state as { scrollTo?: string } | null)?.scrollTo;
+  useEffect(() => { if (scrollTo) document.getElementById(scrollTo)?.scrollIntoView({ block: 'start' }); }, [scrollTo]);
   const cta = (size: 'sm' | 'lg') => status === 'ready'
     ? <Button asChild size={size}><Link to="/app/projects">{c.openApp}</Link></Button>
     : status === 'loading' ? null : <Button asChild size={size}><Link to="/signup">{size === 'sm' ? c.signup : c.cta}</Link></Button>;

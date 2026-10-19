@@ -13,6 +13,7 @@ test('landing: Docs link sits left of Open app and the account picture sits righ
   const [d, o, a] = await Promise.all([docs.boundingBox(), open.boundingBox(), account.boundingBox()]);
   expect(d!.x).toBeLessThan(o!.x);
   expect(a!.x).toBeGreaterThan(o!.x);
+  expect(Math.abs(a!.y + a!.height / 2 - (o!.y + o!.height / 2))).toBeLessThan(2); // the picture sits on the same line as the button, not floating above it
   await expect(docs).toHaveAttribute('href', '/docs');
   await expect(account.getByText('S', { exact: true })).toBeVisible(); // first letter of the email until a picture is chosen
   await account.click();
@@ -63,20 +64,38 @@ test('account: upload, choose a built-in picture, remove; bad type and size are 
   await expect.poll(() => state.image).toBe(false);
 });
 
-test('landing menu: Features picks its tour tab, other links reach their sections and Docs', async ({ page }) => {
+test('landing menu: each feature has its own page; other links reach their sections and Docs', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await page.goto('/');
   const nav = page.getByRole('navigation', { name: 'Main menu' });
   await nav.getByRole('button', { name: 'Features' }).click();
-  await page.getByRole('menuitem', { name: /Evaluate/ }).or(page.getByRole('menuitem').nth(2)).first().click();
-  await expect(page.getByRole('tab', { name: /^(Evaluate|ประเมิน)/ })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#how')).toBeInViewport();
-  await nav.getByRole('link', { name: 'Data & connections' }).click();
+  await page.getByRole('menuitem', { name: /Evaluate/ }).click();
+  await expect(page).toHaveURL(/\/features\/evaluate$/);
+  await expect(page.getByRole('heading', { name: 'A score with reasons you can check', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'How it works', level: 2 })).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'AI reads and scores' })).toBeVisible();
+  await page.getByRole('link', { name: /^Next: / }).click();
+  await expect(page).toHaveURL(/\/features\/draft$/);
+  await page.getByRole('navigation', { name: 'Main menu' }).getByRole('link', { name: 'Data & connections' }).click();
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.locator('#data')).toBeInViewport();
   await nav.getByRole('link', { name: 'Docs' }).click();
   await expect(page).toHaveURL(/\/docs$/);
   await expect(page.getByRole('heading', { name: 'User guide', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Start in 3 steps' })).toBeVisible();
+});
+
+test('every feature page exists in both languages and an unknown one goes home', async ({ page }) => {
+  for (const locale of ['th', 'en']) {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    for (const slug of ['add-cv', 'search', 'evaluate', 'draft', 'connect']) {
+      await page.goto(`/features/${slug}`);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(page.getByRole('listitem').filter({ has: page.getByRole('heading', { level: 3 }) })).toHaveCount(4);
+    }
+  }
+  await page.goto('/features/nope');
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test('landing menu collapses into one Menu button on a phone', async ({ page }) => {
@@ -85,7 +104,7 @@ test('landing menu collapses into one Menu button on a phone', async ({ page }) 
   await page.goto('/');
   await expect(page.getByRole('navigation', { name: 'Main menu' })).toBeHidden();
   await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByRole('menuitem', { name: 'Docs' }).click();
-  await expect(page).toHaveURL(/\/docs$/);
+  await page.getByRole('menuitem', { name: 'Search' }).click();
+  await expect(page).toHaveURL(/\/features\/search$/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
