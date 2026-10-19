@@ -233,7 +233,7 @@ function SaveJob({ job, c, projectId, saves, tSearch, card = false }: { job: Job
   </>;
 }
 
-function JobDetail({ job, c, projectId, scored, tSearch, cv, saves, ranking }: { job: JobSearchItem; c: Copy; projectId: string; scored: boolean; tSearch: T; cv?: { name: string; revision: number }; saves: SavedJobs; ranking: boolean }) {
+function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, saves, ranking }: { job: JobSearchItem; c: Copy; projectId: string; scored: boolean; place: string | null; tSearch: T; cv?: { name: string; revision: number }; saves: SavedJobs; ranking: boolean }) {
   const source = safeHttpUrl(job.source_url);
   const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
   const cvLabel = cv ? `${cv.name} · v${cv.revision}` : null;
@@ -241,7 +241,7 @@ function JobDetail({ job, c, projectId, scored, tSearch, cv, saves, ranking }: {
     <div className="min-w-0">
       <h2 className="break-words text-xl font-semibold leading-snug">{job.title}</h2>
       <p className="mt-1 flex items-start gap-1 break-words text-sm text-muted-foreground"><Building2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{job.company ?? c.untitled}</span></p>
-      {job.location && <p className="flex items-start gap-1 break-words text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{job.location}{modeLabel ? ` · ${modeLabel}` : ''}</span></p>}
+      {placeText && <p className="flex items-start gap-1 break-words text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{placeText}{modeLabel ? ` · ${modeLabel}` : ''}</span></p>}
     </div>
     <div className="grid gap-2">
       <NewSessionButton projectId={projectId} cvName={cv?.name} className="h-auto w-full whitespace-normal text-center" job={{ inline: { title: job.title, company: job.company, description: job.description_markdown.slice(0, 50000), source_url: source } }}>
@@ -509,9 +509,12 @@ export function SearchPage() {
   const selected = visible.find(j => j.slug === selectedSlug) ?? (wide ? visible[0] : undefined);
 
   const catLabel = (slug: string) => categoryLabel(locale, slug);
+  // Thai app: a posting listed in Thai provinces shows their Thai names; anything else keeps the source text.
+  const provinceTh = useMemo(() => new Map((facetsRes.data?.cities ?? []).map(f => [f.value, f.name_th ?? f.value])), [facetsRes.data]);
+  const placeOf = (job: JobSearchItem) => { const names = locale === 'th' ? job.cities.map(v => provinceTh.get(v)).filter(Boolean) : []; return names.length ? names.join(', ') : job.location; };
   const saves = useSavedJobs(projectId);
   const detailCv = cv?.latest_revision ? { name: cv.name, revision: cv.latest_revision.revision } : undefined;
-  const detail = (job: JobSearchItem) => <JobDetail job={job} c={c} projectId={projectId} scored={smartActive} tSearch={tSearch} cv={smartActive ? detailCv : undefined} saves={saves} ranking={ranking} />;
+  const detail = (job: JobSearchItem) => <JobDetail job={job} place={placeOf(job)} c={c} projectId={projectId} scored={smartActive} tSearch={tSearch} cv={smartActive ? detailCv : undefined} saves={saves} ranking={ranking} />;
 
   const activeFilterChips: { key: string; label: string }[] = [];
   if (q) activeFilterChips.push({ key: 'q', label: tSearch('controls.queryValue', { value: q }) });
@@ -553,7 +556,7 @@ export function SearchPage() {
           + (job.salary_currency ? ` ${job.salary_currency}` : '') + (job.salary_period ? `/${job.salary_period}` : '')
         : null;
       const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
-      const place = [job.location, modeLabel].filter(Boolean).join(' · ');
+      const place = [placeOf(job), modeLabel].filter(Boolean).join(' · ');
       return <li key={job.slug} className={`relative grid min-w-0 gap-2 rounded-xl border p-4 ${smartActive ? 'pr-12' : ''} shadow-sm transition-colors hover:bg-accent/60 [&:has([data-job-slug]:focus-visible)]:ring-2 [&:has([data-job-slug]:focus-visible)]:ring-ring ${isSel ? 'border-primary bg-accent' : 'bg-card'}`}>
         <button type="button" aria-pressed={isSel} aria-current={isSel ? 'true' : undefined} onClick={() => {
           if (!wide) selectionScroll.current = window.scrollY;

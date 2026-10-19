@@ -22,8 +22,8 @@ const GROUPS: { key: 'seniority' | 'employment_type' | 'company_type'; th: strin
     ['full_time', 'งานประจำ', 'Full-time'], ['part_time', 'พาร์ทไทม์', 'Part-time'], ['contract', 'สัญญาจ้าง', 'Contract'],
     ['internship', 'ฝึกงาน', 'Internship'], ['fellowship', 'ทุน/Fellowship', 'Fellowship']] },
   { key: 'company_type', th: 'ประเภทบริษัท', en: 'Company type', options: [
-    ['product', 'Product', 'Product'], ['startup', 'Startup', 'Startup'], ['agency', 'Agency', 'Agency'], ['outsource', 'Outsource', 'Outsource'],
-    ['outstaff', 'Outstaff', 'Outstaff'], ['inhouse', 'In-house', 'In-house'], ['government', 'หน่วยงานรัฐ', 'Government']] },
+    ['product', 'บริษัทผลิตภัณฑ์', 'Product'], ['startup', 'สตาร์ทอัป', 'Startup'], ['agency', 'เอเจนซี', 'Agency'], ['outsource', 'รับจ้างพัฒนา', 'Outsource'],
+    ['outstaff', 'ส่งบุคลากรประจำลูกค้า', 'Outstaff'], ['inhouse', 'ทีมภายในองค์กร', 'In-house'], ['government', 'หน่วยงานรัฐ', 'Government']] },
 ];
 const SALARIES = [15000, 25000, 40000, 60000, 100000];
 

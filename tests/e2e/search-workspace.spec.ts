@@ -372,7 +372,7 @@ test('filter chips and category names use the app language, never raw codes', as
   await page.setViewportSize({ width: 1280, height: 900 });
   const qs = 'seniority=senior&employment_type=full_time&company_type=inhouse&posting_language=th&salary_min=15000&category=project_management';
   const expected = {
-    th: ['ระดับตำแหน่ง: ซีเนียร์', 'ประเภทการจ้าง: งานประจำ', 'ประเภทบริษัท: In-house', 'ประกาศภาษาไทย: ภาษาไทย', 'เงินเดือนขั้นต่ำ: 15,000 บาท/เดือน', 'หมวดงาน: บริหารโครงการ'],
+    th: ['ระดับตำแหน่ง: ซีเนียร์', 'ประเภทการจ้าง: งานประจำ', 'ประเภทบริษัท: ทีมภายในองค์กร', 'ประกาศภาษาไทย: ภาษาไทย', 'เงินเดือนขั้นต่ำ: 15,000 บาท/เดือน', 'หมวดงาน: บริหารโครงการ'],
     en: ['Seniority: Senior', 'Employment type: Full-time', 'Company type: In-house', 'Thai postings: Thai', 'Minimum salary: 15,000 THB/month', 'Categories: Project management'],
   };
   for (const locale of ['th', 'en'] as const) {
@@ -400,5 +400,17 @@ test('the filter panel fits a phone in both languages and every control stays re
       expect(box!.height).toBeGreaterThanOrEqual(36);
       expect(box!.x + box!.width).toBeLessThanOrEqual(390);
     }
+  }
+});
+
+test('job cards and details show Thai province names in the Thai app and the source text in English', async ({ page }) => {
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const [locale, shown, hidden] of [['th', 'กรุงเทพมหานคร', null], ['en', 'Bangkok', 'กรุงเทพมหานคร']] as const) {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await page.goto(`/app/projects/${projectId}/search?q=analyst`);
+    const card = page.locator('[data-job-slug="bright-data"]');
+    await expect(card).toContainText(shown);
+    if (hidden) await expect(card).not.toContainText(hidden);
   }
 });
