@@ -295,8 +295,7 @@ async def test_bob_grant_cannot_reach_alice(api_context, world, unused_tcp_port)
                 await mcp.call_tool("get_run", {"run_id": str(uuid4())})
             with pytest.raises(MCPError, match="not_found"):
                 await mcp.call_tool("get_run", {"run_id": world.ids["run_id"]})
-        a2a = await create_client(base_url, ClientConfig(
-            streaming=False, supported_protocol_bindings=["JSONRPC"],
+        a2a = await create_client(base_url, ClientConfig(streaming=False, polling=True, supported_protocol_bindings=["JSONRPC"],
             httpx_client=httpx.AsyncClient(headers={**auth, "A2A-Version": "1.0"})))
         assert str((await a2a.get_task(GetTaskRequest(id=world.bob_run))).id) == world.bob_run
         # The foreign run must be indistinguishable from a run that does not exist.

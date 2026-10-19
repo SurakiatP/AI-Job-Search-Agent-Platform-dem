@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any, AsyncIterator, Sequence
 from urllib.parse import urlsplit
@@ -28,6 +29,7 @@ from a2a.types import (
     GetTaskPushNotificationConfigRequest,
     GetTaskRequest,
     Message,
+    Part,
     ListTaskPushNotificationConfigsRequest,
     ListTaskPushNotificationConfigsResponse,
     ListTasksRequest,
@@ -64,6 +66,29 @@ _MAX_ARTIFACT_BYTES = 200_000
 _TERMINAL = frozenset({"cancelled", "completed", "failed", "interrupted"})  # needs_input is resting, not terminal
 _RESTING = frozenset({"waiting_approval", "needs_input"})  # a stream ends here; the client may subscribe again
 _POLL_SECONDS = 0.5  # same cadence as the REST run event stream (api/sse.py)
+# ponytail: a blocking SendMessage holds one request open at most this long, then returns the Task as it is
+# (still working); the caller follows up with GetTask. Raise it if real runs take longer.
+_BLOCK_SECONDS = 600
+_TEXT_FENCE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$")
+
+
+def _usable(actor: Actor) -> list[Skill]:
+    return [skill for skill in SKILLS if skill.capability in actor.capabilities]
+
+
+def _guide(skills: Sequence[Skill], *, mismatch: bool = False) -> Message:
+    """Plain instructions for LLM agents. Built only from our own skill list, never from the caller's text."""
+    lines = [f"The request for {skills[0].id} did not match its input schema. Send it again in this form."] if mismatch else [
+        "This agent runs job-search skills. Send one message whose text is only this JSON:"]
+    lines += ['{"skill": "<skill id>", "request": {...}}',
+              "The request must match the skill's input schema below. For task skills use a new idempotency_key "
+              "(any unique text) per job; the reply comes when the work is done.", ""]
+    for skill in skills:
+        schema = json.dumps(skill.input_model.model_json_schema(), separators=(",", ":"))
+        lines += [f"## {skill.id}", skill.description, f"Input schema: {schema}", ""]
+    if not skills:
+        lines.append("This access token allows no skills. Ask the owner for a token with more permissions.")
+    return _protobuf(Message, {"messageId": str(uuid4()), "role": "ROLE_AGENT", "parts": [{"text": "\n".join(lines).strip()}]})
 
 
 def _protobuf(message_type: type, value: dict[str, Any]):
@@ -332,25 +357,51 @@ class _PlatformRequestHandler(RequestHandler):
     def _not_found() -> TaskNotFoundError:
         return TaskNotFoundError("Task not found")
 
+    async def _text_request(self, text: str, context: ServerCallContext) -> tuple[Skill, Actor, Any] | Message:
+        """LLM agents send text. Skill JSON in the text runs the skill; anything else gets a guide, never an echo."""
+        actor = await self._actor(context)
+        body = _TEXT_FENCE.sub("", text).strip()
+        try:
+            parsed = json.loads(body)
+        except ValueError:
+            parsed = None
+        if not (isinstance(parsed, dict) and set(parsed) == {"skill", "request"} and parsed["skill"] in SKILL_BY_ID
+                and SKILL_BY_ID[parsed["skill"]].capability in actor.capabilities):
+            return _guide(_usable(actor))
+        skill = SKILL_BY_ID[parsed["skill"]]
+        try:
+            return skill, actor, skill.input_model.model_validate(parsed["request"])
+        except Exception:
+            return _guide([skill], mismatch=True)
+
     async def on_message_send(self, params: SendMessageRequest, context: ServerCallContext) -> Task | Message:
+        return await self._send(params, context, wait=True)
+
+    async def _send(self, params: SendMessageRequest, context: ServerCallContext, *, wait: bool) -> Task | Message:
         message = params.message
         if message is None:
             raise A2AError("request_rejected")
         self._check_tenant(params.tenant)
-        if message.role != 1 or len(message.parts) != 1 or message.parts[0].WhichOneof("content") != "data":
+        if message.role != 1 or len(message.parts) != 1 or message.parts[0].WhichOneof("content") not in {"data", "text"}:
             raise A2AError("request_rejected")
-        try:
-            metadata = MessageToDict(message.metadata, preserving_proto_field_name=True) if message.HasField("metadata") else {}
-            if set(metadata) != {"skill_id"} or metadata["skill_id"] not in SKILL_BY_ID:
-                raise ValueError("invalid skill")
-            skill = SKILL_BY_ID[metadata["skill_id"]]
-            actor = await self._actor(context, skill.capability)
-            payload = MessageToDict(message.parts[0].data, preserving_proto_field_name=True)
-            request = skill.input_model.model_validate(payload)
-        except A2AError:
-            raise
-        except Exception:
-            raise A2AError("request_rejected") from None
+        if message.parts[0].WhichOneof("content") == "text":
+            parsed = await self._text_request(message.parts[0].text, context)
+            if isinstance(parsed, Message):
+                return parsed
+            skill, actor, request = parsed
+        else:
+            try:
+                metadata = MessageToDict(message.metadata, preserving_proto_field_name=True) if message.HasField("metadata") else {}
+                if set(metadata) != {"skill_id"} or metadata["skill_id"] not in SKILL_BY_ID:
+                    raise ValueError("invalid skill")
+                skill = SKILL_BY_ID[metadata["skill_id"]]
+                actor = await self._actor(context, skill.capability)
+                payload = MessageToDict(message.parts[0].data, preserving_proto_field_name=True)
+                request = skill.input_model.model_validate(payload)
+            except A2AError:
+                raise
+            except Exception:
+                raise A2AError("request_rejected") from None
         if skill.kind == "direct":
             try:
                 output = await skill.handler(self.services, actor, request)
@@ -361,16 +412,47 @@ class _PlatformRequestHandler(RequestHandler):
             })
         try:
             run = await self.intake.submit(actor, skill.id, request)
-            return self._task(run)
         except ServiceError as exc:
             raise A2AError("request_rejected") from None
         except Exception as exc:
             raise A2AError("request_rejected") from None
+        configuration = params.configuration if params.HasField("configuration") else None
+        if not wait or (configuration is not None and configuration.return_immediately) or "results:read" not in actor.capabilities:
+            return self._task(run)
+        return await self._wait(context, run.id)
+
+    async def _wait(self, context: ServerCallContext, run_id: UUID) -> Task:
+        """A2A 1.0 blocking SendMessage: wait until the run ends or waits for its owner, then answer with the report text."""
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + _BLOCK_SECONDS
+        actor, run = await self._current(context, run_id)
+        while run.status not in _TERMINAL | _RESTING and loop.time() < deadline:
+            await asyncio.sleep(_POLL_SECONDS)
+            actor, run = await self._current(context, run_id)
+        task = await self._task_with_artifacts(run, actor)
+        for artifact in task.artifacts:
+            text = await self._artifact_text(actor, artifact.artifact_id)
+            if text:
+                artifact.parts.append(_protobuf(Part, {"text": text, "mediaType": "text/markdown"}))
+        return task
+
+    async def _artifact_text(self, actor: Actor, artifact_id: str) -> str | None:
+        """Same checks and size cap as the /artifacts download routes."""
+        kind, _, raw = artifact_id.partition("-")
+        try:
+            if kind == "evaluation":
+                result = (await self.services.runs.get(actor, actor.project_id, UUID(raw))).evaluation_result
+                text = result.report_markdown if result else None
+            else:
+                text = (await self.services.documents.get(actor, actor.project_id, UUID(raw))).content_markdown
+        except (ServiceError, ValueError):
+            return None
+        return text if text and len(text.encode("utf-8")) <= _MAX_ARTIFACT_BYTES else None
 
     async def on_message_send_stream(self, params: SendMessageRequest, context: ServerCallContext) -> AsyncIterator[Any]:
         # Following a run needs results access; check before a run is created.
         await self._actor(context, "results:read")
-        result = await self.on_message_send(params, context)
+        result = await self._send(params, context, wait=False)
         if isinstance(result, Message):
             yield result
             return

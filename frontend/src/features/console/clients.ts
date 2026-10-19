@@ -19,8 +19,8 @@ export function clients(share: string, api: string, projectId: string): Client[]
     {
       id: 'hermes', name: 'Hermes Agent', vendor: 'Nous Research', protocols: ['MCP', 'A2A'],
       hint: {
-        th: 'เพิ่มทั้ง MCP (เครื่องมือของเรา) และ A2A (ส่งงานให้เอเจนต์ของเรา) ใน config ของ Hermes แล้วเปิด toolset a2a',
-        en: 'Add both MCP (our tools) and A2A (hand work to our agent) to the Hermes config, then enable the a2a toolset.',
+        th: 'เพิ่มทั้ง MCP (เครื่องมือของเรา) และ A2A (ส่งงานให้เอเจนต์ของเรา) ใน config ของ Hermes แล้วเปิด toolset a2a จากนั้นสั่ง Hermes เป็นภาษาปกติได้เลย เช่น "ให้ job_search หางาน data analyst 3 งาน"',
+        en: 'Add both MCP (our tools) and A2A (hand work to our agent) to the Hermes config and enable the a2a toolset. Then just ask Hermes, e.g. "ask job_search for 3 data analyst jobs".',
       },
       snippets: [
         { label: { th: 'เพิ่มใน config ของ Hermes', en: 'Add to the Hermes config' }, where: '~/.hermes/config.yaml', code:

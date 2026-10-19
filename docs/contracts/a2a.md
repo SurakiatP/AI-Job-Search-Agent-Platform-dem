@@ -55,6 +55,10 @@ The task contains opaque artifact identifiers and these resource URIs, never art
 
 The card advertises `streaming: true` and `pushNotifications: true`. Task listing (`ListTasks`) and push notification configuration are supported; push delivery is described in the webhook contract.
 
+Text messages (for LLM agents such as Hermes): a message may instead carry one text part. If the text (optionally inside a ```json fence) is exactly `{"skill": "<skill id>", "request": {...}}` for a skill the grant allows and the request matches its schema, it runs like the data form. Any other text gets a `Message` reply that lists the grant's skills with their input schemas and the expected form; a request that fails its schema gets the same guide for that skill only. The guide is built from the skill list alone and never repeats the caller's text.
+
+Blocking `SendMessage` (A2A 1.0 default): for a task skill the reply waits until the Run ends or waits for its owner (at most 600 s), then returns the Task with its artifacts; each artifact also carries the report or document text (same access check and 200,000-byte cap as the download routes). Clients that want the Task at once set `configuration.returnImmediately` (SDK `ClientConfig(polling=True)`). A grant without `results:read` always gets the Task at once, since it may not read results.
+
 Streaming (FR-P04): `SendStreamingMessage` (`message/stream`, REST `POST /message:stream`) and `SubscribeToTask` (`tasks/subscribe`, REST `/tasks/{id}:subscribe`) answer with Server-Sent Events. Both need `results:read` in addition to the skill's capability; without it the request is rejected before any Run is created. The stream sends:
 
 1. the current Task snapshot;

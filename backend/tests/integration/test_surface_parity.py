@@ -216,8 +216,7 @@ async def test_shared_surfaces_preserve_run_identity_and_project_capabilities(
 
         a2a_client = await create_client(
             base_url,
-            ClientConfig(
-                streaming=False,
+            ClientConfig(streaming=False, polling=True,
                 supported_protocol_bindings=["JSONRPC"],
                 httpx_client=httpx.AsyncClient(
                     headers={"Authorization": f"Bearer {full['token']}", "A2A-Version": "1.0"}
@@ -234,8 +233,7 @@ async def test_shared_surfaces_preserve_run_identity_and_project_capabilities(
 
         foreign_a2a_client = await create_client(
             base_url,
-            ClientConfig(
-                streaming=False,
+            ClientConfig(streaming=False, polling=True,
                 supported_protocol_bindings=["JSONRPC"],
                 httpx_client=httpx.AsyncClient(
                     headers={
@@ -348,8 +346,7 @@ async def test_shared_surfaces_preserve_run_identity_and_project_capabilities(
 
         draft_client = await create_client(
             base_url,
-            ClientConfig(
-                streaming=False,
+            ClientConfig(streaming=False, polling=True,
                 supported_protocol_bindings=["JSONRPC"],
                 httpx_client=httpx.AsyncClient(
                     headers={"Authorization": f"Bearer {draft_only['token']}", "A2A-Version": "1.0"}
@@ -365,8 +362,7 @@ async def test_shared_surfaces_preserve_run_identity_and_project_capabilities(
 
         evaluate_client = await create_client(
             base_url,
-            ClientConfig(
-                streaming=False,
+            ClientConfig(streaming=False, polling=True,
                 supported_protocol_bindings=["JSONRPC"],
                 httpx_client=httpx.AsyncClient(
                     headers={"Authorization": f"Bearer {evaluate_only['token']}", "A2A-Version": "1.0"}
