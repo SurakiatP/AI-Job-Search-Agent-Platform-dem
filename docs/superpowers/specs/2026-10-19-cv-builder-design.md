@@ -67,6 +67,8 @@ The tailored CV stored for document `f0bb09b2…` is 1,949 characters with 8 lin
 | FR-CVB-13 | ระบบต้องให้เจ้าของแก้ไข CV ที่ AI ปรับแล้ว (จาก CV ตัวสร้าง) ในตัวสร้างแบบเดียวกัน และบันทึกเป็นฉบับใหม่ของเอกสารนั้น | CR-01 |
 | FR-CVB-14 | ระบบต้องไม่ส่งการแก้ไขของเจ้าของใน CV ที่ปรับแล้วกลับเข้าคลังประสบการณ์ | B14 |
 | FR-CVB-15 | ในกรณีที่ CV ต้นทางเป็นไฟล์ที่อัปโหลด ระบบต้องปรับ CV ด้วยวิธีเดิม (Markdown) และแสดงว่าเทมเพลตใช้ได้กับ CV ที่สร้างในระบบ | B16 |
+| FR-CVB-16 | หาก ข้อมูลร่างไม่ผ่านเกณฑ์ตรวจ (ขนาด, จำนวน, ลิงก์, วันที่, คีย์ที่ไม่รู้จัก) ระบบต้องปฏิเสธด้วย `resume_invalid` และระบุช่องที่ผิด | Validation |
+| FR-CVB-17 | ระบบต้องให้เฉพาะเจ้าของโปรเจกต์อ่าน แก้ พรีวิว และบันทึกร่างได้ | B11 |
 
 ## Acceptance criteria
 
@@ -85,6 +87,8 @@ The tailored CV stored for document `f0bb09b2…` is 1,949 characters with 8 lin
 | AC-CVB-11 | 12 | Given a tailored builder CV, when the owner opens it on the Documents page, then a PDF preview of the latest revision is shown. |
 | AC-CVB-12 | 13, 14 | Given a tailored builder CV, when the owner edits a highlight and saves, then a new document revision is created with the change, and the experience bank is unchanged. |
 | AC-CVB-13 | 15 | Given an uploaded CV, when it is tailored, then the document is Markdown as today and its page shows "Build a CV in the app to use templates". |
+| AC-CVB-14 | 16 | Given a draft, when a field breaks a validation rule (e.g. a `javascript:` link, 1,001 characters, 51 items), then the save returns 422 `resume_invalid` with that field's path; the boundary values (1,000 characters, 50 items) are accepted. |
+| AC-CVB-15 | 17 | Given a builder CV in project P1, when another user's project owner or an agent grant calls any draft route, then it gets 404 or 403 and nothing changes. |
 
 ## Data
 
