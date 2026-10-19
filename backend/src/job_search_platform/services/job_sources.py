@@ -11,6 +11,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from job_search_platform import config
 from job_search_platform.integrations import meili
+from job_search_platform.services import job_dictionary as jd
 from job_search_platform.services.errors import ServiceError
 
 CACHE_TTL_SECONDS = 300
@@ -18,8 +19,8 @@ CACHE_MAX_ENTRIES = 128
 DESCRIPTION_MAX = 50000
 STALE_AFTER_DAYS = 60
 RETRIEVE = ["slug", "title", "company", "location", "cities", "work_mode", "skills", "category", "posted_at",
-            "posted_ts", "source_url", "description_markdown", "reality_stale"]
-FACETS = ["category", "cities", "seniority", "employment_type", "company_type", "skills", "posting_language"]
+            "posted_ts", "source_url", "description_markdown", "reality_stale", "missed_runs"]
+FACETS = ["category", "provinces", "seniority", "employment_type", "company_type", "skills", "posting_language"]
 
 
 def _search(payload: dict) -> dict:
@@ -75,6 +76,13 @@ def hit_to_item(hit: dict, now: datetime) -> dict:
     ts = hit.get("posted_ts")
     age = max(0, int(now.timestamp() - ts) // 86400) if isinstance(ts, int) and not isinstance(ts, bool) else None
     description = hit.get("description_markdown")
+    missed = hit.get("missed_runs")
+    # FR-J04: each signal is stored evidence; none is a guess about the employer.
+    signals = [code for code, hit_it in (
+        ("old", age is not None and age > STALE_AFTER_DAYS),
+        ("source_flagged", hit.get("reality_stale") is True),
+        ("unlisted", isinstance(missed, int) and not isinstance(missed, bool) and missed > 0),
+    ) if hit_it]
     return {
         "slug": str(hit.get("slug") or ""),
         "title": str(hit.get("title") or ""),
@@ -86,7 +94,8 @@ def hit_to_item(hit: dict, now: datetime) -> dict:
         "category": _text(hit.get("category")),
         "posted_at": _text(hit.get("posted_at")),
         "age_days": age,
-        "stale": hit.get("reality_stale") is True or (age is not None and age > STALE_AFTER_DAYS),
+        "stale": bool(signals),
+        "ghost_signals": signals,
         "source_url": _strip_utm(hit.get("source_url")),
         "description_markdown": description[:DESCRIPTION_MAX] if isinstance(description, str) else "",
     }
@@ -129,7 +138,13 @@ def build_filter(*, cities=(), work_mode=None, posted_within_days=None, category
     def one(field, value):
         return [f"{field} = {q(value)}"] if value else []
 
-    return [*many("cities", cities), *one("work_mode", work_mode),
+    def places(values):  # a province name or alias matches by province code (same as the facet count); other values by city
+        codes = sorted({code for code in map(jd.province_code, values) if code})
+        rest = [v for v in values if not jd.province_code(v)]
+        parts = ([f"provinces IN [{', '.join(q(c) for c in codes)}]"] if codes else []) + ([f"cities IN [{', '.join(q(v) for v in rest)}]"] if rest else [])
+        return [parts[0] if len(parts) == 1 else f"({' OR '.join(parts)})"] if parts else []
+
+    return [*places(cities), *one("work_mode", work_mode),
             *([f"posted_ts >= {int(now.timestamp()) - posted_within_days * 86400}"] if posted_within_days else []),
             *one("category", category), *many("seniority", seniority), *many("employment_type", employment_type),
             *many("company_type", company_type), *many("skills", skills), *one("posting_language", posting_language),
@@ -166,6 +181,13 @@ def _top(counts, n) -> list[dict]:
     return [{"value": k, "count": v} for k, v in pairs[:n]]
 
 
+def _provinces(counts) -> list[dict]:
+    """Thai provinces only, with their English and Thai names; every other place a source lists is left out."""
+    out = [{"value": jd.PROVINCE_NAMES[k][0], "name_th": jd.PROVINCE_NAMES[k][1], "count": v}
+           for k, v in (counts.items() if isinstance(counts, dict) else []) if k in jd.PROVINCE_NAMES and isinstance(v, int) and not isinstance(v, bool)]
+    return sorted(out, key=lambda item: (-item["count"], item["value"]))
+
+
 def job_facets(*, now=None) -> dict:
     data = _cached({"q": "", "limit": 0, "facets": FACETS})
     facets, total = data.get("facetDistribution"), data.get("estimatedTotalHits")
@@ -178,7 +200,7 @@ def job_facets(*, now=None) -> dict:
     except ServiceError:
         new_7d = None
     return {"total": total, "categories": _top(facets.get("category"), 12),
-            "cities": _top(facets.get("cities"), 10), "seniority": _top(facets.get("seniority"), 12),
+            "cities": _provinces(facets.get("provinces")), "seniority": _top(facets.get("seniority"), 12),
             "employment_type": _top(facets.get("employment_type"), 12),
             "company_type": _top(facets.get("company_type"), 12), "skills": _top(facets.get("skills"), 20),
             "thai_postings": thai if isinstance(thai, int) and not isinstance(thai, bool) else 0,

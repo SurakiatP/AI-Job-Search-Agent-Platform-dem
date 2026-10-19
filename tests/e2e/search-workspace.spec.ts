@@ -12,7 +12,7 @@ async function installSearchFixture(page: Page, items = searchItems) {
   await page.route(`**/api/v1/projects/${projectId}/job-search**`, route => {
     const url = new URL(route.request().url());
     const body = url.pathname.endsWith('/facets')
-      ? { total: 124, categories: [{ value: 'data_analytics', count: 38 }, { value: 'software_engineering', count: 31 }], cities: [{ value: 'Bangkok', count: 72 }, { value: 'Chiang Mai', count: 14 }], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 16, thai_postings: 21 }
+      ? { total: 124, categories: [{ value: 'data_analytics', count: 38 }, { value: 'software_engineering', count: 31 }], cities: [{ value: 'Bangkok', name_th: 'กรุงเทพมหานคร', count: 72 }, { value: 'Chiang Mai', name_th: 'เชียงใหม่', count: 14 }], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 16, thai_postings: 21 }
       : { items, total: 124, limit: 20, offset: Number(url.searchParams.get('offset') ?? 0), pool: 124, hidden_count: 2 };
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
@@ -202,7 +202,8 @@ test('Smart match labels deterministic coverage and reports a partial AI pool', 
   });
   await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   await page.goto(`/app/projects/${projectId}/search?mode=match`);
-  await expect(page.getByRole('status').filter({ hasText: 'Ranking with AI' })).toBeVisible();
+  await page.getByRole('button', { name: /^Start Smart match/ }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'ranking jobs for you' })).toBeVisible();
   await expect(page.getByText('Keyword ranking is shown while AI ranking is pending or unavailable.')).toBeVisible();
   await expect(page.getByText('Rank jobs against your CV (uses AI).')).toBeVisible();
   await expect(page.getByText('Changing the CV affects new estimates only.')).toBeVisible();
@@ -240,7 +241,8 @@ test('Smart match keeps its CV profiling state visible while processing', async 
   await page.route(`**/api/v1/projects/${projectId}/runs/profile-run`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'profile-run', status: 'running' }) }));
   await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   await page.goto(`/app/projects/${projectId}/search?mode=match`);
-  await expect(page.getByRole('status').filter({ hasText: 'Analyzing your CV' })).toBeVisible();
+  await page.getByRole('button', { name: /^Start Smart match/ }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'analyzing your CV' })).toBeVisible();
 });
 
 test('capture Search workspace font-loaded evidence matrix', async ({ page }) => {
@@ -291,5 +293,124 @@ test('capture Search workspace font-loaded evidence matrix', async ({ page }) =>
     } finally {
       await capturePage.close();
     }
+  }
+});
+
+
+test('Smart match never calls the AI until the user presses Start, and asks again when the CV changes', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const calls = { match: 0, rank: 0, profile: 0 };
+  await page.route(`**/api/v1/projects/${projectId}/job-search/match**`, route => { calls.match += 1; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], total: 0, pool: 0, ai: { status: 'ready', categories: [], scored: 0 } }) }); });
+  await page.route(`**/api/v1/projects/${projectId}/job-search/rank**`, route => { calls.rank += 1; return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }); });
+  await page.route(`**/api/v1/projects/${projectId}/runs`, route => { if (route.request().method() === 'POST') calls.profile += 1; return route.fallback(); });
+  await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
+    { id: 'cv-a', name: 'CV A', is_primary: true, in_use: false, revision_count: 1, latest_revision: { id: 'rev-a', revision: 1, created_at: '2026-10-10T00:00:00Z', original_filename: 'a.txt', mime_type: 'text/plain', size_bytes: 10, file_id: null } },
+    { id: 'cv-b', name: 'CV B', is_primary: false, in_use: false, revision_count: 1, latest_revision: { id: 'rev-b', revision: 1, created_at: '2026-10-10T00:00:00Z', original_filename: 'b.txt', mime_type: 'text/plain', size_bytes: 10, file_id: null } },
+  ]) }));
+  await page.goto(`/app/projects/${projectId}/search?mode=match`);
+  await expect(page.getByRole('heading', { name: 'Let the agent rank jobs for you' })).toBeVisible();
+  await expect(page.getByText('It uses AI every time it runs, so it waits for you to start it.')).toBeVisible();
+  await page.waitForTimeout(800);
+  expect(calls).toEqual({ match: 0, rank: 0, profile: 0 });
+  await page.getByRole('button', { name: /^Start Smart match/ }).click();
+  await expect(page.getByRole('heading', { name: 'Let the agent rank jobs for you' })).toHaveCount(0);
+  await expect.poll(() => calls.match).toBe(1);
+  await page.locator('#match-cv').selectOption('cv-b');
+  await expect(page.getByRole('heading', { name: 'Let the agent rank jobs for you' })).toBeVisible();
+  const before = calls.match;
+  await page.waitForTimeout(500);
+  expect(calls.match).toBe(before);
+});
+
+test('a stale result lists the evidence behind the warning', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  const ghost = { ...searchItems[0], slug: 'old-one', title: 'Old Listing Analyst', age_days: 75, stale: true, ghost_signals: ['old', 'unlisted'] };
+  await installSearchFixture(page, [ghost, searchItems[1]]);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/app/projects/${projectId}/search?q=analyst`);
+  await page.locator('[data-job-slug="old-one"]').click();
+  const reasons = page.getByTestId('ghost-reasons');
+  await expect(reasons).toContainText('Posted 75 days ago');
+  await expect(reasons).toContainText('Not found on the source at the last check');
+  await page.locator('[data-job-slug="northstar"]').click();
+  await expect(page.getByTestId('ghost-reasons')).toHaveCount(0);
+});
+
+test('the location list shows Thai provinces in the app language', async ({ page }) => {
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const [locale, label, other] of [['th', 'กรุงเทพมหานคร (72)', 'Bangkok'], ['en', 'Bangkok (72)', 'กรุงเทพมหานคร']] as const) {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await page.goto(`/app/projects/${projectId}/search?q=analyst`);
+    const options = page.locator('#job-city option');
+    await expect(options.filter({ hasText: label })).toHaveCount(1);
+    await expect(options.filter({ hasText: other })).toHaveCount(0);
+  }
+});
+
+test('every list filter reaches the search request, and clearing removes it', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await installSearchFixture(page);
+  const seen: string[] = [];
+  page.on('request', r => { const u = new URL(r.url()); if (u.pathname.endsWith('/job-search')) seen.push(u.search); });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/app/projects/${projectId}/search`);
+  await expect(page.locator('#job-city')).toBeVisible();
+  await page.locator('#job-city').selectOption('Chiang Mai');
+  await expect.poll(() => seen.some(s => s.includes('cities=Chiang+Mai'))).toBe(true);
+  await page.getByLabel('Work mode', { exact: true }).selectOption('remote');
+  await expect.poll(() => seen.some(s => s.includes('cities=Chiang+Mai') && s.includes('work_mode=remote'))).toBe(true);
+  await page.getByRole('button', { name: /Clear filters|Clear all/ }).first().click();
+  const before = seen.length;
+  await expect.poll(() => seen.length).toBeGreaterThan(before - 1);
+  await expect.poll(() => /cities=|work_mode=/.test(seen[seen.length - 1] ?? '')).toBe(false);
+});
+
+test('filter chips and category names use the app language, never raw codes', async ({ page }) => {
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const qs = 'seniority=senior&employment_type=full_time&company_type=inhouse&posting_language=th&salary_min=15000&category=project_management';
+  const expected = {
+    th: ['ระดับตำแหน่ง: ซีเนียร์', 'ประเภทการจ้าง: งานประจำ', 'ประเภทบริษัท: ทีมภายในองค์กร', 'ประกาศภาษาไทย: ภาษาไทย', 'เงินเดือนขั้นต่ำ: 15,000 บาท/เดือน', 'หมวดงาน: บริหารโครงการ'],
+    en: ['Seniority: Senior', 'Employment type: Full-time', 'Company type: In-house', 'Thai postings: Thai', 'Minimum salary: 15,000 THB/month', 'Categories: Project management'],
+  };
+  for (const locale of ['th', 'en'] as const) {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await page.goto(`/app/projects/${projectId}/search?${qs}`);
+    const chips = page.getByRole('button', { name: /^(Remove filter|นำตัวกรอง)/ });
+    await expect(chips.first()).toBeVisible();
+    const names = (await chips.allTextContents()).concat(await chips.evaluateAll(e => e.map(x => x.getAttribute('aria-label') ?? '')));
+    for (const text of expected[locale]) expect(names.join('|'), text).toContain(text);
+    expect(names.join('|')).not.toMatch(/Full time|: Th\b|_/);
+  }
+});
+
+test('the filter panel fits a phone in both languages and every control stays reachable', async ({ page }) => {
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const locale of ['th', 'en']) {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await page.goto(`/app/projects/${projectId}/search?seniority=senior&posting_language=th`);
+    await page.getByRole('button', { name: /^(More filters|ตัวกรองเพิ่มเติม)/ }).click();
+    await expect(page.locator('#adv-filters')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    for (const target of [page.locator('#adv-filters button').first(), page.locator('#adv-salary'), page.locator('#job-city'), page.locator('#job-mode')]) {
+      const box = await target.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(36);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+    }
+  }
+});
+
+test('job cards and details show Thai province names in the Thai app and the source text in English', async ({ page }) => {
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const [locale, shown, hidden] of [['th', 'กรุงเทพมหานคร', null], ['en', 'Bangkok', 'กรุงเทพมหานคร']] as const) {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await page.goto(`/app/projects/${projectId}/search?q=analyst`);
+    const card = page.locator('[data-job-slug="bright-data"]');
+    await expect(card).toContainText(shown);
+    if (hidden) await expect(card).not.toContainText(hidden);
   }
 });

@@ -82,12 +82,19 @@ def purged_counts(sessions, user_id, project_id):
             (OwnerSession, OwnerSession.user_id == user_id))]
 
 
+def _delete(accounts, user_id, email):
+    """Deletion now also needs the emailed code; issue one the way the service does and use it."""
+    with accounts.sessions.begin() as db:
+        code = accounts._issue_code(db, user_id, "delete_account")
+    accounts.request_deletion(user_id, PW, email, code)
+
+
 def test_request_deletion_disables_access_and_cancels_runs(accounts, sessions):
     actor, project_id, grant_actor = seed(sessions)
     with sessions.begin() as db:
         token_hash = db.scalar(select(Grant.token_hash).where(Grant.id == grant_actor.grant_id))
     exchange = accounts.owner_sessions.create(actor.user_id)
-    accounts.request_deletion(actor.user_id, PW, " CAROL@example.test ")
+    _delete(accounts, actor.user_id, " CAROL@example.test ")
     with pytest.raises(ServiceError) as err:
         asyncio.run(accounts.owner_sessions.current(exchange.session_cookie, origin="https://app.example.test", host="app.example.test"))
     assert err.value.code == "unauthorized"
@@ -107,7 +114,7 @@ def test_request_deletion_disables_access_and_cancels_runs(accounts, sessions):
 def test_purge_removes_everything_and_frees_the_email(accounts, sessions):
     actor, project_id, _ = seed(sessions)
     other, other_project, _ = seed(sessions, email="dave@example.test")
-    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    _delete(accounts, actor.user_id, EMAIL)
     store = FakeStore(missing={f"k2-{project_id}"})  # a missing object counts as deleted
     assert asyncio.run(accounts.purge_due(store)) == 1
     assert store.deleted == [f"k1-{project_id}"]
@@ -120,7 +127,7 @@ def test_purge_removes_everything_and_frees_the_email(accounts, sessions):
 
 def test_failed_object_delete_skips_user_until_store_recovers(accounts, sessions, caplog):
     actor, project_id, _ = seed(sessions)
-    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    _delete(accounts, actor.user_id, EMAIL)
     with caplog.at_level(logging.INFO):
         assert asyncio.run(accounts.purge_due(FakeStore(fail_on=f"k2-{project_id}"))) == 0
     assert purged_counts(sessions, actor.user_id, project_id)[0] == 1
@@ -131,7 +138,7 @@ def test_failed_object_delete_skips_user_until_store_recovers(accounts, sessions
 
 def test_purge_waits_for_live_runs(accounts, sessions):
     actor, project_id, _ = seed(sessions, run_status="running")
-    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    _delete(accounts, actor.user_id, EMAIL)
     assert asyncio.run(accounts.purge_due(FakeStore())) == 0
     assert purged_counts(sessions, actor.user_id, project_id)[0] == 1
     with sessions.begin() as db:  # what the executor leaves behind: terminal and released
@@ -144,7 +151,7 @@ def test_purge_removes_a_user_whose_run_executed(accounts, sessions):
     with sessions.begin() as db:  # the executor sets sandbox_id on every executed run and never clears it
         db.execute(update(Run).where(Run.project_id == project_id).values(
             status="completed", lease_owner=None, sandbox_id="sandbox-1"))
-    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    _delete(accounts, actor.user_id, EMAIL)
     assert asyncio.run(accounts.purge_due(FakeStore())) == 1
     assert purged_counts(sessions, actor.user_id, project_id) == [0] * 6
 
@@ -156,7 +163,7 @@ def test_purge_removes_run_workspaces_only_for_the_deleted_user(accounts, sessio
         (tmp_path / str(pid) / "run1").mkdir(parents=True)
         (tmp_path / str(pid) / "run1" / "input.txt").write_text("cv text")
     accounts.workspace_root = tmp_path.resolve()
-    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    _delete(accounts, actor.user_id, EMAIL)
     assert asyncio.run(accounts.purge_due(FakeStore())) == 1
     assert not (tmp_path / str(project_id)).exists()
     assert (tmp_path / str(other_project) / "run1" / "input.txt").exists()
@@ -171,14 +178,14 @@ def test_purge_does_not_follow_a_workspace_symlink(accounts, sessions, tmp_path)
     root.mkdir()
     (root / str(project_id)).symlink_to(outside)
     accounts.workspace_root = root.resolve()
-    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    _delete(accounts, actor.user_id, EMAIL)
     assert asyncio.run(accounts.purge_due(FakeStore())) == 1
     assert (outside / "keep.txt").exists() and not (root / str(project_id)).exists()
 
 
 def test_overdue_purge_is_logged_without_email(accounts, sessions, caplog):
     actor, project_id, _ = seed(sessions)
-    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    _delete(accounts, actor.user_id, EMAIL)
     with sessions.begin() as db:
         db.get(User, actor.user_id).deletion_requested_at = datetime.now(timezone.utc) - timedelta(hours=25)
     with caplog.at_level(logging.INFO):
@@ -188,7 +195,7 @@ def test_overdue_purge_is_logged_without_email(accounts, sessions, caplog):
 
 def test_overdue_is_logged_even_while_the_user_is_busy(accounts, sessions, caplog):
     actor, _, _ = seed(sessions, run_status="running")
-    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    _delete(accounts, actor.user_id, EMAIL)
     with sessions.begin() as db:
         db.execute(update(Run).where(Run.status == "cancelled").values(status="running", lease_owner="w1"))
         db.get(User, actor.user_id).deletion_requested_at = datetime.now(timezone.utc) - timedelta(hours=25)
@@ -249,7 +256,7 @@ def test_purge_deletes_the_minio_object(accounts, sessions):
         db.add(StoredFile(project_id=project_id, kind="cv_original", publication_state="published", storage_key=key,
                           checksum_sha256="0" * 64, size_bytes=1, mime_type="text/plain", display_name="cv"))
     asyncio.run(store.put(key, b"x", hashlib.sha256(b"x").hexdigest()))
-    accounts.request_deletion(actor.user_id, PW, EMAIL)
+    _delete(accounts, actor.user_id, EMAIL)
     assert asyncio.run(accounts.purge_due(store)) == 1
     assert asyncio.run(store.exists(key)) is False
 

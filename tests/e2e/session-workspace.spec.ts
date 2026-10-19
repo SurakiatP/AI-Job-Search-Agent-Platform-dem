@@ -340,7 +340,7 @@ test('SCR-04 exactly one primary action per run state; pending tailor proposals 
       await expect(page.getByText(/Not a hiring prediction/)).toBeVisible();
       await expect(page.getByText('1 of 2')).toBeVisible();
       await page.getByText('Show evidence').click();
-      await expect(page.getByText('dbt', { exact: true })).toBeVisible();
+      await expect(page.getByText('dbt', { exact: true }).first()).toBeVisible();
       await expect(page.getByRole('link', { name: 'Open document' })).toHaveAttribute('href', `/app/projects/${projectId}/documents/${documentIdForTest}`);
     }
     if (name === 'tailor needs input') {

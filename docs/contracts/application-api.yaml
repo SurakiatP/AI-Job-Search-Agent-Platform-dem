@@ -197,7 +197,9 @@ paths:
         Query: q (max 200), cities (comma list, max 5 x 60), work_mode (remote|hybrid|onsite),
         posted_within_days (1-90), category (slug, max 60), limit (1-20, default 20), offset (0-1000).
         Items carry slug, title, company, location, cities, work_mode, skills (max 8), category, posted_at,
-        age_days, stale (upstream reality.class other than fresh), source_url (http/https, utm_* stripped)
+        age_days, stale (true when ghost_signals is not empty), ghost_signals (FR-J04 evidence list: old = posted
+        more than 60 days ago, source_flagged = upstream reality.class other than fresh, unlisted = missing from the
+        source at its last check), source_url (http/https, utm_* stripped)
         and description_markdown (max 50000). Upstream failure returns 502 job_source_unavailable (retryable).
         Advanced filters (all optional, empty = unset; invalid values give 422): seniority (comma list of
         intern|junior|middle|senior|lead|staff|principal|c_level), employment_type (full_time|part_time|contract|
@@ -217,7 +219,7 @@ paths:
         Direct agent read (skill jobs_search, capability jobs:search; owner session also allowed). Creates no Run.
         JSON body AgentJobSearch: q (max 200), cities (list, max 5 x 60), work_mode (remote|hybrid|onsite), posted_within_days (1-90),
         category (slug), limit (1-50, default 20), description_format (markdown|text, default markdown).
-        Each job carries the full description, posting_age_days and stale. Upstream failure returns 502 job_source_unavailable.
+        Each job carries the full description, posting_age_days, stale and ghost_signals (old|source_flagged|unlisted). Upstream failure returns 502 job_source_unavailable.
       security: [{ownerSession: []}, {projectGrant: []}]
       requestBody:
         required: true
@@ -660,9 +662,12 @@ paths:
     get:
       tags: [jobs]
       description: >-
-        Owner-only Thailand facets {total, categories (top 12), cities (top 10), seniority, employment_type,
+        Owner-only Thailand facets {total, categories (top 12), cities, seniority, employment_type,
         company_type, skills (top 20)} as [{value, count}], plus thai_postings (int) and new_7d (int|null, postings
-        from the last 7 days; null when that count is unavailable).
+        from the last 7 days; null when that count is unavailable). cities lists Thai provinces only, most
+        postings first, as [{value (English RTGS name, the value to send as the cities filter), name_th, count}];
+        places that are not a Thai province are left out. A cities filter value that is a province name or
+        alias (English or Thai) also matches postings indexed by that province.
       security: [{ownerSession: []}]
       responses:
         '200': {description: Job search facets}
@@ -1172,6 +1177,48 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TokenRequest'}}}}
       responses:
         '204': {description: Done}
+  /auth/verify-email/code:
+    post:
+      tags: [auth]
+      description: Public. Verifies the email with the six-digit code from the sign-up mail. 400 invalid_code for a wrong, used, expired or unknown code; 429 after 5 tries per 10 minutes.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CodeRequest'}}}}
+      responses:
+        '204': {description: Done}
+        '400': {description: 'Invalid code (code invalid_code)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /account/avatar:
+    get:
+      tags: [account]
+      description: Session. The uploaded picture (PNG, JPEG or WebP). 404 when none.
+      responses:
+        '200': {description: Image bytes, content: {image/png: {schema: {type: string, format: binary}}}}
+    put:
+      tags: [account]
+      description: Session and CSRF. Raw image bytes as the body, at most 256 KiB. Type is detected from the content; SVG is refused. 422 invalid_image.
+      requestBody: {required: true, content: {application/octet-stream: {schema: {type: string, format: binary}}}}
+      responses:
+        '204': {description: Saved}
+    delete:
+      tags: [account]
+      description: Session and CSRF. Removes the uploaded picture.
+      responses:
+        '204': {description: Removed}
+  /account/avatar-preset:
+    put:
+      tags: [account]
+      description: Session and CSRF. Picks a built-in avatar and removes any uploaded picture.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AvatarPresetRequest'}}}}
+      responses:
+        '204': {description: Saved}
+  /account/delete-code:
+    post:
+      tags: [account]
+      description: Session. Emails a six-digit code (valid 10 minutes, replaces any earlier one) that DELETE /account then requires. 429 after 3 sends per hour.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Code sent, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
   /digest/unsubscribe:
     post:
       tags: [auth]
@@ -2097,6 +2144,7 @@ components:
         posted_at: {type: [string, 'null']}
         posting_age_days: {type: [integer, 'null']}
         stale: {type: boolean}
+        ghost_signals: {type: array, items: {type: string, enum: [old, source_flagged, unlisted]}}
         source_url: {type: [string, 'null']}
         description: {type: string}
         description_format: {type: string, enum: [markdown, text]}
@@ -2178,10 +2226,18 @@ components:
     DeleteAccountRequest:
       type: object
       additionalProperties: false
-      required: [password, confirm_email]
+      required: [password, confirm_email, code]
       properties:
         password: {type: string, maxLength: 256}
         confirm_email: {type: string, maxLength: 254}
+        code: {type: string, pattern: '^\\d{6}$'}
+    CodeRequest:
+      type: object
+      additionalProperties: false
+      required: [email, code]
+      properties:
+        email: {type: string, maxLength: 254}
+        code: {type: string, pattern: '^\\d{6}$'}
     CheckEmailView:
       type: object
       additionalProperties: false
@@ -2197,7 +2253,17 @@ components:
         email: {type: string}
         locale: {type: string, enum: [th, en]}
         email_verified: {type: boolean}
+        is_admin: {type: boolean, description: True only for verified accounts listed in ADMIN_EMAILS}
+        avatar_preset: {type: string, nullable: true, enum: [compass, briefcase, spark, mountain]}
+        has_avatar_image: {type: boolean}
+        avatar_version: {type: string, nullable: true, description: Changes whenever the picture changes; use it to refresh caches}
         created_at: {type: string, format: date-time}
+    AvatarPresetRequest:
+      type: object
+      additionalProperties: false
+      required: [preset]
+      properties:
+        preset: {type: string, enum: [compass, briefcase, spark, mountain]}
     LoginView:
       type: object
       additionalProperties: false

@@ -1,3 +1,4 @@
+import { Sparkles } from 'lucide-react';
 import { BusyNote } from '@/components/BusyNote';
 import { useGatewayHelp, useRunGate } from '../../lib/accountGate';
 import { useState } from 'react';
@@ -10,12 +11,12 @@ import { sendJson, type useResource } from '../projects/useResource';
 
 const KINDS: ExperienceKind[] = ['experience', 'education', 'skill', 'certification', 'project', 'other'];
 const copy = {
-  th: { title: 'คลังประสบการณ์', hint: 'ข้อเท็จจริงจาก CV ของคุณ AI ใช้ได้เฉพาะข้อมูลในคลังนี้', fromCv: (n: string) => `จาก CV: ${n}`, mine: 'เพิ่มเอง', fact: 'ข้อเท็จจริง', kind: 'ประเภท', role: 'ตำแหน่ง', org: 'องค์กร', period: 'ช่วงเวลา', add: 'เพิ่มข้อเท็จจริง', remove: 'ลบ', edit: 'แก้ไข', save: 'บันทึก', cancel: 'ยกเลิก', extract: 'ดึงจาก CV อีกครั้ง', extractFirst: 'ดึงประสบการณ์จาก CV', loadError: 'โหลดคลังประสบการณ์ไม่สำเร็จ', stop: 'หยุด', retry: 'ลองอีกครั้ง',
-    queued: 'รอคิวดึงประสบการณ์จาก CV', running: 'กำลังดึงประสบการณ์จาก CV', failed: 'ดึงประสบการณ์ไม่สำเร็จ', done: (s: { added: number; duplicates: number; rejected: number }) => `เพิ่ม ${s.added}, ซ้ำ ${s.duplicates}, ทิ้ง ${s.rejected} (ไม่พบใน CV)`,
+  th: { title: 'คลังประสบการณ์', hint: 'ข้อเท็จจริงจาก CV ของคุณ AI ใช้ได้เฉพาะข้อมูลในคลังนี้', fromCv: (n: string) => `จาก CV: ${n}`, mine: 'เพิ่มเอง', fact: 'ข้อเท็จจริง', kind: 'ประเภท', role: 'ตำแหน่ง', org: 'องค์กร', period: 'ช่วงเวลา', add: 'เพิ่มข้อเท็จจริง', remove: 'ลบ', edit: 'แก้ไข', save: 'บันทึก', cancel: 'ยกเลิก', extract: 'สกัดประสบการณ์จาก CV ด้วย AI อีกครั้ง', extractFirst: 'สกัดประสบการณ์จาก CV ด้วย AI', loadError: 'โหลดคลังประสบการณ์ไม่สำเร็จ', stop: 'หยุด', retry: 'ลองอีกครั้ง',
+    queued: 'เอเจนต์รอคิวสกัดประสบการณ์จาก CV', running: 'เอเจนต์กำลังประมวลผล: สกัดประสบการณ์จาก CV', failed: 'สกัดประสบการณ์ไม่สำเร็จ', done: (s: { added: number; duplicates: number; rejected: number }) => `เพิ่ม ${s.added}, ซ้ำ ${s.duplicates}, ทิ้ง ${s.rejected} (ไม่พบใน CV)`,
     noProvider: 'ยังไม่ได้ตั้งค่า AI gateway ใส่ OPENROUTER_API_KEY แล้วดูที่ ตั้งค่า > เกตเวย์ AI', settings: 'ไปที่การตั้งค่า', empty: 'ยังไม่มีข้อเท็จจริง เพิ่มเองได้ด้านล่าง', duplicate: 'มีข้อเท็จจริงนี้อยู่แล้ว', full: 'คลังเต็มแล้ว (1,000 รายการ)', failedAction: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง', other: 'อื่น ๆ',
     kinds: { experience: 'ประสบการณ์', education: 'การศึกษา', skill: 'ทักษะ', certification: 'ใบรับรอง', project: 'โปรเจกต์', other: 'อื่น ๆ' } },
-  en: { title: 'Experience bank', hint: 'Facts from your CVs. AI may only use what is in this bank.', fromCv: (n: string) => `From CV: ${n}`, mine: 'Added by you', fact: 'Fact', kind: 'Type', role: 'Role', org: 'Organization', period: 'Period', add: 'Add fact', remove: 'Remove', edit: 'Edit', save: 'Save', cancel: 'Cancel', extract: 'Extract from CV again', extractFirst: 'Extract experience', loadError: 'Could not load the experience bank.', stop: 'Stop', retry: 'Retry',
-    queued: 'Waiting to extract experience from your CV', running: 'Extracting experience from your CV', failed: 'Extraction did not finish', done: (s: { added: number; duplicates: number; rejected: number }) => `Added ${s.added}, duplicates ${s.duplicates}, dropped ${s.rejected} (not found in the CV)`,
+  en: { title: 'Experience bank', hint: 'Facts from your CVs. AI may only use what is in this bank.', fromCv: (n: string) => `From CV: ${n}`, mine: 'Added by you', fact: 'Fact', kind: 'Type', role: 'Role', org: 'Organization', period: 'Period', add: 'Add fact', remove: 'Remove', edit: 'Edit', save: 'Save', cancel: 'Cancel', extract: 'Extract experience from CV with AI again', extractFirst: 'Extract experience from CV with AI', loadError: 'Could not load the experience bank.', stop: 'Stop', retry: 'Retry',
+    queued: 'The agent is queued to extract experience from your CV', running: 'The agent is processing: extracting experience from your CV', failed: 'Extraction did not finish', done: (s: { added: number; duplicates: number; rejected: number }) => `Added ${s.added}, duplicates ${s.duplicates}, dropped ${s.rejected} (not found in the CV)`,
     noProvider: 'The AI gateway is not configured. Set OPENROUTER_API_KEY, then see Settings > AI gateway.', settings: 'Go to Settings', empty: 'No facts yet. You can add one below.', duplicate: 'This fact is already in the bank', full: 'The bank is full (1,000 facts)', failedAction: 'That did not work. Try again.', other: 'Other',
     kinds: { experience: 'Experience', education: 'Education', skill: 'Skill', certification: 'Certification', project: 'Project', other: 'Other' } },
 };
@@ -89,6 +90,6 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
       </li>)}</ul>
     </div>)}
     <FactForm c={c} initial={blank} submitLabel={c.add} onSubmit={d => act(() => sendJson(base, 'POST', toBody(d)))} />
-    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}>{extraction ? c.extract : c.extractFirst}</Button></div>}
+    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}><Sparkles className="size-4" aria-hidden="true" />{extraction ? c.extract : c.extractFirst}</Button></div>}
   </section>;
 }

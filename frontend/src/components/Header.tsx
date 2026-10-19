@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useLocale } from '../app/providers';
 import { AppearanceControl } from './AppearanceControl';
+import { Avatar } from './Avatar';
+import { useOwnerSession } from '../lib/api';
 import { Button } from './ui/button';
 
 export function Wordmark({ compact = false }: { compact?: boolean }) {
@@ -40,11 +42,15 @@ export function LanguageSwitch() {
   </div>;
 }
 
-export function Header({ menu, actions }: { menu?: ReactNode; actions?: ReactNode }) {
+export function Header({ menu, nav, actions }: { menu?: ReactNode; nav?: ReactNode; actions?: ReactNode }) {
+  const { t } = useTranslation();
+  const session = useOwnerSession();
   return <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-background px-4 py-2 sm:px-6">
     <div className="flex min-w-0 items-center gap-2">{menu}<HomeLink /></div>
+    {nav}
     <div className="flex shrink-0 items-center gap-1 sm:gap-2">
       {actions}
+      {session.status === 'ready' && <Link to="/app/account" aria-label={`${t('account.menu')}: ${session.user.email}`} title={session.user.email} className="flex shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"><Avatar account={session.user} size={40} /></Link>}
       <AppearanceControl compact />
       <LanguageSwitch />
     </div>

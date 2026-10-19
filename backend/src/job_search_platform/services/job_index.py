@@ -9,11 +9,12 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from job_search_platform.db.models import JobIndexDelete, JobPosting
 from job_search_platform.integrations.meili import MeiliError
+from job_search_platform.services.job_dictionary import province_code
 
 SETTINGS = {
     "searchableAttributes": ["title", "company", "skills", "category", "location", "description_markdown"],
     "filterableAttributes": ["company", "cities", "work_mode", "category", "seniority", "employment_type",
-                             "company_type", "skills", "posting_language", "salary_thb_month_min", "posted_ts"],
+                             "company_type", "skills", "posting_language", "salary_thb_month_min", "posted_ts", "provinces"],
     "sortableAttributes": ["posted_ts"],
     "localizedAttributes": [{"attributePatterns": ["title", "description_markdown", "company", "location"],
                              "locales": ["tha", "eng"]}],
@@ -26,12 +27,13 @@ def to_document(p: JobPosting, sources: list[str]) -> dict:
     ts = p.posted_at or p.first_seen_at
     return {
         "id": str(p.id), "slug": p.slug, "title": p.title, "company": p.company, "location": p.location,
-        "cities": p.cities, "work_mode": p.work_mode, "skills": p.skills, "category": p.category,
+        "cities": p.cities, "provinces": sorted({c for c in (p.province, *map(province_code, p.cities)) if c}),
+        "work_mode": p.work_mode, "skills": p.skills, "category": p.category,
         "posted_at": p.posted_at.isoformat() if p.posted_at else None, "posted_ts": int(ts.timestamp()),
         "seniority": p.seniority, "employment_type": p.employment_type, "company_type": p.company_type,
         "posting_language": p.posting_language, "salary_thb_month_min": p.salary_thb_month_min,
         "source_url": p.source_url, "description_markdown": p.description_markdown or "",
-        "reality_stale": p.reality_stale, "sources": sources,
+        "reality_stale": p.reality_stale, "missed_runs": p.missed_runs, "sources": sources,
     }
 
 

@@ -548,6 +548,7 @@ class AgentJobItem(DTO):
     posted_at: str | None = None
     posting_age_days: int | None = None
     stale: bool
+    ghost_signals: tuple[Literal["old", "source_flagged", "unlisted"], ...] = ()
     source_url: str | None = None
     description: str
     description_format: Literal["markdown", "text"]

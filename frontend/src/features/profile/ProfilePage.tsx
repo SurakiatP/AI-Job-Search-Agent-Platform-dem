@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CvPreviewButton } from '@/components/CvPreview';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -189,7 +189,7 @@ export function ProfilePage() {
                 <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                   {latest && <CvPreviewButton projectId={projectId} fileId={latest.file_id} name={cv.name} revision={latest.revision} filename={latest.original_filename} mimeType={latest.mime_type} className="min-h-11" />}
                   <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>
-                  {latest && bank.data?.provider_configured && <Button type="button" size="sm" variant="outline" className="min-h-11" aria-label={`${w('extractFacts')}: ${cv.name}`} disabled={gate.blocked} title={gate.title} onClick={() => void extract(cv)}>{w('extractFacts')}</Button>}
+                  {latest && bank.data?.provider_configured && <Button type="button" size="sm" variant="outline" className="min-h-11" aria-label={`${w('extractFacts')}: ${cv.name}`} disabled={gate.blocked} title={gate.title} onClick={() => void extract(cv)}><Sparkles className="size-4" aria-hidden="true" />{w('extractFacts')}</Button>}
                   <CvRowMenu cv={cv} c={c} label={w('rowMenu', { name: cv.name })} help={w('makePrimaryHelp')} onMakePrimary={() => void makePrimary(cv)} onRename={() => setRename(cv)} onDelete={() => setRemove(cv)} />
                 </div>
                 {showHistory && <div className="grid gap-2 xl:col-span-full">

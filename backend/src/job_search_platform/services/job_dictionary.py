@@ -63,7 +63,19 @@ def _load_roles() -> list[tuple[str, re.Pattern[str], str]]:
     return roles
 
 
+def _build_province_names(text: str) -> dict[str, tuple[str, str]]:
+    """code -> (English RTGS name, Thai name); the Thai name is the first Thai alias of the code's province line."""
+    names: dict[str, tuple[str, str]] = {}
+    for key, aliases in parse_dictionary(text):
+        code, _, name = key.partition("|")
+        thai = next((a for a in aliases[:1] if not a.isascii()), None)
+        if thai and code not in names:
+            names[code] = (name, thai)
+    return names
+
+
 _PROVINCES = _build_provinces((DATA / "locations.txt").read_text(encoding="utf-8"))
+PROVINCE_NAMES = _build_province_names((DATA / "locations.txt").read_text(encoding="utf-8"))
 _PROVINCE_RE = _matcher(list(_PROVINCES))
 _ROLES = _load_roles()
 
@@ -88,6 +100,12 @@ def province_of(text: str | None) -> tuple[str, str] | None:
     """Province of a location field only (not free text): Thai aliases match as substrings."""
     match = _PROVINCE_RE.search(text.lower()) if text else None
     return _PROVINCES[match.group(0)] if match else None
+
+
+def province_code(name: str | None) -> str | None:
+    """Province code of a name or alias that is exactly a province (not free text), else None."""
+    hit = _PROVINCES.get(name.strip().lower()) if name else None
+    return hit[0] if hit else None
 
 
 def role_of(title: str) -> tuple[str, str] | None:

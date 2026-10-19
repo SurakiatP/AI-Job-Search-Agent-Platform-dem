@@ -16,7 +16,7 @@ export function useResource<T>(path: string | null): { status: 'loading' | 'read
       .then(data => { if (!controller.signal.aborted) setState({ key, status: 'ready', data }); })
       .catch(error => {
         if (controller.signal.aborted) return;
-        setState({ key, status: 'error', errorStatus: error instanceof ApiError ? error.status : undefined });
+        setState(current => ({ key, status: 'error', data: current.key === key ? current.data : undefined, errorStatus: error instanceof ApiError ? error.status : undefined }));
       });
     return () => controller.abort();
   }, [key, path, version]);

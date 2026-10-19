@@ -1,3 +1,5 @@
+import { Avatar } from './Avatar';
+import { useAccount } from '../lib/api';
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, Bot, ChevronDown, FileText, FolderOpen, Kanban, LayoutDashboard, MessagesSquare, Search, Settings, UserCog, UserRound, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +22,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
   projects?: SidebarProject[]; projectId?: string; sessionId?: string; onNavigate?: () => void; onReload?: () => void; toggle?: ReactNode;
 }) {
   const { t } = useTranslation();
+  const account = useAccount();
   const { pathname } = useLocation();
   const [switching, setSwitching] = useState(false);
   const navId = useId();
@@ -50,7 +53,9 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
       <ul className="grid min-w-0 gap-0.5">{entries.map(([section, icon, label]) => <li className="min-w-0" key={section}><NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate}>{label}</NavItem></li>)}</ul>
     </section>)}
     <div className="mt-auto grid min-w-0 gap-1 border-t pt-4">
-      <NavItem to="/app/account" icon={UserCog} active={inside('/app/account')} onNavigate={onNavigate}>{t('account.menu')}</NavItem>
+      <Link className={itemClass} to="/app/account" data-active={inside('/app/account')} aria-current={inside('/app/account') ? 'page' : undefined} onClick={onNavigate}>
+        {account ? <Avatar account={account} size={20} /> : <UserCog size={20} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />}<span className="min-w-0">{t('account.menu')}</span>
+      </Link>
       <NavItem to={projectId ? `/app/settings?project=${encodeURIComponent(projectId)}` : '/app/settings'} icon={Settings} active={inside('/app/settings')} onNavigate={onNavigate}>{t('settings')}</NavItem>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><AppearanceControl /><LanguageSwitch /></div>
     </div>

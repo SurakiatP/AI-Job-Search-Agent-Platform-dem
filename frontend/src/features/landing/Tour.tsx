@@ -1,6 +1,8 @@
+import { Link } from 'react-router';
 import { useLocale } from '../../app/providers';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { landingCopy } from './copy';
+import { featureSlugs } from './featurePages';
 import { StepPanel } from './LandingPreview';
 
 /** A compact five-step product tour using the standard, keyboard-operable tabs pattern. */
@@ -20,6 +22,7 @@ export function Tour() {
             <div className="grid content-start gap-3">
               <h3 className="text-xl font-semibold leading-snug not-italic sm:text-2xl">{step.title}</h3>
               <p className="max-w-prose text-sm leading-relaxed text-muted-foreground sm:text-base">{step.body}</p>
+              <Link to={`/features/${featureSlugs[index]}`} className="w-fit text-sm font-medium text-primary underline-offset-4 hover:underline">{c.nav.learnMore} →</Link>
             </div>
             <div className="min-w-0"><StepPanel index={index} /></div>
           </div>

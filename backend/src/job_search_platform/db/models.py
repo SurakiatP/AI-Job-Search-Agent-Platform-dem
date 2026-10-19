@@ -26,6 +26,10 @@ class User(Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    avatar_preset: Mapped[str | None] = mapped_column(String(20))
+    avatar_image: Mapped[bytes | None] = mapped_column(LargeBinary)
+    avatar_mime: Mapped[str | None] = mapped_column(String(20))
+    avatar_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     __table_args__ = (
         CheckConstraint("email = lower(email) AND email LIKE '%_@_%'", name="ck_users_email"),
@@ -41,7 +45,7 @@ class UserToken(Base):
     token_hash: Mapped[bytes] = mapped_column(LargeBinary, unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    __table_args__ = (CheckConstraint("purpose IN ('verify_email','reset_password')", name="ck_user_tokens_purpose"),)
+    __table_args__ = (CheckConstraint("purpose IN ('verify_email','reset_password','verify_code','delete_account')", name="ck_user_tokens_purpose"),)
 
 
 class RateLimitEvent(Base):

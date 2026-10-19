@@ -117,12 +117,14 @@ test('agents list shows given date and revoke calls the grant route', async ({ p
   await expect.poll(() => revoked).toBe(`DELETE /api/v1/projects/${projectId}/grants/${grantId}`);
 });
 
-test('delete account needs the typed email; wrong password stays on the page, then success lands on /', async ({ page }) => {
+test('delete account needs the typed email and an emailed code; wrong password stays on the page, then success lands on /', async ({ page }) => {
   await mockApi(page, true);
   let status = 401;
-  await page.route('**/api/v1/account', route => route.request().method() === 'DELETE'
-    ? route.fulfill(status === 204 ? { status } : { status, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_credentials', message_key: 'errors.invalid_credentials', retryable: false }) })
-    : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...user, email_verified: true }) }));
+  const calls: { code?: string; sent: number } = { sent: 0 };
+  await page.route('**/api/v1/account/delete-code', route => { calls.sent += 1; return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email' }) }); });
+  await page.route('**/api/v1/account', route => { if (route.request().method() !== 'DELETE') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...user, email_verified: true }) });
+    calls.code = route.request().postDataJSON().code;
+    return route.fulfill(status === 204 ? { status } : { status, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_credentials', message_key: 'errors.invalid_credentials', retryable: false }) }); });
   await page.goto('/login?next=%2Fapp%2Faccount');
   await page.getByLabel('Email').fill('synthetic@example.test');
   await page.getByLabel('Password', { exact: true }).fill('correct-password');
@@ -134,13 +136,46 @@ test('delete account needs the typed email; wrong password stays on the page, th
   await dialog.getByLabel('Type your email to confirm').fill('other@example.test');
   await expect(submit).toBeDisabled();
   await dialog.getByLabel('Type your email to confirm').fill('Synthetic@Example.test');
+  await expect(submit).toBeDisabled(); // still no code
+  await expect(dialog.getByLabel('6-digit code from the email')).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Email me a code' }).click();
+  expect(calls.sent).toBe(1);
+  await expect(dialog.getByText(/We sent a code to synthetic@example.test/)).toBeVisible();
+  const code = dialog.getByLabel('6-digit code from the email');
+  await code.fill('12ab34');
+  await expect(code).toHaveValue('1234'); // digits only
+  await expect(submit).toBeDisabled();
+  await code.fill('123456');
   await expect(submit).toBeEnabled();
   await submit.click();
   await expect(dialog.getByRole('alert')).toHaveText('The email or password is not correct.');
+  expect(calls.code).toBe('123456');
   await expect(page).toHaveURL(/\/app\/account$/);
   status = 204;
   await submit.click();
   await expect(page).toHaveURL(/\/$/);
+});
+
+test('signup shows a 6-digit code box after the email is sent; a wrong code shows an error, the right one goes to login', async ({ page }) => {
+  await mockApi(page, true);
+  await page.route('**/api/v1/auth/verify-email/code', route => route.request().postDataJSON().code === '654321'
+    ? route.fulfill({ status: 204 })
+    : route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_code', message_key: 'errors.invalid_code', retryable: false }) }));
+  await page.goto('/signup');
+  await page.getByLabel('Email').fill('new@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('long-enough-pass');
+  await page.getByRole('button', { name: /Create account|Sign up/ }).click();
+  const code = page.getByLabel('6-digit code from the email');
+  const verify = page.getByRole('button', { name: 'Verify email' });
+  await expect(code).toBeVisible();
+  await expect(verify).toBeDisabled();
+  await code.fill('111111');
+  await verify.click();
+  await expect(page.getByRole('alert')).toContainText('That code is wrong or has expired');
+  await code.fill('654321');
+  await verify.click();
+  await expect(page).toHaveURL(/\/login\?notice=verified/);
+  await expect(page.getByText('Email verified. You can log in now.')).toBeVisible();
 });
 
 test('signup sends the current UI locale', async ({ page }) => {

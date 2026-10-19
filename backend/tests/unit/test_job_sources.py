@@ -52,11 +52,14 @@ def test_filter_for_every_parameter():
                                  category="backend", seniority=["senior"], employment_type=["full_time"],
                                  company_type=["product"], skills=["python", "go"], posting_language="th",
                                  salary_min=50000, company="Acme", now=NOW)
-    assert f == ['cities IN ["Bangkok", "Chon Buri"]', 'work_mode = "remote"', f"posted_ts >= {NOW_TS - 7 * 86400}",
+    assert f == ['provinces IN ["TH-10", "TH-20"]', 'work_mode = "remote"', f"posted_ts >= {NOW_TS - 7 * 86400}",
                  'category = "backend"', 'seniority IN ["senior"]', 'employment_type IN ["full_time"]',
                  'company_type IN ["product"]', 'skills IN ["python", "go"]', 'posting_language = "th"',
                  "salary_thb_month_min >= 50000", 'company = "Acme"']
     assert job_sources.build_filter(now=NOW) == []
+    assert job_sources.build_filter(cities=["กรุงเทพฯ"], now=NOW) == ['provinces IN ["TH-10"]']
+    assert job_sources.build_filter(cities=["Bengaluru"], now=NOW) == ['cities IN ["Bengaluru"]']
+    assert job_sources.build_filter(cities=["Phuket", "Bengaluru"], now=NOW) == ['(provinces IN ["TH-83"] OR cities IN ["Bengaluru"])']
     assert job_sources.build_filter(company='A"cme', now=NOW) == ['company = "A\\"cme"']
 
 
@@ -74,13 +77,19 @@ def test_empty_query_sorts_newest_first(monkeypatch):
 def test_hit_maps_to_current_item_shape_and_stale_rule():
     item = job_sources.hit_to_item(HIT, NOW)
     assert set(item) == {"slug", "title", "company", "location", "cities", "work_mode", "skills", "category",
-                         "posted_at", "age_days", "stale", "source_url", "description_markdown"}
+                         "posted_at", "age_days", "stale", "ghost_signals", "source_url", "description_markdown"}
     assert item["slug"] == "fe-1" and item["category"] == "frontend" and item["age_days"] == 10 and item["stale"] is False
     assert len(item["skills"]) == 8 and len(item["description_markdown"]) == 50000
     assert item["source_url"] == "https://jobs.example.com/a?id=1"
     assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 61 * DAY}, NOW)["stale"] is True
     assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 60 * DAY}, NOW)["stale"] is False
     assert job_sources.hit_to_item({**HIT, "reality_stale": True}, NOW)["stale"] is True
+    assert item["ghost_signals"] == []
+    assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 61 * DAY}, NOW)["ghost_signals"] == ["old"]
+    assert job_sources.hit_to_item({**HIT, "reality_stale": True}, NOW)["ghost_signals"] == ["source_flagged"]
+    both = job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 70 * DAY, "missed_runs": 1}, NOW)
+    assert both["ghost_signals"] == ["old", "unlisted"] and both["stale"] is True
+    assert job_sources.hit_to_item({**HIT, "missed_runs": 0}, NOW)["stale"] is False
     bare = job_sources.hit_to_item({"slug": "b", "title": "T", "source_url": "javascript:alert(1)"}, NOW)
     assert bare["source_url"] is None and bare["age_days"] is None and bare["stale"] is False
     assert bare["category"] is None and bare["description_markdown"] == ""
@@ -122,7 +131,7 @@ def test_cache_is_bounded(monkeypatch):
 
 
 def facet_dist():
-    dist = {"category": {f"c{i}": i for i in range(20)}, "cities": {f"t{i}": i for i in range(15)}}
+    dist = {"category": {f"c{i}": i for i in range(20)}, "provinces": {"TH-10": 50, "TH-20": 9, "TH-50": 20, "XX-99": 99, "TH-11": True}}
     return dist | {"seniority": {"junior": 2, "intern": 5}, "employment_type": {"full_time": 3},
                    "company_type": {"startup": 1}, "skills": {f"k{i}": i for i in range(30)},
                    "posting_language": {"th": 77, "en": 5}}
@@ -132,12 +141,15 @@ def test_facets_shape_counts_and_new_7d(monkeypatch):
     calls = serve(monkeypatch, lambda p: result(total=42) if p["limit"] == 1
                   else {"hits": [], "estimatedTotalHits": 9, "facetDistribution": facet_dist()})
     out = job_sources.job_facets(now=NOW)
-    assert out["total"] == 9 and len(out["categories"]) == 12 and len(out["cities"]) == 10
+    assert out["total"] == 9 and len(out["categories"]) == 12
     assert out["categories"][0] == {"value": "c19", "count": 19}
+    assert out["cities"] == [{"value": "Bangkok", "name_th": "กรุงเทพมหานคร", "count": 50},
+                             {"value": "Chiang Mai", "name_th": "เชียงใหม่", "count": 20},
+                             {"value": "Chon Buri", "name_th": "ชลบุรี", "count": 9}]  # no foreign place, no bool count
     assert out["seniority"] == [{"value": "intern", "count": 5}, {"value": "junior", "count": 2}]
     assert out["employment_type"] == [{"value": "full_time", "count": 3}] and out["company_type"][0]["value"] == "startup"
     assert len(out["skills"]) == 20 and out["thai_postings"] == 77 and out["new_7d"] == 42
-    assert calls[0] == {"q": "", "limit": 0, "facets": ["category", "cities", "seniority", "employment_type",
+    assert calls[0] == {"q": "", "limit": 0, "facets": ["category", "provinces", "seniority", "employment_type",
                                                           "company_type", "skills", "posting_language"]}
     assert calls[1]["filter"] == [f"posted_ts >= {NOW_TS - 7 * DAY}"] and calls[1]["limit"] == 1
     job_sources._cache.clear()

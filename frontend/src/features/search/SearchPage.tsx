@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { AiSpinner } from '@/components/AiMark';
+import { SmartMatchStart } from './SmartMatchStart';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { ItemMenu } from '@/components/ItemMenu';
 import { apiRequest } from '../../lib/api';
@@ -23,12 +25,12 @@ import { sampleJobs } from './sampleJobs';
 import { highlightSegments } from './highlight';
 import { categoryLabel } from './categories';
 import { SavedSearchesPanel } from './SavedSearches';
-import { ADV_KEYS, AdvancedFilters, Presets, splitList, type Facet } from './AdvancedFilters';
+import { ADV_KEYS, AdvancedFilters, advValueLabel, Presets, splitList, type Facet } from './AdvancedFilters';
 
 type JobSearchItem = {
   slug: string; title: string; company: string | null; location: string | null; cities: string[];
   work_mode: string | null; skills: string[]; category: string | null; posted_at: string | null;
-  age_days: number | null; stale: boolean; source_url: string | null; description_markdown: string;
+  age_days: number | null; stale: boolean; ghost_signals?: string[]; source_url: string | null; description_markdown: string;
   salary_min?: number | null; salary_max?: number | null; salary_currency?: string | null; salary_period?: string | null;
   match?: Match | null; ai_match?: AiMatch | null; highlight?: Highlight;
 };
@@ -63,7 +65,8 @@ const copy = {
     days: (n: number) => `${n} วันที่ผ่านมา`, city: 'จังหวัด/เมือง', anyCity: 'ทุกเมือง', categories: 'หมวดงาน',
     remote: 'ทำงานทางไกล', hybrid: 'ไฮบริด', onsite: 'ทำงานที่ออฟฟิศ',
     found: (n: string) => `พบ ${n} ตำแหน่ง`, age: (n: number) => (n <= 0 ? 'ลงประกาศวันนี้' : `ลงประกาศ ${n} วันที่แล้ว`),
-    stale: 'ประกาศเก่า · อาจปิดรับแล้ว', evaluate: 'ประเมินงานนี้', save: 'บันทึกงาน', saveShort: 'บันทึก', saved: 'บันทึกแล้ว', saving: 'กำลังบันทึก…',
+    stale: 'ประกาศเก่า · อาจปิดรับแล้ว',
+    ghost: { old: (n: number) => `ลงประกาศมา ${n} วันแล้ว`, source_flagged: 'แหล่งงานระบุว่าประกาศนี้อาจไม่เป็นปัจจุบัน', unlisted: 'ไม่พบประกาศนี้ในแหล่งงานตอนตรวจครั้งล่าสุด' }, evaluate: 'ประเมินงานนี้', save: 'บันทึกงาน', saveShort: 'บันทึก', saved: 'บันทึกแล้ว', saving: 'กำลังบันทึก…',
     original: 'เปิดประกาศต้นฉบับ', saveError: 'บันทึกงานไม่สำเร็จ ลองอีกครั้ง', loadMore: 'โหลดเพิ่ม', loading: 'กำลังโหลด…',
     none: 'ไม่พบตำแหน่งที่ตรงกับตัวกรอง', noneNext: 'ลองเปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูทั้งหมด', clear: 'ล้างตัวกรอง',
     errTitle: 'โหลดรายการงานไม่สำเร็จ', errBody: 'บริการอาจไม่พร้อมใช้งานชั่วคราว ลองใหม่อีกครั้ง หรือดูข้อมูลตัวอย่างเพื่อสำรวจหน้านี้',
@@ -72,7 +75,7 @@ const copy = {
     description: 'รายละเอียดงาน', untitled: 'ไม่ระบุบริษัท',
     modeSearch: 'ค้นหาทั่วไป', modeMatch: 'Smart match', modeLabel: 'โหมดการค้นหา',
     cvLabel: 'CV ที่ใช้จับคู่', noCv: 'ยังไม่มี CV ในโปรเจกต์นี้', noCvBody: 'เพิ่ม CV ก่อน เพื่อให้ระบบเทียบทักษะกับประกาศงานได้', addCv: 'ไปที่หน้า CV',
-    analyzing: 'กำลังวิเคราะห์ CV…', analyzeError: 'วิเคราะห์ CV ไม่สำเร็จ ลองอีกครั้ง',
+    analyzing: 'เอเจนต์กำลังประมวลผล: วิเคราะห์ CV ของคุณ…', analyzeError: 'วิเคราะห์ CV ไม่สำเร็จ ลองอีกครั้ง',
     poolNote: (n: string) => `จัดอันดับจาก ${n} ตำแหน่งล่าสุดที่ตรงกับตัวกรอง`,
     matchBadge: (p: number, m: number, n: number) => `ตรงกับ CV ${p}% · ${m}/${n} ทักษะ`, noSkills: 'ข้อมูลทักษะไม่พอ',
     matchedSkills: 'ทักษะที่ตรงกับ CV', missingSkills: 'ทักษะที่ยังขาด', noneMatched: 'ไม่มี', matchNote: 'คำนวณจากคำสำคัญในประกาศและ CV โดยไม่ใช้ AI',
@@ -80,7 +83,7 @@ const copy = {
     bands: { 5: 'เหมาะมาก', 4: 'เหมาะ', 3: 'พอได้', 2: 'น้อย', 1: 'ไม่เหมาะ' } as Record<number, string>, ats: (p: number) => `ทักษะที่พบ ${p}%`,
     unsure: 'ไม่แน่ใจ', blocker: 'ขาดคุณสมบัติบังคับ', seniorityLabel: 'ระดับประสบการณ์', seniority: { far_below: 'ต่ำกว่ามาก', below: 'ต่ำกว่าเล็กน้อย', meets: 'ตรง', above: 'สูงกว่า' } as Record<string, string>,
     evidenced: 'มีหลักฐานใน CV', mustMissing: 'ขาด (บังคับ)', niceMissing: 'ขาด (มีก็ดี)', inCv: '(มีใน CV)', notInCv: '(ขาด)',
-    ranking: (n: number, t: number) => `กำลังจัดอันดับด้วย AI… ${n}/${t}`, finding: 'กำลังหางานที่เหมาะกับ CV…', rankFailed: 'จัดอันดับด้วย AI ไม่สำเร็จ',
+    ranking: (n: number, t: number) => `เอเจนต์กำลังประมวลผล: จัดอันดับงานให้ ${n}/${t}`, finding: 'เอเจนต์กำลังประมวลผล: หางานที่เหมาะกับ CV…', rankFailed: 'จัดอันดับด้วย AI ไม่สำเร็จ',
     autoCats: 'หมวดที่ AI เลือกจาก CV:', unavailable: 'ตอนนี้ยังจัดอันดับด้วย AI ไม่ได้ โปรดติดต่อผู้ดูแลระบบ', toSettings: 'ไปที่การตั้งค่า',
     privacy: 'ระบบส่งเนื้อหา CV ไปยังบริการ AI เพื่อจัดอันดับ', menuLabel: 'ตัวเลือกของงานนี้', hideJob: 'ซ่อนงานนี้', hideCompany: 'ซ่อนบริษัทนี้',
     hiddenDone: 'ซ่อนแล้ว', undo: 'เลิกทำ', hideFailed: 'ซ่อนไม่สำเร็จ ลองอีกครั้ง', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง',
@@ -93,7 +96,8 @@ const copy = {
     days: (n: number) => `${n} days`, city: 'City', anyCity: 'All cities', categories: 'Categories',
     remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site',
     found: (n: string) => `${n} ${n === '1' ? 'job' : 'jobs'} found`, age: (n: number) => (n <= 0 ? 'Posted today' : `${n} ${n === 1 ? 'day' : 'days'} ago`),
-    stale: 'Stale listing', evaluate: 'Evaluate this job', save: 'Save job', saveShort: 'Save', saved: 'Saved', saving: 'Saving…',
+    stale: 'Stale listing',
+    ghost: { old: (n: number) => `Posted ${n} days ago`, source_flagged: 'The source marks this listing as possibly out of date', unlisted: 'Not found on the source at the last check' }, evaluate: 'Evaluate this job', save: 'Save job', saveShort: 'Save', saved: 'Saved', saving: 'Saving…',
     original: 'Open original posting', saveError: 'Could not save this job. Try again.', loadMore: 'Load more', loading: 'Loading…',
     none: 'No jobs match these filters', noneNext: 'Change the search or clear the filters to see everything.', clear: 'Clear filters',
     errTitle: "Couldn't load jobs", errBody: 'The service may be temporarily unavailable. Try again, or view sample data to explore this page.',
@@ -102,7 +106,7 @@ const copy = {
     description: 'Job description', untitled: 'Company not listed',
     modeSearch: 'Search', modeMatch: 'Smart match', modeLabel: 'Search mode',
     cvLabel: 'CV to match against', noCv: 'This project has no CV yet', noCvBody: 'Add a CV first so skills can be compared with each posting.', addCv: 'Go to the CV page',
-    analyzing: 'Analyzing your CV…', analyzeError: 'Could not analyze the CV. Try again.',
+    analyzing: 'The agent is processing: analyzing your CV…', analyzeError: 'Could not analyze the CV. Try again.',
     poolNote: (n: string) => `Ranked from the ${n} latest jobs matching your filters`,
     matchBadge: (p: number, m: number, n: number) => `${p}% CV match · ${m}/${n} skills`, noSkills: 'Not enough skill data',
     matchedSkills: 'Skills matching your CV', missingSkills: 'Skills missing from your CV', noneMatched: 'None', matchNote: 'Calculated from keywords in the posting and your CV, without AI',
@@ -110,7 +114,7 @@ const copy = {
     bands: { 5: 'Great fit', 4: 'Good fit', 3: 'Fair', 2: 'Weak', 1: 'Poor fit' } as Record<number, string>, ats: (p: number) => `Skills found ${p}%`,
     unsure: 'Unsure', blocker: 'Missing a must-have', seniorityLabel: 'Seniority', seniority: { far_below: 'Well below', below: 'Slightly below', meets: 'Meets', above: 'Above' } as Record<string, string>,
     evidenced: 'Evidenced in your CV', mustMissing: 'Missing (must-have)', niceMissing: 'Missing (nice-to-have)', inCv: '(in your CV)', notInCv: '(missing)',
-    ranking: (n: number, t: number) => `Ranking with AI… ${n}/${t}`, finding: 'Finding jobs that fit this CV…', rankFailed: 'AI ranking failed',
+    ranking: (n: number, t: number) => `The agent is processing: ranking jobs for you ${n}/${t}`, finding: 'The agent is processing: finding jobs that fit this CV…', rankFailed: 'AI ranking failed',
     autoCats: 'Categories picked from the CV:', unavailable: 'AI ranking is not available right now. Please contact your administrator.', toSettings: 'Open settings',
     privacy: 'Your CV text is sent to an AI service for ranking', menuLabel: 'Options for this job', hideJob: 'Hide this job', hideCompany: 'Hide this company',
     hiddenDone: 'Hidden', undo: 'Undo', hideFailed: 'Could not hide. Try again.', undoFailed: 'Could not restore. Try again.',
@@ -229,7 +233,7 @@ function SaveJob({ job, c, projectId, saves, tSearch, card = false }: { job: Job
   </>;
 }
 
-function JobDetail({ job, c, projectId, scored, tSearch, cv, saves, ranking }: { job: JobSearchItem; c: Copy; projectId: string; scored: boolean; tSearch: T; cv?: { name: string; revision: number }; saves: SavedJobs; ranking: boolean }) {
+function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, saves, ranking }: { job: JobSearchItem; c: Copy; projectId: string; scored: boolean; place: string | null; tSearch: T; cv?: { name: string; revision: number }; saves: SavedJobs; ranking: boolean }) {
   const source = safeHttpUrl(job.source_url);
   const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
   const cvLabel = cv ? `${cv.name} · v${cv.revision}` : null;
@@ -237,7 +241,7 @@ function JobDetail({ job, c, projectId, scored, tSearch, cv, saves, ranking }: {
     <div className="min-w-0">
       <h2 className="break-words text-xl font-semibold leading-snug">{job.title}</h2>
       <p className="mt-1 flex items-start gap-1 break-words text-sm text-muted-foreground"><Building2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{job.company ?? c.untitled}</span></p>
-      {job.location && <p className="flex items-start gap-1 break-words text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{job.location}{modeLabel ? ` · ${modeLabel}` : ''}</span></p>}
+      {placeText && <p className="flex items-start gap-1 break-words text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{placeText}{modeLabel ? ` · ${modeLabel}` : ''}</span></p>}
     </div>
     <div className="grid gap-2">
       <NewSessionButton projectId={projectId} cvName={cv?.name} className="h-auto w-full whitespace-normal text-center" job={{ inline: { title: job.title, company: job.company, description: job.description_markdown.slice(0, 50000), source_url: source } }}>
@@ -257,6 +261,10 @@ function JobDetail({ job, c, projectId, scored, tSearch, cv, saves, ranking }: {
       {job.stale && <Badge variant="warning">{c.stale}</Badge>}
       {job.skills.map(s => <Badge key={s} variant="outline" className="break-words">{s}</Badge>)}
     </div>
+    {job.stale && (job.ghost_signals?.length ?? 0) > 0 && <ul className="grid gap-1 text-sm text-muted-foreground" data-testid="ghost-reasons">
+      {job.ghost_signals!.map(code => <li key={code} className="flex gap-2"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+        <span>{code === 'old' ? c.ghost.old(job.age_days ?? 0) : code === 'source_flagged' ? c.ghost.source_flagged : code === 'unlisted' ? c.ghost.unlisted : code}</span></li>)}
+    </ul>}
     <div className="grid gap-2 border-t pt-4">
       <h3 className="text-sm font-semibold">{c.description}</h3>
       {job.highlight && (Object.keys(job.highlight.matched).length || Object.keys(job.highlight.missing).length)
@@ -322,6 +330,9 @@ export function SearchPage() {
   const cvId = cv?.id ?? '';
   const revisionId = cv?.latest_revision?.id ?? '';
   const needsCv = smartActive && cvs.status === 'ready' && usable.length === 0;
+  // Smart match calls the AI, so each CV revision must be started by the user; changing the CV asks again.
+  const [armedFor, setArmedFor] = useState('');
+  const awaiting = smartActive && usable.length > 0 && armedFor !== revisionId;
   const [profiling, setProfiling] = useState(false);
   const [profileFailed, setProfileFailed] = useState(false);
   const profiled = useRef('');
@@ -354,7 +365,7 @@ export function SearchPage() {
     if (mode) search.set('work_mode', mode);
     if (posted) search.set('posted_within_days', posted);
     if (category) search.set('category', category);
-    if (smartActive && city) search.set('cities', city);
+    if (city) search.set('cities', city);
     ADV_KEYS.forEach((key, i) => { const v = advKey.split('|')[i]; if (v) search.set(key, v); });
     if (!smartActive) search.set('limit', String(PAGE_SIZE));
     search.set('offset', String(offset));
@@ -407,6 +418,7 @@ export function SearchPage() {
     if (sample) return;
     setStatus('loading'); setItems([]); setTotal(0); setPoolCount(0); setAi(null); setRanking(false); setRankFailed(false); setMoreError(false); setProfiling(false); setProfileFailed(false); setNextOffset(POOL_SIZE);
     if (smart && !revisionId) return;
+    if (smart && armedFor !== revisionId) { setStatus('ready'); return; }
     const controller = new AbortController();
     apiRequest<Page>(buildPath(0), { signal: controller.signal })
       .then(page => {
@@ -426,7 +438,7 @@ export function SearchPage() {
         setStatus('error');
       });
     return () => controller.abort();
-  }, [buildPath, sample, version, smart, revisionId, cvId, gateBlocked]);
+  }, [buildPath, sample, version, smart, revisionId, cvId, gateBlocked, armedFor]);
 
   const hideTimer = useRef(0);
   useEffect(() => {
@@ -480,6 +492,8 @@ export function SearchPage() {
     const list = sample ? [...new Set(sampleItems.map(j => j.location ?? ''))].map(value => ({ value, count: 0 })) : facetsRes.data?.cities ?? [];
     return city && !list.some(f => f.value === city) ? [{ value: city, count: 0 }, ...list] : list;
   }, [sample, facetsRes.data, city]);
+  // Provinces come from the server with both names; show the one for the app language (the URL keeps the English name).
+  const provinceName = (f: Facet) => (locale === 'th' && f.name_th) || f.value;
   const categories: Facet[] = useMemo(() => {
     if (sample) return [];
     const top = (facetsRes.data?.categories ?? []).slice(0, 12);
@@ -495,13 +509,16 @@ export function SearchPage() {
   const selected = visible.find(j => j.slug === selectedSlug) ?? (wide ? visible[0] : undefined);
 
   const catLabel = (slug: string) => categoryLabel(locale, slug);
+  // Thai app: a posting listed in Thai provinces shows their Thai names; anything else keeps the source text.
+  const provinceTh = useMemo(() => new Map((facetsRes.data?.cities ?? []).map(f => [f.value, f.name_th ?? f.value])), [facetsRes.data]);
+  const placeOf = (job: JobSearchItem) => { const names = locale === 'th' ? (job.cities ?? []).map(v => provinceTh.get(v)).filter(Boolean) : []; return names.length ? names.join(', ') : job.location; };
   const saves = useSavedJobs(projectId);
   const detailCv = cv?.latest_revision ? { name: cv.name, revision: cv.latest_revision.revision } : undefined;
-  const detail = (job: JobSearchItem) => <JobDetail job={job} c={c} projectId={projectId} scored={smartActive} tSearch={tSearch} cv={smartActive ? detailCv : undefined} saves={saves} ranking={ranking} />;
+  const detail = (job: JobSearchItem) => <JobDetail job={job} place={placeOf(job)} c={c} projectId={projectId} scored={smartActive} tSearch={tSearch} cv={smartActive ? detailCv : undefined} saves={saves} ranking={ranking} />;
 
   const activeFilterChips: { key: string; label: string }[] = [];
   if (q) activeFilterChips.push({ key: 'q', label: tSearch('controls.queryValue', { value: q }) });
-  if (city) activeFilterChips.push({ key: 'cities', label: tSearch('controls.filterValue', { name: tSearch('controls.location'), value: city }) });
+  if (city) activeFilterChips.push({ key: 'cities', label: tSearch('controls.filterValue', { name: tSearch('controls.location'), value: provinceName(cities.find(f => f.value === city) ?? { value: city, count: 0 }) }) });
   if (mode) activeFilterChips.push({ key: 'work_mode', label: tSearch('controls.filterValue', { name: c.mode, value: mode === 'remote' ? c.remote : mode === 'hybrid' ? c.hybrid : mode === 'onsite' ? c.onsite : mode }) });
   if (posted) activeFilterChips.push({ key: 'posted_within_days', label: tSearch('controls.postedValue', { days: posted }) });
   if (category) activeFilterChips.push({ key: 'category', label: tSearch('controls.filterValue', { name: c.categories, value: catLabel(category) }) });
@@ -512,7 +529,7 @@ export function SearchPage() {
     const multi = ['skills', 'seniority', 'employment_type', 'company_type'].includes(key);
     const values = multi ? splitList(value) : [value];
     values.forEach(item => {
-      const display = key === 'salary_min' ? `${number.format(Number(item))} THB/month` : item.replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase());
+      const display = advValueLabel(locale, key, item);
       activeFilterChips.push({ key: multi ? `${key}:${item}` : key, label: tSearch('controls.filterValue', { name: advNames[key], value: display }) });
     });
   });
@@ -539,7 +556,7 @@ export function SearchPage() {
           + (job.salary_currency ? ` ${job.salary_currency}` : '') + (job.salary_period ? `/${job.salary_period}` : '')
         : null;
       const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
-      const place = [job.location, modeLabel].filter(Boolean).join(' · ');
+      const place = [placeOf(job), modeLabel].filter(Boolean).join(' · ');
       return <li key={job.slug} className={`relative grid min-w-0 gap-2 rounded-xl border p-4 ${smartActive ? 'pr-12' : ''} shadow-sm transition-colors hover:bg-accent/60 [&:has([data-job-slug]:focus-visible)]:ring-2 [&:has([data-job-slug]:focus-visible)]:ring-ring ${isSel ? 'border-primary bg-accent' : 'bg-card'}`}>
         <button type="button" aria-pressed={isSel} aria-current={isSel ? 'true' : undefined} onClick={() => {
           if (!wide) selectionScroll.current = window.scrollY;
@@ -577,7 +594,7 @@ export function SearchPage() {
   </div>;
 
   const failed = (!sample && status === 'error') || (smartActive && cvs.status === 'error');
-  const waiting = !sample && (status === 'loading' || (smartActive && cvs.status === 'loading'));
+  const waiting = !sample && !awaiting && (status === 'loading' || (smartActive && cvs.status === 'loading'));
   const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < total;
 
   return <section className="grid gap-4 sm:gap-6">
@@ -629,7 +646,7 @@ export function SearchPage() {
         <Label htmlFor="job-city">{tSearch('controls.location')}</Label>
         <select id="job-city" className={selectClass} value={city} onChange={e => setFilter('cities', e.target.value)}>
           <option value="">{tSearch('controls.anyLocation')}</option>
-          {cities.map(f => <option key={f.value} value={f.value}>{f.count ? `${f.value} (${number.format(f.count)})` : f.value}</option>)}
+          {cities.map(f => { const name = provinceName(f); return <option key={f.value} value={f.value}>{f.count ? `${name} (${number.format(f.count)})` : name}</option>; })}
         </select>
       </div>
       <div className="grid min-w-0 gap-2">
@@ -689,11 +706,11 @@ export function SearchPage() {
       <p className="font-medium">{c.noCv}</p>
       <p className="text-sm text-muted-foreground">{c.noCvBody}</p>
       <Button asChild><Link to={`/app/projects/${projectId}/profile`}>{c.addCv}</Link></Button>
-    </div> : <div className="grid gap-3">
+    </div> : awaiting ? <SmartMatchStart locale={locale} cvName={cv ? `${cv.name} · v${cv.latest_revision?.revision}` : ''} disabled={gate.blocked} title={gate.title} onStart={() => setArmedFor(revisionId)} /> : <div className="grid gap-3">
       {sample && smart && <p className="text-sm text-muted-foreground">{c.sampleMatch}</p>}
       {(sample || !waiting) && <p role="status" className="text-sm text-muted-foreground">{c.found(number.format(shownTotal))}{smartActive ? ` · ${c.poolNote(number.format(poolCount || items.length))}` : ''}</p>}
       {smartActive && ai?.status === 'unavailable' && <div className="grid gap-1 text-sm text-muted-foreground"><p className="flex flex-wrap items-center gap-x-2">{c.unavailable}</p><p className="text-xs">{tSearch('methods.keywordOnly')}</p></div>}
-      {smartActive && ranking && <div role="status" className="grid gap-1 text-sm text-muted-foreground"><span className="flex items-center gap-2"><Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />{c.ranking(ai?.scored ?? 0, items.length)}</span><span className="text-xs">{tSearch('methods.keywordOnly')}</span></div>}
+      {smartActive && ranking && <div role="status" className="grid gap-1 text-sm text-muted-foreground"><span className="flex items-center gap-2"><AiSpinner size="sm" />{c.ranking(ai?.scored ?? 0, items.length)}</span><span className="text-xs">{tSearch('methods.keywordOnly')}</span></div>}
       {smartActive && !ranking && ai?.status === 'partial' && <p role="status" className="text-sm text-muted-foreground">{tSearch('controls.partialRank', { scored: ai.scored, total: items.length })}</p>}
       {smartActive && poolCount > 0 && total > poolCount && <p className="text-xs text-muted-foreground">{tSearch('controls.poolLimited', { count: number.format(poolCount), total: number.format(total) })}</p>}
       {smartActive && rankFailed && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/40 p-3 text-sm text-destructive">
@@ -708,7 +725,7 @@ export function SearchPage() {
         <span className="[overflow-wrap:anywhere]">{undo.message}</span>
         {undo.retry && <Button type="button" size="sm" variant="outline" onClick={() => void unhide(undo.id)}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
       </div>}
-      {profiling ? <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.analyzing}</div> : waiting ? loadingList : visible.length === 0 && smartActive && ranking && !q && !category && ai?.status === 'missing' ? <div role="status" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.finding}</div> : visible.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
+      {profiling ? <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><AiSpinner />{c.analyzing}</div> : waiting ? loadingList : visible.length === 0 && smartActive && ranking && !q && !category && ai?.status === 'missing' ? <div role="status" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.finding}</div> : visible.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
         <p className="font-medium">{c.none}</p>
         <p className="text-sm text-muted-foreground">{c.noneNext}</p>
         <Button variant="outline" size="sm" onClick={clear} disabled={!filtered}>{c.clear}</Button>

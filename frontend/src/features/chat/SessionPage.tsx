@@ -22,6 +22,7 @@ import { useRun } from './useRun';
 import { RunTimeline } from './RunTimeline';
 import { RelatedDocuments, RunResults } from './RunResults';
 import { WorkflowPanel, type PrimaryAction } from './WorkflowPanel';
+import { SkillAdvice } from './SkillAdvice';
 import { TailorCard } from './TailorCard';
 import { ApplyCard } from './ApplyCard';
 import { BusyNote } from '@/components/BusyNote';
@@ -172,7 +173,7 @@ export function SessionPage() {
     {error && error !== 'provider' && <p className="text-sm text-destructive" role="alert">{t(error, { defaultValue: t('pages.loadError') })}</p>}
 
     {paired && <>
-      {(status === 'queued' || status === 'running') && <BusyNote announce={false} bar className="lg:hidden" label={status === 'queued' ? (i18n.language.startsWith('th') ? 'งานเข้าคิวแล้ว' : 'Task queued') : (i18n.language.startsWith('th') ? 'ระบบกำลังทำงาน' : 'Working on it')} detail={i18n.language.startsWith('th') ? 'หน้านี้อัปเดตเองเมื่อมีความคืบหน้า' : 'This page updates by itself as work progresses'} />}
+      {(status === 'queued' || status === 'running') && <BusyNote announce={false} bar className="lg:hidden" label={status === 'queued' ? (i18n.language.startsWith('th') ? 'เอเจนต์รับงานแล้ว รอคิว' : 'The agent has the task and is queued') : (i18n.language.startsWith('th') ? 'เอเจนต์กำลังประมวลผล' : 'The agent is processing')} detail={i18n.language.startsWith('th') ? 'หน้านี้อัปเดตเองเมื่อมีความคืบหน้า' : 'This page updates by itself as work progresses'} />}
       <Tabs value={tab} onValueChange={setTab} className="grid min-w-0 gap-4">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b">
           <TabsList aria-label={c.title} className="h-auto min-w-0 max-w-full justify-start overflow-x-auto rounded-none bg-transparent p-0">
@@ -191,6 +192,7 @@ export function SessionPage() {
             <TabsContent value="evaluation" forceMount className={`grid gap-4 ${tab === 'evaluation' ? '' : 'hidden'}`}>
               {evalRun ? <>
                 <RunResults projectId={projectId} locale={locale} run={evalRun} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} showDocuments={false} />
+                {evalRun.status === 'completed' && evalRun.evaluation_result?.skill_coverage && <SkillAdvice projectId={projectId} locale={locale} coverage={evalRun.evaluation_result.skill_coverage} />}
                 <RelatedDocuments projectId={projectId} documents={relatedDocs} />
               </> : <section aria-labelledby="eval-empty-heading" className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6">
                 <div className="grid gap-2"><h2 id="eval-empty-heading" className="text-lg font-semibold">{t('empty.title')}</h2><p className="max-w-xl text-muted-foreground">{t('empty.body')}</p></div>

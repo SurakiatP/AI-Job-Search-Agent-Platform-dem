@@ -51,6 +51,20 @@ def test_deletes_after_two_missed_fetches(db_session):
 
 
 @pytest.mark.integration
+def test_miss_and_return_re_dirty_the_index_for_the_ghost_signal(db_session):
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(2)], T0)
+    for r in (1, 2):
+        _row(db_session, r).index_dirty = False
+    db_session.flush()
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0 + timedelta(hours=1))
+    assert _row(db_session, 2).index_dirty is True and _row(db_session, 1).index_dirty is False
+    _row(db_session, 2).index_dirty = False
+    db_session.flush()
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(2)], T0 + timedelta(hours=2))
+    assert _row(db_session, 2).missed_runs == 0 and _row(db_session, 2).index_dirty is True
+
+
+@pytest.mark.integration
 def test_deleted_posting_seen_again_is_created_fresh(db_session):
     job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(2)], T0)
     for h in (1, 2):

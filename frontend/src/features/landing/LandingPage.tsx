@@ -6,6 +6,7 @@ import { Header } from '../../components/Header';
 import { Button } from '../../components/ui/button';
 import { landingCopy } from './copy';
 import { DemoCard } from './LandingPreview';
+import { LandingMenu, LandingNav } from './LandingNav';
 import { Reveal } from './Reveal';
 import { Tour } from './Tour';
 import './landing.css';
@@ -21,9 +22,9 @@ export function LandingPage() {
     ? <Button asChild size={size}><Link to="/app/projects">{c.openApp}</Link></Button>
     : status === 'loading' ? null : <Button asChild size={size}><Link to="/signup">{size === 'sm' ? c.signup : c.cta}</Link></Button>;
   return <div className="landing text-foreground">
-    <Header actions={<>
+    <Header menu={<LandingMenu signedOut={status !== 'ready' && status !== 'loading'} />} nav={<LandingNav />} actions={<>
+      {status !== 'ready' && status !== 'loading' && <Button asChild size="sm" variant="ghost" className="hidden sm:inline-flex"><Link to="/login">{c.login}</Link></Button>}
       {cta('sm')}
-      {status !== 'ready' && status !== 'loading' && <Button asChild size="sm" variant="outline"><Link to="/login">{c.login}</Link></Button>}
     </>} />
     <main className="grid gap-16 pb-12 sm:gap-20 sm:pb-16">
       <section className={`${wrap} grid items-center gap-10 pt-10 sm:pt-14 lg:grid-cols-2 lg:gap-12 lg:pt-16`}>
@@ -56,7 +57,7 @@ export function LandingPage() {
 
       <Tour />
 
-      <section className={`${wrap} grid gap-7`} aria-labelledby="diff-title">
+      <section id="data" className={`${wrap} grid scroll-mt-16 gap-7`} aria-labelledby="diff-title">
         <h2 id="diff-title" className="text-2xl font-semibold not-italic sm:text-3xl">{c.diffTitle}</h2>
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
           <section className="grid content-start gap-4" aria-labelledby="local-title">

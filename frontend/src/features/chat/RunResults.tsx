@@ -1,3 +1,4 @@
+import { AiMark } from '@/components/AiMark';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -90,7 +91,7 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
     {evaluation && <div className="grid gap-5">
       <div className="grid gap-5 md:grid-cols-2 md:gap-8">
         <div className="grid min-w-0 content-start gap-2">
-          <p className="text-sm font-medium text-muted-foreground">{t('result.aiFit')}</p>
+          <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"><AiMark size="sm" />{t('result.aiFit')}</p>
           <div className="flex flex-wrap items-center gap-3"><FitScore score={evaluation.score} size="lg" locale={locale} /><Badge variant={bandVariant[band]}>{t(`result.bands.${bandKey[band]}`)}</Badge></div>
           <p className="text-sm text-muted-foreground">{t('result.notPrediction')}</p>
         </div>
