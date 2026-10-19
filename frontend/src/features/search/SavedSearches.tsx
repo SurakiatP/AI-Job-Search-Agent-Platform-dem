@@ -1,3 +1,4 @@
+import { categoryLabel } from './categories';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bookmark, BellRing, Mail, Send, Trash2, MessageCircle } from 'lucide-react';
@@ -98,7 +99,8 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
     finally { setBusy(false); }
   }
   function openSave() {
-    setName((params.get('q') || params.get('category') || params.get('cities') || c.untitled).slice(0, 80));
+    const category = params.get('category');
+    setName((params.get('q') || (category && categoryLabel(locale, category)) || params.get('cities') || c.untitled).slice(0, 80));
     setFrequency('daily'); setMessage(null); setSaveOpen(true);
   }
   const notice = message && <p role={message.ok ? 'status' : 'alert'} className={`text-sm ${message.ok ? 'text-success' : 'text-destructive'}`}>{message.text}</p>;
@@ -149,7 +151,7 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
           <div className="grid gap-2"><Label htmlFor="saved-search-name">{c.name}</Label><Input id="saved-search-name" maxLength={80} value={name} onChange={event => setName(event.target.value)} required /></div>
           <fieldset className="grid gap-1"><legend className="mb-1 text-sm font-medium">{c.frequency}</legend>
             {(['daily', 'weekly'] as const).map(value => <label key={value} className="flex min-h-10 items-center gap-2 text-sm">
-              <input type="radio" name="saved-search-frequency" value={value} checked={frequency === value} onChange={() => setFrequency(value)} />{value === 'daily' ? c.daily : c.weekly}
+              <input type="radio" className="size-4 shrink-0 accent-primary" name="saved-search-frequency" value={value} checked={frequency === value} onChange={() => setFrequency(value)} />{value === 'daily' ? c.daily : c.weekly}
             </label>)}
           </fieldset>
           {saveOpen && message && !message.ok && notice}

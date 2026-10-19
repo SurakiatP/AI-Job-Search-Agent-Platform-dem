@@ -29,10 +29,10 @@ const SALARIES = [15000, 25000, 40000, 60000, 100000];
 
 const copy = {
   th: { more: 'ตัวกรองเพิ่มเติม', skills: 'ทักษะ', skillsHint: (n: number) => `เลือกได้สูงสุด ${n} ทักษะ`, skillInput: 'เพิ่มทักษะ เช่น python', add: 'เพิ่ม', remove: (s: string) => `เอาทักษะ ${s} ออก`, suggest: 'ทักษะที่พบบ่อย',
-    thai: 'ประกาศภาษาไทยเท่านั้น', salary: 'เงินเดือนขั้นต่ำ', anySalary: 'ไม่กำหนด', baht: (n: string) => `${n} บาท/เดือน`, salaryHint: 'ประกาศงานส่วนน้อยที่ระบุเงินเดือน การกรองนี้อาจตัดงานออกมาก', presets: 'ทางลัด', badLabel: 'ตัวกรองที่ใช้อยู่',
+    thai: 'ประกาศภาษาไทยเท่านั้น', thaiOnly: 'ภาษาไทย', salary: 'เงินเดือนขั้นต่ำ', anySalary: 'ไม่กำหนด', baht: (n: string) => `${n} บาท/เดือน`, salaryHint: 'ประกาศงานส่วนน้อยที่ระบุเงินเดือน การกรองนี้อาจตัดงานออกมาก', presets: 'ทางลัด', badLabel: 'ตัวกรองที่ใช้อยู่',
     preset: { internship: 'ฝึกงาน', junior: 'จูเนียร์', thai: 'ประกาศภาษาไทย', remote: 'ทำงานทางไกล', python: 'Python', ai: 'AI/ML' } },
   en: { more: 'More filters', skills: 'Skills', skillsHint: (n: number) => `Up to ${n} skills`, skillInput: 'Add a skill, e.g. python', add: 'Add', remove: (s: string) => `Remove skill ${s}`, suggest: 'Common skills',
-    thai: 'Thai postings only', salary: 'Minimum salary', anySalary: 'Any', baht: (n: string) => `${n} THB/month`, salaryHint: 'Few postings state a salary, so this filter may remove many jobs.', presets: 'Quick filters', badLabel: 'Active filters',
+    thai: 'Thai postings only', thaiOnly: 'Thai', salary: 'Minimum salary', anySalary: 'Any', baht: (n: string) => `${n} THB/month`, salaryHint: 'Few postings state a salary, so this filter may remove many jobs.', presets: 'Quick filters', badLabel: 'Active filters',
     preset: { internship: 'Internship', junior: 'Junior', thai: 'Thai postings', remote: 'Remote', python: 'Python', ai: 'AI/ML' } },
 };
 
@@ -44,6 +44,15 @@ const PRESETS: { id: keyof typeof copy.th.preset; params: Record<string, string>
   { id: 'python', params: { skills: 'python' } },
   { id: 'ai', params: { category: 'ai_engineering' } },
 ];
+
+/** Display name of one advanced-filter value in the app language (chips); unknown values fall back to the raw text. */
+export function advValueLabel(locale: 'th' | 'en', key: string, value: string): string {
+  const c = copy[locale];
+  if (key === 'salary_min') return c.baht(new Intl.NumberFormat(locale === 'th' ? 'th-TH' : 'en-US').format(Number(value)));
+  if (key === 'posting_language') return value === 'th' ? c.thaiOnly : value;
+  const option = GROUPS.find(g => g.key === key)?.options.find(o => o[0] === value);
+  return option ? option[locale === 'th' ? 1 : 2] : value;
+}
 
 export const advancedCount = (get: (k: string) => string) =>
   splitList(get('seniority')).length + splitList(get('employment_type')).length + splitList(get('company_type')).length + splitList(get('skills')).length

@@ -366,3 +366,39 @@ test('every list filter reaches the search request, and clearing removes it', as
   await expect.poll(() => seen.length).toBeGreaterThan(before - 1);
   await expect.poll(() => /cities=|work_mode=/.test(seen[seen.length - 1] ?? '')).toBe(false);
 });
+
+test('filter chips and category names use the app language, never raw codes', async ({ page }) => {
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const qs = 'seniority=senior&employment_type=full_time&company_type=inhouse&posting_language=th&salary_min=15000&category=project_management';
+  const expected = {
+    th: ['ระดับตำแหน่ง: ซีเนียร์', 'ประเภทการจ้าง: งานประจำ', 'ประเภทบริษัท: In-house', 'ประกาศภาษาไทย: ภาษาไทย', 'เงินเดือนขั้นต่ำ: 15,000 บาท/เดือน', 'หมวดงาน: บริหารโครงการ'],
+    en: ['Seniority: Senior', 'Employment type: Full-time', 'Company type: In-house', 'Thai postings: Thai', 'Minimum salary: 15,000 THB/month', 'Categories: Project management'],
+  };
+  for (const locale of ['th', 'en'] as const) {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await page.goto(`/app/projects/${projectId}/search?${qs}`);
+    const chips = page.getByRole('button', { name: /^(Remove filter|นำตัวกรอง)/ });
+    await expect(chips.first()).toBeVisible();
+    const names = (await chips.allTextContents()).concat(await chips.evaluateAll(e => e.map(x => x.getAttribute('aria-label') ?? '')));
+    for (const text of expected[locale]) expect(names.join('|'), text).toContain(text);
+    expect(names.join('|')).not.toMatch(/Full time|: Th\b|_/);
+  }
+});
+
+test('the filter panel fits a phone in both languages and every control stays reachable', async ({ page }) => {
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const locale of ['th', 'en']) {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await page.goto(`/app/projects/${projectId}/search?seniority=senior&posting_language=th`);
+    await page.getByRole('button', { name: /^(More filters|ตัวกรองเพิ่มเติม)/ }).click();
+    await expect(page.locator('#adv-filters')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    for (const target of [page.locator('#adv-filters button').first(), page.locator('#adv-salary'), page.locator('#job-city'), page.locator('#job-mode')]) {
+      const box = await target.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(36);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+    }
+  }
+});

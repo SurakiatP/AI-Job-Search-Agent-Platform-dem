@@ -25,7 +25,7 @@ import { sampleJobs } from './sampleJobs';
 import { highlightSegments } from './highlight';
 import { categoryLabel } from './categories';
 import { SavedSearchesPanel } from './SavedSearches';
-import { ADV_KEYS, AdvancedFilters, Presets, splitList, type Facet } from './AdvancedFilters';
+import { ADV_KEYS, AdvancedFilters, advValueLabel, Presets, splitList, type Facet } from './AdvancedFilters';
 
 type JobSearchItem = {
   slug: string; title: string; company: string | null; location: string | null; cities: string[];
@@ -526,7 +526,7 @@ export function SearchPage() {
     const multi = ['skills', 'seniority', 'employment_type', 'company_type'].includes(key);
     const values = multi ? splitList(value) : [value];
     values.forEach(item => {
-      const display = key === 'salary_min' ? `${number.format(Number(item))} THB/month` : item.replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase());
+      const display = advValueLabel(locale, key, item);
       activeFilterChips.push({ key: multi ? `${key}:${item}` : key, label: tSearch('controls.filterValue', { name: advNames[key], value: display }) });
     });
   });
