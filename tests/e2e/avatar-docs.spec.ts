@@ -77,12 +77,27 @@ test('landing menu: each feature has its own page; other links reach their secti
   await page.getByRole('link', { name: /^Next: / }).click();
   await expect(page).toHaveURL(/\/features\/draft$/);
   await page.getByRole('navigation', { name: 'Main menu' }).getByRole('link', { name: 'Data & connections' }).click();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.locator('#data')).toBeInViewport();
+  await expect(page).toHaveURL(/\/data$/);
+  await expect(page.getByRole('heading', { name: 'Your data and connecting an agent', level: 1 })).toBeVisible();
+  await nav.getByRole('link', { name: 'How it works' }).click();
+  await expect(page).toHaveURL(/\/how-it-works$/);
+  await expect(page.getByRole('heading', { name: 'The flow', level: 2 })).toBeVisible();
   await nav.getByRole('link', { name: 'Docs' }).click();
   await expect(page).toHaveURL(/\/docs$/);
   await expect(page.getByRole('heading', { name: 'User guide', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Start in 3 steps' })).toBeVisible();
+});
+
+test('the two explainer pages exist in both languages and show every section', async ({ page }) => {
+  for (const locale of ['th', 'en']) {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    for (const path of ['/how-it-works', '/data']) {
+      await page.goto(path);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 2 })).toHaveCount(2);
+      await expect(page.getByRole('heading', { level: 3 })).toHaveCount(path === '/data' ? 8 : 8);
+    }
+  }
 });
 
 test('every feature page exists in both languages and an unknown one goes home', async ({ page }) => {

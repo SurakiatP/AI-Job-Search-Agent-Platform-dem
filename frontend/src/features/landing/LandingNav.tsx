@@ -1,20 +1,10 @@
 import { BookOpen, ChevronDown, Menu } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { useLocale } from '../../app/providers';
 import { Button } from '../../components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
 import { landingCopy } from './copy';
 import { featureSlugs } from './featurePages';
-
-// Scroll to a landing section, going to the landing page first when on another public page. No smooth scrolling, so reduced-motion needs no special case.
-function useGoTo() {
-  const navigate = useNavigate();
-  const onLanding = useLocation().pathname === '/';
-  return (id: string) => {
-    if (onLanding) document.getElementById(id)?.scrollIntoView({ block: 'start' });
-    else navigate('/', { state: { scrollTo: id } });
-  };
-}
 
 const link = 'inline-flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
@@ -22,7 +12,6 @@ const link = 'inline-flex min-h-10 items-center rounded-md px-3 text-sm font-med
 export function LandingNav() {
   const { locale } = useLocale();
   const c = landingCopy[locale];
-  const goTo = useGoTo();
   return <nav aria-label={c.nav.label} className="hidden flex-1 items-center justify-center gap-1 xl:flex">
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -37,8 +26,8 @@ export function LandingNav() {
         </DropdownMenuItem>)}
       </DropdownMenuContent>
     </DropdownMenu>
-    <a href="/#steps" onClick={event => { event.preventDefault(); goTo('steps'); }} className={link}>{c.nav.how}</a>
-    <a href="/#data" onClick={event => { event.preventDefault(); goTo('data'); }} className={link}>{c.nav.data}</a>
+    <Link to="/how-it-works" className={link}>{c.nav.how}</Link>
+    <Link to="/data" className={link}>{c.nav.data}</Link>
     <Link to="/docs" className={`${link} gap-1.5`}><BookOpen className="size-4" aria-hidden="true" />{c.docs}</Link>
   </nav>;
 }
@@ -47,16 +36,15 @@ export function LandingNav() {
 export function LandingMenu({ signedOut }: { signedOut: boolean }) {
   const { locale } = useLocale();
   const c = landingCopy[locale];
-  const goTo = useGoTo();
   return <div className="xl:hidden">
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label={c.nav.menu}><Menu className="size-5" aria-hidden="true" /></Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
-        <DropdownMenuItem onSelect={() => goTo('steps')}>{c.nav.how}</DropdownMenuItem>
+        <DropdownMenuItem asChild><Link to="/how-it-works">{c.nav.how}</Link></DropdownMenuItem>
         {c.steps.map((step, index) => <DropdownMenuItem key={step.tab} asChild><Link to={`/features/${featureSlugs[index]}`}>{step.tab}</Link></DropdownMenuItem>)}
-        <DropdownMenuItem onSelect={() => goTo('data')}>{c.nav.data}</DropdownMenuItem>
+        <DropdownMenuItem asChild><Link to="/data">{c.nav.data}</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link to="/docs">{c.docs}</Link></DropdownMenuItem>
         {signedOut && <DropdownMenuItem asChild className="sm:hidden"><Link to="/login">{c.login}</Link></DropdownMenuItem>}
       </DropdownMenuContent>
