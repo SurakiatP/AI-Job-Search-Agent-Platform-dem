@@ -7,6 +7,7 @@ const th = {
   login: 'เข้าสู่ระบบ',
   openApp: 'เปิดแอป',
   docs: 'คู่มือ',
+  nav: { label: 'เมนูหลัก', menu: 'เมนู', features: 'ฟีเจอร์', how: 'วิธีทำงาน', data: 'ข้อมูลและการเชื่อมต่อ' },
   secondary: 'ดูวิธีทำงาน',
   noSubmit: 'ไม่ส่งใบสมัครอัตโนมัติ คุณตรวจเองและสมัครเองทุกครั้ง',
   demo: {
@@ -78,6 +79,7 @@ const en: typeof th = {
   login: 'Log in',
   openApp: 'Open app',
   docs: 'Docs',
+  nav: { label: 'Main menu', menu: 'Menu', features: 'Features', how: 'How it works', data: 'Data & connections' },
   secondary: 'See how it works',
   noSubmit: 'No automatic submission. You review everything and apply yourself.',
   demo: {

@@ -62,3 +62,30 @@ test('account: upload, choose a built-in picture, remove; bad type and size are 
   await page.getByRole('button', { name: 'Remove uploaded picture' }).click();
   await expect.poll(() => state.image).toBe(false);
 });
+
+test('landing menu: Features picks its tour tab, other links reach their sections and Docs', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await page.goto('/');
+  const nav = page.getByRole('navigation', { name: 'Main menu' });
+  await nav.getByRole('button', { name: 'Features' }).click();
+  await page.getByRole('menuitem', { name: /Evaluate/ }).or(page.getByRole('menuitem').nth(2)).first().click();
+  await expect(page.getByRole('tab', { name: /^(Evaluate|ประเมิน)/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#how')).toBeInViewport();
+  await nav.getByRole('link', { name: 'Data & connections' }).click();
+  await expect(page.locator('#data')).toBeInViewport();
+  await nav.getByRole('link', { name: 'Docs' }).click();
+  await expect(page).toHaveURL(/\/docs$/);
+  await expect(page.getByRole('heading', { name: 'User guide', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start in 3 steps' })).toBeVisible();
+});
+
+test('landing menu collapses into one Menu button on a phone', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto('/');
+  await expect(page.getByRole('navigation', { name: 'Main menu' })).toBeHidden();
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('menuitem', { name: 'Docs' }).click();
+  await expect(page).toHaveURL(/\/docs$/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
