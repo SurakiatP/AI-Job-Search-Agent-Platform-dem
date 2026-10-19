@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from sqlalchemy import delete, func, literal, or_, select, text, update
+from sqlalchemy import case, delete, func, literal, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, defer
 
@@ -106,6 +106,8 @@ def upsert_postings(db: Session, source: str, board: str | None, rows: list[dict
                               index_dirty=True, **values))
             counts["created"] += 1
             continue
+        if row.missed_runs:  # the index carries missed_runs (ghost signal)
+            row.index_dirty, row.updated_at = True, now
         row.last_seen_at, row.missed_runs = now, 0
         if row.content_hash != values["content_hash"]:
             for key, value in values.items():
@@ -130,6 +132,7 @@ def apply_board(db: Session, source: str, board: str | None, rows: list[dict], n
         if external_id in seen:
             continue
         row.missed_runs += 1
+        row.index_dirty, row.updated_at = True, now
         if row.missed_runs >= DELETE_AFTER_MISSES:
             missing.append(row.id)
     db.flush()
@@ -149,7 +152,9 @@ def touch_seen(db: Session, source: str, external_ids: set[str], now: datetime) 
             JobPostingTombstone.source == source, JobPostingTombstone.external_id.in_(chunk))))
     for chunk in _chunks(sorted(stored)):
         db.execute(update(JobPosting).where(JobPosting.source == source, JobPosting.external_id.in_(chunk))
-                   .values(last_seen_at=now, missed_runs=0))
+                   .values(last_seen_at=now, missed_runs=0,
+                           index_dirty=JobPosting.index_dirty | (JobPosting.missed_runs > 0),
+                           updated_at=case((JobPosting.missed_runs > 0, now), else_=JobPosting.updated_at)))
     for chunk in _chunks(sorted(tombstoned)):
         db.execute(update(JobPostingTombstone).where(
             JobPostingTombstone.source == source, JobPostingTombstone.external_id.in_(chunk)).values(last_seen_at=now))
@@ -164,7 +169,7 @@ def miss_unseen(db: Session, source: str, since: datetime, now: datetime) -> int
     if stored and (not seen or (stored >= SHRINK_MIN_STORED and seen < stored * SHRINK_RATIO)):
         raise job_boards.BoardError("suspicious_shrink")  # likely a broken listing: count no misses
     db.execute(update(JobPosting).where(of_source, JobPosting.last_seen_at < since)
-               .values(missed_runs=JobPosting.missed_runs + 1))
+               .values(missed_runs=JobPosting.missed_runs + 1, index_dirty=True, updated_at=now))
     ids = list(db.scalars(select(JobPosting.id).where(of_source, JobPosting.missed_runs >= DELETE_AFTER_MISSES)))
     return delete_postings(db, ids, now, tombstone=False)
 

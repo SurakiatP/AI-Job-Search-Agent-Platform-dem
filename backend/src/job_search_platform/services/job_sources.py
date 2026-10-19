@@ -18,7 +18,7 @@ CACHE_MAX_ENTRIES = 128
 DESCRIPTION_MAX = 50000
 STALE_AFTER_DAYS = 60
 RETRIEVE = ["slug", "title", "company", "location", "cities", "work_mode", "skills", "category", "posted_at",
-            "posted_ts", "source_url", "description_markdown", "reality_stale"]
+            "posted_ts", "source_url", "description_markdown", "reality_stale", "missed_runs"]
 FACETS = ["category", "cities", "seniority", "employment_type", "company_type", "skills", "posting_language"]
 
 
@@ -75,6 +75,13 @@ def hit_to_item(hit: dict, now: datetime) -> dict:
     ts = hit.get("posted_ts")
     age = max(0, int(now.timestamp() - ts) // 86400) if isinstance(ts, int) and not isinstance(ts, bool) else None
     description = hit.get("description_markdown")
+    missed = hit.get("missed_runs")
+    # FR-J04: each signal is stored evidence; none is a guess about the employer.
+    signals = [code for code, hit_it in (
+        ("old", age is not None and age > STALE_AFTER_DAYS),
+        ("source_flagged", hit.get("reality_stale") is True),
+        ("unlisted", isinstance(missed, int) and not isinstance(missed, bool) and missed > 0),
+    ) if hit_it]
     return {
         "slug": str(hit.get("slug") or ""),
         "title": str(hit.get("title") or ""),
@@ -86,7 +93,8 @@ def hit_to_item(hit: dict, now: datetime) -> dict:
         "category": _text(hit.get("category")),
         "posted_at": _text(hit.get("posted_at")),
         "age_days": age,
-        "stale": hit.get("reality_stale") is True or (age is not None and age > STALE_AFTER_DAYS),
+        "stale": bool(signals),
+        "ghost_signals": signals,
         "source_url": _strip_utm(hit.get("source_url")),
         "description_markdown": description[:DESCRIPTION_MAX] if isinstance(description, str) else "",
     }

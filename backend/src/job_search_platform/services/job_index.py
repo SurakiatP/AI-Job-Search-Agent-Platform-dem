@@ -31,7 +31,7 @@ def to_document(p: JobPosting, sources: list[str]) -> dict:
         "seniority": p.seniority, "employment_type": p.employment_type, "company_type": p.company_type,
         "posting_language": p.posting_language, "salary_thb_month_min": p.salary_thb_month_min,
         "source_url": p.source_url, "description_markdown": p.description_markdown or "",
-        "reality_stale": p.reality_stale, "sources": sources,
+        "reality_stale": p.reality_stale, "missed_runs": p.missed_runs, "sources": sources,
     }
 
 

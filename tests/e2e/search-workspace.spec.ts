@@ -322,3 +322,17 @@ test('Smart match never calls the AI until the user presses Start, and asks agai
   await page.waitForTimeout(500);
   expect(calls.match).toBe(before);
 });
+
+test('a stale result lists the evidence behind the warning', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  const ghost = { ...searchItems[0], slug: 'old-one', title: 'Old Listing Analyst', age_days: 75, stale: true, ghost_signals: ['old', 'unlisted'] };
+  await installSearchFixture(page, [ghost, searchItems[1]]);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/app/projects/${projectId}/search?q=analyst`);
+  await page.locator('[data-job-slug="old-one"]').click();
+  const reasons = page.getByTestId('ghost-reasons');
+  await expect(reasons).toContainText('Posted 75 days ago');
+  await expect(reasons).toContainText('Not found on the source at the last check');
+  await page.locator('[data-job-slug="northstar"]').click();
+  await expect(page.getByTestId('ghost-reasons')).toHaveCount(0);
+});

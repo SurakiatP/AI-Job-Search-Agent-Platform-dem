@@ -92,7 +92,7 @@ def test_rest_search_full_description_age_stale_and_text_mode(api_context, fake_
     base = f"/api/v1/projects/{project_id}/agent/jobs/search"
     job = _as_grant(api_context.client, "POST", base, token, json={"q": "python", "limit": 30}).json()["jobs"][0]
     assert job["description_format"] == "markdown" and job["description"] == RAW["description_markdown"]
-    assert job["posting_age_days"] == 9 and job["stale"] is True
+    assert job["posting_age_days"] == 9 and job["stale"] is True and job["ghost_signals"] == ["source_flagged"]
     assert job["source_id"] == "synthetic-python-dev" and job["city"] == "Bangkok"
     assert job["source_url"] == "https://jobs.example.test/1"
     assert fake_source[-1]["limit"] == 30 and fake_source[-1]["q"] == "python"

@@ -72,7 +72,7 @@ async def jobs_search(services, actor: Actor, request: AgentJobSearch, project_i
     jobs = tuple(AgentJobItem(
         source_id=item["slug"], title=item["title"], company=item["company"],
         city=(item["cities"][0] if item["cities"] else item["location"]), work_mode=item["work_mode"],
-        posted_at=item["posted_at"], posting_age_days=item["age_days"], stale=item["stale"],
+        posted_at=item["posted_at"], posting_age_days=item["age_days"], stale=item["stale"], ghost_signals=tuple(item["ghost_signals"]),
         source_url=item["source_url"],
         description=markdown_to_text(item["description_markdown"]) if as_text else item["description_markdown"],
         description_format=request.description_format,

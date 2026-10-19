@@ -30,7 +30,7 @@ import { ADV_KEYS, AdvancedFilters, Presets, splitList, type Facet } from './Adv
 type JobSearchItem = {
   slug: string; title: string; company: string | null; location: string | null; cities: string[];
   work_mode: string | null; skills: string[]; category: string | null; posted_at: string | null;
-  age_days: number | null; stale: boolean; source_url: string | null; description_markdown: string;
+  age_days: number | null; stale: boolean; ghost_signals?: string[]; source_url: string | null; description_markdown: string;
   salary_min?: number | null; salary_max?: number | null; salary_currency?: string | null; salary_period?: string | null;
   match?: Match | null; ai_match?: AiMatch | null; highlight?: Highlight;
 };
@@ -65,7 +65,8 @@ const copy = {
     days: (n: number) => `${n} วันที่ผ่านมา`, city: 'จังหวัด/เมือง', anyCity: 'ทุกเมือง', categories: 'หมวดงาน',
     remote: 'ทำงานทางไกล', hybrid: 'ไฮบริด', onsite: 'ทำงานที่ออฟฟิศ',
     found: (n: string) => `พบ ${n} ตำแหน่ง`, age: (n: number) => (n <= 0 ? 'ลงประกาศวันนี้' : `ลงประกาศ ${n} วันที่แล้ว`),
-    stale: 'ประกาศเก่า · อาจปิดรับแล้ว', evaluate: 'ประเมินงานนี้', save: 'บันทึกงาน', saveShort: 'บันทึก', saved: 'บันทึกแล้ว', saving: 'กำลังบันทึก…',
+    stale: 'ประกาศเก่า · อาจปิดรับแล้ว',
+    ghost: { old: (n: number) => `ลงประกาศมา ${n} วันแล้ว`, source_flagged: 'แหล่งงานระบุว่าประกาศนี้อาจไม่เป็นปัจจุบัน', unlisted: 'ไม่พบประกาศนี้ในแหล่งงานตอนตรวจครั้งล่าสุด' }, evaluate: 'ประเมินงานนี้', save: 'บันทึกงาน', saveShort: 'บันทึก', saved: 'บันทึกแล้ว', saving: 'กำลังบันทึก…',
     original: 'เปิดประกาศต้นฉบับ', saveError: 'บันทึกงานไม่สำเร็จ ลองอีกครั้ง', loadMore: 'โหลดเพิ่ม', loading: 'กำลังโหลด…',
     none: 'ไม่พบตำแหน่งที่ตรงกับตัวกรอง', noneNext: 'ลองเปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูทั้งหมด', clear: 'ล้างตัวกรอง',
     errTitle: 'โหลดรายการงานไม่สำเร็จ', errBody: 'บริการอาจไม่พร้อมใช้งานชั่วคราว ลองใหม่อีกครั้ง หรือดูข้อมูลตัวอย่างเพื่อสำรวจหน้านี้',
@@ -95,7 +96,8 @@ const copy = {
     days: (n: number) => `${n} days`, city: 'City', anyCity: 'All cities', categories: 'Categories',
     remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site',
     found: (n: string) => `${n} ${n === '1' ? 'job' : 'jobs'} found`, age: (n: number) => (n <= 0 ? 'Posted today' : `${n} ${n === 1 ? 'day' : 'days'} ago`),
-    stale: 'Stale listing', evaluate: 'Evaluate this job', save: 'Save job', saveShort: 'Save', saved: 'Saved', saving: 'Saving…',
+    stale: 'Stale listing',
+    ghost: { old: (n: number) => `Posted ${n} days ago`, source_flagged: 'The source marks this listing as possibly out of date', unlisted: 'Not found on the source at the last check' }, evaluate: 'Evaluate this job', save: 'Save job', saveShort: 'Save', saved: 'Saved', saving: 'Saving…',
     original: 'Open original posting', saveError: 'Could not save this job. Try again.', loadMore: 'Load more', loading: 'Loading…',
     none: 'No jobs match these filters', noneNext: 'Change the search or clear the filters to see everything.', clear: 'Clear filters',
     errTitle: "Couldn't load jobs", errBody: 'The service may be temporarily unavailable. Try again, or view sample data to explore this page.',
@@ -259,6 +261,10 @@ function JobDetail({ job, c, projectId, scored, tSearch, cv, saves, ranking }: {
       {job.stale && <Badge variant="warning">{c.stale}</Badge>}
       {job.skills.map(s => <Badge key={s} variant="outline" className="break-words">{s}</Badge>)}
     </div>
+    {job.stale && (job.ghost_signals?.length ?? 0) > 0 && <ul className="grid gap-1 text-sm text-muted-foreground" data-testid="ghost-reasons">
+      {job.ghost_signals!.map(code => <li key={code} className="flex gap-2"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+        <span>{code === 'old' ? c.ghost.old(job.age_days ?? 0) : code === 'source_flagged' ? c.ghost.source_flagged : code === 'unlisted' ? c.ghost.unlisted : code}</span></li>)}
+    </ul>}
     <div className="grid gap-2 border-t pt-4">
       <h3 className="text-sm font-semibold">{c.description}</h3>
       {job.highlight && (Object.keys(job.highlight.matched).length || Object.keys(job.highlight.missing).length)

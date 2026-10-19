@@ -74,13 +74,19 @@ def test_empty_query_sorts_newest_first(monkeypatch):
 def test_hit_maps_to_current_item_shape_and_stale_rule():
     item = job_sources.hit_to_item(HIT, NOW)
     assert set(item) == {"slug", "title", "company", "location", "cities", "work_mode", "skills", "category",
-                         "posted_at", "age_days", "stale", "source_url", "description_markdown"}
+                         "posted_at", "age_days", "stale", "ghost_signals", "source_url", "description_markdown"}
     assert item["slug"] == "fe-1" and item["category"] == "frontend" and item["age_days"] == 10 and item["stale"] is False
     assert len(item["skills"]) == 8 and len(item["description_markdown"]) == 50000
     assert item["source_url"] == "https://jobs.example.com/a?id=1"
     assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 61 * DAY}, NOW)["stale"] is True
     assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 60 * DAY}, NOW)["stale"] is False
     assert job_sources.hit_to_item({**HIT, "reality_stale": True}, NOW)["stale"] is True
+    assert item["ghost_signals"] == []
+    assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 61 * DAY}, NOW)["ghost_signals"] == ["old"]
+    assert job_sources.hit_to_item({**HIT, "reality_stale": True}, NOW)["ghost_signals"] == ["source_flagged"]
+    both = job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 70 * DAY, "missed_runs": 1}, NOW)
+    assert both["ghost_signals"] == ["old", "unlisted"] and both["stale"] is True
+    assert job_sources.hit_to_item({**HIT, "missed_runs": 0}, NOW)["stale"] is False
     bare = job_sources.hit_to_item({"slug": "b", "title": "T", "source_url": "javascript:alert(1)"}, NOW)
     assert bare["source_url"] is None and bare["age_days"] is None and bare["stale"] is False
     assert bare["category"] is None and bare["description_markdown"] == ""
