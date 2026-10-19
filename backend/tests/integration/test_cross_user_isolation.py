@@ -15,7 +15,7 @@ from a2a.types import GetTaskRequest
 from mcp.shared.exceptions import MCPError
 from sqlalchemy import select
 
-from job_search_platform.db.models import Approval, CVRevision, ConversationSession, Project, WebhookDelivery
+from job_search_platform.db.models import Approval, CVRevision, ConversationSession, Project, ResumeDraft, WebhookDelivery
 from job_search_platform.integrations.mailer import MemoryMailer
 from job_search_platform.services import job_sources
 from job_search_platform.services.accounts import Accounts
@@ -89,6 +89,10 @@ def world(api_context, monkeypatch):
         cv_revision = db.scalar(select(CVRevision).where(CVRevision.project_id == UUID(project_id)))
         cv_revision.skill_profile = {"method": SKILL_METHOD, "skills": ["python"]}  # lets job-search/match run
         cv_id, cv_revision_id = cv_revision.cv_id, cv_revision.id
+        # CV builder routes need a draft on Alice's CV and document (an uploaded CV has none).
+        for owner in ({"cv_id": cv_id}, {"document_id": doc.document}):
+            db.add(ResumeDraft(project_id=UUID(project_id), resume_data={}, template_id="onyx", accent="indigo",
+                               document_language="th", **owner))
     alice_grant = _issue_grant(api_context, csrf_alice, UUID(project_id), ["results:read"])
     # Real rows for the remaining path parameters, so no URL falls back to a random id.
     item = api_context.client.post(f"{BASE}/projects/{project_id}/experience", headers=_write_headers(csrf_alice),

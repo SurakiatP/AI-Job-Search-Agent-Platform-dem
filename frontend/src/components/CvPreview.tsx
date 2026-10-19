@@ -13,7 +13,7 @@ const copy = {
 
 const downloadUrl = (projectId: string, fileId: string) => `/api/v1/projects/${projectId}/files/${fileId}/download`;
 
-function useFilePreview(url: string | null, mimeType: string) {
+export function useFilePreview(url: string | null, mimeType: string) {
   const [preview, setPreview] = useState<Preview>({ status: 'loading' });
   useEffect(() => {
     if (!url) return;
@@ -36,7 +36,7 @@ function useFilePreview(url: string | null, mimeType: string) {
   return preview;
 }
 
-function PreviewBody({ url, mimeType, title, c }: { url: string; mimeType: string; title: string; c: typeof copy.en }) {
+export function PreviewBody({ url, mimeType, title, c }: { url: string; mimeType: string; title: string; c: typeof copy.en }) {
   const preview = useFilePreview(url, mimeType);
   if (preview.status === 'pdf') return <iframe title={title} src={`${preview.url}#view=FitH&toolbar=1`} className="size-full rounded-lg border bg-white" />;
   if (preview.status === 'text') return <pre className="size-full overflow-auto whitespace-pre-wrap rounded-lg border bg-background p-6 font-sans text-base leading-relaxed">{preview.text}</pre>;

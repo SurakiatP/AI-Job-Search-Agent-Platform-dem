@@ -10,6 +10,7 @@ import { apiRequest } from '../../lib/api';
 import { useGatewayHelp } from '../../lib/accountGate';
 import { ApiError, type CVView, type JobRevisionView, type SessionView } from '../../lib/api-types';
 import { useResource } from '../projects/useResource';
+import { BuildCvButton } from '../builder/BuildCvButton';
 
 export type InlineJobDraft = { title: string; company?: string | null; description: string; source_url?: string | null };
 export type SessionJob = { savedId?: string; inline?: InlineJobDraft };
@@ -66,7 +67,7 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
       <DialogDescription>{c.desc}</DialogDescription>
       {cvs.status === 'error' || jobs.status === 'error' ? <div role="alert" className="grid justify-items-start gap-3"><p className="text-sm text-destructive">{c.loadFailed}</p><Button type="button" variant="outline" onClick={() => { cvs.reload(); jobs.reload(); }}>{t('pages.retry')}</Button></div>
         : !ready ? <p role="status" className="text-sm text-muted-foreground">{c.loading}</p>
-        : !usable.length ? <div className="grid gap-3 rounded-lg border border-dashed p-4"><p className="font-medium">{c.noCv}</p><p className="text-sm text-muted-foreground">{c.noCvBody}</p><Button asChild className="justify-self-start" onClick={onClose}><Link to={`${base}/profile`}>{c.addCv}</Link></Button></div>
+        : !usable.length ? <div className="grid gap-3 rounded-lg border border-dashed p-4"><p className="font-medium">{c.noCv}</p><p className="text-sm text-muted-foreground">{c.noCvBody}</p><div className="flex flex-wrap gap-2"><Button asChild onClick={onClose}><Link to={`${base}/profile`}>{c.addCv}</Link></Button><BuildCvButton projectId={projectId} /></div></div>
         : <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
           <Field label={c.cv}><select className={selectClass} value={cv?.id ?? ''} onChange={event => setCvPick(event.target.value)} disabled={busy}>
             {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}</option>)}</select></Field>

@@ -546,7 +546,7 @@ class RunService:
             return self._export_locked(db, actor, project_id, document_id, edit, now)
 
     def _export_locked(self, db: Session, actor: Actor, project_id: UUID, document_id: UUID, edit: DocumentEdit,
-                       now: datetime) -> RunView:
+                       now: datetime, resume_payload: dict | None = None) -> RunView:
         """Queue an export for an existing document; the caller holds the project lock."""
         document = db.scalar(select(Document).where(
             Document.project_id == project_id, Document.id == document_id).with_for_update())
@@ -584,10 +584,12 @@ class RunService:
             mime = db.scalar(select(StoredFile.mime_type).where(
                 StoredFile.project_id == project_id, StoredFile.id == latest.file_id)) or ""
             output_format = "docx" if mime.endswith("wordprocessingml.document") else "pdf"
-        return self._queue_export(db, actor, source, document, output_format, edit.content_markdown, now)
+        return self._queue_export(db, actor, source, document, output_format, edit.content_markdown, now,
+                                  resume_payload=resume_payload)
 
     def _queue_export(self, db: Session, actor: Actor, source: Run, document: Document | None, output_format: str,
-                      markdown: str, now: datetime, *, title: str = "", document_type: str = "cv") -> RunView:
+                      markdown: str, now: datetime, *, title: str = "", document_type: str = "cv",
+                      resume_payload: dict | None = None) -> RunView:
         """Queue a non-LLM export run that inherits session/CV/job/provider from `source`; no document means a new one."""
         enforce_run_gates(db, source.project_id, now=now)
         key = uuid4().hex
@@ -607,6 +609,7 @@ class RunService:
                 "export_title": document.title if document else title,
                 "export_document_type": document.document_type if document else document_type,
                 "export_content_markdown": markdown,
+                **(resume_payload or {}),
             },
             config_snapshot={},
             output_language=source.output_language,
@@ -682,6 +685,22 @@ class RunService:
                 raise ServiceError("evidence_required")
             if not applied:
                 raise ServiceError("tailor_nothing_to_apply")
+            resume_payload = None
+            if payload.get("structured"):
+                # Builder CV: place the edits into the summary and bullets and keep the template (spec CR-01).
+                from job_search_platform.services import resume as rs
+                row = db.execute(select(DocumentRevision.resume_data, DocumentRevision.resume_style).where(
+                    DocumentRevision.project_id == project_id, DocumentRevision.id == UUID(base_id))).first() if base_id else \
+                    db.execute(select(CVRevision.resume_data, CVRevision.resume_style).where(
+                        CVRevision.project_id == project_id, CVRevision.id == run.cv_revision_id)).first()
+                if row is None or not row[0]:
+                    raise ServiceError("document_source_unavailable")
+                data, placed, unplaced = rs.apply_text_edits(rs.ResumeData.model_validate(row[0]), applied)
+                if unplaced or not placed:
+                    raise ServiceError("evidence_required")
+                lang = run.output_language if run.output_language in ("th", "en") else "th"
+                text = rs.plain_text(data, lang)
+                resume_payload = {"export_resume_data": data.model_dump(), "export_resume_style": row[1] or {}}
             document = live_tailored_document(db, project_id, run.job_revision_id)
             title = f"CV — {(run.input_snapshot.get('job') or {}).get('title', 'job')}"[:300]
             if document is None:
@@ -692,11 +711,11 @@ class RunService:
                         & (Run.input_snapshot["export_document_type"].as_string() == "cv"))))
                 if busy:
                     raise ServiceError("document_busy")
-                view = self._queue_export(db, actor, run, None, "pdf", text, now, title=title)
+                view = self._queue_export(db, actor, run, None, "pdf", text, now, title=title, resume_payload=resume_payload)
                 self._complete_resting(db, run, now)
                 return view
             view = self._export_locked(db, actor, project_id, document.id,
-                                       DocumentEdit(content_markdown=text, format="pdf"), now)
+                                       DocumentEdit(content_markdown=text, format="pdf"), now, resume_payload=resume_payload)
             self._complete_resting(db, run, now)
             return view
 

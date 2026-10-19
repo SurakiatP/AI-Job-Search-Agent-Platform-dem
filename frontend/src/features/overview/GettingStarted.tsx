@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { readPreference, savePreference } from '../../app/theme';
 import { useOverviewCopy } from './copy';
+import { BuildCvButton } from '../builder/BuildCvButton';
 
 type Props = { base: string; cv: { name: string; version: number } | null; job: { title: string; more: number } | null };
 
@@ -19,7 +20,7 @@ export function GettingStarted({ base, cv, job }: Props) {
   const doneText = [cv && c.cvDone(cv.name, cv.version), job && c.jobDone(job.title, job.more), null];
   const action = (index: number) => {
     const primary = next === index;
-    if (index === 0) return <Button asChild variant={primary ? 'default' : 'outline'}><Link to={`${base}/profile`}><Upload size={17} aria-hidden="true" />{t('workspace.addCv')}</Link></Button>;
+    if (index === 0) return <span className="flex flex-wrap gap-2"><Button asChild variant={primary ? 'default' : 'outline'}><Link to={`${base}/profile`}><Upload size={17} aria-hidden="true" />{t('workspace.addCv')}</Link></Button><BuildCvButton projectId={base.split('/').pop() ?? ''} /></span>;
     if (index === 1) return <Button asChild variant={primary ? 'default' : 'outline'}><Link to={`${base}/search`}><Search size={17} aria-hidden="true" />{t('workspace.findJobs')}</Link></Button>;
     return null;
   };

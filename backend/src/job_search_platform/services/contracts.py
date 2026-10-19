@@ -71,7 +71,7 @@ class HiddenCreate(DTO):
 
 
 class ExperienceItemCreate(DTO):
-    kind: Literal["experience", "education", "skill", "certification", "project", "other"]
+    kind: Literal["experience", "education", "skill", "certification", "project", "other", "award", "publication", "volunteer", "interest", "language"]
     text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
     role: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
     organization: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
@@ -300,6 +300,7 @@ class CVView(DTO):
     latest_revision: CVRevisionView | None = None
     revision_count: int
     in_use: bool
+    has_builder_draft: bool = False
 
 
 class DocumentView(DTO):
@@ -312,6 +313,7 @@ class DocumentView(DTO):
     source_run_id: UUID | None = None
     partial: bool = False
     trashed_at: datetime | None = None
+    has_builder_draft: bool = False
 
 
 class DocumentRevisionView(RevisionView):

@@ -26,6 +26,7 @@ import { highlightSegments } from './highlight';
 import { categoryLabel } from './categories';
 import { SavedSearchesPanel } from './SavedSearches';
 import { ADV_KEYS, AdvancedFilters, advValueLabel, Presets, splitList, type Facet } from './AdvancedFilters';
+import { BuildCvButton } from '../builder/BuildCvButton';
 
 type JobSearchItem = {
   slug: string; title: string; company: string | null; location: string | null; cities: string[];
@@ -705,7 +706,7 @@ export function SearchPage() {
     </CardContent></Card> : needsCv ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
       <p className="font-medium">{c.noCv}</p>
       <p className="text-sm text-muted-foreground">{c.noCvBody}</p>
-      <Button asChild><Link to={`/app/projects/${projectId}/profile`}>{c.addCv}</Link></Button>
+      <div className="flex flex-wrap gap-2"><Button asChild><Link to={`/app/projects/${projectId}/profile`}>{c.addCv}</Link></Button><BuildCvButton projectId={projectId} /></div>
     </div> : awaiting ? <SmartMatchStart locale={locale} cvName={cv ? `${cv.name} · v${cv.latest_revision?.revision}` : ''} disabled={gate.blocked} title={gate.title} onStart={() => setArmedFor(revisionId)} /> : <div className="grid gap-3">
       {sample && smart && <p className="text-sm text-muted-foreground">{c.sampleMatch}</p>}
       {(sample || !waiting) && <p role="status" className="text-sm text-muted-foreground">{c.found(number.format(shownTotal))}{smartActive ? ` · ${c.poolNote(number.format(poolCount || items.length))}` : ''}</p>}

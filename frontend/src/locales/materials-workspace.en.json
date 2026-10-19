@@ -68,6 +68,9 @@
     "backToCurrent": "Back to current version",
     "downloadSelected": "Download this version",
     "editCurrent": "Edit current version",
+    "editInBuilder": "Edit in builder",
+    "templatePreview": "PDF preview of this version",
+    "templateHint": "This CV is plain text. Build a CV in the app to use templates.",
     "viewing": "Viewing",
     "editFromThis": "Edit from this version"
   }

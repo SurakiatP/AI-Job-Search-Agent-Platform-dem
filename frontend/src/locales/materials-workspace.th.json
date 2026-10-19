@@ -67,6 +67,9 @@
     "backToCurrent": "กลับไปฉบับปัจจุบัน",
     "downloadSelected": "ดาวน์โหลดฉบับนี้",
     "editCurrent": "แก้ไขฉบับปัจจุบัน",
+    "editInBuilder": "แก้ไขในตัวสร้าง",
+    "templatePreview": "ตัวอย่าง PDF ของฉบับนี้",
+    "templateHint": "CV นี้เป็นข้อความธรรมดา สร้าง CV ในระบบเพื่อใช้เทมเพลต",
     "viewing": "กำลังดู",
     "editFromThis": "แก้ไขจากฉบับนี้"
   }

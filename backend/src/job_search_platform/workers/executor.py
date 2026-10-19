@@ -8,6 +8,7 @@ import logging
 import re
 import asyncio
 import hashlib
+from datetime import datetime, timezone
 import io
 import time
 import mimetypes
@@ -21,12 +22,12 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import Approval, CVRevision, CVRevisionText, DocumentRevision, JobMatchScore, JobSearchHidden, Run, RunArtifact, StoredFile
+from job_search_platform.db.models import Approval, CVRevision, CVRevisionText, DocumentRevision, JobMatchScore, JobSearchHidden, ResumeDraft, Run, RunArtifact, StoredFile
 from job_search_platform.services.contracts import EvaluationResult, SkillCoverage
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
 from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.gateway import GatewaySettings
-from job_search_platform.services import applications, experience, job_sources, smart_match, tailoring
+from job_search_platform.services import applications, experience, job_sources, resume, smart_match, tailoring
 from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, fact_claims, require_evidence
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.approvals import ApprovalService
@@ -336,6 +337,17 @@ class RunExecutor:
         """Manual edit: export the owner's Markdown through the sandbox exporter; no LLM, no provider."""
         snapshot = run.input_snapshot
         started = False
+        if snapshot.get("export_resume_data"):
+            try:
+                ids = await self._publish_resume(run, sandbox, lease_owner, snapshot["export_resume_data"],
+                                                 snapshot.get("export_resume_style") or {}, snapshot["export_title"],
+                                                 snapshot["export_content_markdown"])
+                await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed", artifact_ids=ids)
+            except ServiceError as exc:
+                await self._finish_after_stop(run, lease_owner, "failed", _safe_message(exc.code))
+            except Exception:
+                await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
+            return
         try:
             sandbox.staging_path("draft.md").write_text(snapshot["export_content_markdown"], encoding="utf-8")
 
@@ -476,6 +488,47 @@ class RunExecutor:
                 return row[0], row[1]
         return None, self._stored_cv_text(run.cv_revision_id)
 
+    def _structured_base(self, run: Run, base_revision_id: uuid.UUID | None) -> tuple[dict, dict] | None:
+        """Resume data and style when the tailored CV comes from the builder: the document being revised, else the CV."""
+        with self.sessions() as db:
+            if base_revision_id is not None:
+                row = db.execute(select(DocumentRevision.resume_data, DocumentRevision.resume_style).where(
+                    DocumentRevision.project_id == run.project_id, DocumentRevision.id == base_revision_id)).first()
+            else:
+                row = db.execute(select(CVRevision.resume_data, CVRevision.resume_style).where(
+                    CVRevision.project_id == run.project_id, CVRevision.id == run.cv_revision_id)).first()
+        return (row[0], row[1] or {}) if row is not None and row[0] else None
+
+    async def _publish_resume(self, run: Run, sandbox: RunSandbox, lease_owner: str, data: dict, style: dict,
+                              title: str, text: str) -> tuple[uuid.UUID, ...]:
+        """Render resume data with its template in the sandbox and publish it as the tailored CV document."""
+        template, accent = style.get("template_id", "onyx"), style.get("accent", "indigo")
+        lang = run.output_language if run.output_language in ("th", "en") else "th"
+        try:
+            body = await self.runtime.render_typst(resume.render_bundle(resume.ResumeData.model_validate(data), template, accent, lang))
+        except Exception:
+            raise ServiceError("export_failed") from None
+        sandbox.staging_path("tailored-cv.pdf").write_bytes(body)
+        style = {"template_id": template, "accent": accent}
+        files = [{"path": "tailored-cv.pdf", "document_type": "cv", "title": title[:300], "display_name": "tailored-cv.pdf",
+                  "mime_type": "application/pdf", "sha256": hashlib.sha256(body).hexdigest(), "content_markdown": text[:200000] or title,
+                  "source_cv_revision_id": str(run.cv_revision_id), "source_job_revision_id": str(run.job_revision_id),
+                  "resume_data": data, "resume_style": style}]
+        published = await self.artifacts.publish(run.project_id, run.id,
+                                                  {"staging_dir": str(sandbox.staging), "lease_owner": lease_owner, "files": files})
+        ids = tuple(item.id for item in published)
+        with self.sessions.begin() as db:  # the owner can open the tailored CV in the builder
+            for document_id in db.scalars(select(DocumentRevision.document_id).where(
+                    DocumentRevision.project_id == run.project_id, DocumentRevision.file_id.in_(ids))):
+                draft = db.scalar(select(ResumeDraft).where(ResumeDraft.document_id == document_id).with_for_update())
+                if draft is None:
+                    db.add(ResumeDraft(project_id=run.project_id, document_id=document_id, resume_data=data,
+                                       template_id=template, accent=accent, document_language=lang))
+                else:
+                    draft.resume_data, draft.template_id, draft.accent = data, template, accent
+                    draft.updated_at = datetime.now(timezone.utc)
+        return ids
+
     def _gate_edits(self, project_id: uuid.UUID, edits: list[dict], base: str = "") -> list[bool]:
         """Each edit is checked on its own; True means it cites live facts and invents no numbers or names."""
         verdicts = []
@@ -513,6 +566,10 @@ class RunExecutor:
             job_text = f"{job['title']}\n{job['description']}"
             provider = self.gateway().provider_config()
             base_revision_id, text = await asyncio.to_thread(self._tailor_base, run)
+            structured = await asyncio.to_thread(self._structured_base, run, base_revision_id)
+            data = resume.ResumeData.model_validate(structured[0]) if structured else None
+            if data is not None:
+                text = resume.plain_text(data, run.output_language if run.output_language in ("th", "en") else "th")
             cv_path = None if text is not None else await self._materialize(run, sandbox)
             facts = await asyncio.to_thread(self._facts, run.project_id)
             gate_failure = asyncio.Event()
@@ -556,7 +613,7 @@ class RunExecutor:
                 # One fresh Hermes session per round (the bridge builds a new agent on every submit).
                 prompt, instructions = tailoring.round_prompt(
                     text, job["title"], job_text, coverage["missing"] if coverage else [], facts, run.output_language,
-                    run.input_snapshot.get("owner_instructions") if interactive else None)
+                    run.input_snapshot.get("owner_instructions") if interactive else None, structured=data is not None)
                 began = time.monotonic()
                 await self.runtime.submit(run.project_id, uuid.uuid5(run.id, f"round-{round_no}"), prompt, instructions,
                                           provider, operation="tailor_cv", tool_gate=deny_tool)
@@ -565,6 +622,11 @@ class RunExecutor:
                 verdicts = await asyncio.to_thread(self._gate_edits, run.project_id, edits, text)
                 accepted = [edit for edit, ok in zip(edits, verdicts) if ok]
                 rejected = [edit for edit, ok in zip(edits, verdicts) if not ok]
+                if data is not None:  # an edit outside the summary and bullets would change a protected field
+                    placeable = [bool(resume.apply_text_edits(data, [edit])[1]) for edit in edits]
+                    verdicts = [ok and fits for ok, fits in zip(verdicts, placeable)]
+                    accepted = [edit for edit, ok in zip(edits, verdicts) if ok]
+                    rejected = [edit for edit, ok in zip(edits, verdicts) if not ok]
                 if interactive:
                     for edit, ok in zip(edits, verdicts):
                         proposals.append({"id": len(proposals), **edit, "status": "proposed" if ok else "rejected_by_gate"})
@@ -574,6 +636,10 @@ class RunExecutor:
                 text, applied, spliced = apply_gated(
                     text, accepted, await asyncio.to_thread(self._fact_claims, run.project_id, accepted), vocabulary)
                 rejected += spliced
+                if data is not None:
+                    data, applied, unplaced = resume.apply_text_edits(data, applied)
+                    rejected += unplaced
+                    text = resume.plain_text(data, run.output_language if run.output_language in ("th", "en") else "th")
                 proposals += [{"id": len(proposals) + i, **edit, "status": "applied"} for i, edit in enumerate(applied)]
                 proposals += [{"id": len(proposals) + i, **edit, "status": "rejected_by_gate"} for i, edit in enumerate(rejected)]
                 coverage = score(text)
@@ -592,9 +658,13 @@ class RunExecutor:
                 "base_revision_id": None if base_revision_id is None else str(base_revision_id),
                 "stop_reason": stop_reason, "rounds": rounds, "proposals": proposals,
                 "coverage_before": coverages[0], "coverage_after": coverages[0] if interactive else coverages[-1],
+                "structured": data is not None,
             }
             artifact_ids: tuple[uuid.UUID, ...] = ()
-            if not interactive and not full:
+            if not interactive and not full and data is not None:
+                artifact_ids = await self._publish_resume(run, sandbox, lease_owner, data.model_dump(), structured[1],
+                                                          f"CV — {job['title']}", text)
+            elif not interactive and not full:
                 # The model is done; the trusted exporter runs the sandbox terminal tool, so restore the counting gate.
                 self.runtime.projects[run.project_id].tool_gate = reserve_tool
                 sandbox.staging_path("tailored-cv.md").write_text(text, encoding="utf-8")
