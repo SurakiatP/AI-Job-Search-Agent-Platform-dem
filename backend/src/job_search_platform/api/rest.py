@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 import re
 import subprocess
 from pathlib import PurePath
@@ -1126,6 +1127,13 @@ async def issue_grant(project_id: UUID, body: GrantIssueRequest, actor=Depends(w
 @router.delete("/projects/{project_id}/grants/{grant_id}", status_code=204)
 async def revoke_grant(project_id: UUID, grant_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     await services.grants.revoke(actor, project_id, grant_id)
+
+
+@router.get("/connect")
+async def connect_info(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    """Where external agents reach this app (Connect page). share_origin is null when the listener is off."""
+    origin = os.environ.get("SHARE_PUBLIC_ORIGIN", "").rstrip("/") or None
+    return {"share_origin": origin, "oauth": origin is not None and services.oauth is not None}
 
 
 @router.get("/health")

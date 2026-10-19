@@ -35,8 +35,10 @@ from a2a.types import (
     SendMessageRequest,
     SubscribeToTaskRequest,
     Task,
+    TaskArtifactUpdateEvent,
     TaskPushNotificationConfig,
     TaskState,
+    TaskStatusUpdateEvent,
 )
 from a2a.utils.errors import (
     A2AError,
@@ -60,6 +62,8 @@ from job_search_platform.services.skills import SKILL_BY_ID, SKILLS, Skill
 _CARD_PATH = "/.well-known/agent-card.json"
 _MAX_ARTIFACT_BYTES = 200_000
 _TERMINAL = frozenset({"cancelled", "completed", "failed", "interrupted"})  # needs_input is resting, not terminal
+_RESTING = frozenset({"waiting_approval", "needs_input"})  # a stream ends here; the client may subscribe again
+_POLL_SECONDS = 0.5  # same cadence as the REST run event stream (api/sse.py)
 
 
 def _protobuf(message_type: type, value: dict[str, Any]):
@@ -96,6 +100,14 @@ def _safe_errors(app: FastAPI) -> None:
                     )
                     return
                 if message["type"] != "http.response.body":
+                    await send(message)
+                    return
+                if "text/event-stream" in content_type:
+                    # Streams pass through unbuffered; their only error events are the
+                    # handler's fixed A2AError messages, never reflected input (FR-P04).
+                    if response_start is not None:
+                        await send(response_start)
+                        response_start = None
                     await send(message)
                     return
                 response_body.append(message.get("body", b""))
@@ -356,8 +368,43 @@ class _PlatformRequestHandler(RequestHandler):
             raise A2AError("request_rejected") from None
 
     async def on_message_send_stream(self, params: SendMessageRequest, context: ServerCallContext) -> AsyncIterator[Any]:
-        raise UnsupportedOperationError("Streaming is not supported")
-        yield  # pragma: no cover
+        # Following a run needs results access; check before a run is created.
+        await self._actor(context, "results:read")
+        result = await self.on_message_send(params, context)
+        if isinstance(result, Message):
+            yield result
+            return
+        async for event in self._follow(context, UUID(result.id)):
+            yield event
+
+    async def _current(self, context: ServerCallContext, run_id: UUID) -> tuple[Actor, RunView]:
+        # Re-authenticate on every poll so a revoked or narrowed grant ends the stream.
+        actor = await self._actor(context, "results:read")
+        try:
+            return actor, await self.services.runs.get(actor, actor.project_id, run_id)
+        except ServiceError:
+            raise self._not_found() from None
+        except Exception:
+            raise A2AError("request_rejected") from None
+
+    async def _follow(self, context: ServerCallContext, run_id: UUID) -> AsyncIterator[Any]:
+        """Snapshot, then status changes until the run ends or newly waits for its owner (FR-P04)."""
+        actor, run = await self._current(context, run_id)
+        yield await self._task_with_artifacts(run, actor)
+        last = run.status
+        while run.status not in _TERMINAL:
+            await asyncio.sleep(_POLL_SECONDS)
+            actor, run = await self._current(context, run_id)
+            if run.status == last:
+                continue
+            last = run.status
+            task = self._task(run)
+            if run.status == "completed":
+                for artifact in (await self._task_with_artifacts(run, actor)).artifacts:
+                    yield TaskArtifactUpdateEvent(task_id=task.id, context_id=task.context_id, artifact=artifact, last_chunk=True)
+            yield TaskStatusUpdateEvent(task_id=task.id, context_id=task.context_id, status=task.status, metadata=task.metadata)
+            if run.status in _RESTING:
+                return
 
     async def on_get_task(self, params: GetTaskRequest, context: ServerCallContext) -> Task | None:
         self._check_tenant(params.tenant)
@@ -395,8 +442,16 @@ class _PlatformRequestHandler(RequestHandler):
         return self._task(run, cancellation_requested=run.status not in _TERMINAL)
 
     async def on_subscribe_to_task(self, params: SubscribeToTaskRequest, context: ServerCallContext) -> AsyncIterator[Any]:
-        raise UnsupportedOperationError("Task subscriptions are not supported")
-        yield  # pragma: no cover
+        self._check_tenant(params.tenant)
+        try:
+            run_id = UUID(params.id)
+        except ValueError:
+            raise self._not_found() from None
+        _actor, run = await self._current(context, run_id)
+        if run.status in _TERMINAL:
+            raise UnsupportedOperationError("Task has already ended")
+        async for event in self._follow(context, run_id):
+            yield event
 
     def _push_error(self, exc: Exception) -> A2AError:
         if isinstance(exc, ServiceError) and exc.code == "invalid_push_config":
@@ -468,7 +523,7 @@ def _agent_card(base_url: str, skills: Sequence[Skill]) -> AgentCard:
                 {"url": base_url, "protocolBinding": "HTTP+JSON", "protocolVersion": "1.0"},
             ],
             "version": "0.1.0",
-            "capabilities": {"streaming": False, "pushNotifications": True, "extendedAgentCard": True},
+            "capabilities": {"streaming": True, "pushNotifications": True, "extendedAgentCard": True},
             "securitySchemes": {
                 "bearerAuth": {
                     "httpAuthSecurityScheme": {

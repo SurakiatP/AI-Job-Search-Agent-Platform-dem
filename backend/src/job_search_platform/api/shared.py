@@ -55,4 +55,18 @@ def create_shared_app(services: Services, *, host: str, port: int) -> Starlette:
     # ponytail: without OAuth the A2A catch-all would answer 401 on discovery paths; clients need a plain 404 there.
     off = [] if oauth else [Route(p, _not_found) for p in ("/.well-known/oauth-authorization-server", "/.well-known/oauth-protected-resource/mcp")]
     routes = [*(oauth_routes(oauth) if oauth else off), Mount("/mcp", app=mcp), Mount("/", app=a2a)]
-    return Starlette(routes=routes, lifespan=lifespan)
+    app = Starlette(routes=routes, lifespan=lifespan)
+    app.add_middleware(_BareMcpPath)
+    return app
+
+
+class _BareMcpPath:
+    """The advertised endpoint (Connect page, OAuth resource) is /mcp; without this it falls to the A2A catch-all."""
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] == "http" and scope["path"] == "/mcp":
+            scope = {**scope, "path": "/mcp/", "raw_path": b"/mcp/"}
+        await self.app(scope, receive, send)

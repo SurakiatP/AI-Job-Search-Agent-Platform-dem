@@ -1266,6 +1266,21 @@ paths:
       responses:
         '201': {description: Token disclosed once, content: {application/json: {schema: {$ref: '#/components/schemas/GrantIssuedView'}}}}
         '403': {description: 'Owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /connect:
+    get:
+      tags: [sharing]
+      description: Owner-only. Where external agents connect. share_origin is the MCP/A2A listener origin, null when the listener is off; oauth is true when MCP clients can sign in with OAuth instead of a token.
+      responses:
+        '200':
+          description: Connection details
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [share_origin, oauth]
+                properties:
+                  share_origin: {type: [string, 'null']}
+                  oauth: {type: boolean}
   /projects/{project_id}/grants/{grant_id}:
     parameters:
       - {$ref: '#/components/parameters/project_id'}

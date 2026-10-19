@@ -844,3 +844,13 @@ def test_unmatched_route_is_labelled_unmatched(api_context):
         logger.removeHandler(handler)
     line = json.loads(stream.getvalue().splitlines()[0])
     assert line["route"] == "unmatched" and "secret-path" not in stream.getvalue()
+
+
+@pytest.mark.integration
+def test_connect_info_tells_the_owner_where_external_agents_connect(api_context, monkeypatch):
+    assert api_context.client.get("/api/v1/connect").status_code == 401
+    _owner(api_context)
+    monkeypatch.delenv("SHARE_PUBLIC_ORIGIN", raising=False)
+    assert api_context.client.get("/api/v1/connect").json() == {"share_origin": None, "oauth": False}
+    monkeypatch.setenv("SHARE_PUBLIC_ORIGIN", "http://127.0.0.1:8011/")
+    assert api_context.client.get("/api/v1/connect").json() == {"share_origin": "http://127.0.0.1:8011", "oauth": False}

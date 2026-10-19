@@ -207,6 +207,15 @@ def acquire_service_maintenance(services: Services):
     return guard
 
 
+class _ImmutableAssets(StaticFiles):
+    """Vite puts a content hash in every /assets file name, so a cached copy never goes stale."""
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
 def create_app(
     services: Services | None = None,
     *,
@@ -393,13 +402,15 @@ def create_app(
         index = dist / "index.html"
         if not index.is_file():
             raise ValueError("frontend_dist_missing_index")
-        app.mount("/assets", StaticFiles(directory=dist / "assets", check_dir=False), name="assets")
+        app.mount("/assets", _ImmutableAssets(directory=dist / "assets", check_dir=False), name="assets")
+        # The shell names hashed chunks; a stale cached copy after a deploy asks for deleted files (blank page).
+        fresh = {"Cache-Control": "no-cache"}
 
         @app.get("/{path:path}", include_in_schema=False)
         async def frontend(path: str):
             target = (dist / path).resolve()
             if target.is_relative_to(dist) and target.is_file():
-                return FileResponse(target)
-            return FileResponse(index)
+                return FileResponse(target, headers=fresh)
+            return FileResponse(index, headers=fresh)
 
     return app
