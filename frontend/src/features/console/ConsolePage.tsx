@@ -27,7 +27,7 @@ export function ConsolePage() {
       <TabsContent value="timeline"><TimelineTab projectId={projectId} locale={locale} c={c} /></TabsContent>
       <TabsContent value="approvals"><ApprovalsTab projectId={projectId} locale={locale} c={c} /></TabsContent>
       <TabsContent value="agents"><AgentsTab projectId={projectId} locale={locale} c={c} /></TabsContent>
-      <TabsContent value="connect"><ConnectTab c={c} projectId={projectId} onIssue={() => setParams({ tab: 'agents' }, { replace: true })} /></TabsContent>
+      <TabsContent value="connect"><ConnectTab c={c} lang={locale} projectId={projectId} onIssue={() => setParams({ tab: 'agents' }, { replace: true })} /></TabsContent>
     </Tabs>
   </div>;
 }

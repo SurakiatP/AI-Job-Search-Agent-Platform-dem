@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAccount } from '../../lib/api';
@@ -5,23 +7,43 @@ import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import type { Copy } from './copy';
 import { CopyButton } from './shared';
+import { clients, type Client, type Lang } from './clients';
 
-const START = 'uv run --locked --project backend python scripts/run_local.py --enable-sharing --share-host 127.0.0.1 --share-port 8011';
-const TOKEN = '<ACCESS_TOKEN>';
-type Info = { share_origin: string | null; oauth: boolean };
+const PICK_KEY = 'connect.client';
+const isLocal = (origin: string) => /^https?:\/\/(127\.|localhost|\[::1\])/.test(origin) || origin.startsWith('http://');
 
-function Block({ text, c, label }: { text: string; c: Copy; label: string }) {
-  return <div className="grid gap-2">
-    <span className="text-sm font-medium">{label}</span>
-    <pre className="overflow-x-auto rounded-lg border bg-muted p-3 text-xs" tabIndex={0} aria-label={label}><code>{text}</code></pre>
-    <div><CopyButton text={text} c={c} label={label} /></div>
+function ClientPicker({ c, lang, list, local }: { c: Copy; lang: Lang; list: Client[]; local: boolean }) {
+  const [id, setId] = useState(() => localStorage.getItem(PICK_KEY) ?? list[0].id);
+  const client = list.find(item => item.id === id) ?? list[0];
+  const pick = (value: string) => { setId(value); localStorage.setItem(PICK_KEY, value); };
+  return <div className="grid gap-5">
+    <div className="grid gap-1.5">
+      <label htmlFor="connect-client" className="text-sm font-medium">{c.pickClient}</label>
+      <select id="connect-client" value={client.id} onChange={e => pick(e.target.value)} className="min-h-10 max-w-md rounded-md border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {list.map(item => <option key={item.id} value={item.id}>{item.vendor ? `${item.name} · ${item.vendor}` : item.name}</option>)}
+      </select>
+    </div>
+    <section aria-labelledby="connect-client-name" className="grid gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 id="connect-client-name" className="font-semibold">{client.name}</h3>
+        {client.protocols.map(p => <Badge key={p} variant="secondary">{p}</Badge>)}
+      </div>
+      <p className="max-w-prose text-sm text-muted-foreground">{client.hint[lang]}</p>
+      {client.needsPublicHttps && local && <p role="note" className="rounded-lg border border-warning p-3 text-sm">{c.needsHttps}</p>}
+      {client.snippets.map(s => <Block key={s.label.en} c={c} label={s.label[lang]} where={s.where} text={s.code} />)}
+      {client.protocols.includes('REST') && <a className="text-sm font-medium text-primary underline-offset-4 hover:underline" href="/api/v1/docs" target="_blank" rel="noreferrer">{c.apiDocs}</a>}
+    </section>
   </div>;
 }
 
-function Url({ label, url, c }: { label: string; url: string; c: Copy }) {
-  return <div className="grid gap-1.5">
-    <span className="text-sm font-medium">{label}</span>
-    <div className="flex flex-wrap items-center gap-3"><code className="min-w-0 break-all rounded-md bg-muted px-2 py-1 text-sm">{url}</code><CopyButton text={url} c={c} label={label} /></div>
+const START = 'uv run --locked --project backend python scripts/run_local.py --enable-sharing --share-host 127.0.0.1 --share-port 8011';
+type Info = { share_origin: string | null; oauth: boolean };
+
+function Block({ text, c, label, where }: { text: string; c: Copy; label: string; where?: string }) {
+  return <div className="grid gap-2">
+    <span className="text-sm font-medium">{label}{where && <code className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{where}</code>}</span>
+    <pre className="overflow-x-auto rounded-lg border bg-muted p-3 text-xs" tabIndex={0} aria-label={label}><code>{text}</code></pre>
+    <div><CopyButton text={text} c={c} label={label} /></div>
   </div>;
 }
 
@@ -31,7 +53,7 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   </CardTitle></CardHeader><CardContent className="grid gap-5">{children}</CardContent></Card>;
 }
 
-export function ConnectTab({ c, projectId, onIssue }: { c: Copy; projectId: string; onIssue: () => void }) {
+export function ConnectTab({ c, lang, projectId, onIssue }: { c: Copy; lang: Lang; projectId: string; onIssue: () => void }) {
   const isAdmin = useAccount()?.is_admin === true; // only whoever runs the server can open the listener
   const info = useResource<Info>('/connect');
   if (info.status === 'error') return <ErrorState onRetry={info.reload} />;
@@ -44,10 +66,6 @@ export function ConnectTab({ c, projectId, onIssue }: { c: Copy; projectId: stri
     {isAdmin && <Card><CardHeader><CardTitle>{c.startTitle}</CardTitle><p className="text-sm text-muted-foreground">{c.startNote}</p></CardHeader>
       <CardContent><Block text={START} c={c} label={c.startTitle} /></CardContent></Card>}
   </div>;
-  const mcp = `${share}/mcp`;
-  const json = JSON.stringify({ mcpServers: { 'job-search': { type: 'http', url: mcp, headers: { Authorization: `Bearer ${TOKEN}` } } } }, null, 2);
-  const claude = `claude mcp add --transport http job-search ${mcp} --header "Authorization: Bearer ${TOKEN}"`;
-  const rest = `curl -H "Authorization: Bearer ${TOKEN}" ${api}/projects/${projectId}/runs`;
   return <div className="grid gap-6">
     <p className="max-w-prose text-sm text-muted-foreground">{c.connectIntro}</p>
     <p role="status" className="text-sm font-medium text-success">{c.ready}</p>
@@ -57,23 +75,7 @@ export function ConnectTab({ c, projectId, onIssue }: { c: Copy; projectId: stri
       <div><Button type="button" onClick={onIssue}>{c.issue}</Button></div>
     </Step>
     <Step n={2} title={c.step2}>
-      <section className="grid gap-4" aria-labelledby="connect-mcp"><h3 id="connect-mcp" className="font-semibold">MCP</h3>
-        <p className="max-w-prose text-sm text-muted-foreground">{c.mcpBody}</p>
-        <Url label={c.mcp} url={mcp} c={c} />
-        <Block text={claude} c={c} label={c.claudeCmd} />
-        <Block text={json} c={c} label={c.snippetTitle} />
-      </section>
-      <section className="grid gap-4 border-t pt-5" aria-labelledby="connect-a2a"><h3 id="connect-a2a" className="font-semibold">A2A</h3>
-        <p className="max-w-prose text-sm text-muted-foreground">{c.a2aBody}</p>
-        <Url label={c.card} url={`${share}/.well-known/agent-card.json`} c={c} />
-        <Url label={c.a2a} url={share} c={c} />
-      </section>
-      <section className="grid gap-4 border-t pt-5" aria-labelledby="connect-rest"><h3 id="connect-rest" className="font-semibold">REST API</h3>
-        <p className="max-w-prose text-sm text-muted-foreground">{c.restBody}</p>
-        <Url label={c.restBase} url={api} c={c} />
-        <Block text={rest} c={c} label={c.restExample} />
-        <a className="text-sm font-medium text-primary underline-offset-4 hover:underline" href="/api/v1/docs" target="_blank" rel="noreferrer">{c.apiDocs}</a>
-      </section>
+      <ClientPicker c={c} lang={lang} list={clients(share, api, projectId)} local={isLocal(share)} />
     </Step>
     <p role="note" className="rounded-lg border border-warning p-3 text-sm">{c.secNote}</p>
   </div>;
