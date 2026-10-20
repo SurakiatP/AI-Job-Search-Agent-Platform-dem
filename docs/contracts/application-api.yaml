@@ -67,6 +67,9 @@ paths:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
       tags: [sessions]
+      description: view=active (default) lists visible sessions oldest first; view=trash lists trashed, not purged ones, newest trashed first, with trashed_at.
+      parameters:
+        - {name: view, in: query, required: false, schema: {type: string, enum: [active, trash], default: active}}
       responses: {'200': {description: Sessions, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SessionView'}}}}}}
     post:
       tags: [sessions]
@@ -107,14 +110,29 @@ paths:
     delete:
       tags: [sessions]
       description: >-
-        Owner-only. A session without runs is deleted for good with its messages (mode deleted).
-        A session with run history is hidden instead (mode hidden, removed_at set): runs, events,
-        documents and approvals stay, and it disappears from the session list, GET (404) and new runs (404).
+        Owner-only. Moves the session to the trash (always mode hidden since 2026-10-20; mode deleted is
+        no longer returned): runs, events, documents and approvals stay, and it disappears from the session
+        list, GET (404) and new runs (404). Restore with POST .../restore or delete for good with DELETE .../permanent.
         Refused with 409 session_busy while any of its runs is queued, running or waiting_approval.
       responses:
         '200': {description: Result, content: {application/json: {schema: {$ref: '#/components/schemas/SessionDeleteResult'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: Session has active runs (code session_busy)}
+  /projects/{project_id}/sessions/{session_id}/permanent:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: session_id, in: path, required: true, schema: {type: string, format: uuid}}
+    delete:
+      tags: [sessions]
+      description: >-
+        Owner-only. Deletes a trashed session for good: its messages and every run (with events, approvals
+        and evaluation results) that published no document. Runs that published a document stay, with their
+        retry ancestors, as that document's immutable source; the session then stays as a hidden tombstone
+        (404 everywhere). Documents are never deleted here.
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Not in the trash (session_not_trashed) or has active runs (session_busy)}
   /projects/{project_id}/sessions/{session_id}/restore:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -1877,6 +1895,7 @@ components:
         cv_outdated: {type: boolean, default: false}
         cv_file_id: {type: [string, 'null'], format: uuid}
         evaluation_run_id: {type: [string, 'null'], format: uuid, description: Set only on the create response.}
+        trashed_at: {type: [string, 'null'], format: date-time, description: When it was moved to the trash; null for visible sessions.}
     RevisionView:
       type: object
       additionalProperties: false
@@ -2103,6 +2122,15 @@ components:
         score: {type: [number, 'null'], minimum: 1, maximum: 5, description: Career Ops native 1–5 score; absent when not established.}
         skill_coverage: {anyOf: [{$ref: '#/components/schemas/SkillCoverage'}, {type: 'null'}], description: Deterministic keyword coverage computed by the platform, separate from the AI score.}
         report: {anyOf: [{$ref: '#/components/schemas/EvaluationReport'}, {type: 'null'}], description: 'CR-EVR-01 named report fields; null for reports made before 2026-10-20 or when the AI returned Markdown only. report_markdown is built from these fields.'}
+    ReportRequirement:
+      type: object
+      additionalProperties: false
+      required: [requirement, importance, match]
+      properties:
+        requirement: {type: string, minLength: 1, maxLength: 300}
+        importance: {type: string, enum: [critical, high, meaningful, preferred, low_signal]}
+        match: {type: string, enum: [strong, partial, missing, not_applicable]}
+        evidence: {type: string, maxLength: 1000}
     EvaluationReport:
       type: object
       additionalProperties: false
@@ -2113,15 +2141,7 @@ components:
         requirements:
           type: array
           maxItems: 30
-          items:
-            type: object
-            additionalProperties: false
-            required: [requirement, importance, match]
-            properties:
-              requirement: {type: string, minLength: 1, maxLength: 300}
-              importance: {type: string, enum: [critical, high, meaningful, preferred, low_signal]}
-              match: {type: string, enum: [strong, partial, missing, not_applicable]}
-              evidence: {type: string, maxLength: 1000}
+          items: {$ref: '#/components/schemas/ReportRequirement'}
         strengths: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
         risks: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
         interview_prep: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}

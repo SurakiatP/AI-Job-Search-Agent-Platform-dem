@@ -439,7 +439,7 @@ def test_permanent_delete_removes_trashed_session_and_runs_but_keeps_documents(a
     runs = [r["id"] for r in client.get(f"{PREFIX}/{pid}/runs").json()]
     assert eval_run not in runs  # the evaluation and its result are gone
     assert runs == [draft]  # the run that made a kept document stays as its source
-    document = client.get(f"{PREFIX}/{pid}/documents/{doc_id}").json()
+    document = next(d for d in client.get(f"{PREFIX}/{pid}/documents").json() if d["id"] == doc_id)
     assert document["source_run_id"] == draft and document["partial"] is False
     with api_context.sessions() as db:
         assert db.scalar(select(func.count()).select_from(Message).where(Message.session_id == UUID(sid))) == 0

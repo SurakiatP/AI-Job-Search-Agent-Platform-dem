@@ -9,7 +9,7 @@ import subprocess
 from pathlib import PurePath
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, UploadFile
@@ -24,7 +24,7 @@ from job_search_platform.api.dependencies import Services, get_services, owner_a
 from job_search_platform.db.models import (
     ResumeDraft,
     CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
-    ProjectPreference, StoredFile, Run, Grant, JobMatchScore, JobSearchHidden,
+    ProjectPreference, StoredFile, Run, RunArtifact, Grant, JobMatchScore, JobSearchHidden,
     ToolConnectorConfiguration,
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
@@ -65,7 +65,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
     status_code = {
         "unauthorized": 401, "invalid_launch": 401, "invalid_origin": 403,
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
-        "project_not_empty": 409, "session_busy": 409, "idempotency_conflict": 409,
+        "project_not_empty": 409, "session_busy": 409, "session_not_trashed": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
         "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409,
         "document_busy": 409, "tailor_already_applied": 409, "run_not_awaiting_input": 409, "invalid_answer": 422, "document_source_unavailable": 409,
@@ -110,7 +110,8 @@ def _require_live_job(db, project_id: UUID, job_id: UUID) -> JobRevision:
 
 def _session_view(db, row: ConversationSession, evaluation_run_id: UUID | None = None) -> dict[str, Any]:
     view: dict[str, Any] = {"id": row.id, "project_id": row.project_id, "title": row.title,
-                            "created_at": row.created_at, "evaluation_run_id": evaluation_run_id}
+                            "created_at": row.created_at, "evaluation_run_id": evaluation_run_id,
+                            "trashed_at": row.removed_at}
     if row.cv_revision_id is None:
         return view
     cv_revision = db.get(CVRevision, row.cv_revision_id)
@@ -283,12 +284,15 @@ async def set_preferences(project_id: UUID, body: PreferencesUpdate, actor=Depen
 
 
 @router.get("/projects/{project_id}/sessions", response_model=list[SessionView])
-async def list_sessions(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+async def list_sessions(project_id: UUID, view: Literal["active", "trash"] = "active", actor=Depends(owner_actor),
+                        services: Services = Depends(get_services)):
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "session")
-        rows = db.scalars(select(ConversationSession).where(ConversationSession.project_id == project_id,
-                                                          ConversationSession.removed_at.is_(None))
-                          .order_by(ConversationSession.created_at, ConversationSession.id)).all()
+        shown = (ConversationSession.removed_at.is_(None) if view == "active"
+                 else ConversationSession.removed_at.is_not(None) & ConversationSession.purged_at.is_(None))
+        order = (ConversationSession.created_at,) if view == "active" else (ConversationSession.removed_at.desc(),)
+        rows = db.scalars(select(ConversationSession).where(ConversationSession.project_id == project_id, shown)
+                          .order_by(*order, ConversationSession.id)).all()
         return [_session_view(db, row) for row in rows]
 
 
@@ -359,7 +363,7 @@ async def update_session(project_id: UUID, session_id: UUID, body: SessionUpdate
 
 @router.delete("/projects/{project_id}/sessions/{session_id}", response_model=SessionDeleteResult)
 async def delete_session(project_id: UUID, session_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    """Hard-delete a session without runs; hide one with run history (runs, documents and approvals stay)."""
+    """Move a session to the trash (owner decision 2026-10-20: every delete is restorable first)."""
     _owner_only(actor)
     with services.sessions.begin() as db:
         authorize(db, actor, project_id, "manage", "session")
@@ -370,12 +374,44 @@ async def delete_session(project_id: UUID, session_id: UUID, actor=Depends(write
         statuses = set(db.scalars(select(Run.status).where(Run.project_id == project_id, Run.session_id == session_id)))
         if statuses & {"queued", "running", "waiting_approval"}:
             raise ServiceError("session_busy")
-        if not statuses:
-            db.execute(delete(Message).where(Message.project_id == project_id, Message.session_id == session_id))
-            db.delete(row)
-            return {"mode": "deleted"}
         row.removed_at = datetime.now(timezone.utc)
         return {"mode": "hidden"}
+
+
+@router.delete("/projects/{project_id}/sessions/{session_id}/permanent", status_code=204)
+async def purge_session(project_id: UUID, session_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Delete a trashed session for good: its messages and every run that produced no kept document.
+
+    Runs and document revisions are immutable provenance, so a run that published a document the owner keeps
+    stays (with its retry ancestors) and the session row stays as a hidden `purged_at` tombstone for it.
+    """
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "session")
+        row = db.scalar(select(ConversationSession).where(
+            ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
+        if row is None or row.purged_at is not None:
+            raise ServiceError("not_found")
+        if row.removed_at is None:
+            raise ServiceError("session_not_trashed")
+        runs = {r.id: r for r in db.scalars(select(Run).where(Run.project_id == project_id, Run.session_id == session_id))}
+        if any(r.status in {"queued", "running", "waiting_approval"} for r in runs.values()):
+            raise ServiceError("session_busy")
+        keep = set(db.scalars(select(RunArtifact.run_id).where(
+            RunArtifact.project_id == project_id, RunArtifact.run_id.in_(runs)))) if runs else set()
+        stack = list(keep)
+        while stack:  # a kept run's retry_of_id must still resolve
+            parent = runs[stack.pop()].retry_of_id
+            if parent in runs and parent not in keep:
+                keep.add(parent)
+                stack.append(parent)
+        db.execute(delete(Message).where(Message.project_id == project_id, Message.session_id == session_id))
+        if doomed := [rid for rid in runs if rid not in keep]:
+            db.execute(delete(Run).where(Run.project_id == project_id, Run.id.in_(doomed)))
+        if keep:
+            row.purged_at = datetime.now(timezone.utc)
+        else:
+            db.delete(row)
 
 
 @router.post("/projects/{project_id}/sessions/{session_id}/restore", response_model=SessionView)
@@ -385,7 +421,7 @@ async def restore_session(project_id: UUID, session_id: UUID, actor=Depends(writ
         authorize(db, actor, project_id, "manage", "session")
         row = db.scalar(select(ConversationSession).where(
             ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
-        if row is None:
+        if row is None or row.purged_at is not None:
             raise ServiceError("not_found")
         if row.removed_at is not None:
             if row.cv_revision_id is not None and (holder := _pair_holder(db, row)) is not None:

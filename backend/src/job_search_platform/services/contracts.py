@@ -203,6 +203,8 @@ class SessionView(DTO):
     cv_file_id: UUID | None = None
     # Only set on the create response.
     evaluation_run_id: UUID | None = None
+    # Only set in the trash list.
+    trashed_at: datetime | None = None
 
 
 class SessionDeleteResult(DTO):

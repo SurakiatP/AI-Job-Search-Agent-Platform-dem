@@ -395,9 +395,57 @@ test('SCR-03 delete an evaluation from the list, and a busy one explains why it 
 
   await row('Done job').getByRole('button', { name: 'Options for Done job' }).click();
   await page.getByRole('menuitem', { name: 'Delete evaluation' }).click();
-  await expect(page.getByRole('dialog')).toContainText('Documents the agent made stay in Documents.');
+  await expect(page.getByRole('dialog')).toContainText('restore it from the trash');
   await page.getByRole('dialog').getByRole('button', { name: 'Delete evaluation' }).click();
   await expect(row('Done job')).toHaveCount(0);
   await expect(row('Busy job')).toHaveCount(1);
   expect(deleted).toEqual([ids[0]]);
+});
+
+test('SCR-03 evaluation trash: restore, restore blocked by a newer pair, delete permanently, empty trash', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const ids = ['a1', 'b2', 'c3'].map(key => `${key}${key}${key}${key}${key}${key}${key}${key}-0000-4000-8000-000000000000`);
+  const mk = (id: string, title: string) => ({ ...pairedSession, id, title, job_title: title, trashed_at: '2026-10-19T00:00:00Z' });
+  let active: object[] = [];
+  let trash = [mk(ids[0], 'Old job'), mk(ids[1], 'Clash job'), mk(ids[2], 'Gone job')];
+  const calls: string[] = [];
+  await page.route(`**/api/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json(trash)));
+  await page.route(`**/api/v1/projects/${projectId}/sessions`, route => route.fulfill(json(active)));
+  await page.route(`**/api/v1/projects/${projectId}/sessions/*/**`, route => {
+    const url = route.request().url(); const id = url.split('/sessions/')[1].split('/')[0];
+    calls.push(`${route.request().method()} ${url.endsWith('/restore') ? 'restore' : 'permanent'} ${id.slice(0, 2)}`);
+    if (url.endsWith('/restore')) {
+      if (id === ids[1]) return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ code: 'session_pair_exists', message_key: 'errors.session_pair_exists', retryable: false, correlation_id: '55555555-5555-4555-8555-555555555555', fields: { session_id: sessionId } }) });
+      active = [...active, trash.find(t => t.id === id)!]; trash = trash.filter(t => t.id !== id);
+      return route.fulfill(json({ ...pairedSession, id }));
+    }
+    trash = trash.filter(t => t.id !== id);
+    return route.fulfill({ status: 204 });
+  });
+  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill(json([])));
+  await page.route(`**/api/v1/projects/${projectId}/jobs`, route => route.fulfill(json([])));
+  await page.goto(`/app/projects/${projectId}/sessions`);
+  await page.getByRole('link', { name: 'Trash (3)' }).click();
+  await expect(page).toHaveURL(/view=trash/);
+  const row = (title: string) => page.getByRole('listitem').filter({ hasText: title });
+
+  await row('Old job').getByRole('button', { name: 'Restore' }).click();
+  await expect(row('Old job')).toHaveCount(0);
+  await row('Clash job').getByRole('button', { name: 'Restore' }).click();
+  await expect(page.getByRole('alert')).toContainText('You already have an evaluation for this CV and job');
+  await expect(page.getByRole('alert').getByRole('link', { name: 'Open it' })).toHaveAttribute('href', new RegExp(`/sessions/${sessionId}$`));
+
+  await row('Gone job').getByRole('button', { name: 'Delete permanently' }).click();
+  await expect(page.getByRole('dialog')).toContainText('cannot be undone');
+  await expect(page.getByRole('dialog')).toContainText('Documents stay in Documents');
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete permanently' }).click();
+  await expect(row('Gone job')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Empty trash' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Empty trash' }).click();
+  await expect(page.getByText('Trash is empty.')).toBeVisible();
+  expect(calls).toEqual(['POST restore a1', 'POST restore b2', 'DELETE permanent c3', 'DELETE permanent b2']);
+  await page.getByRole('link', { name: 'Back to evaluations' }).click();
+  await expect(row('Old job')).toHaveCount(1);
 });

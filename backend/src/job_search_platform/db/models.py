@@ -84,8 +84,10 @@ class ConversationSession(Base):
     # Paired sessions pin one CV revision and one job revision; legacy sessions have neither.
     cv_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     job_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
-    # Set when a session with run history is deleted; it stays so runs and documents keep their source.
+    # Set when the owner moves the session to the trash; restorable until purged.
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set by a permanent delete when runs that produced kept documents still point here; never shown again.
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (
         UniqueConstraint("project_id", "id", name="uq_sessions_project_id"),
         ForeignKeyConstraint(["project_id", "cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"]),

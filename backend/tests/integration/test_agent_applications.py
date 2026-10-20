@@ -409,7 +409,10 @@ def test_migration_0018_moves_stranded_resting_runs_to_needs_input(postgres_engi
         other_job = JobRevision(project_id=p.id, revision=2, title="Other", description="d", company="c",
                                 source_url="https://jobs.example.test/2")
         db.add(other_job)
-        chat, config = make_session(db, p.id), provider_config(db)
+        # Raw insert: the ORM model has columns (sessions.purged_at) newer than this 0017 schema.
+        chat = SimpleNamespace(id=uuid4())
+        db.execute(text("INSERT INTO sessions (id, project_id, title) VALUES (:id, :p, 'Synthetic session')"), {"id": chat.id, "p": p.id})
+        config = provider_config(db)
         db.flush()
 
         def add(name, operation, payload, job_id, created):

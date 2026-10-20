@@ -236,9 +236,12 @@ def test_owner_renames_and_deletes_sessions_unless_runs_exist(api_context):
     hidden = client.delete(f"{base}/{busy}", headers=headers)
     assert hidden.status_code == 200 and hidden.json() == {"mode": "hidden"}
 
+    # Owner decision 2026-10-20: a session without runs also goes to the trash first.
     deleted = client.delete(f"{base}/{empty}", headers=headers)
-    assert deleted.status_code == 200 and deleted.json() == {"mode": "deleted"}
+    assert deleted.status_code == 200 and deleted.json() == {"mode": "hidden"}
     assert client.get(base).json() == []
+    # Messages stay while it is in the trash; a permanent delete removes them.
+    assert client.delete(f"{base}/{empty}/permanent", headers=headers).status_code == 204
     with api_context.sessions() as db:
         assert db.scalar(select(func.count()).select_from(Message)
                          .where(Message.session_id == UUID(empty))) == 0
