@@ -215,7 +215,7 @@ async def test_actual_built_frontend_with_production_rest_upload_and_session_res
     import os
     factory, _ = production_factory
     origin = f"http://127.0.0.1:{unused_tcp_port}"
-    monkeypatch.setenv("JSP_ALLOWED_ORIGINS", origin)
+    monkeypatch.setenv("APP_PUBLIC_ORIGIN", origin)
     app = main.create_app(service_factory=factory, frontend_dist=main.ROOT / "frontend" / "dist")
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=unused_tcp_port, access_log=False, log_config=None))
     task = asyncio.create_task(server.serve())
@@ -239,7 +239,7 @@ async def test_actual_built_frontend_with_production_rest_upload_and_session_res
         environment = dict(os.environ, JSP_E2E_BASE_URL=origin, JSP_E2E_SESSION_FILE=str(config),
                            PLAYWRIGHT_OUTPUT_DIR=str(tmp_path / "playwright-output"))
         process = await asyncio.create_subprocess_exec(
-            "rtk", "proxy", "npm", "test", "--prefix", "tests", "--", "actual-backend.spec.ts", "--workers=1",
+            "npm", "test", "--prefix", "tests", "--", "actual-backend.spec.ts", "--workers=1",
             cwd=main.ROOT, env=environment, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
         )
         output, _ = await asyncio.wait_for(process.communicate(), 180)

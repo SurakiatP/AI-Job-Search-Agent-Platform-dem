@@ -166,6 +166,18 @@ def test_autopilot_gates_edits_stops_and_appends_one_revision(api_context):
 
 
 @pytest.mark.integration
+def test_tc_cvb_13_uploaded_cv_tailoring_stays_markdown(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, _ = _setup(ctx, [])
+    _tailor(ctx, csrf, pid, session, "cvb13")
+    _execute_next(ctx, _Runtime(ctx.tmp_path / "ws", [[_edit("Packaged services with Docker", facts["docker"])]]))
+    revision, = _revisions(ctx, pid)
+    assert "Docker" in revision.content_markdown and revision.resume_data is None
+    draft = ctx.client.get(f"{PREFIX}/{pid}/documents/{revision.document_id}/draft")
+    assert draft.status_code == 404 and draft.json()["code"] == "not_found"
+
+
+@pytest.mark.integration
 def test_autopilot_rejects_an_edit_that_invents_an_employer(api_context):
     ctx = api_context
     csrf, pid, session, facts, _ = _setup(ctx, [])

@@ -29,6 +29,13 @@ from job_search_platform.db.models import DocumentRevision, Grant, Project, Run
 
 from test_rest_api import _owner, _write_headers, api_context as _api_context_fixture
 from helpers import completed_extract_run, provider_config, revisions
+from job_search_platform.workers.executor import parse_evaluation_result
+
+# CR-EVR-01 structured report, as the executor stores it; MCP and A2A must hand out its Markdown.
+STRUCTURED = parse_evaluation_result(json.dumps({"score": 4.5, "report": {
+    "verdict": "Synthetic verdict", "summary": "Synthetic summary.",
+    "requirements": [{"requirement": "SQL", "importance": "critical", "match": "strong", "evidence": "Synthetic SQL work"}],
+    "strengths": ["Synthetic strength"], "risks": ["Synthetic risk"], "interview_prep": [], "cv_changes": []}}))
 
 
 def test_mcp_transport_rejects_wildcard_host_or_origin():
@@ -204,10 +211,12 @@ async def test_official_mcp_http_tools_submission_cancel_and_revocation(api_cont
                     claimed.id,
                     claimed.lease_owner,
                     "completed",
-                    evaluation_result={"report_markdown": "Synthetic evaluation report", "score": 4.5},
+                    evaluation_result=STRUCTURED.model_dump(mode="json"),
                 )
                 report = await session.read_resource(f"job-search://runs/{run['run_id']}/evaluation")
-                assert report.contents[0].text == "Synthetic evaluation report"
+                # TC-EVR-06: a structured report reaches MCP as its Markdown text
+                assert report.contents[0].text == STRUCTURED.report_markdown
+                assert "Synthetic verdict" in report.contents[0].text
 
                 draft = await session.call_tool("draft_documents", {
                     "request": {
