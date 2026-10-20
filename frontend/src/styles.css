@@ -3,6 +3,8 @@
 @import '@fontsource/noto-sans-thai/600.css';
 @import '@fontsource/noto-serif-thai/500.css';
 @import '@fontsource/manrope/400.css';
+@import '@fontsource/prompt/500.css';
+@import '@fontsource/prompt/600.css';
 @import 'tailwindcss';
 
 /* Shared workspace semantic tokens. */
@@ -11,27 +13,27 @@
 :root {
   --radius: 0.75rem;
   --shadow-xs: 0 1px 2px rgb(23 35 59 / 0.04);
-  --background: #F6F7FB;
-  --foreground: #17233B;
+  --background: #F3F4EF;
+  --foreground: #1B2550;
   --card: #FFFFFF;
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: #4F46E5;
+  --primary: #2B45C4;
   --primary-foreground: #FFFFFF;
-  --secondary: #EEF1F8;
-  --secondary-foreground: #17233B;
-  --muted: #EEF1F8;
-  --muted-foreground: #53627A;
-  --accent: #E5E5FC;
-  --accent-foreground: #3730A3;
+  --secondary: #E9EAE2;
+  --secondary-foreground: #1B2550;
+  --muted: #E9EAE2;
+  --muted-foreground: #585E70;
+  --accent: #E4E7F4;
+  --accent-foreground: #1B2550;
   --destructive: #AF263E;
   --success: #166445;
   --warning: #805319;
-  --border: #DCE1EB;
-  --input: #828EA5;
-  --ring: #4F46E5;
-  --sidebar: #E8EBFA;
+  --border: #DCDDD3;
+  --input: #858993;
+  --ring: #2B45C4;
+  --sidebar: #EAEBE3;
   --font-sans: 'Noto Sans Thai', Manrope, sans-serif;
   --font-serif: 'Noto Serif Thai', serif;
   --font-document: Manrope, 'Noto Sans Thai', sans-serif;
@@ -39,29 +41,41 @@
   --dur-fast: 150ms;
   --dur-base: 180ms;
   --dur-slow: 240ms;
+  /* Journey stages: each step of the search owns one hue (CV, search, evaluate, documents, tracking). */
+  --stage-cv: #0F766E;
+  --stage-search: #2563EB;
+  --stage-evaluate: #7C3AED;
+  --stage-docs: #C2410C;
+  --stage-track: #15803D;
+  --font-display: Prompt, 'Noto Sans Thai', sans-serif;
   --surface: var(--card);
   --surface-subtle: var(--muted);
   color-scheme: light;
 }
 :root[data-theme='dark'] {
-  --background: #111522;
-  --foreground: #EDF1FA;
-  --card: #1A2030;
-  --primary: #ABA7FF;
-  --primary-foreground: #171B2B;
-  --secondary: #232B3D;
-  --secondary-foreground: #EDF1FA;
-  --muted: #232B3D;
-  --muted-foreground: #AEBBD0;
-  --accent: #303659;
-  --accent-foreground: #E0DFFF;
+  --background: #131D42;
+  --foreground: #EEF2FF;
+  --card: #1B2756;
+  --primary: #9DB4FF;
+  --primary-foreground: #0F1738;
+  --secondary: #243266;
+  --secondary-foreground: #EEF2FF;
+  --muted: #243266;
+  --muted-foreground: #B4C0E6;
+  --accent: #2E3F7E;
+  --accent-foreground: #EEF2FF;
   --destructive: #FF9AAA;
   --success: #79D5AA;
   --warning: #EBC27D;
-  --border: #354057;
-  --input: #7C8AA5;
-  --ring: #ABA7FF;
-  --sidebar: #202642;
+  --border: #34447F;
+  --input: #7F8FC4;
+  --ring: #9DB4FF;
+  --sidebar: #16224D;
+  --stage-cv: #5EEAD4;
+  --stage-search: #7FA8FF;
+  --stage-evaluate: #B79CFF;
+  --stage-docs: #FFA36B;
+  --stage-track: #6FE09A;
   color-scheme: dark;
 }
 
@@ -98,6 +112,7 @@
 @layer base {
   * { border-color: var(--border); }
   body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-size: 16px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
   h1, h2, h3, h4 { font-style: normal; overflow-wrap: anywhere; min-width: 0; }
   /* No word left alone on a last line: headings balance, interface text avoids widows. */
   h1, h2, h3, h4, label, legend { text-wrap: balance; }
@@ -109,7 +124,7 @@
   button, a { touch-action: manipulation; }
   a { color: var(--primary); }
   button { cursor: pointer; }
-  h1 { font-size: 24px; line-height: 1.45; font-weight: 600; }
+  h1 { font-size: 26px; line-height: 1.4; font-weight: 600; }
   input, textarea, select { font-size: 16px; }
   textarea { resize: vertical; min-height: 130px; }
   fieldset { min-inline-size: 0; }
@@ -126,6 +141,21 @@
 .scrolling-name-text { display: inline-block; transition: transform 0.2s var(--ease-out); }
 .group:hover .scrolling-name[data-overflow='true'], .group:focus-within .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, transparent, #000 28px); }
 .group:hover .scrolling-name-text, .group:focus-within .scrolling-name-text { transform: translateX(var(--name-shift)); transition: transform var(--name-duration, 2s) linear 0.4s; }
+/* Journey stage tile: icon chip tinted by the step's hue; fills when the page is active. */
+.stage-tile { display: inline-flex; width: 28px; height: 28px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 8px; color: var(--stage); background: color-mix(in srgb, var(--stage) 13%, var(--card)); transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+.stage-tile[data-active='true'] { background: var(--stage); color: var(--card); }
+.stage-tile[data-stage='cv'] { --stage: var(--stage-cv); }
+.stage-tile[data-stage='search'] { --stage: var(--stage-search); }
+.stage-tile[data-stage='evaluate'] { --stage: var(--stage-evaluate); }
+.stage-tile[data-stage='docs'] { --stage: var(--stage-docs); }
+.stage-tile[data-stage='track'] { --stage: var(--stage-track); }
+/* Page header carries its journey stage: a short colored bar above the h1 and a soft wash behind the content. */
+main[data-stage] { --stage: var(--stage-cv); background: linear-gradient(to bottom, color-mix(in srgb, var(--stage) 7%, transparent), transparent 220px); }
+main[data-stage='search'] { --stage: var(--stage-search); }
+main[data-stage='evaluate'] { --stage: var(--stage-evaluate); }
+main[data-stage='docs'] { --stage: var(--stage-docs); }
+main[data-stage='track'] { --stage: var(--stage-track); }
+main[data-stage] h1::before { content: ''; display: block; width: 36px; height: 4px; margin-bottom: 10px; border-radius: 9999px; background: var(--stage); }
 /* Indeterminate bar for long jobs without a percentage. */
 .busy-bar { position: relative; height: 4px; overflow: hidden; border-radius: 9999px; background: color-mix(in oklch, var(--primary) 15%, transparent); }
 .busy-bar::after { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 35%; border-radius: inherit; background: var(--primary); animation: busy-slide 1.4s var(--ease-out) infinite; }

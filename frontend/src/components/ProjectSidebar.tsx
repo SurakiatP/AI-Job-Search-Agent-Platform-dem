@@ -15,8 +15,10 @@ import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 export type { SidebarProject };
 const itemClass = 'flex min-h-11 min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-[15px] text-foreground transition-colors hover:bg-accent/60 data-[active=true]:bg-accent data-[active=true]:font-semibold data-[active=true]:text-accent-foreground [overflow-wrap:anywhere]';
 
-function NavItem({ to, icon: Icon, active, onNavigate, children, count }: { to: string; icon: LucideIcon; active: boolean; onNavigate?: () => void; children: ReactNode; count?: number }) {
-  return <Link className={itemClass} to={to} data-active={active} aria-current={active ? 'page' : undefined} onClick={onNavigate}><Icon size={20} strokeWidth={1.75} className="shrink-0" aria-hidden="true" /><span className="min-w-0 flex-1">{children}</span>{count ? <span className="ms-auto rounded-full bg-muted px-1.5 text-xs font-medium tabular-nums text-muted-foreground"><span className="sr-only"> </span>{count}</span> : null}</Link>;
+const STAGE: Record<string, string> = { profile: 'cv', search: 'search', sessions: 'evaluate', practice: 'evaluate', documents: 'docs', applications: 'track' };
+
+function NavItem({ to, icon: Icon, active, onNavigate, children, count, stage }: { stage?: string; to: string; icon: LucideIcon; active: boolean; onNavigate?: () => void; children: ReactNode; count?: number }) {
+  return <Link className={itemClass} to={to} data-active={active} aria-current={active ? 'page' : undefined} onClick={onNavigate}><span className={stage ? 'stage-tile' : 'inline-flex'} data-stage={stage} data-active={active}><Icon size={stage ? 16 : 20} strokeWidth={1.75} className="shrink-0" aria-hidden="true" /></span><span className="min-w-0 flex-1">{children}</span>{count ? <span className="ms-auto rounded-full bg-muted px-1.5 text-xs font-medium tabular-nums text-muted-foreground"><span className="sr-only"> </span>{count}</span> : null}</Link>;
 }
 
 export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate, onReload, toggle }: {
@@ -52,7 +54,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
     </div> : <ul className="grid min-w-0 gap-0.5"><li className="min-w-0"><NavItem to="/app/projects" icon={FolderOpen} active={inside('/app/projects')} onNavigate={onNavigate}>{t('nav.allProjects')}</NavItem></li></ul>}
     {project && groups.map(([group, entries], index) => <section key={group} className={`grid min-w-0 gap-1.5${index ? ' border-t border-border/80 pt-4' : ''}`} aria-labelledby={`${navId}-${group}`}>
       <h2 id={`${navId}-${group}`} className="sr-only">{t(`workspace.${group}`)}</h2>
-      <ul className="grid min-w-0 gap-0.5">{entries.map(([section, icon, label]) => <li className="min-w-0" key={section}><NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate} count={section === 'trash' ? trashCount : undefined}>{label}</NavItem></li>)}</ul>
+      <ul className="grid min-w-0 gap-0.5">{entries.map(([section, icon, label]) => <li className="min-w-0" key={section}><NavItem to={`${base}/${section}`} icon={icon} stage={STAGE[section]} active={inside(`${base}/${section}`)} onNavigate={onNavigate} count={section === 'trash' ? trashCount : undefined}>{label}</NavItem></li>)}</ul>
     </section>)}
     <div className="mt-auto grid min-w-0 gap-1 border-t pt-4">
       <Link className={itemClass} to="/app/account" data-active={inside('/app/account')} aria-current={inside('/app/account') ? 'page' : undefined} onClick={onNavigate}>
