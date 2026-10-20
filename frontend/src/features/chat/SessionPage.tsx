@@ -155,13 +155,15 @@ export function SessionPage() {
     : failed && (last.current || operation === 'evaluate_job') ? { label: c.retry, onClick: retry, disabled: busy || gate.blocked, title: gate.title }
     : null;
   const headline = paired ? current.job_title ?? current.title : current.title;
-  const subline = [paired ? current.job_company : null, headline !== current.title ? current.title : null].filter(Boolean).join(' · ');
+  // Job + company + CV identify the session; several sessions can share a job but never the same CV/job pair.
+  const cvLine = paired && current.cv_name ? `CV: ${current.cv_name}${current.cv_revision != null ? ` · v${current.cv_revision}` : ''}` : null;
+  const subline = [paired ? current.job_company : null, headline !== current.title ? current.title : null, cvLine].filter(Boolean).join(' · ');
   const tabClass = 'min-h-11 shrink-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
   return <section className="flex min-w-0 flex-col gap-4">
     <Breadcrumb label={c.title} items={[{ label: project.data?.name ?? t('pages.project'), to: `${base}/overview` }, { label: t('nav.evaluate'), to: `${base}/sessions` }, { label: current.title }]} />
     <header className="min-w-0"><h1 className="break-words text-2xl font-semibold">{headline}</h1>{subline && <p className="mt-1 break-words text-muted-foreground">{subline}</p>}</header>
-    {paired ? <div className="grid gap-3 rounded-xl border bg-card p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
-      <p className="text-sm font-medium text-muted-foreground sm:col-span-2 lg:col-span-1">{t('pair.label')}</p>
+    {paired ? <div className="grid gap-3 rounded-xl border border-primary/25 bg-accent/30 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
+      <p className="text-sm font-semibold sm:col-span-2 lg:col-span-1">{t('pair.label')}</p>
       <div className="flex min-w-0 flex-wrap items-center gap-2"><FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="text-sm text-muted-foreground">{t('pair.cv')}</span><Link className="break-words font-medium text-primary hover:underline" to={`${base}/profile`} title={c.cvPage}>{current.cv_name} · v{current.cv_revision}</Link><CvPreviewButton projectId={projectId} fileId={current.cv_file_id} name={current.cv_name ?? 'CV'} revision={current.cv_revision} variant="ghost" className="h-8 px-2" /></div>
       <div className="flex min-w-0 flex-wrap items-center gap-2"><Briefcase className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="text-sm text-muted-foreground">{t('pair.job')}</span><Link className="break-words font-medium text-primary hover:underline" to={`${base}/jobs/${current.job_revision_id}`} title={c.jobPage}>{current.job_title}{current.job_company ? ` · ${current.job_company}` : ''}</Link><Badge variant="outline">{jobRevision ? t('pair.version', { n: jobRevision.revision }) : `${t('identity.unknownRevision')} ${current.job_revision_id}`}</Badge></div>
     </div> : <Badge variant="outline" className="w-fit">{c.unpaired}</Badge>}

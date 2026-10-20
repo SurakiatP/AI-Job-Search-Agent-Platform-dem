@@ -77,7 +77,9 @@ export async function useApplicationsWorkspaceFixture(page: Page) {
     if (route.request().method() !== 'GET') return route.fallback();
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(jobRows.map(job => ({ ...job, application_status: statusByJob.get(job.id) ?? 'saved' }))) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/sessions/${evaluationSessionId}`, route => route.fulfill({ json: { id: evaluationSessionId, project_id: projectId, title: 'Northstar evaluation', created_at: '2026-10-13T00:00:00Z', cv_revision_id: evaluationCvRevisionId, job_revision_id: jobId, cv_name: 'Healthcare Analytics', cv_revision: 3 } }));
+  const evaluationSession = { id: evaluationSessionId, project_id: projectId, title: 'Northstar evaluation', created_at: '2026-10-13T00:00:00Z', cv_revision_id: evaluationCvRevisionId, job_revision_id: jobId, cv_name: 'Healthcare Analytics', cv_revision: 3 };
+  await page.route(`**/api/v1/projects/${projectId}/sessions`, route => route.fulfill({ json: [evaluationSession] }));
+  await page.route(`**/api/v1/projects/${projectId}/sessions/${evaluationSessionId}`, route => route.fulfill({ json: evaluationSession }));
   await page.route(`**/api/v1/projects/${projectId}/runs`, async route => {
     if (route.request().method() !== 'GET') return route.fallback();
     const run = { id: runId, project_id: projectId, session_id: evaluationSessionId, operation: 'evaluate_job', status: 'completed', job_revision_id: jobId, output_language: 'en', result_file_ids: [], created_at: '2026-10-13T00:00:00Z', finished_at: '2026-10-13T00:01:00Z', retry_of_id: null, evaluation_result: { report_markdown: 'Strong SQL and stakeholder experience. **Improve:** add one quantified experimentation example.', score: 3.7, skill_coverage: { required: ['SQL', 'experimentation', 'healthcare analytics'], matched: ['SQL', 'healthcare analytics'], missing: ['experimentation'], ratio: 2 / 3, method: 'keyword' } } };

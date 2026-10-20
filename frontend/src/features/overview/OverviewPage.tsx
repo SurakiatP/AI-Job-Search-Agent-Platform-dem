@@ -60,7 +60,7 @@ export function OverviewPage() {
   const active = runList.filter(run => run.status === 'queued' || run.status === 'running');
   const pending = (approvals.data ?? []).filter(item => !item.consumed_at && !item.decision && Date.parse(item.expires_at) > Date.now());
   const unmatchedApprovals = pending.filter(item => !attention.some(run => run.id === item.run_id));
-  const evaluations = latestEvaluations(runList);
+  const evaluations = latestEvaluations(runList, sessions.data);
   const recent = [...evaluations.values()].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5);
   const runHref = (run: RunView) => run.session_id ? `${base}/sessions/${run.session_id}` : `${base}/console?tab=runs`;
   const hasAttention = attention.length > 0 || unmatchedApprovals.length > 0;
@@ -134,7 +134,7 @@ export function OverviewPage() {
               const pair = sessions.data?.find(item => item.id === run.session_id);
               return <li key={run.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 p-5" to={runHref(run)}>
                 <div className="min-w-0"><span className="break-words font-semibold">{job?.title ?? pair?.job_title ?? t(`workspace.operations.${run.operation}`)}</span>
-                  <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-muted-foreground">{job?.company && <span>{job.company}</span>}{pair?.cv_name && pair.cv_revision != null && <span>{c.usedCv(pair.cv_name, pair.cv_revision)}</span>}<SkillCount coverage={run.evaluation_result?.skill_coverage} locale={locale} /></p></div>
+                  <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-muted-foreground">{job?.company && <span>{job.company}</span>}{pair?.cv_name && pair.cv_revision != null && <span className="inline-flex min-w-0 items-center gap-1 text-foreground/80"><FileText size={14} className="shrink-0" aria-hidden="true" /><span className="break-words">{c.usedCv(pair.cv_name, pair.cv_revision)}</span></span>}<SkillCount coverage={run.evaluation_result?.skill_coverage} locale={locale} /></p></div>
                 <span className="flex items-center gap-3">{run.evaluation_result?.score != null && <AiLabel className="max-sm:hidden" />}<FitScore score={run.evaluation_result?.score ?? null} locale={locale} /><ArrowRight size={17} aria-hidden="true" /></span>
               </Link></li>;
             })}</ul>}</ResourcePanel>

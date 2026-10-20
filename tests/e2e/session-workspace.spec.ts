@@ -117,7 +117,7 @@ test('paired session keeps exact immutable context, global evaluation and task t
   }));
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Synthetic data analyst', exact: true })).toBeVisible();
-  await expect(page.getByText('Data CV · v4')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Data CV · v4' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Synthetic data analyst · Example Co' })).toBeVisible();
   await expect(page.getByText('Version 7', { exact: true })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Evaluation' })).toBeVisible();
@@ -205,7 +205,7 @@ test('unpaired legacy session remains read-only and a newer CV keeps this sessio
   }) }));
   await pairedPage.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'c1', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', latest_revision: { id: 'c2', revision: 2, created_at: '2026-10-11T00:00:00Z', original_filename: 'Data CV.pdf', mime_type: 'application/pdf', size_bytes: 10 }, revision_count: 2, in_use: true }]) }));
   await pairedPage.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
-  await expect(pairedPage.getByText('Data CV · v1')).toBeVisible();
+  await expect(pairedPage.getByRole('link', { name: 'Data CV · v1' })).toBeVisible();
   await expect(pairedPage.getByText('A newer CV revision is available')).toBeVisible();
   await expect(pairedPage.getByRole('button', { name: 'Start with latest CV' })).toBeVisible();
 });
@@ -458,4 +458,11 @@ test('SCR-03 evaluation trash: restore, restore blocked by a newer pair, delete 
   expect(calls).toEqual(['POST restore a1', 'POST restore b2', 'DELETE permanent c3', 'DELETE permanent b2']);
   await page.getByRole('link', { name: 'Back to evaluations' }).click();
   await expect(row('Old job')).toHaveCount(1);
+});
+
+test('session header names the CV so sessions of the same job are told apart', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await expect(page.getByRole('main').locator('header')).toContainText('Example Co · First synthetic session · CV: Data CV · v1');
 });

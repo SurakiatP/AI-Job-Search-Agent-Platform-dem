@@ -287,3 +287,19 @@ test('consent groups permissions, keeps Allow off until one is chosen and summar
   await expect(summary).toContainText('search jobs in Synthetic project for 90 days');
   await expect(allow).toBeEnabled();
 });
+
+test('overview hides evaluations in the trash and names the CV of each evaluation', async ({ page }) => {
+  await useSyntheticApplication(page);
+  const job = '33333333-3333-4333-8333-333333333333';
+  const trashed = 'dddddddd-0000-4000-8000-000000000000';
+  await page.route(`**/api/v1/projects/${projectId}/jobs`, route => route.fulfill({ json: [{ id: job, revision: 1, title: 'Live job', company: 'Example Co', created_at: '2026-10-01T00:00:00Z' }, { id: 'j2', revision: 1, title: 'Trashed job', company: 'Gone Co', created_at: '2026-10-01T00:00:00Z' }] }));
+  await page.route(`**/api/v1/projects/${projectId}/sessions`, route => route.fulfill({ json: [{ id: sessionId, project_id: projectId, title: 'Live job', created_at: '2026-10-01T00:00:00Z', cv_revision_id: 'c1', job_revision_id: job, cv_name: 'Data CV', cv_revision: 4, job_title: 'Live job', job_company: 'Example Co' }] }));
+  const run = (id: string, sid: string, jid: string) => ({ id, project_id: projectId, session_id: sid, operation: 'evaluate_job', status: 'completed', job_revision_id: jid, output_language: 'en', result_file_ids: [], created_at: '2026-10-10T00:00:00Z', finished_at: '2026-10-10T00:01:00Z', retry_of_id: null, evaluation_result: { score: 4, report_markdown: 'x' } });
+  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ json: [run('r1', sessionId, job), run('r2', trashed, 'j2')] }));
+  await page.goto(`/app/projects/${projectId}/overview`);
+  const recent = page.getByRole('region', { name: 'Recent evaluations' });
+  await expect(recent.getByRole('link', { name: /Live job/ })).toBeVisible();
+  await expect(recent.getByRole('link', { name: /Trashed job/ })).toHaveCount(0);
+  await expect(recent.getByRole('link', { name: /Live job/ })).toContainText('CV: Data CV · v4');
+  await expect(page.getByRole('main').locator(`a[href$="/sessions/${trashed}"]`)).toHaveCount(0);
+});

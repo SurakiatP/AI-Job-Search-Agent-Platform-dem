@@ -132,7 +132,8 @@ export function JobDetailPage() {
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
   const documents = useResource<DocumentView[]>(`/projects/${projectId}/documents`);
   const cvs = useResource<CVView[]>(`/projects/${projectId}/cvs`);
-  const evaluation = latestEvaluations(runs.data ?? []).get(jobId);
+  const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
+  const evaluation = latestEvaluations(runs.data ?? [], sessions.data).get(jobId);
   const evaluationSession = useResource<SessionView>(evaluation ? `/projects/${projectId}/sessions/${evaluation.session_id}` : null);
   if (result.status === 'loading' && !result.data) return <LoadingState />;
   if (result.status === 'error') return <ErrorState onRetry={result.reload} />;
