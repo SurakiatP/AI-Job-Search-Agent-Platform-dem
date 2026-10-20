@@ -254,6 +254,7 @@ Differences from the design above, decided during implementation and verified wi
 - **Owner facts carry `experience_items.builder_cv_id`**, so republishing a builder CV soft-removes only its own stale facts.
 - **Generated PDFs use file kind `resume_render`.** A pending one left by an aborted publish is marked unavailable by reconciliation.
 - **Known limitation, unchanged:** copied text of some Thai syllables is doubled by Typst 0.14.2 with Noto Thai fonts; the rendered page is correct.
+  Checked 2026-10-20: Typst 0.15.1 and five other Thai fonts (Sarabun, IBM Plex Sans Thai, Anuphan, Kanit, Noto Sans Thai Looped) show the same bug; upstream is krilla#411 (open). Owner accepted it for now. Stored CV text comes from the form data, not the PDF, so only readers of the PDF (ATS, copy/paste) see it. `test_thai_pdf_text_layer_matches_the_source_text` is a strict xfail that fails the run once an upgrade fixes it.
 
 ## CR-02 — Thai address, personal details, page flow, faster preview, CV name (owner approved 2026-10-20)
 

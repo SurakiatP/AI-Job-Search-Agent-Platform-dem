@@ -162,3 +162,24 @@ def test_cr02_long_cv_has_page_footer_address_and_personal_details(template, tmp
     assert "Bang Na, Bangkok" in pages[0] and "Personal details" in pages[0] and "Thai" in pages[0]
     assert "Page 1/" not in pages[0]
     assert f"Page 2/{len(pages)}" in pages[1] and data.basics.name in pages[1]
+
+
+@pytest.mark.skipif(not _docker_ready(), reason="needs Docker and the built Hermes image")
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    "Known upstream bug: Typst/krilla writes the whole Thai cluster for each mark glyph the font repositions, "
+    "so copied or ATS-extracted text repeats it ('ชั่' -> 'ชั่ชั่'). Seen on Typst 0.14.2 and 0.15.1 with every "
+    "Thai font tried; https://github.com/LaurenzV/krilla/issues/411. Strict: when an upgrade fixes it this "
+    "test starts passing and fails the run, so drop the marker then."))
+def test_thai_pdf_text_layer_matches_the_source_text(tmp_path):
+    from job_search_platform.integrations.hermes_runtime import HermesRuntime
+
+    runtime = HermesRuntime(IMAGE_ID.read_text().strip())
+    pdf = asyncio.run(runtime.render_typst(rs.render_bundle(rs.ResumeData.model_validate(thai_long()), "onyx", "teal", "th")))
+    path = tmp_path / "cv.pdf"
+    path.write_bytes(pdf)
+    pdftotext = shutil.which("pdftotext") or "/opt/homebrew/bin/pdftotext"
+    if not os.path.exists(pdftotext):
+        pytest.skip("pdftotext not installed")
+    text = subprocess.run([pdftotext, str(path), "-"], capture_output=True, text=True).stdout
+    for word in ("ใช้ติดตาม", "ชั่วโมง", "ตัวชี้วัด"):
+        assert word in text, word
