@@ -191,7 +191,7 @@ export function SessionPage() {
           <div className="grid min-w-0 gap-4">
             <TabsContent value="evaluation" forceMount className={`grid gap-4 ${tab === 'evaluation' ? '' : 'hidden'}`}>
               {evalRun ? <>
-                <RunResults projectId={projectId} locale={locale} run={evalRun} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} showDocuments={false} />
+                <RunResults projectId={projectId} locale={locale} run={evalRun} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} showDocuments={false} onTailor={() => setTab('documents')} />
                 {evalRun.status === 'completed' && evalRun.evaluation_result?.skill_coverage && <SkillAdvice projectId={projectId} locale={locale} coverage={evalRun.evaluation_result.skill_coverage} />}
                 <RelatedDocuments projectId={projectId} documents={relatedDocs} />
               </> : <section aria-labelledby="eval-empty-heading" className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6">

@@ -2102,6 +2102,30 @@ components:
         report_markdown: {type: string, minLength: 1, maxLength: 200000}
         score: {type: [number, 'null'], minimum: 1, maximum: 5, description: Career Ops native 1–5 score; absent when not established.}
         skill_coverage: {anyOf: [{$ref: '#/components/schemas/SkillCoverage'}, {type: 'null'}], description: Deterministic keyword coverage computed by the platform, separate from the AI score.}
+        report: {anyOf: [{$ref: '#/components/schemas/EvaluationReport'}, {type: 'null'}], description: 'CR-EVR-01 named report fields; null for reports made before 2026-10-20 or when the AI returned Markdown only. report_markdown is built from these fields.'}
+    EvaluationReport:
+      type: object
+      additionalProperties: false
+      required: [verdict, summary]
+      properties:
+        verdict: {type: string, minLength: 1, maxLength: 200}
+        summary: {type: string, minLength: 1, maxLength: 2000}
+        requirements:
+          type: array
+          maxItems: 30
+          items:
+            type: object
+            additionalProperties: false
+            required: [requirement, importance, match]
+            properties:
+              requirement: {type: string, minLength: 1, maxLength: 300}
+              importance: {type: string, enum: [critical, high, meaningful, preferred, low_signal]}
+              match: {type: string, enum: [strong, partial, missing, not_applicable]}
+              evidence: {type: string, maxLength: 1000}
+        strengths: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
+        risks: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
+        interview_prep: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
+        cv_changes: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
     SkillCoverage:
       type: object
       additionalProperties: false

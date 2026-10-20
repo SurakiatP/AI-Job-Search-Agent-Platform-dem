@@ -156,5 +156,23 @@
     "reviewChanges": "Review proposed CV changes",
     "answerQuestions": "Answer application questions",
     "reviewHint": "Reviewing opens the proposed changes. Nothing is applied to your CV until you choose."
+  },
+  "report": {
+    "requirements": "Job requirements",
+    "filter": "Filter by status",
+    "match": {
+      "all": "All",
+      "strong": "Match",
+      "partial": "Partial",
+      "missing": "Not found",
+      "not_applicable": "Not relevant"
+    },
+    "critical": "Key requirement",
+    "strengths": "Strengths",
+    "risks": "Watch out for",
+    "interview": "Prepare for the interview",
+    "cvChanges": "Fix your CV before applying",
+    "tailor": "Tailor CV for this job",
+    "full": "Full report"
   }
 }

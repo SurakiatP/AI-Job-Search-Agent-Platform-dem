@@ -1,6 +1,6 @@
 # Structured evaluation report — CR-EVR-01
 
-Status: impact analysis for owner review (2026-10-20). Owner chose option B on 2026-10-20: the AI returns named fields; the page shows them as sections.
+Status: owner approved 2026-10-20 (Q-EVR-01 answered: importance orders rows; only `critical` gets a label). Owner chose option B on 2026-10-20: the AI returns named fields; the page shows them as sections.
 
 ## The why
 
