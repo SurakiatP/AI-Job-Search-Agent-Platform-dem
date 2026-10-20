@@ -146,7 +146,11 @@ function CardCheck({ c, card, onCheck }: { c: PracticeCopy; card: PracticeQuesti
     {verdict && <div className="grid w-full max-w-2xl gap-2 rounded-lg border bg-card p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2"><p className={cn('font-semibold', tone[verdict.verdict])}>{c.verdicts[verdict.verdict]}</p><AiLabel /></div>
       {verdict.note && <p className="leading-relaxed">{verdict.note}</p>}
-      {verdict.missing.length > 0 && <p className="text-muted-foreground">{c.missingPoints}: <span className="text-foreground">{verdict.missing.join(' · ')}</span></p>}
+      {verdict.missing.length > 0 && <div className="grid gap-1.5">
+        <p className="font-medium text-muted-foreground" id={`${id}-missing`}>{c.missingPoints}</p>
+        <ul aria-labelledby={`${id}-missing`} className="grid gap-1.5 leading-relaxed">{verdict.missing.map(point => <li key={point} className="flex gap-2">
+          <span className="mt-2 size-1.5 shrink-0 rounded-full bg-warning" aria-hidden="true" /><span className="min-w-0 break-words">{point}</span></li>)}</ul>
+      </div>}
     </div>}
   </div>;
 }

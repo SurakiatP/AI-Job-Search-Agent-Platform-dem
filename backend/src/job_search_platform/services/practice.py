@@ -86,8 +86,19 @@ def prompt(*, level: str, sections: Sequence[Mapping], job: Mapping, cv_text: st
     return body, instructions
 
 
+# Fact labels (F1, [F2], (F28)) are prompt plumbing; they must never reach the owner's screen.
+_LABEL = re.compile(r"\s*[\(\[]\s*F\d{1,3}\s*[\)\]]|\s*\bF\d{1,3}\b")
+
+
+def clean(text: object, size: int) -> str:
+    if not isinstance(text, str):
+        return ""
+    text = re.sub(r"\s+([.,;:!?])", r"\1", _LABEL.sub("", text))
+    return re.sub(r"[ \t]{2,}", " ", text).strip()[:size]
+
+
 def _strings(value, limit: int, size: int) -> list[str]:
-    return [v.strip()[:size] for v in value if isinstance(v, str) and v.strip()][:limit] if isinstance(value, list) else []
+    return [c for c in (clean(v, size) for v in value) if c][:limit] if isinstance(value, list) else []
 
 
 def unsupported(answer: str, ids: Sequence[str], fact_claims: Mapping[UUID, set[str]],
@@ -148,10 +159,10 @@ def parse_reply(raw: str, sections: Sequence[Mapping], fact_claims: Mapping[UUID
                 answer = None
                 if dropped is not None:
                     dropped[reason] = dropped.get(reason, 0) + 1
-            questions.append({"section": wanted["id"], "prompt": item["prompt"].strip()[:600],
-                              "why": (item.get("why") if isinstance(item.get("why"), str) else "").strip()[:300] or "—",
+            questions.append({"section": wanted["id"], "prompt": clean(item["prompt"], 600),
+                              "why": clean(item.get("why"), 300) or "—",
                               "key_points": _strings(item.get("key_points"), 6, 300),
-                              "model_answer": answer and answer.strip()[:3000], "evidence_ids": ids if answer else []})
+                              "model_answer": answer and clean(answer, 3000), "evidence_ids": ids if answer else []})
     return questions, _strings(payload.get("reverse_questions"), MAX_REVERSE, 300)
 
 
@@ -238,9 +249,8 @@ def parse_grade(raw: str, answer: str, facts: Sequence[Mapping], card: bool) -> 
     if card:
         if payload.get("verdict") not in CARD_VERDICTS:
             raise ValueError("native_response_invalid")
-        note = payload.get("note") if isinstance(payload.get("note"), str) else ""
         return {"status": "done", "kind": "card", "verdict": payload["verdict"],
-                "missing": _strings(payload.get("missing"), 6, 300), "note": note.strip()[:600]}
+                "missing": _strings(payload.get("missing"), 6, 300), "note": clean(payload.get("note"), 600)}
     scores = payload.get("scores")
     if not isinstance(scores, dict) or any(
             not isinstance(scores.get(k), int) or isinstance(scores.get(k), bool) or not 1 <= scores[k] <= 5 for k in DIMENSIONS):
@@ -255,20 +265,26 @@ def parse_grade(raw: str, answer: str, facts: Sequence[Mapping], card: bool) -> 
     for fact_id in _resolve(payload.get("unused_fact_ids") or [], aliases(facts)):
         if fact_id in by_id and fact_id not in {u["id"] for u in unused}:
             unused.append({"id": fact_id, "text": by_id[fact_id]})
-    summary = payload.get("summary") if isinstance(payload.get("summary"), str) else ""
-    return {"status": "done", "kind": "answer", "scores": {k: scores[k] for k in DIMENSIONS}, "summary": summary.strip()[:600],
+    return {"status": "done", "kind": "answer", "scores": {k: scores[k] for k in DIMENSIONS}, "summary": clean(payload.get("summary"), 600),
             "star": sorted(spans, key=lambda s: s["start"])[:12], "add": _strings(payload.get("add"), 5, 300),
             "unused_facts": unused[:3]}
 
 
+DIMENSION_NAMES = {  # the words the owner sees for each score (frontend practice copy)
+    "th": {"structure": "โครงเรื่อง", "relevance": "ตรงกับงาน", "evidence": "มีหลักฐาน", "clarity": "ชัดเจน", "company_fit": "เข้ากับบริษัท"},
+    "en": {"structure": "Structure", "relevance": "Relevance", "evidence": "Evidence", "clarity": "Clarity", "company_fit": "Company fit"},
+}
+
+
 def report_prompt(*, set_row, questions: Sequence, job: Mapping, report: Mapping | None, output_language: str) -> tuple[str, str]:
+    names = DIMENSION_NAMES.get(output_language, DIMENSION_NAMES["en"])
     lines = []
     for q in questions:
         latest = q["attempts"][0] if q["attempts"] else None
-        scores = (latest or {}).get("feedback") or {}
+        scores = ((latest or {}).get("feedback") or {}).get("scores") or {}
+        named = ", ".join(f"{names[k]} {v}/5" for k, v in scores.items() if k in names) or "no feedback yet"
         state = (f"card {q['card_rating'] or 'not rated'}" if q["section"] == "technical"
-                 else f"{'ready' if q['ready'] else 'not ready'}; scores {json.dumps(scores.get('scores'))}" if latest
-                 else "not answered")
+                 else f"{'ready' if q['ready'] else 'not ready'}; {named}" if latest else "not answered")
         lines.append(f"- [{q['section']}] {q['prompt']} → {state}")
     gaps = [r["requirement"] for r in (report or {}).get("requirements") or [] if r.get("match") in ("missing", "partial")]
     sections = [s["id"] for s in set_row.sections]
@@ -281,6 +297,8 @@ def report_prompt(*, set_row, questions: Sequence, job: Mapping, report: Mapping
         "Give up to 6 `strengths`, up to 6 `skills_to_build` (from the gaps, low scores and cards still learning), "
         "a `plan` of up to 8 preparation topics, and `readiness` per section with `level` ready|almost|not_yet and a "
         "one-line `note`. Name topics, never links or course names; never a percentage, score or hiring chance. "
+        "Refer to scores by the names given above, never by internal field names (structure, company_fit, …), and "
+        "never mention fact labels. "
         'Return ONLY JSON shaped as {"strengths": ["…"], "skills_to_build": ["…"], "plan": ["…"], '
         '"readiness": [{"section": "<id>", "level": "ready", "note": "…"}]}.')
     return body, instructions
@@ -290,16 +308,17 @@ def parse_report(raw: str, sections: Collection[str]) -> dict:
     payload = _payload(raw)
     if not isinstance(payload, dict):
         raise ValueError("native_response_invalid")
-    clean = lambda key, limit: [s for s in _strings(payload.get(key), limit * 2, 300) if not _LINK_OR_PERCENT.search(s)][:limit]  # noqa: E731
+    def safe(key: str, limit: int) -> list[str]:
+        return [s for s in _strings(payload.get(key), limit * 2, 300) if not _LINK_OR_PERCENT.search(s)][:limit]
     readiness = []
     for item in payload.get("readiness") or [] if isinstance(payload.get("readiness"), list) else []:
         if (isinstance(item, dict) and item.get("section") in sections and item.get("level") in READINESS
                 and item["section"] not in {r["section"] for r in readiness}):
-            note = item.get("note") if isinstance(item.get("note"), str) else ""
+            note = clean(item.get("note"), 300)
             readiness.append({"section": item["section"], "level": item["level"],
-                              "note": "" if _LINK_OR_PERCENT.search(note) else note.strip()[:300]})
-    result = {"status": "done", "strengths": clean("strengths", 6), "skills_to_build": clean("skills_to_build", 6),
-              "plan": clean("plan", 8), "readiness": readiness}
+                              "note": "" if _LINK_OR_PERCENT.search(note) else note})
+    result = {"status": "done", "strengths": safe("strengths", 6), "skills_to_build": safe("skills_to_build", 6),
+              "plan": safe("plan", 8), "readiness": readiness}
     if not any((result["strengths"], result["skills_to_build"], result["plan"])):
         raise ValueError("native_response_invalid")
     return result

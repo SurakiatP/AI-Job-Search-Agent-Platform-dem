@@ -43,3 +43,30 @@ def test_short_fact_labels_map_back_to_real_ids_and_bad_labels_drop():
     assert questions[0]["model_answer"] and questions[0]["evidence_ids"] == [str(FACT)]
     assert questions[1]["model_answer"] is None
     assert practice.cited_ids(raw, aliases) == {str(FACT)}
+
+
+def test_fact_labels_never_reach_the_owner():
+    raw = json.dumps({"questions": [{"section": "technical", "prompt": "RAG (F3) steps?", "why": "In the CV (F28) and JD",
+                                     "key_points": ["Chunking [F2]", "Embeddings"], "model_answer": None, "evidence_ids": []}],
+                      "reverse_questions": ["Which stack (F4)?"]})
+    (q,), reverse = practice.parse_reply(raw, [{"id": "technical", "count": 1}], {}, set())
+    assert (q["prompt"], q["why"], q["key_points"], reverse) == ("RAG steps?", "In the CV and JD", ["Chunking", "Embeddings"], ["Which stack?"])
+    facts = [{"id": str(FACT), "text": "Built a test set"}]
+    grade = practice.parse_grade(json.dumps({"scores": {k: 3 for k in practice.DIMENSIONS}, "summary": "Use F1 more",
+                                             "add": ["Cite (F1)"], "star": [], "unused_fact_ids": []}), "x", facts, card=False)
+    assert grade["summary"] == "Use more" and grade["add"] == ["Cite"]
+    card = practice.parse_grade(json.dumps({"verdict": "partial", "missing": ["re-ranking (F9)"], "note": "See F9."}), "x", facts, card=True)
+    assert card["missing"] == ["re-ranking"] and card["note"] == "See."
+    report = practice.parse_report(json.dumps({"strengths": ["Clear (F2) intro"], "skills_to_build": [], "plan": ["Review F5"],
+                                               "readiness": [{"section": "intro", "level": "almost", "note": "Add F1 numbers"}]}), {"intro"})
+    assert report["strengths"] == ["Clear intro"] and report["plan"] == ["Review"] and report["readiness"][0]["note"] == "Add numbers"
+
+
+def test_report_prompt_names_scores_in_plain_words():
+    from types import SimpleNamespace
+    q = {"section": "intro", "prompt": "About you", "ready": False, "card_rating": None,
+         "attempts": [{"feedback": {"status": "done", "kind": "answer", "scores": {k: 4 for k in practice.DIMENSIONS}}}]}
+    body, instructions = practice.report_prompt(set_row=SimpleNamespace(sections=[{"id": "intro", "count": 1}], level="mid"),
+                                                questions=[q], job={"title": "AI Engineer"}, report=None, output_language="th")
+    assert "company_fit" not in body and "เข้ากับบริษัท 4/5" in body and "โครงเรื่อง 4/5" in body
+    assert "field names" in instructions

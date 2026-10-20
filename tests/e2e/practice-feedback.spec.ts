@@ -40,14 +40,15 @@ test('AC-IVP-09 ask for feedback, see five scores, STAR marks and what to add; a
 test('AC-IVP-15 type a flashcard answer and get a correctness check', async ({ page }) => {
   await boot(page);
   const state = await practiceApi(page);
-  state.feedbackReply = { status: 'done', kind: 'card', verdict: 'partial', missing: ['Memory cost of HNSW'], note: 'Half right.' };
+  state.feedbackReply = { status: 'done', kind: 'card', verdict: 'partial', missing: ['Memory cost of HNSW', 'Re-ranking'], note: 'Half right.' };
   await page.goto(page1);
   await page.getByRole('navigation', { name: 'Rounds' }).getByRole('button', { name: /Technical knowledge/ }).click();
   await page.getByRole('button', { name: 'Answer before flipping' }).click();
   await page.getByLabel('Your answer to this card').fill('HNSW is a graph');
   await page.getByRole('button', { name: 'Check my answer' }).click();
   await expect(page.getByText('Partly right')).toBeVisible();
-  await expect(page.getByText('Memory cost of HNSW')).toBeVisible();
+  const missing = page.getByRole('list', { name: 'Missing' }).getByRole('listitem');
+  await expect(missing).toHaveText(['Memory cost of HNSW', 'Re-ranking']);
   expect(state.attempts.map(a => a.answer)).toEqual(['HNSW is a graph']);
 });
 
