@@ -177,9 +177,10 @@
     "critical": "Key requirement",
     "strengths": "Strengths",
     "risks": "Watch out for",
-    "interview": "Prepare for the interview",
+    "interview": "Questions you may get in the interview",
     "cvChanges": "Fix your CV before applying",
-    "tailor": "Tailor CV for this job",
-    "full": "Full report"
+    "full": "Full report",
+    "interviewHint": "From this job's evaluation. Prepare answers with real examples from your work.",
+    "cvChangesHint": "From this job's evaluation. Edit it yourself in the CV builder, or let the agent tailor it below."
   }
 }

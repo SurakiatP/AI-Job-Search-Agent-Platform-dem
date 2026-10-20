@@ -52,11 +52,23 @@ test('TC-EVR-04 structured report shows fields, counts and a working filter', as
   await expect(reqs.getByRole('listitem')).toHaveCount(1);
   await expect(reqs.getByRole('listitem')).toContainText('GKE / Cloud Run');
   await expect(reqs.getByRole('listitem')).toContainText('Not found');
-  for (const text of [...report.strengths, ...report.risks, ...report.interview_prep, ...report.cv_changes]) await expect(page.getByText(text)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Tailor CV for this job' })).toBeVisible();
+  for (const text of [...report.strengths, ...report.risks]) await expect(page.getByText(text)).toBeVisible();
+  // Owner change 2026-10-20: interview prep lives in the answers tab, CV changes in the documents tab.
+  await expect(page.getByText(report.interview_prep[0])).toBeHidden();
+  await expect(page.getByText(report.cv_changes[0])).toBeHidden();
   await expect(page.getByTestId('evaluation-report')).toBeHidden();
   await page.getByText('Full report').click();
   await expect(page.getByTestId('evaluation-report')).toContainText('Worth applying');
+});
+
+test('TC-EVR-07 interview prep shows in the answers tab and CV changes in the documents tab', async ({ page }) => {
+  await open(page, { score: 4.2, report, report_markdown: 'x' });
+  await page.getByRole('tab', { name: 'Application answers' }).click();
+  const interview = page.getByRole('region', { name: 'Questions you may get in the interview' });
+  await expect(interview).toContainText(report.interview_prep[0]);
+  await page.getByRole('tab', { name: 'Prepare documents' }).click();
+  const cv = page.getByRole('region', { name: 'Fix your CV before applying' });
+  await expect(cv).toContainText(report.cv_changes[0]);
 });
 
 test('TC-EVR-05 a report made before CR-EVR-01 still shows as Markdown', async ({ page }) => {

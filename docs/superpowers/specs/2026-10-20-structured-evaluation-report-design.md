@@ -14,6 +14,7 @@ The owner (job seeker) opens an evaluation and gets one long Markdown report who
 - **FR-EVR-04** If the AI returns the old shape (`report_markdown` only), the system must accept it and show it as today; no run fails because of this change.
 - **FR-EVR-05** The evaluation result screen must show, in order: score with verdict and skills found; job requirements with a count per match state and a filter; strengths and risks; interview preparation; CV changes with a link to the existing "ปรับ CV" step; the full report collapsed with its copy button. The score is not repeated inside the report.
 - **FR-EVR-06** The AI must be told to write to the job seeker in the output language ("คุณ…"), not about a candidate.
+- **FR-EVR-05 (amended 2026-10-20, owner)** Interview preparation moves to the "คำตอบสมัครงาน" tab as "คำถามที่อาจเจอตอนสัมภาษณ์", and CV changes move to the "เตรียมเอกสาร" tab above the tailor CV card. The evaluation tab keeps verdict, summary, requirements, strengths and risks. AC: TC-EVR-07.
 - **FR-EVR-07** A report stored before this change must keep showing as Markdown.
 
 ## Acceptance criteria

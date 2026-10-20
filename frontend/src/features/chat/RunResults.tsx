@@ -70,7 +70,7 @@ export function RelatedDocuments({ projectId, documents }: { projectId: string; 
   </section>;
 }
 
-export function RunResults({ projectId, locale, run, documents, trashedDocuments = [], showDocuments = true, onTailor }: { projectId: string; locale: Locale; run: RunView | null; documents: DocumentView[]; trashedDocuments?: DocumentView[]; showDocuments?: boolean; onTailor?: () => void }) {
+export function RunResults({ projectId, locale, run, documents, trashedDocuments = [], showDocuments = true }: { projectId: string; locale: Locale; run: RunView | null; documents: DocumentView[]; trashedDocuments?: DocumentView[]; showDocuments?: boolean }) {
   const { t } = useTranslation('sessionWorkspace');
   const headingId = useId();
   if (!run) return null;
@@ -98,7 +98,7 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
         </div>
         {evaluation.skill_coverage && <SkillsFound coverage={evaluation.skill_coverage} />}
       </div>
-      {evaluation.report && <div className="border-t pt-5"><EvaluationReportView report={evaluation.report} onTailor={onTailor} /></div>}
+      {evaluation.report && <div className="border-t pt-5"><EvaluationReportView report={evaluation.report} /></div>}
       <details open={!evaluation.report} className="group rounded-lg border">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
           <span>{evaluation.report ? t('report.full') : report}</span><ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />

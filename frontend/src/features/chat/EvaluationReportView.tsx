@@ -2,7 +2,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Minus, PenLine, TriangleAlert, X, MessageCircleQuestion } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import type { EvaluationReport, ReportMatch } from '../../lib/api-types';
 
 const ORDER: ReportMatch[] = ['strong', 'partial', 'missing', 'not_applicable'];
@@ -54,7 +53,7 @@ function Requirements({ rows }: { rows: NonNullable<EvaluationReport['requiremen
   </section>;
 }
 
-function Points({ title, items, icon, children }: { title: string; items?: string[]; icon: ReactNode; children?: ReactNode }) {
+function Points({ title, items, icon }: { title: string; items?: string[]; icon: ReactNode }) {
   const id = useId();
   if (!items?.length) return null;
   return <section aria-labelledby={id} className="grid content-start gap-2">
@@ -62,11 +61,30 @@ function Points({ title, items, icon, children }: { title: string; items?: strin
     <ul className="grid gap-1.5 text-sm leading-relaxed">
       {items.map(item => <li key={item} className="flex gap-2"><span className="mt-2.5 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}
     </ul>
-    {children}
   </section>;
 }
 
-export function EvaluationReportView({ report, onTailor }: { report: EvaluationReport; onTailor?: () => void }) {
+/** One list from the latest evaluation, shown as its own card on the tab where it is used. */
+export function ReportListCard({ kind, items }: { kind: 'interview' | 'cvChanges'; items?: string[] }) {
+  const { t } = useTranslation('sessionWorkspace');
+  const id = useId();
+  if (!items?.length) return null;
+  const Icon = kind === 'interview' ? MessageCircleQuestion : PenLine;
+  return <section aria-labelledby={id} className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5">
+    <div className="grid gap-1">
+      <h2 id={id} className="flex items-center gap-2 text-lg font-semibold"><Icon className="size-5 shrink-0 text-primary" aria-hidden="true" />{t(`report.${kind}`)}</h2>
+      <p className="text-sm text-muted-foreground">{t(`report.${kind}Hint`)}</p>
+    </div>
+    <ol className="grid max-w-[75ch] gap-2.5">
+      {items.map((item, i) => <li key={item} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2 leading-relaxed">
+        <span className="mt-0.5 inline-flex size-6 items-center justify-center rounded-full bg-accent text-xs font-semibold tabular-nums text-accent-foreground" aria-hidden="true">{i + 1}</span>
+        <span className="min-w-0 break-words">{item}</span>
+      </li>)}
+    </ol>
+  </section>;
+}
+
+export function EvaluationReportView({ report }: { report: EvaluationReport }) {
   const { t } = useTranslation('sessionWorkspace');
   const icon = 'size-4 shrink-0';
   return <div className="grid gap-6">
@@ -78,10 +96,6 @@ export function EvaluationReportView({ report, onTailor }: { report: EvaluationR
     <div className="grid gap-6 md:grid-cols-2 md:gap-8">
       <Points title={t('report.strengths')} items={report.strengths} icon={<Check className={`${icon} text-success`} aria-hidden="true" />} />
       <Points title={t('report.risks')} items={report.risks} icon={<TriangleAlert className={`${icon} text-warning`} aria-hidden="true" />} />
-      <Points title={t('report.interview')} items={report.interview_prep} icon={<MessageCircleQuestion className={`${icon} text-primary`} aria-hidden="true" />} />
-      <Points title={t('report.cvChanges')} items={report.cv_changes} icon={<PenLine className={`${icon} text-primary`} aria-hidden="true" />}>
-        {onTailor && <Button variant="outline" size="sm" className="mt-1 justify-self-start" onClick={onTailor}>{t('report.tailor')}</Button>}
-      </Points>
     </div>
   </div>;
 }
