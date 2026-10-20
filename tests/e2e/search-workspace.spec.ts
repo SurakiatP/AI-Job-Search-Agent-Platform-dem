@@ -9,14 +9,14 @@ const searchItems = [
 
 async function installSearchFixture(page: Page, items = searchItems) {
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/job-search**`, route => {
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => {
     const url = new URL(route.request().url());
     const body = url.pathname.endsWith('/facets')
       ? { total: 124, categories: [{ value: 'data_analytics', count: 38 }, { value: 'software_engineering', count: 31 }], cities: [{ value: 'Bangkok', name_th: 'กรุงเทพมหานคร', count: 72 }, { value: 'Chiang Mai', name_th: 'เชียงใหม่', count: 14 }], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 16, thai_postings: 21 }
       : { items, total: 124, limit: 20, offset: Number(url.searchParams.get('offset') ?? 0), pool: 124, hidden_count: 2 };
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
 }
 
 test('Search keeps location and work mode in the lead and summarizes active filters', async ({ page }) => {
@@ -64,13 +64,13 @@ test('Search exposes loading and empty results with a useful clear action', asyn
   await useSyntheticApplication(page);
   let releaseSearch!: () => void;
   const pendingSearch = new Promise<void>(resolve => { releaseSearch = resolve; });
-  await page.route(`**/api/v1/projects/${projectId}/job-search**`, async route => {
+  await page.route(`**/v1/projects/${projectId}/job-search**`, async route => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith('/facets')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 0, thai_postings: 0 }) });
     await pendingSearch;
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], total: 0, limit: 20, offset: 0 }) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   const navigation = page.goto(`/app/projects/${projectId}/search?q=does-not-exist`);
   await expect(page.getByRole('status')).toBeVisible();
   releaseSearch();
@@ -83,12 +83,12 @@ test('Search exposes loading and empty results with a useful clear action', asyn
 test('source failure can switch to clearly labelled sample results', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/job-search**`, route => {
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith('/facets')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [] }) });
     return route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ code: 'job_source_unavailable', message_key: 'service.unavailable', retryable: true }) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   await page.goto(`/app/projects/${projectId}/search`);
   await expect(page.getByRole('heading', { name: "Couldn't load jobs" })).toBeVisible();
   await page.getByRole('button', { name: 'View sample data' }).click();
@@ -99,13 +99,13 @@ test('source failure can switch to clearly labelled sample results', async ({ pa
 test('a load-more error keeps the successful results visible', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/job-search**`, route => {
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith('/facets')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [] }) });
     if (Number(url.searchParams.get('offset') ?? 0) > 0) return route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ code: 'job_source_unavailable', message_key: 'service.unavailable', retryable: true }) });
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: searchItems, total: 21, limit: 20, offset: 0 }) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   await page.goto(`/app/projects/${projectId}/search`);
   await expect(page.getByRole('button', { name: /Senior Data Analyst/ })).toBeVisible();
   await page.getByRole('button', { name: 'Load more' }).click();
@@ -121,18 +121,18 @@ test('switching projects during a delayed search never shows the earlier project
   const started = new Promise<void>(resolve => { projectASearchStarted = resolve; });
   const delayedItem = { ...searchItems[0], slug: 'project-a-result', title: 'Project A private result' };
   const nextItem = { ...searchItems[1], slug: 'project-b-result', title: 'Project B result' };
-  await page.route(`**/api/v1/projects/${projectId}/job-search**`, async route => {
+  await page.route(`**/v1/projects/${projectId}/job-search**`, async route => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith('/facets')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ total: 1, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [] }) });
     projectASearchStarted();
     await new Promise(resolve => setTimeout(resolve, 350));
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [delayedItem], total: 1, limit: 20, offset: 0 }) });
   });
-  await page.route(`**/api/v1/projects/${secondProjectId}/job-search**`, route => {
+  await page.route(`**/v1/projects/${secondProjectId}/job-search**`, route => {
     const url = new URL(route.request().url());
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(url.pathname.endsWith('/facets') ? { total: 1, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [] } : { items: [nextItem], total: 1, limit: 20, offset: 0 }) });
   });
-  await page.route('**/api/v1/projects/**/saved-searches**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.route('**/v1/projects/**/saved-searches**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   const firstPage = page.goto(`/app/projects/${projectId}/search`);
   await started;
   await page.goto(`/app/projects/${secondProjectId}/search`);
@@ -147,13 +147,13 @@ test('saving a result and starting its evaluation each send one mutation', async
   await installSearchFixture(page);
   let savePosts = 0;
   let sessionPosts = 0;
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'cv-data', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', revision_count: 1, in_use: false, latest_revision: { id: 'cv-rev-1', revision: 3, created_at: '2026-10-14T00:00:00Z', original_filename: 'data.pdf', mime_type: 'application/pdf', size_bytes: 12000, file_id: 'cv-file-1' } }]) }));
-  await page.route(`**/api/v1/projects/${projectId}/jobs`, async route => {
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'cv-data', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', revision_count: 1, in_use: false, latest_revision: { id: 'cv-rev-1', revision: 3, created_at: '2026-10-14T00:00:00Z', original_filename: 'data.pdf', mime_type: 'application/pdf', size_bytes: 12000, file_id: 'cv-file-1' } }]) }));
+  await page.route(`**/v1/projects/${projectId}/jobs`, async route => {
     if (route.request().method() !== 'POST') return route.fallback();
     savePosts += 1;
     return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: 'saved-search-job', revision: 1, created_at: '2026-10-16T00:00:00Z', title: 'Senior Data Analyst', company: 'Bright Data Co.', source_url: 'https://jobs.example.test/bright-data' }) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/sessions`, async route => {
+  await page.route(`**/v1/projects/${projectId}/sessions`, async route => {
     if (route.request().method() !== 'POST') return route.fallback();
     sessionPosts += 1;
     return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: 'new-evaluation', project_id: projectId, title: 'Senior Data Analyst', created_at: '2026-10-16T00:00:00Z', cv_revision_id: 'cv-rev-1' }) });
@@ -191,16 +191,16 @@ test('Smart match labels deterministic coverage and reports a partial AI pool', 
   await useSyntheticApplication(page);
   const ai = { status: 'partial', categories: null, scored: 1 };
   const rankedItem = { ...searchItems[0], match: { score_percent: 67, matched: ['SQL', 'Python'], missing: ['Looker'], required_count: 3 }, ai_match: { fit_percent: 72, band: 4, uncertain: true, seniority: 'meets', hard_blocker: false, skills_evidenced: ['SQL'], must_missing: [], nice_missing: ['Looker'] }, highlight: { matched: { SQL: 'SQL' }, missing: {} } };
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'cv-data', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', revision_count: 1, in_use: false, latest_revision: { id: 'cv-rev-1', revision: 3, created_at: '2026-10-14T00:00:00Z', original_filename: 'data.pdf', mime_type: 'application/pdf', size_bytes: 12000, file_id: 'cv-file-1' } }]) }));
-  await page.route(`**/api/v1/projects/${projectId}/job-search/match**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [rankedItem, { ...searchItems[1], slug: 'partial-unscored', match: null, ai_match: null }], total: 124, limit: 100, offset: 0, pool: 2, hidden_count: 1, ai }) }));
-  await page.route(`**/api/v1/projects/${projectId}/job-search/match/runs`, route => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'rank-run-1' }) }));
-  await page.route(`**/api/v1/projects/${projectId}/runs/rank-run-1`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'rank-run-1', status: 'completed' }) }));
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'cv-data', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', revision_count: 1, in_use: false, latest_revision: { id: 'cv-rev-1', revision: 3, created_at: '2026-10-14T00:00:00Z', original_filename: 'data.pdf', mime_type: 'application/pdf', size_bytes: 12000, file_id: 'cv-file-1' } }]) }));
+  await page.route(`**/v1/projects/${projectId}/job-search/match**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [rankedItem, { ...searchItems[1], slug: 'partial-unscored', match: null, ai_match: null }], total: 124, limit: 100, offset: 0, pool: 2, hidden_count: 1, ai }) }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/job\-search\/match\/runs|\/v1\/async\/projects\/${projectId}\/smart\-matches)(?:\\?.*)?$`), route => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'rank-run-1' }) }));
+  await page.route(`**/v1/projects/${projectId}/runs/rank-run-1`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'rank-run-1', status: 'completed' }) }));
   let hiddenDeletes = 0;
-  await page.route(`**/api/v1/projects/${projectId}/job-search/hidden**`, route => {
+  await page.route(`**/v1/projects/${projectId}/job-search/hidden**`, route => {
     if (route.request().method() === 'DELETE') { hiddenDeletes += 1; return route.fulfill({ status: 204, body: '' }); }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [{ id: 'hidden-1', kind: 'job', label: 'Previously hidden analyst role', created_at: '2026-10-01T00:00:00Z' }] }) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   await page.goto(`/app/projects/${projectId}/search?mode=match`);
   await page.getByRole('button', { name: /^Start Smart match/ }).click();
   await expect(page.getByRole('status').filter({ hasText: 'ranking jobs for you' })).toBeVisible();
@@ -235,11 +235,11 @@ test('Smart match without a usable CV explains the prerequisite', async ({ page 
 test('Smart match keeps its CV profiling state visible while processing', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'cv-data', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', revision_count: 1, in_use: false, latest_revision: { id: 'cv-rev-1', revision: 3, created_at: '2026-10-14T00:00:00Z', original_filename: 'data.pdf', mime_type: 'application/pdf', size_bytes: 12000, file_id: 'cv-file-1' } }]) }));
-  await page.route(`**/api/v1/projects/${projectId}/job-search/match**`, route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ code: 'cv_profile_missing', message_key: 'cv.profile_missing', retryable: true }) }));
-  await page.route(`**/api/v1/projects/${projectId}/cvs/cv-data/profile`, route => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'profile-run', status: 'running' }) }));
-  await page.route(`**/api/v1/projects/${projectId}/runs/profile-run`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'profile-run', status: 'running' }) }));
-  await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'cv-data', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', revision_count: 1, in_use: false, latest_revision: { id: 'cv-rev-1', revision: 3, created_at: '2026-10-14T00:00:00Z', original_filename: 'data.pdf', mime_type: 'application/pdf', size_bytes: 12000, file_id: 'cv-file-1' } }]) }));
+  await page.route(`**/v1/projects/${projectId}/job-search/match**`, route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ code: 'cv_profile_missing', message_key: 'cv.profile_missing', retryable: true }) }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/cvs\/cv\-data\/profile|\/v1\/async\/projects\/${projectId}\/cvs\/cv\-data\/skill\-profiles)(?:\\?.*)?$`), route => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'profile-run', status: 'running' }) }));
+  await page.route(`**/v1/projects/${projectId}/runs/profile-run`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'profile-run', status: 'running' }) }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   await page.goto(`/app/projects/${projectId}/search?mode=match`);
   await page.getByRole('button', { name: /^Start Smart match/ }).click();
   await expect(page.getByRole('status').filter({ hasText: 'analyzing your CV' })).toBeVisible();
@@ -301,10 +301,10 @@ test('Smart match never calls the AI until the user presses Start, and asks agai
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   const calls = { match: 0, rank: 0, profile: 0 };
-  await page.route(`**/api/v1/projects/${projectId}/job-search/match**`, route => { calls.match += 1; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], total: 0, pool: 0, ai: { status: 'ready', categories: [], scored: 0 } }) }); });
-  await page.route(`**/api/v1/projects/${projectId}/job-search/rank**`, route => { calls.rank += 1; return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }); });
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => { if (route.request().method() === 'POST') calls.profile += 1; return route.fallback(); });
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
+  await page.route(`**/v1/projects/${projectId}/job-search/match**`, route => { calls.match += 1; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], total: 0, pool: 0, ai: { status: 'ready', categories: [], scored: 0 } }) }); });
+  await page.route(`**/v1/projects/${projectId}/job-search/rank**`, route => { calls.rank += 1; return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }); });
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => { if (route.request().method() === 'POST') calls.profile += 1; return route.fallback(); });
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
     { id: 'cv-a', name: 'CV A', is_primary: true, in_use: false, revision_count: 1, latest_revision: { id: 'rev-a', revision: 1, created_at: '2026-10-10T00:00:00Z', original_filename: 'a.txt', mime_type: 'text/plain', size_bytes: 10, file_id: null } },
     { id: 'cv-b', name: 'CV B', is_primary: false, in_use: false, revision_count: 1, latest_revision: { id: 'rev-b', revision: 1, created_at: '2026-10-10T00:00:00Z', original_filename: 'b.txt', mime_type: 'text/plain', size_bytes: 10, file_id: null } },
   ]) }));

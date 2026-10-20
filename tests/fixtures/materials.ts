@@ -55,9 +55,9 @@ export async function useMaterialsFixture(page: Page, options: { emptyCvs?: bool
   ];
   const trash = [{ id: '77777777-7777-4777-8777-777777777777', document_type: 'other', title: 'Old portfolio note', trashed_at: '2026-10-10T00:00:00Z' }];
 
-  await page.route(`**/api/v1/projects/${projectId}/cvs**`, async route => {
+  await page.route(`**/v1/projects/${projectId}/cvs**`, async route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname.replace('/api/v1', '');
+    const path = new URL(request.url()).pathname.replace('/v1', '');
     const body = request.headers()['content-type']?.includes('application/json') ? request.postDataJSON() as Record<string, unknown> : undefined;
     if (request.method() !== 'GET') mutations.push({ method: request.method(), path, body });
     if (request.method() === 'GET') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(cvs) });
@@ -75,15 +75,15 @@ export async function useMaterialsFixture(page: Page, options: { emptyCvs?: bool
     }
     return route.fallback();
   });
-  await page.route(`**/api/v1/projects/${projectId}/cvs/*/revisions`, async route => {
+  await page.route(`**/v1/projects/${projectId}/cvs/*/revisions`, async route => {
     const request = route.request();
     if (request.method() === 'POST') {
-      mutations.push({ method: request.method(), path: new URL(request.url()).pathname.replace('/api/v1', '') });
+      mutations.push({ method: request.method(), path: new URL(request.url()).pathname.replace('/v1', '') });
       return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(cvRevision('33333333-cccc-4333-8333-333333333333', 10)) });
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
   });
-  await page.route(`**/api/v1/projects/${projectId}/preferences`, async route => {
+  await page.route(`**/v1/projects/${projectId}/preferences`, async route => {
     const request = route.request();
     if (request.method() === 'PATCH') {
       const body = request.postDataJSON() as Record<string, unknown>;
@@ -92,13 +92,13 @@ export async function useMaterialsFixture(page: Page, options: { emptyCvs?: bool
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(preferences) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/experience`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(experience) }));
-  await page.route(`**/api/v1/projects/${projectId}/documents`, async route => {
+  await page.route(`**/v1/projects/${projectId}/experience`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(experience) }));
+  await page.route(`**/v1/projects/${projectId}/documents`, async route => {
     if (new URL(route.request().url()).pathname.endsWith('/trash')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(trash) });
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([document]) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/documents/${documentId}/revisions`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(revisions) }));
-  await page.route(`**/api/v1/projects/${projectId}/cv`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([cvRevision(revisionIds.analyticsOld, 3), cvRevision(revisionIds.analyticsCurrent, 9), cvRevision(revisionIds.productCurrent, 4)]) }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/documents\/${documentId}\/revisions|\/v1\/async\/projects\/${projectId}\/documents\/${documentId}\/revisions)(?:\\?.*)?$`), route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(revisions) }));
+  await page.route(`**/v1/projects/${projectId}/cv`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([cvRevision(revisionIds.analyticsOld, 3), cvRevision(revisionIds.analyticsCurrent, 9), cvRevision(revisionIds.productCurrent, 4)]) }));
   return { mutations, cvIds, revisionIds };
 }
 

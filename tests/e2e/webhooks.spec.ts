@@ -10,13 +10,13 @@ async function hooks(page: Page) {
     { id: 'd0', endpoint_id: null, event_type: 'a2a.working', status: 'delivered', attempts: 1, last_status_code: 200, last_error: null, created_at: '2026-10-14T00:00:00Z', delivered_at: '2026-10-14T00:00:01Z' }];
   let redelivered = 0;
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/webhooks**`, async route => {
+  for (const url of [`**/v1/projects/${projectId}/webhooks**`, `**/v1/async/projects/${projectId}/webhooks**`]) await page.route(url, async route => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     const json = (status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (path.endsWith('/webhooks/deliveries')) return json(200, deliveries);
-    if (path.endsWith('/redeliver')) { redelivered += 1; deliveries[0].status = 'pending'; deliveries[0].attempts = 0; return json(202, { status: 'queued' }); }
-    if (path.endsWith('/test')) { deliveries.unshift({ ...deliveries[0], id: 'd2', event_type: 'ping', status: 'pending', attempts: 0 }); return json(202, { status: 'queued' }); }
+    if (path.endsWith('/redeliveries')) { redelivered += 1; deliveries[0].status = 'pending'; deliveries[0].attempts = 0; return json(202, { status: 'queued' }); }
+    if (path.endsWith('/test-deliveries')) { deliveries.unshift({ ...deliveries[0], id: 'd2', event_type: 'ping', status: 'pending', attempts: 0 }); return json(202, { status: 'queued' }); }
     if (request.method() === 'GET') return json(200, list);
     if (request.method() === 'POST') {
       const body = request.postDataJSON();

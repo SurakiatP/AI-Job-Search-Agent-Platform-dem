@@ -133,7 +133,7 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
           aria-describedby={telegramReady ? undefined : `telegram-hint-${item.id}`}
           onClick={() => void run(() => sendJson(`${base}/${item.id}`, 'PATCH', { telegram_enabled: !item.telegram_enabled }))}><MessageCircle className="size-4" aria-hidden="true" /></Button>}
         <Button variant="outline" size="icon" aria-label={c.previewFor(item.name)} disabled={busy}
-          onClick={() => void run(() => sendJson(`${base}/${item.id}/preview`, 'POST', {}), c.previewSent)}><Send className="size-4" aria-hidden="true" /></Button>
+          onClick={() => void run(() => sendJson(`/async/projects/${projectId}/saved-searches/${item.id}/previews`, 'POST', {}), c.previewSent)}><Send className="size-4" aria-hidden="true" /></Button>
         <Button variant="ghost" size="icon" aria-label={c.deleteFor(item.name)} onClick={() => setDeleting(item)}><Trash2 className="size-4" aria-hidden="true" /></Button>
       </div>
       {!pushReady && !item.push_enabled && <p id={`push-hint-${item.id}`} className="text-xs text-muted-foreground sm:col-span-2">{c.pushHint}</p>}

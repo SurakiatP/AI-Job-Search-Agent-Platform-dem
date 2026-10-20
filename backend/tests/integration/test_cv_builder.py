@@ -32,21 +32,21 @@ def ctx(api_context):
     api_context.render = _Render()
     api_context.runtime.render_typst = api_context.render
     api_context.csrf = _owner(api_context)
-    response = api_context.client.post("/api/v1/projects", json={"name": "Builder"}, headers=_write_headers(api_context.csrf))
+    response = api_context.client.post("/v1/projects", json={"name": "Builder"}, headers=_write_headers(api_context.csrf))
     assert response.status_code == 201, response.text
     api_context.pid = response.json()["id"]
     return api_context
 
 
 def _new_cv(ctx, **body) -> str:
-    response = ctx.client.post(f"/api/v1/projects/{ctx.pid}/cvs/builder", json={"name": "CV ทดลอง", **body},
+    response = ctx.client.post(f"/v1/projects/{ctx.pid}/cvs/builder", json={"name": "CV ทดลอง", **body},
                                headers=_write_headers(ctx.csrf))
     assert response.status_code == 201, response.text
     return response.json()["id"]
 
 
 def _url(ctx, cv_id, tail=""):
-    return f"/api/v1/projects/{ctx.pid}/cvs/{cv_id}/draft{tail}"
+    return f"/v1/projects/{ctx.pid}/cvs/{cv_id}/draft{tail}"
 
 
 def _save(ctx, cv_id, data, **extra):
@@ -68,7 +68,7 @@ def test_tc_cvb_01_build_publish_and_list(ctx):
     published = ctx.client.post(_url(ctx, cv_id, "/publish"), headers=_write_headers(ctx.csrf))
     assert published.status_code == 201, published.text
     assert published.json()["revision"] == 1 and published.json()["mime_type"] == "application/pdf"
-    cvs = ctx.client.get(f"/api/v1/projects/{ctx.pid}/cvs").json()
+    cvs = ctx.client.get(f"/v1/projects/{ctx.pid}/cvs").json()
     assert [c["latest_revision"]["revision"] for c in cvs if c["id"] == cv_id] == [1]
     with ctx.sessions() as db:
         text = db.scalar(select(CVRevisionText.text).where(CVRevisionText.cv_revision_id == published.json()["id"]))
@@ -100,7 +100,7 @@ def test_tc_cvb_04_template_and_accent_reach_the_render(ctx):
         call = ctx.render.calls[-1]
         assert json.loads(call["theme.json"])["accent"] == hexcode
         assert call["main.typ"].startswith(f"// {template.capitalize()}".encode())
-    listing = ctx.client.get("/api/v1/resume-templates").json()
+    listing = ctx.client.get("/v1/resume-templates").json()
     assert {t["id"]: t["ats_safe"] for t in listing["templates"]} == {  # CR-CVT-01 added the photo templates
         "onyx": True, "kakuna": True, "ditgar": False, "lotus": True, "teak": False, "saffron": True}
     assert len(listing["accents"]) == 6
@@ -143,7 +143,7 @@ def test_tc_cvb_06_references_never_in_text_or_bank(ctx):
 
 @pytest.mark.integration
 def test_tc_cvb_06_republish_replaces_only_this_cvs_bank_rows(ctx):
-    owner_fact = ctx.client.post(f"/api/v1/projects/{ctx.pid}/experience", json={"kind": "skill", "text": "Excel"},
+    owner_fact = ctx.client.post(f"/v1/projects/{ctx.pid}/experience", json={"kind": "skill", "text": "Excel"},
                                  headers=_write_headers(ctx.csrf))
     assert owner_fact.status_code == 201, owner_fact.text
     cv_id = _new_cv(ctx)
@@ -238,7 +238,7 @@ def test_tc_cvb_15_draft_save_rate_limit(ctx):
 
 @pytest.mark.integration
 def test_tc_cvb_01_start_from_experience_bank(ctx):
-    ctx.client.post(f"/api/v1/projects/{ctx.pid}/experience", json={"kind": "experience", "text": "ทำรายงานยอดขาย",
+    ctx.client.post(f"/v1/projects/{ctx.pid}/experience", json={"kind": "experience", "text": "ทำรายงานยอดขาย",
                     "role": "Data Analyst", "organization": "บริษัท ตัวอย่าง จำกัด"}, headers=_write_headers(ctx.csrf))
     cv_id = _new_cv(ctx, from_experience=True)
     data = ctx.client.get(_url(ctx, cv_id)).json()["resume_data"]
@@ -250,15 +250,15 @@ def test_tc_cvb_01_start_from_experience_bank(ctx):
 def test_cr02_draft_carries_the_cv_name_and_rename_works_from_the_builder(ctx):
     cv_id = _new_cv(ctx)
     assert ctx.client.get(_url(ctx, cv_id)).json()["name"] == "CV ทดลอง"
-    renamed = ctx.client.patch(f"/api/v1/projects/{ctx.pid}/cvs/{cv_id}", json={"name": "CV สาย AI"}, headers=_write_headers(ctx.csrf))
+    renamed = ctx.client.patch(f"/v1/projects/{ctx.pid}/cvs/{cv_id}", json={"name": "CV สาย AI"}, headers=_write_headers(ctx.csrf))
     assert renamed.status_code == 200, renamed.text
     assert ctx.client.get(_url(ctx, cv_id)).json()["name"] == "CV สาย AI"
-    assert ctx.client.patch(f"/api/v1/projects/{ctx.pid}/cvs/{cv_id}", json={"name": "  "}, headers=_write_headers(ctx.csrf)).status_code == 422
+    assert ctx.client.patch(f"/v1/projects/{ctx.pid}/cvs/{cv_id}", json={"name": "  "}, headers=_write_headers(ctx.csrf)).status_code == 422
 
 
 @pytest.mark.integration
 def test_cr02_templates_list_provinces(ctx):
-    provinces = ctx.client.get("/api/v1/resume-templates").json()["provinces"]
+    provinces = ctx.client.get("/v1/resume-templates").json()["provinces"]
     assert len(provinces) == 77 and {"id": "TH-10", "en": "Bangkok", "th": "กรุงเทพมหานคร"} in provinces
 
 

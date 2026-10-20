@@ -74,7 +74,7 @@ def test_limit_one_second_submit_same_day_waits(api_context):
     assert _run(ctx, _submit(ctx, csrf, pid, session, runtime, "s1")).status == "completed"
     second = _session(ctx, csrf, pid, session["cv_revision_id"], job={
         "title": "SRE", "company": "Other Co", "description": "Needs Python and Docker."}).json()
-    ctx.client.post(f"{PREFIX}/{pid}/runs/{second['evaluation_run_id']}/cancel", headers=_write_headers(csrf))
+    ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{second['evaluation_run_id']}/cancel", headers=_write_headers(csrf))
     runtime.script = [_good(facts)]
     _prepare(ctx, csrf, pid, second, "p-second")
     _execute_next(ctx, runtime)
@@ -242,7 +242,7 @@ def test_cancelling_a_pending_submit_cancels_it_and_voids_its_approval(api_conte
     csrf, pid, session, _, runtime, _ = _ready_pack(ctx)
     run_id = _submit(ctx, csrf, pid, session, runtime, "s-cancel")
     assert _run(ctx, run_id).status == "waiting_approval"
-    response = ctx.client.post(f"{PREFIX}/{pid}/runs/{run_id}/cancel", headers=_write_headers(csrf))
+    response = ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{run_id}/cancel", headers=_write_headers(csrf))
     assert response.status_code == 202 and response.json()["status"] == "cancelled"
     with ctx.sessions() as db:
         approval = db.scalar(select(Approval).where(Approval.run_id == UUID(run_id)))

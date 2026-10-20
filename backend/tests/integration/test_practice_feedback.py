@@ -46,7 +46,7 @@ def _attempt(ctx, headers, pid, question_id, answer=ANSWER):
 
 
 def _feedback(ctx, headers, pid, attempt_id):
-    return ctx.client.post(f"{PREFIX}/{pid}/practice-attempts/{attempt_id}/feedback", headers=headers)
+    return ctx.client.post(f"/v1/async/projects/{pid}/practice-attempts/{attempt_id}/feedback", headers=headers)
 
 
 def _detail(ctx, pid, set_id):
@@ -129,7 +129,7 @@ def test_ac_ivp_11_report_has_no_links_or_percentages_and_only_set_sections(api_
     ctx = api_context
     csrf, headers, pid, session, facts, set_id, made = _world(ctx)
     ctx.client.patch(f"{PREFIX}/{pid}/practice-questions/{made['technical']}", json={"card_rating": "learning"}, headers=headers)
-    queued = ctx.client.post(f"{PREFIX}/{pid}/practice-sets/{set_id}/report", headers=headers)
+    queued = ctx.client.post(f"/v1/async/projects/{pid}/practice-sets/{set_id}/report", headers=headers)
     assert queued.status_code == 202, queued.text
     assert queued.json()["report"]["status"] == "pending"
     reply = {"strengths": ["Clear STAR stories", "See https://example.test/course"],
@@ -158,7 +158,7 @@ def test_ac_ivp_10_feedback_and_report_use_the_practice_quota(api_context, monke
     monkeypatch.setenv("USER_DAILY_PRACTICE_QUOTA", "0")
     refused = _feedback(ctx, headers, pid, attempt_id)
     assert refused.status_code == 429 and refused.json()["code"] == "quota_exceeded"
-    assert ctx.client.post(f"{PREFIX}/{pid}/practice-sets/{set_id}/report", headers=headers).status_code == 429
+    assert ctx.client.post(f"/v1/async/projects/{pid}/practice-sets/{set_id}/report", headers=headers).status_code == 429
     with ctx.sessions() as db:
         assert db.get(InterviewAttempt, UUID(attempt_id)).feedback is None  # nothing half-queued
 

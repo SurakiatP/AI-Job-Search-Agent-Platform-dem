@@ -48,6 +48,8 @@ from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.services.accounts import require_admin
 
 router = APIRouter()
+# Liveness and readiness live at the root (/health, /health/ready) where load balancers look.
+health_router = APIRouter()
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 SAFE_FIELDS = frozenset({
     "path",
@@ -442,7 +444,7 @@ async def list_messages(project_id: UUID, session_id: UUID, actor=Depends(owner_
         return [{"id": r.id, "session_id": r.session_id, "role": r.role, "content": r.content, "created_at": r.created_at} for r in rows]
 
 
-@router.post("/projects/{project_id}/sessions/{session_id}/messages", status_code=202)
+@router.post("/async/projects/{project_id}/sessions/{session_id}/messages", status_code=202)
 async def create_message(project_id: UUID, session_id: UUID, body: MessageCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
     with services.sessions.begin() as db:
         authorize(db, actor, project_id, "write", "message")
@@ -609,7 +611,7 @@ async def match_job_sources(
     return await asyncio.to_thread(run)
 
 
-@router.post("/projects/{project_id}/job-search/match/runs", status_code=202, response_model=RunView)
+@router.post("/async/projects/{project_id}/smart-matches", status_code=202, response_model=RunView)
 async def start_match_run(project_id: UUID, body: MatchRunRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
     """Queue (or return the active) owner-only Jev scoring run for this CV revision and pool."""
     return await services.runs.submit_match(actor, project_id, body)
@@ -680,7 +682,7 @@ async def delete_saved_search(project_id: UUID, saved_search_id: UUID, actor=Dep
     return Response(status_code=204)
 
 
-@router.post("/projects/{project_id}/saved-searches/{saved_search_id}/preview", status_code=202,
+@router.post("/async/projects/{project_id}/saved-searches/{saved_search_id}/previews", status_code=202,
              response_model=DigestPreviewView)
 async def preview_saved_search(project_id: UUID, saved_search_id: UUID, actor=Depends(write_actor),
                                services: Services = Depends(get_services)):
@@ -707,7 +709,7 @@ async def list_webhook_deliveries(project_id: UUID, actor=Depends(owner_actor),
     return await asyncio.to_thread(services.webhooks.deliveries, actor, project_id)
 
 
-@router.post("/projects/{project_id}/webhooks/deliveries/{delivery_id}/redeliver", status_code=202,
+@router.post("/async/projects/{project_id}/webhooks/deliveries/{delivery_id}/redeliveries", status_code=202,
              response_model=QueuedView)
 async def redeliver_webhook(project_id: UUID, delivery_id: UUID, actor=Depends(write_actor),
                             services: Services = Depends(get_services)):
@@ -731,7 +733,7 @@ async def delete_webhook(project_id: UUID, webhook_id: UUID, actor=Depends(write
     return Response(status_code=204)
 
 
-@router.post("/projects/{project_id}/webhooks/{webhook_id}/test", status_code=202, response_model=QueuedView)
+@router.post("/async/projects/{project_id}/webhooks/{webhook_id}/test-deliveries", status_code=202, response_model=QueuedView)
 async def test_webhook(project_id: UUID, webhook_id: UUID, actor=Depends(write_actor),
                        services: Services = Depends(get_services)):
     _owner_only(actor)
@@ -782,7 +784,7 @@ async def remove_experience(project_id: UUID, item_id: UUID, actor=Depends(write
     return Response(status_code=204)
 
 
-@router.post("/projects/{project_id}/cvs/{cv_id}/experience-runs", status_code=202, response_model=RunView)
+@router.post("/async/projects/{project_id}/cvs/{cv_id}/experience-extractions", status_code=202, response_model=RunView)
 async def start_experience_run(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     """Queue (or return the active) owner-only extraction of this CV's latest revision into the experience bank."""
     return await services.runs.submit_extract(actor, project_id, cv_id)
@@ -937,14 +939,14 @@ async def document_revisions(project_id: UUID, document_id: UUID, actor=Depends(
     return await services.documents.revisions(actor, project_id, document_id)
 
 
-@router.post("/projects/{project_id}/documents/{document_id}/revisions", status_code=202, response_model=RunView)
+@router.post("/async/projects/{project_id}/documents/{document_id}/revisions", status_code=202, response_model=RunView)
 async def edit_document(project_id: UUID, document_id: UUID, body: DocumentEdit, actor=Depends(write_actor), services: Services = Depends(get_services)):
     """Owner manual edit: queue a non-LLM export run that appends a revision."""
     _owner_only(actor)
     return await services.runs.submit_export(actor, project_id, document_id, body)
 
 
-@router.post("/projects/{project_id}/documents/{document_id}/revisions/{revision_id}/restore", status_code=202, response_model=RunView)
+@router.post("/async/projects/{project_id}/documents/{document_id}/revisions/{revision_id}/restore", status_code=202, response_model=RunView)
 async def restore_revision(project_id: UUID, document_id: UUID, revision_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     """Owner undo: queue an export run that re-publishes an earlier revision's Markdown."""
     _owner_only(actor)
@@ -958,7 +960,7 @@ async def submit_run_input(project_id: UUID, run_id: UUID, body: RunInput, actor
     return await services.runs.submit_input(actor, project_id, run_id, body.answers)
 
 
-@router.post("/projects/{project_id}/runs/{run_id}/tailor/apply", status_code=202, response_model=RunView)
+@router.post("/async/projects/{project_id}/agent-runs/{run_id}/cv-tailoring/apply", status_code=202, response_model=RunView)
 async def apply_tailor(project_id: UUID, run_id: UUID, body: TailorApply, actor=Depends(write_actor), services: Services = Depends(get_services)):
     """Owner applies chosen interactive tailoring proposals; evidence is re-checked server-side."""
     _owner_only(actor)
@@ -1029,7 +1031,7 @@ async def create_cv(project_id: UUID, file: UploadFile = File(...),
         return _cv_view(db, _live_cv(db, project_id, new_cv_id))
 
 
-@router.post("/projects/{project_id}/cvs/{cv_id}/profile", status_code=202, response_model=RunView,
+@router.post("/async/projects/{project_id}/cvs/{cv_id}/skill-profiles", status_code=202, response_model=RunView,
              responses={200: {"description": "The latest revision already has a skill profile", "content": {"application/json": {"schema": {"type": "object", "properties": {"status": {"const": "ready"}}}}}}})
 async def profile_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     """Extract the CV's skill names in the sandbox (no AI); 200 {status: ready} when already done."""
@@ -1193,7 +1195,7 @@ async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Servic
     return await asyncio.to_thread(services.runs.list_views, actor, project_id, query)
 
 
-@router.post("/projects/{project_id}/runs", status_code=202, response_model=RunView)
+@router.post("/async/projects/{project_id}/agent-runs", status_code=202, response_model=RunView)
 async def submit_run(
     project_id: UUID,
     body: RunRequest,
@@ -1211,7 +1213,7 @@ async def get_run(project_id: UUID, run_id: UUID, actor=Depends(run_actor), serv
     return await services.runs.get(actor, project_id, run_id)
 
 
-@router.post("/projects/{project_id}/runs/{run_id}/cancel", status_code=202, response_model=RunView)
+@router.post("/async/projects/{project_id}/agent-runs/{run_id}/cancel", status_code=202, response_model=RunView)
 async def cancel_run(project_id: UUID, run_id: UUID, actor=Depends(run_write_actor), services: Services = Depends(get_services)):
     return await services.runs.cancel(actor, project_id, run_id)
 
@@ -1266,7 +1268,7 @@ async def connect_info(actor=Depends(owner_actor), services: Services = Depends(
     return {"share_origin": origin, "oauth": origin is not None and services.oauth is not None}
 
 
-@router.get("/health")
+@health_router.get("/health")
 async def health():
     return {"status": "ok"}
 
@@ -1313,7 +1315,7 @@ async def _check_components(services: Services) -> tuple[int, dict]:
     return (200 if ok else 503), {"status": "ok" if ok else "degraded", "components": dict(zip(names, results))}
 
 
-@router.get("/health/ready")
+@health_router.get("/health/ready")
 async def health_ready(request: Request, services: Services = Depends(get_services)):
     """Cached for a few seconds and single-flight: an unauthenticated caller cannot multiply probes."""
     state = request.app.state.__dict__.setdefault("readiness", {"at": -1e9, "result": None, "task": None})

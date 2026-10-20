@@ -34,15 +34,15 @@ test('account: upload, choose a built-in picture, remove; bad type and size are 
   await useSyntheticApplication(page);
   const state = { preset: null as string | null, image: false, version: null as string | null, puts: 0 };
   const user = () => ({ id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, avatar_preset: state.preset, has_avatar_image: state.image, avatar_version: state.version, created_at: '2026-10-01T00:00:00Z' });
-  await page.route('**/api/v1/auth/session', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrf_token: 'c', expires_at: '2030-01-01T00:00:00Z', user: user() }) }));
-  await page.route('**/api/v1/account/agents', r => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
-  await page.route('**/api/v1/account/avatar', r => {
+  await page.route('**/v1/auth/session', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrf_token: 'c', expires_at: '2030-01-01T00:00:00Z', user: user() }) }));
+  await page.route('**/v1/account/agents', r => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+  await page.route('**/v1/account/avatar', r => {
     const m = r.request().method();
     if (m === 'PUT') { state.puts += 1; state.image = true; state.preset = null; state.version = 'v' + state.puts; return r.fulfill({ status: 204 }); }
     if (m === 'DELETE') { state.image = false; return r.fulfill({ status: 204 }); }
     return r.fulfill({ status: 200, contentType: 'image/png', body: png });
   });
-  await page.route('**/api/v1/account/avatar-preset', r => { state.preset = r.request().postDataJSON().preset; state.image = false; return r.fulfill({ status: 204 }); });
+  await page.route('**/v1/account/avatar-preset', r => { state.preset = r.request().postDataJSON().preset; state.image = false; return r.fulfill({ status: 204 }); });
   await page.goto('/app/account');
   const picture = page.getByRole('heading', { name: 'Profile picture' });
   await expect(picture).toBeVisible();

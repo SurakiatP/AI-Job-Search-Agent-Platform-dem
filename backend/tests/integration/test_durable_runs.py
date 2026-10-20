@@ -309,7 +309,7 @@ def test_cancel_works_from_needs_input_and_input_is_owner_only(api_context):
     grant_actor = _actor(ctx, pid, "results:read", "applications:apply")
     with pytest.raises(Exception):
         asyncio.run(ctx.client.app.state.services.runs.submit_input(grant_actor, UUID(pid), UUID(run_id), {"why": "x"}))
-    cancelled = ctx.client.post(f"{PREFIX}/{pid}/runs/{run_id}/cancel", headers=_write_headers(csrf))
+    cancelled = ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{run_id}/cancel", headers=_write_headers(csrf))
     assert cancelled.json()["status"] == "cancelled"
     assert _input(ctx, csrf, pid, run_id, {"why": "x"}).json()["code"] == "run_not_awaiting_input"
 
@@ -320,9 +320,9 @@ def test_interactive_tailor_rests_in_needs_input_and_can_be_cancelled(api_contex
     csrf, pid, session_, facts, _ = _setup(ctx, [])
     run_id, _runtime = _interactive(ctx, csrf, pid, session_, facts)
     assert _run(ctx, run_id).status == "needs_input"
-    cancelled = ctx.client.post(f"{PREFIX}/{pid}/runs/{run_id}/cancel", headers=_write_headers(csrf))
+    cancelled = ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{run_id}/cancel", headers=_write_headers(csrf))
     assert cancelled.json()["status"] == "cancelled"
-    refused = ctx.client.post(f"{PREFIX}/{pid}/runs/{run_id}/tailor/apply", headers=_write_headers(csrf),
+    refused = ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{run_id}/cv-tailoring/apply", headers=_write_headers(csrf),
                               json={"proposal_ids": [0]})
     assert refused.status_code == 404
 

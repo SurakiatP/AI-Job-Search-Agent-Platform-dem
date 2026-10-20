@@ -6,8 +6,8 @@ const running = { id: 'cccccccc-0000-4000-8000-000000000009', project_id: projec
 test('a running run shows a turning ring, what it is doing, and a moving bar; nothing is announced twice', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([running]) }));
-  await page.route(`**/api/v1/projects/${projectId}/runs/${running.id}/events`, () => new Promise(() => undefined)); // stays open: work never finishes in this test
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([running]) }));
+  await page.route(`**/v1/projects/${projectId}/runs/${running.id}/events`, () => new Promise(() => undefined)); // stays open: work never finishes in this test
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   const note = page.getByText(/^The agent is processing:/);
   await expect(note).toBeVisible();
@@ -21,8 +21,8 @@ test('queued CV experience extraction shows the working row with its elapsed wai
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await useSyntheticApplication(page);
   const cv = { id: '77777777-7777-4777-8777-777777777777', name: 'Data CV', is_primary: true, in_use: false, revision_count: 1, latest_revision: null };
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([cv]) }));
-  await page.route(`**/api/v1/projects/${projectId}/experience**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], provider_configured: true, extraction: { run_id: 'r1', status: 'queued', cv_id: cv.id, summary: null } }) }));
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([cv]) }));
+  await page.route(`**/v1/projects/${projectId}/experience**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], provider_configured: true, extraction: { run_id: 'r1', status: 'queued', cv_id: cv.id, summary: null } }) }));
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
   await expect(page.getByText('เอเจนต์รอคิวสกัดประสบการณ์จาก CV').first()).toBeVisible();
   await expect(page.locator('.busy-bar').first()).toBeVisible();
@@ -33,8 +33,8 @@ test('reduced motion keeps the label and stills the ring and bar', async ({ page
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([running]) }));
-  await page.route(`**/api/v1/projects/${projectId}/runs/${running.id}/events`, () => new Promise(() => undefined));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([running]) }));
+  await page.route(`**/v1/projects/${projectId}/runs/${running.id}/events`, () => new Promise(() => undefined));
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByText(/^The agent is processing:/)).toBeVisible();
   const names = await page.locator('svg.animate-spin:visible').first().evaluate(el => getComputedStyle(el).animationName);
@@ -52,8 +52,8 @@ const tailoringEvents = [
 test('run progress reads as plain sentences, merges repeated AI rounds and shows no internal step names', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ ...running, operation: 'tailor_cv' }]) }));
-  await page.route(`**/api/v1/projects/${projectId}/runs/${running.id}/events`, route => route.fulfill({ status: 200, contentType: 'text/event-stream', body: tailoringEvents.map(e => `id: ${e.sequence}\nevent: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`).join('') }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ ...running, operation: 'tailor_cv' }]) }));
+  await page.route(`**/v1/projects/${projectId}/runs/${running.id}/events`, route => route.fulfill({ status: 200, contentType: 'text/event-stream', body: tailoringEvents.map(e => `id: ${e.sequence}\nevent: ${e.event_type}\ndata: ${JSON.stringify(e)}\n\n`).join('') }));
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   const list = page.getByRole('list', { name: 'ความคืบหน้า' });
   await expect(list.getByText('เข้าคิวแล้ว', { exact: true })).toBeVisible();

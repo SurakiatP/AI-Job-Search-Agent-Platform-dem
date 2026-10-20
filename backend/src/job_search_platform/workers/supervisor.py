@@ -19,7 +19,7 @@ from job_search_platform.db.models import Run, RunArtifact, StoredFile
 from job_search_platform.services import rate_limits
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import append_event
-from job_search_platform.workers.queue import MAX_ACTIVE_PROJECTS
+from job_search_platform.workers.queue import max_active_projects
 
 
 def process_birth(pid: int) -> datetime | None:
@@ -165,7 +165,7 @@ class WorkerSupervisor:
             if time.monotonic() - last_purge >= self.purge_interval:
                 last_purge = time.monotonic()
                 await self._purge_step()
-            if len(self._active) >= MAX_ACTIVE_PROJECTS:
+            if len(self._active) >= max_active_projects():
                 await asyncio.sleep(self.poll_interval)
                 continue
             run = await asyncio.to_thread(self.queue.claim_next, self.lease_owner)

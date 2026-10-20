@@ -375,7 +375,7 @@ export function SearchPage() {
 
   // Extracts the CV's skill names in the sandbox (no AI), then waits for the run to finish.
   async function profileCv(id: string, signal: AbortSignal) {
-    const first = await apiRequest<{ status?: string; id?: string }>(`/projects/${projectId}/cvs/${id}/profile`, { method: 'POST', signal });
+    const first = await apiRequest<{ status?: string; id?: string }>(`/async/projects/${projectId}/cvs/${id}/skill-profiles`, { method: 'POST', signal });
     if (first.status === 'ready' || !first.id) return;
     for (let attempt = 0; attempt < 60; attempt += 1) {
       await sleep(1500, signal);
@@ -390,7 +390,7 @@ export function SearchPage() {
   async function rankJobs(signal: AbortSignal) {
     setRanking(true);
     try {
-      const run = await apiRequest<{ id: string }>(`/projects/${projectId}/job-search/match/runs`, { method: 'POST', signal, body: JSON.stringify({
+      const run = await apiRequest<{ id: string }>(`/async/projects/${projectId}/smart-matches`, { method: 'POST', signal, body: JSON.stringify({
         cv_revision_id: revisionId, q, cities: city ? [city] : [], work_mode: mode || null, posted_within_days: posted ? Number(posted) : null, category: category || null,
         seniority: splitList(get('seniority')), employment_type: splitList(get('employment_type')), company_type: splitList(get('company_type')), skills: splitList(get('skills')),
         posting_language: get('posting_language') || null, salary_min: get('salary_min') ? Number(get('salary_min')) : null, pool: POOL_SIZE, offset: 0 }) });

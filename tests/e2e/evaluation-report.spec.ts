@@ -23,12 +23,12 @@ const report = {
 async function open(page: Page, evaluation: object) {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/sessions/${sessionId}`, route => route.fulfill({
+  await page.route(`**/v1/projects/${projectId}/sessions/${sessionId}`, route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({
       id: sessionId, project_id: projectId, title: 'Session', created_at: '2026-10-01T00:00:00Z', cv_revision_id: 'c1',
       job_revision_id: job, cv_name: 'Data CV', cv_revision: 4, job_title: 'AI Engineer', job_company: 'Example Co' }),
   }));
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify([{
       id: 'cccccccc-0000-4000-8000-000000000001', project_id: projectId, session_id: sessionId, operation: 'evaluate_job',
       status: 'completed', job_revision_id: job, output_language: 'en', result_file_ids: [], created_at: '2026-10-10T00:00:00Z',

@@ -17,3 +17,16 @@ def test_runtime_and_bridge_accept_the_same_operations_including_practice():
     exec(source[start:end], namespace)  # only the literal mapping, no bridge imports
     assert set(namespace["CAREER_OPS_FILES"]) == set(NATIVE_OPERATIONS)
     assert {"interview_generate", "interview_grade", "interview_report"} <= set(NATIVE_OPERATIONS)
+
+
+def test_practice_runs_ask_for_low_reasoning_and_others_keep_the_model_default():
+    # Measured 2026-10-20: ~90% of interview_generate output tokens were hidden reasoning (4-5 min).
+    source = BRIDGE.read_text()
+    start = source.index("REASONING = {")
+    namespace: dict = {}
+    exec(source[start:source.index("\n}\n", start) + 3], namespace)
+    reasoning = namespace["REASONING"]
+    low = {"extra_body": {"reasoning": {"effort": "low"}}}
+    assert all(reasoning.get(op) == low for op in ("interview_generate", "interview_grade", "interview_report"))
+    assert reasoning.get("evaluate_job") is None and reasoning.get("tailor_cv") is None
+    assert 'request_overrides=REASONING.get(request.get("operation"))' in source

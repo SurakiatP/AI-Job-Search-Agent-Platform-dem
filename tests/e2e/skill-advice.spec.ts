@@ -11,8 +11,8 @@ const item = (id: string, text: string) => ({ id, kind: 'skill', text, role: nul
 async function open(page: Page, locale: 'en' | 'th', missing: string[], bank: unknown[]) {
   await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/runs`, r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([evalRun(missing)]) }));
-  await page.route(`**/api/v1/projects/${projectId}/experience`, r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: bank, extraction: null, provider_configured: true }) }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([evalRun(missing)]) }));
+  await page.route(`**/v1/projects/${projectId}/experience`, r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: bank, extraction: null, provider_configured: true }) }));
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
 }
 
@@ -40,7 +40,7 @@ test('with an empty experience bank nothing can be added (Thai)', async ({ page 
 test('manual tailoring sends the user request; autopilot sends none', async ({ page }) => {
   await open(page, 'en', ['dbt'], []);
   const bodies: Record<string, unknown>[] = [];
-  await page.route(`**/api/v1/projects/${projectId}/runs`, async r => { if (r.request().method() === 'POST') { bodies.push(r.request().postDataJSON()); return r.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify(evalRun([])) }); } return r.fallback(); });
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), async r => { if (r.request().method() === 'POST') { bodies.push(r.request().postDataJSON()); return r.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify(evalRun([])) }); } return r.fallback(); });
   await page.getByRole('tab').nth(1).click();
   await expect(page.getByLabel('What should change, and by how much?')).toHaveCount(0); // autopilot: no free text
   await page.getByRole('button', { name: 'Tailor CV', exact: true }).click();

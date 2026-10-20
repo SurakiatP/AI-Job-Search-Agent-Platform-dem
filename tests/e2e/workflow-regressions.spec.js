@@ -4,7 +4,7 @@ const baseRun = { created_at: '2026-10-04T00:00:00Z', id: 'aaaaaaaa-aaaa-4aaa-8a
 const owner = { authenticated: true, csrf_token: 'synthetic-only', expires_at: '2030-01-01T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, created_at: '2026-10-01T00:00:00Z' } };
 const approval = id => ({ id, run_id: baseRun.id, action: 'promote_cv', revision_id: `revision-${id}`, expected_cv_revision_id: `base-${id}`, change_digest: `digest-${id}`, expires_at: '2030-01-01T00:00:00Z', consumed_at: null, decision: null });
 async function setup(page, handler) {
-  await page.route('**/api/v1/**', handler ?? (route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(owner) })));
+  await page.route('**/v1/**', handler ?? (route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(owner) })));
   await page.goto(`${process.env.JSP_E2E_BASE_URL ?? 'http://127.0.0.1:4175'}/tests/shell.html`);
   await page.evaluate(async () => {
     const r = await import('/node_modules/.vite/deps/react.js'); const React = r.default ?? r;
@@ -123,7 +123,7 @@ async function idempotencyAndReload(browser) {
     const path = new URL(route.request().url()).pathname; let value = [];
     if (path.endsWith('/auth/session')) value = owner;
     else if (path.endsWith('/messages') && route.request().method() === 'POST') { messages++; value = { id: 'synthetic-message', content: 'Synthetic history only' }; }
-    else if (path.endsWith('/runs') && route.request().method() === 'POST') {
+    else if (path.endsWith('/agent-runs') && route.request().method() === 'POST') {
       const body = route.request().postDataJSON(); submissions.push(body);
       if (body.retry_of_id) savedRun = { ...baseRun, id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', status: 'failed', retry_of_id: body.retry_of_id };
       else savedRun = { ...baseRun, status: 'failed' };

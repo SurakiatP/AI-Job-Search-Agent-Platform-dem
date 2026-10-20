@@ -89,14 +89,14 @@ def _stub(tmp_path: Path, name: str, body: str) -> None:
 
 def test_wait_ready_fails_after_deadline(tmp_path):
     _stub(tmp_path, "curl", "exit 22")
-    result = _sh("wait_ready https://example.test/api/v1/health/ready 2",
+    result = _sh("wait_ready https://example.test/health/ready 2",
                  {"PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}"})
     assert result.returncode != 0
 
 
 def test_wait_ready_resolves_domain_to_loopback(tmp_path):
     _stub(tmp_path, "curl", 'echo "$@" > "$0.args"')
-    result = _sh("wait_ready https://example.test/api/v1/health/ready 5",
+    result = _sh("wait_ready https://example.test/health/ready 5",
                  {"PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}", "DOMAIN": "example.test"})
     assert result.returncode == 0
     assert "--resolve example.test:443:127.0.0.1" in (tmp_path / "bin" / "curl.args").read_text()
@@ -104,7 +104,7 @@ def test_wait_ready_resolves_domain_to_loopback(tmp_path):
 
 def test_wait_ready_succeeds(tmp_path):
     _stub(tmp_path, "curl", "exit 0")
-    result = _sh("wait_ready https://example.test/api/v1/health/ready 5",
+    result = _sh("wait_ready https://example.test/health/ready 5",
                  {"PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}"})
     assert result.returncode == 0
 

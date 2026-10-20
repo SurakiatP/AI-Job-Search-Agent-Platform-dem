@@ -27,10 +27,10 @@ async function installSurface(page: import('@playwright/test').Page, surface: ty
   else if (surface.bundle === 'utilities') await useUtilitiesFixture(page, { preferences: { locale: variant.locale as 'en' | 'th', theme: variant.theme as 'light' | 'dark' } });
   else if (surface.bundle === 'search') {
     await useSyntheticApplication(page);
-    await page.route(`**/api/v1/projects/${projectId}/job-search**`, route => route.fulfill({ json: new URL(route.request().url()).pathname.endsWith('/facets')
+    await page.route(`**/v1/projects/${projectId}/job-search**`, route => route.fulfill({ json: new URL(route.request().url()).pathname.endsWith('/facets')
       ? { total: 1, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 1, thai_postings: 1 }
       : { items: [{ slug: 'synthetic-review', title: 'Synthetic analyst opportunity', company: 'Example Co', skills: ['SQL'], source_url: 'https://jobs.example.test/1', description_markdown: 'Synthetic role for interface verification.' }], total: 1, limit: 20, offset: 0 } }));
-    await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ json: { items: [], status: { email_verified: true, notifications_enabled: true } } }));
+    await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ json: { items: [], status: { email_verified: true, notifications_enabled: true } } }));
   } else await useAccessFixture(page, 'anonymous' in surface && surface.anonymous === true);
 }
 

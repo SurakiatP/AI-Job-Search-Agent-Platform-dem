@@ -121,7 +121,7 @@ export function SessionPage() {
     setSubmitting(true); setError(''); setAccountError('');
     const key = crypto.randomUUID();
     try {
-      await apiRequest<RunView>(`/projects/${projectId}/runs`, {
+      await apiRequest<RunView>(`/async/projects/${projectId}/agent-runs`, {
         method: 'POST', headers: { 'Idempotency-Key': key },
         body: JSON.stringify({ session_id: sessionId, operation, output_language: outputLanguage, idempotency_key: key, ...(instructions ? { owner_instructions: instructions } : {}), ...(documentId ? { document_id: documentId } : {}), ...(draftKind ? { draft_kind: draftKind } : {}), ...(retryOf ? { retry_of_id: retryOf } : {}) }),
       });

@@ -13,7 +13,7 @@ from job_search_platform.services import job_sources, smart_match
 from test_paired_sessions import _project, _upload  # noqa: F401
 from test_rest_api import _owner, _write_headers, api_context  # noqa: F401
 
-PREFIX = "/api/v1/projects"
+PREFIX = "/v1/projects"
 SLUGS = ["a", "b", "c", "d", "e"]
 
 
@@ -68,7 +68,7 @@ def test_unavailable_without_gateway_key_keeps_keyword_order(api_context, monkey
     assert all(i["ai_match"] is None for i in body["items"])
     assert body["items"][0]["highlight"]["matched"] == {"Python": "Python", "SQL": "SQL"}
     assert body["items"][0]["highlight"]["missing"] == {}
-    run = api_context.client.post(f"{PREFIX}/{pid}/job-search/match/runs", json={"cv_revision_id": rev, "q": "dev"},
+    run = api_context.client.post(f"/v1/async/projects/{pid}/smart-matches", json={"cv_revision_id": rev, "q": "dev"},
                                   headers=_write_headers(csrf))
     assert run.status_code == 409 and run.json()["code"] == "gateway_unconfigured"
 
@@ -143,7 +143,7 @@ def test_hide_company_job_unhide_and_authorization(api_context, monkeypatch):
         assert client.get(url, headers=bearer).status_code in {401, 403}
         assert client.post(url, headers=bearer, json={"kind": "job", "value": "z", "label": "z"}).status_code in {401, 403}
         assert client.delete(f"{url}/{job['id']}", headers=bearer).status_code in {401, 403}
-        assert client.post(f"{url}/../match/runs", headers=bearer, json={"cv_revision_id": rev}).status_code in {401, 403, 404, 405}
+        assert client.post(f"/v1/async/projects/{pid}/smart-matches", headers=bearer, json={"cv_revision_id": rev}).status_code in {401, 403, 404, 405}
     finally:
         client.cookies.update(saved)
 
@@ -159,8 +159,8 @@ def test_start_run_is_idempotent_hidden_from_list_and_key_removal(api_context, m
     csrf, pid, rev = _setup(api_context)
     client, headers = api_context.client, _write_headers(csrf)
     body = {"cv_revision_id": rev, "q": "dev"}
-    first = client.post(f"{PREFIX}/{pid}/job-search/match/runs", json=body, headers=headers)
-    second = client.post(f"{PREFIX}/{pid}/job-search/match/runs", json=body, headers=headers)
+    first = client.post(f"/v1/async/projects/{pid}/smart-matches", json=body, headers=headers)
+    second = client.post(f"/v1/async/projects/{pid}/smart-matches", json=body, headers=headers)
     assert first.status_code == 202 and second.status_code == 202, first.text
     assert first.json()["id"] == second.json()["id"] and first.json()["operation"] == "match_jobs"
     assert client.get(f"{PREFIX}/{pid}/runs").json() == []
@@ -195,7 +195,7 @@ def test_empty_pool_is_ready_and_different_filters_leave_one_queued_run(api_cont
     client, headers = api_context.client, _write_headers(csrf)
     assert client.get(_url(pid, rev, "&q=nothing")).json()["ai"] == {"status": "ready", "categories": None, "scored": 0}
     for q in ("one", "two", "three"):
-        assert client.post(f"{PREFIX}/{pid}/job-search/match/runs", json={"cv_revision_id": rev, "q": q}, headers=headers).status_code == 202
+        assert client.post(f"/v1/async/projects/{pid}/smart-matches", json={"cv_revision_id": rev, "q": q}, headers=headers).status_code == 202
     with api_context.sessions() as db:
         statuses = sorted(db.scalars(select(Run.status).where(Run.operation == "match_jobs")))
     assert statuses == ["cancelled", "cancelled", "queued"]
@@ -206,7 +206,7 @@ def test_run_request_validates_and_stores_filters_and_public_route_needs_no_cook
     _serve(monkeypatch, [])
     csrf, pid, rev = _setup(api_context)
     client, headers = api_context.client, _write_headers(csrf)
-    url = f"{PREFIX}/{pid}/job-search/match/runs"
+    url = f"/v1/async/projects/{pid}/smart-matches"
     for bad in ({"seniority": ["boss"]}, {"employment_type": ["x"]}, {"company_type": ["bank"]}, {"skills": ["Py"]},
                 {"skills": list("abcdef")}, {"posting_language": "en"}, {"salary_min": 0}, {"salary_min": 1_000_001}):
         assert client.post(url, json={"cv_revision_id": rev, **bad}, headers=headers).status_code == 422, bad
@@ -227,7 +227,7 @@ def test_run_request_validates_and_stores_filters_and_public_route_needs_no_cook
     monkeypatch.setattr(job_sources, "_search", lambda p: {"hits": [], "estimatedTotalHits": 4} if p["limit"] == 1
                         else {"estimatedTotalHits": 9, "facetDistribution": {"category": {"it": 9}, "posting_language": {"th": 3}}})
     job_sources._cache.clear()
-    public = client.get("/api/v1/public/job-stats")
+    public = client.get("/v1/public/job-stats")
     assert public.status_code == 200 and public.json() == {"total": 9, "new_7d": 4, "thai_postings": 3,
                                                              "categories": [{"value": "it", "count": 9}]}
     assert client.get(f"{PREFIX}/{pid}/job-search/facets").status_code == 401

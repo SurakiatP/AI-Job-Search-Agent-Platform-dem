@@ -276,7 +276,7 @@ async def list_project_sets(project_id: UUID, actor=Depends(owner_actor), servic
         return [{**pr.set_view(db, row), "job_title": title, "job_company": company} for row, title, company in rows]
 
 
-@router.post("/projects/{project_id}/practice-attempts/{attempt_id}/feedback", status_code=202)
+@router.post("/async/projects/{project_id}/practice-attempts/{attempt_id}/feedback", status_code=202)
 async def request_feedback(project_id: UUID, attempt_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     """FR-IVP-12/15: AI feedback on one saved answer (a flashcard answer gets a correctness check). Idempotent while
     pending or done; asks again after a failure."""
@@ -300,7 +300,7 @@ async def request_feedback(project_id: UUID, attempt_id: UUID, actor=Depends(wri
         return {"id": attempt.id, "answer": attempt.answer, "feedback": state, "created_at": attempt.created_at}
 
 
-@router.post("/projects/{project_id}/practice-sets/{set_id}/report", status_code=202)
+@router.post("/async/projects/{project_id}/practice-sets/{set_id}/report", status_code=202)
 async def request_report(project_id: UUID, set_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     """FR-IVP-14: end-of-set summary. A new request replaces the last report unless one is still being written."""
     _owner(actor)

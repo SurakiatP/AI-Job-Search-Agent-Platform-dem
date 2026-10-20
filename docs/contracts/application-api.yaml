@@ -8,7 +8,7 @@ info:
     messages, or other raw inputs. Provider credentials and model selection are never
     accepted by run submission.
 servers:
-  - url: /api/v1
+  - url: /v1
 security:
   - ownerSession: []
 tags:
@@ -159,12 +159,6 @@ paths:
     get:
       tags: [sessions]
       responses: {'200': {description: Owner-only message history}}
-    post:
-      tags: [sessions]
-      requestBody:
-        required: true
-        content: {application/json: {schema: {$ref: '#/components/schemas/MessageCreate'}}}
-      responses: {'202': {description: Accepted conversation message}}
   /projects/{project_id}/jobs:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -331,25 +325,6 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: CV has no skill profile yet (code cv_profile_missing), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-  /projects/{project_id}/job-search/match/runs:
-    parameters: [{$ref: '#/components/parameters/project_id'}]
-    post:
-      tags: [jobs]
-      description: >-
-        Owner-only. Queues (or returns the active) match_jobs run that scores the job pool with Jev and caches
-        scores per CV revision and posting. match_jobs runs are hidden from the run list, grants, MCP and A2A.
-        409 gateway_unconfigured when no gateway app key is available.
-      security: [{ownerSession: []}]
-      requestBody:
-        required: true
-        content: {application/json: {schema: {$ref: '#/components/schemas/MatchRunRequest'}}}
-      responses:
-        '202': {description: Match run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: No gateway app key (code gateway_unconfigured), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '422': {description: Invalid body}
-        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search/hidden:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -443,23 +418,6 @@ paths:
         '204': {description: Deleted}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-  /projects/{project_id}/saved-searches/{saved_search_id}/preview:
-    parameters:
-      - {$ref: '#/components/parameters/project_id'}
-      - name: saved_search_id
-        in: path
-        required: true
-        schema: {type: string, format: uuid}
-    post:
-      tags: [jobs]
-      description: Owner-only. Sends the digest for this saved search to the owner now, without changing its schedule.
-      security: [{ownerSession: []}]
-      responses:
-        '202': {description: Sent, content: {application/json: {schema: {$ref: '#/components/schemas/DigestPreviewView'}}}}
-        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '404': {$ref: '#/components/responses/NotFound'}
-        '429': {$ref: '#/components/responses/RateLimited'}
-        '503': {description: 'Mail is not configured (code mail_unavailable)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /oauth/requests/{handle}:
     parameters: [{name: handle, in: path, required: true, schema: {type: string}}]
     get:
@@ -534,22 +492,6 @@ paths:
         '200': {description: Deliveries, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/WebhookDeliveryView'}}}}}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-  /projects/{project_id}/webhooks/deliveries/{delivery_id}/redeliver:
-    parameters:
-      - {$ref: '#/components/parameters/project_id'}
-      - name: delivery_id
-        in: path
-        required: true
-        schema: {type: string, format: uuid}
-    post:
-      tags: [webhooks]
-      description: Owner-only. Re-queues a dead delivery with attempts reset; any other status gives 409 delivery_not_dead.
-      security: [{ownerSession: []}]
-      responses:
-        '202': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/QueuedView'}}}}
-        '403': {$ref: '#/components/responses/Forbidden'}
-        '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: 'Delivery is not dead (code delivery_not_dead)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/webhooks/{webhook_id}:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -575,21 +517,6 @@ paths:
       security: [{ownerSession: []}]
       responses:
         '204': {description: Deleted}
-        '403': {$ref: '#/components/responses/Forbidden'}
-        '404': {$ref: '#/components/responses/NotFound'}
-  /projects/{project_id}/webhooks/{webhook_id}/test:
-    parameters:
-      - {$ref: '#/components/parameters/project_id'}
-      - name: webhook_id
-        in: path
-        required: true
-        schema: {type: string, format: uuid}
-    post:
-      tags: [webhooks]
-      description: Owner-only. Queues a signed ping delivery to this endpoint.
-      security: [{ownerSession: []}]
-      responses:
-        '202': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/QueuedView'}}}}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/experience:
@@ -654,27 +581,6 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-  /projects/{project_id}/cvs/{cv_id}/experience-runs:
-    parameters:
-      - {$ref: '#/components/parameters/project_id'}
-      - name: cv_id
-        in: path
-        required: true
-        schema: {type: string, format: uuid}
-    post:
-      tags: [files]
-      description: >-
-        Owner-only. Queues (or returns the active) extract_experience run that reads the CV's latest revision and
-        adds its verbatim facts to the experience bank. Every CV upload also queues one automatically when a
-        gateway app key is available. extract_experience runs are hidden from the run list, grants, MCP and A2A.
-      security: [{ownerSession: []}]
-      responses:
-        '202': {description: Extraction run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '401': {$ref: '#/components/responses/Unauthorized'}
-        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: No gateway app key (code gateway_unconfigured), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '429': {description: 'Project run queue is full (code queue_full), or the daily run quota is spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/job-search/facets:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -856,66 +762,6 @@ paths:
       tags: [files]
       description: Owner-only immutable document revision metadata.
       responses: {'200': {description: Revisions, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/DocumentRevisionView'}}}}}}
-    post:
-      tags: [files]
-      description: >-
-        Owner-only manual edit. Queues a non-LLM export_document run that regenerates the
-        PDF/DOCX from the supplied Markdown and appends a revision with origin manual.
-        The run needs no provider configuration and is invisible to grants, MCP and A2A.
-      requestBody:
-        required: true
-        content: {application/json: {schema: {$ref: '#/components/schemas/DocumentEdit'}}}
-      responses:
-        '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: Another draft or export run for the document is queued or running (document_busy), or the document has no published source revision (document_source_unavailable)}
-        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-  /projects/{project_id}/documents/{document_id}/revisions/{revision_id}/restore:
-    parameters:
-      - {$ref: '#/components/parameters/project_id'}
-      - name: document_id
-        in: path
-        required: true
-        schema: {type: string, format: uuid}
-      - name: revision_id
-        in: path
-        required: true
-        schema: {type: string, format: uuid}
-    post:
-      tags: [files]
-      description: >-
-        Owner-only undo. Queues a non-LLM export_document run that re-publishes the Markdown of an
-        earlier revision as a new revision of the same document. History stays immutable.
-      responses:
-        '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: Another draft or export run for the document is queued or running (document_busy)}
-        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-  /projects/{project_id}/runs/{run_id}/tailor/apply:
-    parameters:
-      - {$ref: '#/components/parameters/project_id'}
-      - name: run_id
-        in: path
-        required: true
-        schema: {type: string, format: uuid}
-    post:
-      tags: [runs]
-      description: >-
-        Owner-only. Applies chosen proposals of a needs_input interactive tailor_cv run to its base text,
-        re-checking evidence for the whole selection, and queues an export_document run that publishes
-        one revision of the tailored CV, and the interactive run becomes completed. Any failed check rejects the call with evidence_required.
-      requestBody:
-        required: true
-        content: {application/json: {schema: {$ref: '#/components/schemas/TailorApply'}}}
-      responses:
-        '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '400': {description: Evidence check failed (evidence_required) or no chosen edit matched the base text (tailor_nothing_to_apply)}
-        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: Another export for the tailored CV is queued or running (document_busy), or the run was already applied (tailor_already_applied)}
-        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /projects/{project_id}/runs/{run_id}/input:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -1082,37 +928,6 @@ paths:
       description: Owner-only list of every live practice set in the project's live sessions, newest first, with job_title and job_company (FR-IVP-19).
       responses:
         '200': {description: Practice sets}
-  /projects/{project_id}/practice-attempts/{attempt_id}/feedback:
-    parameters:
-      - {$ref: '#/components/parameters/project_id'}
-      - {name: attempt_id, in: path, required: true, schema: {type: string, format: uuid}}
-    post:
-      tags: [sessions]
-      description: >-
-        Owner-only. Queues one interview_grade run for a saved answer: five 1-5 scores (structure, relevance, evidence,
-        clarity, company_fit), STAR spans inside the answer, what to add and unused bank facts; a flashcard answer gets
-        a correctness verdict instead. Idempotent while pending or done; asks again after a failure. Logistics
-        questions are not graded (409 practice_not_gradable). Uses the practice quota.
-      responses:
-        '202': {description: Attempt with feedback status pending (or the existing feedback)}
-        '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: practice_not_gradable, queue_full or gateway_unconfigured}
-        '429': {description: quota_exceeded}
-  /projects/{project_id}/practice-sets/{set_id}/report:
-    parameters:
-      - {$ref: '#/components/parameters/project_id'}
-      - {name: set_id, in: path, required: true, schema: {type: string, format: uuid}}
-    post:
-      tags: [sessions]
-      description: >-
-        Owner-only. Queues one interview_report run: strengths, skills to build, a preparation plan of topics and
-        readiness per section in words. No links, percentages or hiring chances. Replaces the last report unless one
-        is still pending. Uses the practice quota.
-      responses:
-        '202': {description: Set with report status pending}
-        '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: practice_set_busy (questions not ready), queue_full or gateway_unconfigured}
-        '429': {description: quota_exceeded}
   /resume-templates:
     get:
       tags: [files]
@@ -1321,26 +1136,6 @@ paths:
       responses:
         '201': {description: Published CV revision metadata, content: {application/json: {schema: {$ref: '#/components/schemas/CVRevisionView'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
-  /projects/{project_id}/cvs/{cv_id}/profile:
-    parameters:
-      - {$ref: '#/components/parameters/project_id'}
-      - name: cv_id
-        in: path
-        required: true
-        schema: {type: string, format: uuid}
-    post:
-      tags: [files]
-      description: >-
-        Owner-only. Queues a non-LLM profile_cv run (no session, job or provider) that parses the latest
-        revision in the sandbox and stores only the canonical skill names found (never CV text). Returns the
-        run (202; an already active run for the revision is returned again) or 200 {status: ready} when the
-        revision already has a profile. profile_cv runs are hidden from the run list, grants, MCP and A2A.
-      responses:
-        '200': {description: 'Already profiled: {status: ready}'}
-        '202': {description: Profile run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/files/{file_id}/download:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -1376,20 +1171,6 @@ paths:
       description: Owner list, or grant-visible results filtered to permitted result views.
       security: [{ownerSession: []}, {projectGrant: []}]
       responses: {'200': {description: Runs}}
-    post:
-      tags: [runs]
-      description: Submit a project-scoped evaluate_job or draft_documents request.
-      security: [{ownerSession: []}, {projectGrant: []}]
-      parameters:
-        - {name: Idempotency-Key, in: header, required: false, schema: {type: string, minLength: 1, maxLength: 128}}
-      requestBody:
-        required: true
-        content: {application/json: {schema: {$ref: '#/components/schemas/RunRequest'}}}
-      responses:
-        '202': {description: Queued or existing idempotent run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
-        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
-        '409': {description: Idempotency key reused with different inputs, or the job was removed (code job_removed)}
   /projects/{project_id}/runs/{run_id}:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -1418,17 +1199,6 @@ paths:
       description: Persisted SSE replay; grant authorization is rechecked before each event.
       security: [{ownerSession: []}, {projectGrant: []}]
       responses: {'200': {description: text/event-stream, content: {text/event-stream: {schema: {type: string}}}}}
-  /projects/{project_id}/runs/{run_id}/cancel:
-    parameters:
-      - {$ref: '#/components/parameters/project_id'}
-      - name: run_id
-        in: path
-        required: true
-        schema: {type: string, format: uuid}
-    post:
-      tags: [runs]
-      description: Owner requests cancellation; public status changes only after execution stops.
-      responses: {'202': {description: Cancellation requested, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}}
   /projects/{project_id}/approvals:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -1664,12 +1434,16 @@ paths:
         '429': {description: Rate limited (code rate_limited), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
         '503': {description: Bot unreachable (code telegram_unavailable), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /health:
+    servers:
+      - url: /
     get:
       tags: [system]
       description: Liveness. Unauthenticated.
       responses:
         '200': {description: Process is up, content: {application/json: {schema: {type: object, required: [status], properties: {status: {type: string, enum: [ok]}}}}}}
   /health/ready:
+    servers:
+      - url: /
     get:
       tags: [system]
       description: >-
@@ -1714,6 +1488,252 @@ paths:
       description: Returns platform operations only; no Project data or provider configuration.
       responses:
         '200': {description: Allowlisted platform tools, content: {application/json: {schema: {$ref: '#/components/schemas/ToolsView'}}}}
+  /async/projects/{project_id}/agent-runs:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [runs]
+      description: Submit a project-scoped evaluate_job or draft_documents request.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      parameters:
+        - {name: Idempotency-Key, in: header, required: false, schema: {type: string, minLength: 1, maxLength: 128}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/RunRequest'}}}
+      responses:
+        '202': {description: Queued or existing idempotent run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '409': {description: Idempotency key reused with different inputs, or the job was removed (code job_removed)}
+  /async/projects/{project_id}/agent-runs/{run_id}/cancel:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [runs]
+      description: Owner requests cancellation; public status changes only after execution stops.
+      responses: {'202': {description: Cancellation requested, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}}
+  /async/projects/{project_id}/agent-runs/{run_id}/cv-tailoring/apply:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [runs]
+      description: >-
+        Owner-only. Applies chosen proposals of a needs_input interactive tailor_cv run to its base text,
+        re-checking evidence for the whole selection, and queues an export_document run that publishes
+        one revision of the tailored CV, and the interactive run becomes completed. Any failed check rejects the call with evidence_required.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/TailorApply'}}}
+      responses:
+        '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '400': {description: Evidence check failed (evidence_required) or no chosen edit matched the base text (tailor_nothing_to_apply)}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Another export for the tailored CV is queued or running (document_busy), or the run was already applied (tailor_already_applied)}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/sessions/{session_id}/messages:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: session_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [sessions]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MessageCreate'}}}
+      responses: {'202': {description: Accepted conversation message}}
+  /async/projects/{project_id}/smart-matches:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [jobs]
+      description: >-
+        Owner-only. Queues (or returns the active) match_jobs run that scores the job pool with Jev and caches
+        scores per CV revision and posting. match_jobs runs are hidden from the run list, grants, MCP and A2A.
+        409 gateway_unconfigured when no gateway app key is available.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MatchRunRequest'}}}
+      responses:
+        '202': {description: Match run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: No gateway app key (code gateway_unconfigured), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/cvs/{cv_id}/skill-profiles:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Queues a non-LLM profile_cv run (no session, job or provider) that parses the latest
+        revision in the sandbox and stores only the canonical skill names found (never CV text). Returns the
+        run (202; an already active run for the revision is returned again) or 200 {status: ready} when the
+        revision already has a profile. profile_cv runs are hidden from the run list, grants, MCP and A2A.
+      responses:
+        '200': {description: 'Already profiled: {status: ready}'}
+        '202': {description: Profile run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /async/projects/{project_id}/cvs/{cv_id}/experience-extractions:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Queues (or returns the active) extract_experience run that reads the CV's latest revision and
+        adds its verbatim facts to the experience bank. Every CV upload also queues one automatically when a
+        gateway app key is available. extract_experience runs are hidden from the run list, grants, MCP and A2A.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Extraction run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: No gateway app key (code gateway_unconfigured), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {description: 'Project run queue is full (code queue_full), or the daily run quota is spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/documents/{document_id}/revisions:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only manual edit. Queues a non-LLM export_document run that regenerates the
+        PDF/DOCX from the supplied Markdown and appends a revision with origin manual.
+        The run needs no provider configuration and is invisible to grants, MCP and A2A.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DocumentEdit'}}}
+      responses:
+        '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Another draft or export run for the document is queued or running (document_busy), or the document has no published source revision (document_source_unavailable)}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/documents/{document_id}/revisions/{revision_id}/restore:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: revision_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only undo. Queues a non-LLM export_document run that re-publishes the Markdown of an
+        earlier revision as a new revision of the same document. History stays immutable.
+      responses:
+        '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Another draft or export run for the document is queued or running (document_busy)}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/saved-searches/{saved_search_id}/previews:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: saved_search_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [jobs]
+      description: Owner-only. Sends the digest for this saved search to the owner now, without changing its schedule.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Sent, content: {application/json: {schema: {$ref: '#/components/schemas/DigestPreviewView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {description: 'Mail is not configured (code mail_unavailable)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/webhooks/{webhook_id}/test-deliveries:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: webhook_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [webhooks]
+      description: Owner-only. Queues a signed ping delivery to this endpoint.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/QueuedView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /async/projects/{project_id}/webhooks/deliveries/{delivery_id}/redeliveries:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: delivery_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [webhooks]
+      description: Owner-only. Re-queues a dead delivery with attempts reset; any other status gives 409 delivery_not_dead.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/QueuedView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: 'Delivery is not dead (code delivery_not_dead)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/practice-attempts/{attempt_id}/feedback:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: attempt_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Queues one interview_grade run for a saved answer: five 1-5 scores (structure, relevance, evidence,
+        clarity, company_fit), STAR spans inside the answer, what to add and unused bank facts; a flashcard answer gets
+        a correctness verdict instead. Idempotent while pending or done; asks again after a failure. Logistics
+        questions are not graded (409 practice_not_gradable). Uses the practice quota.
+      responses:
+        '202': {description: Attempt with feedback status pending (or the existing feedback)}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: practice_not_gradable, queue_full or gateway_unconfigured}
+        '429': {description: quota_exceeded}
+  /async/projects/{project_id}/practice-sets/{set_id}/report:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: set_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Queues one interview_report run: strengths, skills to build, a preparation plan of topics and
+        readiness per section in words. No links, percentages or hiring chances. Replaces the last report unless one
+        is still pending. Uses the practice quota.
+      responses:
+        '202': {description: Set with report status pending}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: practice_set_busy (questions not ready), queue_full or gateway_unconfigured}
+        '429': {description: quota_exceeded}
 components:
   securitySchemes:
     ownerSession:

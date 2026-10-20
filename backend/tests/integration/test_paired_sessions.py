@@ -13,7 +13,7 @@ from helpers import provider_config
 from job_search_platform.db.models import ConversationSession, Document, DocumentRevision, JobRevision, Run
 from test_rest_api import ROOT_FOR_MIGRATIONS, _owner, _write_headers, api_context  # noqa: F401
 
-PREFIX = "/api/v1/projects"
+PREFIX = "/v1/projects"
 JOB = {"title": "Engineer", "company": "Example Co", "description": "Synthetic role description"}
 
 
@@ -134,7 +134,7 @@ def test_runs_use_session_pair_and_default_to_primary_cv(api_context):
     job2 = client.post(f"{PREFIX}/{pid}/jobs", json={"title": "Other", "description": "Another"}, headers=headers).json()["id"]
 
     def run(sid, key, **extra):
-        return client.post(f"{PREFIX}/{pid}/runs", headers=headers, json={
+        return client.post(f"/v1/async/projects/{pid}/agent-runs", headers=headers, json={
             "session_id": sid, "operation": "evaluate_job", "output_language": "en", "idempotency_key": key, **extra})
 
     # Pair comes from the session; repeating it is fine, conflicting ids are 422.
@@ -184,7 +184,7 @@ def test_revise_run_requires_a_live_document_and_snapshots_it(api_context):
         doc_id, other_id = str(document.id), str(other.id)
 
     def draft(key, **extra):
-        return client.post(f"{PREFIX}/{pid}/runs", headers=headers, json={
+        return client.post(f"/v1/async/projects/{pid}/agent-runs", headers=headers, json={
             "session_id": paired["id"], "operation": "draft_documents", "output_language": "en",
             "idempotency_key": key, "owner_instructions": "shorter", **extra})
 
@@ -195,7 +195,7 @@ def test_revise_run_requires_a_live_document_and_snapshots_it(api_context):
         assert snapshot["document_id"] == doc_id and snapshot["previous_draft"] == "Dear team"
     assert draft("r2", document_id=str(uuid4())).status_code == 404
     assert draft("r2b", document_id=other_id).status_code == 404  # not drafted for this session's job
-    evaluate = client.post(f"{PREFIX}/{pid}/runs", headers=headers, json={
+    evaluate = client.post(f"/v1/async/projects/{pid}/agent-runs", headers=headers, json={
         "session_id": paired["id"], "operation": "evaluate_job", "output_language": "en",
         "idempotency_key": "r3", "document_id": doc_id})
     assert evaluate.status_code == 403
@@ -231,7 +231,7 @@ def test_project_b_cannot_use_project_a_cvs_jobs_sessions_or_documents(api_conte
     assert client.get(f"{PREFIX}/{b}/sessions/{session_a['id']}").status_code == 404
     # Runs: A's session, CV (by id and by revision), job and document under project B.
     def run(**body):
-        return client.post(f"{PREFIX}/{b}/runs", headers=headers, json={
+        return client.post(f"/v1/async/projects/{b}/agent-runs", headers=headers, json={
             "operation": "evaluate_job", "output_language": "en", "idempotency_key": uuid4().hex, **body})
 
     assert run(session_id=session_a["id"]).status_code == 404
@@ -321,7 +321,7 @@ def test_delete_session_moves_it_to_trash_and_restores(api_context):
     assert [x["id"] for x in client.get(base).json()] == []
     assert client.get(f"{base}/{sid}").status_code == 404
     assert client.patch(f"{base}/{sid}", json={"title": "x"}, headers=headers).status_code == 404
-    assert client.post(f"{PREFIX}/{pid}/runs", headers=headers, json={
+    assert client.post(f"/v1/async/projects/{pid}/agent-runs", headers=headers, json={
         "session_id": sid, "operation": "evaluate_job", "output_language": "en", "idempotency_key": "after-hide"}).status_code == 404
     # Runs stay visible; the session row and its pair stay referenced.
     assert [r["id"] for r in client.get(f"{PREFIX}/{pid}/runs").json()] == [run_id]
@@ -408,7 +408,7 @@ def test_permanent_delete_removes_trashed_session_and_runs_but_keeps_documents(a
     sid, eval_run = created["id"], created["evaluation_run_id"]
     _set_status(api_context, eval_run, "completed")
     # A drafting run in the same session that produced a document the owner keeps.
-    draft = client.post(f"{PREFIX}/{pid}/runs", headers=headers, json={
+    draft = client.post(f"/v1/async/projects/{pid}/agent-runs", headers=headers, json={
         "session_id": sid, "operation": "draft_documents", "output_language": "en", "idempotency_key": "d1"}).json()["id"]
     _set_status(api_context, draft, "completed")
     with api_context.sessions.begin() as db:

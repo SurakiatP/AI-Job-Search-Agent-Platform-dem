@@ -67,7 +67,7 @@ def test_listener_serves_registry_on_loopback_and_app_has_no_metrics_route(monke
                         files=_Async(), documents=None, runs=None, grants=None, settings=None, approvals=None,
                         supervisor=_Async(), runtime=_Async(), queue=None)
     with TestClient(create_app(services)) as client:
-        assert client.get("/api/v1/health").status_code == 200
+        assert client.get("/health").status_code == 200
         assert client.get("/metrics").status_code == 404  # never on the app port
         body = urllib.request.urlopen(f"http://127.0.0.1:{port}/metrics", timeout=5).read().decode()
         assert 'jsp_http_requests_total{method="GET",route="/health",status_class="2xx"}' in body
@@ -95,7 +95,7 @@ def test_listener_bind_failure_is_not_fatal(monkeypatch, caplog):
                             grants=None, settings=None, approvals=None, supervisor=_Async(), runtime=_Async(),
                             queue=None)
         with TestClient(create_app(services)) as client:
-            assert client.get("/api/v1/health").status_code == 200
+            assert client.get("/health").status_code == 200
         records = [r for r in caplog.records if r.getMessage() == "metrics_listener_unavailable"]
         assert len(records) == 1 and not records[0].exc_info
         assert records[0].port == busy.getsockname()[1] and records[0].error == "OSError"

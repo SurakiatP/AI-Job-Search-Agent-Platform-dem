@@ -52,7 +52,7 @@ async def _stop_shared(server, task) -> None:
 
 def _create_project_and_grants(api_context, csrf: str):
     response = api_context.client.post(
-        "/api/v1/projects",
+        "/v1/projects",
         json={"name": "Synthetic security boundaries"},
         headers=_write_headers(csrf),
     )
@@ -68,7 +68,7 @@ def _create_project_and_grants(api_context, csrf: str):
 
     capabilities = ["jobs:evaluate", "documents:draft", "results:read"]
     grant_response = api_context.client.post(
-        f"/api/v1/projects/{project_id}/grants",
+        f"/v1/projects/{project_id}/grants",
         json={
             "capabilities": capabilities,
             "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
@@ -77,7 +77,7 @@ def _create_project_and_grants(api_context, csrf: str):
     )
     assert grant_response.status_code == 201, grant_response.text
     read_only_response = api_context.client.post(
-        f"/api/v1/projects/{project_id}/grants",
+        f"/v1/projects/{project_id}/grants",
         json={
             "capabilities": ["results:read"],
             "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
@@ -86,7 +86,7 @@ def _create_project_and_grants(api_context, csrf: str):
     )
     assert read_only_response.status_code == 201, read_only_response.text
     evaluate_only_response = api_context.client.post(
-        f"/api/v1/projects/{project_id}/grants",
+        f"/v1/projects/{project_id}/grants",
         json={
             "capabilities": ["jobs:evaluate"],
             "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
@@ -251,7 +251,7 @@ async def _exercise_owner_rest(app, port: int, server: uvicorn.Server):
         async with httpx.AsyncClient(timeout=5) as client:
 
             no_origin = await client.post(
-                f"{base_url}/api/v1/projects",
+                f"{base_url}/v1/projects",
                 json={"name": "No Origin"},
                 headers={"Host": "127.0.0.1:8765", "X-CSRF-Token": csrf},
                 cookies=cookies,
@@ -259,7 +259,7 @@ async def _exercise_owner_rest(app, port: int, server: uvicorn.Server):
             assert no_origin.status_code == 403
 
             no_csrf = await client.post(
-                f"{base_url}/api/v1/projects",
+                f"{base_url}/v1/projects",
                 json={"name": "No CSRF"},
                 headers=allowed_headers,
                 cookies=cookies,
@@ -267,7 +267,7 @@ async def _exercise_owner_rest(app, port: int, server: uvicorn.Server):
             assert no_csrf.status_code == 403
 
             wrong_origin = await client.post(
-                f"{base_url}/api/v1/projects",
+                f"{base_url}/v1/projects",
                 json={"name": "Wrong Origin"},
                 headers={
                     "Host": "127.0.0.1:8765",

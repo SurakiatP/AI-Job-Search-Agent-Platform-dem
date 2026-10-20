@@ -45,7 +45,7 @@ async def _flow(api_context, port, *, register=True, client_id=None, fetch=None)
                            consent_url="http://127.0.0.1:8765/app/oauth/consent", **({"fetch": fetch} if fetch else {}))
     services.grants = Grants(api_context.sessions, mcp_resource=f"{origin}/mcp")
     csrf = await asyncio.to_thread(_owner, api_context)
-    project = api_context.client.post("/api/v1/projects", json={"name": "OAuth project"}, headers=_write_headers(csrf)).json()
+    project = api_context.client.post("/v1/projects", json={"name": "OAuth project"}, headers=_write_headers(csrf)).json()
     server, task = await _serve(create_shared_app(services, host="127.0.0.1", port=port), port)
     verifier = secrets.token_urlsafe(48)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
@@ -72,7 +72,7 @@ async def _flow(api_context, port, *, register=True, client_id=None, fetch=None)
         assert bad.status_code < 500
         handle = parse_qs(urlsplit(auth.headers["location"]).query)["request"][0]
         expires = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
-        approved = api_context.client.post(f"/api/v1/oauth/requests/{handle}/approve", headers=_write_headers(csrf),
+        approved = api_context.client.post(f"/v1/oauth/requests/{handle}/approve", headers=_write_headers(csrf),
                                            json={"project_id": project["id"], "capabilities": ["results:read"], "expires_at": expires})
         code = parse_qs(urlsplit(approved.json()["redirect_url"]).query)["code"][0]
         token = await http.post("/token", data={"grant_type": "authorization_code", "code": code, "redirect_uri": CB,
@@ -102,9 +102,9 @@ async def test_dcr_flow_mcp_call_and_revocation(api_context, unused_tcp_port):
             a2a = await http.post("/", json={"jsonrpc": "2.0", "id": 1, "method": "tasks/list", "params": {}},
                                   headers={"Authorization": f"Bearer {tokens['access_token']}"})
             assert a2a.status_code == 401 or "error" in a2a.json()  # A2A refuses OAuth tokens
-        agents = api_context.client.get(f"/api/v1/projects/{project['id']}/grants").json()  # test context has no Accounts service
+        agents = api_context.client.get(f"/v1/projects/{project['id']}/grants").json()  # test context has no Accounts service
         agent = next(a for a in agents if a["label"] == "Synthetic DCR")
-        api_context.client.delete(f"/api/v1/projects/{project['id']}/grants/{agent['id']}", headers=_write_headers(csrf))
+        api_context.client.delete(f"/v1/projects/{project['id']}/grants/{agent['id']}", headers=_write_headers(csrf))
         async with httpx.AsyncClient(base_url=origin, trust_env=False) as http:
             after = await http.post("/mcp/", json={}, headers={"Authorization": f"Bearer {tokens['access_token']}"})
             assert after.status_code == 401 and 'error="invalid_token"' in after.headers["www-authenticate"]

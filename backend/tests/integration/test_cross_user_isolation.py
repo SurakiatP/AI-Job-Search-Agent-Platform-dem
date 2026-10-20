@@ -30,7 +30,7 @@ from test_surface_parity import _issue_grant, _start_shared, _stop_shared
 
 pytestmark = pytest.mark.integration  # needs MinIO and Postgres
 
-BASE = "/api/v1"
+BASE = "/v1"
 ALICE_SESSION_TITLE = "Alice private session"
 ALICE_PROJECT_NAME = "Alice private project"
 

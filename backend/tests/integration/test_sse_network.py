@@ -20,7 +20,7 @@ from test_sse import _create_run
 async def test_live_http_replay_disconnect_and_grant_revocation(api_context, monkeypatch, unused_tcp_port):
     project_id, run_id, csrf, _ = await asyncio.to_thread(_create_run, api_context)
     issued = api_context.client.post(
-        f"/api/v1/projects/{project_id}/grants",
+        f"/v1/projects/{project_id}/grants",
         json={"capabilities": ["results:read"], "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()},
         headers=_write_headers(csrf),
     )
@@ -33,7 +33,7 @@ async def test_live_http_replay_disconnect_and_grant_revocation(api_context, mon
     server = uvicorn.Server(uvicorn.Config(api_context.client.app, host="127.0.0.1", port=unused_tcp_port, lifespan="off", access_log=False, log_level="critical"))
     task = asyncio.create_task(server.serve())
     headers = {"Authorization": f"Bearer {grant['token']}"}
-    path = f"/api/v1/projects/{project_id}/runs/{run_id}/events"
+    path = f"/v1/projects/{project_id}/runs/{run_id}/events"
     try:
         async with asyncio.timeout(10):
             while not server.started:

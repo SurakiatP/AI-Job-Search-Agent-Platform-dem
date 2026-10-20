@@ -17,7 +17,7 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await useSyntheticApplication(page);
 
-  await page.route(`**/api/v1/projects/${projectId}/cv`, async route => {
+  await page.route(`**/v1/projects/${projectId}/cv`, async route => {
     if (route.request().method() === 'GET') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: '66666666-6666-4666-8666-666666666666', revision: 1 }]) });
       return;
@@ -40,7 +40,7 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
     retry_of_id: null,
     evaluation_result: { report_markdown: 'Synthetic evaluation fixture.', score: 82 },
   };
-  await page.route(`**/api/v1/projects/${projectId}/runs`, async route => {
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), async route => {
     if (route.request().method() === 'POST') {
       submittedRun = route.request().postDataJSON() as Record<string, unknown>;
       await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(completedRun) });
@@ -52,7 +52,7 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
     }
     await route.fallback();
   });
-  await page.route(`**/api/v1/projects/${projectId}/documents`, async route => {
+  await page.route(`**/v1/projects/${projectId}/documents`, async route => {
     if (route.request().method() === 'GET' && submittedRun) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([generatedDocument]) });
       return;
@@ -128,7 +128,7 @@ test('synthetic upload and transport faults stay explicit without false completi
   await page.goto(`/app/projects/${projectId}/profile`);
 
   let uploadRequests = 0;
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, async route => {
+  await page.route(`**/v1/projects/${projectId}/cvs`, async route => {
     if (route.request().method() === 'POST') {
       await route.fulfill({
         status: 422,
@@ -140,7 +140,7 @@ test('synthetic upload and transport faults stay explicit without false completi
     await route.fallback();
   });
   page.on('request', request => {
-    if (request.url().endsWith(`/api/v1/projects/${projectId}/cvs`) && request.method() === 'POST') uploadRequests += 1;
+    if (request.url().endsWith(`/v1/projects/${projectId}/cvs`) && request.method() === 'POST') uploadRequests += 1;
   });
   await page.getByLabel('Add CV').setInputFiles({
     name: 'synthetic-scan-only.pdf',
@@ -177,14 +177,14 @@ test('expired approval is visible but cannot be approved from a stale request', 
     evaluation_result: null,
   };
   let submitted = false;
-  await page.route(`**/api/v1/projects/${projectId}/cv`, async route => {
+  await page.route(`**/v1/projects/${projectId}/cv`, async route => {
     if (route.request().method() === 'GET') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: '66666666-6666-4666-8666-666666666666', revision: 1 }]) });
       return;
     }
     await route.fallback();
   });
-  await page.route(`**/api/v1/projects/${projectId}/runs`, async route => {
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), async route => {
     if (route.request().method() === 'POST') {
       submitted = true;
       await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(pendingRun) });
@@ -196,7 +196,7 @@ test('expired approval is visible but cannot be approved from a stale request', 
     }
     await route.fallback();
   });
-  await page.route(`**/api/v1/projects/${projectId}/approvals`, async route => {
+  await page.route(`**/v1/projects/${projectId}/approvals`, async route => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
@@ -207,7 +207,7 @@ test('expired approval is visible but cannot be approved from a stale request', 
     }
     await route.fallback();
   });
-  await page.route(`**/api/v1/projects/${projectId}/runs/${runId}/events`, route => route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' }));
+  await page.route(`**/v1/projects/${projectId}/runs/${runId}/events`, route => route.fulfill({ status: 200, contentType: 'text/event-stream', body: '' }));
 
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await page.getByRole('tab', { name: 'Prepare documents', exact: true }).click();
@@ -220,7 +220,7 @@ test('expired approval is visible but cannot be approved from a stale request', 
 
 test('anonymous visitors are redirected to log in with the original path preserved', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
-  await page.route('**/api/v1/auth/session', route => route.fulfill({
+  await page.route('**/v1/auth/session', route => route.fulfill({
     status: 401,
     contentType: 'application/json',
     body: JSON.stringify({ code: 'unauthorized', message_key: 'errors.unauthorized', retryable: false, correlation_id: '55555555-5555-4555-8555-555555555555' }),

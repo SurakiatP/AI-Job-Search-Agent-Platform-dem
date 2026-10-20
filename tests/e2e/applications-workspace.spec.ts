@@ -80,7 +80,7 @@ test('add-posting draft validates source and saves an application record', async
   await expect(page.getByRole('link', { name: 'Analytics Lead' })).toBeVisible();
   expect(fixture.writes[0]).toEqual({
     method: 'POST',
-    path: `/api/v1/projects/${fixture.projectId}/jobs`,
+    path: `/v1/projects/${fixture.projectId}/jobs`,
     body: { title: 'Analytics Lead', company: 'Cedar Labs', description: 'A synthetic role description with useful context.', source_url: 'https://jobs.example.test/cedar-analytics' },
   });
 });
@@ -140,7 +140,7 @@ test('job evaluation names its exact source pair and labels document versions co
 test('unavailable CV details preserve the report and offer recovery without guessing', async ({ page }) => {
   const fixture = await useApplicationsWorkspaceFixture(page);
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
-  await page.route(`**/api/v1/projects/${fixture.projectId}/sessions/${fixture.evaluationSessionId}`, route => route.fulfill({ status: 503, json: { code: 'unavailable', message_key: 'errors.request_failed', retryable: true } }));
+  await page.route(`**/v1/projects/${fixture.projectId}/sessions/${fixture.evaluationSessionId}`, route => route.fulfill({ status: 503, json: { code: 'unavailable', message_key: 'errors.request_failed', retryable: true } }));
   await page.goto(`/app/projects/${fixture.projectId}/jobs/${fixture.jobId}`);
   await expect(page.getByTestId('evaluation-report')).toBeVisible();
   await expect(page.getByTestId('evaluation-provenance')).toContainText('Source CV details unavailable');

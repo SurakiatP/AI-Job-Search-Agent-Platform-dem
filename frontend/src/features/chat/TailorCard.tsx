@@ -34,7 +34,7 @@ export function TailorCard({ projectId, sessionId, locale, outputLanguage, busy,
     setWorking(true); setMessage(null);
     const key = crypto.randomUUID();
     try {
-      await apiRequest<RunView>(`/projects/${projectId}/runs`, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ session_id: sessionId, operation: 'tailor_cv', tailor_mode: mode, output_language: outputLanguage, idempotency_key: key, ...(mode === 'interactive' && wish.trim() ? { owner_instructions: wish.trim() } : {}) }) });
+      await apiRequest<RunView>(`/async/projects/${projectId}/agent-runs`, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ session_id: sessionId, operation: 'tailor_cv', tailor_mode: mode, output_language: outputLanguage, idempotency_key: key, ...(mode === 'interactive' && wish.trim() ? { owner_instructions: wish.trim() } : {}) }) });
       setPicked([]); onChanged();
     } catch (caught) { setMessage({ kind: 'error', text: errorText(caught, c.startFailed) }); } finally { setWorking(false); }
   }
@@ -42,7 +42,7 @@ export function TailorCard({ projectId, sessionId, locale, outputLanguage, busy,
     if (!run || picked.length === 0) return;
     setWorking(true); setMessage(null);
     try {
-      await apiRequest<RunView>(`/projects/${projectId}/runs/${run.id}/tailor/apply`, { method: 'POST', body: JSON.stringify({ proposal_ids: [...picked].sort((a, b) => a - b) }) });
+      await apiRequest<RunView>(`/async/projects/${projectId}/agent-runs/${run.id}/cv-tailoring/apply`, { method: 'POST', body: JSON.stringify({ proposal_ids: [...picked].sort((a, b) => a - b) }) });
       setPicked([]); setMessage({ kind: 'ok', text: c.started }); onChanged();
     } catch (caught) { setMessage({ kind: 'error', text: errorText(caught, c.failed) }); } finally { setWorking(false); }
   }

@@ -110,7 +110,7 @@ async def test_official_mcp_http_tools_submission_cancel_and_revocation(api_cont
     client = api_context.client
     csrf = await asyncio.to_thread(_owner, api_context)
     project = client.post(
-        "/api/v1/projects", json={"name": "Synthetic MCP project"}, headers=_write_headers(csrf)
+        "/v1/projects", json={"name": "Synthetic MCP project"}, headers=_write_headers(csrf)
     ).json()
     project_id = UUID(project["id"])
     with api_context.sessions.begin() as db:
@@ -119,7 +119,7 @@ async def test_official_mcp_http_tools_submission_cancel_and_revocation(api_cont
         provider_config(db, row.id)
     expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     issued = client.post(
-        f"/api/v1/projects/{project_id}/grants",
+        f"/v1/projects/{project_id}/grants",
         json={
             "capabilities": ["jobs:evaluate", "documents:draft", "results:read"],
             "expires_at": expires_at,
@@ -303,7 +303,7 @@ async def test_official_mcp_http_tools_submission_cancel_and_revocation(api_cont
                     await session.read_resource(f"job-search://files/{UUID(int=1)}")
 
         revoked = client.delete(
-            f"/api/v1/projects/{project_id}/grants/{grant['id']}",
+            f"/v1/projects/{project_id}/grants/{grant['id']}",
             headers=_write_headers(csrf),
         )
         assert revoked.status_code in {200, 204}
@@ -329,7 +329,7 @@ async def test_mcp_http_rechecks_capabilities_and_project_scope(api_context, unu
     project_ids = []
     for name in ("Synthetic MCP A", "Synthetic MCP B"):
         project = client.post(
-            "/api/v1/projects", json={"name": name}, headers=_write_headers(csrf)
+            "/v1/projects", json={"name": name}, headers=_write_headers(csrf)
         ).json()
         project_id = UUID(project["id"])
         project_ids.append(project_id)
@@ -343,7 +343,7 @@ async def test_mcp_http_rechecks_capabilities_and_project_scope(api_context, unu
         (project_ids[1], ["results:read"]),
     ):
         issued = client.post(
-            f"/api/v1/projects/{project_id}/grants",
+            f"/v1/projects/{project_id}/grants",
             json={
                 "capabilities": capabilities,
                 "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),

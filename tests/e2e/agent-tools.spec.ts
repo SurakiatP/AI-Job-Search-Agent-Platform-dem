@@ -15,9 +15,10 @@ async function mock(page: Page, locale: 'en' | 'th', applied = false, payload: u
   await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
   await useSyntheticApplication(page);
   const seen = { decision: null as unknown, runs: [] as Record<string, unknown>[] };
-  const api = `**/api/v1/projects/${projectId}`;
+  const api = `**/v1/projects/${projectId}`;
+  const asyncApi = `**/v1/async/projects/${projectId}`;
   await page.route(`${api}/sessions/${sessionId}`, r => r.fulfill(json({ id: sessionId, project_id: projectId, title: 'First synthetic session', created_at: '2026-10-01T00:00:00Z', cv_revision_id: 'c1', job_revision_id: jobId, cv_name: 'Data CV', cv_revision: 1, job_title: 'Synthetic data analyst', job_company: 'Example Co' })));
-  await page.route(`${api}/runs`, r => {
+  for (const url of [`${api}/runs`, `${asyncApi}/agent-runs`]) await page.route(url, r => {
     if (r.request().method() === 'POST') { seen.runs.push(r.request().postDataJSON()); return r.fulfill(json(run('cccccccc-0000-4000-8000-000000000009', 'apply_prepare', { status: 'queued' }), 202)); }
     return r.fulfill(json([run(prepareRunId, 'apply_prepare', { result_payload: payload })]));
   });
@@ -101,8 +102,8 @@ test('every parked-pack reason the backend emits is translated, never shown as a
 test('settings field saves the autopilot limit and the approvals tab badges auto-approved decisions', async ({ page }) => {
   await page.addInitScript(l => localStorage.setItem('ui.locale', l), 'en');
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, r => r.fulfill(json([])));
-  await page.route(`**/api/v1/projects/${projectId}/experience**`, r => r.fulfill(json({ items: [], extraction: null, provider_configured: true })));
+  await page.route(`**/v1/projects/${projectId}/cvs`, r => r.fulfill(json([])));
+  await page.route(`**/v1/projects/${projectId}/experience**`, r => r.fulfill(json({ items: [], extraction: null, provider_configured: true })));
   const patches: unknown[] = [];
   page.on('request', r => { if (r.method() === 'PATCH' && r.url().endsWith('/preferences')) patches.push(r.postDataJSON()); });
   await page.goto(`/app/settings?project=${projectId}&section=preferences`);
@@ -116,7 +117,7 @@ test('settings field saves the autopilot limit and the approvals tab badges auto
   await page.getByRole('button', { name: 'Save preferences' }).click();
   await expect.poll(() => patches[0]).toMatchObject({ submit_autopilot_daily_limit: 3 });
 
-  await page.route(`**/api/v1/projects/${projectId}/approvals`, r => r.fulfill(json([{ id: approvalId, run_id: 'cccccccc-0000-4000-8000-000000000002', action: 'submit_application', revision_id: null, expected_cv_revision_id: null, target_file_id: null, target_run_id: prepareRunId, change_digest: 'd', expires_at: '2030-01-01T00:00:00Z', consumed_at: '2026-10-10T01:00:00Z', decision: 'approve', applied_at: '2026-10-10T01:00:00Z', decided_by: 'autopilot' }])));
+  await page.route(`**/v1/projects/${projectId}/approvals`, r => r.fulfill(json([{ id: approvalId, run_id: 'cccccccc-0000-4000-8000-000000000002', action: 'submit_application', revision_id: null, expected_cv_revision_id: null, target_file_id: null, target_run_id: prepareRunId, change_digest: 'd', expires_at: '2030-01-01T00:00:00Z', consumed_at: '2026-10-10T01:00:00Z', decision: 'approve', applied_at: '2026-10-10T01:00:00Z', decided_by: 'autopilot' }])));
   await page.goto(`/app/projects/${projectId}/console?tab=approvals`);
   await expect(page.getByText('Auto-approved', { exact: true })).toBeVisible();
 });
@@ -124,8 +125,8 @@ test('settings field saves the autopilot limit and the approvals tab badges auto
 test('autopilot hint names the agent risk in Thai', async ({ page }) => {
   await page.addInitScript(l => localStorage.setItem('ui.locale', l), 'th');
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, r => r.fulfill(json([])));
-  await page.route(`**/api/v1/projects/${projectId}/experience**`, r => r.fulfill(json({ items: [], extraction: null, provider_configured: true })));
+  await page.route(`**/v1/projects/${projectId}/cvs`, r => r.fulfill(json([])));
+  await page.route(`**/v1/projects/${projectId}/experience**`, r => r.fulfill(json({ items: [], extraction: null, provider_configured: true })));
   await page.goto(`/app/settings?project=${projectId}&section=preferences`);
   await expect(page.getByText(/เอเจนต์ที่คุณให้สิทธิ์เข้าถึงใบสมัครก็ใช้ฟังก์ชันนี้ได้ สูงสุด N ใบต่อวัน/)).toBeVisible();
 });

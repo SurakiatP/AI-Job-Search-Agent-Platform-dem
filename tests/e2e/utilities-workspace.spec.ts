@@ -51,9 +51,9 @@ test('settings groups sections by who is affected and links account security to 
 
 test('ordinary accounts do not see operator settings and never call the gateway endpoint', async ({ page }) => {
   await useUtilitiesFixture(page);
-  await page.route('**/api/v1/auth/session', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrf_token: 'synthetic-test-csrf', expires_at: '2030-01-01T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, is_admin: false, created_at: '2026-10-01T00:00:00Z' } }) }));
+  await page.route('**/v1/auth/session', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrf_token: 'synthetic-test-csrf', expires_at: '2030-01-01T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, is_admin: false, created_at: '2026-10-01T00:00:00Z' } }) }));
   const gatewayCalls: string[] = [];
-  page.on('request', request => { if (new URL(request.url()).pathname === '/api/v1/gateway') gatewayCalls.push(request.url()); });
+  page.on('request', request => { if (new URL(request.url()).pathname === '/v1/gateway') gatewayCalls.push(request.url()); });
   await page.goto(`/app/settings?section=gateway&project=${projectId}`);
   const nav = page.getByRole('navigation', { name: 'Settings sections' });
   await expect(nav.getByRole('button', { name: 'Appearance' })).toHaveAttribute('aria-current', 'page');
@@ -68,9 +68,9 @@ test('account asks for confirmation naming the app and project before revoking, 
   await useUtilitiesFixture(page);
   const agent = (id: string, label: string, expires: string) => ({ id, project_id: projectId, project_name: 'Synthetic project', label, client_id_host: null, capabilities: ['results:read'], created_at: '2026-10-01T00:00:00Z', expires_at: expires, revoked_at: null });
   const grantA = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-  await page.route('**/api/v1/account/agents', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([agent(grantA, 'Research assistant', '2099-01-01T00:00:00Z'), agent('ffffffff-ffff-4fff-8fff-ffffffffffff', 'Old helper', '2020-01-01T00:00:00Z')]) }));
+  await page.route('**/v1/account/agents', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([agent(grantA, 'Research assistant', '2099-01-01T00:00:00Z'), agent('ffffffff-ffff-4fff-8fff-ffffffffffff', 'Old helper', '2020-01-01T00:00:00Z')]) }));
   let deleted = '';
-  await page.route(`**/api/v1/projects/${projectId}/grants/${grantA}`, route => { deleted = route.request().method(); return route.fulfill({ status: 204 }); });
+  await page.route(`**/v1/projects/${projectId}/grants/${grantA}`, route => { deleted = route.request().method(); return route.fulfill({ status: 204 }); });
   await page.goto('/app/account');
   await expect(page.getByText('Old helper')).toBeHidden();
   await page.getByText('Show expired (1)').click();

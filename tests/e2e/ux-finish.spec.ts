@@ -18,7 +18,7 @@ test('project switcher Escape returns keyboard focus to its trigger', async ({ p
 
 test('session current-run names distinguish preparation, recording and tailoring', async ({ page }) => {
   for (const [operation, name] of [['apply_prepare', 'Application answers'], ['apply_submit', 'Record as applied'], ['tailor_cv', 'CV tailoring'], ['draft_follow_up', 'Follow-up drafting']]) {
-    await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ json: [{
+    await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({ json: [{
       id: 'cccccccc-0000-4000-8000-000000000001', project_id: projectId, session_id: sessionId,
       operation, status: 'completed', output_language: 'en', result_file_ids: [],
       created_at: '2026-10-10T00:00:00Z', evaluation_result: null,
@@ -30,7 +30,7 @@ test('session current-run names distinguish preparation, recording and tailoring
 
 test('answer output language is visible and used without visiting document preparation', async ({ page }) => {
   let posted: Record<string, unknown> | undefined;
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => {
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => {
     if (route.request().method() !== 'POST') return route.fallback();
     posted = route.request().postDataJSON();
     return route.fulfill({ status: 202, json: { id: 'cccccccc-0000-4000-8000-000000000001' } });
@@ -54,12 +54,12 @@ test('mobile Overview shows the chosen CV before recent documents', async ({ pag
 });
 
 async function searchFixture(page: Page) {
-  await page.route(`**/api/v1/projects/${projectId}/job-search**`, route => route.fulfill({ json:
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => route.fulfill({ json:
     new URL(route.request().url()).pathname.endsWith('/facets')
       ? { total: 1, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 1, thai_postings: 1 }
       : { items: [{ slug: 'synthetic-review', title: 'Synthetic analyst opportunity', company: 'Example Co', skills: ['SQL'], source_url: 'https://jobs.example.test/1', description_markdown: 'Synthetic role for interface verification.' }], total: 1, limit: 20, offset: 0 }
   }));
-  await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ json: { items: [], status: { email_verified: true, notifications_enabled: true } } }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ json: { items: [], status: { email_verified: true, notifications_enabled: true } } }));
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/app/projects/${projectId}/search?q=data&work_mode=remote`);
 }

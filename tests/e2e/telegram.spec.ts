@@ -9,14 +9,14 @@ async function telegram(page: Page, initial: { enabled: boolean; linked: boolean
   const calls = { link: 0, del: 0, patches: [] as unknown[] };
   await useSyntheticApplication(page);
   await page.addInitScript(() => { localStorage.setItem('ui.locale', 'en'); (window as unknown as { opened: unknown[] }).opened = []; window.open = ((url: string, target: string, features: string) => { (window as unknown as { opened: unknown[] }).opened.push([url, target, features]); return null; }) as typeof window.open; });
-  await page.route('**/api/v1/account/telegram/link', route => { calls.link += 1; return route.fulfill(json(200, { url: 'https://t.me/jsp_bot?start=abc', expires_at: '2026-10-15T01:10:00Z' })); });
-  await page.route('**/api/v1/account/telegram', route => {
+  await page.route('**/v1/account/telegram/link', route => { calls.link += 1; return route.fulfill(json(200, { url: 'https://t.me/jsp_bot?start=abc', expires_at: '2026-10-15T01:10:00Z' })); });
+  await page.route('**/v1/account/telegram', route => {
     if (route.request().method() === 'DELETE') { calls.del += 1; status.linked = false; return route.fulfill({ status: 204, body: '' }); }
     return route.fulfill(json(200, status));
   });
-  await page.route(`**/api/v1/projects/${projectId}/webhooks**`, route => route.fulfill(json(200, [])));
-  await page.route(`**/api/v1/projects/${projectId}/job-search**`, route => route.fulfill(json(200, route.request().url().includes('/facets') ? { total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 0, thai_postings: 0 } : { items: [], total: 0, limit: 20, offset: 0 })));
-  await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, route => {
+  await page.route(`**/v1/projects/${projectId}/webhooks**`, route => route.fulfill(json(200, [])));
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => route.fulfill(json(200, route.request().url().includes('/facets') ? { total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 0, thai_postings: 0 } : { items: [], total: 0, limit: 20, offset: 0 })));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => {
     if (route.request().method() === 'PATCH') { calls.patches.push(route.request().postDataJSON()); return route.fulfill(json(409, { code: 'telegram_not_linked', message_key: 'errors.telegram_not_linked', retryable: false })); }
     return route.fulfill(json(200, { items: [saved], status: { email_verified: true, notifications_enabled: true } }));
   });

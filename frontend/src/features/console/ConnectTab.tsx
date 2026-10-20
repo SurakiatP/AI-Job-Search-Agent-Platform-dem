@@ -31,7 +31,7 @@ function ClientPicker({ c, lang, list, local }: { c: Copy; lang: Lang; list: Cli
       <p className="max-w-prose text-sm text-muted-foreground">{client.hint[lang]}</p>
       {client.needsPublicHttps && local && <p role="note" className="rounded-lg border border-warning p-3 text-sm">{c.needsHttps}</p>}
       {client.snippets.map(s => <Block key={s.label.en} c={c} label={s.label[lang]} where={s.where} text={s.code} />)}
-      {client.protocols.includes('REST') && <a className="text-sm font-medium text-primary underline-offset-4 hover:underline" href="/api/v1/docs" target="_blank" rel="noreferrer">{c.apiDocs}</a>}
+      {client.protocols.includes('REST') && <a className="text-sm font-medium text-primary underline-offset-4 hover:underline" href="/v1/docs" target="_blank" rel="noreferrer">{c.apiDocs}</a>}
     </section>
   </div>;
 }
@@ -59,7 +59,7 @@ export function ConnectTab({ c, lang, projectId, onIssue }: { c: Copy; lang: Lan
   if (info.status === 'error') return <ErrorState onRetry={info.reload} />;
   if (!info.data) return <LoadingState />;
   const share = info.data.share_origin;
-  const api = `${window.location.origin}/api/v1`;
+  const api = `${window.location.origin}/v1`;
   if (!share) return <div className="grid gap-6">
     <p className="max-w-prose text-sm text-muted-foreground">{c.connectIntro}</p>
     <p role="status" className="rounded-lg border border-warning p-3 text-sm">{isAdmin ? c.offAdmin : c.offUser}</p>

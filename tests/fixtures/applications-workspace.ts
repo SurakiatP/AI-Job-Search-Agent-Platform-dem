@@ -59,11 +59,11 @@ export async function useApplicationsWorkspaceFixture(page: Page) {
     events: id === jobId ? detail.events : [],
   });
 
-  await page.route(`**/api/v1/projects/${projectId}/applications`, async route => {
+  await page.route(`**/v1/projects/${projectId}/applications`, async route => {
     if (route.request().method() !== 'GET') return route.fallback();
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(applications) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/jobs`, async route => {
+  await page.route(`**/v1/projects/${projectId}/jobs`, async route => {
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON() as { title: string; description: string; company: string | null; source_url: string | null };
       const path = new URL(route.request().url()).pathname;
@@ -78,23 +78,23 @@ export async function useApplicationsWorkspaceFixture(page: Page) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(jobRows.map(job => ({ ...job, application_status: statusByJob.get(job.id) ?? 'saved' }))) });
   });
   const evaluationSession = { id: evaluationSessionId, project_id: projectId, title: 'Northstar evaluation', created_at: '2026-10-13T00:00:00Z', cv_revision_id: evaluationCvRevisionId, job_revision_id: jobId, cv_name: 'Healthcare Analytics', cv_revision: 3 };
-  await page.route(`**/api/v1/projects/${projectId}/sessions`, route => route.fulfill({ json: [evaluationSession] }));
-  await page.route(`**/api/v1/projects/${projectId}/sessions/${evaluationSessionId}`, route => route.fulfill({ json: evaluationSession }));
-  await page.route(`**/api/v1/projects/${projectId}/runs`, async route => {
+  await page.route(`**/v1/projects/${projectId}/sessions`, route => route.fulfill({ json: [evaluationSession] }));
+  await page.route(`**/v1/projects/${projectId}/sessions/${evaluationSessionId}`, route => route.fulfill({ json: evaluationSession }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), async route => {
     if (route.request().method() !== 'GET') return route.fallback();
     const run = { id: runId, project_id: projectId, session_id: evaluationSessionId, operation: 'evaluate_job', status: 'completed', job_revision_id: jobId, output_language: 'en', result_file_ids: [], created_at: '2026-10-13T00:00:00Z', finished_at: '2026-10-13T00:01:00Z', retry_of_id: null, evaluation_result: { report_markdown: 'Strong SQL and stakeholder experience. **Improve:** add one quantified experimentation example.', score: 3.7, skill_coverage: { required: ['SQL', 'experimentation', 'healthcare analytics'], matched: ['SQL', 'healthcare analytics'], missing: ['experimentation'], ratio: 2 / 3, method: 'keyword' } } };
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([run]) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/documents`, async route => {
+  await page.route(`**/v1/projects/${projectId}/documents`, async route => {
     if (route.request().method() !== 'GET') return route.fallback();
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: documentId, document_type: 'cover_letter', title: 'Northstar cover letter', latest_revision: { id: '44444444-4444-4444-8444-444444444446', revision: 2, created_at: '2026-10-14T00:00:00Z' }, content_markdown: 'A concise introduction grounded in the selected role.', output_language: 'en', source_run_id: runId, partial: false }]) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/jobs/*/application`, async route => {
+  await page.route(`**/v1/projects/${projectId}/jobs/*/application`, async route => {
     if (route.request().method() !== 'GET') return route.fallback();
     const id = new URL(route.request().url()).pathname.split('/').at(-2) ?? jobId;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(id === jobId ? detail : applicationFor(id)) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/jobs/*/application-status`, async route => {
+  await page.route(`**/v1/projects/${projectId}/jobs/*/application-status`, async route => {
     if (route.request().method() !== 'PATCH') return route.fallback();
     const path = new URL(route.request().url()).pathname;
     const id = path.split('/').at(-2) ?? jobId;
@@ -105,7 +105,7 @@ export async function useApplicationsWorkspaceFixture(page: Page) {
     if (id === jobId) detail.stage = body.application_status;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ job_revision_id: id, application_status: body.application_status }) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/jobs/*/application/contact`, async route => {
+  await page.route(`**/v1/projects/${projectId}/jobs/*/application/contact`, async route => {
     if (route.request().method() !== 'PUT') return route.fallback();
     const path = new URL(route.request().url()).pathname;
     const body = route.request().postDataJSON();
@@ -114,7 +114,7 @@ export async function useApplicationsWorkspaceFixture(page: Page) {
     detail.events.unshift({ id: `66666666-6666-4666-8666-${String(detail.events.length + 665).padStart(12, '0')}`, kind: 'contact_updated', actor: 'user', payload: body, created_at: '2026-10-16T01:00:00Z' });
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detail) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/jobs/*/application/events`, async route => {
+  await page.route(`**/v1/projects/${projectId}/jobs/*/application/events`, async route => {
     if (route.request().method() !== 'POST') return route.fallback();
     const path = new URL(route.request().url()).pathname;
     const body = route.request().postDataJSON() as { kind: string; [key: string]: unknown };

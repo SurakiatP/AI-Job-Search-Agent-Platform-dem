@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import sys
 from urllib.parse import urlsplit
 import stat
@@ -29,7 +30,7 @@ from job_search_platform.api.dependencies import Services
 from job_search_platform.api.accounts import router as accounts_router
 from job_search_platform.api.mcp_tasks import mcp_request_state_key
 from job_search_platform.api.oauth import router as oauth_router
-from job_search_platform.api.rest import _http_error, router as rest_router
+from job_search_platform.api.rest import _http_error, health_router, router as rest_router
 from job_search_platform.api.resume import router as resume_router
 from job_search_platform.api.practice import router as practice_router
 from job_search_platform.api.sse import router as sse_router
@@ -97,6 +98,38 @@ def _owner_sessions(sessions) -> OwnerSessions:
 
 def _secret_store():
     return MacOSKeychain() if sys.platform == "darwin" else None  # no caller reads it; Keychain exists only on macOS
+
+
+API_PREFIX = "/v1"
+ASYNC_NOTE = ("Background work: answers 202 at once with a run. Poll GET /v1/projects/{project_id}/runs/{run_id} "
+              "or follow its events stream until the run is completed, failed or cancelled.")
+# Background-work routes that left /api/v1 for /v1/async (CR-API-01); everything else only changed prefix.
+_MOVED_ASYNC = [(re.compile(old), new) for old, new in (
+    (r"^projects/([^/]+)/runs$", r"async/projects/\1/agent-runs"),
+    (r"^projects/([^/]+)/runs/([^/]+)/cancel$", r"async/projects/\1/agent-runs/\2/cancel"),
+    (r"^projects/([^/]+)/runs/([^/]+)/tailor/apply$", r"async/projects/\1/agent-runs/\2/cv-tailoring/apply"),
+    (r"^projects/([^/]+)/sessions/([^/]+)/messages$", r"async/projects/\1/sessions/\2/messages"),
+    (r"^projects/([^/]+)/job-search/match/runs$", r"async/projects/\1/smart-matches"),
+    (r"^projects/([^/]+)/cvs/([^/]+)/profile$", r"async/projects/\1/cvs/\2/skill-profiles"),
+    (r"^projects/([^/]+)/cvs/([^/]+)/experience-runs$", r"async/projects/\1/cvs/\2/experience-extractions"),
+    (r"^projects/([^/]+)/documents/([^/]+)/revisions$", r"async/projects/\1/documents/\2/revisions"),
+    (r"^projects/([^/]+)/documents/([^/]+)/revisions/([^/]+)/restore$", r"async/projects/\1/documents/\2/revisions/\3/restore"),
+    (r"^projects/([^/]+)/saved-searches/([^/]+)/preview$", r"async/projects/\1/saved-searches/\2/previews"),
+    (r"^projects/([^/]+)/webhooks/([^/]+)/test$", r"async/projects/\1/webhooks/\2/test-deliveries"),
+    (r"^projects/([^/]+)/webhooks/deliveries/([^/]+)/redeliver$", r"async/projects/\1/webhooks/deliveries/\2/redeliveries"),
+    (r"^projects/([^/]+)/practice-attempts/([^/]+)/feedback$", r"async/projects/\1/practice-attempts/\2/feedback"),
+    (r"^projects/([^/]+)/practice-sets/([^/]+)/report$", r"async/projects/\1/practice-sets/\2/report"),
+)]
+
+
+def moved_location(method: str, rest: str) -> str:
+    """New path for an old /api/v1/<rest> path. Only POSTs moved to /v1/async; GET /runs stays put."""
+    if rest in ("health", "health/ready"):
+        return "/" + rest
+    for pattern, replacement in _MOVED_ASYNC if method == "POST" else ():
+        if pattern.match(rest):
+            return f"{API_PREFIX}/{pattern.sub(replacement, rest)}"
+    return f"{API_PREFIX}/{rest}"
 
 
 def build_services() -> Services:
@@ -272,19 +305,23 @@ def create_app(
                 current.maintenance_lock = None
 
     app = FastAPI(title="Job Search Platform Application API", version="1.0.0",
-                  servers=[{"url": "/api/v1"}], lifespan=lifespan,
+                  servers=[{"url": API_PREFIX}], lifespan=lifespan,
                   telemetry={"auto_configure": False})
-    app.include_router(rest_router, prefix="/api/v1")
-    app.include_router(accounts_router, prefix="/api/v1")
-    app.include_router(resume_router, prefix="/api/v1")
-    app.include_router(practice_router, prefix="/api/v1")
-    app.include_router(oauth_router, prefix="/api/v1")
-    app.include_router(sse_router, prefix="/api/v1")
+    # /v1/... answers at once; /v1/async/... starts background work and answers 202 with a run to poll.
+    for router in (rest_router, accounts_router, resume_router, practice_router, oauth_router, sse_router):
+        app.include_router(router, prefix=API_PREFIX)
+    app.include_router(health_router)
+
+    @app.api_route("/api/v1/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)
+    async def api_moved(rest: str, request: Request):
+        return JSONResponse({"code": "api_moved", "message_key": "errors.api_moved", "retryable": False,
+                             "fields": {"location": moved_location(request.method, rest)}}, status_code=410,
+                            headers={"Cache-Control": "no-store"})
 
     @app.middleware("http")
     async def no_store_api_responses(request: Request, call_next):
         response = await call_next(request)
-        if request.url.path.startswith("/api/v1/"):
+        if request.url.path.startswith(API_PREFIX + "/") or request.url.path in ("/health", "/health/ready"):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -338,9 +375,15 @@ def create_app(
         from fastapi.openapi.utils import get_openapi
         schema = get_openapi(title=app.title, version=app.version, routes=app.routes, servers=app.servers)
         schema["paths"] = {
-            path.removeprefix("/api/v1"): operations
+            path.removeprefix(API_PREFIX): operations
             for path, operations in schema["paths"].items()
         }
+        for path, operations in schema["paths"].items():
+            if path in ("/health", "/health/ready"):
+                operations["servers"] = [{"url": "/"}]  # outside /v1, where load balancers look
+            elif path.startswith("/async/"):
+                for operation in operations.values():
+                    operation["description"] = (operation.get("description", "") + "\n\n" + ASYNC_NOTE).strip()
         components = schema.setdefault("components", {}).setdefault("schemas", {})
         for name in contract_schema_names:
             model = getattr(contracts, name)

@@ -259,20 +259,20 @@ def _api(ctx, migrated_engine, enabled=True):
 def test_routes_link_status_unlink(ctx, migrated_engine):
     client, headers = _api(ctx, migrated_engine)
     with client:
-        assert client.get("/api/v1/account/telegram").json() == {
+        assert client.get("/v1/account/telegram").json() == {
             "enabled": True, "linked": False, "bot_username": "jsp_bot", "linked_at": None}
-        link = client.post("/api/v1/account/telegram/link", headers=headers)
+        link = client.post("/v1/account/telegram/link", headers=headers)
         assert link.status_code == 200 and link.json()["url"].startswith("https://t.me/jsp_bot?start=")
         ctx.bot.say(1, 900, f"/start {_code(link.json()['url'])}")
         asyncio.run(ctx.telegram.poll())
-        assert client.get("/api/v1/account/telegram").json()["linked"] is True
-        patched = client.patch(f"/api/v1/projects/{ctx.pid}/saved-searches/{ctx.sid}", headers=headers,
+        assert client.get("/v1/account/telegram").json()["linked"] is True
+        patched = client.patch(f"/v1/projects/{ctx.pid}/saved-searches/{ctx.sid}", headers=headers,
                                json={"telegram_enabled": True})
         assert patched.status_code == 200 and patched.json()["telegram_enabled"] is True
-        assert client.delete("/api/v1/account/telegram", headers=headers).status_code == 204
-        assert client.get("/api/v1/account/telegram").json()["linked"] is False
-        assert client.get(f"/api/v1/projects/{ctx.pid}/saved-searches").json()["items"][0]["telegram_enabled"] is False
-        again = client.patch(f"/api/v1/projects/{ctx.pid}/saved-searches/{ctx.sid}", headers=headers,
+        assert client.delete("/v1/account/telegram", headers=headers).status_code == 204
+        assert client.get("/v1/account/telegram").json()["linked"] is False
+        assert client.get(f"/v1/projects/{ctx.pid}/saved-searches").json()["items"][0]["telegram_enabled"] is False
+        again = client.patch(f"/v1/projects/{ctx.pid}/saved-searches/{ctx.sid}", headers=headers,
                              json={"telegram_enabled": True})
         assert again.status_code == 409 and again.json()["code"] == "telegram_not_linked"
 
@@ -280,10 +280,10 @@ def test_routes_link_status_unlink(ctx, migrated_engine):
 def test_routes_disabled_without_token(ctx, migrated_engine):
     client, headers = _api(ctx, migrated_engine, enabled=False)
     with client:
-        assert client.get("/api/v1/account/telegram").json() == {
+        assert client.get("/v1/account/telegram").json() == {
             "enabled": False, "linked": False, "bot_username": None, "linked_at": None}
-        for call in (lambda: client.post("/api/v1/account/telegram/link", headers=headers),
-                     lambda: client.delete("/api/v1/account/telegram", headers=headers)):
+        for call in (lambda: client.post("/v1/account/telegram/link", headers=headers),
+                     lambda: client.delete("/v1/account/telegram", headers=headers)):
             response = call()
             assert response.status_code == 404 and response.json()["code"] == "telegram_disabled"
 
@@ -291,5 +291,5 @@ def test_routes_disabled_without_token(ctx, migrated_engine):
 def test_link_is_rate_limited(ctx, migrated_engine):
     client, headers = _api(ctx, migrated_engine)
     with client:
-        codes = [client.post("/api/v1/account/telegram/link", headers=headers).status_code for _ in range(6)]
+        codes = [client.post("/v1/account/telegram/link", headers=headers).status_code for _ in range(6)]
     assert codes == [200] * 5 + [429]

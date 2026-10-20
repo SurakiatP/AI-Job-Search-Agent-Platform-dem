@@ -18,8 +18,8 @@ export async function useSyntheticApplication(page: Page, options: { admin?: boo
   let projectFailuresRemaining = options.projectErrorOnce ? 1 : 0;
   let revisionFailuresRemaining = options.revisionErrorOnce ? 1 : 0;
   let currentPreferences = { project_id: projectId, locale: 'th', output_language: 'th', notifications_enabled: true, updated_at: '2026-10-01T00:00:00Z' };
-  await page.route('**/api/v1/**', async route => {
-    const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
+  await page.route('**/v1/**', async route => {
+    const path = new URL(route.request().url()).pathname.replace('/v1', '');
     if (path === '/auth/session') { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrf_token: 'synthetic-test-csrf', expires_at: '2030-01-01T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, is_admin: options.admin !== false, created_at: '2026-10-01T00:00:00Z' } }) }); return; }
     if (path.endsWith('/runs') || path.endsWith('/approvals') || path.endsWith('/messages')) { await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }); return; }
     if (path === `/projects/${projectId}/sessions` && sessionFailuresRemaining > 0) {

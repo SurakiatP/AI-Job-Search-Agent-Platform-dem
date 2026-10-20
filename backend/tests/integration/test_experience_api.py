@@ -10,7 +10,7 @@ from job_search_platform.db.models import ProviderConfiguration, Run
 from test_paired_sessions import _project, _upload  # noqa: F401
 from test_rest_api import _owner, _write_headers, api_context  # noqa: F401
 
-PREFIX = "/api/v1/projects"
+PREFIX = "/v1/projects"
 
 
 @pytest.mark.integration
@@ -38,7 +38,7 @@ def test_upload_queues_extraction_once_and_owner_crud(api_context):
     assert replaced.status_code == 200 and replaced.json()["id"] != created.json()["id"]
     assert client.delete(f"{url}/{replaced.json()['id']}", headers=headers).status_code == 204
     assert client.get(url).json()["items"] == []
-    rerun = client.post(f"{PREFIX}/{pid}/cvs/{cv_id}/experience-runs", headers=headers)
+    rerun = client.post(f"/v1/async/projects/{pid}/cvs/{cv_id}/experience-extractions", headers=headers)
     assert rerun.status_code == 202 and rerun.json()["id"] == str(runs[0].id)
 
 
@@ -60,7 +60,7 @@ def test_grant_cannot_reach_bank(api_context):
         assert client.post(url, headers=bearer, json={"kind": "skill", "text": "x"}).status_code in {401, 403}
         assert client.put(f"{url}/{item['id']}", headers=bearer, json={"kind": "skill", "text": "y"}).status_code in {401, 403}
         assert client.delete(f"{url}/{item['id']}", headers=bearer).status_code in {401, 403}
-        assert client.post(f"{PREFIX}/{pid}/cvs/{cv_id}/experience-runs", headers=bearer).status_code in {401, 403}
+        assert client.post(f"/v1/async/projects/{pid}/cvs/{cv_id}/experience-extractions", headers=bearer).status_code in {401, 403}
         # Grants cannot list runs over REST (403); were that to open up, extraction runs must stay hidden.
         runs = client.get(f"{PREFIX}/{pid}/runs", headers=bearer)
         assert runs.status_code == 403 or all(r["operation"] != "extract_experience" for r in runs.json())

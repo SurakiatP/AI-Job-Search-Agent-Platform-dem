@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError, type Account, type AccountAgent, type ApiErrorBody, type OwnerSessionState } from './api-types';
 
-const API_BASE = '/api/v1';
+const API_BASE = '/v1';
 const CSRF_HEADER = 'X-CSRF-Token';
 let csrfToken: string | null = null;
 let ownerSessionPromise: Promise<OwnerSessionState> | null = null;

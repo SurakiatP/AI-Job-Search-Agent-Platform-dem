@@ -15,7 +15,7 @@ const label = 'Made by AI';
 async function setup(page: Page) {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill(json([evalRun])));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill(json([evalRun])));
 }
 
 test('AI label: evaluation report, CV changes and interview questions; not on keyword coverage', async ({ page }) => {
@@ -33,7 +33,7 @@ test('AI label: agent documents say made by AI and check before use; owner docum
   await setup(page);
   const doc = (id: string, title: string, source: string | null) => ({ id, document_type: 'cover_letter', title, output_language: 'en', partial: false, source_run_id: source,
     content_markdown: 'Dear team', latest_revision: { id: `${id.slice(0, 8)}-7777-4777-8777-777777777777`, revision: 1, created_at: '2026-10-01T00:00:00Z' }, trashed_at: null });
-  await page.route(`**/api/v1/projects/${projectId}/documents`, route => route.fulfill(json([doc(documentId, 'Agent letter', runId), doc('55555555-5555-4555-8555-555555555555', 'My own letter', null)])));
+  await page.route(`**/v1/projects/${projectId}/documents`, route => route.fulfill(json([doc(documentId, 'Agent letter', runId), doc('55555555-5555-4555-8555-555555555555', 'My own letter', null)])));
   await page.goto(`/app/projects/${projectId}/documents`);
   const row = (t: string) => page.getByRole('listitem').filter({ hasText: t });
   await expect(row('Agent letter').getByText(label)).toBeVisible();
@@ -47,7 +47,7 @@ test('AI label: agent documents say made by AI and check before use; owner docum
 test('AI label: facts extracted from a CV say extracted by AI; facts you added do not', async ({ page }) => {
   await setup(page);
   const item = (id: string, text: string, source: 'cv' | 'owner') => ({ id, kind: 'skill', text, role: null, organization: null, period: null, source, source_cv_id: source === 'cv' ? 'c1' : null, source_cv_name: source === 'cv' ? 'Data CV' : null, created_at: '2026-10-01T00:00:00Z' });
-  await page.route(`**/api/v1/projects/${projectId}/experience**`, route => route.fulfill(json({ items: [item('e1', 'SQL from CV', 'cv'), item('e2', 'Python I added', 'owner')], extraction: null, provider_configured: true })));
+  await page.route(`**/v1/projects/${projectId}/experience**`, route => route.fulfill(json({ items: [item('e1', 'SQL from CV', 'cv'), item('e2', 'Python I added', 'owner')], extraction: null, provider_configured: true })));
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
   const fact = (t: string) => page.getByRole('listitem').filter({ hasText: t });
   await expect(fact('SQL from CV').getByText('Extracted by AI')).toBeVisible();

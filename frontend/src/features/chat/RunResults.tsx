@@ -117,7 +117,7 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
     </article>)}
     {trashedHere.map(document => <p key={document.id} className="text-sm text-muted-foreground" data-testid="document-in-trash">{document.title} · {inTrashText} · <Link className="text-primary hover:underline" to={`/app/projects/${projectId}/trash?tab=documents`}>{openTrash}</Link></p>)}
     {run.result_file_ids.map((fileId, index) => <ResultFile key={fileId} deleted={deletedText}
-      href={`/api/v1/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileId)}/download`}
+      href={`/v1/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileId)}/download`}
       label={`${downloads}${run.result_file_ids.length > 1 ? ` ${index + 1}` : ''}`} />)}
     {!evaluation && ownDocuments.length === 0 && trashedHere.length === 0 && run.result_file_ids.length === 0 && <p className="text-sm text-muted-foreground">{noResult}</p>}
   </section>;

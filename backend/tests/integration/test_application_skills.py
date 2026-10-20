@@ -12,7 +12,7 @@ from test_a2a import _start_a2a, _stop_a2a
 from test_mcp import _session
 from test_rest_api import _owner, _write_headers
 
-API = "/api/v1/projects"
+API = "/v1/projects"
 
 
 def _setup(ctx):

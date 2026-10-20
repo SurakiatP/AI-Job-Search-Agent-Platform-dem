@@ -15,6 +15,15 @@ sys.stdout = sys.stderr
 ALLOWED = {"terminal", "read_file", "write_file", "patch", "search_files"}
 CAREER_OPS_REVISION = "c1d0d1f3229daad3f2f5a7a4e46c9b256db51ea7"
 CAREER_OPS_ROUTER = ".agents/skills/career-ops/SKILL.md"
+# Interview practice needs short, plain answers; default reasoning spent ~90% of its output tokens
+# thinking (measured 2026-10-20). Other operations keep the model default. Sent as an OpenRouter extra
+# body field: Hermes drops reasoning_config for a gateway, and the gateway refuses reasoning_effort for this model.
+REASONING = {
+    "interview_generate": {"extra_body": {"reasoning": {"effort": "low"}}},
+    "interview_grade": {"extra_body": {"reasoning": {"effort": "low"}}},
+    "interview_report": {"extra_body": {"reasoning": {"effort": "low"}}},
+}
+
 CAREER_OPS_FILES = {
     "evaluate_job": ("modes/_shared.md", "modes/oferta.md"),
     "draft_documents": (
@@ -314,6 +323,7 @@ def main():
                     enabled_toolsets=["terminal", "file"], skip_memory=True,
                     skip_context_files=True, skip_background_review=True,
                     max_iterations=30, run_budget_seconds=900, quiet_mode=True,
+                    request_overrides=REASONING.get(request.get("operation")),
                     save_trajectories=False, verbose_logging=False,
                     event_callback=lambda name, data: emit({"event": "progress"}))
                 agent.tools = [t for t in agent.tools if t["function"]["name"] in ALLOWED]

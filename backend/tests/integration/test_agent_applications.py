@@ -48,7 +48,7 @@ def _good(facts):
 
 
 def _post(ctx, csrf, pid, session, operation, key, **extra):
-    return ctx.client.post(f"{PREFIX}/{pid}/runs", headers=_write_headers(csrf), json={
+    return ctx.client.post(f"/v1/async/projects/{pid}/agent-runs", headers=_write_headers(csrf), json={
         "session_id": session["id"], "operation": operation, "output_language": "en", "idempotency_key": key, **extra})
 
 
@@ -470,12 +470,12 @@ def test_owner_promotes_cv_directly_even_while_another_run_is_active(api_context
                    job_revision_id=done.job_revision_id, provider_configuration_id=done.provider_configuration_id,
                    input_snapshot={}, config_snapshot={}, output_language="en", status="running"))
     body = {"revision_id": str(seeded.revision), "expected_cv_revision_id": str(cv_id)}
-    done = ctx.client.post(f"/api/v1/projects/{pid}/cv/promote", headers=_write_headers(csrf), json=body)
+    done = ctx.client.post(f"/v1/projects/{pid}/cv/promote", headers=_write_headers(csrf), json=body)
     assert done.status_code == 200, done.text
     with ctx.sessions() as db:
         assert db.scalar(select(CVRevision.id).where(CVRevision.project_id == UUID(pid), CVRevision.file_id == seeded.file)) is not None
     # The CV moved on: the same expected revision is now stale.
-    stale = ctx.client.post(f"/api/v1/projects/{pid}/cv/promote", headers=_write_headers(csrf), json=body)
+    stale = ctx.client.post(f"/v1/projects/{pid}/cv/promote", headers=_write_headers(csrf), json=body)
     assert stale.status_code == 409 and stale.json()["code"] == "approval_stale"
 
 
@@ -483,19 +483,19 @@ def test_owner_promotes_cv_directly_even_while_another_run_is_active(api_context
 def test_promote_is_owner_only_and_approval_post_needs_a_run(api_context):
     ctx = api_context
     csrf, pid, sid, seeded, cv_id = _promote_setup(ctx)
-    token = ctx.client.post(f"/api/v1/projects/{pid}/grants", headers=_write_headers(csrf), json={
+    token = ctx.client.post(f"/v1/projects/{pid}/grants", headers=_write_headers(csrf), json={
         "capabilities": ["documents:draft"], "expires_at": "2099-01-01T00:00:00+00:00"}).json()["token"]
     body = {"revision_id": str(seeded.revision), "expected_cv_revision_id": str(cv_id)}
     saved = dict(ctx.client.cookies)
     ctx.client.cookies.clear()
-    denied = ctx.client.post(f"/api/v1/projects/{pid}/cv/promote", headers={"Authorization": f"Bearer {token}"}, json=body)
+    denied = ctx.client.post(f"/v1/projects/{pid}/cv/promote", headers={"Authorization": f"Bearer {token}"}, json=body)
     ctx.client.cookies.update(saved)
     assert denied.status_code in (401, 403)  # like every owner write, a bearer grant never passes CSRF auth
     with pytest.raises(ServiceError) as forbidden:  # and the service itself refuses a grant actor
         ctx.client.app.state.services.approvals.promote_cv_direct(
             _actor(ctx, pid, "documents:draft"), UUID(pid), seeded.revision, cv_id)
     assert forbidden.value.code == "forbidden"
-    asked = ctx.client.post(f"/api/v1/projects/{pid}/approvals", headers=_write_headers(csrf), json={"action": "promote_cv", **body})
+    asked = ctx.client.post(f"/v1/projects/{pid}/approvals", headers=_write_headers(csrf), json={"action": "promote_cv", **body})
     assert asked.status_code == 409 and asked.json()["code"] == "approval_requires_run"
 
 

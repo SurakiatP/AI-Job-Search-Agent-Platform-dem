@@ -7,11 +7,11 @@ async function boardWithState(page: import('@playwright/test').Page) {
   let stage = 'saved';
   let failNext = true;
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/applications`, route => route.fulfill({
+  await page.route(`**/v1/projects/${projectId}/applications`, route => route.fulfill({
     status: 200, contentType: 'application/json',
     body: JSON.stringify([{ job_revision_id: jobId, title: longTitle, company: 'บริษัท ตัวอย่าง จำกัด (มหาชน)', created_at: '2026-10-01T00:00:00Z', stage, has_contact: true, last_activity_at: '2026-10-02T00:00:00Z' }]),
   }));
-  await page.route(`**/api/v1/projects/${projectId}/jobs/${jobId}/application-status`, async route => {
+  await page.route(`**/v1/projects/${projectId}/jobs/${jobId}/application-status`, async route => {
     if (route.request().method() !== 'PATCH') return route.fallback();
     if (failNext) { failNext = false; await route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }); return; }
     stage = route.request().postDataJSON().application_status;
@@ -72,18 +72,18 @@ test('job page edits stage and contact, offers mailto, logs correspondence and n
   const detail = { job_revision_id: jobId, title: 'Synthetic data analyst', company: 'Example Co', stage: 'saved', contact: { name: null as string | null, email: null as string | null, role: null as string | null }, events: [] as Record<string, unknown>[] };
   let n = 0;
   const push = (kind: string, payload: Record<string, unknown>) => detail.events.unshift({ id: `00000000-0000-4000-8000-00000000000${n++}`, kind, actor: 'user', payload, created_at: `2026-10-14T00:0${n}:00Z` });
-  await page.route(`**/api/v1/projects/${projectId}/jobs/${jobId}/application`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detail) }));
-  await page.route(`**/api/v1/projects/${projectId}/jobs/${jobId}/application-status`, async route => {
+  await page.route(`**/v1/projects/${projectId}/jobs/${jobId}/application`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detail) }));
+  await page.route(`**/v1/projects/${projectId}/jobs/${jobId}/application-status`, async route => {
     if (route.request().method() !== 'PATCH') return route.fallback();
     const to = route.request().postDataJSON().application_status;
     push('stage_changed', { from: detail.stage, to }); detail.stage = to;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ job_revision_id: jobId, application_status: to }) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/jobs/${jobId}/application/contact`, async route => {
+  await page.route(`**/v1/projects/${projectId}/jobs/${jobId}/application/contact`, async route => {
     detail.contact = route.request().postDataJSON(); push('contact_updated', detail.contact);
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detail) });
   });
-  await page.route(`**/api/v1/projects/${projectId}/jobs/${jobId}/application/events`, async route => {
+  await page.route(`**/v1/projects/${projectId}/jobs/${jobId}/application/events`, async route => {
     const { kind, ...payload } = route.request().postDataJSON(); push(kind, { note: null, ...payload });
     await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(detail.events[0]) });
   });

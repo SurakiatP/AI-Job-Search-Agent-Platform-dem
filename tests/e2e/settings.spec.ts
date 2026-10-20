@@ -8,10 +8,10 @@ test.beforeEach(async ({ page }) => {
   let provider: { provider: string; model: string; configured: boolean; revision: number; masked_secret: string } | null = null;
   let grant: { id: string; project_id: string; capabilities: string[]; expires_at: string; revoked_at: string | null } | null = null;
   let toolEnabled = true;
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/v1/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
-    const path = url.pathname.replace('/api/v1', '');
+    const path = url.pathname.replace('/v1', '');
     if (path === `/settings/provider` && request.method() === 'GET') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(provider ?? { configured: false, provider: null, model: null, revision: null, masked_secret: null }) });
       return;

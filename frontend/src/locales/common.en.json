@@ -142,7 +142,8 @@
     "confirmation_mismatch": "The email you typed does not match your account.",
     "rate_limited": "Too many attempts. Try again in {{seconds}} seconds.",
     "request_failed": "That did not work. Try again.",
-    "network_error": "Network error. Check your connection and try again."
+    "network_error": "Network error. Check your connection and try again.",
+    "api_moved": "This app was updated. Reload the page to continue."
   },
   "auth": {
     "email": "Email",

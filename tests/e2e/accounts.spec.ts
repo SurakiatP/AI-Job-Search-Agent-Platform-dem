@@ -8,8 +8,8 @@ const sessionId = '22222222-2222-4222-8222-222222222222';
 async function mockApi(page: Page, verified: boolean) {
   let authed = false;
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
-  await page.route('**/api/v1/**', async route => {
-    const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
+  await page.route('**/v1/**', async route => {
+    const path = new URL(route.request().url()).pathname.replace('/v1', '');
     const json = (status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (path === '/auth/session') return authed ? json(200, { authenticated: true, csrf_token: 'csrf', expires_at: '2030-01-01T00:00:00Z', user: { ...user, email_verified: verified } }) : json(401, { code: 'unauthorized', message_key: 'errors.unauthorized', retryable: false });
     if (path === '/auth/login') {
@@ -103,8 +103,8 @@ test('agents list shows given date and revoke calls the grant route', async ({ p
   await mockApi(page, true);
   const grantId = '77777777-7777-4777-8777-777777777777';
   let revoked = '';
-  await page.route('**/api/v1/account/agents', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: grantId, project_id: projectId, project_name: 'Synthetic project', label: 'Synthetic agent', capabilities: ['results:read'], created_at: '2026-10-03T08:00:00Z', expires_at: '2099-01-01T00:00:00Z', revoked_at: null, client_id_host: 'client.example.test' }]) }));
-  await page.route(`**/api/v1/projects/${projectId}/grants/${grantId}`, route => { revoked = `${route.request().method()} ${new URL(route.request().url()).pathname}`; return route.fulfill({ status: 204 }); });
+  await page.route('**/v1/account/agents', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: grantId, project_id: projectId, project_name: 'Synthetic project', label: 'Synthetic agent', capabilities: ['results:read'], created_at: '2026-10-03T08:00:00Z', expires_at: '2099-01-01T00:00:00Z', revoked_at: null, client_id_host: 'client.example.test' }]) }));
+  await page.route(`**/v1/projects/${projectId}/grants/${grantId}`, route => { revoked = `${route.request().method()} ${new URL(route.request().url()).pathname}`; return route.fulfill({ status: 204 }); });
   await page.goto('/login?next=%2Fapp%2Faccount');
   await page.getByLabel('Email').fill('synthetic@example.test');
   await page.getByLabel('Password', { exact: true }).fill('correct-password');
@@ -114,15 +114,15 @@ test('agents list shows given date and revoke calls the grant route', async ({ p
   await expect(page.getByText(/Given\s+Oct 3, 2026/)).toBeVisible();
   await page.getByRole('button', { name: 'Revoke', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Revoke access', exact: true }).click();
-  await expect.poll(() => revoked).toBe(`DELETE /api/v1/projects/${projectId}/grants/${grantId}`);
+  await expect.poll(() => revoked).toBe(`DELETE /v1/projects/${projectId}/grants/${grantId}`);
 });
 
 test('delete account needs the typed email and an emailed code; wrong password stays on the page, then success lands on /', async ({ page }) => {
   await mockApi(page, true);
   let status = 401;
   const calls: { code?: string; sent: number } = { sent: 0 };
-  await page.route('**/api/v1/account/delete-code', route => { calls.sent += 1; return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email' }) }); });
-  await page.route('**/api/v1/account', route => { if (route.request().method() !== 'DELETE') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...user, email_verified: true }) });
+  await page.route('**/v1/account/delete-code', route => { calls.sent += 1; return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email' }) }); });
+  await page.route('**/v1/account', route => { if (route.request().method() !== 'DELETE') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...user, email_verified: true }) });
     calls.code = route.request().postDataJSON().code;
     return route.fulfill(status === 204 ? { status } : { status, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_credentials', message_key: 'errors.invalid_credentials', retryable: false }) }); });
   await page.goto('/login?next=%2Fapp%2Faccount');
@@ -158,7 +158,7 @@ test('delete account needs the typed email and an emailed code; wrong password s
 
 test('signup shows a 6-digit code box after the email is sent; a wrong code shows an error, the right one goes to login', async ({ page }) => {
   await mockApi(page, true);
-  await page.route('**/api/v1/auth/verify-email/code', route => route.request().postDataJSON().code === '654321'
+  await page.route('**/v1/auth/verify-email/code', route => route.request().postDataJSON().code === '654321'
     ? route.fulfill({ status: 204 })
     : route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_code', message_key: 'errors.invalid_code', retryable: false }) }));
   await page.goto('/signup');
@@ -181,7 +181,7 @@ test('signup shows a 6-digit code box after the email is sent; a wrong code show
 test('signup sends the current UI locale', async ({ page }) => {
   await mockApi(page, true);
   let body: { locale?: string } = {};
-  await page.route('**/api/v1/auth/signup', route => { body = route.request().postDataJSON(); return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email' }) }); });
+  await page.route('**/v1/auth/signup', route => { body = route.request().postDataJSON(); return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email' }) }); });
   await page.goto('/signup');
   await page.getByLabel('Email').fill('new@example.test');
   await page.getByLabel('Password', { exact: true }).fill('long-enough-password');
@@ -198,7 +198,7 @@ test('signup sends the current UI locale', async ({ page }) => {
 
 test('verify-email shows the localized invalid-token message', async ({ page }) => {
   await mockApi(page, true);
-  await page.route('**/api/v1/auth/verify-email', route => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_token', message_key: 'errors.invalid_token', retryable: false }) }));
+  await page.route('**/v1/auth/verify-email', route => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_token', message_key: 'errors.invalid_token', retryable: false }) }));
   await page.goto('/verify-email?token=anything');
   await expect(page.getByRole('alert')).toContainText('This link is invalid or has expired.');
 });
@@ -221,7 +221,7 @@ for (const [name, status, body, message] of [
   test(`run submit ${name} shows the localized message`, async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
     await useSyntheticApplication(page);
-    await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.request().method() === 'POST'
+    await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.request().method() === 'POST'
       ? route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) }) : route.fallback());
     await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
     await page.getByRole('tab', { name: 'Prepare documents', exact: true }).click();
@@ -232,7 +232,7 @@ for (const [name, status, body, message] of [
 
 test('login explains a rate limit with the wait time', async ({ page }) => {
   await mockApi(page, true);
-  await page.route('**/api/v1/auth/login', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'rate_limited', message_key: 'errors.rate_limited', retryable: true, fields: { retry_after: '42' } }) }));
+  await page.route('**/v1/auth/login', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'rate_limited', message_key: 'errors.rate_limited', retryable: true, fields: { retry_after: '42' } }) }));
   await page.goto('/login');
   await page.getByLabel('Email').fill('synthetic@example.test');
   await page.getByLabel('Password', { exact: true }).fill('whatever-password');
@@ -243,7 +243,7 @@ test('login explains a rate limit with the wait time', async ({ page }) => {
 test('an expired reset link offers a new one; a good reset returns to login with a notice', async ({ page }) => {
   await mockApi(page, true);
   let used = false;
-  await page.route('**/api/v1/auth/password/reset', route => used
+  await page.route('**/v1/auth/password/reset', route => used
     ? route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_token', message_key: 'errors.invalid_token', retryable: false }) })
     : (used = true, route.fulfill({ status: 204 })));
   for (const expected of ['notice', 'expired']) {
@@ -273,7 +273,7 @@ test('verify success says log in when signed out and continue to projects when s
 test('a failed verify link offers a new link only when signed in', async ({ page }) => {
   await mockApi(page, false);
   let resent = false;
-  await page.route('**/api/v1/auth/resend-verification', route => { resent = true; return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email' }) }); });
+  await page.route('**/v1/auth/resend-verification', route => { resent = true; return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email' }) }); });
   await page.goto('/verify-email?token=bad');
   await expect(page.getByRole('link', { name: 'Log in to request a new link' })).toBeVisible();
   await page.goto('/login');
@@ -290,8 +290,8 @@ test('a failed verify link offers a new link only when signed in', async ({ page
 test('signup and forgot password say so when the server cannot send email', async ({ page }) => {
   await mockApi(page, true);
   const off = (route: import('@playwright/test').Route) => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email', mail_enabled: false }) });
-  await page.route('**/api/v1/auth/signup', off);
-  await page.route('**/api/v1/auth/password/forgot', off);
+  await page.route('**/v1/auth/signup', off);
+  await page.route('**/v1/auth/password/forgot', off);
   await page.goto('/signup');
   await page.getByLabel('Email').fill('new@example.test');
   await page.getByLabel('Password', { exact: true }).fill('long-enough-password');
