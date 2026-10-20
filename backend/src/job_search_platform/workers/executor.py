@@ -287,7 +287,7 @@ class RunExecutor:
             if run.operation == "apply_prepare":
                 await self._execute_prepare(run, lease_owner, sandbox)
                 return
-            if run.operation == "interview_generate":
+            if run.operation in ("interview_generate", "interview_grade", "interview_report"):
                 await self._execute_practice(run, lease_owner, sandbox)
                 return
             cv_path = await self._materialize(run, sandbox)
@@ -794,8 +794,9 @@ class RunExecutor:
             await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
 
     def _practice_inputs(self, run: Run) -> dict | None:
-        """The set's choices, the job and the session's latest evaluation report; None when the set is gone."""
-        from job_search_platform.db.models import InterviewSet, JobRevision
+        """What the run's prompt needs (set, job, latest evaluation report, and the attempt or the questions);
+        None when the set or attempt is gone."""
+        from job_search_platform.db.models import InterviewAttempt, InterviewQuestion, InterviewSet, JobRevision
 
         with self.sessions() as db:
             row = db.get(InterviewSet, uuid.UUID(run.input_snapshot["set_id"]))
@@ -805,8 +806,24 @@ class RunExecutor:
             result = db.scalar(select(Run.evaluation_result).where(
                 Run.project_id == run.project_id, Run.session_id == run.session_id, Run.operation == "evaluate_job",
                 Run.status == "completed").order_by(Run.created_at.desc()).limit(1))
-            return {"level": row.level, "sections": row.sections, "report": (result or {}).get("report"),
-                    "job": {"title": job.title, "company": job.company, "description": job.description}}
+            job_view = {"title": job.title, "company": job.company, "description": job.description}
+            report = (result or {}).get("report")
+            if run.operation == "interview_grade":
+                attempt = db.get(InterviewAttempt, uuid.UUID(run.input_snapshot["attempt_id"]))
+                question = db.get(InterviewQuestion, attempt.question_id) if attempt else None
+                if question is None:
+                    return None
+                return {"job": job_view, "answer": attempt.answer, "question": practice.question_view(question, [])}
+            if run.operation == "interview_report":
+                questions = db.scalars(select(InterviewQuestion).where(InterviewQuestion.set_id == row.id)
+                                       .order_by(InterviewQuestion.position)).all()
+                latest = {}
+                for attempt in db.scalars(select(InterviewAttempt).where(InterviewAttempt.question_id.in_([q.id for q in questions]))
+                                          .order_by(InterviewAttempt.created_at.desc())):
+                    latest.setdefault(attempt.question_id, attempt)
+                return {"job": job_view, "set": row, "report": report,
+                        "questions": [practice.question_view(q, [latest[q.id]] if q.id in latest else []) for q in questions]}
+            return {"level": row.level, "sections": row.sections, "report": report, "job": job_view}
 
     def _store_practice(self, run: Run, questions: list[dict], reverse: list[str]) -> None:
         from job_search_platform.db.models import InterviewQuestion, InterviewSet
@@ -820,7 +837,8 @@ class RunExecutor:
                        for i, q in enumerate(questions))
 
     async def _execute_practice(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
-        """CR-IVP-01: one LLM round writes the set's questions; the evidence gate drops unsupported model answers."""
+        """CR-IVP-01: one LLM round. interview_generate writes the set's questions (the evidence gate drops unsupported
+        model answers); interview_grade gives feedback on one answer; interview_report summarises the set."""
         started = False
         try:
             inputs = await asyncio.to_thread(self._practice_inputs, run)
@@ -847,12 +865,35 @@ class RunExecutor:
                 text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
             if not text.strip():
                 raise ServiceError("cv_text_empty")
-            prompt, instructions = practice.prompt(cv_text=text, facts=facts, output_language=run.output_language, **inputs)
+            if run.operation == "interview_generate":
+                prompt, instructions = practice.prompt(cv_text=text, facts=facts, output_language=run.output_language, **inputs)
+            elif run.operation == "interview_grade":
+                prompt, instructions = practice.grade_prompt(
+                    question=inputs["question"], answer=inputs["answer"], job=inputs["job"], facts=facts,
+                    output_language=run.output_language, card=inputs["question"]["section"] == "technical")
+            else:
+                prompt, instructions = practice.report_prompt(set_row=inputs["set"], questions=inputs["questions"],
+                                                              job=inputs["job"], report=inputs["report"],
+                                                              output_language=run.output_language)
             began = time.monotonic()
-            await self.runtime.submit(run.project_id, uuid.uuid5(run.id, "interview_generate"), prompt, instructions,
-                                      provider, operation="interview_generate", tool_gate=deny_tool)
+            await self.runtime.submit(run.project_id, uuid.uuid5(run.id, run.operation), prompt, instructions,
+                                      provider, operation=run.operation, tool_gate=deny_tool)
             self._public_event(run.id, "run_progress", {"step": "agent_running"})
             raw = await self._await_result(run, lease_owner, gate_failure, began)
+            if run.operation != "interview_generate":
+                try:
+                    if run.operation == "interview_grade":
+                        state = practice.parse_grade(raw, inputs["answer"], facts, inputs["question"]["section"] == "technical")
+                    else:
+                        state = practice.parse_report(raw, {s["id"] for s in inputs["set"].sections})
+                except ValueError:
+                    raise ServiceError("native_response_invalid") from None
+                await asyncio.to_thread(self._store_practice_state, run, state)
+                await self._stop(run.project_id, started)
+                started = False
+                await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed",
+                                        result_payload={"kind": run.operation})
+                return
             labels = practice.aliases(facts)
             cited = [{"evidence_ids": sorted(practice.cited_ids(raw, labels))}]
             vocabulary = await asyncio.to_thread(self._vocabulary, run.project_id)
@@ -872,11 +913,33 @@ class RunExecutor:
                                                     "model_answers_dropped": dropped})
         except ServiceError as exc:
             await self._stop(run.project_id, started)
+            await asyncio.to_thread(self._store_practice_state, run, {"status": "failed"})
             status = "cancelled" if exc.code == "cancellation_requested" else "failed"
             await self._finish_after_stop(run, lease_owner, status, None if status == "cancelled" else _safe_message(exc.code))
         except Exception:
             await self._stop(run.project_id, started)
+            await asyncio.to_thread(self._store_practice_state, run, {"status": "failed"})
             await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
+
+    def _store_practice_state(self, run: Run, state: dict) -> None:
+        """Feedback lands on the attempt, the report on the set; only while this run still owns the pending slot."""
+        from job_search_platform.db.models import InterviewAttempt, InterviewSet
+
+        if run.operation == "interview_generate":
+            return
+        with self.sessions.begin() as db:
+            if run.operation == "interview_grade":
+                row = db.get(InterviewAttempt, uuid.UUID(run.input_snapshot["attempt_id"]), with_for_update=True)
+                current = row.feedback if row else None
+            else:
+                row = db.get(InterviewSet, uuid.UUID(run.input_snapshot["set_id"]), with_for_update=True)
+                current = row.report if row else None
+            if row is None or (current or {}).get("run_id") != str(run.id):
+                return
+            if run.operation == "interview_grade":
+                row.feedback = state
+            else:
+                row.report = state
 
     def _bank_facts(self, project_id: uuid.UUID) -> list[str]:
         with self.sessions() as db:

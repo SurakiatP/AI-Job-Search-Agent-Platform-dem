@@ -13,7 +13,7 @@ from sqlalchemy import delete, func, select
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, write_actor
 from job_search_platform.db.models import (PRACTICE_SECTIONS, ConversationSession, InterviewAttempt, InterviewQuestion,
-                                           InterviewSet, Project, Run)
+                                           InterviewSet, JobRevision, Project, Run)
 from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.services import practice as pr
 from job_search_platform.services.authorization import authorize
@@ -95,8 +95,9 @@ def _question(db, project_id: UUID, question_id: UUID) -> InterviewQuestion:
     return row
 
 
-def _queue_run(db, actor, project_id: UUID, session: ConversationSession, row: InterviewSet, language: str) -> None:
-    """Queue interview_generate for the set. The caller holds the project lock."""
+def _queue_run(db, actor, project_id: UUID, session: ConversationSession, row: InterviewSet, language: str,
+               operation: str = "interview_generate", snapshot: dict | None = None) -> Run:
+    """Queue a practice run (default: question generation for the set). The caller holds the project lock."""
     if (db.scalar(select(func.count()).select_from(Run).where(Run.project_id == project_id, Run.status == "queued")) or 0) >= MAX_QUEUED_PER_PROJECT:
         raise ServiceError("queue_full", retryable=True)
     gateway = GatewaySettings.from_env()
@@ -105,14 +106,20 @@ def _queue_run(db, actor, project_id: UUID, session: ConversationSession, row: I
     enforce_run_gates(db, project_id, practice=True)
     now, key = datetime.now(timezone.utc), uuid4().hex
     run = Run(project_id=project_id, actor_scope=actor_scope(actor), idempotency_key=key,
-              request_digest=hashlib.sha256(json.dumps({"interview_generate": str(row.id), "key": key}).encode()).hexdigest(),
-              operation="interview_generate", session_id=session.id, cv_revision_id=session.cv_revision_id,
-              job_revision_id=session.job_revision_id, input_snapshot={"set_id": str(row.id)},
+              request_digest=hashlib.sha256(json.dumps({operation: str(row.id), "key": key}).encode()).hexdigest(),
+              operation=operation, session_id=session.id, cv_revision_id=session.cv_revision_id,
+              job_revision_id=session.job_revision_id, input_snapshot=snapshot or {"set_id": str(row.id)},
               config_snapshot=gateway.snapshot(), output_language=language, status="queued", created_at=now)
     db.add(run)
     db.flush()
     append_event(db, run, "run_queued", {"status": "queued"}, now=now)
-    row.run_id = run.id
+    if operation == "interview_generate":
+        row.run_id = run.id
+    return run
+
+
+def _language(db, row: InterviewSet) -> str:
+    return (db.scalar(select(Run.output_language).where(Run.id == row.run_id)) if row.run_id else None) or "th"
 
 
 def _lock_project(db, project_id: UUID) -> None:
@@ -169,8 +176,8 @@ async def get_set(project_id: UUID, set_id: UUID, actor=Depends(owner_actor), se
                     InterviewAttempt.question_id.in_([q.id for q in questions]))
                     .order_by(InterviewAttempt.created_at.desc(), InterviewAttempt.id.desc())):
                 attempts.setdefault(attempt.question_id, []).append(attempt)
-        return {**pr.set_view(db, row), "reverse_questions": row.reverse_questions,
-                "questions": [pr.question_view(q, attempts.get(q.id, [])) for q in questions]}
+        return {**pr.set_view(db, row), "reverse_questions": row.reverse_questions, "report": pr.pending_state(db, row.report),
+                "questions": [pr.question_view(q, attempts.get(q.id, []), db) for q in questions]}
 
 
 @router.patch("/projects/{project_id}/practice-sets/{set_id}")
@@ -216,8 +223,7 @@ async def retry_set(project_id: UUID, set_id: UUID, actor=Depends(write_actor), 
         row = _set(db, project_id, set_id, lock=True)
         if pr.status(db, row) != "failed":
             raise ServiceError("practice_set_busy")
-        language = db.scalar(select(Run.output_language).where(Run.id == row.run_id)) if row.run_id else None
-        _queue_run(db, actor, project_id, _session(db, project_id, row.session_id), row, language or "th")
+        _queue_run(db, actor, project_id, _session(db, project_id, row.session_id), row, _language(db, row))
         return pr.set_view(db, row)
 
 
@@ -252,3 +258,61 @@ async def add_attempt(project_id: UUID, question_id: UUID, body: AttemptCreate, 
         db.execute(delete(InterviewAttempt).where(InterviewAttempt.question_id == row.id, InterviewAttempt.id.not_in(keep)))
         db.refresh(attempt)
         return {"id": attempt.id, "answer": attempt.answer, "feedback": None, "created_at": attempt.created_at}
+
+
+@router.get("/projects/{project_id}/practice-sets")
+async def list_project_sets(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    """FR-IVP-19: every live set of the project's live sessions, newest first, with its job."""
+    _owner(actor)
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "session")
+        rows = db.execute(select(InterviewSet, JobRevision.title, JobRevision.company)
+                          .join(ConversationSession, (ConversationSession.project_id == InterviewSet.project_id)
+                                & (ConversationSession.id == InterviewSet.session_id))
+                          .outerjoin(JobRevision, JobRevision.id == ConversationSession.job_revision_id)
+                          .where(InterviewSet.project_id == project_id, InterviewSet.deleted_at.is_(None),
+                                 ConversationSession.removed_at.is_(None))
+                          .order_by(InterviewSet.created_at.desc(), InterviewSet.id)).all()
+        return [{**pr.set_view(db, row), "job_title": title, "job_company": company} for row, title, company in rows]
+
+
+@router.post("/projects/{project_id}/practice-attempts/{attempt_id}/feedback", status_code=202)
+async def request_feedback(project_id: UUID, attempt_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """FR-IVP-12/15: AI feedback on one saved answer (a flashcard answer gets a correctness check). Idempotent while
+    pending or done; asks again after a failure."""
+    _owner(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "session")
+        _lock_project(db, project_id)
+        attempt = db.scalar(select(InterviewAttempt).where(InterviewAttempt.project_id == project_id,
+                                                           InterviewAttempt.id == attempt_id).with_for_update())
+        if attempt is None:
+            raise ServiceError("not_found")
+        question = _question(db, project_id, attempt.question_id)
+        if question.section == "logistics":
+            raise ServiceError("practice_not_gradable")
+        state = pr.pending_state(db, attempt.feedback)
+        if not state or state.get("status") == "failed":
+            row = _set(db, project_id, question.set_id)
+            run = _queue_run(db, actor, project_id, _session(db, project_id, row.session_id), row, _language(db, row),
+                             "interview_grade", {"set_id": str(row.id), "attempt_id": str(attempt.id)})
+            attempt.feedback = state = {"status": "pending", "run_id": str(run.id)}
+        return {"id": attempt.id, "answer": attempt.answer, "feedback": state, "created_at": attempt.created_at}
+
+
+@router.post("/projects/{project_id}/practice-sets/{set_id}/report", status_code=202)
+async def request_report(project_id: UUID, set_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """FR-IVP-14: end-of-set summary. A new request replaces the last report unless one is still being written."""
+    _owner(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "session")
+        _lock_project(db, project_id)
+        row = _set(db, project_id, set_id, lock=True)
+        if pr.status(db, row) != "ready":
+            raise ServiceError("practice_set_busy")
+        state = pr.pending_state(db, row.report)
+        if not state or state.get("status") != "pending":
+            run = _queue_run(db, actor, project_id, _session(db, project_id, row.session_id), row, _language(db, row),
+                             "interview_report", {"set_id": str(row.id)})
+            row.report = state = {"status": "pending", "run_id": str(run.id)}
+        return {**pr.set_view(db, row), "report": state}

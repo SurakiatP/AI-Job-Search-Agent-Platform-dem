@@ -787,6 +787,7 @@ class InterviewSet(Base):
     sections: Mapped[list] = mapped_column(JSON, nullable=False)
     run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("runs.id", ondelete="SET NULL"))
     reverse_questions: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    report: Mapped[dict | None] = mapped_column(JSON)  # PR 2: {"status": pending|done|failed, ...}
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (
