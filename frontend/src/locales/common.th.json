@@ -24,7 +24,8 @@
     "cv": "CV และประสบการณ์",
     "allProjects": "ทุกโปรเจกต์",
     "newProject": "สร้าง Project ใหม่",
-    "trash": "ถังขยะ"
+    "trash": "ถังขยะ",
+    "practice": "ซ้อมสัมภาษณ์"
   },
   "noProjects": "โปรเจกต์ของคุณจะอยู่ที่นี่",
   "workspaceTitle": "พื้นที่หางานของคุณ",

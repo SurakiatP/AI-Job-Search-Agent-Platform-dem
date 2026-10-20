@@ -1,7 +1,7 @@
 import { Avatar } from './Avatar';
 import { useAccount } from '../lib/api';
 import { useId, useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, Bot, ChevronDown, FileText, FolderOpen, Kanban, LayoutDashboard, MessagesSquare, Search, Settings, Trash2, UserCog, UserRound, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Bot, ChevronDown, FileText, FolderOpen, Kanban, LayoutDashboard, MessagesSquare, Mic, Search, Settings, Trash2, UserCog, UserRound, type LucideIcon } from 'lucide-react';
 import { useTrashCount } from '../lib/useTrashCount';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
@@ -33,7 +33,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
   const base = `/app/projects/${projectId}`;
   const trashCount = useTrashCount(projectId);
   const groups = [
-    ['work', [['overview', LayoutDashboard, t('nav.overview')], ['search', Search, t('nav.search')], ['sessions', MessagesSquare, t('nav.evaluate')], ['applications', Kanban, t('nav.savedJobs')]]],
+    ['work', [['overview', LayoutDashboard, t('nav.overview')], ['search', Search, t('nav.search')], ['sessions', MessagesSquare, t('nav.evaluate')], ['practice', Mic, t('nav.practice')], ['applications', Kanban, t('nav.savedJobs')]]],
     ['materials', [['profile', UserRound, t('nav.cv')], ['documents', FileText, t('nav.documents')]]],
     ['utilities', [['console', Bot, t('nav.console')], ['trash', Trash2, t('nav.trash')]]],
   ] as const;

@@ -1,7 +1,20 @@
 // Interview practice copy (CR-IVP-01). Plain words; the page never promises a hiring outcome.
-import type { PracticeLevel, PracticeSection } from '@/lib/api-types';
+import type { PracticeDimension, PracticeLevel, PracticeSection } from '@/lib/api-types';
 
 const th = {
+  getFeedback: 'ขอความเห็นจาก AI', feedbackTitle: 'ความเห็นจาก AI', grading: 'กำลังอ่านคำตอบของคุณ', gradeFailed: 'ให้ความเห็นไม่สำเร็จ', askAgain: 'ลองอีกครั้ง',
+  outOf: (n: number) => `${n} จาก 5`, upFrom: (n: number) => `เพิ่มจาก ${n}`, downFrom: (n: number) => `ลดจาก ${n}`,
+  dims: { structure: 'โครงเรื่อง', relevance: 'ตรงกับงาน', evidence: 'มีหลักฐาน', clarity: 'ชัดเจน', company_fit: 'เข้ากับบริษัท' } as Record<PracticeDimension, string>,
+  anchors: { structure: 'มีสถานการณ์ หน้าที่ สิ่งที่ทำ และผลลัพธ์ครบ', relevance: 'ตอบคำถามนี้สำหรับงานนี้', evidence: 'เจาะจง มีตัวเลขหรือผลลัพธ์จริง', clarity: 'สั้นและฟังเข้าใจง่ายเมื่อพูด', company_fit: 'สอดคล้องกับที่ประกาศบอกเกี่ยวกับบริษัท' } as Record<PracticeDimension, string>,
+  starParts: { S: 'สถานการณ์', T: 'หน้าที่', A: 'สิ่งที่ทำ', R: 'ผลลัพธ์' }, starMissing: 'ยังไม่พบ', yourAnswer: 'คำตอบของคุณ แยกตาม STAR',
+  toAdd: 'สิ่งที่ควรเพิ่ม', unused: 'เรื่องจากคลังที่ยังไม่ได้เล่า', unusedHint: 'กดเพื่อเพิ่มลงในช่องคำตอบ',
+  cardAnswerToggle: 'ตอบก่อนพลิก', cardAnswerLabel: 'คำตอบของคุณสำหรับการ์ดนี้', checkAnswer: 'ตรวจคำตอบ',
+  verdicts: { correct: 'ถูกต้อง', partial: 'ถูกบางส่วน', incorrect: 'ยังไม่ถูก' }, missingPoints: 'ยังขาด',
+  summaryRound: 'สรุปผลและแผนเตรียมตัว', summarySub: 'จุดแข็ง สิ่งที่ควรเพิ่ม และแผน', summaryHint: 'AI สรุปจากคำตอบ คะแนน และการ์ดของชุดนี้ ไม่มีการทำนายโอกาสได้งาน',
+  writeSummary: 'เขียนสรุปให้ฉัน', writing: 'กำลังเขียนสรุปของคุณ', summaryFailed: 'เขียนสรุปไม่สำเร็จ', rewrite: 'เขียนใหม่',
+  strengths: 'จุดแข็ง', skills: 'ทักษะที่ควรเพิ่ม', plan: 'แผนเตรียมตัว', readiness: 'ความพร้อมรายส่วน',
+  levelsReady: { ready: 'พร้อมแล้ว', almost: 'เกือบพร้อม', not_yet: 'ยังไม่พร้อม' },
+  hubTitle: 'ซ้อมสัมภาษณ์', hubIntro: 'ชุดซ้อมทั้งหมดในโปรเจกต์นี้ แยกตามงาน', hubEmpty: 'ชุดซ้อมสร้างจากการประเมิน เปิดการประเมินงาน แล้วไปที่แท็บซ้อมสัมภาษณ์', goEvaluations: 'ไปที่การประเมิน',
   tab: 'ซ้อมสัมภาษณ์', title: 'ชุดซ้อมสัมภาษณ์',
   intro: 'คำถามตั้งจาก CV ประสบการณ์ในคลัง และประกาศงานนี้ คำตอบตัวอย่างใช้เฉพาะข้อเท็จจริงของคุณ',
   newSet: 'สร้างชุดซ้อม', createSet: 'สร้างชุด', name: 'ชื่อชุด', level: 'ระดับ',
@@ -46,6 +59,19 @@ const th = {
 };
 
 const en: typeof th = {
+  getFeedback: 'Get AI feedback', feedbackTitle: 'AI feedback', grading: 'Reading your answer', gradeFailed: 'Feedback did not come through.', askAgain: 'Try again',
+  outOf: n => `${n} of 5`, upFrom: n => `up from ${n}`, downFrom: n => `down from ${n}`,
+  dims: { structure: 'Structure', relevance: 'Relevance', evidence: 'Evidence', clarity: 'Clarity', company_fit: 'Company fit' },
+  anchors: { structure: 'situation, task, action and result are all there', relevance: 'answers this question for this job', evidence: 'specific, with real numbers or outcomes', clarity: 'short and easy to follow when spoken', company_fit: 'fits what the posting says about the company' },
+  starParts: { S: 'Situation', T: 'Task', A: 'Action', R: 'Result' }, starMissing: 'not found', yourAnswer: 'Your answer, marked by STAR part',
+  toAdd: 'What to add', unused: 'Stories from your bank you did not tell', unusedHint: 'Press one to add it to your answer',
+  cardAnswerToggle: 'Answer before flipping', cardAnswerLabel: 'Your answer to this card', checkAnswer: 'Check my answer',
+  verdicts: { correct: 'Correct', partial: 'Partly right', incorrect: 'Not right yet' }, missingPoints: 'Missing',
+  summaryRound: 'Summary and plan', summarySub: 'Strengths, gaps and next steps', summaryHint: 'AI sums up this set from your answers, scores and cards. It never predicts your chances.',
+  writeSummary: 'Write my summary', writing: 'Writing your summary', summaryFailed: 'The summary could not be written.', rewrite: 'Write it again',
+  strengths: 'Strengths', skills: 'Skills to build', plan: 'Preparation plan', readiness: 'Readiness by section',
+  levelsReady: { ready: 'Ready', almost: 'Almost ready', not_yet: 'Not ready yet' },
+  hubTitle: 'Interview practice', hubIntro: 'Every practice set in this project, by job.', hubEmpty: 'Practice sets are made from an evaluation. Open one and go to its Interview practice tab.', goEvaluations: 'Go to evaluations',
   tab: 'Interview practice', title: 'Practice sets',
   intro: 'Questions come from your CV, experience bank and this posting. Example answers use only your own facts.',
   newSet: 'New practice set', createSet: 'Create set', name: 'Name', level: 'Level',

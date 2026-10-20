@@ -197,9 +197,20 @@ export type PracticeSet = {
   status: 'generating' | 'ready' | 'failed'; run_id: string | null; created_at: string;
   question_count: number; ready_count: number; known_count: number;
 };
-export type PracticeAttempt = { id: string; answer: string; feedback: unknown; created_at: string };
+export type PracticeDimension = 'structure' | 'relevance' | 'evidence' | 'clarity' | 'company_fit';
+export type PracticeFeedback =
+  | { status: 'pending' | 'failed' }
+  | { status: 'done'; kind: 'answer'; scores: Record<PracticeDimension, number>; summary: string;
+      star: { part: 'S' | 'T' | 'A' | 'R'; start: number; end: number }[]; add: string[]; unused_facts: { id: string; text: string }[] }
+  | { status: 'done'; kind: 'card'; verdict: 'correct' | 'partial' | 'incorrect'; missing: string[]; note: string };
+export type PracticeReport =
+  | { status: 'pending' | 'failed' }
+  | { status: 'done'; strengths: string[]; skills_to_build: string[]; plan: string[];
+      readiness: { section: PracticeSection; level: 'ready' | 'almost' | 'not_yet'; note: string }[] };
+export type PracticeAttempt = { id: string; answer: string; feedback: PracticeFeedback | null; created_at: string };
 export type PracticeQuestion = {
   id: string; section: PracticeSection; position: number; prompt: string; why: string; key_points: string[];
   model_answer: string | null; evidence_ids: string[]; ready: boolean; card_rating: 'know' | 'learning' | null; attempts: PracticeAttempt[];
 };
-export type PracticeSetDetail = PracticeSet & { reverse_questions: string[]; questions: PracticeQuestion[] };
+export type PracticeSetDetail = PracticeSet & { reverse_questions: string[]; questions: PracticeQuestion[]; report: PracticeReport | null };
+export type ProjectPracticeSet = PracticeSet & { job_title: string | null; job_company: string | null };
