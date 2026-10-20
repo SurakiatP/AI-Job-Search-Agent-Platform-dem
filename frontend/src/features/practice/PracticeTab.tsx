@@ -1,12 +1,12 @@
 // Session tab "ซ้อมสัมภาษณ์" (CR-IVP-01): the preparation list from the evaluation and the session's practice sets.
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { MoreHorizontal, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react';
+import { Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ItemMenu } from '@/components/ItemMenu';
 import { BusyNote } from '@/components/BusyNote';
 import { apiRequest } from '@/lib/api';
 import { ApiError, type Locale, type PracticeLevel, type PracticeSection, type PracticeSet } from '@/lib/api-types';
@@ -48,21 +48,20 @@ export function PracticeTab({ projectId, sessionId, locale, prep }: { projectId:
       {sets.status === 'loading' && !sets.data ? <BusyNote label="…" /> : list.length === 0 ? <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-5">
         <h3 className="font-semibold">{c.emptyTitle}</h3><p className="max-w-xl text-sm text-muted-foreground">{c.emptyBody}</p>
         <Button type="button" className="min-h-11" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{c.newSet}</Button>
-      </div> : <ul className="grid divide-y rounded-lg border">{list.map(set => <li key={set.id} className="grid min-w-0 gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <div className="grid min-w-0 gap-1.5">
-          <Link to={`/app/projects/${projectId}/sessions/${sessionId}/practice/${set.id}`} className="w-fit break-words font-semibold text-foreground hover:text-primary hover:underline [overflow-wrap:anywhere]">{set.name}</Link>
-          <p className="text-sm text-muted-foreground">{c.levels[set.level]} · {set.sections.map(s => c.sections[s.id]).join(', ')}</p>
-          {set.status === 'generating' ? <BusyNote label={c.generating} /> : set.status === 'failed'
-            ? <p className="flex flex-wrap items-center gap-2 text-sm text-destructive">{c.failed}<Button type="button" size="sm" variant="outline" onClick={() => void act(() => apiRequest(`${setPath(set.id)}/retry`, { method: 'POST' }))}><RotateCcw className="size-4" aria-hidden="true" />{c.retry}</Button></p>
-            : <Progress value={set.ready_count + set.known_count} max={set.question_count} label={c.progress(set.ready_count + set.known_count, set.question_count)} />}
+      </div> : <ul className="grid divide-y rounded-lg border">{list.map(set => <li key={set.id} className="grid min-w-0 gap-2.5 px-4 py-3">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+          <div className="grid min-w-0 gap-0.5">
+            <Link to={`/app/projects/${projectId}/sessions/${sessionId}/practice/${set.id}`} className="w-fit break-words font-semibold text-foreground hover:text-primary hover:underline [overflow-wrap:anywhere]">{set.name}</Link>
+            <p className="text-sm text-muted-foreground">{c.levels[set.level]} · {set.sections.map(s => c.sections[s.id]).join(', ')}</p>
+          </div>
+          <ItemMenu className="-me-1.5 -mt-0.5" label={c.options(set.name)} actions={[
+            { label: c.rename, icon: <Pencil className="size-4" aria-hidden="true" />, onSelect: () => setRenaming(set) },
+            { label: c.del, icon: <Trash2 className="size-4" aria-hidden="true" />, destructive: true, onSelect: () => void act(async () => { await apiRequest(setPath(set.id), { method: 'DELETE' }); setRemoved(set); }) },
+          ]} />
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild><button type="button" aria-label={c.options(set.name)} className="grid size-11 place-items-center justify-self-end rounded-md border bg-card text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><MoreHorizontal className="size-4" aria-hidden="true" /></button></DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setRenaming(set)}><Pencil className="size-4" aria-hidden="true" />{c.rename}</DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive data-[highlighted]:text-destructive" onSelect={() => void act(async () => { await apiRequest(setPath(set.id), { method: 'DELETE' }); setRemoved(set); })}><Trash2 className="size-4" aria-hidden="true" />{c.del}</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {set.status === 'generating' ? <BusyNote label={c.generating} /> : set.status === 'failed'
+          ? <p className="flex flex-wrap items-center gap-2 text-sm text-destructive">{c.failed}<Button type="button" size="sm" variant="outline" onClick={() => void act(() => apiRequest(`${setPath(set.id)}/retry`, { method: 'POST' }))}><RotateCcw className="size-4" aria-hidden="true" />{c.retry}</Button></p>
+          : <Progress value={set.ready_count + set.known_count} max={set.question_count} label={c.progress(set.ready_count + set.known_count, set.question_count)} />}
       </li>)}</ul>}
     </section>
     <ReportListCard kind="interview" title={c.prepTitle} hint={c.prepHint} items={prep} />
