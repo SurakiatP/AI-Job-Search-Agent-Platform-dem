@@ -99,6 +99,9 @@
   * { border-color: var(--border); }
   body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-size: 16px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
   h1, h2, h3, h4 { font-style: normal; overflow-wrap: anywhere; min-width: 0; }
+  /* No word left alone on a last line: headings balance, interface text avoids widows. */
+  h1, h2, h3, h4, label, legend { text-wrap: balance; }
+  p, li, dd, figcaption { text-wrap: pretty; }
   :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
   * { box-sizing: border-box; }
   button, input, textarea, select { font: inherit; color: inherit; }
