@@ -59,7 +59,7 @@ def test_signup_is_identical_for_new_and_existing_email(ctx):
     first = ctx.client.post("/api/v1/auth/signup", json=body)
     second = ctx.client.post("/api/v1/auth/signup", json=body)
     assert first.status_code == second.status_code == 202
-    assert first.json() == second.json() == {"status": "check_email"}
+    assert first.json() == second.json() == {"status": "check_email", "mail_enabled": True}
 
 
 def test_sixth_signup_from_one_ip_is_rate_limited(ctx):
@@ -105,7 +105,7 @@ def test_delete_account_requires_matching_email_password_and_emailed_code(ctx):
     csrf = verified_login(ctx).json()["csrf_token"]
     headers = {"Origin": ctx.origin, "X-CSRF-Token": csrf}
     sent = ctx.client.post("/api/v1/account/delete-code", headers=headers)
-    assert sent.status_code == 202 and sent.json() == {"status": "check_email"}
+    assert sent.status_code == 202 and sent.json() == {"status": "check_email", "mail_enabled": True}
     code = _code(ctx)
     assert ctx.mailer.sent[-1].to == "alice@example.test"
     delete = lambda **body: ctx.client.request("DELETE", "/api/v1/account", headers=headers, json=body)
@@ -234,3 +234,11 @@ def test_avatar_rejects_svg_wrong_bytes_and_oversize_and_needs_csrf(ctx):
         assert r.status_code == 422 and r.json()["code"] == "invalid_image"
     assert ctx.client.put("/api/v1/account/avatar", headers=h, content=PNG + b"\x00" * 262_144).status_code == 422
     assert ctx.client.put("/api/v1/account/avatar", headers={"Origin": ctx.origin}, content=PNG).status_code in (401, 403)
+
+
+def test_check_email_says_when_the_server_sends_no_mail(ctx):
+    # A server-wide switch, so it reveals nothing about which emails have accounts.
+    ctx.client.app.state.services.accounts.mailer = None
+    body = {"email": "nobody@example.test", "password": PW, "locale": "en"}
+    assert ctx.client.post("/api/v1/auth/signup", json=body).json() == {"status": "check_email", "mail_enabled": False}
+    assert ctx.client.post("/api/v1/auth/password/forgot", json={"email": "nobody@example.test"}).json()["mail_enabled"] is False

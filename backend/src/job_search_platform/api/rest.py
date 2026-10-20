@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 import re
 import subprocess
 from pathlib import PurePath
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, UploadFile
@@ -16,20 +17,20 @@ from fastapi.exceptions import RequestValidationError
 from urllib.request import Request as _UrlRequest
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import StringConstraints
-from sqlalchemy import delete, exists, func, select, text
+from sqlalchemy import String, cast, delete, exists, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
 from job_search_platform.db.models import (
-    ResumeDraft,
+    Approval, CVRevisionText, DocumentRevision, ResumeDraft,
     CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
-    ProjectPreference, StoredFile, Run, Grant, JobMatchScore, JobSearchHidden,
+    ProjectPreference, StoredFile, Run, RunArtifact, Grant, JobMatchScore, JobSearchHidden,
     ToolConnectorConfiguration,
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
     ApplicationCardView, ApplicationContact, ApplicationDetailView, ApplicationEntry, ApplicationEventView,
-    AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVPromoteRequest, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRevisionView, DocumentView,
+    AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVPromoteRequest, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRename, DocumentRevisionView, DocumentView,
     DigestPreviewView, SavedSearchCreate, SavedSearchListView, SavedSearchUpdate, SavedSearchView,
     ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
@@ -64,9 +65,9 @@ def _http_error(error: ServiceError) -> JSONResponse:
     status_code = {
         "unauthorized": 401, "invalid_launch": 401, "invalid_origin": 403,
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
-        "project_not_empty": 409, "session_busy": 409, "idempotency_conflict": 409,
+        "project_not_empty": 409, "session_busy": 409, "session_not_trashed": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
-        "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409,
+        "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409, "cv_not_trashed": 409,
         "document_busy": 409, "tailor_already_applied": 409, "run_not_awaiting_input": 409, "invalid_answer": 422, "document_source_unavailable": 409,
         "apply_pack_required": 409, "approval_requires_run": 409, "approval_stale": 409, "already_applied": 409, "application_not_applied": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
@@ -109,7 +110,8 @@ def _require_live_job(db, project_id: UUID, job_id: UUID) -> JobRevision:
 
 def _session_view(db, row: ConversationSession, evaluation_run_id: UUID | None = None) -> dict[str, Any]:
     view: dict[str, Any] = {"id": row.id, "project_id": row.project_id, "title": row.title,
-                            "created_at": row.created_at, "evaluation_run_id": evaluation_run_id}
+                            "created_at": row.created_at, "evaluation_run_id": evaluation_run_id,
+                            "trashed_at": row.removed_at}
     if row.cv_revision_id is None:
         return view
     cv_revision = db.get(CVRevision, row.cv_revision_id)
@@ -157,7 +159,7 @@ def _cv_view(db, cv: CV) -> dict[str, Any]:
         ConversationSession.cv_revision_id.in_(select(CVRevision.id).where(CVRevision.cv_id == cv.id)))))
     return {"id": cv.id, "name": cv.name, "is_primary": cv.is_primary, "created_at": cv.created_at,
             "latest_revision": _cv_revision_view(*rows[0]) if rows else None,
-            "revision_count": len(rows), "in_use": bool(in_use),
+            "revision_count": len(rows), "in_use": bool(in_use), "trashed_at": cv.removed_at,
             "has_builder_draft": db.scalar(select(exists().where(ResumeDraft.cv_id == cv.id))) or False}
 
 
@@ -282,12 +284,15 @@ async def set_preferences(project_id: UUID, body: PreferencesUpdate, actor=Depen
 
 
 @router.get("/projects/{project_id}/sessions", response_model=list[SessionView])
-async def list_sessions(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+async def list_sessions(project_id: UUID, view: Literal["active", "trash"] = "active", actor=Depends(owner_actor),
+                        services: Services = Depends(get_services)):
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "session")
-        rows = db.scalars(select(ConversationSession).where(ConversationSession.project_id == project_id,
-                                                          ConversationSession.removed_at.is_(None))
-                          .order_by(ConversationSession.created_at, ConversationSession.id)).all()
+        shown = (ConversationSession.removed_at.is_(None) if view == "active"
+                 else ConversationSession.removed_at.is_not(None) & ConversationSession.purged_at.is_(None))
+        order = (ConversationSession.created_at,) if view == "active" else (ConversationSession.removed_at.desc(),)
+        rows = db.scalars(select(ConversationSession).where(ConversationSession.project_id == project_id, shown)
+                          .order_by(*order, ConversationSession.id)).all()
         return [_session_view(db, row) for row in rows]
 
 
@@ -358,7 +363,7 @@ async def update_session(project_id: UUID, session_id: UUID, body: SessionUpdate
 
 @router.delete("/projects/{project_id}/sessions/{session_id}", response_model=SessionDeleteResult)
 async def delete_session(project_id: UUID, session_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    """Hard-delete a session without runs; hide one with run history (runs, documents and approvals stay)."""
+    """Move a session to the trash (owner decision 2026-10-20: every delete is restorable first)."""
     _owner_only(actor)
     with services.sessions.begin() as db:
         authorize(db, actor, project_id, "manage", "session")
@@ -369,12 +374,44 @@ async def delete_session(project_id: UUID, session_id: UUID, actor=Depends(write
         statuses = set(db.scalars(select(Run.status).where(Run.project_id == project_id, Run.session_id == session_id)))
         if statuses & {"queued", "running", "waiting_approval"}:
             raise ServiceError("session_busy")
-        if not statuses:
-            db.execute(delete(Message).where(Message.project_id == project_id, Message.session_id == session_id))
-            db.delete(row)
-            return {"mode": "deleted"}
         row.removed_at = datetime.now(timezone.utc)
         return {"mode": "hidden"}
+
+
+@router.delete("/projects/{project_id}/sessions/{session_id}/permanent", status_code=204)
+async def purge_session(project_id: UUID, session_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Delete a trashed session for good: its messages and every run that produced no kept document.
+
+    Runs and document revisions are immutable provenance, so a run that published a document the owner keeps
+    stays (with its retry ancestors) and the session row stays as a hidden `purged_at` tombstone for it.
+    """
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "session")
+        row = db.scalar(select(ConversationSession).where(
+            ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
+        if row is None or row.purged_at is not None:
+            raise ServiceError("not_found")
+        if row.removed_at is None:
+            raise ServiceError("session_not_trashed")
+        runs = {r.id: r for r in db.scalars(select(Run).where(Run.project_id == project_id, Run.session_id == session_id))}
+        if any(r.status in {"queued", "running", "waiting_approval"} for r in runs.values()):
+            raise ServiceError("session_busy")
+        keep = set(db.scalars(select(RunArtifact.run_id).where(
+            RunArtifact.project_id == project_id, RunArtifact.run_id.in_(runs)))) if runs else set()
+        stack = list(keep)
+        while stack:  # a kept run's retry_of_id must still resolve
+            parent = runs[stack.pop()].retry_of_id
+            if parent in runs and parent not in keep:
+                keep.add(parent)
+                stack.append(parent)
+        db.execute(delete(Message).where(Message.project_id == project_id, Message.session_id == session_id))
+        if doomed := [rid for rid in runs if rid not in keep]:
+            db.execute(delete(Run).where(Run.project_id == project_id, Run.id.in_(doomed)))
+        if keep:
+            row.purged_at = datetime.now(timezone.utc)
+        else:
+            db.delete(row)
 
 
 @router.post("/projects/{project_id}/sessions/{session_id}/restore", response_model=SessionView)
@@ -384,7 +421,7 @@ async def restore_session(project_id: UUID, session_id: UUID, actor=Depends(writ
         authorize(db, actor, project_id, "manage", "session")
         row = db.scalar(select(ConversationSession).where(
             ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
-        if row is None:
+        if row is None or row.purged_at is not None:
             raise ServiceError("not_found")
         if row.removed_at is not None:
             if row.cv_revision_id is not None and (holder := _pair_holder(db, row)) is not None:
@@ -862,6 +899,14 @@ async def trash_document(project_id: UUID, document_id: UUID, actor=Depends(writ
     await services.documents.set_trashed(actor, project_id, document_id, True)
 
 
+@router.patch("/projects/{project_id}/documents/{document_id}", response_model=DocumentView)
+async def rename_document(project_id: UUID, document_id: UUID, body: DocumentRename, actor=Depends(write_actor),
+                          services: Services = Depends(get_services)):
+    """Owner renames a live document (for example a tailored CV from the builder)."""
+    await services.documents.rename(actor, project_id, document_id, body.title)
+    return await services.documents.get(actor, project_id, document_id)
+
+
 @router.post("/projects/{project_id}/documents/{document_id}/restore", response_model=DocumentView)
 async def restore_document(project_id: UUID, document_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     """Take a document out of the trash. Idempotent: restoring a live document returns it unchanged."""
@@ -961,11 +1006,14 @@ async def upload_cv(project_id: UUID, file: UploadFile = File(...), actor=Depend
 
 
 @router.get("/projects/{project_id}/cvs", response_model=list[CVView])
-async def list_cvs(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+async def list_cvs(project_id: UUID, view: Literal["active", "trash"] = "active", actor=Depends(owner_actor),
+                   services: Services = Depends(get_services)):
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "cv")
-        rows = db.scalars(select(CV).where(CV.project_id == project_id, CV.removed_at.is_(None))
-                          .order_by(CV.is_primary.desc(), CV.created_at, CV.id)).all()
+        query = select(CV).where(CV.project_id == project_id)
+        query = (query.where(CV.removed_at.is_(None)).order_by(CV.is_primary.desc(), CV.created_at, CV.id) if view == "active"
+                 else query.where(CV.removed_at.is_not(None), CV.purged_at.is_(None)).order_by(CV.removed_at.desc(), CV.id))
+        rows = db.scalars(query).all()
         return [_cv_view(db, cv) for cv in rows]
 
 
@@ -1030,6 +1078,92 @@ async def delete_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), s
                                .order_by(CV.created_at.desc(), CV.id).limit(1))
             if newest is not None:
                 newest.is_primary = True
+
+
+def _trashed_cv(db, project_id: UUID, cv_id: UUID) -> CV:
+    cv = db.scalar(select(CV).where(CV.project_id == project_id, CV.id == cv_id, CV.purged_at.is_(None)).with_for_update())
+    if cv is None:
+        raise ServiceError("not_found")
+    return cv
+
+
+@router.post("/projects/{project_id}/cvs/{cv_id}/restore", response_model=CVView)
+async def restore_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Take a CV out of the trash; it becomes primary when the project has none. Idempotent."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        cv = _trashed_cv(db, project_id, cv_id)
+        if cv.removed_at is not None:
+            cv.removed_at = None
+            cv.is_primary = db.scalar(select(CV.id).where(
+                CV.project_id == project_id, CV.is_primary, CV.removed_at.is_(None), CV.id != cv.id)) is None
+            db.flush()
+        return _cv_view(db, cv)
+
+
+def _json_mentions(column, value: str):
+    return cast(column, String).contains(value)
+
+
+@router.delete("/projects/{project_id}/cvs/{cv_id}/permanent", status_code=204)
+async def purge_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Delete a trashed CV's content for good (CR-CVT-01). The CV row and revision numbers stay as a hidden
+    tombstone so evaluations keep naming "CV · vN"; evaluations, documents and experience-bank facts stay."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        cv = _trashed_cv(db, project_id, cv_id)
+        if cv.removed_at is None:
+            raise ServiceError("cv_not_trashed")
+        revisions = list(db.scalars(select(CVRevision).where(
+            CVRevision.project_id == project_id, CVRevision.cv_id == cv_id).with_for_update()))
+        ids = [r.id for r in revisions]
+        if ids and (db.scalar(select(exists().where(
+                Run.project_id == project_id, Run.cv_revision_id.in_(ids),
+                Run.status.in_(("queued", "running", "waiting_approval"))))) or db.scalar(select(exists().where(
+                Approval.project_id == project_id, Approval.expected_cv_revision_id.in_(ids), Approval.consumed_at.is_(None))))):
+            raise ServiceError("cv_in_use")
+        draft = db.scalar(select(ResumeDraft).where(ResumeDraft.project_id == project_id, ResumeDraft.cv_id == cv_id))
+        photos = {data["basics"].get("photo") for data in [r.resume_data for r in revisions] + [draft.resume_data if draft else None]
+                  if data and data.get("basics", {}).get("photo")}
+        candidates = {r.file_id for r in revisions if r.file_id is not None}
+        for photo in photos:
+            others = (select(CVRevision.id).where(CVRevision.project_id == project_id, CVRevision.cv_id != cv_id,
+                                                  _json_mentions(CVRevision.resume_data, photo)),
+                      select(DocumentRevision.id).where(DocumentRevision.project_id == project_id,
+                                                        _json_mentions(DocumentRevision.resume_data, photo)),
+                      select(ResumeDraft.id).where(ResumeDraft.project_id == project_id, or_(ResumeDraft.cv_id.is_(None), ResumeDraft.cv_id != cv_id),
+                                                   _json_mentions(ResumeDraft.resume_data, photo)))
+            if not any(db.scalar(select(exists(q))) for q in others):  # a kept tailored CV may share the photo
+                candidates.add(UUID(photo))
+        def used_elsewhere(f: UUID) -> bool:
+            return any(db.scalar(select(exists().where(*where))) for where in (
+                (DocumentRevision.project_id == project_id, DocumentRevision.file_id == f),
+                (RunArtifact.project_id == project_id, RunArtifact.file_id == f),
+                (Approval.project_id == project_id, Approval.target_file_id == f),
+                (JobRevision.project_id == project_id, JobRevision.content_file_id == f),
+                (CVRevision.project_id == project_id, CVRevision.file_id == f, CVRevision.cv_id != cv_id)))
+        doomed = [f for f in candidates if not used_elsewhere(f)]
+        if ids:
+            db.execute(delete(JobMatchScore).where(JobMatchScore.project_id == project_id, JobMatchScore.cv_revision_id.in_(ids)))
+            db.execute(delete(CVRevisionText).where(CVRevisionText.project_id == project_id, CVRevisionText.cv_revision_id.in_(ids)))
+            db.execute(CVRevision.__table__.update().where(CVRevision.project_id == project_id, CVRevision.cv_id == cv_id)
+                       .values(file_id=None, resume_data=None, resume_style=None, skill_profile=None))
+        if draft is not None:
+            db.delete(draft)
+        keys = list(db.scalars(select(StoredFile.storage_key).where(
+            StoredFile.project_id == project_id, StoredFile.id.in_(doomed)))) if doomed else []
+        if doomed:
+            db.execute(delete(StoredFile).where(StoredFile.project_id == project_id, StoredFile.id.in_(doomed)))
+        cv.purged_at = datetime.now(timezone.utc)
+    for key in keys:  # rows are gone; an orphaned private object is harmless
+        with contextlib.suppress(Exception):
+            await services.files.object_store.delete(key)
 
 
 @router.get("/projects/{project_id}/files/{file_id}/download", response_class=StreamingResponse,
@@ -1126,6 +1260,13 @@ async def issue_grant(project_id: UUID, body: GrantIssueRequest, actor=Depends(w
 @router.delete("/projects/{project_id}/grants/{grant_id}", status_code=204)
 async def revoke_grant(project_id: UUID, grant_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     await services.grants.revoke(actor, project_id, grant_id)
+
+
+@router.get("/connect")
+async def connect_info(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    """Where external agents reach this app (Connect page). share_origin is null when the listener is off."""
+    origin = os.environ.get("SHARE_PUBLIC_ORIGIN", "").rstrip("/") or None
+    return {"share_origin": origin, "oauth": origin is not None and services.oauth is not None}
 
 
 @router.get("/health")

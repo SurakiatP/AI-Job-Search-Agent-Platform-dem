@@ -29,7 +29,7 @@ const th = {
   noJobs: 'ยังไม่มีงานที่บันทึกไว้',
   noJobsFirst: 'ค้นหาตำแหน่งหรือบันทึกประกาศงานเพื่อเริ่มต้น',
   version: (n: number) => `ฉบับที่ ${n}`,
-  usedCv: (name: string, version: number) => `${name} · ฉบับที่ ${version}`,
+  usedCv: (name: string, version: number) => `CV: ${name} · ฉบับที่ ${version}`,
   running: 'กำลังทำงานอยู่',
 };
 
@@ -62,7 +62,7 @@ const en: typeof th = {
   noJobs: 'No saved jobs yet',
   noJobsFirst: 'Search for roles or save a posting to get started.',
   version: n => `Version ${n}`,
-  usedCv: (name, version) => `${name} · v${version}`,
+  usedCv: (name, version) => `CV: ${name} · v${version}`,
   running: 'Running now',
 };
 

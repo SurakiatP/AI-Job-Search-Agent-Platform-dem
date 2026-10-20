@@ -67,6 +67,9 @@ paths:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
       tags: [sessions]
+      description: view=active (default) lists visible sessions oldest first; view=trash lists trashed, not purged ones, newest trashed first, with trashed_at.
+      parameters:
+        - {name: view, in: query, required: false, schema: {type: string, enum: [active, trash], default: active}}
       responses: {'200': {description: Sessions, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SessionView'}}}}}}
     post:
       tags: [sessions]
@@ -107,14 +110,29 @@ paths:
     delete:
       tags: [sessions]
       description: >-
-        Owner-only. A session without runs is deleted for good with its messages (mode deleted).
-        A session with run history is hidden instead (mode hidden, removed_at set): runs, events,
-        documents and approvals stay, and it disappears from the session list, GET (404) and new runs (404).
+        Owner-only. Moves the session to the trash (always mode hidden since 2026-10-20; mode deleted is
+        no longer returned): runs, events, documents and approvals stay, and it disappears from the session
+        list, GET (404) and new runs (404). Restore with POST .../restore or delete for good with DELETE .../permanent.
         Refused with 409 session_busy while any of its runs is queued, running or waiting_approval.
       responses:
         '200': {description: Result, content: {application/json: {schema: {$ref: '#/components/schemas/SessionDeleteResult'}}}}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: Session has active runs (code session_busy)}
+  /projects/{project_id}/sessions/{session_id}/permanent:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: session_id, in: path, required: true, schema: {type: string, format: uuid}}
+    delete:
+      tags: [sessions]
+      description: >-
+        Owner-only. Deletes a trashed session for good: its messages and every run (with events, approvals
+        and evaluation results) that published no document. Runs that published a document stay, with their
+        retry ancestors, as that document's immutable source; the session then stays as a hidden tombstone
+        (404 everywhere). Documents are never deleted here.
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Not in the trash (session_not_trashed) or has active runs (session_busy)}
   /projects/{project_id}/sessions/{session_id}/restore:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -765,6 +783,16 @@ paths:
         in: path
         required: true
         schema: {type: string, format: uuid}
+    patch:
+      tags: [files]
+      description: Owner-only rename of a live document (for example a tailored CV opened in the builder). 422 for an empty title.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DocumentRename'}
+      responses:
+        '200': {description: The renamed document, content: {application/json: {schema: {$ref: '#/components/schemas/DocumentView'}}}}
     delete:
       tags: [files]
       description: >-
@@ -933,7 +961,11 @@ paths:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
       tags: [files]
-      description: Owner-only list of named CVs (primary first) with latest revision, revision_count and in_use.
+      description: >-
+        Owner-only list of named CVs (primary first) with latest revision, revision_count and in_use.
+        view=trash lists CVs in the trash (not permanently deleted), newest first, with trashed_at.
+      parameters:
+        - {name: view, in: query, required: false, schema: {type: string, enum: [active, trash], default: active}}
       responses: {'200': {description: CVs, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/CVView'}}}}}}
     post:
       tags: [files]
@@ -950,7 +982,7 @@ paths:
   /resume-templates:
     get:
       tags: [files]
-      description: Owner-only list of CV builder templates (id, ats_safe) and the 6 accent colours (id, hex).
+      description: Owner-only list of CV builder templates (id, ats_safe, photo = prints basics.photo), the 6 accent colours (id, hex) and the 77 Thai provinces (id TH-nn, en, th) for the address province field.
       responses:
         '200': {description: Templates and accents}
   /projects/{project_id}/cvs/builder:
@@ -1081,11 +1113,59 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
     delete:
       tags: [files]
-      description: Owner-only soft delete. Refused 409 cv_in_use when a session references any revision; deleting the primary promotes the newest remaining CV.
+      description: Owner-only move to the trash (sessions keep their pinned revision); deleting the primary promotes the newest remaining CV.
+      responses:
+        '204': {description: Moved to the trash}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/cvs/{cv_id}/restore:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. Takes a CV out of the trash (idempotent on a live CV); it becomes primary when the project has none. 404 once permanently deleted.
+      responses:
+        '200': {description: Restored CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/cvs/{cv_id}/permanent:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    delete:
+      tags: [files]
+      description: >-
+        Owner-only (CR-CVT-01). Deletes a trashed CV's content for good: uploaded and rendered files, parsed
+        text, builder data and draft, skill profile, job match scores and photos no other CV or document uses.
+        The CV name and revision numbers stay as a hidden tombstone so evaluations still name them; evaluations,
+        documents and experience-bank facts stay. Files a document, run or another CV still uses are kept.
       responses:
         '204': {description: Deleted}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: CV in use (code cv_in_use)}
+        '409': {description: Not in the trash (cv_not_trashed), or a run or approval still uses it (cv_in_use)}
+  /projects/{project_id}/resume-photos:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [files]
+      description: Owner-only CV photo upload (JPG or PNG, at most 2 MB, type read from the bytes). Never sent to AI.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: {type: object, required: [file], properties: {file: {type: string, format: binary}}}
+      responses:
+        '201': {description: Stored photo id, content: {application/json: {schema: {type: object, properties: {id: {type: string, format: uuid}, mime_type: {type: string}, size_bytes: {type: integer}}}}}}
+        '413': {description: Larger than 2 MB (upload_too_large)}
+        '415': {description: Not a JPG or PNG (unsupported_media_type)}
+  /projects/{project_id}/resume-photos/{photo_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: photo_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      tags: [files]
+      description: Owner-only. The photo bytes (image/jpeg or image/png).
+      responses:
+        '200': {description: Photo, content: {image/jpeg: {}, image/png: {}}}
+        '404': {$ref: '#/components/responses/NotFound'}
   /projects/{project_id}/cvs/{cv_id}/revisions:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -1266,6 +1346,21 @@ paths:
       responses:
         '201': {description: Token disclosed once, content: {application/json: {schema: {$ref: '#/components/schemas/GrantIssuedView'}}}}
         '403': {description: 'Owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /connect:
+    get:
+      tags: [sharing]
+      description: Owner-only. Where external agents connect. share_origin is the MCP/A2A listener origin, null when the listener is off; oauth is true when MCP clients can sign in with OAuth instead of a token.
+      responses:
+        '200':
+          description: Connection details
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [share_origin, oauth]
+                properties:
+                  share_origin: {type: [string, 'null']}
+                  oauth: {type: boolean}
   /projects/{project_id}/grants/{grant_id}:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -1852,6 +1947,7 @@ components:
         cv_outdated: {type: boolean, default: false}
         cv_file_id: {type: [string, 'null'], format: uuid}
         evaluation_run_id: {type: [string, 'null'], format: uuid, description: Set only on the create response.}
+        trashed_at: {type: [string, 'null'], format: date-time, description: When it was moved to the trash; null for visible sessions.}
     RevisionView:
       type: object
       additionalProperties: false
@@ -1984,7 +2080,7 @@ components:
       required: [resume_data, template_id, accent, document_language, updated_at]
       properties:
         resume_data: {type: object, additionalProperties: true}
-        template_id: {type: string, enum: [onyx, kakuna, ditgar]}
+        template_id: {type: string, enum: [onyx, kakuna, ditgar, lotus, teak, saffron]}
         accent: {type: string, enum: [indigo, blue, teal, green, rose, slate]}
         document_language: {type: string, enum: [th, en]}
         updated_at: {type: string, format: date-time}
@@ -2007,6 +2103,7 @@ components:
         revision_count: {type: integer, minimum: 0}
         in_use: {type: boolean}
         has_builder_draft: {type: boolean, default: false, description: The CV can be edited in the builder}
+        trashed_at: {type: [string, 'null'], format: date-time, description: Set while the CV is in the trash}
     DocumentView:
       type: object
       additionalProperties: false
@@ -2077,6 +2174,31 @@ components:
         report_markdown: {type: string, minLength: 1, maxLength: 200000}
         score: {type: [number, 'null'], minimum: 1, maximum: 5, description: Career Ops native 1–5 score; absent when not established.}
         skill_coverage: {anyOf: [{$ref: '#/components/schemas/SkillCoverage'}, {type: 'null'}], description: Deterministic keyword coverage computed by the platform, separate from the AI score.}
+        report: {anyOf: [{$ref: '#/components/schemas/EvaluationReport'}, {type: 'null'}], description: 'CR-EVR-01 named report fields; null for reports made before 2026-10-20 or when the AI returned Markdown only. report_markdown is built from these fields.'}
+    ReportRequirement:
+      type: object
+      additionalProperties: false
+      required: [requirement, importance, match]
+      properties:
+        requirement: {type: string, minLength: 1, maxLength: 300}
+        importance: {type: string, enum: [critical, high, meaningful, preferred, low_signal]}
+        match: {type: string, enum: [strong, partial, missing, not_applicable]}
+        evidence: {type: string, maxLength: 1000}
+    EvaluationReport:
+      type: object
+      additionalProperties: false
+      required: [verdict, summary]
+      properties:
+        verdict: {type: string, minLength: 1, maxLength: 200}
+        summary: {type: string, minLength: 1, maxLength: 2000}
+        requirements:
+          type: array
+          maxItems: 30
+          items: {$ref: '#/components/schemas/ReportRequirement'}
+        strengths: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
+        risks: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
+        interview_prep: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
+        cv_changes: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
     SkillCoverage:
       type: object
       additionalProperties: false
@@ -2374,12 +2496,19 @@ components:
       properties:
         email: {type: string, maxLength: 254}
         code: {type: string, pattern: '^\\d{6}$'}
+    DocumentRename:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 300}
     CheckEmailView:
       type: object
       additionalProperties: false
-      required: [status]
+      required: [status, mail_enabled]
       properties:
         status: {type: string, enum: [check_email]}
+        mail_enabled: {type: boolean, description: 'Server-wide. False when no SMTP is set up, so no message was sent to anyone.'}
     AccountView:
       type: object
       additionalProperties: false

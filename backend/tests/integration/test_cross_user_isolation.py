@@ -112,6 +112,9 @@ def world(api_context, monkeypatch):
         db.add(delivery)
         db.flush()
         delivery_id = delivery.id
+    photo = api_context.client.post(f"{BASE}/projects/{project_id}/resume-photos", headers=_write_headers(csrf_alice),
+                                    files={"file": ("me.jpg", b"\xff\xd8\xff\xe0synthetic", "image/jpeg")})
+    assert photo.status_code == 201, photo.text
     state = _alice_state(api_context, project_id)
     assert state == (ALICE_PROJECT_NAME, {session_id: ALICE_SESSION_TITLE})
     csrf_bob = _login(api_context, bob.user_id)
@@ -124,7 +127,7 @@ def world(api_context, monkeypatch):
              "job_revision_id": job_id, "document_id": str(doc.document), "revision_id": str(doc.revision),
              "file_id": str(doc.file), "run_id": str(run_id), "grant_id": alice_grant["id"], "saved_search_id": saved.json()["id"],
              "webhook_id": hook.json()["id"], "delivery_id": str(delivery_id),
-             "approval_id": str(approval_id), "item_id": item.json()["id"], "hidden_id": hidden.json()["id"],
+             "approval_id": str(approval_id), "item_id": item.json()["id"], "hidden_id": hidden.json()["id"], "photo_id": photo.json()["id"],
              "adapter": "career_ops"},
     )
 
@@ -295,8 +298,7 @@ async def test_bob_grant_cannot_reach_alice(api_context, world, unused_tcp_port)
                 await mcp.call_tool("get_run", {"run_id": str(uuid4())})
             with pytest.raises(MCPError, match="not_found"):
                 await mcp.call_tool("get_run", {"run_id": world.ids["run_id"]})
-        a2a = await create_client(base_url, ClientConfig(
-            streaming=False, supported_protocol_bindings=["JSONRPC"],
+        a2a = await create_client(base_url, ClientConfig(streaming=False, polling=True, supported_protocol_bindings=["JSONRPC"],
             httpx_client=httpx.AsyncClient(headers={**auth, "A2A-Version": "1.0"})))
         assert str((await a2a.get_task(GetTaskRequest(id=world.bob_run))).id) == world.bob_run
         # The foreign run must be indistinguishable from a run that does not exist.

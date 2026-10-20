@@ -158,6 +158,10 @@ async def test_official_mcp_http_tools_submission_cancel_and_revocation(api_cont
                     "apply_prepare", "apply_submit", "draft_follow_up", "applications_list", "applications_update",
                     "get_run", "cancel_run", "list_results"
                 }
+        # The URL shown on the Connect page and in OAuth metadata has no trailing slash.
+        async with _session(url.rstrip("/"), grant["token"]) as session:
+                await session.initialize()
+                assert len((await session.list_tools()).tools) == len(names)
                 args = {
                     "request": {
                         "job": {

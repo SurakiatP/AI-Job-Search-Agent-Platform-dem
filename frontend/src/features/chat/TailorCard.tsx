@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { AiMark } from '@/components/AiMark';
+import { AiLabel, AiMark } from '@/components/AiMark';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
@@ -66,7 +66,7 @@ export function TailorCard({ projectId, sessionId, locale, outputLanguage, busy,
     {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className={`text-sm ${message.kind === 'error' ? 'text-destructive' : ''}`}>{message.text}{message.kind === 'ok' && <> <Link className="text-primary hover:underline" to={`/app/projects/${projectId}/documents`}>{c.docs}</Link></>}</p>}
     {run?.status === 'needs_input' && <p role="status" className="text-sm font-medium">{c.waitingChoice}</p>}
     {payload && <section aria-labelledby={`tailor-result-${run?.id}`} className="grid gap-3 border-t pt-4">
-      <h3 id={`tailor-result-${run?.id}`} className="font-semibold">{c.result}</h3>
+      <h3 id={`tailor-result-${run?.id}`} className="flex flex-wrap items-center gap-2 font-semibold">{c.result}<AiLabel check /></h3>
       <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_minmax(0,1fr)]">
         <dt className="text-muted-foreground">{c.coverage}</dt><dd data-testid="tailor-coverage">{pct(payload.coverage_before, locale)} → {pct(payload.coverage_after, locale)}</dd>
         {payload.mode === 'autopilot' && payload.stop_reason && <><dt className="text-muted-foreground">{c.stop}</dt><dd>{c.stops[payload.stop_reason] ?? payload.stop_reason}</dd></>}

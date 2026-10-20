@@ -117,7 +117,7 @@ test('paired session keeps exact immutable context, global evaluation and task t
   }));
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Synthetic data analyst', exact: true })).toBeVisible();
-  await expect(page.getByText('Data CV · v4')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Data CV · v4' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Synthetic data analyst · Example Co' })).toBeVisible();
   await expect(page.getByText('Version 7', { exact: true })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Evaluation' })).toBeVisible();
@@ -205,7 +205,7 @@ test('unpaired legacy session remains read-only and a newer CV keeps this sessio
   }) }));
   await pairedPage.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'c1', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', latest_revision: { id: 'c2', revision: 2, created_at: '2026-10-11T00:00:00Z', original_filename: 'Data CV.pdf', mime_type: 'application/pdf', size_bytes: 10 }, revision_count: 2, in_use: true }]) }));
   await pairedPage.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
-  await expect(pairedPage.getByText('Data CV · v1')).toBeVisible();
+  await expect(pairedPage.getByRole('link', { name: 'Data CV · v1' })).toBeVisible();
   await expect(pairedPage.getByText('A newer CV revision is available')).toBeVisible();
   await expect(pairedPage.getByRole('button', { name: 'Start with latest CV' })).toBeVisible();
 });
@@ -366,4 +366,103 @@ test('SCR-04 header, language label and rich empty state', async ({ page }) => {
   await expect(page.getByText('Separate from the app language')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Evaluate this job' })).toHaveCount(1);
   await expect(page.getByText('A written report you can copy')).toBeVisible();
+});
+
+test('SCR-03 delete an evaluation from the list, and a busy one explains why it cannot', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const ids = ['a1', 'b2'].map(key => `${key}${key}${key}${key}${key}${key}${key}${key}-0000-4000-8000-000000000000`);
+  let list = [{ ...pairedSession, id: ids[0], title: 'Done job', job_title: 'Done job' }, { ...pairedSession, id: ids[1], title: 'Busy job', job_title: 'Busy job' }];
+  const deleted: string[] = [];
+  await page.route(`**/api/v1/projects/${projectId}/sessions`, route => route.fulfill(json(list)));
+  await page.route(`**/api/v1/projects/${projectId}/sessions/*`, route => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    const id = route.request().url().split('/').pop()!;
+    if (id === ids[1]) return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ code: 'session_busy', message_key: 'errors.session_busy', retryable: false, correlation_id: '55555555-5555-4555-8555-555555555555' }) });
+    deleted.push(id); list = list.filter(s => s.id !== id);
+    return route.fulfill(json({ mode: 'hidden' }));
+  });
+  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill(json([])));
+  await page.route(`**/api/v1/projects/${projectId}/jobs`, route => route.fulfill(json([])));
+  await page.goto(`/app/projects/${projectId}/sessions`);
+  const row = (title: string) => page.getByRole('listitem').filter({ hasText: title });
+
+  await row('Busy job').getByRole('button', { name: 'Options for Busy job' }).click();
+  await page.getByRole('menuitem', { name: 'Delete evaluation' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete evaluation' }).click();
+  await expect(page.getByRole('alert')).toHaveText('The agent is still working on this evaluation. Wait for it to finish or stop it first.');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  await row('Done job').getByRole('button', { name: 'Options for Done job' }).click();
+  await page.getByRole('menuitem', { name: 'Delete evaluation' }).click();
+  await expect(page.getByRole('dialog')).toContainText('restore it from the trash');
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete evaluation' }).click();
+  await expect(row('Done job')).toHaveCount(0);
+  await expect(row('Busy job')).toHaveCount(1);
+  expect(deleted).toEqual([ids[0]]);
+  // After deleting: a notice says where it went, with undo and a link to the trash.
+  const notice = page.getByRole('status').filter({ hasText: 'Moved “Done job” to the trash' });
+  await expect(notice.getByRole('link', { name: 'Open trash' })).toHaveAttribute('href', /view=trash/);
+  await page.route(`**/api/v1/projects/${projectId}/sessions/*/restore`, route => {
+    list = [{ ...pairedSession, id: ids[0], title: 'Done job', job_title: 'Done job' }, ...list];
+    return route.fulfill(json({ ...pairedSession, id: ids[0] }));
+  });
+  await notice.getByRole('button', { name: 'Undo' }).click();
+  await expect(row('Done job')).toHaveCount(1);
+  await expect(notice).toHaveCount(0);
+});
+
+test('SCR-03 evaluation trash: restore, restore blocked by a newer pair, delete permanently, empty trash', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const ids = ['a1', 'b2', 'c3'].map(key => `${key}${key}${key}${key}${key}${key}${key}${key}-0000-4000-8000-000000000000`);
+  const mk = (id: string, title: string) => ({ ...pairedSession, id, title, job_title: title, trashed_at: '2026-10-19T00:00:00Z' });
+  let active: object[] = [];
+  let trash = [mk(ids[0], 'Old job'), mk(ids[1], 'Clash job'), mk(ids[2], 'Gone job')];
+  const calls: string[] = [];
+  await page.route(`**/api/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json(trash)));
+  await page.route(`**/api/v1/projects/${projectId}/sessions`, route => route.fulfill(json(active)));
+  await page.route(`**/api/v1/projects/${projectId}/sessions/*/**`, route => {
+    const url = route.request().url(); const id = url.split('/sessions/')[1].split('/')[0];
+    calls.push(`${route.request().method()} ${url.endsWith('/restore') ? 'restore' : 'permanent'} ${id.slice(0, 2)}`);
+    if (url.endsWith('/restore')) {
+      if (id === ids[1]) return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ code: 'session_pair_exists', message_key: 'errors.session_pair_exists', retryable: false, correlation_id: '55555555-5555-4555-8555-555555555555', fields: { session_id: sessionId } }) });
+      active = [...active, trash.find(t => t.id === id)!]; trash = trash.filter(t => t.id !== id);
+      return route.fulfill(json({ ...pairedSession, id }));
+    }
+    trash = trash.filter(t => t.id !== id);
+    return route.fulfill({ status: 204 });
+  });
+  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill(json([])));
+  await page.route(`**/api/v1/projects/${projectId}/jobs`, route => route.fulfill(json([])));
+  await page.goto(`/app/projects/${projectId}/sessions`);
+  await page.getByRole('link', { name: 'Trash (3)' }).click();
+  await expect(page).toHaveURL(/view=trash/);
+  const row = (title: string) => page.getByRole('listitem').filter({ hasText: title });
+
+  await row('Old job').getByRole('button', { name: 'Restore' }).click();
+  await expect(row('Old job')).toHaveCount(0);
+  await row('Clash job').getByRole('button', { name: 'Restore' }).click();
+  await expect(page.getByRole('alert')).toContainText('You already have an evaluation for this CV and job');
+  await expect(page.getByRole('alert').getByRole('link', { name: 'Open it' })).toHaveAttribute('href', new RegExp(`/sessions/${sessionId}$`));
+
+  await row('Gone job').getByRole('button', { name: 'Delete permanently' }).click();
+  await expect(page.getByRole('dialog')).toContainText('cannot be undone');
+  await expect(page.getByRole('dialog')).toContainText('Documents stay in Documents');
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete permanently' }).click();
+  await expect(row('Gone job')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Empty trash' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Empty trash' }).click();
+  await expect(page.getByText('Trash is empty.')).toBeVisible();
+  expect(calls).toEqual(['POST restore a1', 'POST restore b2', 'DELETE permanent c3', 'DELETE permanent b2']);
+  await page.getByRole('link', { name: 'Back to evaluations' }).click();
+  await expect(row('Old job')).toHaveCount(1);
+});
+
+test('session header names the CV so sessions of the same job are told apart', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await expect(page.getByRole('main').locator('header')).toContainText('Example Co · First synthetic session · CV: Data CV · v1');
 });

@@ -1,4 +1,4 @@
-import { AiMark } from '@/components/AiMark';
+import { AiLabel, AiMark } from '@/components/AiMark';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -9,6 +9,7 @@ import { FitScore, fitBand } from '@/components/FitScore';
 import { Progress } from '@/components/ui/progress';
 import { Markdown } from '@/components/Markdown';
 import { CopyButton } from '@/components/CopyButton';
+import { EvaluationReportView } from './EvaluationReportView';
 import type { DocumentView, Locale, RunView, SkillCoverage } from '../../lib/api-types';
 
 // Probe the download once (headers only, then abort) so a deleted document's file shows muted text instead of a broken link.
@@ -97,9 +98,10 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
         </div>
         {evaluation.skill_coverage && <SkillsFound coverage={evaluation.skill_coverage} />}
       </div>
-      <details open className="group rounded-lg border">
+      {evaluation.report && <div className="border-t pt-5"><EvaluationReportView report={evaluation.report} /></div>}
+      <details open={!evaluation.report} className="group rounded-lg border">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-          <span>{report}</span><ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+          <span className="flex flex-wrap items-center gap-2">{evaluation.report ? t('report.full') : report}{!evaluation.report && <AiLabel />}</span><ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
         </summary>
         <ReportBody markdown={evaluation.report_markdown} />
       </details>
@@ -107,6 +109,7 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
     {resultDocuments.map(document => <article key={document.id} className="grid gap-3 rounded-lg border p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="min-w-0 break-words font-semibold">{document.title}</h3>
+        <AiLabel check />
         {document.partial && <Badge variant="warning" role="status">{locale === 'th' ? 'เอกสารยังไม่สมบูรณ์' : 'Partial document'}</Badge>}
       </div>
       {document.content_markdown && <Markdown className="max-h-96 overflow-auto">{document.content_markdown}</Markdown>}

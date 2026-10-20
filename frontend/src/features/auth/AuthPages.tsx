@@ -128,6 +128,14 @@ export function LoginPage() {
   </AuthLayout>;
 }
 
+function MailOffNotice({ c, onBack }: { c: (typeof authCopy)['en']; onBack: () => void }) {
+  return <AuthLayout title={c.mailOffTitle} intro={c.mailOffBody}>
+    <p role="alert" className="rounded-lg border border-warning bg-warning/10 p-3 text-sm">{c.mailOffNext}</p>
+    <Button variant="outline" onClick={onBack}>{c.differentEmail}</Button>
+    <p className="text-sm"><Link className={linkClass} to="/login">{c.mailOffLogin}</Link></p>
+  </AuthLayout>;
+}
+
 export function SignupPage() {
   const { t } = useTranslation();
   const { locale } = useLocale();
@@ -136,14 +144,16 @@ export function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [sent, setSent] = useState(false);
+  const [mailOff, setMailOff] = useState(false);
   const [code, setCode] = useState('');
   const navigate = useNavigate();
-  const { busy, error, submit } = useSubmit(async () => { await signup(email.trim(), password, locale); setSent(true); });
+  const { busy, error, submit } = useSubmit(async () => { const r = await signup(email.trim(), password, locale); setMailOff(r.mail_enabled === false); setSent(true); });
   const verify = useSubmit(async () => { await verifyEmailCode(email.trim(), code); navigate('/login?notice=verified', { replace: true }); });
   const otp = locale === 'th'
     ? { label: 'รหัส 6 หลักจากอีเมล', hint: 'กรอกรหัสที่เราส่งให้ หรือกดลิงก์ในอีเมลก็ได้ รหัสหมดอายุใน 10 นาที', action: 'ยืนยันอีเมล' }
     : { label: '6-digit code from the email', hint: 'Enter the code we sent, or use the link in the email. The code expires in 10 minutes.', action: 'Verify email' };
   if (session.status === 'ready') return <Navigate to="/app" replace />;
+  if (sent && mailOff) return <MailOffNotice c={c} onBack={() => setSent(false)} />;
   if (sent) return <AuthLayout title={t('auth.checkEmailTitle')} intro={t('auth.checkEmailBody')} icon={<MailCheck className="size-8 text-primary" aria-hidden="true" />}>
     <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{c.sentTo} <span className="font-medium text-foreground">{email.trim()}</span></p>
     <form className="grid gap-3 rounded-lg border bg-card p-4" onSubmit={event => void verify.submit(event)} noValidate>
@@ -228,7 +238,9 @@ export function ForgotPasswordPage() {
   const c = authCopy[locale];
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
-  const { busy, error, submit } = useSubmit(async () => { await forgotPassword(email.trim()); setSent(true); });
+  const [mailOff, setMailOff] = useState(false);
+  const { busy, error, submit } = useSubmit(async () => { const r = await forgotPassword(email.trim()); setMailOff(r.mail_enabled === false); setSent(true); });
+  if (sent && mailOff) return <MailOffNotice c={c} onBack={() => setSent(false)} />;
   return <AuthLayout title={sent ? t('auth.checkEmailTitle') : t('auth.forgotTitle')} intro={sent ? t('auth.checkEmailBody') : t('auth.forgotIntro')} icon={sent ? <MailCheck className="size-8 text-primary" aria-hidden="true" /> : undefined}>
     {!sent && <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
       <Field id="forgot-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} />

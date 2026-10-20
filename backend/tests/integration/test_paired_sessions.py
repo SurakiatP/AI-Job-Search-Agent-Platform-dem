@@ -280,7 +280,7 @@ def _set_status(api_context, run_id, status):
 
 
 @pytest.mark.integration
-def test_delete_session_hard_without_runs_hides_with_runs_and_restores(api_context):
+def test_delete_session_moves_it_to_trash_and_restores(api_context):
     client, csrf = api_context.client, _owner(api_context)
     headers = _write_headers(csrf)
     pid = _project(api_context, csrf)
@@ -289,16 +289,18 @@ def test_delete_session_hard_without_runs_hides_with_runs_and_restores(api_conte
     rev = cv["latest_revision"]["id"]
     base = f"{PREFIX}/{pid}/sessions"
 
-    # Without runs: hard delete.
+    # Without runs: still goes to the trash (owner decision 2026-10-20), not deleted for good.
     with api_context.sessions.begin() as db:
         empty = ConversationSession(project_id=UUID(pid), title="Legacy")
         db.add(empty)
         db.flush()
         empty_id = str(empty.id)
     gone = client.delete(f"{base}/{empty_id}", headers=headers)
-    assert gone.status_code == 200 and gone.json() == {"mode": "deleted"}
-    with api_context.sessions() as db:
-        assert db.get(ConversationSession, UUID(empty_id)) is None
+    assert gone.status_code == 200 and gone.json() == {"mode": "hidden"}
+    trash = client.get(f"{base}?view=trash").json()
+    assert [t["id"] for t in trash] == [empty_id] and trash[0]["trashed_at"]
+    assert client.post(f"{base}/{empty_id}/restore", headers=headers).status_code == 200
+    assert client.delete(f"{base}/{empty_id}", headers=headers).status_code == 200
 
     # With a queued evaluation run: busy.
     created = _session(api_context, csrf, pid, rev, job=JOB).json()
@@ -316,7 +318,7 @@ def test_delete_session_hard_without_runs_hides_with_runs_and_restores(api_conte
     hidden = client.delete(f"{base}/{sid}", headers=headers)
     assert hidden.status_code == 200 and hidden.json() == {"mode": "hidden"}
     assert client.delete(f"{base}/{sid}", headers=headers).status_code == 404
-    assert client.get(base).json() == []
+    assert [x["id"] for x in client.get(base).json()] == []
     assert client.get(f"{base}/{sid}").status_code == 404
     assert client.patch(f"{base}/{sid}", json={"title": "x"}, headers=headers).status_code == 404
     assert client.post(f"{PREFIX}/{pid}/runs", headers=headers, json={
@@ -392,3 +394,74 @@ def test_migration_0011_partial_pair_index_up_down(postgres_engine):
             "SELECT count(*) FROM pg_constraint WHERE conname = 'uq_sessions_pair'")).scalar() == 1
         assert "removed_at" not in connection.execute(text(
             "SELECT string_agg(column_name, ',') FROM information_schema.columns WHERE table_name = 'sessions'")).scalar()
+
+
+@pytest.mark.integration
+def test_permanent_delete_removes_trashed_session_and_runs_but_keeps_documents(api_context):
+    from job_search_platform.db.models import Message, RunArtifact, StoredFile
+    client, csrf = api_context.client, _owner(api_context)
+    headers = _write_headers(csrf)
+    pid = _project(api_context, csrf)
+    rev = _upload(api_context, csrf, pid).json()["latest_revision"]["id"]
+    base = f"{PREFIX}/{pid}/sessions"
+    created = _session(api_context, csrf, pid, rev, job=JOB).json()
+    sid, eval_run = created["id"], created["evaluation_run_id"]
+    _set_status(api_context, eval_run, "completed")
+    # A drafting run in the same session that produced a document the owner keeps.
+    draft = client.post(f"{PREFIX}/{pid}/runs", headers=headers, json={
+        "session_id": sid, "operation": "draft_documents", "output_language": "en", "idempotency_key": "d1"}).json()["id"]
+    _set_status(api_context, draft, "completed")
+    with api_context.sessions.begin() as db:
+        file = StoredFile(project_id=UUID(pid), kind="generated_document", publication_state="published", storage_key=f"k/{uuid4()}", checksum_sha256="0" * 64, size_bytes=1,
+                          mime_type="application/pdf", display_name="letter.pdf")
+        doc = Document(project_id=UUID(pid), document_type="cover_letter", title="Letter")
+        db.add_all([file, doc])
+        db.flush()
+        revision = DocumentRevision(project_id=UUID(pid), document_id=doc.id, revision=1, file_id=file.id, content_markdown="Dear team")
+        db.add(revision)
+        db.flush()
+        db.add(RunArtifact(project_id=UUID(pid), run_id=UUID(draft), file_id=file.id, document_revision_id=revision.id))
+        db.add(Message(project_id=UUID(pid), session_id=UUID(sid), role="user", content="hi"))
+        doc_id = str(doc.id)
+
+    # Only a trashed session can be deleted for good.
+    visible = client.delete(f"{base}/{sid}/permanent", headers=headers)
+    assert visible.status_code == 409 and visible.json()["code"] == "session_not_trashed"
+    assert client.delete(f"{base}/{sid}", headers=headers).status_code == 200
+    other = _project(api_context, csrf, "Other")
+    assert client.delete(f"{PREFIX}/{other}/sessions/{sid}/permanent", headers=headers).status_code == 404
+    assert client.delete(f"{base}/{sid}/permanent", headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403
+
+    assert client.delete(f"{base}/{sid}/permanent", headers=headers).status_code == 204
+    assert client.get(f"{base}?view=trash").json() == []
+    assert client.post(f"{base}/{sid}/restore", headers=headers).status_code == 404
+    assert client.delete(f"{base}/{sid}/permanent", headers=headers).status_code == 404
+    runs = [r["id"] for r in client.get(f"{PREFIX}/{pid}/runs").json()]
+    assert eval_run not in runs  # the evaluation and its result are gone
+    assert runs == [draft]  # the run that made a kept document stays as its source
+    document = next(d for d in client.get(f"{PREFIX}/{pid}/documents").json() if d["id"] == doc_id)
+    assert document["source_run_id"] == draft and document["partial"] is False
+    with api_context.sessions() as db:
+        assert db.scalar(select(func.count()).select_from(Message).where(Message.session_id == UUID(sid))) == 0
+
+
+@pytest.mark.integration
+def test_permanent_delete_of_session_without_kept_documents_removes_the_row(api_context):
+    client, csrf = api_context.client, _owner(api_context)
+    headers = _write_headers(csrf)
+    pid = _project(api_context, csrf)
+    rev = _upload(api_context, csrf, pid).json()["latest_revision"]["id"]
+    base = f"{PREFIX}/{pid}/sessions"
+    created = _session(api_context, csrf, pid, rev, job=JOB).json()
+    sid = created["id"]
+    _set_status(api_context, created["evaluation_run_id"], "failed")
+    retry = client.post(f"{PREFIX}/{pid}/runs/{created['evaluation_run_id']}/retry", headers=headers)
+    if retry.status_code < 300:
+        _set_status(api_context, retry.json()["id"], "completed")
+    assert client.delete(f"{base}/{sid}", headers=headers).status_code == 200
+    assert client.delete(f"{base}/{sid}/permanent", headers=headers).status_code == 204
+    with api_context.sessions() as db:
+        assert db.get(ConversationSession, UUID(sid)) is None
+        assert db.scalar(select(func.count()).select_from(Run).where(Run.session_id == UUID(sid))) == 0
+    # The pair is free again.
+    assert _session(api_context, csrf, pid, rev, job=JOB).status_code == 201

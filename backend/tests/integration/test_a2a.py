@@ -204,8 +204,7 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
         }
         jsonrpc = await create_client(
             base_url,
-            ClientConfig(
-                streaming=False,
+            ClientConfig(streaming=False, polling=True,
                 supported_protocol_bindings=["JSONRPC"],
                 httpx_client=http_client,
             ),
@@ -226,8 +225,7 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
         # A second official client uses the SDK's HTTP+JSON binding against the same run.
         http_json = await create_client(
             base_url,
-            ClientConfig(
-                streaming=False,
+            ClientConfig(streaming=False, polling=True,
                 supported_protocol_bindings=["HTTP+JSON"],
                 httpx_client=http_client,
             ),
@@ -254,8 +252,7 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
         base_url, _app, server, server_task = await _start_a2a(services, unused_tcp_port)
         persisted_client = await create_client(
             base_url,
-            ClientConfig(
-                streaming=False,
+            ClientConfig(streaming=False, polling=True,
                 supported_protocol_bindings=["JSONRPC"],
                 httpx_client=http_client,
             ),
@@ -390,8 +387,7 @@ async def test_a2a_rechecks_grants_and_never_reflects_rejected_input(api_context
         }
         client = await create_client(
             base_url,
-            ClientConfig(
-                streaming=False,
+            ClientConfig(streaming=False, polling=True,
                 supported_protocol_bindings=["JSONRPC"],
                 httpx_client=httpx.AsyncClient(headers={**headers, "A2A-Version": "1.0"}),
             ),
@@ -438,7 +434,7 @@ async def test_official_a2a_cancel_waits_for_real_native_cleanup(api_context, un
     )
     client = await create_client(
         base_url,
-        ClientConfig(streaming=False, supported_protocol_bindings=["JSONRPC"], httpx_client=http_client),
+        ClientConfig(streaming=False, polling=True, supported_protocol_bindings=["JSONRPC"], httpx_client=http_client),
     )
     cache = Path.home() / ".cache" / "job-search-platform"
     runtime_config = json.loads((cache / "hermes-runtime.json").read_text(encoding="utf-8"))

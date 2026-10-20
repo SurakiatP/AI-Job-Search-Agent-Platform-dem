@@ -84,8 +84,10 @@ class ConversationSession(Base):
     # Paired sessions pin one CV revision and one job revision; legacy sessions have neither.
     cv_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     job_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
-    # Set when a session with run history is deleted; it stays so runs and documents keep their source.
+    # Set when the owner moves the session to the trash; restorable until purged.
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set by a permanent delete when runs that produced kept documents still point here; never shown again.
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (
         UniqueConstraint("project_id", "id", name="uq_sessions_project_id"),
         ForeignKeyConstraint(["project_id", "cv_revision_id"], ["cv_revisions.project_id", "cv_revisions.id"]),
@@ -119,7 +121,8 @@ class CV(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # in the trash
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # content deleted; name kept for history
     __table_args__ = (
         UniqueConstraint("project_id", "id", name="uq_cvs_project_id"),
         Index("uq_cvs_one_primary_per_project", "project_id", unique=True,
@@ -301,7 +304,7 @@ class StoredFile(Base):
     mime_type: Mapped[str] = mapped_column(String(200), nullable=False)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    __table_args__ = (UniqueConstraint("project_id", "id", name="uq_files_project_id"), CheckConstraint("kind IN ('cv_original','job_source','generated_document','chat_attachment','resume_render')", name="ck_files_kind"), CheckConstraint("publication_state IN ('pending','published','unavailable','deleting')", name="ck_files_publication_state"), CheckConstraint("size_bytes >= 0", name="ck_files_nonnegative_size"), CheckConstraint("length(checksum_sha256) = 64", name="ck_files_checksum_length"))
+    __table_args__ = (UniqueConstraint("project_id", "id", name="uq_files_project_id"), CheckConstraint("kind IN ('cv_original','job_source','generated_document','chat_attachment','resume_render','resume_photo')", name="ck_files_kind"), CheckConstraint("publication_state IN ('pending','published','unavailable','deleting')", name="ck_files_publication_state"), CheckConstraint("size_bytes >= 0", name="ck_files_nonnegative_size"), CheckConstraint("length(checksum_sha256) = 64", name="ck_files_checksum_length"))
 
 
 class Document(Base):
@@ -765,6 +768,6 @@ class ResumeDraft(Base):
         ForeignKeyConstraint(["project_id", "cv_id"], ["cvs.project_id", "cvs.id"], ondelete="CASCADE"),
         ForeignKeyConstraint(["project_id", "document_id"], ["documents.project_id", "documents.id"], ondelete="CASCADE"),
         CheckConstraint("(cv_id IS NULL) <> (document_id IS NULL)", name="ck_resume_drafts_owner"),
-        CheckConstraint("template_id IN ('onyx','kakuna','ditgar')", name="ck_resume_drafts_template"),
+        CheckConstraint("template_id IN ('onyx','kakuna','ditgar','lotus','teak','saffron')", name="ck_resume_drafts_template"),
         CheckConstraint("document_language IN ('th','en')", name="ck_resume_drafts_language"),
     )

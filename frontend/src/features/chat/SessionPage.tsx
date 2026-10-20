@@ -21,6 +21,8 @@ import { ApiError, type DocumentView, type Locale, type RunOperation, type RunVi
 import { useRun } from './useRun';
 import { RunTimeline } from './RunTimeline';
 import { RelatedDocuments, RunResults } from './RunResults';
+import { ReportListCard } from './EvaluationReportView';
+import { AiLabel } from '@/components/AiMark';
 import { WorkflowPanel, type PrimaryAction } from './WorkflowPanel';
 import { SkillAdvice } from './SkillAdvice';
 import { TailorCard } from './TailorCard';
@@ -58,7 +60,7 @@ function DocCard({ c, base, projectId, doc, busy, onRevise }: { c: typeof copy.e
   const revisions = useResource<{ revision: number; content_markdown?: string | null }[]>(`/projects/${projectId}/documents/${doc.id}/revisions`);
   const content = doc.content_markdown ?? [...(revisions.data ?? [])].sort((a, b) => b.revision - a.revision)[0]?.content_markdown ?? null;
   return <Card><CardContent className="grid gap-3 p-4">
-    <h3 className="min-w-0 break-words font-semibold">{doc.title}{doc.latest_revision ? <span className="ms-2 text-sm font-normal text-muted-foreground">{c.version} {doc.latest_revision.revision}</span> : null}</h3>
+    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="min-w-0 break-words font-semibold">{doc.title}{doc.latest_revision ? <span className="ms-2 text-sm font-normal text-muted-foreground">{c.version} {doc.latest_revision.revision}</span> : null}</h3>{doc.source_run_id && <AiLabel check />}</div>
     {content && <Link to={`${base}/documents/${doc.id}`} className="relative block max-h-28 overflow-hidden rounded-md text-foreground no-underline" title={c.open}>
       <div ref={ref}><Markdown>{content}</Markdown></div><div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" aria-hidden="true" /></Link>}
     <div className="flex flex-wrap items-center gap-2">
@@ -107,6 +109,7 @@ export function SessionPage() {
   const active = Boolean(status && ACTIVE.includes(status));
   const sessionRuns = (runs.data ?? []).filter(run => run.session_id === sessionId);
   const evalRun = sessionRuns.find(run => run.operation === 'evaluate_job') ?? null;
+  const evalReport = evalRun?.evaluation_result?.report ?? null;
   const draftRunIds = new Set(sessionRuns.filter(run => run.operation === 'draft_documents').map(run => run.id));
   const drafted = (documents.data ?? []).filter(doc => doc.source_run_id && draftRunIds.has(doc.source_run_id));
   const busy = active || submitting || workflow.submitting;
@@ -152,13 +155,15 @@ export function SessionPage() {
     : failed && (last.current || operation === 'evaluate_job') ? { label: c.retry, onClick: retry, disabled: busy || gate.blocked, title: gate.title }
     : null;
   const headline = paired ? current.job_title ?? current.title : current.title;
-  const subline = [paired ? current.job_company : null, headline !== current.title ? current.title : null].filter(Boolean).join(' · ');
+  // Job + company + CV identify the session; several sessions can share a job but never the same CV/job pair.
+  const cvLine = paired && current.cv_name ? `CV: ${current.cv_name}${current.cv_revision != null ? ` · v${current.cv_revision}` : ''}` : null;
+  const subline = [paired ? current.job_company : null, headline !== current.title ? current.title : null, cvLine].filter(Boolean).join(' · ');
   const tabClass = 'min-h-11 shrink-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
   return <section className="flex min-w-0 flex-col gap-4">
     <Breadcrumb label={c.title} items={[{ label: project.data?.name ?? t('pages.project'), to: `${base}/overview` }, { label: t('nav.evaluate'), to: `${base}/sessions` }, { label: current.title }]} />
     <header className="min-w-0"><h1 className="break-words text-2xl font-semibold">{headline}</h1>{subline && <p className="mt-1 break-words text-muted-foreground">{subline}</p>}</header>
-    {paired ? <div className="grid gap-3 rounded-xl border bg-card p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
-      <p className="text-sm font-medium text-muted-foreground sm:col-span-2 lg:col-span-1">{t('pair.label')}</p>
+    {paired ? <div className="grid gap-3 rounded-xl border border-primary/25 bg-accent/30 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
+      <p className="text-sm font-semibold sm:col-span-2 lg:col-span-1">{t('pair.label')}</p>
       <div className="flex min-w-0 flex-wrap items-center gap-2"><FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="text-sm text-muted-foreground">{t('pair.cv')}</span><Link className="break-words font-medium text-primary hover:underline" to={`${base}/profile`} title={c.cvPage}>{current.cv_name} · v{current.cv_revision}</Link><CvPreviewButton projectId={projectId} fileId={current.cv_file_id} name={current.cv_name ?? 'CV'} revision={current.cv_revision} variant="ghost" className="h-8 px-2" /></div>
       <div className="flex min-w-0 flex-wrap items-center gap-2"><Briefcase className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="text-sm text-muted-foreground">{t('pair.job')}</span><Link className="break-words font-medium text-primary hover:underline" to={`${base}/jobs/${current.job_revision_id}`} title={c.jobPage}>{current.job_title}{current.job_company ? ` · ${current.job_company}` : ''}</Link><Badge variant="outline">{jobRevision ? t('pair.version', { n: jobRevision.revision }) : `${t('identity.unknownRevision')} ${current.job_revision_id}`}</Badge></div>
     </div> : <Badge variant="outline" className="w-fit">{c.unpaired}</Badge>}
@@ -203,10 +208,11 @@ export function SessionPage() {
             </TabsContent>
             <TabsContent value="documents" forceMount className={`grid gap-4 ${tab === 'documents' ? '' : 'hidden'}`}>
               <section className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5"><h2 className="text-lg font-semibold">{c.draft}</h2><p className="text-sm text-muted-foreground">{c.draftBody}</p><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button><Button type="button" className="min-h-11" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button></div></section>
+              <ReportListCard kind="cvChanges" items={evalReport?.cv_changes} />
               <TailorCard projectId={projectId} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} run={sessionRuns.find(run => run.operation === 'tailor_cv') ?? null} onChanged={() => { reloadRun(); reloadRuns(); }} />
               <section className="grid gap-3"><h2 className="text-lg font-semibold">{c.docs}</h2>{drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <DocCard key={doc.id} c={c} base={base} projectId={projectId} doc={doc} busy={busy || gate.blocked} onRevise={text => startRun('draft_documents', text, doc.id)} />)}</section>
             </TabsContent>
-            <TabsContent value="answers" forceMount className={`grid gap-4 ${tab === 'answers' ? '' : 'hidden'}`}>{current.job_revision_id && <ApplyCard projectId={projectId} jobId={current.job_revision_id} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} runs={sessionRuns} onChanged={() => { reloadRun(); reloadRuns(); }} />}</TabsContent>
+            <TabsContent value="answers" forceMount className={`grid gap-4 ${tab === 'answers' ? '' : 'hidden'}`}>{current.job_revision_id && <ApplyCard projectId={projectId} jobId={current.job_revision_id} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} runs={sessionRuns} onChanged={() => { reloadRun(); reloadRuns(); }} />}<ReportListCard kind="interview" items={evalReport?.interview_prep} /></TabsContent>
             <TabsContent value="history" forceMount className={`grid gap-4 ${tab === 'history' ? '' : 'hidden'}`}>
               <h2 className="text-lg font-semibold">{t('tabs.history')}</h2>{sessionRuns.filter(run => run.id !== workflow.run?.id).length === 0 ? <p className="text-sm text-muted-foreground">{t('historyEmpty')}</p> : <div className="grid gap-3">{sessionRuns.filter(run => run.id !== workflow.run?.id).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)).map(run => <div key={run.id} className="grid gap-3 rounded-xl border bg-card p-4"><RunTimeline locale={locale} run={run} events={[]} historical />{run.operation === 'evaluate_job' && <RunResults projectId={projectId} locale={locale} run={run} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} />}</div>)}</div>}
               <div className="flex flex-wrap gap-2"><Button asChild variant="outline" className="min-h-11"><Link to={`${base}/console`}>{t('openHistory')}</Link></Button><Button asChild variant="outline" className="min-h-11"><Link to={`${base}/documents?view=trash`}>{t('openTrash')}</Link></Button></div>

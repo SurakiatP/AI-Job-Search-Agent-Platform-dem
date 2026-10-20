@@ -35,3 +35,23 @@ def test_smtp_send_uses_smtplib(monkeypatch):
     monkeypatch.setattr("smtplib.SMTP", FakeSMTP)
     SmtpMailer("h", 25, "u", "p", "from@x.test", True).send(Mail("to@x.test", "Subj", "Body"))
     assert calls == [("connect", "h", 25), ("starttls",), ("login", "u"), ("send", "to@x.test", "Subj")]
+
+
+def test_provider_presets_and_password_file(monkeypatch, tmp_path):
+    for key in ("SMTP_HOST", "SMTP_PORT", "SMTP_PASSWORD", "SMTP_STARTTLS"):
+        monkeypatch.delenv(key, raising=False)
+    secret = tmp_path / "smtp-password"
+    secret.write_text("abcd efgh ijkl mnop\n")
+    monkeypatch.setenv("SMTP_PASSWORD_FILE", str(secret))
+    monkeypatch.setenv("SMTP_USERNAME", "sender@example.test")
+    for provider, host in {"gmail": "smtp.gmail.com", "outlook": "smtp-mail.outlook.com"}.items():
+        monkeypatch.setenv("SMTP_PROVIDER", provider)
+        m = SmtpMailer.from_env()
+        assert (m.host, m.port, m.starttls, m.password) == (host, 587, True, "abcdefghijklmnop")
+        assert m.sender == "sender@example.test"  # defaults to the login address, which these providers require
+    monkeypatch.setenv("SMTP_PROVIDER", "unknown")
+    try:
+        SmtpMailer.from_env()
+        raise AssertionError("unknown provider must fail at startup")
+    except ValueError:
+        pass

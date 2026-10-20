@@ -375,12 +375,15 @@ def test_migration_0017_upgrades_a_database_that_already_has_runs(postgres_engin
     factory = sessionmaker(bind=postgres_engine, expire_on_commit=False)
     with factory() as db:
         p = make_project(db)
-        old_cv, _ = revisions(db, p.id)
-        # Raw SQL: the ORM model already has columns (resume_count) that revision 0016 lacks.
+        # Raw SQL: the ORM models already have columns (runs.resume_count, cvs.purged_at) that revision 0016 lacks.
+        cv_id, old_cv_id = uuid4(), uuid4()
+        db.execute(text("INSERT INTO cvs (id, project_id, name, is_primary) VALUES (:id, :p, 'CV', true)"), {"id": cv_id, "p": p.id})
+        db.execute(text("INSERT INTO cv_revisions (id, project_id, cv_id, revision) VALUES (:id, :p, :cv, 1)"),
+                   {"id": old_cv_id, "p": p.id, "cv": cv_id})
         db.execute(text("INSERT INTO runs (id, project_id, actor_scope, idempotency_key, request_digest, operation, "
                         "cv_revision_id, input_snapshot, config_snapshot, output_language, status, active_seconds, tool_calls) "
                         "VALUES (:id, :p, 'owner', 'old', :d, 'profile_cv', :cv, '{}', '{}', 'en', 'completed', 0, 0)"),
-                   {"id": uuid4(), "p": p.id, "d": "d" * 64, "cv": old_cv.id})
+                   {"id": uuid4(), "p": p.id, "d": "d" * 64, "cv": old_cv_id})
         db.commit()
     _migrate(postgres_engine, command.upgrade, "head")
     with factory() as db:
@@ -409,7 +412,10 @@ def test_migration_0018_moves_stranded_resting_runs_to_needs_input(postgres_engi
         other_job = JobRevision(project_id=p.id, revision=2, title="Other", description="d", company="c",
                                 source_url="https://jobs.example.test/2")
         db.add(other_job)
-        chat, config = make_session(db, p.id), provider_config(db)
+        # Raw insert: the ORM model has columns (sessions.purged_at) newer than this 0017 schema.
+        chat = SimpleNamespace(id=uuid4())
+        db.execute(text("INSERT INTO sessions (id, project_id, title) VALUES (:id, :p, 'Synthetic session')"), {"id": chat.id, "p": p.id})
+        config = provider_config(db)
         db.flush()
 
         def add(name, operation, payload, job_id, created):

@@ -65,12 +65,13 @@ export type OwnerSessionState =
 
 export type ProjectView = { id: string; name: string; created_at: string };
 export type SessionView = {
+  trashed_at?: string | null;
   id: string; project_id: string; title: string; created_at: string;
   cv_revision_id?: string | null; job_revision_id?: string | null; cv_name?: string | null; cv_revision?: number | null;
   job_title?: string | null; job_company?: string | null; cv_outdated?: boolean; cv_file_id?: string | null; evaluation_run_id?: string | null;
 };
 export type CVRevisionInfo = { id: string; revision: number; created_at: string; original_filename: string; mime_type: string; size_bytes: number; file_id?: string | null; skill_profile_ready?: boolean; skill_count?: number | null };
-export type CVView = { id: string; name: string; is_primary: boolean; created_at: string; latest_revision: CVRevisionInfo | null; revision_count: number; in_use: boolean; has_builder_draft?: boolean };
+export type CVView = { id: string; name: string; is_primary: boolean; created_at: string; latest_revision: CVRevisionInfo | null; revision_count: number; in_use: boolean; has_builder_draft?: boolean; trashed_at?: string | null };
 export type MessageView = {
   id: string;
   session_id: string;
@@ -100,7 +101,10 @@ export type ExperienceView = { items: ExperienceItem[]; extraction: { run_id: st
 export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document' | 'profile_cv' | 'match_jobs' | 'extract_experience' | 'tailor_cv' | 'apply_prepare' | 'apply_submit' | 'draft_follow_up';
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'needs_input' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 export type SkillCoverage = { required: string[]; matched: string[]; missing: string[]; ratio: number; method: string };
-export type EvaluationResult = { report_markdown: string; score: number | null; skill_coverage?: SkillCoverage | null };
+export type ReportMatch = 'strong' | 'partial' | 'missing' | 'not_applicable';
+export type ReportRequirement = { requirement: string; importance: 'critical' | 'high' | 'meaningful' | 'preferred' | 'low_signal'; match: ReportMatch; evidence?: string };
+export type EvaluationReport = { verdict: string; summary: string; requirements?: ReportRequirement[]; strengths?: string[]; risks?: string[]; interview_prep?: string[]; cv_changes?: string[] };
+export type EvaluationResult = { report_markdown: string; score: number | null; skill_coverage?: SkillCoverage | null; report?: EvaluationReport | null };
 export type TailorProposal = { id: number; find: string; text: string; evidence_ids: string[]; status: 'proposed' | 'applied' | 'rejected_by_gate' };
 export type TailorPayload = { kind: 'tailor'; mode: 'autopilot' | 'interactive'; base_revision_id?: string | null; stop_reason?: string | null; rounds?: { round: number; accepted: number; rejected: number; coverage: number | null }[]; proposals?: TailorProposal[]; coverage_before?: number | null; coverage_after?: number | null };
 export type TailorMode = 'autopilot' | 'interactive';

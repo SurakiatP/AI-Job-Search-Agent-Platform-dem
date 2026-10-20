@@ -178,8 +178,7 @@ async def test_mcp_and_a2a_direct_calls(api_context, unused_tcp_port):
                 await session.call_tool("jobs_fit", {"request": {"job": {"title": "t", "description": JOB_TEXT}}})
 
         http_client = httpx.AsyncClient(headers={"Authorization": f"Bearer {full}", "A2A-Version": "1.0"})
-        client = await create_client(base_url, ClientConfig(
-            streaming=False, supported_protocol_bindings=["JSONRPC"], httpx_client=http_client))
+        client = await create_client(base_url, ClientConfig(streaming=False, polling=True, supported_protocol_bindings=["JSONRPC"], httpx_client=http_client))
         events = [e async for e in client.send_message(
             _message("jobs_fit", {"job": {"title": "t", "description": JOB_TEXT}}),
             context=ClientCallContext(service_parameters={"A2A-Version": "1.0"}))]
@@ -197,8 +196,7 @@ async def test_mcp_and_a2a_direct_calls(api_context, unused_tcp_port):
             extended[label] = [s["id"] for s in response.json()["result"]["skills"]]
         assert extended["search"] == ["jobs_search"]
         assert extended["full"] == ["evaluate_job", "jobs_search", "jobs_fit"]
-        weak = await create_client(base_url, ClientConfig(
-            streaming=False, supported_protocol_bindings=["JSONRPC"],
+        weak = await create_client(base_url, ClientConfig(streaming=False, polling=True, supported_protocol_bindings=["JSONRPC"],
             httpx_client=httpx.AsyncClient(headers={"Authorization": f"Bearer {search_only}", "A2A-Version": "1.0"})))
         with pytest.raises(Exception):
             [e async for e in weak.send_message(

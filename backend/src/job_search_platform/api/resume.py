@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationError
 from sqlalchemy import func, select
@@ -37,7 +37,7 @@ class BuilderCreate(_Body):
 
 class DraftUpdate(_Body):
     resume_data: dict[str, Any]
-    template_id: Literal["onyx", "kakuna", "ditgar"]
+    template_id: Literal["onyx", "kakuna", "ditgar", "lotus", "teak", "saffron"]
     accent: Literal["indigo", "blue", "teal", "green", "rose", "slate"]
     document_language: Literal["th", "en"]
     updated_at: datetime
@@ -58,8 +58,10 @@ def parse_resume(raw: dict[str, Any]) -> rs.ResumeData:
         raise ServiceError("resume_invalid", fields={"path": location[:200]}) from None
 
 
-def _view(draft: ResumeDraft) -> dict[str, Any]:
-    return {"id": draft.id, "cv_id": draft.cv_id, "document_id": draft.document_id, "resume_data": draft.resume_data,
+def _view(db, draft: ResumeDraft) -> dict[str, Any]:
+    name = db.scalar(select(CV.name).where(CV.id == draft.cv_id)) if draft.cv_id else \
+        db.scalar(select(Document.title).where(Document.id == draft.document_id))
+    return {"id": draft.id, "cv_id": draft.cv_id, "document_id": draft.document_id, "name": name, "resume_data": draft.resume_data,
             "template_id": draft.template_id, "accent": draft.accent, "document_language": draft.document_language,
             "ats_safe": rs.TEMPLATES[draft.template_id], "updated_at": draft.updated_at}
 
@@ -80,9 +82,10 @@ def _draft(db, actor, project_id: UUID, *, cv_id: UUID | None = None, document_i
     return draft
 
 
-async def _render(services: Services, draft_data: rs.ResumeData, template: str, accent: str, lang: str) -> bytes:
+async def _render(services: Services, project_id: UUID, draft_data: rs.ResumeData, template: str, accent: str, lang: str) -> bytes:
+    photo = await rs.load_photo(services.sessions, services.files.object_store, project_id, draft_data, template)
     try:
-        return await services.runtime.render_typst(rs.render_bundle(draft_data, template, accent, lang))
+        return await services.runtime.render_typst(rs.render_bundle(draft_data, template, accent, lang, photo))
     except ServiceError:
         raise
     except Exception:  # sandbox, docker or compile failure: the draft stays as it is
@@ -91,8 +94,11 @@ async def _render(services: Services, draft_data: rs.ResumeData, template: str, 
 
 @router.get("/resume-templates")
 async def resume_templates(actor=Depends(owner_actor)):
-    return {"templates": [{"id": key, "ats_safe": safe} for key, safe in rs.TEMPLATES.items()],
-            "accents": [{"id": key, "hex": value} for key, value in rs.ACCENTS.items()]}
+    from job_search_platform.services.job_dictionary import PROVINCE_NAMES
+
+    return {"templates": [{"id": key, "ats_safe": safe, "photo": key in rs.PHOTO_TEMPLATES} for key, safe in rs.TEMPLATES.items()],
+            "accents": [{"id": key, "hex": value} for key, value in rs.ACCENTS.items()],
+            "provinces": [{"id": code, "en": en, "th": th} for code, (en, th) in PROVINCE_NAMES.items()]}
 
 
 @router.post("/projects/{project_id}/cvs/builder", status_code=201)
@@ -125,7 +131,7 @@ def _key(kind: str, owner_id: UUID) -> dict[str, UUID]:
 
 async def _get(kind, project_id, owner_id, actor, services):
     with services.sessions() as db:
-        return _view(_draft(db, actor, project_id, **_key(kind, owner_id)))
+        return _view(db, _draft(db, actor, project_id, **_key(kind, owner_id)))
 
 
 async def _put(kind, project_id, owner_id, body: DraftUpdate, actor, services):
@@ -135,10 +141,12 @@ async def _put(kind, project_id, owner_id, body: DraftUpdate, actor, services):
         rate_limits.hit(db, "resume_draft_save", str(actor.user_id))
         if draft.updated_at != body.updated_at:
             raise ServiceError("draft_conflict")
+        if data.basics.photo and _photo_row(db, project_id, UUID(data.basics.photo)) is None:
+            raise ServiceError("resume_invalid", fields={"path": "basics.photo"})
         draft.resume_data, draft.template_id, draft.accent = data.model_dump(), body.template_id, body.accent
         draft.document_language, draft.updated_at = body.document_language, datetime.now(timezone.utc)
         db.flush()
-        return _view(draft)
+        return _view(db, draft)
 
 
 async def _preview(kind, project_id, owner_id, actor, services):
@@ -146,7 +154,7 @@ async def _preview(kind, project_id, owner_id, actor, services):
         draft = _draft(db, actor, project_id, **_key(kind, owner_id))
         rate_limits.hit(db, "resume_preview", str(actor.user_id))
         data, options = parse_resume(draft.resume_data), (draft.template_id, draft.accent, draft.document_language)
-    pdf = await _render(services, data, *options)
+    pdf = await _render(services, project_id, data, *options)
     return Response(pdf, media_type="application/pdf", headers={
         "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Content-Disposition": "inline; filename=preview.pdf"})
 
@@ -158,11 +166,66 @@ async def _publish(kind, project_id, owner_id, actor, services):
         options = (draft.template_id, draft.accent, draft.document_language)
     if not data.basics.name or rs.is_empty(data):
         raise ServiceError("resume_incomplete")
-    pdf = await _render(services, data, *options)
+    pdf = await _render(services, project_id, data, *options)
     file_id = await _store_pdf(services, actor, project_id, pdf, data.basics.name)
     if kind == "cv":
         return _publish_cv(services, actor, project_id, owner_id, file_id, data, options, stamp)
     return _publish_document(services, actor, project_id, owner_id, file_id, data, options, stamp)
+
+
+def _photo_row(db, project_id: UUID, file_id: UUID) -> StoredFile | None:
+    return db.scalar(select(StoredFile).where(StoredFile.project_id == project_id, StoredFile.id == file_id,
+                                              StoredFile.kind == "resume_photo", StoredFile.publication_state == "published"))
+
+
+@router.post("/projects/{project_id}/resume-photos", status_code=201)
+async def upload_resume_photo(project_id: UUID, file: UploadFile = File(...), actor=Depends(write_actor),
+                              services: Services = Depends(get_services)):
+    """Private CV photo (CR-CVT-01): JPG or PNG up to 2 MB, type taken from the bytes. Never sent to AI."""
+    _owner_only(actor)
+    with services.sessions() as db:  # authorize before reading the body: a stranger gets 404, never 413/415
+        authorize(db, actor, project_id, "write", "cv")
+    body = await file.read(rs.PHOTO_MAX_BYTES + 1)
+    if len(body) > rs.PHOTO_MAX_BYTES:
+        raise ServiceError("upload_too_large")
+    kind = rs.photo_type(body)
+    if kind is None:
+        raise ServiceError("unsupported_media_type", fields={"mime_type": "photo"})
+    digest, file_id, key = hashlib.sha256(body).hexdigest(), uuid4(), f"objects/{uuid4().hex}"
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id)) is None:
+            raise ServiceError("not_found")
+        rate_limits.hit(db, "resume_photo", str(actor.user_id))
+        db.add(StoredFile(id=file_id, project_id=project_id, kind="resume_photo", publication_state="pending",
+                          storage_key=key, checksum_sha256=digest, size_bytes=len(body), mime_type=kind[0],
+                          display_name=f"photo.{kind[1]}"))
+    try:
+        await services.files.object_store.put(key, body, digest)
+    except Exception:
+        with services.sessions.begin() as db:
+            db.get(StoredFile, file_id).publication_state = "unavailable"
+        raise ServiceError("object_store_unavailable", retryable=True) from None
+    with services.sessions.begin() as db:
+        db.get(StoredFile, file_id).publication_state = "published"
+    return {"id": file_id, "mime_type": kind[0], "size_bytes": len(body)}
+
+
+@router.get("/projects/{project_id}/resume-photos/{photo_id}", response_class=Response,
+            responses={200: {"content": {"image/jpeg": {}, "image/png": {}}}})
+async def get_resume_photo(project_id: UUID, photo_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        row = _photo_row(db, project_id, photo_id)
+        if row is None:
+            raise ServiceError("not_found")
+        key, mime = row.storage_key, row.mime_type
+    try:
+        body = await services.files.object_store.get(key)
+    except Exception:
+        raise ServiceError("file_unavailable") from None
+    return Response(body, media_type=mime, headers={"Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff"})
 
 
 CV_DRAFT = "/projects/{project_id}/cvs/{cv_id}/draft"

@@ -1,10 +1,12 @@
-// Ditgar: two columns; an accent sidebar (contact, skills, short lists) on every page, details on the right.
+// Ditgar: two columns; an accent sidebar (contact, skills, short lists) on page 1, details on the right.
 #import "common.typ": *
 #show: setup
 #let side-width = 6.4cm
 #let tint = accent.lighten(88%)
-#set page(paper: "a4", margin: (left: 0pt, right: 1.3cm, y: 1.2cm),
-  background: place(left + top, rect(width: side-width, height: 100%, fill: tint)))
+// ponytail: Typst cannot widen a grid column per page, so from page 2 the right column keeps its width and
+// the tint stops; a full-width continuation needs a manual page split.
+#set page(paper: "a4", margin: (left: 0pt, right: 1.3cm, y: 1.2cm), footer: pad(left: side-width + 14pt, page-footer),
+  background: context if counter(page).get().first() == 1 { place(left + top, rect(width: side-width, height: 100%, fill: tint)) })
 
 #let side-names = ("skills", "languages", "certifications", "interests")
 #let side = data.order.filter(n => n in side-names and shown(n))
@@ -19,7 +21,7 @@
       #if filled(data.basics.headline) { linebreak(); text(size: 10pt)[#data.basics.headline] }
       #v(4pt)
       #set text(size: 8.6pt)
-      #contacts().join(linebreak())
+      #contacts(link-fill: white).join(linebreak())
     ]
     #block(inset: (x: 14pt))[
       #for name in side {
@@ -35,13 +37,13 @@
   ],
   [
     #for name in main {
-      block(breakable: true, below: 13pt, width: 100%)[
+      heading-block[
         #text(size: 12pt, weight: "bold", fill: accent)[#labels.at(name)]
         #v(-6pt)
         #line(length: 100%, stroke: 0.7pt + accent.lighten(40%))
-        #v(-2pt)
-        #body(name)
       ]
+      body(name)
+      v(13pt, weak: true)
     }
   ],
 )

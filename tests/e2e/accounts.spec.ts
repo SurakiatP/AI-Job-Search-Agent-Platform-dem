@@ -286,3 +286,21 @@ test('a failed verify link offers a new link only when signed in', async ({ page
   await expect(page.getByText('New link sent. Check your email.')).toBeVisible();
   expect(resent).toBe(true);
 });
+
+test('signup and forgot password say so when the server cannot send email', async ({ page }) => {
+  await mockApi(page, true);
+  const off = (route: import('@playwright/test').Route) => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email', mail_enabled: false }) });
+  await page.route('**/api/v1/auth/signup', off);
+  await page.route('**/api/v1/auth/password/forgot', off);
+  await page.goto('/signup');
+  await page.getByLabel('Email').fill('new@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('long-enough-password');
+  await page.getByRole('button', { name: 'Sign up', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Email is not set up yet' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('Ask your administrator');
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toHaveCount(0);
+  await page.goto('/forgot-password');
+  await page.getByLabel('Email').fill('new@example.test');
+  await page.getByRole('button', { name: /reset|link/i }).click();
+  await expect(page.getByRole('heading', { name: 'Email is not set up yet' })).toBeVisible();
+});

@@ -5,6 +5,7 @@ import { Download, File, FileUser, Info, Mail, MessageSquareText, Pencil, Rotate
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AiLabel } from '@/components/AiMark';
 import { PageBack } from '@/components/PageBack';
 import { Markdown } from '@/components/Markdown';
 import { CopyButton } from '@/components/CopyButton';
@@ -21,6 +22,7 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { DocumentDeleteMenu } from './DocumentDeleteMenu';
 import { TrashView, deletePermanently, inUseMessage, permanentDescription, permanentTitle, restoreDocument } from './TrashView';
 import { useFilePreview } from '../../components/CvPreview';
+import { notifyTrashChanged } from '@/lib/trash';
 
 type DocumentItem = { id: string; has_builder_draft?: boolean; document_type: 'cv' | 'cover_letter' | 'application_message' | 'other'; title: string; content_markdown?: string | null; output_language?: 'th' | 'en' | null; source_run_id?: string | null; partial?: boolean; trashed_at?: string | null; latest_revision?: { id: string; revision: number } | null };
 type DocumentRevision = { document_id: string; id?: string; revision?: number; created_at?: string; source_cv_revision_id?: string | null; source_job_revision_id?: string | null; file_id?: string | null; content_markdown?: string | null; origin?: 'agent' | 'manual' };
@@ -37,7 +39,7 @@ const ROW_GRID = 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_6rem_9rem_9rem]';
 const typeIcon: Record<DocType, LucideIcon> = { cv: FileUser, cover_letter: Mail, application_message: MessageSquareText, other: File };
 const downloadUrl = (projectId: string, fileId: string) => `/api/v1/projects/${projectId}/files/${fileId}/download`;
 
-function documentTypeLabel(type: DocType, t: (key: string, options: { defaultValue: string }) => string) {
+export function documentTypeLabel(type: DocType, t: (key: string, options: { defaultValue: string }) => string) {
   const labels = { cv: ['pages.docTypeCv', 'CV'], cover_letter: ['pages.docTypeCoverLetter', 'Cover letter'], application_message: ['pages.docTypeApplicationMessage', 'Application message'], other: ['pages.docTypeOther', 'Other document'] } as const;
   const [key, fallback] = labels[type];
   return t(key, { defaultValue: fallback });
@@ -123,7 +125,7 @@ export function DocumentsPage() {
   if (result.status === 'error') return <ErrorState onRetry={result.reload} />;
   const documents = result.data ?? [];
   const trashed = trash.data ?? [];
-  const reloadAll = () => { result.reload(); trash.reload(); };
+  const reloadAll = () => { result.reload(); trash.reload(); notifyTrashChanged(); };
   const sessionFor = (document: DocumentItem) => { const id = runs.data?.find(run => run.id === document.source_run_id)?.session_id; return id ? sessions.data?.find(item => item.id === id) : undefined; };
   const evaluateHref = sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : `${base}/sessions`;
   const title = t('pages.documentsTitle', { defaultValue: 'Documents' });
@@ -166,7 +168,8 @@ export function DocumentsPage() {
           return <li key={document.id} className={cn('grid min-w-0 gap-3 p-4 lg:items-center lg:gap-4 lg:px-5', ROW_GRID)}>
             <div className="flex min-w-0 items-start gap-3"><Icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
               <div className="min-w-0"><h2 className="break-words font-medium [overflow-wrap:anywhere]">{document.title}</h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">{documentTypeLabel(document.document_type, t)}{document.output_language && ` · ${document.output_language === 'th' ? 'ไทย' : 'English'}`}</p></div>
+                <p className="mt-0.5 text-sm text-muted-foreground">{documentTypeLabel(document.document_type, t)}{document.output_language && ` · ${document.output_language === 'th' ? 'ไทย' : 'English'}`}</p>
+                {document.source_run_id && <AiLabel check className="mt-1.5" />}</div>
             </div>
             <p className="min-w-0 break-words text-sm [overflow-wrap:anywhere]"><span className="text-muted-foreground lg:hidden">{w('colJob')}: </span>{job}</p>
             <p className="text-sm"><span className="text-muted-foreground lg:hidden">{w('colVersion')}: </span>{document.latest_revision ? w('version', { n: document.latest_revision.revision }) : '—'}</p>
@@ -277,7 +280,7 @@ export function DocumentDetailPage() {
       errors={{ document_in_use: inUseMessage(locale === 'th', projectId) }} onConfirm={() => deletePermanently(projectId, documentId)}
       onDone={() => navigate(`${base}/documents?view=trash`)} onClose={() => setConfirmDelete(false)} />}
     <div className="flex items-start gap-3"><Icon className="mt-1.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-      <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{document.title}</h1></div></div>
+      <div className="grid min-w-0 gap-2"><h1 className="break-words text-2xl font-semibold">{document.title}</h1>{document.source_run_id && <div data-testid="ai-document"><AiLabel check /></div>}</div></div>
     {editing && canEdit ? <DocumentEditor c={c} projectId={projectId} documentId={documentId} initial={preview} onClose={stopEditing} onSaved={() => { setPickedId(''); stopEditing(); docs.reload(); revisions.reload(); }} /> :
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <Card className="min-w-0"><CardContent className="p-5 sm:p-8">

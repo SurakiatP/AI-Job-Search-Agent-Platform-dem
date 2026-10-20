@@ -10,17 +10,20 @@ const empty = () => ({
   references_on_request: false,
 });
 
-type State = { draft: any; puts: any[]; previews: number; publishes: number; failPut: boolean; created: boolean };
+type State = { draft: any; puts: any[]; previews: number; publishes: number; failPut: boolean; created: boolean; renames: any[]; pdf: string; times: Record<string, number[]> };
 
 async function builderApi(page: Page, start: Partial<State> = {}) {
-  const state: State = { draft: { id: 'd1', cv_id: cvId, document_id: null, resume_data: empty(), template_id: 'onyx', accent: 'indigo', document_language: 'th', ats_safe: true, updated_at: '2026-10-19T00:00:00.000Z' },
-    puts: [], previews: 0, publishes: 0, failPut: false, created: false, ...start };
+  const state: State = { draft: { id: 'd1', cv_id: cvId, document_id: null, name: 'CV ของฉัน', resume_data: empty(), template_id: 'onyx', accent: 'indigo', document_language: 'th', ats_safe: true, updated_at: '2026-10-19T00:00:00.000Z' },
+    puts: [], previews: 0, publishes: 0, failPut: false, created: false, renames: [], pdf: '%PDF-1.4\n1 0 obj << /Type /Page >> endobj\n%%EOF', times: { put: [], preview: [] }, ...start };
   await page.route('**/api/v1/**', async route => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace('/api/v1', '');
     const json = (status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (path === `/projects/${projectId}/cvs/builder` && request.method() === 'POST') { state.created = true; return json(201, { id: cvId, name: 'CV ของฉัน', is_primary: true, created_at: '2026-10-19T00:00:00Z', latest_revision: null, revision_count: 0, in_use: false, has_builder_draft: true }); }
+    if (path === '/resume-templates') return json(200, { templates: [], accents: [], provinces: [{ id: 'TH-10', en: 'Bangkok', th: 'กรุงเทพมหานคร' }, { id: 'TH-50', en: 'Chiang Mai', th: 'เชียงใหม่' }] });
+    if (path === `/projects/${projectId}/cvs/${cvId}` && request.method() === 'PATCH') { state.renames.push(request.postDataJSON()); return json(200, { id: cvId, name: request.postDataJSON().name }); }
     if (path === `/projects/${projectId}/cvs/${cvId}/draft`) {
+      if (request.method() === 'PUT') state.times.put.push(Date.now());
       if (request.method() === 'GET') return json(200, state.draft);
       if (state.failPut) return route.abort('internetdisconnected');
       const body = request.postDataJSON();
@@ -28,7 +31,7 @@ async function builderApi(page: Page, start: Partial<State> = {}) {
       state.draft = { ...state.draft, ...body, updated_at: `2026-10-19T00:00:${String(state.puts.length).padStart(2, '0')}.000Z` };
       return json(200, state.draft);
     }
-    if (path.endsWith('/draft/preview')) { state.previews += 1; return route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' }); }
+    if (path.endsWith('/draft/preview')) { state.previews += 1; state.times.preview.push(Date.now()); return route.fulfill({ status: 200, contentType: 'application/pdf', body: state.pdf }); }
     if (path.endsWith('/draft/publish')) { state.publishes += 1; return json(201, { id: 'r1', revision: 1, created_at: '2026-10-19T00:00:00Z', original_filename: 'cv.pdf', mime_type: 'application/pdf', size_bytes: 10 }); }
     return route.fallback();
   });
@@ -107,7 +110,8 @@ test('sections can be hidden and moved with the keyboard', async ({ page }) => {
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Hide Interests from the CV' }).focus();
   await page.keyboard.press('Space');
-  await expect.poll(() => state.puts.at(-1)?.resume_data.order.slice(0, 4)).toEqual(['summary', 'experience', 'skills', 'education']);
+  // CR-02 added 'personal' after the summary
+  await expect.poll(() => state.puts.at(-1)?.resume_data.order.slice(0, 5)).toEqual(['summary', 'personal', 'experience', 'skills', 'education']);
   expect(state.puts.at(-1).resume_data.sections.interests.hidden).toBe(true);
 });
 
@@ -151,4 +155,68 @@ test('TC-CVB-11 a tailored builder CV shows its PDF and opens in the builder', a
   await expect(page.getByTitle('PDF preview of this version')).toBeVisible();
   const edit = page.getByRole('link', { name: 'Edit in builder' });
   await expect(edit).toHaveAttribute('href', `/app/projects/${projectId}/documents/${docId}/builder`);
+});
+
+test('CR-02 the CV name shows under the title and can be renamed; Esc cancels', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const state = await builderApi(page);
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  const name = page.getByLabel('CV name');
+  await expect(name).toHaveValue('CV ของฉัน');
+  await name.fill('CV for AI roles');
+  await name.press('Escape');
+  await expect(name).toHaveValue('CV ของฉัน');
+  expect(state.renames).toEqual([]);
+  await name.fill('CV for AI roles');
+  await name.press('Enter');
+  await expect.poll(() => state.renames).toEqual([{ name: 'CV for AI roles' }]);
+  await name.fill('   ');
+  await name.blur();
+  await expect(name).toHaveValue('CV for AI roles'); // an empty name is never sent
+  expect(state.renames).toHaveLength(1);
+});
+
+test('CR-02 an edit is saved and previewed within about a second', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const state = await builderApi(page);
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  await expect.poll(() => state.previews).toBe(1); // first preview on open
+  await page.waitForTimeout(3100); // outside the preview throttle window
+  await page.getByLabel('Headline').fill('AI Engineer');
+  const typed = Date.now();
+  await expect.poll(() => state.times.preview.length, { timeout: 3000 }).toBe(2);
+  expect(state.times.put[0] - typed).toBeLessThan(900);
+  expect(state.times.preview[1] - typed).toBeLessThan(1500);
+});
+
+test('CR-02 Thai address fields and personal details, hidden until shown', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await useSyntheticApplication(page);
+  const state = await builderApi(page);
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  await page.getByLabel('เขต/อำเภอ').fill('บางนา');
+  await page.getByLabel('จังหวัด').selectOption({ label: 'กรุงเทพมหานคร' });
+  await page.getByLabel('รหัสไปรษณีย์').fill('10a260');
+  await expect(page.getByLabel('รหัสไปรษณีย์')).toHaveValue('10260');
+  await expect.poll(() => state.puts.at(-1)?.resume_data.basics.address).toMatchObject({ district: 'บางนา', province: 'TH-10', postcode: '10260' });
+  expect(state.puts.at(-1).resume_data.basics.address_full).toBe(false);
+  expect(state.puts.at(-1).resume_data.personal_hidden).toBe(true);
+  await page.locator('summary').filter({ hasText: 'ข้อมูลส่วนตัว' }).click();
+  await expect(page.getByText(/ไม่ถูกส่งให้ AI/)).toBeVisible();
+  await page.getByLabel('สัญชาติ').fill('ไทย');
+  await page.getByRole('button', { name: 'แสดงข้อมูลส่วนตัวใน CV' }).click();
+  await expect.poll(() => state.puts.at(-1)?.resume_data.personal_hidden).toBe(false);
+  expect(state.puts.at(-1).resume_data.personal.nationality).toBe('ไทย');
+  expect(state.puts.at(-1).resume_data.order[1]).toBe('personal');
+});
+
+test('CR-02 the preview shows the page count and warns past two pages', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await builderApi(page, { pdf: '%PDF-1.4\n<< /Type /Pages >>\n<< /Type /Page >>\n<< /Type /Page >>\n<< /Type /Page >>\n%%EOF' });
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  await expect(page.getByText('· 3 pages')).toBeVisible();
+  await expect(page.getByRole('note').filter({ hasText: 'Most CVs work best at 1–2 pages' })).toBeVisible();
 });

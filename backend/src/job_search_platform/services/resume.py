@@ -8,9 +8,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
-TEMPLATES = {"onyx": True, "kakuna": True, "ditgar": False}  # id -> reads in order for ATS
+TEMPLATES = {"onyx": True, "kakuna": True, "ditgar": False,  # id -> reads in order for ATS
+             "lotus": True, "teak": False, "saffron": True}
+PHOTO_TEMPLATES = frozenset({"lotus", "teak", "saffron"})  # CR-CVT-01: only these print basics.photo
+PHOTO_MAX_BYTES = 2 * 1024 * 1024
+PHOTO_TYPES = {b"\xff\xd8\xff": ("image/jpeg", "jpg"), b"\x89PNG\r\n\x1a\n": ("image/png", "png")}
 ACCENTS = {"indigo": "#3730A3", "blue": "#1D4ED8", "teal": "#115E59", "green": "#166534", "rose": "#9F1239", "slate": "#334155"}
-SECTIONS = ("summary", "experience", "education", "skills", "projects", "certifications", "languages", "awards",
+SECTIONS = ("summary", "personal", "experience", "education", "skills", "projects", "certifications", "languages", "awards",
             "publications", "volunteer", "references", "interests")
 MAX_BYTES = 200 * 1024
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "data" / "resume_templates"
@@ -49,13 +53,43 @@ class Profile(_Item):
     check_url = field_validator("url")(classmethod(lambda cls, v: _url(v)))
 
 
+class Address(_M):
+    """Thai-style address. Only district and province are shown unless the owner asks for the full address."""
+    line: Short = ""          # house number, building, road
+    subdistrict: Short = ""   # แขวง/ตำบล
+    district: Short = ""      # เขต/อำเภอ
+    province: Annotated[str, StringConstraints(pattern=r"^(TH-\d{2})?$")] = ""
+    postcode: Annotated[str, StringConstraints(pattern=r"^(\d{5})?$")] = ""
+
+
 class Basics(_M):
     name: Short = ""
     headline: Short = ""
     email: Short = ""
     phone: Short = ""
-    location: Short = ""
+    location: Short = ""  # free text from before CR-02; used when no address is filled in
+    address: Address = Field(default_factory=Address)
+    address_full: bool = False
     profiles: list[Profile] = Field(default_factory=list, max_length=10)
+    photo: str = ""  # id of a resume_photo file of the same project (checked on save); never in AI text
+
+    @field_validator("photo")
+    @classmethod
+    def check_photo(cls, value: str) -> str:
+        if value:
+            UUID(value)
+        return value
+
+
+class Personal(_M):
+    """Common on Thai CVs, rarely wanted by foreign employers or ATS. Personal data: never sent to AI."""
+    birth_date: Short = ""
+    nationality: Short = ""
+    military_status: Short = ""
+    line_id: Short = ""
+    driving_license: Short = ""
+    expected_salary: Short = ""
+    available_from: Short = ""
 
 
 class Summary(_M):
@@ -172,6 +206,8 @@ class ResumeData(_M):
     basics: Basics = Field(default_factory=Basics)
     summary: Summary = Field(default_factory=Summary)
     summary_hidden: bool = False
+    personal: Personal = Field(default_factory=Personal)
+    personal_hidden: bool = True
     sections: Sections = Field(default_factory=Sections)
     order: list[Literal[SECTIONS]] = Field(default_factory=lambda: list(SECTIONS))  # type: ignore[valid-type]
     references_on_request: bool = False
@@ -188,16 +224,44 @@ LABELS = {
     "th": {"summary": "สรุปโปรไฟล์", "experience": "ประสบการณ์ทำงาน", "education": "การศึกษา", "skills": "ทักษะ",
            "projects": "โครงการ", "certifications": "ใบรับรอง", "languages": "ภาษา", "awards": "รางวัล",
            "publications": "ผลงานตีพิมพ์", "volunteer": "งานอาสา", "references": "บุคคลอ้างอิง", "interests": "ความสนใจ",
-           "profiles": "ลิงก์", "present": "ปัจจุบัน", "on_request": "มีให้เมื่อร้องขอ", "contact": "ติดต่อ"},
+           "profiles": "ลิงก์", "present": "ปัจจุบัน", "on_request": "มีให้เมื่อร้องขอ", "contact": "ติดต่อ",
+           "personal": "ข้อมูลส่วนตัว", "page": "หน้า"},
     "en": {"summary": "Summary", "experience": "Experience", "education": "Education", "skills": "Skills",
            "projects": "Projects", "certifications": "Certifications", "languages": "Languages", "awards": "Awards",
            "publications": "Publications", "volunteer": "Volunteering", "references": "References", "interests": "Interests",
-           "profiles": "Links", "present": "Present", "on_request": "Available on request", "contact": "Contact"},
+           "profiles": "Links", "present": "Present", "on_request": "Available on request", "contact": "Contact",
+           "personal": "Personal details", "page": "Page"},
+}
+PERSONAL_LABELS = {
+    "th": {"birth_date": "วันเกิด", "nationality": "สัญชาติ", "military_status": "สถานภาพทางทหาร", "line_id": "LINE ID",
+           "driving_license": "ใบขับขี่", "expected_salary": "เงินเดือนที่คาดหวัง", "available_from": "เริ่มงานได้"},
+    "en": {"birth_date": "Date of birth", "nationality": "Nationality", "military_status": "Military status", "line_id": "LINE ID",
+           "driving_license": "Driving licence", "expected_salary": "Expected salary", "available_from": "Available from"},
 }
 
 
+def address_text(data: "ResumeData", lang: str) -> str:
+    from job_search_platform.services.job_dictionary import PROVINCE_NAMES
+
+    a = data.basics.address
+    province = PROVINCE_NAMES.get(a.province, ("", ""))[1 if lang == "th" else 0]
+    if not (a.district or province):
+        return data.basics.location
+    if not data.basics.address_full:
+        return _join(a.district, province, sep=", ")
+    return _join(_join(a.line, a.subdistrict, a.district, province, sep=", "), a.postcode, sep=" ")
+
+
+def personal_rows(data: "ResumeData", lang: str) -> list[list[str]]:
+    if data.personal_hidden:
+        return []
+    return [[PERSONAL_LABELS[lang][key], value] for key, value in data.personal.model_dump().items() if value]
+
+
 def _hidden(data: ResumeData, name: str) -> bool:
-    return data.summary_hidden if name == "summary" else getattr(data.sections, name).hidden
+    if name in ("summary", "personal"):
+        return getattr(data, f"{name}_hidden")
+    return getattr(data.sections, name).hidden
 
 
 def _period(start: str, end: str, current: bool, lang: str) -> str:
@@ -210,16 +274,17 @@ def _join(*parts: str, sep: str = " · ") -> str:
 
 
 def is_empty(data: ResumeData) -> bool:
-    return not data.summary.content and not any(getattr(data.sections, name).items for name in SECTIONS if name != "summary")
+    return not data.summary.content and not any(getattr(data.sections, name).items for name in SECTIONS[2:])
 
 
 def plain_text(data: ResumeData, lang: str) -> str:
-    """CV text for evaluation and tailoring prompts. References never appear (third-party personal data)."""
+    """CV text for evaluation and tailoring prompts. References, personal details and the full address never appear."""
     b = data.basics
-    lines = [line for line in (b.name, _join(b.headline, b.location, b.email, b.phone)) if line]
+    short = data.model_copy(update={"basics": b.model_copy(update={"address_full": False})})
+    lines = [line for line in (b.name, _join(b.headline, address_text(short, lang), b.email, b.phone)) if line]
     labels = LABELS[lang]
     for name in data.order:
-        if name == "references" or _hidden(data, name):
+        if name in ("references", "personal") or _hidden(data, name):
             continue
         if name == "summary":
             if data.summary.content:
@@ -313,25 +378,56 @@ def from_bank(rows: list, name: str = "") -> ResumeData:
             s.projects.items.append(Project(role=role[:200], name=org[:200], **common))
         else:
             s.volunteer.items.append(Volunteer(role=role[:200], organization=org[:200], **common))
-    for section in SECTIONS[1:]:
+    for section in SECTIONS[2:]:
         items = getattr(s, section).items
         del items[50:]
     return data
 
 
-def render_bundle(data: ResumeData, template: str, accent: str, lang: str) -> dict[str, bytes]:
+def photo_type(body: bytes) -> tuple[str, str] | None:
+    """(mime, extension) from the first bytes; the declared type is never trusted."""
+    return next((kind for magic, kind in PHOTO_TYPES.items() if body.startswith(magic)), None)
+
+
+async def load_photo(db_factory, object_store, project_id, data: ResumeData, template: str) -> bytes | None:
+    """Photo bytes for a photo template, else None. A missing or unreadable photo renders the CV without it."""
+    if template not in PHOTO_TEMPLATES or not data.basics.photo:
+        return None
+    from job_search_platform.db.models import StoredFile
+    from sqlalchemy import select
+
+    with db_factory() as db:
+        key = db.scalar(select(StoredFile.storage_key).where(
+            StoredFile.project_id == project_id, StoredFile.id == UUID(data.basics.photo),
+            StoredFile.kind == "resume_photo", StoredFile.publication_state == "published"))
+    if key is None:
+        return None
+    try:
+        body = await object_store.get(key)
+    except Exception:
+        return None
+    return body if photo_type(body) else None
+
+
+def render_bundle(data: ResumeData, template: str, accent: str, lang: str, photo: bytes | None = None) -> dict[str, bytes]:
     """Files for one Typst compile: user data only as JSON, read by the template with json() and printed as text."""
     if template not in TEMPLATES or accent not in ACCENTS or lang not in LABELS:
         raise ValueError("render_options")
     payload = data.model_dump()
     if data.references_on_request:
         payload["sections"]["references"]["items"] = []
-    theme = {"accent": ACCENTS[accent], "lang": lang, "references_on_request": data.references_on_request}
+    theme = {"accent": ACCENTS[accent], "lang": lang, "references_on_request": data.references_on_request,
+             "address": address_text(data, lang), "personal": personal_rows(data, lang), "photo": None}
+    kind = photo_type(photo) if photo and template in PHOTO_TEMPLATES else None
     files = {"resume.json": json.dumps(payload, ensure_ascii=False).encode(),
              "labels.json": json.dumps(LABELS[lang], ensure_ascii=False).encode(),
              "theme.json": json.dumps(theme).encode(),
              "main.typ": (TEMPLATE_DIR / f"{template}.typ").read_bytes(),
              "common.typ": (TEMPLATE_DIR / "common.typ").read_bytes()}
+    if kind:
+        theme["photo"] = f"photo.{kind[1]}"
+        files["theme.json"] = json.dumps(theme).encode()
+        files[theme["photo"]] = photo
     return files
 
 

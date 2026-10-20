@@ -53,7 +53,19 @@ Completed evaluation reports and published generated documents are exposed throu
 
 The task contains opaque artifact identifiers and these resource URIs, never artifact contents. Each download reauthenticates the grant and delegates to the same authorized run/document services that enforce publication provenance. Responses are private, non-cacheable Markdown.
 
-The card advertises `streaming: false` and `pushNotifications: false`. Task reads are ordinary authorized requests; no stream or SDK in-memory event channel is used. Task listing and push notification configuration are unsupported.
+The card advertises `streaming: true` and `pushNotifications: true`. Task listing (`ListTasks`) and push notification configuration are supported; push delivery is described in the webhook contract.
+
+Text messages (for LLM agents such as Hermes): a message may instead carry one text part. If the text (optionally inside a ```json fence) is exactly `{"skill": "<skill id>", "request": {...}}` for a skill the grant allows and the request matches its schema, it runs like the data form. Any other text gets a `Message` reply that lists the grant's skills with their input schemas and the expected form; a request that fails its schema gets the same guide for that skill only. The guide is built from the skill list alone and never repeats the caller's text.
+
+Blocking `SendMessage` (A2A 1.0 default): for a task skill the reply waits until the Run ends or waits for its owner (at most 600 s), then returns the Task with its artifacts; each artifact also carries the report or document text (same access check and 200,000-byte cap as the download routes). Clients that want the Task at once set `configuration.returnImmediately` (SDK `ClientConfig(polling=True)`). A grant without `results:read` always gets the Task at once, since it may not read results.
+
+Streaming (FR-P04): `SendStreamingMessage` (`message/stream`, REST `POST /message:stream`) and `SubscribeToTask` (`tasks/subscribe`, REST `/tasks/{id}:subscribe`) answer with Server-Sent Events. Both need `results:read` in addition to the skill's capability; without it the request is rejected before any Run is created. The stream sends:
+
+1. the current Task snapshot;
+2. a `TaskStatusUpdateEvent` each time the durable Run status changes;
+3. on `completed`, one `TaskArtifactUpdateEvent` per artifact (same opaque URIs as `GetTask`, `lastChunk: true`), then the final status.
+
+The stream ends when the Run reaches a terminal state or waits for its owner (`input-required`); after the owner acts the client may subscribe again. A direct skill answers with one `Message` and ends. The adapter polls the Run every 0.5 s, the same cadence as the REST run event stream, and re-authenticates the grant on each poll, so a revoked or narrowed grant ends the stream with an error. Subscribing to a Task that has already ended is rejected; use `GetTask`. A foreign or unknown Task is rejected exactly like a missing one. Disconnecting does not cancel the Run. As with every other operation, errors on the wire are the generic `request_rejected`.
 
 Cancellation is accepted through the official SDK `CancelTask` operation. A queued Run can become durably canceled immediately. For executing work, the first response remains `submitted` or `working` and carries `cancellation_requested: true` until the worker’s cleanup path has stopped the native execution and written a terminal Run status. The adapter never maps a cancellation request by itself to A2A `canceled`.
 

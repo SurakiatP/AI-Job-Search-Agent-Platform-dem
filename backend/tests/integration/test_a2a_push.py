@@ -31,7 +31,7 @@ JOB = {"job": {"title": "Synthetic engineer", "company": "Example Co", "source_u
 
 async def _client(base_url, token):
     http = httpx.AsyncClient(headers={"Authorization": f"Bearer {token}", "A2A-Version": "1.0"})
-    return http, await create_client(base_url, ClientConfig(streaming=False, supported_protocol_bindings=["JSONRPC"], httpx_client=http))
+    return http, await create_client(base_url, ClientConfig(streaming=False, polling=True, supported_protocol_bindings=["JSONRPC"], httpx_client=http))
 
 
 @pytest.mark.integration

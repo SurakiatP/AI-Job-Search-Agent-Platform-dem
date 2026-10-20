@@ -19,7 +19,9 @@
 }
 
 #let shown(name) = {
-  if name == "summary" {
+  if name == "personal" {
+    theme.personal.len() > 0
+  } else if name == "summary" {
     not data.at("summary_hidden", default: false) and filled(data.summary.content)
   } else if name == "references" and theme.references_on_request {
     not data.sections.references.hidden
@@ -29,10 +31,12 @@
   }
 }
 
-#let contacts() = {
+// `link-fill` colours profile links; on an accent background pass white, or they vanish into it.
+#let contacts(link-fill: none) = {
   let b = data.basics
-  let parts = (b.location, b.email, b.phone).filter(filled).map(v => [#v])
-  parts += b.profiles.filter(p => filled(p.url)).map(p => link(p.url)[#if filled(p.network) { p.network } else { p.url }])
+  let parts = (theme.address, b.email, b.phone).filter(filled).map(v => [#v])
+  let label(p) = if filled(p.network) { p.network } else { p.url }
+  parts += b.profiles.filter(p => filled(p.url)).map(p => link(p.url, if link-fill == none { label(p) } else { text(fill: link-fill, label(p)) }))
   parts
 }
 
@@ -48,6 +52,9 @@
 }
 
 #let link-or(url, label) = if filled(url) { link(url)[#label] } else { label }
+
+// Long entries may split across pages; short ones move whole to the next page.
+#let entry-breakable(item) = item.at("highlights", default: ()).len() > 4
 
 // One entry as a tight stack: title line (with dates on the right), a muted line, then bullets.
 #let entry(name, item, color: accent) = {
@@ -80,7 +87,10 @@
 
 // Section body; templates choose how headings look and how many skill columns fit.
 #let body(name, skill-columns: 2, color: accent) = {
-  if name == "summary" {
+  if name == "personal" {
+    grid(columns: (auto, 1fr), column-gutter: 12pt, row-gutter: 5pt,
+      ..theme.personal.map(r => (text(fill: muted)[#r.at(0)], [#r.at(1)])).flatten())
+  } else if name == "summary" {
     par[#data.summary.content]
   } else if name == "references" and theme.references_on_request {
     text(fill: muted)[#labels.on_request]
@@ -91,8 +101,28 @@
     } else if name == "skills" {
       grid(columns: (1fr,) * skill-columns, column-gutter: 12pt, row-gutter: 8pt, ..items.map(i => entry(name, i, color: color)))
     } else {
-      stack(spacing: 9pt, ..items.map(i => block(breakable: true, width: 100%, entry(name, i, color: color))))
+      stack(spacing: 9pt, ..items.map(i => block(breakable: entry-breakable(i), width: 100%, entry(name, i, color: color))))
     }
+  }
+}
+
+// The owner's photo (CR-CVT-01), only in photo templates. 3:4 portrait, or a circle cut from its upper part.
+#let has-photo = theme.at("photo", default: none) != none
+#let photo(width, round: false, ring: none) = if has-photo {
+  let height = if round { width } else { width * 4 / 3 }
+  box(width: width, height: height, radius: if round { 50% } else { 2pt }, clip: true,
+    stroke: ring, image(theme.photo, width: 100%, height: width * 4 / 3, fit: "cover"))
+}
+
+// A heading never sits alone at the bottom of a page: it sticks to what follows it.
+#let heading-block(content) = block(sticky: true, below: 6pt, width: 100%, content)
+
+// From page 2: the owner's name and "Page n/total", so loose printed pages can be matched up.
+#let page-footer = context {
+  let n = counter(page).get().first()
+  if n > 1 {
+    set text(size: 8pt, fill: muted)
+    grid(columns: (1fr, auto), data.basics.name, [#labels.page #n/#counter(page).final().first()])
   }
 }
 

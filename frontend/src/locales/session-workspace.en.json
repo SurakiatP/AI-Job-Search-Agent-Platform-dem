@@ -102,7 +102,19 @@
       "open": "Open"
     },
     "emptyTitle": "No evaluations yet",
-    "emptyBody": "Pick a saved job and one of your CVs. The agent reads the posting, compares it with your CV, and returns an AI fit score from 1 to 5, the skills it found and a written report."
+    "emptyBody": "Pick a saved job and one of your CVs. The agent reads the posting, compares it with your CV, and returns an AI fit score from 1 to 5, the skills it found and a written report.",
+    "options": "Options for {{title}}",
+    "delete": {
+      "action": "Delete evaluation",
+      "title": "Delete the evaluation “{{title}}”?",
+      "body": "It moves to the trash; you can restore it from the trash on this page. Documents the agent made stay in Documents.",
+      "busy": "The agent is still working on this evaluation. Wait for it to finish or stop it first."
+    },
+    "moved": "Moved “{{title}}” to the trash. You can restore it from the trash.",
+    "undo": "Undo",
+    "openTrash": "Open trash",
+    "dismiss": "Dismiss",
+    "undoFailed": "Could not restore. Try again from the trash."
   },
   "result": {
     "title": "Evaluation result",
@@ -156,5 +168,42 @@
     "reviewChanges": "Review proposed CV changes",
     "answerQuestions": "Answer application questions",
     "reviewHint": "Reviewing opens the proposed changes. Nothing is applied to your CV until you choose."
+  },
+  "report": {
+    "requirements": "Job requirements",
+    "filter": "Filter by status",
+    "match": {
+      "all": "All",
+      "strong": "Match",
+      "partial": "Partial",
+      "missing": "Not found",
+      "not_applicable": "Not relevant"
+    },
+    "critical": "Key requirement",
+    "strengths": "Strengths",
+    "risks": "Watch out for",
+    "interview": "Questions you may get in the interview",
+    "cvChanges": "Fix your CV before applying",
+    "full": "Full report",
+    "interviewHint": "From this job's evaluation. Prepare answers with real examples from your work.",
+    "cvChangesHint": "From this job's evaluation. Edit it yourself in the CV builder, or let the agent tailor it below."
+  },
+  "trash": {
+    "title": "Evaluation trash",
+    "subtitle": "Deleted evaluations. Restore them or delete them permanently.",
+    "link": "Trash ({{n}})",
+    "back": "Back to evaluations",
+    "empty": "Trash is empty. Evaluations you delete land here and can be restored.",
+    "note": "A permanent delete cannot be undone. Documents the agent made stay in Documents.",
+    "trashed": "Deleted",
+    "restore": "Restore",
+    "purge": "Delete permanently",
+    "emptyAll": "Empty trash",
+    "purgeTitle": "Permanently delete the evaluation “{{title}}”?",
+    "emptyTitle": "Permanently delete all {{n}} evaluations in the trash?",
+    "purgeBody": "Its chat, evaluation result and agent work that made no document are deleted and this cannot be undone. Documents stay in Documents.",
+    "pairExists": "You already have an evaluation for this CV and job, so this one cannot be restored.",
+    "openIt": "Open it",
+    "restoreFailed": "Could not restore “{{title}}”. Try again."
   }
 }

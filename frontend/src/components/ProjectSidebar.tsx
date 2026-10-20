@@ -1,7 +1,8 @@
 import { Avatar } from './Avatar';
 import { useAccount } from '../lib/api';
 import { useId, useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, Bot, ChevronDown, FileText, FolderOpen, Kanban, LayoutDashboard, MessagesSquare, Search, Settings, UserCog, UserRound, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Bot, ChevronDown, FileText, FolderOpen, Kanban, LayoutDashboard, MessagesSquare, Search, Settings, Trash2, UserCog, UserRound, type LucideIcon } from 'lucide-react';
+import { useTrashCount } from '../lib/useTrashCount';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { AppearanceControl } from './AppearanceControl';
@@ -14,8 +15,8 @@ import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 export type { SidebarProject };
 const itemClass = 'flex min-h-11 min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-[15px] text-foreground transition-colors hover:bg-accent/60 data-[active=true]:bg-accent data-[active=true]:font-semibold data-[active=true]:text-accent-foreground [overflow-wrap:anywhere]';
 
-function NavItem({ to, icon: Icon, active, onNavigate, children }: { to: string; icon: LucideIcon; active: boolean; onNavigate?: () => void; children: ReactNode }) {
-  return <Link className={itemClass} to={to} data-active={active} aria-current={active ? 'page' : undefined} onClick={onNavigate}><Icon size={20} strokeWidth={1.75} className="shrink-0" aria-hidden="true" /><span className="min-w-0">{children}</span></Link>;
+function NavItem({ to, icon: Icon, active, onNavigate, children, count }: { to: string; icon: LucideIcon; active: boolean; onNavigate?: () => void; children: ReactNode; count?: number }) {
+  return <Link className={itemClass} to={to} data-active={active} aria-current={active ? 'page' : undefined} onClick={onNavigate}><Icon size={20} strokeWidth={1.75} className="shrink-0" aria-hidden="true" /><span className="min-w-0 flex-1">{children}</span>{count ? <span className="ms-auto rounded-full bg-muted px-1.5 text-xs font-medium tabular-nums text-muted-foreground"><span className="sr-only"> </span>{count}</span> : null}</Link>;
 }
 
 export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate, onReload, toggle }: {
@@ -30,10 +31,11 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
   const project = projects.find(item => item.id === projectId);
   const inside = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const base = `/app/projects/${projectId}`;
+  const trashCount = useTrashCount(projectId);
   const groups = [
     ['work', [['overview', LayoutDashboard, t('nav.overview')], ['search', Search, t('nav.search')], ['sessions', MessagesSquare, t('nav.evaluate')], ['applications', Kanban, t('nav.savedJobs')]]],
     ['materials', [['profile', UserRound, t('nav.cv')], ['documents', FileText, t('nav.documents')]]],
-    ['utilities', [['console', Bot, t('nav.console')]]],
+    ['utilities', [['console', Bot, t('nav.console')], ['trash', Trash2, t('nav.trash')]]],
   ] as const;
   const closeNavigation = () => { setSwitching(false); onNavigate?.(); };
   return <nav className="flex min-w-0 flex-1 flex-col gap-5 p-4" aria-label={t('navigation')}>
@@ -50,7 +52,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
     </div> : <ul className="grid min-w-0 gap-0.5"><li className="min-w-0"><NavItem to="/app/projects" icon={FolderOpen} active={inside('/app/projects')} onNavigate={onNavigate}>{t('nav.allProjects')}</NavItem></li></ul>}
     {project && groups.map(([group, entries], index) => <section key={group} className={`grid min-w-0 gap-1.5${index ? ' border-t border-border/80 pt-4' : ''}`} aria-labelledby={`${navId}-${group}`}>
       <h2 id={`${navId}-${group}`} className="sr-only">{t(`workspace.${group}`)}</h2>
-      <ul className="grid min-w-0 gap-0.5">{entries.map(([section, icon, label]) => <li className="min-w-0" key={section}><NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate}>{label}</NavItem></li>)}</ul>
+      <ul className="grid min-w-0 gap-0.5">{entries.map(([section, icon, label]) => <li className="min-w-0" key={section}><NavItem to={`${base}/${section}`} icon={icon} active={inside(`${base}/${section}`)} onNavigate={onNavigate} count={section === 'trash' ? trashCount : undefined}>{label}</NavItem></li>)}</ul>
     </section>)}
     <div className="mt-auto grid min-w-0 gap-1 border-t pt-4">
       <Link className={itemClass} to="/app/account" data-active={inside('/app/account')} aria-current={inside('/app/account') ? 'page' : undefined} onClick={onNavigate}>

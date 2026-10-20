@@ -203,6 +203,8 @@ class SessionView(DTO):
     cv_file_id: UUID | None = None
     # Only set on the create response.
     evaluation_run_id: UUID | None = None
+    # Only set in the trash list.
+    trashed_at: datetime | None = None
 
 
 class SessionDeleteResult(DTO):
@@ -287,6 +289,10 @@ class CVRevisionView(RevisionView):
     skill_count: int | None = None
 
 
+class DocumentRename(DTO):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+
+
 class CVUpdate(DTO):
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)] | None = None
     is_primary: Literal[True] | None = None
@@ -301,6 +307,7 @@ class CVView(DTO):
     revision_count: int
     in_use: bool
     has_builder_draft: bool = False
+    trashed_at: datetime | None = None
 
 
 class DocumentView(DTO):
@@ -369,10 +376,33 @@ class SkillCoverage(DTO):
     method: Annotated[str, StringConstraints(max_length=40)]
 
 
+_Line = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+_Lines = Annotated[tuple[_Line, ...], Field(max_length=10)]
+
+
+class ReportRequirement(DTO):
+    requirement: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+    importance: Literal["critical", "high", "meaningful", "preferred", "low_signal"]
+    match: Literal["strong", "partial", "missing", "not_applicable"]
+    evidence: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)] = ""
+
+
+class EvaluationReport(DTO):
+    """CR-EVR-01: named report fields; report_markdown is built from these by the server."""
+    verdict: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    summary: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+    requirements: Annotated[tuple[ReportRequirement, ...], Field(max_length=30)] = ()
+    strengths: _Lines = ()
+    risks: _Lines = ()
+    interview_prep: _Lines = ()
+    cv_changes: _Lines = ()
+
+
 class EvaluationResult(DTO):
     report_markdown: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200000)]
     score: Annotated[float, Field(ge=1, le=5, strict=True)] | None = None
     skill_coverage: SkillCoverage | None = None
+    report: EvaluationReport | None = None
 
 
 class RunRequester(DTO):

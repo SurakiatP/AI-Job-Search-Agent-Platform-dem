@@ -23,7 +23,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import Approval, CVRevision, CVRevisionText, DocumentRevision, JobMatchScore, JobSearchHidden, ResumeDraft, Run, RunArtifact, StoredFile
-from job_search_platform.services.contracts import EvaluationResult, SkillCoverage
+from job_search_platform.services.contracts import EvaluationReport, EvaluationResult, SkillCoverage
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
 from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.gateway import GatewaySettings
@@ -47,11 +47,38 @@ def _native_json(value: str):
     return json.loads(fenced.group(1) if fenced else value)
 
 
+_MATCH_TEXT = {"strong": "✅", "partial": "⚠️", "missing": "❌", "not_applicable": "➖"}
+
+
+def _cell(text: str) -> str:
+    return " ".join(text.replace("|", "\\|").split())
+
+
+def report_markdown(report: EvaluationReport) -> str:
+    """Markdown twin of the structured report for MCP, A2A, downloads and copy. No score: the page shows it."""
+    parts = [f"**{report.verdict}**", report.summary]
+    if report.requirements:
+        rows = [f"| {_MATCH_TEXT[r.match]} | {_cell(r.requirement)} | {_cell(r.evidence) or '—'} |" for r in report.requirements]
+        parts.append("## Requirements\n\n| Match | Requirement | Evidence |\n|---|---|---|\n" + "\n".join(rows))
+    for title, items in (("Strengths", report.strengths), ("Risks", report.risks),
+                         ("Interview preparation", report.interview_prep), ("CV changes", report.cv_changes)):
+        if items:
+            parts.append(f"## {title}\n\n" + "\n".join(f"- {item}" for item in items))
+    return "\n\n".join(parts)
+
+
 def parse_evaluation_result(value: str) -> EvaluationResult:
-    """Validate the sole public evaluation shape; never retain native traces."""
+    """Validate the public evaluation shape (structured `report`, or legacy `report_markdown`); never retain native traces."""
     try:
         payload = _native_json(value)
-        if not isinstance(payload, dict) or set(payload) - {"report_markdown", "score"}:
+        if not isinstance(payload, dict):
+            raise ValueError
+        if "report" in payload:
+            if set(payload) - {"report", "score"}:
+                raise ValueError
+            report = EvaluationReport.model_validate(payload["report"])
+            return EvaluationResult(report_markdown=report_markdown(report), score=payload.get("score"), report=report)
+        if set(payload) - {"report_markdown", "score"}:
             raise ValueError
         return EvaluationResult.model_validate(payload)
     except (TypeError, ValueError) as exc:
@@ -504,8 +531,10 @@ class RunExecutor:
         """Render resume data with its template in the sandbox and publish it as the tailored CV document."""
         template, accent = style.get("template_id", "onyx"), style.get("accent", "indigo")
         lang = run.output_language if run.output_language in ("th", "en") else "th"
+        model = resume.ResumeData.model_validate(data)
+        photo = await resume.load_photo(self.sessions, self.object_store, run.project_id, model, template)
         try:
-            body = await self.runtime.render_typst(resume.render_bundle(resume.ResumeData.model_validate(data), template, accent, lang))
+            body = await self.runtime.render_typst(resume.render_bundle(model, template, accent, lang, photo))
         except Exception:
             raise ServiceError("export_failed") from None
         sandbox.staging_path("tailored-cv.pdf").write_bytes(body)
@@ -886,7 +915,14 @@ class RunExecutor:
         job = run.input_snapshot["job"]
         locale = "Thai" if run.output_language == "th" else "English"
         if run.operation == "evaluate_job":
-            task = "Evaluate this candidate for the job. Return only JSON with report_markdown and an optional score from 1 to 5."
+            task = (
+                "Evaluate how well the job seeker fits this job. Write to the job seeker directly (\"you\"), not about a candidate. "
+                "Return only JSON shaped as {\"score\": 1-5 or null, \"report\": {\"verdict\": one line, \"summary\": a short paragraph, "
+                "\"requirements\": [{\"requirement\", \"importance\": critical|high|meaningful|preferred|low_signal, "
+                "\"match\": strong|partial|missing|not_applicable, \"evidence\": CV evidence or the gap}] (Block B rows, at most 30), "
+                "\"strengths\", \"risks\", \"interview_prep\", \"cv_changes\": lists of at most 10 short strings}}. "
+                "Do not repeat the score in the text."
+            )
         else:
             kind = run.input_snapshot.get("draft_kind")
             what = {

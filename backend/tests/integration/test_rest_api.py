@@ -236,9 +236,12 @@ def test_owner_renames_and_deletes_sessions_unless_runs_exist(api_context):
     hidden = client.delete(f"{base}/{busy}", headers=headers)
     assert hidden.status_code == 200 and hidden.json() == {"mode": "hidden"}
 
+    # Owner decision 2026-10-20: a session without runs also goes to the trash first.
     deleted = client.delete(f"{base}/{empty}", headers=headers)
-    assert deleted.status_code == 200 and deleted.json() == {"mode": "deleted"}
+    assert deleted.status_code == 200 and deleted.json() == {"mode": "hidden"}
     assert client.get(base).json() == []
+    # Messages stay while it is in the trash; a permanent delete removes them.
+    assert client.delete(f"{base}/{empty}/permanent", headers=headers).status_code == 204
     with api_context.sessions() as db:
         assert db.scalar(select(func.count()).select_from(Message)
                          .where(Message.session_id == UUID(empty))) == 0
@@ -844,3 +847,13 @@ def test_unmatched_route_is_labelled_unmatched(api_context):
         logger.removeHandler(handler)
     line = json.loads(stream.getvalue().splitlines()[0])
     assert line["route"] == "unmatched" and "secret-path" not in stream.getvalue()
+
+
+@pytest.mark.integration
+def test_connect_info_tells_the_owner_where_external_agents_connect(api_context, monkeypatch):
+    assert api_context.client.get("/api/v1/connect").status_code == 401
+    _owner(api_context)
+    monkeypatch.delenv("SHARE_PUBLIC_ORIGIN", raising=False)
+    assert api_context.client.get("/api/v1/connect").json() == {"share_origin": None, "oauth": False}
+    monkeypatch.setenv("SHARE_PUBLIC_ORIGIN", "http://127.0.0.1:8011/")
+    assert api_context.client.get("/api/v1/connect").json() == {"share_origin": "http://127.0.0.1:8011", "oauth": False}
