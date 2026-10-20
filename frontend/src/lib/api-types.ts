@@ -65,6 +65,7 @@ export type OwnerSessionState =
 
 export type ProjectView = { id: string; name: string; created_at: string };
 export type SessionView = {
+  trashed_at?: string | null;
   id: string; project_id: string; title: string; created_at: string;
   cv_revision_id?: string | null; job_revision_id?: string | null; cv_name?: string | null; cv_revision?: number | null;
   job_title?: string | null; job_company?: string | null; cv_outdated?: boolean; cv_file_id?: string | null; evaluation_run_id?: string | null;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, Briefcase, FileText, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { NewSessionButton } from './NewSessionDialog';
 import { relativeTime } from '../console/shared';
 import { useResource } from '../projects/useResource';
 import { ErrorState, LoadingState } from '../projects/PageStates';
+import { SessionTrash } from './SessionTrash';
 
 type Filter = 'all' | 'attention' | 'progress' | 'done' | 'stopped' | 'notStarted';
 const FILTERS: Filter[] = ['all', 'attention', 'progress', 'done', 'stopped', 'notStarted'];
@@ -47,6 +48,10 @@ export function SessionsPage() {
   const { t: s } = useTranslation('sessionWorkspace');
   const locale: Locale = i18n.language.startsWith('th') ? 'th' : 'en';
   const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
+  const trash = useResource<SessionView[]>(`/projects/${projectId}/sessions?view=trash`);
+  const inTrash = useSearchParams()[0].get('view') === 'trash';
+  const trashCount = trash.data?.length ?? 0;
+  const reloadAll = () => { sessions.reload(); trash.reload(); };
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const [filter, setFilter] = useState<Filter>('all');
@@ -60,8 +65,14 @@ export function SessionsPage() {
   const counts = Object.fromEntries(FILTERS.map(key => [key, key === 'all' ? rows.length : rows.filter(row => group(row.run) === key).length])) as Record<Filter, number>;
   const shown = filter === 'all' || !known ? rows : rows.filter(row => group(row.run) === filter);
   const jobVersion = (id?: string | null) => (jobs.data ?? []).find(job => job.id === id)?.revision;
+  const trashLink = trashCount > 0 && <Button asChild variant="ghost"><Link to="?view=trash"><Trash2 className="size-4" aria-hidden="true" />{s('trash.link', { n: trashCount })}</Link></Button>;
+  if (inTrash) return <section className="grid min-w-0 gap-6">
+    <header className="workspace-page-header"><div><h1>{s('trash.title')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{s('trash.subtitle')}</p></div></header>
+    {trash.status === 'loading' && !trash.data ? <LoadingState /> : trash.status === 'error' ? <ErrorState onRetry={trash.reload} /> :
+      <SessionTrash projectId={projectId} locale={locale} items={trash.data ?? []} onChanged={reloadAll} />}
+  </section>;
   return <section className="grid min-w-0 gap-6">
-    <header className="workspace-page-header"><div><h1>{t('nav.evaluate')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{s('list.subtitle')}</p></div>{rows.length > 0 && <NewSessionButton projectId={projectId}>{t('workspace.newEvaluation')}</NewSessionButton>}</header>
+    <header className="workspace-page-header"><div><h1>{t('nav.evaluate')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{s('list.subtitle')}</p></div><div className="flex flex-wrap items-center gap-2">{trashLink}{rows.length > 0 && <NewSessionButton projectId={projectId}>{t('workspace.newEvaluation')}</NewSessionButton>}</div></header>
     {sessions.status === 'loading' && !sessions.data ? <LoadingState /> : sessions.status === 'error' ? <ErrorState onRetry={sessions.reload} /> :
     rows.length === 0 ? <div className="workspace-panel grid justify-items-start gap-3 p-6 sm:p-8"><h2 className="text-lg font-semibold">{s('list.emptyTitle')}</h2><p className="max-w-xl text-muted-foreground">{s('list.emptyBody')}</p><NewSessionButton projectId={projectId} className="mt-1">{t('workspace.newEvaluation')}</NewSessionButton></div> : <>
       {known && rows.length > 1 && <div role="group" aria-label={s('list.filters.label')} className="flex flex-wrap gap-2">
@@ -97,6 +108,6 @@ export function SessionsPage() {
       title={s('list.delete.title', { title: removing.job_title ?? removing.title })} description={s('list.delete.body')}
       errors={{ session_busy: s('list.delete.busy') }}
       onConfirm={() => apiRequest(`/projects/${projectId}/sessions/${removing.id}`, { method: 'DELETE' }).then(() => undefined)}
-      onDone={() => { setRemoving(null); sessions.reload(); }} onClose={() => setRemoving(null)} />}
+      onDone={() => { setRemoving(null); reloadAll(); }} onClose={() => setRemoving(null)} />}
   </section>;
 }
