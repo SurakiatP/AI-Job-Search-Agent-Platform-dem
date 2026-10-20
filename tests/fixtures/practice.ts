@@ -32,9 +32,9 @@ export async function practiceApi(page: Page, start: { sets?: object[]; status?:
     sections: [{ id: 'behavioral', count: 2 }, { id: 'technical', count: 2 }], run_id: 'r1', created_at: at,
     question_count: state.questions.length, ready_count: state.questions.filter(q => q.ready).length,
     known_count: state.questions.filter(q => q.card_rating === 'know').length });
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/v1/**', async route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname.replace('/api/v1', '');
+    const path = new URL(request.url()).pathname.replace('/v1/async', '').replace('/v1', '');
     const method = request.method();
     if (path === `/projects/${projectId}/sessions/${sessionId}`) return route.fulfill(json({
       id: sessionId, project_id: projectId, title: 'Session', created_at: at, cv_revision_id: 'c1', job_revision_id: job,

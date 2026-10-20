@@ -89,7 +89,7 @@ def _execute_next(ctx, runtime):
 
 
 def _draft(ctx, csrf, pid, session_id, key, **extra):
-    return ctx.client.post(f"{PREFIX}/{pid}/runs", headers=_write_headers(csrf), json={
+    return ctx.client.post(f"/v1/async/projects/{pid}/agent-runs", headers=_write_headers(csrf), json={
         "session_id": session_id, "operation": "draft_documents", "output_language": "en",
         "idempotency_key": key, **extra})
 
@@ -101,7 +101,7 @@ def _setup(ctx, tmp_declared="cover_letter"):
     cancel_queued_extract_runs(ctx.sessions)
     session = _session(ctx, csrf, pid, cv["latest_revision"]["id"], job=JOB).json()
     # Creating a paired session queues its evaluation; drop it so the next claim is ours.
-    ctx.client.post(f"{PREFIX}/{pid}/runs/{session['evaluation_run_id']}/cancel", headers=_write_headers(csrf))
+    ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{session['evaluation_run_id']}/cancel", headers=_write_headers(csrf))
     return csrf, pid, session, _FakeRuntime(ctx.tmp_path / "ws", tmp_declared)
 
 
@@ -113,7 +113,7 @@ def _docs(ctx, pid):
 def test_draft_kind_validation_and_owner_only(api_context):
     csrf, pid, session, _ = _setup(api_context)
     assert _draft(api_context, csrf, pid, session["id"], "k1", draft_kind="poem").status_code == 422
-    evaluate = api_context.client.post(f"{PREFIX}/{pid}/runs", headers=_write_headers(csrf), json={
+    evaluate = api_context.client.post(f"/v1/async/projects/{pid}/agent-runs", headers=_write_headers(csrf), json={
         "session_id": session["id"], "operation": "evaluate_job", "output_language": "en",
         "idempotency_key": "k2", "draft_kind": "cover_letter"})
     assert evaluate.status_code == 422
@@ -166,7 +166,8 @@ def test_manual_edit_exports_without_llm_and_appends_manual_revision(api_context
     assert _draft(api_context, csrf, pid, session["id"], "d1", draft_kind="cover_letter").status_code == 202
     _execute_next(api_context, runtime)
     doc_id = _docs(api_context, pid)[0]["id"]
-    url = f"{PREFIX}/{pid}/documents/{doc_id}/revisions"
+    url = f"/v1/async/projects/{pid}/documents/{doc_id}/revisions"
+    listing = f"{PREFIX}/{pid}/documents/{doc_id}/revisions"
 
     assert api_context.client.post(url, headers=headers, json={"content_markdown": ""}).status_code == 422
     assert api_context.client.post(url, headers=headers, json={"content_markdown": "x" * 200001}).status_code == 422
@@ -190,7 +191,7 @@ def test_manual_edit_exports_without_llm_and_appends_manual_revision(api_context
     finished = api_context.client.get(f"{PREFIX}/{pid}/runs/{run['id']}").json()
     assert finished["status"] == "completed" and len(finished["result_file_ids"]) == 1
 
-    revisions = api_context.client.get(url).json()
+    revisions = api_context.client.get(listing).json()
     assert [(r["revision"], r["origin"]) for r in revisions] == [(1, "agent"), (2, "manual")]
     assert revisions[1]["content_markdown"] == edited
     assert revisions[1]["source_job_revision_id"] == session["job_revision_id"]
@@ -201,7 +202,7 @@ def test_manual_edit_exports_without_llm_and_appends_manual_revision(api_context
     with api_context.sessions() as db:
         assert db.get(Run, UUID(revise.json()["id"])).input_snapshot["previous_draft"] == edited
     _execute_next(api_context, runtime)
-    assert api_context.client.get(url).json()[-1]["origin"] == "agent"
+    assert api_context.client.get(listing).json()[-1]["origin"] == "agent"
 
 
 @pytest.mark.integration
@@ -213,11 +214,11 @@ def test_manual_edit_missing_trashed_foreign_and_hidden_from_grants(api_context)
     doc_id = _docs(api_context, pid)[0]["id"]
     body = {"content_markdown": "edit"}
 
-    assert api_context.client.post(f"{PREFIX}/{pid}/documents/{uuid4()}/revisions", headers=headers, json=body).status_code == 404
+    assert api_context.client.post(f"/v1/async/projects/{pid}/documents/{uuid4()}/revisions", headers=headers, json=body).status_code == 404
     other = _project(api_context, csrf, "Other")
-    assert api_context.client.post(f"{PREFIX}/{other}/documents/{doc_id}/revisions", headers=headers, json=body).status_code == 404
+    assert api_context.client.post(f"/v1/async/projects/{other}/documents/{doc_id}/revisions", headers=headers, json=body).status_code == 404
 
-    queued = api_context.client.post(f"{PREFIX}/{pid}/documents/{doc_id}/revisions", headers=headers, json=body).json()
+    queued = api_context.client.post(f"/v1/async/projects/{pid}/documents/{doc_id}/revisions", headers=headers, json=body).json()
     # Grants cannot see the owner-only run through the run service.
     with api_context.sessions.begin() as db:
         actor, _ = grant(db, UUID(pid), capabilities=("results:read", "documents:draft"))
@@ -231,13 +232,13 @@ def test_manual_edit_missing_trashed_foreign_and_hidden_from_grants(api_context)
     _execute_next(api_context, runtime)
 
     api_context.client.delete(f"{PREFIX}/{pid}/documents/{doc_id}", headers=headers)
-    assert api_context.client.post(f"{PREFIX}/{pid}/documents/{doc_id}/revisions", headers=headers, json=body).status_code == 404
+    assert api_context.client.post(f"/v1/async/projects/{pid}/documents/{doc_id}/revisions", headers=headers, json=body).status_code == 404
 
 
 @pytest.mark.integration
 def test_export_document_is_not_a_request_operation(api_context):
     csrf, pid, session, _ = _setup(api_context)
-    response = api_context.client.post(f"{PREFIX}/{pid}/runs", headers=_write_headers(csrf), json={
+    response = api_context.client.post(f"/v1/async/projects/{pid}/agent-runs", headers=_write_headers(csrf), json={
         "session_id": session["id"], "operation": "export_document", "output_language": "en",
         "idempotency_key": "x1"})
     assert response.status_code == 422

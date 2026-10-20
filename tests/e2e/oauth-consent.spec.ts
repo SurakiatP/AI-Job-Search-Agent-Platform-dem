@@ -7,7 +7,7 @@ const view = { client_name: 'Synthetic Client', client_id_host: 'client.example.
 async function consent(page: Page, status = 200, approveUrl = 'http://127.0.0.1:33418/callback?code=c&state=s') {
   const posts: { path: string; body: unknown }[] = [];
   await useSyntheticApplication(page);
-  await page.route('**/api/v1/oauth/requests/**', async route => {
+  await page.route('**/v1/oauth/requests/**', async route => {
     const req = route.request();
     const path = new URL(req.url()).pathname;
     if (req.method() === 'GET') return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(status === 200 ? view : { code: 'not_found', message_key: 'errors.not_found', retryable: false }) });

@@ -22,8 +22,8 @@ test('first-run overview offers one primary action and stable evaluation navigat
 
 test('one failed overview resource preserves jobs and sessionless required-input attention', async ({ page }) => {
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/documents`, route => route.fulfill({ status: 503, json: { code: 'unavailable' } }));
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ json: [{ id: 'input-run', project_id: projectId, session_id: null, operation: 'extract_experience', status: 'needs_input', created_at: '2026-10-16T00:00:00Z' }] }));
+  await page.route(`**/v1/projects/${projectId}/documents`, route => route.fulfill({ status: 503, json: { code: 'unavailable' } }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({ json: [{ id: 'input-run', project_id: projectId, session_id: null, operation: 'extract_experience', status: 'needs_input', created_at: '2026-10-16T00:00:00Z' }] }));
   await page.goto(`/app/projects/${projectId}/overview`);
   await expect(page.getByRole('heading', { name: 'Synthetic analyst search', exact: true })).toBeVisible();
   await expect(page.getByRole('main').getByRole('link', { name: 'Synthetic data analyst', exact: true })).toBeVisible();
@@ -34,7 +34,7 @@ test('one failed overview resource preserves jobs and sessionless required-input
 
 test('CV summary uses named primary CV rather than highest unrelated revision', async ({ page }) => {
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ json: [
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ json: [
     { id: 'primary', name: 'Product CV', is_primary: true, latest_revision: { id: 'p3', revision: 3, original_filename: 'product.pdf', skill_profile_ready: true, created_at: '2026-10-15T00:00:00Z' } },
     { id: 'other', name: 'Other CV', is_primary: false, latest_revision: { id: 'o99', revision: 99, original_filename: 'other.pdf', created_at: '2026-10-16T00:00:00Z' } },
   ] }));
@@ -70,8 +70,8 @@ test('project switcher retains management and switches scope explicitly', async 
 
 test('populated overview shows actual attention, active work, partial material and named sources', async ({ page }, info) => {
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ json: [{ id: 'cv', name: 'Product CV', is_primary: true, latest_revision: { id: 'cv3', revision: 3, original_filename: 'synthetic-product-cv.pdf', skill_profile_ready: true, created_at: '2026-10-15T00:00:00Z' } }] }));
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ json: [
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ json: [{ id: 'cv', name: 'Product CV', is_primary: true, latest_revision: { id: 'cv3', revision: 3, original_filename: 'synthetic-product-cv.pdf', skill_profile_ready: true, created_at: '2026-10-15T00:00:00Z' } }] }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({ json: [
     { id: 'input', operation: 'apply_prepare', status: 'needs_input', session_id: null },
     { id: 'active', operation: 'profile_cv', status: 'running', session_id: null },
     { id: 'approval', operation: 'tailor_cv', status: 'waiting_approval', session_id: null },
@@ -92,7 +92,7 @@ test('populated overview shows actual attention, active work, partial material a
 test('uncertain project creation exposes recovery without an automatic second write', async ({ page }) => {
   await useSyntheticApplication(page);
   let writes = 0;
-  await page.route('**/api/v1/projects', route => {
+  await page.route('**/v1/projects', route => {
     if (route.request().method() !== 'POST') return route.fallback();
     writes++;
     return route.fulfill({ status: 503, json: { code: 'unavailable' } });
@@ -123,13 +123,13 @@ test('switcher keeps delete-current-session recovery available through route cha
   await useSyntheticApplication(page);
   let hidden = false;
   let restores = 0;
-  await page.route(`**/api/v1/projects/${projectId}/sessions`, route => hidden ? route.fulfill({ json: [] }) : route.fallback());
-  await page.route(`**/api/v1/projects/${projectId}/sessions/${sessionId}`, route => {
+  await page.route(`**/v1/projects/${projectId}/sessions`, route => hidden ? route.fulfill({ json: [] }) : route.fallback());
+  await page.route(`**/v1/projects/${projectId}/sessions/${sessionId}`, route => {
     if (route.request().method() !== 'DELETE') return route.fallback();
     hidden = true;
     return route.fulfill({ json: { mode: 'hidden' } });
   });
-  await page.route(`**/api/v1/projects/${projectId}/sessions/${sessionId}/restore`, route => {
+  await page.route(`**/v1/projects/${projectId}/sessions/${sessionId}/restore`, route => {
     restores++; hidden = false; return route.fulfill({ json: { id: sessionId } });
   });
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
@@ -192,8 +192,8 @@ test('first-run overview marks done steps, says what is blocked and shows no cou
 
 test('returning overview puts items waiting for the user above everything else', async ({ page }) => {
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/cvs`, route => route.fulfill({ json: [{ id: 'cv', name: 'Product CV', is_primary: true, latest_revision: { id: 'cv3', revision: 3, original_filename: 'synthetic-product-cv.pdf', skill_profile_ready: true, created_at: '2026-10-15T00:00:00Z' } }] }));
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ json: [{ id: 'approval', operation: 'tailor_cv', status: 'waiting_approval', session_id: null, created_at: '2026-10-16T00:00:00Z' }] }));
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ json: [{ id: 'cv', name: 'Product CV', is_primary: true, latest_revision: { id: 'cv3', revision: 3, original_filename: 'synthetic-product-cv.pdf', skill_profile_ready: true, created_at: '2026-10-15T00:00:00Z' } }] }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({ json: [{ id: 'approval', operation: 'tailor_cv', status: 'waiting_approval', session_id: null, created_at: '2026-10-16T00:00:00Z' }] }));
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/app/projects/${projectId}/overview`);
   const needs = await page.getByRole('heading', { name: 'Needs your attention', exact: true }).boundingBox();
@@ -205,7 +205,7 @@ test('returning overview puts items waiting for the user above everything else',
 test('projects list shows one row per project with Open and management, no repeated shortcuts', async ({ page }) => {
   await useSyntheticApplication(page);
   let renamed: unknown;
-  await page.route(`**/api/v1/projects/${projectId}`, route => {
+  await page.route(`**/v1/projects/${projectId}`, route => {
     if (route.request().method() !== 'PATCH') return route.fallback();
     renamed = route.request().postDataJSON();
     return route.fulfill({ json: { id: projectId, name: 'Renamed project', created_at: '2026-10-01T00:00:00Z' } });
@@ -254,7 +254,7 @@ test('new project validates inline, submits with Enter and explains what happens
 
 test('new project reports a duplicate name rejected by the API', async ({ page }) => {
   await useSyntheticApplication(page);
-  await page.route('**/api/v1/projects', route => route.request().method() === 'POST' ? route.fulfill({ status: 409, json: { code: 'project_name_taken' } }) : route.fallback());
+  await page.route('**/v1/projects', route => route.request().method() === 'POST' ? route.fulfill({ status: 409, json: { code: 'project_name_taken' } }) : route.fallback());
   await page.goto('/app/projects/new');
   await page.getByRole('textbox', { name: 'Project name', exact: true }).fill('Synthetic analyst search');
   await page.getByRole('button', { name: 'Create a project', exact: true }).click();
@@ -265,7 +265,7 @@ test('new project reports a duplicate name rejected by the API', async ({ page }
 test('consent groups permissions, keeps Allow off until one is chosen and summarises the decision live', async ({ page }) => {
   await useSyntheticApplication(page);
   const view = { client_name: 'Synthetic Client', client_id_host: 'client.example.test', redirect_uri: 'http://127.0.0.1:33418/callback', requested_scopes: ['results:read', 'documents:draft'], projects: [{ id: projectId, name: 'Synthetic project' }], expires_at: '2099-01-01T00:00:00Z' };
-  await page.route('**/api/v1/oauth/requests/**', route => route.fulfill({ json: view }));
+  await page.route('**/v1/oauth/requests/**', route => route.fulfill({ json: view }));
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/app/oauth/consent?request=h');
@@ -292,10 +292,10 @@ test('overview hides evaluations in the trash and names the CV of each evaluatio
   await useSyntheticApplication(page);
   const job = '33333333-3333-4333-8333-333333333333';
   const trashed = 'dddddddd-0000-4000-8000-000000000000';
-  await page.route(`**/api/v1/projects/${projectId}/jobs`, route => route.fulfill({ json: [{ id: job, revision: 1, title: 'Live job', company: 'Example Co', created_at: '2026-10-01T00:00:00Z' }, { id: 'j2', revision: 1, title: 'Trashed job', company: 'Gone Co', created_at: '2026-10-01T00:00:00Z' }] }));
-  await page.route(`**/api/v1/projects/${projectId}/sessions`, route => route.fulfill({ json: [{ id: sessionId, project_id: projectId, title: 'Live job', created_at: '2026-10-01T00:00:00Z', cv_revision_id: 'c1', job_revision_id: job, cv_name: 'Data CV', cv_revision: 4, job_title: 'Live job', job_company: 'Example Co' }] }));
+  await page.route(`**/v1/projects/${projectId}/jobs`, route => route.fulfill({ json: [{ id: job, revision: 1, title: 'Live job', company: 'Example Co', created_at: '2026-10-01T00:00:00Z' }, { id: 'j2', revision: 1, title: 'Trashed job', company: 'Gone Co', created_at: '2026-10-01T00:00:00Z' }] }));
+  await page.route(`**/v1/projects/${projectId}/sessions`, route => route.fulfill({ json: [{ id: sessionId, project_id: projectId, title: 'Live job', created_at: '2026-10-01T00:00:00Z', cv_revision_id: 'c1', job_revision_id: job, cv_name: 'Data CV', cv_revision: 4, job_title: 'Live job', job_company: 'Example Co' }] }));
   const run = (id: string, sid: string, jid: string) => ({ id, project_id: projectId, session_id: sid, operation: 'evaluate_job', status: 'completed', job_revision_id: jid, output_language: 'en', result_file_ids: [], created_at: '2026-10-10T00:00:00Z', finished_at: '2026-10-10T00:01:00Z', retry_of_id: null, evaluation_result: { score: 4, report_markdown: 'x' } });
-  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill({ json: [run('r1', sessionId, job), run('r2', trashed, 'j2')] }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({ json: [run('r1', sessionId, job), run('r2', trashed, 'j2')] }));
   await page.goto(`/app/projects/${projectId}/overview`);
   const recent = page.getByRole('region', { name: 'Recent evaluations' });
   await expect(recent.getByRole('link', { name: /Live job/ })).toBeVisible();

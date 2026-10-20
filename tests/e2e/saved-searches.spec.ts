@@ -8,15 +8,15 @@ async function searchWithSaved(page: Page, status = { email_verified: true, noti
   const posts: unknown[] = [];
   let previews = 0;
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/job-search**`, route => route.fulfill({ status: 200, contentType: 'application/json',
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => route.fulfill({ status: 200, contentType: 'application/json',
     body: JSON.stringify(route.request().url().includes('/facets') ? { total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 0, thai_postings: 0 } : { items: [], total: 0, limit: 20, offset: 0 }) }));
-  await page.route(`**/api/v1/projects/${projectId}/webhooks`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(webhooks) }));
-  await page.route(`**/api/v1/projects/${projectId}/saved-searches**`, async route => {
+  await page.route(`**/v1/projects/${projectId}/webhooks`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(webhooks) }));
+  for (const url of [`**/v1/projects/${projectId}/saved-searches**`, `**/v1/async/projects/${projectId}/saved-searches**`]) await page.route(url, async route => {
     const request = route.request();
     const url = new URL(request.url());
     const id = url.pathname.split('/saved-searches/')[1]?.split('/')[0];
     if (request.method() === 'GET') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items, status }) });
-    if (request.method() === 'POST' && url.pathname.endsWith('/preview')) { previews += 1; return route.fulfill({ status: 202, contentType: 'application/json', body: '{"status":"sent"}' }); }
+    if (request.method() === 'POST' && url.pathname.endsWith('/previews')) { previews += 1; return route.fulfill({ status: 202, contentType: 'application/json', body: '{"status":"sent"}' }); }
     if (request.method() === 'POST') {
       const body = request.postDataJSON(); posts.push(body);
       const row: Saved = { id: `00000000-0000-4000-8000-00000000000${items.length}`, name: body.name, filters: body.filters, frequency: body.frequency, digest_enabled: true, push_enabled: false, next_run_at: '2026-10-15T01:00:00Z', last_sent_at: null, created_at: '2026-10-14T00:00:00Z' };
@@ -72,7 +72,7 @@ test('gate banners explain why no digest is sent', async ({ page }) => {
 test('unsubscribe page: success and expired link', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
-  await page.route('**/api/v1/digest/unsubscribe', async route => {
+  await page.route('**/v1/digest/unsubscribe', async route => {
     const ok = route.request().postDataJSON().token === 'good-token-0000000000000000';
     await route.fulfill(ok ? { status: 204, body: '' } : { status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'invalid_token', message_key: 'errors.invalid_token', retryable: false }) });
   });

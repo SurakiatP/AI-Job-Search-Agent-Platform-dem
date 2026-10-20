@@ -37,7 +37,7 @@ const copy = {
 
 const ROW_GRID = 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_6rem_9rem_9rem]';
 const typeIcon: Record<DocType, LucideIcon> = { cv: FileUser, cover_letter: Mail, application_message: MessageSquareText, other: File };
-const downloadUrl = (projectId: string, fileId: string) => `/api/v1/projects/${projectId}/files/${fileId}/download`;
+const downloadUrl = (projectId: string, fileId: string) => `/v1/projects/${projectId}/files/${fileId}/download`;
 
 export function documentTypeLabel(type: DocType, t: (key: string, options: { defaultValue: string }) => string) {
   const labels = { cv: ['pages.docTypeCv', 'CV'], cover_letter: ['pages.docTypeCoverLetter', 'Cover letter'], application_message: ['pages.docTypeApplicationMessage', 'Application message'], other: ['pages.docTypeOther', 'Other document'] } as const;
@@ -67,7 +67,7 @@ function DocumentEditor({ c, projectId, documentId, initial, onClose, onSaved }:
   async function save() {
     setPhase('saving'); setError('');
     try {
-      const started = await sendJson<RunView>(`/projects/${projectId}/documents/${documentId}/revisions`, 'POST', { content_markdown: text });
+      const started = await sendJson<RunView>(`/async/projects/${projectId}/documents/${documentId}/revisions`, 'POST', { content_markdown: text });
       let run = started;
       while (alive.current && (run.status === 'queued' || run.status === 'running' || run.status === 'waiting_approval')) {
         await new Promise(resolve => window.setTimeout(resolve, 1500));
@@ -252,7 +252,7 @@ export function DocumentDetailPage() {
   async function restoreRevision(revisionId: string) {
     setRevBusy(true); setRevNote(null);
     try {
-      let run = await sendJson<RunView>(`/projects/${projectId}/documents/${documentId}/revisions/${revisionId}/restore`, 'POST', {});
+      let run = await sendJson<RunView>(`/async/projects/${projectId}/documents/${documentId}/revisions/${revisionId}/restore`, 'POST', {});
       while (run.status === 'queued' || run.status === 'running' || run.status === 'waiting_approval') {
         await new Promise(resolve => window.setTimeout(resolve, 1500));
         run = await apiRequest<RunView>(`/projects/${projectId}/runs/${run.id}`);

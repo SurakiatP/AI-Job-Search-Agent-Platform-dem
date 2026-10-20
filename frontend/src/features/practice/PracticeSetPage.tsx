@@ -58,10 +58,10 @@ export function PracticeSetPage() {
     void sendJson(`/projects/${projectId}/practice-questions/${id}`, 'PATCH', body).catch(() => setFailure(c.failedAction));
   }, [projectId, c.failedAction]);
   const call = useCallback(async (fn: () => Promise<unknown>) => { setFailure(''); try { await fn(); reload(); } catch { setFailure(c.failedAction); } }, [reload, c.failedAction]);
-  const askFeedback = useCallback((attemptId: string) => call(() => apiRequest(`/projects/${projectId}/practice-attempts/${attemptId}/feedback`, { method: 'POST' })), [call, projectId]);
+  const askFeedback = useCallback((attemptId: string) => call(() => apiRequest(`/async/projects/${projectId}/practice-attempts/${attemptId}/feedback`, { method: 'POST' })), [call, projectId]);
   const checkCard = useCallback((id: string, answer: string) => call(async () => {
     const attempt = await sendJson<PracticeAttempt>(`/projects/${projectId}/practice-questions/${id}/attempts`, 'POST', { answer });
-    await apiRequest(`/projects/${projectId}/practice-attempts/${attempt.id}/feedback`, { method: 'POST' });
+    await apiRequest(`/async/projects/${projectId}/practice-attempts/${attempt.id}/feedback`, { method: 'POST' });
   }), [call, projectId]);
 
   if (detail.status === 'loading' && !detail.data) return <LoadingState />;
@@ -106,7 +106,7 @@ export function PracticeSetPage() {
       </div>
       <div className="min-w-0">
         {current?.id === 'summary' ? <SummaryRound c={c} report={set.report} sections={set.sections.map(x => x.id)}
-            onWrite={() => void call(() => apiRequest(`${path}/report`, { method: 'POST' }))} />
+            onWrite={() => void call(() => apiRequest(`/async/projects/${projectId}/practice-sets/${setId}/report`, { method: 'POST' }))} />
           : current?.id === 'reverse' ? <ReverseRound c={c} items={set.reverse_questions} />
           : current?.id === 'technical' ? <section aria-label={c.sections.technical} className="grid gap-4">
             <h2 className="text-lg font-semibold">{c.sections.technical}</h2>

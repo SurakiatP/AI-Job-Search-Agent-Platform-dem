@@ -23,7 +23,7 @@ test('submission ambiguity keeps the instruction and reload retries from the imm
   let accepted: ReturnType<typeof runView> | null = null;
   const submissions: Array<{ body: Record<string, unknown>; key: string | undefined }> = [];
 
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/v1/**', async route => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     let value: unknown = [];
@@ -31,7 +31,7 @@ test('submission ambiguity keeps the instruction and reload retries from the imm
     else if (path.endsWith('/messages') && request.method() === 'POST') {
       messageWrites += 1;
       value = { id: 'synthetic-message', content: instruction };
-    } else if (path.endsWith('/runs') && request.method() === 'POST') {
+    } else if (path.endsWith('/agent-runs') && request.method() === 'POST') {
       const body = request.postDataJSON() as Record<string, unknown>;
       submissions.push({ body, key: request.headers()['idempotency-key'] });
       if (!accepted) {

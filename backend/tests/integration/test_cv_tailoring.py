@@ -92,7 +92,7 @@ def _setup(ctx, script):
     cv = _upload(ctx, csrf, pid).json()
     cancel_queued_extract_runs(ctx.sessions)
     session = _session(ctx, csrf, pid, cv["latest_revision"]["id"], job=JOB).json()
-    ctx.client.post(f"{PREFIX}/{pid}/runs/{session['evaluation_run_id']}/cancel", headers=_write_headers(csrf))
+    ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{session['evaluation_run_id']}/cancel", headers=_write_headers(csrf))
     facts = {}
     for key, text in {"docker": "Packaged services with Docker", "k8s": "Operated Kubernetes clusters",
                       "tf": "Wrote Terraform modules", "py": "Wrote Python services"}.items():
@@ -102,7 +102,7 @@ def _setup(ctx, script):
 
 
 def _tailor(ctx, csrf, pid, session, key, **extra):
-    return ctx.client.post(f"{PREFIX}/{pid}/runs", headers=_write_headers(csrf), json={
+    return ctx.client.post(f"/v1/async/projects/{pid}/agent-runs", headers=_write_headers(csrf), json={
         "session_id": session["id"], "operation": "tailor_cv", "output_language": "en",
         "idempotency_key": key, **extra})
 
@@ -212,7 +212,7 @@ def test_interactive_proposals_then_apply_and_restore(api_context):
     assert run.status == "needs_input" and run.result_payload["mode"] == "interactive"
     assert [p["status"] for p in run.result_payload["proposals"]] == ["proposed", "proposed", "rejected_by_gate"]
     assert _revisions(ctx, pid) == []
-    url = f"{PREFIX}/{pid}/runs/{run_id}/tailor/apply"
+    url = f"/v1/async/projects/{pid}/agent-runs/{run_id}/cv-tailoring/apply"
     headers = _write_headers(csrf)
     assert ctx.client.post(url, headers=headers, json={"proposal_ids": [2]}).json()["code"] == "evidence_required"
     assert ctx.client.post(url, headers=headers, json={"proposal_ids": []}).status_code == 422
@@ -229,22 +229,22 @@ def test_interactive_proposals_then_apply_and_restore(api_context):
     runtime.script = [[_edit("Wrote Python services", facts["py"])]]
     again = _tailor(ctx, csrf, pid, session, "i2", tailor_mode="interactive").json()["id"]
     _execute_next(ctx, runtime)
-    assert ctx.client.post(f"{PREFIX}/{pid}/runs/{again}/tailor/apply", headers=headers, json={"proposal_ids": [0]}).status_code == 202
+    assert ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{again}/cv-tailoring/apply", headers=headers, json={"proposal_ids": [0]}).status_code == 202
     _execute_next(ctx, runtime)
     assert len(_revisions(ctx, pid)) == 2
-    restore = ctx.client.post(f"{PREFIX}/{pid}/documents/{first.document_id}/revisions/{first.id}/restore", headers=headers)
+    restore = ctx.client.post(f"/v1/async/projects/{pid}/documents/{first.document_id}/revisions/{first.id}/restore", headers=headers)
     assert restore.status_code == 202
     assert _run(ctx, restore.json()["id"]).input_snapshot["export_content_markdown"] == first.content_markdown
     _execute_next(ctx, runtime)
     revisions = _revisions(ctx, pid)
     assert len(revisions) == 3 and revisions[2].content_markdown == first.content_markdown
     assert runtime.engines == ["typst"] * 3  # apply, apply, restore all render CVs with typst
-    edit = ctx.client.post(f"{PREFIX}/{pid}/documents/{first.document_id}/revisions", headers=headers,
+    edit = ctx.client.post(f"/v1/async/projects/{pid}/documents/{first.document_id}/revisions", headers=headers,
                            json={"content_markdown": "# Hand edited CV"})
     assert edit.status_code == 202
     _execute_next(ctx, runtime)
     assert runtime.engines[-1] == "typst" and len(runtime.engines) == 4  # manual edit too
-    assert ctx.client.post(f"{PREFIX}/{pid}/documents/{first.document_id}/revisions/{uuid4()}/restore",
+    assert ctx.client.post(f"/v1/async/projects/{pid}/documents/{first.document_id}/revisions/{uuid4()}/restore",
                            headers=headers).status_code == 404
 
 
@@ -259,7 +259,7 @@ def test_tampered_proposal_is_rejected_on_apply(api_context):
         payload["proposals"][0]["evidence_ids"] = [str(uuid4())]
         run.result_payload = payload
         flag_modified(run, "result_payload")
-    response = ctx.client.post(f"{PREFIX}/{pid}/runs/{run_id}/tailor/apply", headers=_write_headers(csrf),
+    response = ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{run_id}/cv-tailoring/apply", headers=_write_headers(csrf),
                                json={"proposal_ids": [0, 1]})
     assert response.status_code == 400 and response.json()["code"] == "evidence_required"
     assert _revisions(ctx, pid) == []
@@ -273,8 +273,8 @@ def test_grant_cannot_apply_or_restore(api_context):
         "capabilities": ["results:read", "cv:tailor"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
     ctx.client.cookies.clear()
     bearer = {"Authorization": f"Bearer {token}"}
-    apply = ctx.client.post(f"{PREFIX}/{pid}/runs/{uuid4()}/tailor/apply", headers=bearer, json={"proposal_ids": [0]})
-    restore = ctx.client.post(f"{PREFIX}/{pid}/documents/{uuid4()}/revisions/{uuid4()}/restore", headers=bearer)
+    apply = ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{uuid4()}/cv-tailoring/apply", headers=bearer, json={"proposal_ids": [0]})
+    restore = ctx.client.post(f"/v1/async/projects/{pid}/documents/{uuid4()}/revisions/{uuid4()}/restore", headers=bearer)
     assert apply.status_code in (401, 403) and restore.status_code in (401, 403)
 
 
@@ -295,7 +295,7 @@ def test_digit_splice_rejected_in_autopilot_and_apply(api_context):
     inter = _tailor(ctx, csrf, pid, session, "s2", tailor_mode="interactive").json()["id"]
     _execute_next(ctx, runtime)
     assert _run(ctx, inter).result_payload["proposals"][0]["status"] == "proposed"
-    response = ctx.client.post(f"{PREFIX}/{pid}/runs/{inter}/tailor/apply", headers=_write_headers(csrf),
+    response = ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{inter}/cv-tailoring/apply", headers=_write_headers(csrf),
                                json={"proposal_ids": [0]})
     assert response.status_code == 400 and response.json()["code"] == "evidence_required"
 
@@ -315,7 +315,7 @@ def test_concurrent_tailor_runs_and_restore_are_document_busy(api_context):
     queued = _tailor(ctx, csrf, pid, session, "b3")
     assert queued.status_code == 202
     assert _tailor(ctx, csrf, pid, session, "b4").json()["code"] == "document_busy"
-    restore = ctx.client.post(f"{PREFIX}/{pid}/documents/{first.document_id}/revisions/{first.id}/restore", headers=headers)
+    restore = ctx.client.post(f"/v1/async/projects/{pid}/documents/{first.document_id}/revisions/{first.id}/restore", headers=headers)
     assert restore.status_code == 409 and restore.json()["code"] == "document_busy"
 
 

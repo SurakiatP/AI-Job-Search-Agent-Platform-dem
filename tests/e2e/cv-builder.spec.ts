@@ -15,9 +15,9 @@ type State = { draft: any; puts: any[]; previews: number; publishes: number; fai
 async function builderApi(page: Page, start: Partial<State> = {}) {
   const state: State = { draft: { id: 'd1', cv_id: cvId, document_id: null, name: 'CV ของฉัน', resume_data: empty(), template_id: 'onyx', accent: 'indigo', document_language: 'th', ats_safe: true, updated_at: '2026-10-19T00:00:00.000Z' },
     puts: [], previews: 0, publishes: 0, failPut: false, created: false, renames: [], pdf: '%PDF-1.4\n1 0 obj << /Type /Page >> endobj\n%%EOF', times: { put: [], preview: [] }, ...start };
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/v1/**', async route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname.replace('/api/v1', '');
+    const path = new URL(request.url()).pathname.replace('/v1', '');
     const json = (status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (path === `/projects/${projectId}/cvs/builder` && request.method() === 'POST') { state.created = true; return json(201, { id: cvId, name: 'CV ของฉัน', is_primary: true, created_at: '2026-10-19T00:00:00Z', latest_revision: null, revision_count: 0, in_use: false, has_builder_draft: true }); }
     if (path === '/resume-templates') return json(200, { templates: [], accents: [], provinces: [{ id: 'TH-10', en: 'Bangkok', th: 'กรุงเทพมหานคร' }, { id: 'TH-50', en: 'Chiang Mai', th: 'เชียงใหม่' }] });
@@ -143,8 +143,8 @@ test('TC-CVB-11 a tailored builder CV shows its PDF and opens in the builder', a
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   const docId = '88888888-8888-4888-8888-888888888888', fileId = '99999999-8888-4888-8888-888888888888';
-  await page.route('**/api/v1/**', async route => {
-    const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
+  await page.route('**/v1/**', async route => {
+    const path = new URL(route.request().url()).pathname.replace('/v1', '');
     const json = (body: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     if (path === `/projects/${projectId}/documents`) return json([{ id: docId, document_type: 'cv', title: 'CV — Data Analyst', has_builder_draft: true, partial: false, output_language: 'en', latest_revision: { id: 'rv1', revision: 1, created_at: '2026-10-19T00:00:00Z' } }]);
     if (path === `/projects/${projectId}/documents/${docId}/revisions`) return json([{ id: 'rv1', revision: 1, created_at: '2026-10-19T00:00:00Z', document_id: docId, file_id: fileId, content_markdown: 'Alex Example', origin: 'agent' }]);

@@ -68,7 +68,7 @@ fi
 
 ln -sfn "$release" "$base/current"
 systemctl restart job-search-platform
-if ! wait_ready "https://$DOMAIN/api/v1/health/ready" 60; then
+if ! wait_ready "https://$DOMAIN/health/ready" 60; then
   echo "health check failed; restoring $previous" >&2
   ln -sfn "$previous" "$base/current"
   if [[ "$infra_reapplied" == 1 ]]; then
@@ -84,7 +84,7 @@ if ! wait_ready "https://$DOMAIN/api/v1/health/ready" 60; then
     exit 1
   fi
   systemctl restart job-search-platform || { echo "restart of previous release $previous failed; app is down, current points at it" >&2; exit 1; }
-  if wait_ready "https://$DOMAIN/api/v1/health/ready" 60; then
+  if wait_ready "https://$DOMAIN/health/ready" 60; then
     echo "previous release $previous is healthy again" >&2
   else
     echo "previous release $previous is NOT healthy" >&2

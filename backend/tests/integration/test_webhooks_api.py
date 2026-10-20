@@ -10,7 +10,7 @@ from sqlalchemy import update
 from job_search_platform.db.models import WebhookDelivery
 from test_rest_api import _owner, _write_headers, api_context  # noqa: F401
 
-API = "/api/v1/projects"
+API = "/v1/projects"
 
 
 def _project(ctx):
@@ -35,15 +35,15 @@ def test_owner_crud_secret_once_test_and_redeliver(api_context, monkeypatch):
     patched = client.patch(f"{base}/{body['id']}", headers=_write_headers(csrf), json={"enabled": False})
     assert patched.status_code == 200 and patched.json()["enabled"] is False
     client.patch(f"{base}/{body['id']}", headers=_write_headers(csrf), json={"enabled": True})
-    assert client.post(f"{base}/{body['id']}/test", headers=_write_headers(csrf)).json() == {"status": "queued"}
+    assert client.post(f"/v1/async/projects/{pid}/webhooks/{body['id']}/test-deliveries", headers=_write_headers(csrf)).json() == {"status": "queued"}
     deliveries = client.get(f"{base}/deliveries").json()
     assert [d["event_type"] for d in deliveries] == ["ping"] and deliveries[0]["status"] == "pending"
     assert "payload" not in deliveries[0]
-    not_dead = client.post(f"{base}/deliveries/{deliveries[0]['id']}/redeliver", headers=_write_headers(csrf))
+    not_dead = client.post(f"/v1/async/projects/{pid}/webhooks/deliveries/{deliveries[0]['id']}/redeliveries", headers=_write_headers(csrf))
     assert not_dead.status_code == 409 and not_dead.json()["code"] == "delivery_not_dead"
     with api_context.sessions.begin() as db:
         db.execute(update(WebhookDelivery).where(WebhookDelivery.id == UUID(deliveries[0]["id"])).values(status="dead", attempts=8))
-    assert client.post(f"{base}/deliveries/{deliveries[0]['id']}/redeliver", headers=_write_headers(csrf)).status_code == 202
+    assert client.post(f"/v1/async/projects/{pid}/webhooks/deliveries/{deliveries[0]['id']}/redeliveries", headers=_write_headers(csrf)).status_code == 202
     again = client.get(f"{base}/deliveries").json()[0]
     assert again["status"] == "pending" and again["attempts"] == 0
     assert client.delete(f"{base}/{body['id']}", headers=_write_headers(csrf)).status_code == 204

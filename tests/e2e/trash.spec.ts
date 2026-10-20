@@ -11,9 +11,9 @@ test('sidebar trash shows the count and holds evaluations and documents in tabs'
   const sid = 'a1a1a1a1-0000-4000-8000-000000000000';
   let sessionsTrash = [{ id: sid, project_id: projectId, title: 'Old job', job_title: 'Old job', job_company: 'Example Co', created_at: at, trashed_at: at }];
   const doc = (id: string, title: string) => ({ id, document_type: 'cover_letter', title, trashed_at: at });
-  await page.route(`**/api/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json(sessionsTrash)));
-  await page.route(`**/api/v1/projects/${projectId}/documents/trash`, route => route.fulfill(json([doc('d1d1d1d1-0000-4000-8000-000000000000', 'Old letter'), doc('d2d2d2d2-0000-4000-8000-000000000000', 'Old message')])));
-  await page.route(`**/api/v1/projects/${projectId}/sessions/${sid}/restore`, route => { sessionsTrash = []; return route.fulfill(json({ id: sid })); });
+  await page.route(`**/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json(sessionsTrash)));
+  await page.route(`**/v1/projects/${projectId}/documents/trash`, route => route.fulfill(json([doc('d1d1d1d1-0000-4000-8000-000000000000', 'Old letter'), doc('d2d2d2d2-0000-4000-8000-000000000000', 'Old message')])));
+  await page.route(`**/v1/projects/${projectId}/sessions/${sid}/restore`, route => { sessionsTrash = []; return route.fulfill(json({ id: sid })); });
 
   await page.goto(`/app/projects/${projectId}/overview`);
   const nav = page.getByRole('navigation', { name: 'Navigation' });
@@ -38,7 +38,7 @@ test('sidebar trash shows the count and holds evaluations and documents in tabs'
 test('empty trash: sidebar item has no count and the page says what lands here', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([])));
+  await page.route(`**/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([])));
   await page.goto(`/app/projects/${projectId}/trash`);
   await expect(page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Trash', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText('Trash is empty. Evaluations you delete land here and can be restored.')).toBeVisible();
@@ -48,8 +48,8 @@ test('evaluation and document pages have no trash buttons; old trash addresses o
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   const sid = 'a1a1a1a1-0000-4000-8000-000000000000';
-  await page.route(`**/api/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([{ id: sid, project_id: projectId, title: 'Old job', job_title: 'Old job', created_at: at, trashed_at: at }])));
-  await page.route(`**/api/v1/projects/${projectId}/documents/trash`, route => route.fulfill(json([{ id: 'd1d1d1d1-0000-4000-8000-000000000000', document_type: 'cover_letter', title: 'Old letter', trashed_at: at }])));
+  await page.route(`**/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([{ id: sid, project_id: projectId, title: 'Old job', job_title: 'Old job', created_at: at, trashed_at: at }])));
+  await page.route(`**/v1/projects/${projectId}/documents/trash`, route => route.fulfill(json([{ id: 'd1d1d1d1-0000-4000-8000-000000000000', document_type: 'cover_letter', title: 'Old letter', trashed_at: at }])));
   await page.goto(`/app/projects/${projectId}/documents`);
   await expect(page.getByRole('heading', { level: 1, name: 'Documents' })).toBeVisible();
   await expect(page.getByRole('main').getByRole('button', { name: /Trash/ })).toHaveCount(0);

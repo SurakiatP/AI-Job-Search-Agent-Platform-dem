@@ -17,21 +17,22 @@ async function mock(page: Page, locale: 'en' | 'th', body: Record<string, unknow
   await useSyntheticApplication(page);
   const seen = { runs: [] as unknown[], apply: null as unknown, restoreUrl: '' };
   let runs: unknown[] = [];
-  const api = `**/api/v1/projects/${projectId}`;
+  const api = `**/v1/projects/${projectId}`;
+  const asyncApi = `**/v1/async/projects/${projectId}`;
   await page.route(`${api}/sessions/${sessionId}`, r => r.fulfill(json({ id: sessionId, project_id: projectId, title: 'First synthetic session', created_at: '2026-10-01T00:00:00Z', cv_revision_id: 'c1', job_revision_id: jobId, cv_name: 'Data CV', cv_revision: 1, job_title: 'Synthetic data analyst', job_company: 'Example Co' })));
-  await page.route(`${api}/runs`, async r => {
+  for (const url of [`${api}/runs`, `${asyncApi}/agent-runs`]) await page.route(url, async r => {
     if (r.request().method() === 'POST') { seen.runs.push(r.request().postDataJSON()); runs = [run(tailorRunId, 'tailor_cv', { result_payload: body })]; return r.fulfill(json(runs[0], 202)); }
     return r.fulfill(json(runs));
   });
   await page.route(`${api}/runs/*/events`, r => r.fulfill({ status: 200, contentType: 'text/event-stream', body: '' }));
-  await page.route(`${api}/runs/${tailorRunId}/tailor/apply`, r => { seen.apply = r.request().postDataJSON(); runs = [run('bbbbbbbb-0000-4000-8000-000000000002', 'export_document'), ...runs]; return r.fulfill(json(runs[0], 202)); });
+  await page.route(`${asyncApi}/agent-runs/${tailorRunId}/cv-tailoring/apply`, r => { seen.apply = r.request().postDataJSON(); runs = [run('bbbbbbbb-0000-4000-8000-000000000002', 'export_document'), ...runs]; return r.fulfill(json(runs[0], 202)); });
   await page.route(`${api}/runs/bbbbbbbb-0000-4000-8000-00000000000*`, r => r.fulfill(json(run(r.request().url().slice(-36), 'export_document'))));
   await page.route(`${api}/documents`, r => r.fulfill(json([{ id: cvDocId, document_type: 'cv', title: 'Tailored CV', output_language: 'en', partial: false, content_markdown: 'v2 text', latest_revision: { id: rev2, revision: 2, created_at: '2026-10-10T00:00:00Z' } }])));
   await page.route(`${api}/documents/${cvDocId}/revisions`, r => r.fulfill(json([
     { id: rev1, revision: 1, document_id: cvDocId, created_at: '2026-10-09T00:00:00Z', content_markdown: 'v1 text', origin: 'agent' },
     { id: rev2, revision: 2, document_id: cvDocId, created_at: '2026-10-10T00:00:00Z', content_markdown: 'v2 text', origin: 'agent', file_id: '88888888-8888-4888-8888-888888888888' },
   ])));
-  await page.route(`${api}/documents/${cvDocId}/revisions/${rev1}/restore`, r => { seen.restoreUrl = new URL(r.request().url()).pathname; return r.fulfill(json(run('bbbbbbbb-0000-4000-8000-000000000003', 'export_document', { status: 'queued' }), 202)); });
+  await page.route(`${asyncApi}/documents/${cvDocId}/revisions/${rev1}/restore`, r => { seen.restoreUrl = new URL(r.request().url()).pathname; return r.fulfill(json(run('bbbbbbbb-0000-4000-8000-000000000003', 'export_document', { status: 'queued' }), 202)); });
   await page.route(`${api}/cv`, r => r.fulfill(json([{ id: 'c1', revision: 1 }])));
   return seen;
 }
@@ -55,7 +56,7 @@ test('interactive tailor: review proposals, apply one, restore an older CV revis
   await page.goto(`/app/projects/${projectId}/documents/${cvDocId}`);
   await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(1);
   await page.getByRole('button', { name: 'Restore this version' }).click();
-  await expect.poll(() => seen.restoreUrl).toBe(`/api/v1/projects/${projectId}/documents/${cvDocId}/revisions/${rev1}/restore`);
+  await expect.poll(() => seen.restoreUrl).toBe(`/v1/async/projects/${projectId}/documents/${cvDocId}/revisions/${rev1}/restore`);
 });
 
 test('tailor card is Thai and fits 320px', async ({ page }) => {

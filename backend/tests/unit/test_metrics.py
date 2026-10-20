@@ -11,11 +11,11 @@ def _value(name, **labels):
 
 
 def test_request_uses_route_template_and_status_class():
-    before = _value("jsp_http_requests_total", method="GET", route="/api/v1/projects/{project_id}", status_class="2xx")
-    metrics.observe_request("GET", "/api/v1/projects/{project_id}", 204, 0.01)
-    after = _value("jsp_http_requests_total", method="GET", route="/api/v1/projects/{project_id}", status_class="2xx")
+    before = _value("jsp_http_requests_total", method="GET", route="/v1/projects/{project_id}", status_class="2xx")
+    metrics.observe_request("GET", "/v1/projects/{project_id}", 204, 0.01)
+    after = _value("jsp_http_requests_total", method="GET", route="/v1/projects/{project_id}", status_class="2xx")
     assert after == before + 1
-    assert _value("jsp_http_request_duration_seconds_count", method="GET", route="/api/v1/projects/{project_id}") >= 1
+    assert _value("jsp_http_request_duration_seconds_count", method="GET", route="/v1/projects/{project_id}") >= 1
 
 
 def test_unmatched_route_and_unknown_method_are_bucketed():

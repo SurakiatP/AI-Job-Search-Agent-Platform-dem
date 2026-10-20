@@ -67,7 +67,7 @@ async def _stop_a2a(server, task) -> None:
 
 def _grant(api_context, project_id: UUID, csrf: str, capabilities: list[str]) -> dict:
     response = api_context.client.post(
-        f"/api/v1/projects/{project_id}/grants",
+        f"/v1/projects/{project_id}/grants",
         json={
             "capabilities": capabilities,
             "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
@@ -107,7 +107,7 @@ async def _send(client, skill: str, request: dict) -> object:
 def _project_and_grant(api_context, capabilities: list[str]):
     csrf = _owner(api_context)
     created = api_context.client.post(
-        "/api/v1/projects", json={"name": "Synthetic A2A project"}, headers=_write_headers(csrf)
+        "/v1/projects", json={"name": "Synthetic A2A project"}, headers=_write_headers(csrf)
     )
     assert created.status_code == 201
     project_id = UUID(created.json()["id"])
@@ -218,7 +218,7 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
         async with httpx.AsyncClient(
             headers={"Authorization": f"Bearer {grant['token']}"}
         ) as check_client:
-            assert (await check_client.get(f"{base_url}/api/v1/projects")).status_code == 404
+            assert (await check_client.get(f"{base_url}/v1/projects")).status_code == 404
             assert (await check_client.get(f"{base_url}/owner/session")).status_code == 404
             assert (await check_client.get(f"{base_url}/app")).status_code == 404
 
@@ -309,7 +309,7 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
             assert draft_record.output_language == "en"
 
         revoked = api_context.client.delete(
-            f"/api/v1/projects/{project_id}/grants/{grant['id']}", headers=_write_headers(csrf)
+            f"/v1/projects/{project_id}/grants/{grant['id']}", headers=_write_headers(csrf)
         )
         assert revoked.status_code == 204
         async with httpx.AsyncClient(headers={"Authorization": f"Bearer {grant['token']}"}) as download:
@@ -402,7 +402,7 @@ async def test_a2a_rechecks_grants_and_never_reflects_rejected_input(api_context
         with pytest.raises(Exception, match="request_rejected"):
             await client.get_task(GetTaskRequest(id=str(extract_id)), context=a2a_context)
         response = api_context.client.delete(
-            f"/api/v1/projects/{project_id}/grants/{grant['id']}", headers=_write_headers(csrf)
+            f"/v1/projects/{project_id}/grants/{grant['id']}", headers=_write_headers(csrf)
         )
         assert response.status_code == 204
         async with httpx.AsyncClient(headers=headers) as revoked_client:
@@ -584,7 +584,7 @@ async def test_extended_agent_card_filters_by_grant_capabilities(api_context, un
         assert "extract_experience" not in json.dumps(cards)
 
         revoked = api_context.client.delete(
-            f"/api/v1/projects/{project_id}/grants/{evaluate_grant['id']}", headers=_write_headers(csrf)
+            f"/v1/projects/{project_id}/grants/{evaluate_grant['id']}", headers=_write_headers(csrf)
         )
         assert revoked.status_code == 204
         denied = await _extended_card(base_url, evaluate_grant["token"])

@@ -79,7 +79,7 @@ async def smoke(origin: str, source_project: UUID | None) -> dict:
             client.headers[CSRF_HEADER] = _smoke_login(services, client)
 
             async def request(method, path, **kwargs):
-                response = await client.request(method, "/api/v1" + path, **kwargs)
+                response = await client.request(method, "/v1" + path, **kwargs)
                 if response.status_code >= 400:
                     raise SmokeFailure("platform_request_failed")
                 return response
@@ -96,7 +96,7 @@ async def smoke(origin: str, source_project: UUID | None) -> dict:
 
             async def submit(operation):
                 from uuid import uuid4
-                return (await request("POST", f"/projects/{pid}/runs", json={
+                return (await request("POST", f"/async/projects/{pid}/agent-runs", json={
                     "session_id": session["id"], "operation": operation, "job_revision_id": job["id"],
                     "output_language": "th", "idempotency_key": str(uuid4())})).json()
 
@@ -147,7 +147,7 @@ async def smoke(origin: str, source_project: UUID | None) -> dict:
                 await asyncio.sleep(0.1)
             else:
                 raise SmokeFailure("cancel_probe_native_start_timeout")
-            await request("POST", f"/projects/{pid}/runs/{cancelling['id']}/cancel")
+            await request("POST", f"/async/projects/{pid}/agent-runs/{cancelling['id']}/cancel")
             stopped = await terminal(cancelling)
             await confirm_native_stopped(services, pid, cancelling["id"])
             if stopped["status"] != "cancelled":
@@ -167,7 +167,7 @@ async def smoke(origin: str, source_project: UUID | None) -> dict:
                     async with httpx.AsyncClient(base_url=origin, timeout=30, headers={"Origin": origin}) as cleanup:
                         cleanup.headers[CSRF_HEADER] = _smoke_login(services, cleanup)
                         for run_id in pending:
-                            response = await cleanup.post(f"/api/v1/projects/{smoke_project_id}/runs/{run_id}/cancel")
+                            response = await cleanup.post(f"/v1/async/projects/{smoke_project_id}/agent-runs/{run_id}/cancel")
                             if response.status_code >= 400:
                                 raise SmokeFailure("smoke_cleanup_cancel_failed")
                             await confirm_native_stopped(services, smoke_project_id, run_id)

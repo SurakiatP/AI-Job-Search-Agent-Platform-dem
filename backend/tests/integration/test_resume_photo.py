@@ -16,7 +16,7 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 500
 
 
 def _photo(ctx, body, name="me.jpg", kind="image/jpeg", pid=None):
-    return ctx.client.post(f"/api/v1/projects/{pid or ctx.pid}/resume-photos", files={"file": (name, body, kind)},
+    return ctx.client.post(f"/v1/projects/{pid or ctx.pid}/resume-photos", files={"file": (name, body, kind)},
                            headers=_write_headers(ctx.csrf))
 
 
@@ -31,7 +31,7 @@ def test_ac_cvp_01_photo_reaches_photo_templates_only(ctx):
     uploaded = _photo(ctx, JPEG)
     assert uploaded.status_code == 201, uploaded.text
     photo_id = uploaded.json()["id"]
-    shown = ctx.client.get(f"/api/v1/projects/{ctx.pid}/resume-photos/{photo_id}")
+    shown = ctx.client.get(f"/v1/projects/{ctx.pid}/resume-photos/{photo_id}")
     assert shown.status_code == 200 and shown.content == JPEG and shown.headers["content-type"] == "image/jpeg"
 
     cv_id = _new_cv(ctx)
@@ -51,7 +51,7 @@ def test_ac_cvp_01_photo_reaches_photo_templates_only(ctx):
     ctx.client.post(_url(ctx, cv_id, "/preview"), headers=_write_headers(ctx.csrf))
     assert ctx.render.calls[-1]["photo.png"] == PNG
 
-    listing = {t["id"]: t for t in ctx.client.get("/api/v1/resume-templates").json()["templates"]}
+    listing = {t["id"]: t for t in ctx.client.get("/v1/resume-templates").json()["templates"]}
     assert {k: (t["ats_safe"], t["photo"]) for k, t in listing.items()} == {
         "onyx": (True, False), "kakuna": (True, False), "ditgar": (False, False),
         "lotus": (True, True), "teak": (False, True), "saffron": (True, True)}
@@ -70,13 +70,13 @@ def test_ac_cvp_02_bad_photos_are_rejected(ctx, body, name, kind, status):
 @pytest.mark.integration
 def test_ac_cvp_02_photo_id_must_be_a_photo_of_this_project(ctx):
     cv_id = _new_cv(ctx)
-    other = ctx.client.post("/api/v1/projects", json={"name": "Other"}, headers=_write_headers(ctx.csrf)).json()["id"]
+    other = ctx.client.post("/v1/projects", json={"name": "Other"}, headers=_write_headers(ctx.csrf)).json()["id"]
     foreign = _photo(ctx, JPEG, pid=other).json()["id"]
     for bad in (foreign, "00000000-0000-4000-8000-000000000000", "not-a-uuid"):
         saved = _save(ctx, cv_id, _with_photo(bad))
         assert saved.status_code == 422 and saved.json()["fields"]["path"] == "basics.photo", saved.text
-    assert ctx.client.get(f"/api/v1/projects/{ctx.pid}/resume-photos/{foreign}").status_code == 404
-    assert ctx.client.post(f"/api/v1/projects/{ctx.pid}/resume-photos", files={"file": ("me.jpg", JPEG, "image/jpeg")},
+    assert ctx.client.get(f"/v1/projects/{ctx.pid}/resume-photos/{foreign}").status_code == 404
+    assert ctx.client.post(f"/v1/projects/{ctx.pid}/resume-photos", files={"file": ("me.jpg", JPEG, "image/jpeg")},
                            headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403
 
 

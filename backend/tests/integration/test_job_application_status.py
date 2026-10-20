@@ -80,7 +80,7 @@ def test_owner_application_status_persists_per_job_revision_without_changing_run
         )
     )
     csrf = _owner_csrf(status_api, actor.user_id)
-    path = f"/api/v1/projects/{record.id}/jobs/{job.id}/application-status"
+    path = f"/v1/projects/{record.id}/jobs/{job.id}/application-status"
 
     initial = status_api.client.get(path)
     assert initial.status_code == 200
@@ -92,7 +92,7 @@ def test_owner_application_status_persists_per_job_revision_without_changing_run
     assert updated.status_code == 200
     assert updated.json()["application_status"] == "applied"
     assert status_api.client.get(path).json()["application_status"] == "applied"
-    listed = status_api.client.get(f"/api/v1/projects/{record.id}/jobs")
+    listed = status_api.client.get(f"/v1/projects/{record.id}/jobs")
     assert listed.status_code == 200
     assert listed.json()[0]["application_status"] == "applied"
 
@@ -120,7 +120,7 @@ def test_application_status_requires_owner_csrf_and_rejects_project_scoped_forei
         second = project(db, "Synthetic second", owner=actor)
         _, foreign_job = revisions(db, second.id)
     csrf = _owner_csrf(status_api, actor.user_id)
-    foreign_path = f"/api/v1/projects/{first.id}/jobs/{foreign_job.id}/application-status"
+    foreign_path = f"/v1/projects/{first.id}/jobs/{foreign_job.id}/application-status"
 
     assert status_api.client.get(foreign_path).status_code == 404
     wrong_origin = status_api.client.patch(
@@ -152,7 +152,7 @@ def test_external_grant_cannot_read_or_change_owner_application_status(status_ap
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             )
         )
-    path = f"/api/v1/projects/{record.id}/jobs/{job.id}/application-status"
+    path = f"/v1/projects/{record.id}/jobs/{job.id}/application-status"
     headers = {"Authorization": f"Bearer {token}"}
     assert status_api.client.get(path, headers=headers).status_code == 401
     assert status_api.client.patch(

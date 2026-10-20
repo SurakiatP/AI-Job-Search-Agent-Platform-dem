@@ -110,13 +110,13 @@ async def test_production_factory_migrates_serves_owner_and_stops_dispatch(produ
             user_id = helpers_user(db).user_id
         cookie, csrf = login_cookie(services, user_id)
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1:8000") as client:
-            denied = await client.get("/api/v1/projects")
+            denied = await client.get("/v1/projects")
             assert denied.status_code == 401
             client.cookies.set("jsp_owner_session", cookie)
             headers = {"Origin": "http://127.0.0.1:8000", CSRF_HEADER: csrf}
-            project = await client.post("/api/v1/projects", json={"name": "Synthetic factory project"}, headers=headers)
+            project = await client.post("/v1/projects", json={"name": "Synthetic factory project"}, headers=headers)
             assert project.status_code == 201
-            projects = await client.get("/api/v1/projects")
+            projects = await client.get("/v1/projects")
             assert projects.status_code == 200
             assert projects.headers["cache-control"] == "no-store"
             assert [row["name"] for row in projects.json()] == ["Synthetic factory project"]
@@ -167,7 +167,7 @@ async def test_actual_launcher_serves_inside_running_loop_and_prints_login_url(p
             response = await client.get("/")
             assert response.status_code == 200
             assert "Synthetic launcher page" in response.text
-            assert (await client.get("/api/v1/projects")).status_code == 401
+            assert (await client.get("/v1/projects")).status_code == 401
         assert f"App: http://{url_host}:{unused_tcp_port}/login" in printed
     finally:
         if servers:

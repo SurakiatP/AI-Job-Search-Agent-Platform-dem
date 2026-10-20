@@ -21,9 +21,9 @@ export async function useUtilitiesFixture(page: Page, options: { preferences?: {
   const preferences = { locale: 'en' as const, theme: 'light' as const, ...options.preferences };
   await page.addInitScript(({ locale, theme }) => { localStorage.setItem('ui.locale', locale); localStorage.setItem('ui.theme', theme); }, preferences);
   await useSyntheticApplication(page);
-  await page.route('**/api/v1/**', async (route: Route) => {
+  await page.route('**/v1/**', async (route: Route) => {
     const request = route.request();
-    const path = new URL(request.url()).pathname.replace('/api/v1', '');
+    const path = new URL(request.url()).pathname.replace('/v1', '');
     if (path === `/projects/${projectId}/runs` && request.method() === 'GET') return route.fulfill(json(runs));
     if (path === `/projects/${projectId}/approvals` && request.method() === 'GET') return route.fulfill(json(approvals));
     if (path === `/projects/${projectId}/approvals/${approvalId}/decision` && request.method() === 'POST') return route.fulfill(json({ ...approvals[0], decision: request.postDataJSON().decision, decided_by: 'owner' }));

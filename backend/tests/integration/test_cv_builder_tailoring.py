@@ -50,7 +50,7 @@ def _builder_session(ctx, script, *, template="kakuna", accent="teal", photo=Non
     revision = ctx.client.post(f"{PREFIX}/{pid}/cvs/{cv_id}/draft/publish", headers=_write_headers(csrf)).json()
     cancel_queued_extract_runs(ctx.sessions)
     session = _session(ctx, csrf, pid, revision["id"], job=JOB).json()
-    ctx.client.post(f"{PREFIX}/{pid}/runs/{session['evaluation_run_id']}/cancel", headers=_write_headers(csrf))
+    ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{session['evaluation_run_id']}/cancel", headers=_write_headers(csrf))
     facts = {key: ctx.client.post(f"{PREFIX}/{pid}/experience", headers=_write_headers(csrf), json={"kind": "skill", "text": text}).json()["id"]
              for key, text in {"docker": "Packaged services with Docker", "py": "Wrote Python services"}.items()}
     return csrf, pid, session, facts, _TemplateRuntime(ctx.tmp_path / "ws", script)
@@ -122,7 +122,7 @@ def test_tc_cvb_10_interactive_apply_keeps_template(api_context):
     run_id = _execute_next(ctx, runtime)
     proposals = _run(ctx, run_id).result_payload["proposals"]
     assert [p["status"] for p in proposals] == ["proposed", "rejected_by_gate"]
-    applied = ctx.client.post(f"{PREFIX}/{pid}/runs/{run_id}/tailor/apply", headers=_write_headers(csrf), json={"proposal_ids": [0]})
+    applied = ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{run_id}/cv-tailoring/apply", headers=_write_headers(csrf), json={"proposal_ids": [0]})
     assert applied.status_code in (200, 202), applied.text
     _execute_next(ctx, runtime)
     revision = _tailored(ctx, pid)

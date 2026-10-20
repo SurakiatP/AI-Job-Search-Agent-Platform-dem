@@ -7,7 +7,7 @@ const sourceCvThree = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 test('shows each generated document revision source instead of the current CV after a language switch', async ({ page }) => {
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/cv`, route => route.fulfill({
+  await page.route(`**/v1/projects/${projectId}/cv`, route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify([
@@ -16,7 +16,7 @@ test('shows each generated document revision source instead of the current CV af
       { id: sourceCvOne, revision: 1, created_at: '2026-10-01T00:00:00Z', original_filename: 'synthetic-cv-one.txt', mime_type: 'text/plain', size_bytes: 40 },
     ]),
   }));
-  await page.route(`**/api/v1/projects/${projectId}/documents`, route => route.fulfill({
+  await page.route(`**/v1/projects/${projectId}/documents`, route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify([{
@@ -29,7 +29,7 @@ test('shows each generated document revision source instead of the current CV af
       partial: true,
     }]),
   }));
-  await page.route(`**/api/v1/projects/${projectId}/documents/${documentId}/revisions`, route => route.fulfill({
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/documents\/${documentId}\/revisions|\/v1\/async\/projects\/${projectId}\/documents\/${documentId}\/revisions)(?:\\?.*)?$`), route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify([
@@ -57,12 +57,12 @@ test('shows each generated document revision source instead of the current CV af
 
 test('keeps document access when CV provenance lookup fails or its source is absent', async ({ page }) => {
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/cv`, route => route.fulfill({
+  await page.route(`**/v1/projects/${projectId}/cv`, route => route.fulfill({
     status: 503,
     contentType: 'application/json',
     body: JSON.stringify({ code: 'service_unavailable', message_key: 'service.unavailable', retryable: true }),
   }));
-  await page.route(`**/api/v1/projects/${projectId}/documents`, route => route.fulfill({
+  await page.route(`**/v1/projects/${projectId}/documents`, route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify([{
@@ -75,7 +75,7 @@ test('keeps document access when CV provenance lookup fails or its source is abs
       partial: false,
     }]),
   }));
-  await page.route(`**/api/v1/projects/${projectId}/documents/${documentId}/revisions`, route => route.fulfill({
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/documents\/${documentId}\/revisions|\/v1\/async\/projects\/${projectId}\/documents\/${documentId}\/revisions)(?:\\?.*)?$`), route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify([

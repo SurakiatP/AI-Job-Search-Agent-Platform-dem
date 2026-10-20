@@ -58,14 +58,14 @@ def _setup(api_context, capabilities=("jobs:evaluate", "results:read", "applicat
     """Project with CV/job revisions, a session and one grant. Returns a namespace of ids."""
     client = api_context.client
     csrf = _owner(api_context)
-    pid = UUID(client.post("/api/v1/projects", json={"name": "Synthetic tasks project"}, headers=_write_headers(csrf)).json()["id"])
+    pid = UUID(client.post("/v1/projects", json={"name": "Synthetic tasks project"}, headers=_write_headers(csrf)).json()["id"])
     with api_context.sessions.begin() as db:
         cv, job = revisions(db, pid)
         provider_config(db, pid)
         sid = make_session(db, pid).id
         cv_id, job_id = cv.id, job.id
     expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
-    grant = client.post(f"/api/v1/projects/{pid}/grants", json={"capabilities": list(capabilities), "expires_at": expires},
+    grant = client.post(f"/v1/projects/{pid}/grants", json={"capabilities": list(capabilities), "expires_at": expires},
                         headers=_write_headers(csrf)).json()
     return client.app.state.services, pid, grant, cv_id, job_id, sid
 

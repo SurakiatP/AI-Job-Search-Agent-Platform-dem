@@ -146,7 +146,7 @@ export function ProfilePage() {
   }
   async function extract(cv: CVView) {
     setExtractError(false);
-    try { await apiRequest(`/projects/${projectId}/cvs/${cv.id}/experience-runs`, { method: 'POST' }); bank.reload(); } catch { setExtractError(true); }
+    try { await apiRequest(`/async/projects/${projectId}/cvs/${cv.id}/experience-extractions`, { method: 'POST' }); bank.reload(); } catch { setExtractError(true); }
   }
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
   const base = `/app/projects/${projectId}`;

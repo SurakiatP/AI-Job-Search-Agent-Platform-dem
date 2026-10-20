@@ -31,5 +31,5 @@ as_jsp "cd '$release' && npm ci --prefix frontend && npm run build --prefix fron
 install -m 0644 "$here"/job-search-*.service "$here"/job-search-*.timer /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now job-search-platform job-search-ingest.timer job-search-backup.timer
-wait_ready "https://$DOMAIN/api/v1/health/ready" 300
+wait_ready "https://$DOMAIN/health/ready" 300
 echo "ready: https://$DOMAIN/login"

@@ -24,7 +24,7 @@ export function PresetArt({ preset, className }: { preset: AvatarPreset; classNa
 export function Avatar({ account, size = 36, className }: { account: Account; size?: number; className?: string }) {
   const style = { width: size, height: size };
   const shell = cn('block shrink-0 overflow-hidden rounded-full bg-accent text-center font-semibold text-primary ring-1 ring-border', className);
-  if (account.has_avatar_image) return <img src={`/api/v1/account/avatar?v=${encodeURIComponent(account.avatar_version ?? '')}`} alt="" style={style} className={cn(shell, 'object-cover')} />;
+  if (account.has_avatar_image) return <img src={`/v1/account/avatar?v=${encodeURIComponent(account.avatar_version ?? '')}`} alt="" style={style} className={cn(shell, 'object-cover')} />;
   if (account.avatar_preset) return <span style={style} className={shell}><PresetArt preset={account.avatar_preset} /></span>;
   return <span aria-hidden="true" style={{ ...style, lineHeight: `${size}px`, fontSize: Math.max(11, size * 0.45) }} className={shell}>{initial(account.email)}</span>;
 }

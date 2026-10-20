@@ -8,8 +8,8 @@ async function board(page: Page, locale: 'en' | 'th' = 'en') {
   const server = { stage: 'saved', gets: 0, patches: [] as string[] };
   await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
   await useSyntheticApplication(page);
-  await page.route(`**/api/v1/projects/${projectId}/applications`, route => { server.gets += 1; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ job_revision_id: jobId, title, company: 'Example Co', created_at: '2026-10-01T00:00:00Z', stage: server.stage, has_contact: false, last_activity_at: '2026-10-02T00:00:00Z' }]) }); });
-  await page.route(`**/api/v1/projects/${projectId}/jobs/${jobId}/application-status`, async route => {
+  await page.route(`**/v1/projects/${projectId}/applications`, route => { server.gets += 1; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ job_revision_id: jobId, title, company: 'Example Co', created_at: '2026-10-01T00:00:00Z', stage: server.stage, has_contact: false, last_activity_at: '2026-10-02T00:00:00Z' }]) }); });
+  await page.route(`**/v1/projects/${projectId}/jobs/${jobId}/application-status`, async route => {
     if (route.request().method() !== 'PATCH') return route.fallback();
     server.stage = route.request().postDataJSON().application_status;
     server.patches.push(server.stage);

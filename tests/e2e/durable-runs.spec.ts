@@ -21,7 +21,7 @@ async function mock(page: Page, locale: 'en' | 'th', events = stream, status = '
   await useSyntheticApplication(page);
   const seen = { input: null as unknown, grant: null as unknown };
   let current = run(status === 'needs_input' ? {} : { status, finished_at: '2026-10-10T00:01:00Z' });
-  const api = `**/api/v1/projects/${projectId}`;
+  const api = `**/v1/projects/${projectId}`;
   await page.route(`${api}/sessions/${sessionId}`, r => r.fulfill(json({ id: sessionId, project_id: projectId, title: 'First synthetic session', created_at: '2026-10-01T00:00:00Z', cv_revision_id: 'c1', job_revision_id: jobId, cv_name: 'Data CV', cv_revision: 1, job_title: 'Synthetic data analyst', job_company: 'Example Co' })));
   await page.route(`${api}/runs`, r => r.fulfill(json([current])));
   await page.route(`${api}/runs/${runId}`, r => r.fulfill(json(current)));
@@ -93,7 +93,7 @@ for (const [locale, label] of [['en', 'Suggested from your facts — confirm'], 
   test(`a model-suggested answer is prefilled with the confirm label and saved through input (${locale})`, async ({ page }) => {
     const seen = await mock(page, locale);
     const suggested = { ...pack, missing_required: ['q2'], answers: [pack.answers[0], { ...pack.answers[1], suggestion: true, evidence_ids: ['f1'], reason: 'needs_confirmation' }] };
-    await page.route(`**/api/v1/projects/${projectId}/runs`, r => r.fulfill(json([run({ result_payload: suggested })])));
+    await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), r => r.fulfill(json([run({ result_payload: suggested })])));
     await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(2).click();
     await expect(page.getByText(label)).toBeVisible();
     await expect(page.getByRole('group', { name: 'Authorised to work?' })).toHaveAccessibleDescription(label);
@@ -106,7 +106,7 @@ for (const [locale, label] of [['en', 'Suggested from your facts — confirm'], 
 test('an optional suggested answer in a ready pack is not described as needing confirmation', async ({ page }) => {
   await mock(page, 'en');
   const ready = { ...pack, state: 'ready', missing_required: [], answers: [pack.answers[0], { ...pack.answers[1], required: false, suggestion: true, evidence_ids: ['f1'], reason: 'needs_confirmation' }] };
-  await page.route(`**/api/v1/projects/${projectId}/runs`, r => r.fulfill(json([run({ status: 'completed', result_payload: ready })])));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), r => r.fulfill(json([run({ status: 'completed', result_payload: ready })])));
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(2).click();
   await expect(page.getByText('Authorised to work?')).toBeVisible();
   await expect(page.getByText('A suggestion was made; nothing is included until you answer.')).toBeVisible();

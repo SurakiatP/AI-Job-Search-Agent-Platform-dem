@@ -7,7 +7,7 @@ import pytest
 
 from test_rest_api import _owner, _write_headers, api_context  # noqa: F401
 
-API = "/api/v1/projects"
+API = "/v1/projects"
 
 
 def _project(ctx):
@@ -34,14 +34,14 @@ def test_owner_crud_preview_and_unsubscribe(api_context):
     assert listed["status"] == {"email_verified": True, "notifications_enabled": True}
     patched = client.patch(f"{base}/{sid}", headers=_write_headers(csrf), json={"digest_enabled": False})
     assert patched.status_code == 200 and patched.json()["digest_enabled"] is False
-    preview = client.post(f"{base}/{sid}/preview", headers=_write_headers(csrf))
+    preview = client.post(f"/v1/async/projects/{pid}/saved-searches/{sid}/previews", headers=_write_headers(csrf))
     assert preview.status_code == 202 and preview.json() == {"status": "sent"}
     mail = services.saved_searches.mailer.sent[-1]
     token = mail.text.split("token=")[1].split()[0]
     client.patch(f"{base}/{sid}", headers=_write_headers(csrf), json={"digest_enabled": True})
     client.cookies.clear()
-    assert client.post("/api/v1/digest/unsubscribe", json={"token": token}).status_code == 204
-    assert client.post("/api/v1/digest/unsubscribe", json={"token": token + "x"}).status_code == 400
+    assert client.post("/v1/digest/unsubscribe", json={"token": token}).status_code == 204
+    assert client.post("/v1/digest/unsubscribe", json={"token": token + "x"}).status_code == 400
     csrf = _owner(api_context)
     assert client.get(base).json()["items"][0]["digest_enabled"] is False
     assert client.delete(f"{base}/{sid}", headers=_write_headers(csrf)).status_code == 204

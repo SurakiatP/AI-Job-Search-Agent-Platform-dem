@@ -6,7 +6,7 @@ import pytest
 from helpers import login_cookie, user
 from test_rest_api import _owner, _write_headers, api_context  # noqa: F401
 
-API = "/api/v1/projects"
+API = "/v1/projects"
 
 
 def _board(ctx):

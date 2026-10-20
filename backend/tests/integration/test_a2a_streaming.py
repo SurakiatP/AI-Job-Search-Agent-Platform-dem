@@ -181,7 +181,7 @@ async def test_stream_stops_when_the_grant_is_revoked_and_needs_results_access(a
         stream = asyncio.create_task(_collect(client.send_message(
             _message("evaluate_job", {**JOB, "idempotency_key": "stream-revoke"}), context=CTX), events))
         await _wait_for(events, 1)
-        revoked = await asyncio.to_thread(api_context.client.delete, f"/api/v1/projects/{project_id}/grants/{grant['id']}",
+        revoked = await asyncio.to_thread(api_context.client.delete, f"/v1/projects/{project_id}/grants/{grant['id']}",
                                           headers=_write_headers(csrf))
         assert revoked.status_code == 204
         with pytest.raises(Exception):

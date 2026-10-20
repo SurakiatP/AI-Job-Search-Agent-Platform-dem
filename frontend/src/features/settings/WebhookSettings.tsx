@@ -111,7 +111,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
           <Button variant="outline" size="icon" aria-pressed={hook.enabled} aria-label={c.enabled(hook.url)} disabled={busy}
             onClick={() => void run(() => sendJson(`${base}/${hook.id}`, 'PATCH', { enabled: !hook.enabled }))}><Power className="size-4" aria-hidden="true" /></Button>
           <Button variant="outline" size="icon" aria-label={c.test(hook.url)} disabled={busy}
-            onClick={() => void run(() => sendJson(`${base}/${hook.id}/test`, 'POST', {}))}><Send className="size-4" aria-hidden="true" /></Button>
+            onClick={() => void run(() => sendJson(`/async/projects/${projectId}/webhooks/${hook.id}/test-deliveries`, 'POST', {}))}><Send className="size-4" aria-hidden="true" /></Button>
           <Button variant="ghost" size="icon" aria-label={c.remove(hook.url)} onClick={() => setDeleting(hook)}><Trash2 className="size-4" aria-hidden="true" /></Button>
         </div>
       </li>)}</ul>}
@@ -128,7 +128,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
             <td className="px-2 py-1">{d.attempts}</td>
             <td className="px-2 py-1">{when.format(new Date(d.created_at))}</td>
             <td className="px-2 py-1">{d.status === 'dead' && <Button variant="ghost" size="icon" aria-label={c.redeliver(d.event_type)} disabled={busy}
-              onClick={() => void run(() => sendJson(`${base}/deliveries/${d.id}/redeliver`, 'POST', {}))}><RotateCcw className="size-4" aria-hidden="true" /></Button>}</td>
+              onClick={() => void run(() => sendJson(`/async/projects/${projectId}/webhooks/deliveries/${d.id}/redeliveries`, 'POST', {}))}><RotateCcw className="size-4" aria-hidden="true" /></Button>}</td>
           </tr>)}</tbody>
         </table></div>}
     </div>

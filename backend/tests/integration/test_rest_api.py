@@ -147,7 +147,7 @@ def _owner(context) -> str:
             context.user_id = helpers_user(db).user_id
     cookie, csrf = login_cookie(context.client.app.state.services, context.user_id)
     context.client.cookies.set("jsp_owner_session", cookie)
-    restored = context.client.get("/api/v1/projects")
+    restored = context.client.get("/v1/projects")
     assert restored.status_code == 200
     return csrf
 
@@ -170,33 +170,33 @@ def test_owner_bootstrap_csrf_crud_and_empty_project_delete_only(api_context):
     client = api_context.client
     csrf = _owner(api_context)
 
-    missing_origin = client.post("/api/v1/projects", json={"name": "No origin"},
+    missing_origin = client.post("/v1/projects", json={"name": "No origin"},
                                  headers={"X-CSRF-Token": csrf})
     assert missing_origin.status_code == 403
-    missing_csrf = client.post("/api/v1/projects", json={"name": "No token"},
+    missing_csrf = client.post("/v1/projects", json={"name": "No token"},
                                headers={"Origin": "http://127.0.0.1:8765"})
     assert missing_csrf.status_code == 403
 
-    created = client.post("/api/v1/projects", json={"name": "Synthetic project"}, headers=_write_headers(csrf))
+    created = client.post("/v1/projects", json={"name": "Synthetic project"}, headers=_write_headers(csrf))
     assert created.status_code == 201
     project_id = created.json()["id"]
-    assert client.get("/api/v1/projects").status_code == 200
-    tools = client.get("/api/v1/tools")
+    assert client.get("/v1/projects").status_code == 200
+    tools = client.get("/v1/tools")
     assert tools.status_code == 200 and len(tools.json()["tools"]) == 13
-    assert client.patch(f"/api/v1/projects/{project_id}", json={"name": "Renamed"},
+    assert client.patch(f"/v1/projects/{project_id}", json={"name": "Renamed"},
                         headers=_write_headers(csrf)).json()["name"] == "Renamed"
-    pref = client.patch(f"/api/v1/projects/{project_id}/preferences",
+    pref = client.patch(f"/v1/projects/{project_id}/preferences",
                         json={"locale": "en", "output_language": "th"}, headers=_write_headers(csrf))
     assert pref.status_code == 200 and pref.json()["locale"] == "en"
     session_id = _legacy_session(api_context, project_id, "First")
-    message = client.post(f"/api/v1/projects/{project_id}/sessions/{session_id}/messages",
+    message = client.post(f"/v1/async/projects/{project_id}/sessions/{session_id}/messages",
                           json={"content": "Synthetic message"}, headers=_write_headers(csrf))
     assert message.status_code == 202 and message.json()["role"] == "user"
-    job = client.post(f"/api/v1/projects/{project_id}/jobs",
+    job = client.post(f"/v1/projects/{project_id}/jobs",
                       json={"title": "Engineer", "company": "Example", "description": "Synthetic role"},
                       headers=_write_headers(csrf))
     assert job.status_code == 201 and job.json()["revision"] == 1
-    deletion = client.delete(f"/api/v1/projects/{project_id}", headers=_write_headers(csrf))
+    deletion = client.delete(f"/v1/projects/{project_id}", headers=_write_headers(csrf))
     assert deletion.status_code == 409
     assert deletion.json()["code"] == "project_not_empty"
 
@@ -206,8 +206,8 @@ def test_owner_renames_and_deletes_sessions_unless_runs_exist(api_context):
     client = api_context.client
     csrf = _owner(api_context)
     headers = _write_headers(csrf)
-    project_id = client.post("/api/v1/projects", json={"name": "Sessions"}, headers=headers).json()["id"]
-    base = f"/api/v1/projects/{project_id}/sessions"
+    project_id = client.post("/v1/projects", json={"name": "Sessions"}, headers=headers).json()["id"]
+    base = f"/v1/projects/{project_id}/sessions"
     empty = _legacy_session(api_context, project_id, "Empty")
     busy = _legacy_session(api_context, project_id, "Busy")
     client.post(f"{base}/{empty}/messages", json={"content": "hello"}, headers=headers)
@@ -251,8 +251,8 @@ def test_owner_renames_and_deletes_sessions_unless_runs_exist(api_context):
 def test_owner_lists_approvals_for_project_without_approvals(api_context):
     client = api_context.client
     csrf = _owner(api_context)
-    project_id = client.post("/api/v1/projects", json={"name": "Approvals"}, headers=_write_headers(csrf)).json()["id"]
-    response = client.get(f"/api/v1/projects/{project_id}/approvals")
+    project_id = client.post("/v1/projects", json={"name": "Approvals"}, headers=_write_headers(csrf)).json()["id"]
+    response = client.get(f"/v1/projects/{project_id}/approvals")
     assert response.status_code == 200 and response.json() == []
 
 
@@ -260,11 +260,11 @@ def test_owner_lists_approvals_for_project_without_approvals(api_context):
 def test_concurrent_job_revisions_are_serialized_by_project(api_context):
     client = api_context.client
     csrf = _owner(api_context)
-    project_id = client.post("/api/v1/projects", json={"name": "Concurrent jobs"},
+    project_id = client.post("/v1/projects", json={"name": "Concurrent jobs"},
                              headers=_write_headers(csrf)).json()["id"]
     def submit(index: int):
         return client.post(
-            f"/api/v1/projects/{project_id}/jobs",
+            f"/v1/projects/{project_id}/jobs",
             json={"title": f"Engineer {index}", "company": "Example", "description": f"Role {index}"},
             headers=_write_headers(csrf),
         )
@@ -278,14 +278,14 @@ def test_concurrent_job_revisions_are_serialized_by_project(api_context):
 def test_upload_download_private_minio_and_grant_cannot_read_raw_cv(api_context):
     client = api_context.client
     csrf = _owner(api_context)
-    project = client.post("/api/v1/projects", json={"name": "File project"}, headers=_write_headers(csrf)).json()
+    project = client.post("/v1/projects", json={"name": "File project"}, headers=_write_headers(csrf)).json()
     project_id = project["id"]
     workspace = api_context.tmp_path / "parse" / project_id
     (workspace / "inputs").mkdir(parents=True)
     api_context.parser.projects[UUID(project_id)] = SimpleNamespace(workspace=workspace)
 
     raw_cv = b"Synthetic CV body"
-    upload = client.post(f"/api/v1/projects/{project_id}/cv", files={"file": ("cv.txt", raw_cv, "text/plain")},
+    upload = client.post(f"/v1/projects/{project_id}/cv", files={"file": ("cv.txt", raw_cv, "text/plain")},
                          headers=_write_headers(csrf))
     assert upload.status_code == 201, upload.text
     assert upload.json()["revision"] == 1
@@ -293,27 +293,27 @@ def test_upload_download_private_minio_and_grant_cannot_read_raw_cv(api_context)
         assert db.scalar(select(func.count()).select_from(CVRevision).where(
             CVRevision.project_id == UUID(project_id)
         )) == 1
-    cv_revisions = client.get(f"/api/v1/projects/{project_id}/cv")
+    cv_revisions = client.get(f"/v1/projects/{project_id}/cv")
     assert cv_revisions.status_code == 200
     assert len(cv_revisions.json()) == 1
     assert cv_revisions.json()[0]["original_filename"] == "cv.txt"
     file_id = api_context.sessions().scalar(select(CVRevision.file_id).where(CVRevision.project_id == UUID(project_id)))
     stored = api_context.s3.list_objects_v2(Bucket=api_context.bucket)
     assert stored["KeyCount"] == 1
-    downloaded = client.get(f"/api/v1/projects/{project_id}/files/{file_id}/download")
+    downloaded = client.get(f"/v1/projects/{project_id}/files/{file_id}/download")
     assert downloaded.status_code == 200
     assert downloaded.content == raw_cv
     assert downloaded.headers["cache-control"] == "no-store"
     assert downloaded.headers["x-content-type-options"] == "nosniff"
 
     expires = "2099-01-01T00:00:00Z"
-    grant = client.post(f"/api/v1/projects/{project_id}/grants",
+    grant = client.post(f"/v1/projects/{project_id}/grants",
                         json={"capabilities": ["results:read"], "expires_at": expires},
                         headers=_write_headers(csrf))
     assert grant.status_code == 201
     token = grant.json()["token"]
     client.cookies.clear()
-    denied = client.get(f"/api/v1/projects/{project_id}/files/{file_id}/download",
+    denied = client.get(f"/v1/projects/{project_id}/files/{file_id}/download",
                         headers={"Authorization": f"Bearer {token}"})
     assert denied.status_code == 403
 
@@ -323,7 +323,7 @@ def test_validation_error_never_echoes_credentials_or_raw_input(api_context):
     client = api_context.client
     csrf = _owner(api_context)
     sentinel = "synthetic-provider-secret-do-not-echo"
-    response = client.post("/api/v1/projects", json={"name": "Valid", "credential": sentinel},
+    response = client.post("/v1/projects", json={"name": "Valid", "credential": sentinel},
                            headers=_write_headers(csrf))
     assert response.status_code == 422
     body = response.text
@@ -336,7 +336,7 @@ def test_validation_error_never_echoes_credentials_or_raw_input(api_context):
 def _removal_project(api_context, csrf: str):
     """Project with a session, current CV and provider so owner runs can be admitted."""
     client = api_context.client
-    pid = client.post("/api/v1/projects", json={"name": "Removal"}, headers=_write_headers(csrf)).json()["id"]
+    pid = client.post("/v1/projects", json={"name": "Removal"}, headers=_write_headers(csrf)).json()["id"]
     sid = _legacy_session(api_context, pid, "S")
     with api_context.sessions.begin() as db:
         db.add(CVRevision(project_id=UUID(pid), cv_id=primary_cv(db, UUID(pid)).id, revision=1))
@@ -345,14 +345,14 @@ def _removal_project(api_context, csrf: str):
 
 
 def _new_job(client, csrf, pid, title):
-    created = client.post(f"/api/v1/projects/{pid}/jobs", json={"title": title, "description": "Synthetic role"},
+    created = client.post(f"/v1/projects/{pid}/jobs", json={"title": title, "description": "Synthetic role"},
                           headers=_write_headers(csrf))
     assert created.status_code == 201
     return created.json()["id"]
 
 
 def _submit(client, csrf, pid, sid, job_id, key):
-    return client.post(f"/api/v1/projects/{pid}/runs", headers=_write_headers(csrf), json={
+    return client.post(f"/v1/async/projects/{pid}/agent-runs", headers=_write_headers(csrf), json={
         "session_id": sid, "operation": "evaluate_job", "job_revision_id": job_id,
         "output_language": "en", "idempotency_key": key})
 
@@ -368,16 +368,16 @@ def test_owner_removes_job_softly_hides_it_and_blocks_new_runs_but_old_runs_stay
     assert first.status_code == 202 and first.json()["job_removed"] is False
     other_run = _submit(client, csrf, pid, sid, keep, "other-job")
     assert other_run.status_code == 202
-    status_url = f"/api/v1/projects/{pid}/jobs/{gone}/application-status"
+    status_url = f"/v1/projects/{pid}/jobs/{gone}/application-status"
     assert client.get(status_url).status_code == 200
 
-    url = f"/api/v1/projects/{pid}/jobs/{gone}"
+    url = f"/v1/projects/{pid}/jobs/{gone}"
     assert client.delete(url, headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403  # no CSRF
-    assert len(client.get(f"/api/v1/projects/{pid}/jobs").json()) == 2
+    assert len(client.get(f"/v1/projects/{pid}/jobs").json()) == 2
     removed = client.delete(url, headers=headers)
     assert removed.status_code == 204 and removed.content == b""
     assert client.delete(url, headers=headers).status_code == 204  # idempotent
-    assert [job["id"] for job in client.get(f"/api/v1/projects/{pid}/jobs").json()] == [keep]
+    assert [job["id"] for job in client.get(f"/v1/projects/{pid}/jobs").json()] == [keep]
     assert client.get(status_url).status_code == 404
     assert client.patch(status_url, json={"application_status": "applied"}, headers=headers).status_code == 404
     with api_context.sessions() as db:
@@ -388,23 +388,23 @@ def test_owner_removes_job_softly_hides_it_and_blocks_new_runs_but_old_runs_stay
     assert blocked.status_code == 409 and blocked.json()["code"] == "job_removed"
     replay = _submit(client, csrf, pid, sid, gone, "before-removal")  # idempotent replay still resolves
     assert replay.status_code == 202 and replay.json()["id"] == first.json()["id"]
-    old = client.get(f"/api/v1/projects/{pid}/runs/{first.json()['id']}")
+    old = client.get(f"/v1/projects/{pid}/runs/{first.json()['id']}")
     assert old.status_code == 200 and old.json()["job_removed"] is True
-    assert client.get(f"/api/v1/projects/{pid}/runs/{other_run.json()['id']}").json()["job_removed"] is False
-    assert len(client.get(f"/api/v1/projects/{pid}/runs").json()) == 2
+    assert client.get(f"/v1/projects/{pid}/runs/{other_run.json()['id']}").json()["job_removed"] is False
+    assert len(client.get(f"/v1/projects/{pid}/runs").json()) == 2
 
     missing = "00000000-0000-4000-8000-000000000000"
-    assert client.delete(f"/api/v1/projects/{pid}/jobs/{missing}", headers=headers).status_code == 404
+    assert client.delete(f"/v1/projects/{pid}/jobs/{missing}", headers=headers).status_code == 404
     other_pid, _ = _removal_project(api_context, csrf)
-    assert client.delete(f"/api/v1/projects/{other_pid}/jobs/{keep}", headers=headers).status_code == 404
+    assert client.delete(f"/v1/projects/{other_pid}/jobs/{keep}", headers=headers).status_code == 404
 
-    token = client.post(f"/api/v1/projects/{pid}/grants", headers=headers, json={
+    token = client.post(f"/v1/projects/{pid}/grants", headers=headers, json={
         "capabilities": ["results:read", "jobs:evaluate"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
     client.cookies.clear()
-    denied = client.delete(f"/api/v1/projects/{pid}/jobs/{keep}", headers={"Authorization": f"Bearer {token}"})
+    denied = client.delete(f"/v1/projects/{pid}/jobs/{keep}", headers={"Authorization": f"Bearer {token}"})
     assert denied.status_code in (401, 403)
     csrf = _owner(api_context)
-    assert [job["id"] for job in client.get(f"/api/v1/projects/{pid}/jobs").json()] == [keep]
+    assert [job["id"] for job in client.get(f"/v1/projects/{pid}/jobs").json()] == [keep]
 
 
 def _seed_document(api_context, pid: str, name: str = "letter.pdf", *, run_id=None):
@@ -462,10 +462,10 @@ def test_owner_permanently_deletes_trashed_document_rows_files_and_objects_while
     run_id = _seed_completed_run(api_context, pid, sid)
     doomed = _seed_document(api_context, pid, "doomed.pdf", run_id=run_id)
     survivor = _seed_document(api_context, pid, "survivor.pdf")
-    trash_url = f"/api/v1/projects/{pid}/documents/{doomed.document}"
+    trash_url = f"/v1/projects/{pid}/documents/{doomed.document}"
     url = f"{trash_url}/permanent"
-    assert client.get(f"/api/v1/projects/{pid}/runs/{run_id}").json()["result_file_ids"] == [str(doomed.file)]
-    assert client.get(f"/api/v1/projects/{pid}/files/{doomed.file}/download").status_code == 200
+    assert client.get(f"/v1/projects/{pid}/runs/{run_id}").json()["result_file_ids"] == [str(doomed.file)]
+    assert client.get(f"/v1/projects/{pid}/files/{doomed.file}/download").status_code == 200
 
     assert client.delete(url, headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403  # no CSRF
     not_trashed = client.delete(url, headers=headers)  # permanent delete requires the trash first
@@ -484,31 +484,31 @@ def test_owner_permanently_deletes_trashed_document_rows_files_and_objects_while
         assert db.scalar(select(func.count()).select_from(RunArtifact)) == 0
         assert db.get(Document, survivor.document) is not None and db.get(StoredFile, survivor.file) is not None
     assert not _object_exists(api_context, doomed.key) and _object_exists(api_context, survivor.key)
-    assert [doc["id"] for doc in client.get(f"/api/v1/projects/{pid}/documents").json()] == [str(survivor.document)]
-    assert client.get(f"/api/v1/projects/{pid}/files/{doomed.file}/download").status_code == 404
-    run = client.get(f"/api/v1/projects/{pid}/runs/{run_id}")
+    assert [doc["id"] for doc in client.get(f"/v1/projects/{pid}/documents").json()] == [str(survivor.document)]
+    assert client.get(f"/v1/projects/{pid}/files/{doomed.file}/download").status_code == 404
+    run = client.get(f"/v1/projects/{pid}/runs/{run_id}")
     assert run.status_code == 200 and run.json()["result_file_ids"] == []
-    assert client.get(f"/api/v1/projects/{pid}/runs").status_code == 200
+    assert client.get(f"/v1/projects/{pid}/runs").status_code == 200
 
     assert client.delete(url, headers=headers).status_code == 404  # already gone
     assert client.delete(trash_url, headers=headers).status_code == 404
-    assert client.get(f"/api/v1/projects/{pid}/documents/trash").json() == []
+    assert client.get(f"/v1/projects/{pid}/documents/trash").json() == []
     missing = "00000000-0000-4000-8000-000000000000"
-    assert client.delete(f"/api/v1/projects/{pid}/documents/{missing}", headers=headers).status_code == 404
-    assert client.delete(f"/api/v1/projects/{pid}/documents/{missing}/permanent", headers=headers).status_code == 404
+    assert client.delete(f"/v1/projects/{pid}/documents/{missing}", headers=headers).status_code == 404
+    assert client.delete(f"/v1/projects/{pid}/documents/{missing}/permanent", headers=headers).status_code == 404
     other_pid, _ = _removal_project(api_context, csrf)
-    assert client.delete(f"/api/v1/projects/{other_pid}/documents/{survivor.document}", headers=headers).status_code == 404
-    assert client.delete(f"/api/v1/projects/{other_pid}/documents/{survivor.document}/permanent", headers=headers).status_code == 404
+    assert client.delete(f"/v1/projects/{other_pid}/documents/{survivor.document}", headers=headers).status_code == 404
+    assert client.delete(f"/v1/projects/{other_pid}/documents/{survivor.document}/permanent", headers=headers).status_code == 404
     assert _object_exists(api_context, survivor.key)
 
-    token = client.post(f"/api/v1/projects/{pid}/grants", headers=headers, json={
+    token = client.post(f"/v1/projects/{pid}/grants", headers=headers, json={
         "capabilities": ["results:read", "documents:draft"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
     client.cookies.clear()
     for suffix in ("", "/permanent"):
-        denied = client.delete(f"/api/v1/projects/{pid}/documents/{survivor.document}{suffix}",
+        denied = client.delete(f"/v1/projects/{pid}/documents/{survivor.document}{suffix}",
                                headers={"Authorization": f"Bearer {token}"})
         assert denied.status_code in (401, 403)
-    denied = client.post(f"/api/v1/projects/{pid}/documents/{survivor.document}/restore",
+    denied = client.post(f"/v1/projects/{pid}/documents/{survivor.document}/restore",
                          headers={"Authorization": f"Bearer {token}"})
     assert denied.status_code in (401, 403)
     assert _object_exists(api_context, survivor.key)
@@ -530,8 +530,8 @@ def test_document_delete_refused_while_approval_pending_then_allowed_once_settle
         db.add(approval)
         db.flush()
         approval_id = approval.id
-    url = f"/api/v1/projects/{pid}/documents/{seeded.document}/permanent"
-    assert client.delete(f"/api/v1/projects/{pid}/documents/{seeded.document}", headers=headers).status_code == 204
+    url = f"/v1/projects/{pid}/documents/{seeded.document}/permanent"
+    assert client.delete(f"/v1/projects/{pid}/documents/{seeded.document}", headers=headers).status_code == 204
     blocked = client.delete(url, headers=headers)
     assert blocked.status_code == 409 and blocked.json()["code"] == "document_in_use"
     assert _object_exists(api_context, seeded.key)
@@ -561,7 +561,7 @@ def test_document_delete_keeps_file_still_referenced_and_survives_object_store_f
     promoted = _seed_document(api_context, pid, "promoted.pdf")
     with api_context.sessions.begin() as db:  # a CV promoted from this draft keeps pointing at its file
         db.add(CVRevision(project_id=UUID(pid), cv_id=primary_cv(db, UUID(pid)).id, revision=2, file_id=promoted.file))
-    base = f"/api/v1/projects/{pid}/documents"
+    base = f"/v1/projects/{pid}/documents"
     assert client.delete(f"{base}/{promoted.document}", headers=headers).status_code == 204
     assert client.delete(f"{base}/{promoted.document}/permanent", headers=headers).status_code == 204
     with api_context.sessions() as db:
@@ -597,7 +597,7 @@ def test_trash_soft_deletes_lists_restores_and_is_idempotent(api_context):
     run_id = _seed_completed_run(api_context, pid, sid, key="trash-run")
     first = _seed_document(api_context, pid, "first.pdf", run_id=run_id)
     second = _seed_document(api_context, pid, "second.pdf")
-    base = f"/api/v1/projects/{pid}/documents"
+    base = f"/v1/projects/{pid}/documents"
     assert client.get(f"{base}/trash").json() == []
     assert client.delete(f"{base}/{first.document}", headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403
     assert client.post(f"{base}/{first.document}/restore", headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403
@@ -615,16 +615,16 @@ def test_trash_soft_deletes_lists_restores_and_is_idempotent(api_context):
     assert [doc["id"] for doc in trash] == [str(second.document), str(first.document)]  # newest first
     assert all(doc["trashed_at"] for doc in trash)
     # Owner can still preview a trashed draft (file download, revisions) though run results drop it.
-    assert client.get(f"/api/v1/projects/{pid}/files/{first.file}/download").status_code == 200
+    assert client.get(f"/v1/projects/{pid}/files/{first.file}/download").status_code == 200
     assert client.get(f"{base}/{first.document}/revisions").status_code == 200
-    assert client.get(f"/api/v1/projects/{pid}/runs/{run_id}").json()["result_file_ids"] == []
+    assert client.get(f"/v1/projects/{pid}/runs/{run_id}").json()["result_file_ids"] == []
 
     restored = client.post(f"{base}/{first.document}/restore", headers=headers)
     assert restored.status_code == 200 and restored.json()["id"] == str(first.document)
     assert restored.json()["trashed_at"] is None
     again = client.post(f"{base}/{first.document}/restore", headers=headers)  # idempotent
     assert again.status_code == 200 and again.json()["trashed_at"] is None
-    assert client.get(f"/api/v1/projects/{pid}/runs/{run_id}").json()["result_file_ids"] == [str(first.file)]
+    assert client.get(f"/v1/projects/{pid}/runs/{run_id}").json()["result_file_ids"] == [str(first.file)]
     listed = client.get(base).json()
     assert [doc["id"] for doc in listed] == [str(first.document)] and listed[0]["trashed_at"] is None
     assert [doc["id"] for doc in client.get(f"{base}/trash").json()] == [str(second.document)]
@@ -641,9 +641,9 @@ def test_trashed_document_is_hidden_from_grants_but_not_the_owner(api_context):
     pid, sid = _removal_project(api_context, csrf)
     run_id = _seed_completed_run(api_context, pid, sid, key="grant-run")
     seeded = _seed_document(api_context, pid, "grant.pdf", run_id=run_id)
-    token = client.post(f"/api/v1/projects/{pid}/grants", headers=headers, json={
+    token = client.post(f"/v1/projects/{pid}/grants", headers=headers, json={
         "capabilities": ["results:read"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
-    base = f"/api/v1/projects/{pid}"
+    base = f"/v1/projects/{pid}"
     bearer = {"Authorization": f"Bearer {token}"}
     services = client.app.state.services
 
@@ -691,13 +691,13 @@ def test_runtime_openapi_matches_application_contract_paths_methods_and_schemas(
         if method in {"get", "post", "put", "patch", "delete"}
     }
     runtime_methods = {
-        (path.removeprefix("/api/v1"), method)
+        (path.removeprefix("/v1"), method)
         for path, operations in runtime["paths"].items()
         for method in operations
         if method in {"get", "post", "put", "patch", "delete"}
     }
     assert runtime_methods == contract_methods
-    assert runtime["servers"] == [{"url": "/api/v1"}]
+    assert runtime["servers"] == [{"url": "/v1"}]
     assert set(runtime["components"]["schemas"]) == set(contract["components"]["schemas"])
     assert "text/event-stream" in runtime["paths"]["/projects/{project_id}/runs/{run_id}/events"]["get"]["responses"]["200"]["content"]
 
@@ -728,23 +728,23 @@ def test_provider_routes_are_gone_and_gateway_status_is_admin_only(api_context, 
     client = api_context.client
     csrf = _owner(api_context)
     headers = _write_headers(csrf)
-    assert client.get("/api/v1/gateway").status_code == 403  # signed in, but not listed in ADMIN_EMAILS
+    assert client.get("/v1/gateway").status_code == 403  # signed in, but not listed in ADMIN_EMAILS
     with api_context.sessions() as db:
         email = db.get(User, api_context.user_id).email
     monkeypatch.setenv("ADMIN_EMAILS", f" Other@example.test , {email.upper()} ")
     for method, path in REMOVED_ROUTES:
-        assert getattr(client, method)("/api/v1" + path, headers=headers).status_code in (404, 405)
-    owner_view = client.get("/api/v1/gateway")
+        assert getattr(client, method)("/v1" + path, headers=headers).status_code in (404, 405)
+    owner_view = client.get("/v1/gateway")
     assert owner_view.status_code == 200
     body = owner_view.json()
     assert body["configured"] is True and body["reachable"] is False  # nothing listens on the fake base URL
     assert body["analyze_model"] == "ai-analyze" and body["decision_model"] == "typesafe/jev-1.13"
     assert "sk-test-gateway" not in owner_view.text
     pid, _ = _removal_project(api_context, csrf)
-    token = client.post(f"/api/v1/projects/{pid}/grants", headers=headers, json={
+    token = client.post(f"/v1/projects/{pid}/grants", headers=headers, json={
         "capabilities": ["results:read", "jobs:evaluate"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
     client.cookies.clear()
-    assert client.get("/api/v1/gateway", headers={"Authorization": f"Bearer {token}"}).status_code in (401, 403)
+    assert client.get("/v1/gateway", headers={"Authorization": f"Bearer {token}"}).status_code in (401, 403)
 
 
 @pytest.mark.integration
@@ -752,11 +752,11 @@ def test_health_is_liveness_and_ready_reports_components(api_context, monkeypatc
     from job_search_platform.api import rest
     client = api_context.client
     client.cookies.clear()
-    assert client.get("/api/v1/health").json() == {"status": "ok"}
+    assert client.get("/health").json() == {"status": "ok"}
     monkeypatch.setattr(rest, "_gateway_alive", lambda: None)
     monkeypatch.setattr(rest, "_image_present", lambda image: None)
     api_context.client.app.state.services.runtime.image = "sandbox@sha256:" + "0" * 64
-    ready = client.get("/api/v1/health/ready")
+    ready = client.get("/health/ready")
     assert ready.status_code == 200
     assert ready.json() == {"status": "ok", "components": {
         "postgres": "ok", "object_store": "ok", "llm_gateway": "ok", "sandbox_image": "ok"}}
@@ -765,7 +765,7 @@ def test_health_is_liveness_and_ready_reports_components(api_context, monkeypatc
         raise OSError("http://10.9.8.7:4000 refused")
     monkeypatch.setattr(rest, "_gateway_alive", down)
     client.app.state.readiness["result"] = None  # drop the TTL cache
-    degraded = client.get("/api/v1/health/ready")
+    degraded = client.get("/health/ready")
     assert degraded.status_code == 503
     assert degraded.json()["status"] == "degraded" and degraded.json()["components"]["llm_gateway"] == "down"
     assert "10.9.8.7" not in degraded.text and "4000" not in degraded.text
@@ -781,8 +781,8 @@ def test_request_log_has_id_and_route_template_but_no_query(api_context):
     logger.setLevel(logging.INFO)
     try:
         pid = "11111111-1111-4111-8111-111111111111"
-        response = api_context.client.get(f"/api/v1/projects/{pid}?token=s3cr3t-value", headers={"X-Request-ID": "req-abc_1"})
-        bad = api_context.client.get("/api/v1/health", headers={"X-Request-ID": "bad id\x7f!"})
+        response = api_context.client.get(f"/v1/projects/{pid}?token=s3cr3t-value", headers={"X-Request-ID": "req-abc_1"})
+        bad = api_context.client.get("/health", headers={"X-Request-ID": "bad id\x7f!"})
     finally:
         logger.removeHandler(handler)
     first, second = [json.loads(line) for line in stream.getvalue().splitlines()]
@@ -806,9 +806,9 @@ def test_ready_is_single_flight_and_cached(api_context, monkeypatch):
     api_context.client.app.state.services.runtime.image = "sandbox@sha256:" + "0" * 64
     api_context.client.cookies.clear()
     with ThreadPoolExecutor(20) as pool:
-        codes = list(pool.map(lambda _: api_context.client.get("/api/v1/health/ready").status_code, range(20)))
+        codes = list(pool.map(lambda _: api_context.client.get("/health/ready").status_code, range(20)))
     assert codes == [200] * 20 and calls["gateway"] == 1
-    assert api_context.client.get("/api/v1/health/ready").status_code == 200
+    assert api_context.client.get("/health/ready").status_code == 200
     assert calls["gateway"] == 1  # within the TTL: no new probe
 
 
@@ -842,7 +842,7 @@ def test_unmatched_route_is_labelled_unmatched(api_context):
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     try:
-        api_context.client.get("/api/v1/no/such/secret-path-123")
+        api_context.client.get("/v1/no/such/secret-path-123")
     finally:
         logger.removeHandler(handler)
     line = json.loads(stream.getvalue().splitlines()[0])
@@ -851,9 +851,9 @@ def test_unmatched_route_is_labelled_unmatched(api_context):
 
 @pytest.mark.integration
 def test_connect_info_tells_the_owner_where_external_agents_connect(api_context, monkeypatch):
-    assert api_context.client.get("/api/v1/connect").status_code == 401
+    assert api_context.client.get("/v1/connect").status_code == 401
     _owner(api_context)
     monkeypatch.delenv("SHARE_PUBLIC_ORIGIN", raising=False)
-    assert api_context.client.get("/api/v1/connect").json() == {"share_origin": None, "oauth": False}
+    assert api_context.client.get("/v1/connect").json() == {"share_origin": None, "oauth": False}
     monkeypatch.setenv("SHARE_PUBLIC_ORIGIN", "http://127.0.0.1:8011/")
-    assert api_context.client.get("/api/v1/connect").json() == {"share_origin": "http://127.0.0.1:8011", "oauth": False}
+    assert api_context.client.get("/v1/connect").json() == {"share_origin": "http://127.0.0.1:8011", "oauth": False}

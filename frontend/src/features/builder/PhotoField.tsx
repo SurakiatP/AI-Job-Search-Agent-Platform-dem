@@ -49,7 +49,7 @@ export function PhotoField({ projectId, photoId, onChange, c }: { projectId: str
   return <div className="grid gap-2">
     <h3 className="text-sm font-medium">{c.photo}</h3>
     <div className="flex flex-wrap items-center gap-3">
-      {photoId && <img src={`/api/v1/projects/${projectId}/resume-photos/${photoId}`} alt={c.photoAlt}
+      {photoId && <img src={`/v1/projects/${projectId}/resume-photos/${photoId}`} alt={c.photoAlt}
         className="h-20 w-15 shrink-0 rounded-md border object-cover" />}
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="outline" busy={busy} disabled={busy} onClick={() => input.current?.click()}><ImagePlus className="size-4" aria-hidden="true" />{label}</Button>

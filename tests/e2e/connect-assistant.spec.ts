@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { projectId, useSyntheticApplication } from '../fixtures/application';
 
 async function connectInfo(page: Page, share_origin: string | null, oauth = false) {
-  await page.route('**/api/v1/connect', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ share_origin, oauth }) }));
+  await page.route('**/v1/connect', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ share_origin, oauth }) }));
 }
 
 const url = `/app/projects/${projectId}/console?tab=connect`;
@@ -30,7 +30,7 @@ test('a user picks an assistant and gets its own setup with the real share addre
   await picker.selectOption('chatgpt');
   await expect(page.getByText(/public https domain/)).toHaveCount(0); // https share origin: no warning
   await picker.selectOption('rest');
-  await expect(page.locator('pre[aria-label="Example: list the work you started"]')).toContainText(`/api/v1/projects/${projectId}/runs`);
+  await expect(page.locator('pre[aria-label="Example: list the work you started"]')).toContainText(`/v1/projects/${projectId}/runs`);
   await expect(page.getByText('--enable-sharing')).toHaveCount(0); // server commands are not for users
 
   await page.reload(); // the choice is remembered

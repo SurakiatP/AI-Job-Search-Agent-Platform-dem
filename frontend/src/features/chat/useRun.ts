@@ -166,11 +166,11 @@ export function useRun(projectId: string, sessionId: string) {
       // Message writes have no idempotency contract; attempt each immutable intent once.
       if (!currentIntent.messageAttempted) {
         currentIntent.messageAttempted = true;
-        await apiRequest<MessageView>(`/projects/${encodeURIComponent(projectId)}/sessions/${encodeURIComponent(sessionId)}/messages`, {
+        await apiRequest<MessageView>(`/async/projects/${encodeURIComponent(projectId)}/sessions/${encodeURIComponent(sessionId)}/messages`, {
           method: 'POST', body: JSON.stringify({ content: ownerInstructions }),
         });
       }
-      const run = await apiRequest<RunView>(`/projects/${encodeURIComponent(projectId)}/runs`, {
+      const run = await apiRequest<RunView>(`/async/projects/${encodeURIComponent(projectId)}/agent-runs`, {
         method: 'POST',
         headers: { 'Idempotency-Key': currentIntent.idempotencyKey },
         body: JSON.stringify({
@@ -204,7 +204,7 @@ export function useRun(projectId: string, sessionId: string) {
     operationInFlight.current = true;
     setState(current => ({ ...current, submitting: true, cancellationPending: true, error: null }));
     try {
-      const confirmed = await apiRequest<RunView>(`/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(run.id)}/cancel`, { method: 'POST' });
+      const confirmed = await apiRequest<RunView>(`/async/projects/${encodeURIComponent(projectId)}/agent-runs/${encodeURIComponent(run.id)}/cancel`, { method: 'POST' });
       if (scopeRef.current !== scope) return;
       setState(current => ({
         ...current,
@@ -230,7 +230,7 @@ export function useRun(projectId: string, sessionId: string) {
     intent.current = next;
     setState(current => ({ ...current, submitting: true, error: null }));
     try {
-      const retried = await apiRequest<RunView>(`/projects/${encodeURIComponent(projectId)}/runs`, {
+      const retried = await apiRequest<RunView>(`/async/projects/${encodeURIComponent(projectId)}/agent-runs`, {
         method: 'POST',
         headers: { 'Idempotency-Key': next.idempotencyKey },
         body: JSON.stringify({

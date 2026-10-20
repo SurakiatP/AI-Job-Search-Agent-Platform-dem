@@ -49,7 +49,7 @@ test('signed-in visitors get one Open app action in the landing header, at deskt
 
 test('anonymous visitors still see sign-up and log-in on the landing header', async ({ page }) => {
   await useSyntheticApplication(page);
-  await page.route('**/api/v1/auth/session', route => route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ code: 'unauthorized', message_key: 'errors.unauthorized', retryable: false }) }));
+  await page.route('**/v1/auth/session', route => route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ code: 'unauthorized', message_key: 'errors.unauthorized', retryable: false }) }));
   await page.goto('/');
   const banner = page.getByRole('banner');
   await expect(banner.getByRole('link', { name: 'เริ่มใช้งาน', exact: true })).toHaveAttribute('href', '/signup');
@@ -94,8 +94,8 @@ test('every page supports direct links, back/forward, locale changes and respons
   let uploaded = false;
   let savedLanguage = '';
   page.on('request', request => {
-    if (request.url().endsWith(`/api/v1/projects/${projectId}/cvs`) && request.method() === 'POST') uploaded = true;
-    if (request.url().endsWith(`/api/v1/projects/${projectId}/preferences`) && request.method() === 'PATCH') savedLanguage = JSON.parse(request.postData() ?? '{}').output_language;
+    if (request.url().endsWith(`/v1/projects/${projectId}/cvs`) && request.method() === 'POST') uploaded = true;
+    if (request.url().endsWith(`/v1/projects/${projectId}/preferences`) && request.method() === 'PATCH') savedLanguage = JSON.parse(request.postData() ?? '{}').output_language;
   });
   await page.goto(`/app/projects/${projectId}/profile`);
   await expect(page.getByRole('heading', { name: 'CV & experience', level: 1 })).toBeVisible();
@@ -290,7 +290,7 @@ test('legacy DOC files are rejected before upload with a localized error', async
   await page.goto(`/app/projects/${projectId}/profile`);
   let uploadRequests = 0;
   page.on('request', request => {
-    if (request.url().endsWith(`/api/v1/projects/${projectId}/cvs`) && request.method() === 'POST') uploadRequests++;
+    if (request.url().endsWith(`/v1/projects/${projectId}/cvs`) && request.method() === 'POST') uploadRequests++;
   });
   await page.getByLabel('Add CV', { exact: true }).setInputFiles({ name: 'legacy-cv.doc', mimeType: 'application/msword', buffer: Buffer.from('Synthetic legacy CV') });
   await expect(page.getByRole('alert')).toHaveText('Choose a text PDF, DOCX or text file.');

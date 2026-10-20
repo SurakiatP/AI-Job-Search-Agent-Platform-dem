@@ -52,7 +52,7 @@ def fake_source(monkeypatch):
 
 def _project(api_context):
     csrf = _owner(api_context)
-    created = api_context.client.post("/api/v1/projects", json={"name": "Synthetic direct project"},
+    created = api_context.client.post("/v1/projects", json={"name": "Synthetic direct project"},
                                       headers=_write_headers(csrf))
     project_id = UUID(created.json()["id"])
     with api_context.sessions.begin() as db:
@@ -63,7 +63,7 @@ def _project(api_context):
 
 def _grant(api_context, project_id, csrf, capabilities):
     response = api_context.client.post(
-        f"/api/v1/projects/{project_id}/grants",
+        f"/v1/projects/{project_id}/grants",
         json={"capabilities": capabilities,
               "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()},
         headers=_write_headers(csrf))
@@ -89,7 +89,7 @@ def _runs(api_context):
 def test_rest_search_full_description_age_stale_and_text_mode(api_context, fake_source):
     csrf, project_id = _project(api_context)
     token = _grant(api_context, project_id, csrf, ["jobs:search"])
-    base = f"/api/v1/projects/{project_id}/agent/jobs/search"
+    base = f"/v1/projects/{project_id}/agent/jobs/search"
     job = _as_grant(api_context.client, "POST", base, token, json={"q": "python", "limit": 30}).json()["jobs"][0]
     assert job["description_format"] == "markdown" and job["description"] == RAW["description_markdown"]
     assert job["posting_age_days"] == 9 and job["stale"] is True and job["ghost_signals"] == ["source_flagged"]
@@ -109,7 +109,7 @@ def test_rest_search_full_description_age_stale_and_text_mode(api_context, fake_
 def test_rest_fit_is_deterministic_and_creates_no_run(api_context):
     csrf, project_id = _project(api_context)
     token = _grant(api_context, project_id, csrf, ["jobs:evaluate"])
-    url = f"/api/v1/projects/{project_id}/agent/jobs/fit"
+    url = f"/v1/projects/{project_id}/agent/jobs/fit"
     body = {"job": {"title": "Synthetic dev", "description": JOB_TEXT}}
     before = _runs(api_context)
     first = _as_grant(api_context.client, "POST", url, token, json=body)
@@ -134,8 +134,8 @@ def test_rest_capability_denials(api_context):
     csrf, project_id = _project(api_context)
     evaluate_only = _grant(api_context, project_id, csrf, ["jobs:evaluate"])
     search_only = _grant(api_context, project_id, csrf, ["jobs:search"])
-    search = f"/api/v1/projects/{project_id}/agent/jobs/search"
-    fit = f"/api/v1/projects/{project_id}/agent/jobs/fit"
+    search = f"/v1/projects/{project_id}/agent/jobs/search"
+    fit = f"/v1/projects/{project_id}/agent/jobs/fit"
     body = {"job": {"title": "Synthetic dev", "description": JOB_TEXT}}
     assert _as_grant(api_context.client, "POST", search, evaluate_only, json={}).status_code == 403
     assert _as_grant(api_context.client, "POST", fit, search_only, json=body).status_code == 403
@@ -146,10 +146,10 @@ def test_rest_capability_denials(api_context):
 def test_rest_grant_cannot_use_another_projects_path(api_context):
     csrf, project_id = _project(api_context)
     token = _grant(api_context, project_id, csrf, ["jobs:evaluate", "jobs:search"])
-    other = UUID(api_context.client.post("/api/v1/projects", json={"name": "Other"}, headers=_write_headers(csrf)).json()["id"])
+    other = UUID(api_context.client.post("/v1/projects", json={"name": "Other"}, headers=_write_headers(csrf)).json()["id"])
     body = {"job": {"title": "Synthetic dev", "description": JOB_TEXT}}
-    assert _as_grant(api_context.client, "POST", f"/api/v1/projects/{other}/agent/jobs/fit", token, json=body).status_code == 404
-    assert _as_grant(api_context.client, "POST", f"/api/v1/projects/{other}/agent/jobs/search", token, json={}).status_code == 404
+    assert _as_grant(api_context.client, "POST", f"/v1/projects/{other}/agent/jobs/fit", token, json=body).status_code == 404
+    assert _as_grant(api_context.client, "POST", f"/v1/projects/{other}/agent/jobs/search", token, json={}).status_code == 404
 
 
 @pytest.mark.integration

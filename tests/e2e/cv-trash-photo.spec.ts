@@ -10,10 +10,10 @@ const cv = (extra: Record<string, unknown> = {}) => ({ id: cvId, name: 'Data CV'
 
 async function cvApi(page: Page, start: { live: unknown[]; trash: unknown[] }) {
   const state = { ...start, calls: [] as string[] };
-  await page.route(`**/api/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([])));
-  await page.route(`**/api/v1/projects/${projectId}/cvs**`, route => {
+  await page.route(`**/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([])));
+  await page.route(`**/v1/projects/${projectId}/cvs**`, route => {
     const url = new URL(route.request().url());
-    const path = url.pathname.replace(`/api/v1/projects/${projectId}/cvs`, '');
+    const path = url.pathname.replace(`/v1/projects/${projectId}/cvs`, '');
     const method = route.request().method();
     if (method !== 'GET') state.calls.push(`${method} ${path}`);
     if (path === '' && method === 'GET') return route.fulfill(json(url.searchParams.get('view') === 'trash' ? state.trash : state.live));
@@ -49,7 +49,7 @@ test('AC-CVT-04 the trash has a CV tab to restore or delete a CV for good', asyn
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   const state = await cvApi(page, { live: [], trash: [cv({ is_primary: false, trashed_at: at }), cv({ id: 'c2c2c2c2-0000-4000-8000-000000000000', name: 'Old CV', is_primary: false, trashed_at: at })] });
-  await page.route(`**/api/v1/projects/${projectId}/cvs/c2c2c2c2-0000-4000-8000-000000000000/permanent`, route => route.fulfill(json({ code: 'cv_in_use', message_key: 'errors.cv_in_use', retryable: false }, 409)));
+  await page.route(`**/v1/projects/${projectId}/cvs/c2c2c2c2-0000-4000-8000-000000000000/permanent`, route => route.fulfill(json({ code: 'cv_in_use', message_key: 'errors.cv_in_use', retryable: false }, 409)));
   await page.goto(`/app/projects/${projectId}/trash?tab=cvs`);
   const nav = page.getByRole('navigation', { name: 'Navigation' });
   await expect(nav.getByRole('link', { name: 'Trash 2' })).toBeVisible();
@@ -94,9 +94,9 @@ test('AC-CVP-04 add a photo, see which templates print it, then remove it', asyn
   let draft = { id: 'd1', cv_id: builderCv, document_id: null, name: 'CV', resume_data: resume(), template_id: 'onyx', accent: 'indigo', document_language: 'en', ats_safe: true, updated_at: at };
   const puts: any[] = [];
   const uploads: string[] = [];
-  await page.route('**/api/v1/**', async route => {
+  await page.route('**/v1/**', async route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname.replace('/api/v1', '');
+    const path = new URL(request.url()).pathname.replace('/v1', '');
     if (path === '/resume-templates') return route.fulfill(json({ templates: [], accents: [], provinces: [] }));
     if (path === `/projects/${projectId}/cvs/${builderCv}/draft`) {
       if (request.method() === 'GET') return route.fulfill(json(draft));
@@ -137,8 +137,8 @@ test('AC-CVP-02 a photo that is too large or not an image is refused before uplo
   await useSyntheticApplication(page);
   const draft = { id: 'd1', cv_id: builderCv, document_id: null, name: 'CV', resume_data: resume(), template_id: 'lotus', accent: 'indigo', document_language: 'en', ats_safe: true, updated_at: at };
   let uploads = 0;
-  await page.route('**/api/v1/**', route => {
-    const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
+  await page.route('**/v1/**', route => {
+    const path = new URL(route.request().url()).pathname.replace('/v1', '');
     if (path === '/resume-templates') return route.fulfill(json({ templates: [], accents: [], provinces: [] }));
     if (path === `/projects/${projectId}/cvs/${builderCv}/draft`) return route.fulfill(json(draft));
     if (path.endsWith('/draft/preview')) return route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' });

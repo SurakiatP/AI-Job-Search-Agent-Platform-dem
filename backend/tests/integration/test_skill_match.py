@@ -14,7 +14,7 @@ from job_search_platform.services import job_sources
 from test_paired_sessions import _project, _upload  # noqa: F401
 from test_rest_api import ROOT_FOR_MIGRATIONS, _owner, _write_headers, api_context  # noqa: F401
 
-PREFIX = "/api/v1/projects"
+PREFIX = "/v1/projects"
 
 
 def _raw(slug, title, description, age):
@@ -89,7 +89,7 @@ def test_match_is_project_scoped_owner_only_and_reports_source_errors(api_contex
     try:
         grant = client.get(f"{PREFIX}/{pid}/job-search/match?cv_revision_id={rev}", headers={"Authorization": f"Bearer {token}"})
         assert grant.status_code in {401, 403}
-        assert client.post(f"{PREFIX}/{pid}/cvs/{uuid4()}/profile", headers={"Authorization": f"Bearer {token}"}).status_code in {401, 403}
+        assert client.post(f"/v1/async/projects/{pid}/cvs/{uuid4()}/skill-profiles", headers={"Authorization": f"Bearer {token}"}).status_code in {401, 403}
     finally:
         client.cookies.update(saved)
 
@@ -116,21 +116,21 @@ def test_profile_endpoint_queues_hidden_non_llm_run_once(api_context, source):
     headers = _write_headers(csrf)
     pid = _project(api_context, csrf)
     cv = _upload(api_context, csrf, pid).json()
-    queued = client.post(f"{PREFIX}/{pid}/cvs/{cv['id']}/profile", headers=headers)
+    queued = client.post(f"/v1/async/projects/{pid}/cvs/{cv['id']}/skill-profiles", headers=headers)
     assert queued.status_code == 202, queued.text
     run = queued.json()
     assert run["operation"] == "profile_cv" and run["status"] == "queued" and run["session_id"] is None
     # A second request while one is active returns the same run; the run is hidden from the list.
-    assert client.post(f"{PREFIX}/{pid}/cvs/{cv['id']}/profile", headers=headers).json()["id"] == run["id"]
+    assert client.post(f"/v1/async/projects/{pid}/cvs/{cv['id']}/skill-profiles", headers=headers).json()["id"] == run["id"]
     assert client.get(f"{PREFIX}/{pid}/runs/{run['id']}").status_code == 200
     assert client.get(f"{PREFIX}/{pid}/runs").json() == []
     with api_context.sessions() as db:
         row = db.get(Run, UUID(run["id"]))
         assert row.provider_configuration_id is None and row.job_revision_id is None and row.session_id is None
     _set_profile(api_context, cv["latest_revision"]["id"], ["Python"])
-    ready = client.post(f"{PREFIX}/{pid}/cvs/{cv['id']}/profile", headers=headers)
+    ready = client.post(f"/v1/async/projects/{pid}/cvs/{cv['id']}/skill-profiles", headers=headers)
     assert ready.status_code == 200 and ready.json() == {"status": "ready"}
-    assert client.post(f"{PREFIX}/{pid}/cvs/{uuid4()}/profile", headers=headers).status_code == 404
+    assert client.post(f"/v1/async/projects/{pid}/cvs/{uuid4()}/skill-profiles", headers=headers).status_code == 404
 
 
 def test_migration_0013_up_down_and_context_constraint(postgres_engine):

@@ -10,7 +10,7 @@ test('typed API restores the account session CSRF and resumes deduplicated run e
   let contentType = '';
   let writeCsrf = '';
 
-  await page.route('**/api/v1/auth/session', async route => {
+  await page.route('**/v1/auth/session', async route => {
     bootstrapCalls += 1;
     await route.fulfill({
       status: 200,
@@ -19,12 +19,12 @@ test('typed API restores the account session CSRF and resumes deduplicated run e
       body: JSON.stringify({ authenticated: true, csrf_token: csrf, expires_at: '2026-10-05T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, created_at: '2026-10-01T00:00:00Z' } }),
     });
   });
-  await page.route('**/api/v1/projects/upload', async route => {
+  await page.route('**/v1/projects/upload', async route => {
     contentType = route.request().headers()['content-type'] ?? '';
     writeCsrf = route.request().headers()['x-csrf-token'] ?? '';
     await route.fulfill({ status: 204 });
   });
-  await page.route(`**/api/v1/projects/${projectId}/runs/${runId}/events`, async route => {
+  await page.route(`**/v1/projects/${projectId}/runs/${runId}/events`, async route => {
     const cursor = route.request().headers()['last-event-id'] ?? '';
     eventCursors.push(cursor);
     const first = { sequence: 1, event_type: 'run_progress', data: { approval_id: null, step: 'Reading supplied posting', status: 'running', artifact_ids: [], message_key: null, progress_percent: 25 }, created_at: '2026-10-04T00:00:00Z' };

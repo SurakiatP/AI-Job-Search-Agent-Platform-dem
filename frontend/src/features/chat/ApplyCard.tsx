@@ -61,7 +61,7 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
     setWorking(true); setMessage(null);
     const key = crypto.randomUUID();
     try {
-      await apiRequest<RunView>(`/projects/${projectId}/runs`, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ session_id: sessionId, operation, output_language: outputLanguage, idempotency_key: key, ...extra }) });
+      await apiRequest<RunView>(`/async/projects/${projectId}/agent-runs`, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ session_id: sessionId, operation, output_language: outputLanguage, idempotency_key: key, ...extra }) });
       setMessage({ ok: true, text: c.sent }); onChanged();
     } catch (caught) { setMessage({ ok: false, text: errorText(caught) }); } finally { setWorking(false); }
   }

@@ -23,7 +23,7 @@ test('approved routes fit 320px, tablet, and desktop and keep the language contr
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await useSyntheticApplication(page);
-  await page.route('**/api/v1/oauth/requests/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+  await page.route('**/v1/oauth/requests/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
     client_name: 'Synthetic Client', client_id_host: 'client.example.test', redirect_uri: 'http://127.0.0.1:33418/callback',
     requested_scopes: ['results:read'], projects: [{ id: projectId, name: 'Synthetic project' }], expires_at: '2099-01-01T00:00:00Z' }) }));
 
@@ -90,7 +90,7 @@ test('document language stays English after the UI changes to Thai and partial s
 // An authenticated visit to /login redirects to /app (correct: no reason to log in twice), so the auth pages are also checked anonymously.
 test('anonymous auth pages fit 320px with language control and heading', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
-  await page.route('**/api/v1/auth/session', route => route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ code: 'unauthorized', message_key: 'errors.unauthorized', retryable: false }) }));
+  await page.route('**/v1/auth/session', route => route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ code: 'unauthorized', message_key: 'errors.unauthorized', retryable: false }) }));
   for (const width of [320, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     for (const route of ['/login', '/signup']) {

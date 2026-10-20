@@ -11,7 +11,7 @@ const copy = {
   en: { open: 'Preview', close: 'Close', download: 'Download', loading: 'Loading preview…', error: 'Could not load the preview. Try again or download the file.', none: 'This file type cannot be previewed in the browser. Download it to open.', version: 'Version' },
 };
 
-const downloadUrl = (projectId: string, fileId: string) => `/api/v1/projects/${projectId}/files/${fileId}/download`;
+const downloadUrl = (projectId: string, fileId: string) => `/v1/projects/${projectId}/files/${fileId}/download`;
 
 export function useFilePreview(url: string | null, mimeType: string) {
   const [preview, setPreview] = useState<Preview>({ status: 'loading' });

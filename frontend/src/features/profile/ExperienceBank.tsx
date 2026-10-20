@@ -70,9 +70,9 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
     <div><h2 id="experience-bank-title" className="text-lg font-semibold">{c.title}</h2><p className="text-sm text-muted-foreground">{c.hint}</p></div>
     <div role="status" aria-live="polite" className="text-sm">
       {bank.data && !bank.data.provider_configured && <p className="flex flex-wrap items-center gap-2">{gatewayHelp.isAdmin ? c.noProvider : gatewayHelp.contactText} {gatewayHelp.isAdmin && <Link className="underline" to="/app/settings?section=gateway">{c.settings}</Link>}</p>}
-      {extraction && active && <BusyNote announce={false} bar label={status === 'queued' ? c.queued : c.running} action={<Button size="sm" variant="outline" onClick={() => void act(() => apiRequest(`/projects/${projectId}/runs/${extraction.run_id}/cancel`, { method: 'POST' })).catch(() => undefined)}>{c.stop}</Button>} />}
+      {extraction && active && <BusyNote announce={false} bar label={status === 'queued' ? c.queued : c.running} action={<Button size="sm" variant="outline" onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/agent-runs/${extraction.run_id}/cancel`, { method: 'POST' })).catch(() => undefined)}>{c.stop}</Button>} />}
       {extraction?.status === 'completed' && extraction.summary && <p>{c.done(extraction.summary)}</p>}
-      {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && <p className="flex flex-wrap items-center gap-2">{c.failed}{cvForRun && <Button size="sm" variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}>{c.retry}</Button>}</p>}
+      {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && <p className="flex flex-wrap items-center gap-2">{c.failed}{cvForRun && <Button size="sm" variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}>{c.retry}</Button>}</p>}
     </div>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {bank.status === 'error' && <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{c.loadError}<Button variant="outline" onClick={bank.reload}>{c.retry}</Button></p>}
@@ -91,6 +91,6 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
       </li>)}</ul>
     </div>)}
     <FactForm c={c} initial={blank} submitLabel={c.add} onSubmit={d => act(() => sendJson(base, 'POST', toBody(d)))} />
-    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/projects/${projectId}/cvs/${cvForRun}/experience-runs`, { method: 'POST' })).catch(() => undefined)}><Sparkles className="size-4" aria-hidden="true" />{extraction ? c.extract : c.extractFirst}</Button></div>}
+    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}><Sparkles className="size-4" aria-hidden="true" />{extraction ? c.extract : c.extractFirst}</Button></div>}
   </section>;
 }
