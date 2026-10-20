@@ -134,3 +134,19 @@ def test_cancellation_cleanup_retains_claim_until_executor_records_stop(db_sessi
     assert state.tool_calls == 0
     stopped = queue.finish(submitted.id, "cleanup-worker", "cancelled", now=original_expiry + timedelta(seconds=3))
     assert stopped.status == "cancelled"
+
+
+def test_cv_skill_profile_is_claimed_before_older_queued_runs_of_the_same_project(db_session):
+    # Uploading a CV queues profile_cv and extract_experience; the CV is only usable after profile_cv.
+    factory, _, queue, actor, _, _, older = _ready(db_session)
+    with factory.begin() as db:
+        first = db.get(Run, older.id)
+        copied = {c.key: getattr(first, c.key) for c in Run.__table__.columns if c.key not in ("id", "operation", "created_at")}
+        profile = Run(**{**copied, "operation": "profile_cv", "idempotency_key": "profile-first",
+                         "actor_scope": f"user:{actor.user_id}",
+                         "created_at": first.created_at + timedelta(seconds=5)})
+        db.add(profile)
+        db.flush()
+        profile_id = profile.id
+    claimed = queue.claim_next("worker")
+    assert claimed is not None and claimed.id == profile_id

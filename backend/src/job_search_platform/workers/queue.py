@@ -51,7 +51,7 @@ class PostgresRunQueue:
             candidates = db.execute(
                 select(Run.id, Run.project_id, Run.actor_scope, Run.operation)
                 .where(Run.status == "queued")
-                .order_by(Run.created_at, Run.id)
+                .order_by(Run.operation != "profile_cv", Run.created_at, Run.id)  # a new CV becomes usable first
                 .limit(100)
             ).all()
             for run_id, project_id, scope, operation in candidates:
