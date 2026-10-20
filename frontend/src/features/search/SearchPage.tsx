@@ -38,6 +38,7 @@ type JobSearchItem = {
 type AiMatch = {
   fit_percent: number; band: 1 | 2 | 3 | 4 | 5; uncertain: boolean; seniority: 'far_below' | 'below' | 'meets' | 'above';
   hard_blocker: boolean; skills_evidenced: string[]; must_missing: string[]; nice_missing: string[];
+  evidence?: Record<string, string>; // skill -> the CV line quoting it; absent on unscored rows, {} when no CV text
 };
 type Highlight = { matched: Record<string, string>; missing: Record<string, string> };
 type AiState = { status: 'ready' | 'partial' | 'missing' | 'unavailable'; categories: string[] | null; scored: number };
@@ -76,7 +77,7 @@ const copy = {
     description: 'รายละเอียดงาน', untitled: 'ไม่ระบุบริษัท',
     modeSearch: 'ค้นหาทั่วไป', modeMatch: 'Smart match', modeLabel: 'โหมดการค้นหา',
     cvLabel: 'CV ที่ใช้จับคู่', noCv: 'ยังไม่มี CV ในโปรเจกต์นี้', noCvBody: 'เพิ่ม CV ก่อน เพื่อให้ระบบเทียบทักษะกับประกาศงานได้', addCv: 'ไปที่หน้า CV',
-    analyzing: 'เอเจนต์กำลังประมวลผล: วิเคราะห์ CV ของคุณ…', analyzeError: 'วิเคราะห์ CV ไม่สำเร็จ ลองอีกครั้ง',
+    analyzeError: 'วิเคราะห์ CV ไม่สำเร็จ ลองอีกครั้ง',
     poolNote: (n: string) => `จัดอันดับจาก ${n} ตำแหน่งล่าสุดที่ตรงกับตัวกรอง`,
     matchBadge: (p: number, m: number, n: number) => `ตรงกับ CV ${p}% · ${m}/${n} ทักษะ`, noSkills: 'ข้อมูลทักษะไม่พอ',
     matchedSkills: 'ทักษะที่ตรงกับ CV', missingSkills: 'ทักษะที่ยังขาด', noneMatched: 'ไม่มี', matchNote: 'คำนวณจากคำสำคัญในประกาศและ CV โดยไม่ใช้ AI',
@@ -84,7 +85,7 @@ const copy = {
     bands: { 5: 'เหมาะมาก', 4: 'เหมาะ', 3: 'พอได้', 2: 'น้อย', 1: 'ไม่เหมาะ' } as Record<number, string>, ats: (p: number) => `ทักษะที่พบ ${p}%`,
     unsure: 'ไม่แน่ใจ', blocker: 'ขาดคุณสมบัติบังคับ', seniorityLabel: 'ระดับประสบการณ์', seniority: { far_below: 'ต่ำกว่ามาก', below: 'ต่ำกว่าเล็กน้อย', meets: 'ตรง', above: 'สูงกว่า' } as Record<string, string>,
     evidenced: 'มีหลักฐานใน CV', mustMissing: 'ขาด (บังคับ)', niceMissing: 'ขาด (มีก็ดี)', inCv: '(มีใน CV)', notInCv: '(ขาด)',
-    ranking: (n: number, t: number) => `เอเจนต์กำลังประมวลผล: จัดอันดับงานให้ ${n}/${t}`, finding: 'เอเจนต์กำลังประมวลผล: หางานที่เหมาะกับ CV…', rankFailed: 'จัดอันดับด้วย AI ไม่สำเร็จ',
+    agentWorking: 'เอเจนต์กำลังประมวลผล', steps: { read: 'กำลังอ่าน CV ของคุณ', shortlist: 'กำลังคัดงานที่น่าสนใจ', score: (n: number, t: number) => (t ? `กำลังให้คะแนนงาน ${n} จาก ${t}` : 'กำลังให้คะแนนงาน') }, tailorCv: 'ปรับ CV ให้ตรงงานนี้', tailorCvFor: (s: string) => `ปรับ CV ให้ตรงงานนี้ เรื่อง ${s}`, quoteFrom: 'ข้อความจาก CV ของคุณ', rankFailed: 'จัดอันดับด้วย AI ไม่สำเร็จ',
     autoCats: 'หมวดที่ AI เลือกจาก CV:', unavailable: 'ตอนนี้ยังจัดอันดับด้วย AI ไม่ได้ โปรดติดต่อผู้ดูแลระบบ', toSettings: 'ไปที่การตั้งค่า',
     privacy: 'ระบบส่งเนื้อหา CV ไปยังบริการ AI เพื่อจัดอันดับ', menuLabel: 'ตัวเลือกของงานนี้', hideJob: 'ซ่อนงานนี้', hideCompany: 'ซ่อนบริษัทนี้',
     hiddenDone: 'ซ่อนแล้ว', undo: 'เลิกทำ', hideFailed: 'ซ่อนไม่สำเร็จ ลองอีกครั้ง', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง',
@@ -107,7 +108,7 @@ const copy = {
     description: 'Job description', untitled: 'Company not listed',
     modeSearch: 'Search', modeMatch: 'Smart match', modeLabel: 'Search mode',
     cvLabel: 'CV to match against', noCv: 'This project has no CV yet', noCvBody: 'Add a CV first so skills can be compared with each posting.', addCv: 'Go to the CV page',
-    analyzing: 'The agent is processing: analyzing your CV…', analyzeError: 'Could not analyze the CV. Try again.',
+    analyzeError: 'Could not analyze the CV. Try again.',
     poolNote: (n: string) => `Ranked from the ${n} latest jobs matching your filters`,
     matchBadge: (p: number, m: number, n: number) => `${p}% CV match · ${m}/${n} skills`, noSkills: 'Not enough skill data',
     matchedSkills: 'Skills matching your CV', missingSkills: 'Skills missing from your CV', noneMatched: 'None', matchNote: 'Calculated from keywords in the posting and your CV, without AI',
@@ -115,7 +116,7 @@ const copy = {
     bands: { 5: 'Great fit', 4: 'Good fit', 3: 'Fair', 2: 'Weak', 1: 'Poor fit' } as Record<number, string>, ats: (p: number) => `Skills found ${p}%`,
     unsure: 'Unsure', blocker: 'Missing a must-have', seniorityLabel: 'Seniority', seniority: { far_below: 'Well below', below: 'Slightly below', meets: 'Meets', above: 'Above' } as Record<string, string>,
     evidenced: 'Evidenced in your CV', mustMissing: 'Missing (must-have)', niceMissing: 'Missing (nice-to-have)', inCv: '(in your CV)', notInCv: '(missing)',
-    ranking: (n: number, t: number) => `The agent is processing: ranking jobs for you ${n}/${t}`, finding: 'The agent is processing: finding jobs that fit this CV…', rankFailed: 'AI ranking failed',
+    agentWorking: 'The agent is working', steps: { read: 'Reading your CV', shortlist: 'Shortlisting jobs', score: (n: number, t: number) => (t ? `Scoring jobs ${n} of ${t}` : 'Scoring jobs') }, tailorCv: 'Tailor CV for this job', tailorCvFor: (s: string) => `Tailor CV for this job, about ${s}`, quoteFrom: 'Quoted from your CV', rankFailed: 'AI ranking failed',
     autoCats: 'Categories picked from the CV:', unavailable: 'AI ranking is not available right now. Please contact your administrator.', toSettings: 'Open settings',
     privacy: 'Your CV text is sent to an AI service for ranking', menuLabel: 'Options for this job', hideJob: 'Hide this job', hideCompany: 'Hide this company',
     hiddenDone: 'Hidden', undo: 'Undo', hideFailed: 'Could not hide. Try again.', undoFailed: 'Could not restore. Try again.',
@@ -163,7 +164,7 @@ function Chips({ title, items, variant, c }: { title: string; items: string[]; v
 
 type T = (key: string, options?: Record<string, string | number>) => string;
 
-function MatchSummary({ job, c, tSearch, ranking }: { job: JobSearchItem; c: Copy; tSearch: T; ranking: boolean }) {
+function MatchSummary({ job, c, tSearch, ranking, projectId, cv }: { job: JobSearchItem; c: Copy; tSearch: T; ranking: boolean; projectId: string; cv?: { name: string } }) {
   const { match, ai_match: ai } = job;
   return <section aria-labelledby={`evidence-${job.slug}`} className="grid gap-3 rounded-lg border bg-muted/40 p-4">
     <h3 id={`evidence-${job.slug}`} className="text-sm font-semibold">{tSearch('controls.matchEvidence')}</h3>
@@ -181,8 +182,8 @@ function MatchSummary({ job, c, tSearch, ranking }: { job: JobSearchItem; c: Cop
     </div>
     {ai ? <>
       <p className="text-sm"><span className="text-muted-foreground">{c.seniorityLabel}: </span>{c.seniority[ai.seniority] ?? ai.seniority}</p>
-      <Chips title={c.evidenced} items={ai.skills_evidenced} variant="success" c={c} />
-      <Chips title={c.mustMissing} items={ai.must_missing} variant="destructive" c={c} />
+      <EvidenceList ai={ai} c={c} />
+      <MissingMust job={job} ai={ai} c={c} projectId={projectId} cv={cv} />
       <Chips title={c.niceMissing} items={ai.nice_missing} variant="outline" c={c} />
     </> : match && <>
       <Chips title={c.matchedSkills} items={match.matched} variant="success" c={c} />
@@ -190,6 +191,45 @@ function MatchSummary({ job, c, tSearch, ranking }: { job: JobSearchItem; c: Cop
     </>}
     {!ai && <p className="text-xs text-muted-foreground">{c.matchNote}</p>}
   </section>;
+}
+
+// Each skill the AI found in the CV, with the CV line that quotes it (plain text; two lines, full text on hover).
+function EvidenceList({ ai, c }: { ai: AiMatch; c: Copy }) {
+  const quoted = ai.skills_evidenced.filter(s => ai.evidence?.[s]);
+  const bare = ai.skills_evidenced.filter(s => !ai.evidence?.[s]);
+  return <div className="grid gap-2"><h4 className="text-sm font-semibold">{c.evidenced}</h4>
+    {ai.skills_evidenced.length === 0 && <span className="text-sm text-muted-foreground">{c.noneMatched}</span>}
+    {quoted.length > 0 && <ul className="grid gap-2">{quoted.map(skill => <li key={skill} className="grid min-w-0 gap-1">
+      <Badge variant="success" className="w-fit max-w-full break-words">{skill}</Badge>
+      <blockquote title={ai.evidence![skill]} aria-label={`${c.quoteFrom}: ${skill}`} className="line-clamp-2 break-words border-l-2 border-[var(--stage-search)] pl-2 text-xs leading-relaxed text-muted-foreground">{ai.evidence![skill]}</blockquote>
+    </li>)}</ul>}
+    {bare.length > 0 && <div className="flex flex-wrap gap-1.5">{bare.map(s => <Badge key={s} variant="success" className="break-words">{s}</Badge>)}</div>}
+  </div>;
+}
+
+// Must-have gaps, each with a way to act: tailoring needs an evaluation first, so the link opens the new-evaluation dialog for this job.
+function MissingMust({ job, ai, c, projectId, cv }: { job: JobSearchItem; ai: AiMatch; c: Copy; projectId: string; cv?: { name: string } }) {
+  const source = safeHttpUrl(job.source_url);
+  return <div className="grid gap-1.5"><h4 className="text-sm font-semibold">{c.mustMissing}</h4>
+    {ai.must_missing.length === 0 ? <span className="text-sm text-muted-foreground">{c.noneMatched}</span> : <ul className="flex flex-wrap gap-x-3 gap-y-1">{ai.must_missing.map(skill => <li key={skill} className="flex min-w-0 flex-wrap items-center gap-1">
+      <Badge variant="outline" className="break-words border-destructive text-destructive">{skill}</Badge>
+      <NewSessionButton projectId={projectId} cvName={cv?.name} variant="link" size="sm" aria-label={c.tailorCvFor(skill)} className="h-auto min-h-8 whitespace-normal px-1 text-left text-xs"
+        job={{ inline: { title: job.title, company: job.company, description: job.description_markdown.slice(0, 50000), source_url: source } }}>{c.tailorCv}</NewSessionButton>
+    </li>)}</ul>}
+  </div>;
+}
+
+// What the agent is doing now, derived from page state: profiling (reading) -> empty pool (shortlisting) -> scored i of N.
+function AgentSteps({ c, step, scored, total }: { c: Copy; step: 0 | 1 | 2; scored: number; total: number }) {
+  const labels = [c.steps.read, c.steps.shortlist, c.steps.score(scored, total)];
+  return <div role="status" aria-live="polite" className="grid gap-2 rounded-lg border bg-card p-4 text-sm">
+    <p className="flex items-center gap-2 font-medium"><AiSpinner size="sm" />{c.agentWorking}</p>
+    <ol className="grid gap-1.5">{labels.map((label, i) => <li key={i} aria-current={i === step ? 'step' : undefined}
+      className={`flex items-center gap-2 ${i < step ? 'text-muted-foreground' : i === step ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+      <span aria-hidden="true" className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] ${i <= step ? 'bg-[var(--stage-search)] text-card' : 'border'} ${i === step ? 'motion-safe:animate-pulse' : ''}`}>{i < step ? '✓' : i + 1}</span>
+      <span>{label}</span>
+    </li>)}</ol>
+  </div>;
 }
 
 type SavedJob = { id: string; title: string; company?: string | null; source_url?: string | null };
@@ -256,7 +296,7 @@ function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, s
         </Button>}
       </div>
     </div>
-    {scored && <MatchSummary job={job} c={c} tSearch={tSearch} ranking={ranking} />}
+    {scored && <MatchSummary job={job} c={c} tSearch={tSearch} ranking={ranking} projectId={projectId} cv={cv} />}
     <div className="flex flex-wrap gap-2">
       {job.age_days != null && <Badge variant="outline">{c.age(job.age_days)}</Badge>}
       {job.stale && <Badge variant="warning">{c.stale}</Badge>}
@@ -711,7 +751,7 @@ export function SearchPage() {
       {sample && smart && <p className="text-sm text-muted-foreground">{c.sampleMatch}</p>}
       {(sample || !waiting) && <p role="status" className="text-sm text-muted-foreground">{c.found(number.format(shownTotal))}{smartActive ? ` · ${c.poolNote(number.format(poolCount || items.length))}` : ''}</p>}
       {smartActive && ai?.status === 'unavailable' && <div className="grid gap-1 text-sm text-muted-foreground"><p className="flex flex-wrap items-center gap-x-2">{c.unavailable}</p><p className="text-xs">{tSearch('methods.keywordOnly')}</p></div>}
-      {smartActive && ranking && <div role="status" className="grid gap-1 text-sm text-muted-foreground"><span className="flex items-center gap-2"><AiSpinner size="sm" />{c.ranking(ai?.scored ?? 0, items.length)}</span><span className="text-xs">{tSearch('methods.keywordOnly')}</span></div>}
+      {smartActive && ranking && <div className="grid gap-2"><AgentSteps c={c} step={items.length === 0 ? 1 : 2} scored={ai?.scored ?? 0} total={items.length} /><span className="text-xs text-muted-foreground">{tSearch('methods.keywordOnly')}</span></div>}
       {smartActive && !ranking && ai?.status === 'partial' && <p role="status" className="text-sm text-muted-foreground">{tSearch('controls.partialRank', { scored: ai.scored, total: items.length })}</p>}
       {smartActive && poolCount > 0 && total > poolCount && <p className="text-xs text-muted-foreground">{tSearch('controls.poolLimited', { count: number.format(poolCount), total: number.format(total) })}</p>}
       {smartActive && rankFailed && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/40 p-3 text-sm text-destructive">
@@ -726,7 +766,7 @@ export function SearchPage() {
         <span className="[overflow-wrap:anywhere]">{undo.message}</span>
         {undo.retry && <Button type="button" size="sm" variant="outline" onClick={() => void unhide(undo.id)}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
       </div>}
-      {profiling ? <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><AiSpinner />{c.analyzing}</div> : waiting ? loadingList : visible.length === 0 && smartActive && ranking && !q && !category && ai?.status === 'missing' ? <div role="status" className="flex items-center gap-2 rounded-lg border p-4 text-sm"><Loader2 className="size-4 animate-spin" aria-hidden="true" />{c.finding}</div> : visible.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
+      {profiling ? <AgentSteps c={c} step={0} scored={0} total={0} /> : waiting ? loadingList : visible.length === 0 && smartActive && ranking && !q && !category && ai?.status === 'missing' ? null : visible.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
         <p className="font-medium">{c.none}</p>
         <p className="text-sm text-muted-foreground">{c.noneNext}</p>
         <Button variant="outline" size="sm" onClick={clear} disabled={!filtered}>{c.clear}</Button>

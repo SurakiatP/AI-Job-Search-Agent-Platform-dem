@@ -190,7 +190,7 @@ test('Smart match labels deterministic coverage and reports a partial AI pool', 
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   const ai = { status: 'partial', categories: null, scored: 1 };
-  const rankedItem = { ...searchItems[0], match: { score_percent: 67, matched: ['SQL', 'Python'], missing: ['Looker'], required_count: 3 }, ai_match: { fit_percent: 72, band: 4, uncertain: true, seniority: 'meets', hard_blocker: false, skills_evidenced: ['SQL'], must_missing: [], nice_missing: ['Looker'] }, highlight: { matched: { SQL: 'SQL' }, missing: {} } };
+  const rankedItem = { ...searchItems[0], match: { score_percent: 67, matched: ['SQL', 'Python'], missing: ['Looker'], required_count: 3 }, ai_match: { fit_percent: 72, band: 4, uncertain: true, seniority: 'meets', hard_blocker: false, skills_evidenced: ['SQL'], must_missing: [], nice_missing: ['Looker'], evidence: { SQL: 'Built SQL dashboards for 40 analysts' } }, highlight: { matched: { SQL: 'SQL' }, missing: {} } };
   await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'cv-data', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', revision_count: 1, in_use: false, latest_revision: { id: 'cv-rev-1', revision: 3, created_at: '2026-10-14T00:00:00Z', original_filename: 'data.pdf', mime_type: 'application/pdf', size_bytes: 12000, file_id: 'cv-file-1' } }]) }));
   await page.route(`**/v1/projects/${projectId}/job-search/match**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [rankedItem, { ...searchItems[1], slug: 'partial-unscored', match: null, ai_match: null }], total: 124, limit: 100, offset: 0, pool: 2, hidden_count: 1, ai }) }));
   await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/job\-search\/match\/runs|\/v1\/async\/projects\/${projectId}\/smart\-matches)(?:\\?.*)?$`), route => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'rank-run-1' }) }));
@@ -203,7 +203,7 @@ test('Smart match labels deterministic coverage and reports a partial AI pool', 
   await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   await page.goto(`/app/projects/${projectId}/search?mode=match`);
   await page.getByRole('button', { name: /^Start Smart match/ }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'ranking jobs for you' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Scoring jobs' })).toBeVisible();
   await expect(page.getByText('Keyword ranking is shown while AI ranking is pending or unavailable.')).toBeVisible();
   await expect(page.getByText('Rank jobs against your CV (uses AI).')).toBeVisible();
   await expect(page.getByText('Changing the CV affects new estimates only.')).toBeVisible();
@@ -242,7 +242,57 @@ test('Smart match keeps its CV profiling state visible while processing', async 
   await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
   await page.goto(`/app/projects/${projectId}/search?mode=match`);
   await page.getByRole('button', { name: /^Start Smart match/ }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'analyzing your CV' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Reading your CV' })).toBeVisible();
+});
+
+const cvList = [{ id: 'cv-data', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', revision_count: 1, in_use: false, latest_revision: { id: 'cv-rev-1', revision: 3, created_at: '2026-10-14T00:00:00Z', original_filename: 'data.pdf', mime_type: 'application/pdf', size_bytes: 12000, file_id: 'cv-file-1' } }];
+const json = (body: unknown, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body) });
+
+test('job detail quotes the CV line per skill and offers Tailor CV on missing must-haves, th and en, 1440 and 390', async ({ page }) => {
+  await useSyntheticApplication(page);
+  const long = 'Led a team that built and maintained SQL reporting pipelines feeding forty executive dashboards across finance, operations and sales every single morning before standup, ' + '<b>x</b>…';
+  const item = { ...searchItems[0], match: { score_percent: 67, matched: ['SQL'], missing: ['Looker'], required_count: 3 }, ai_match: { fit_percent: 72, band: 4, uncertain: false, seniority: 'meets', hard_blocker: true, skills_evidenced: ['SQL', 'Python'], must_missing: ['Looker'], nice_missing: [], evidence: { SQL: long } } };
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill(json(cvList)));
+  await page.route(`**/v1/projects/${projectId}/job-search/match**`, route => route.fulfill(json({ items: [item], total: 1, limit: 100, offset: 0, pool: 1, hidden_count: 0, ai: { status: 'ready', categories: null, scored: 1 } })));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill(json({ items: [], status: { email_verified: true, notifications_enabled: true } })));
+  for (const [locale, quote, tailor] of [['en', 'Quoted from your CV: SQL', 'Tailor CV for this job'], ['th', 'ข้อความจาก CV ของคุณ: SQL', 'ปรับ CV ให้ตรงงานนี้']] as const) {
+    for (const [width, height] of [[1440, 1000], [390, 844]] as const) {
+      await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+      await page.setViewportSize({ width, height });
+      await page.goto(`/app/projects/${projectId}/search?mode=match`);
+      await page.getByRole('button', { name: /^(Start Smart match|เริ่ม)/ }).click();
+      if (width < 1024) await page.getByRole('button', { name: item.title }).first().click();
+      const quoted = page.getByLabel(quote);
+      await expect(quoted).toBeVisible();
+      await expect(quoted).toHaveText(long); // markup-looking text stays plain text
+      await expect(quoted).toHaveAttribute('title', long);
+      await expect(page.getByRole('button', { name: new RegExp(tailor) }).first()).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    }
+  }
+});
+
+test('Smart match shows the agent steps as the run moves from shortlisting to scoring', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  let polls = 0;
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill(json(cvList)));
+  await page.route(`**/v1/projects/${projectId}/job-search/match**`, route => {
+    polls += 1;
+    if (polls === 1) return route.fulfill(json({ items: [], total: 0, limit: 100, offset: 0, pool: 0, hidden_count: 0, ai: { status: 'missing', categories: null, scored: 0 } }));
+    const scored = polls === 2;
+    return route.fulfill(json({ items: [searchItems[0], searchItems[1]], total: 2, limit: 100, offset: 0, pool: 2, hidden_count: 0, ai: { status: scored ? 'partial' : 'ready', categories: null, scored: scored ? 1 : 2 } }));
+  });
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/job\-search\/match\/runs|\/v1\/async\/projects\/${projectId}\/smart\-matches)(?:\\?.*)?$`), route => route.fulfill(json({ id: 'rank-run-2' }, 202)));
+  await page.route(`**/v1/projects/${projectId}/runs/rank-run-2`, route => route.fulfill(json({ id: 'rank-run-2', status: polls >= 3 ? 'completed' : 'running' })));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill(json({ items: [], status: { email_verified: true, notifications_enabled: true } })));
+  await page.goto(`/app/projects/${projectId}/search?mode=match`);
+  await page.getByRole('button', { name: /^Start Smart match/ }).click();
+  const steps = page.getByRole('status').filter({ hasText: 'The agent is working' });
+  await expect(steps).toHaveAttribute('aria-live', 'polite');
+  await expect(steps.locator('[aria-current="step"]')).toHaveText(/Shortlisting jobs/);
+  await expect(steps.locator('[aria-current="step"]')).toHaveText(/Scoring jobs 1 of 2/, { timeout: 6000 });
+  await expect(steps).toHaveCount(0, { timeout: 8000 });
 });
 
 test('capture Search workspace font-loaded evidence matrix', async ({ page }) => {
