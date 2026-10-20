@@ -138,7 +138,7 @@ test('AC-IVP-07 answer a written question, keep attempts and mark it ready', asy
   await page.getByRole('button', { name: 'Example answer' }).click();
   await expect(page.getByText('I built a 500-question test set to compare models.')).toBeVisible();
   await page.getByRole('button', { name: 'Mark ready' }).click();
-  await expect(page.getByRole('button', { name: 'Ready' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Ready', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(sheet).toContainText('1 of 4 ready');
   await page.getByRole('button', { name: 'Next question' }).click();
   await expect(page.getByRole('heading', { level: 2, name: 'Tell me about a failed project' })).toBeVisible();

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiRequest } from '../../lib/api';
-import type { ApprovalView, JobRevisionView, Locale, MessageView, RunEvent, RunOperation, RunStatus, RunView } from '../../lib/api-types';
+import { PRACTICE_OPERATIONS, type ApprovalView, type JobRevisionView, type Locale, type MessageView, type RunEvent, type RunOperation, type RunStatus, type RunView } from '../../lib/api-types';
 import { getRun, watchRun } from '../../lib/run-events';
 
 type Intent = {
@@ -56,7 +56,7 @@ export function useRun(projectId: string, sessionId: string) {
       apiRequest<ApprovalView[]>(`/projects/${encodeURIComponent(projectId)}/approvals`),
     ]);
     if (scopeRef.current !== requestedScope) return;
-    const latest = runs.find(run => run.session_id === sessionId) ?? null;
+    const latest = runs.find(run => run.session_id === sessionId && !PRACTICE_OPERATIONS.includes(run.operation)) ?? null;
     if (!intent.current && latest?.job_revision_id && lastIntent.current?.sourceRunId !== latest.id) {
       lastIntent.current = latest?.job_revision_id ? {
         signature: '',

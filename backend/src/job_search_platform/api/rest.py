@@ -22,7 +22,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
 from job_search_platform.db.models import (
-    Approval, CVRevisionText, DocumentRevision, ResumeDraft,
+    Approval, CVRevisionText, DocumentRevision, InterviewSet, ResumeDraft,
     CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
     ProjectPreference, StoredFile, Run, RunArtifact, Grant, JobMatchScore, JobSearchHidden,
     ToolConnectorConfiguration,
@@ -67,7 +67,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
         "project_not_empty": 409, "session_busy": 409, "session_not_trashed": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
-        "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409, "cv_not_trashed": 409,
+        "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409, "cv_not_trashed": 409, "practice_set_limit": 409, "practice_set_busy": 409, "session_pair_required": 409,
         "document_busy": 409, "tailor_already_applied": 409, "run_not_awaiting_input": 409, "invalid_answer": 422, "document_source_unavailable": 409,
         "apply_pack_required": 409, "approval_requires_run": 409, "approval_stale": 409, "already_applied": 409, "application_not_applied": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,
@@ -405,6 +405,7 @@ async def purge_session(project_id: UUID, session_id: UUID, actor=Depends(write_
             if parent in runs and parent not in keep:
                 keep.add(parent)
                 stack.append(parent)
+        db.execute(delete(InterviewSet).where(InterviewSet.project_id == project_id, InterviewSet.session_id == session_id))
         db.execute(delete(Message).where(Message.project_id == project_id, Message.session_id == session_id))
         if doomed := [rid for rid in runs if rid not in keep]:
             db.execute(delete(Run).where(Run.project_id == project_id, Run.id.in_(doomed)))

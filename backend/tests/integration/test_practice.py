@@ -32,7 +32,7 @@ def _q(section, prompt, *, answer=None, ids=(), points=("point",), why="because 
 
 def _create(ctx, csrf, pid, sid, sections=None, **extra):
     body = {"name": "ชุดซ้อม 1", "level": "mid",
-            "sections": sections or [{"id": "behavioral", "count": 3}, {"id": "technical", "count": 4}], **extra}
+            "sections": [{"id": "behavioral", "count": 3}, {"id": "technical", "count": 4}] if sections is None else sections, **extra}
     return ctx.client.post(f"{PREFIX}/{pid}/sessions/{sid}/practice-sets", json=body, headers=_write_headers(csrf))
 
 
@@ -85,6 +85,8 @@ def test_ac_ivp_01_and_02_generate_keeps_requested_counts_and_gates_model_answer
     assert questions[3]["key_points"] == ["HNSW is a graph index", "IVF clusters vectors"]
     listing = ctx.client.get(f"{PREFIX}/{pid}/sessions/{session['id']}/practice-sets").json()
     assert [(s["id"], s["question_count"], s["ready_count"]) for s in listing] == [(view["id"], 7, 0)]
+    runs = ctx.client.get(f"{PREFIX}/{pid}/runs")
+    assert runs.status_code == 200 and "interview_generate" in {r["operation"] for r in runs.json()}
 
 
 @pytest.mark.integration
@@ -162,13 +164,21 @@ def test_ac_ivp_07_attempts_ready_and_card_rating(api_context):
 def test_ac_ivp_10_practice_has_its_own_daily_quota(api_context, monkeypatch):
     ctx = api_context
     csrf, pid, session, facts, _ = _setup(ctx, [])
+    with ctx.sessions() as db:
+        main_runs = db.scalar(select(func.count()).select_from(Run))
+    assert main_runs >= 2  # the session's evaluation and the CV extraction
     monkeypatch.setenv("USER_DAILY_RUN_QUOTA", "0")
-    assert _create(ctx, csrf, pid, session["id"]).status_code == 201
     monkeypatch.setenv("USER_DAILY_PRACTICE_QUOTA", "1")
+    assert _create(ctx, csrf, pid, session["id"]).status_code == 201  # main runs do not count here
     refused = _create(ctx, csrf, pid, session["id"], name="second")
     assert refused.status_code == 429 and refused.json()["code"] == "quota_exceeded"
     with ctx.sessions() as db:
         assert db.scalar(select(func.count()).select_from(InterviewSet)) == 1  # nothing half-created
+    # Practice runs never use the main quota: exactly the main runs fit under it.
+    from job_search_platform.services.quota import enforce_run_gates
+    monkeypatch.setenv("USER_DAILY_RUN_QUOTA", str(main_runs + 1))
+    with ctx.sessions.begin() as db:
+        enforce_run_gates(db, UUID(pid))
 
 
 @pytest.mark.integration
@@ -230,6 +240,9 @@ def test_ivp_purging_the_session_deletes_its_sets(api_context):
     ctx.client.post(f"{PREFIX}/{pid}/practice-questions/{question_id}/attempts", json={"answer": "a"}, headers=headers)
     assert ctx.client.delete(f"{PREFIX}/{pid}/sessions/{session['id']}", headers=headers).status_code in (200, 204)
     assert ctx.client.get(f"{PREFIX}/{pid}/sessions/{session['id']}/practice-sets").status_code == 404
+    # A run that published a kept document keeps the session as a tombstone; its sets must still go.
+    from test_rest_api import _seed_completed_run, _seed_document
+    _seed_document(ctx, pid, "kept.pdf", run_id=_seed_completed_run(ctx, pid, session["id"], key="kept-doc"))
     assert ctx.client.delete(f"{PREFIX}/{pid}/sessions/{session['id']}/permanent", headers=headers).status_code == 204
     with ctx.sessions() as db:
         assert db.get(InterviewSet, UUID(view["id"])) is None

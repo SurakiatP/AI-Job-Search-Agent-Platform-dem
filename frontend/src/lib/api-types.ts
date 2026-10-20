@@ -98,7 +98,10 @@ export type ApplicationDetailView = { job_revision_id: string; title: string; co
 export type ExperienceKind = 'experience' | 'education' | 'skill' | 'certification' | 'project' | 'other';
 export type ExperienceItem = { id: string; kind: ExperienceKind; text: string; role: string | null; organization: string | null; period: string | null; source: 'cv' | 'owner'; source_cv_id: string | null; source_cv_name: string | null; created_at: string };
 export type ExperienceView = { items: ExperienceItem[]; extraction: { run_id: string; status: RunStatus; cv_id: string; summary: { added: number; duplicates: number; rejected: number } | null } | null; provider_configured: boolean };
-export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document' | 'profile_cv' | 'match_jobs' | 'extract_experience' | 'tailor_cv' | 'apply_prepare' | 'apply_submit' | 'draft_follow_up';
+export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document' | 'profile_cv' | 'match_jobs' | 'extract_experience' | 'tailor_cv' | 'apply_prepare' | 'apply_submit' | 'draft_follow_up'
+  | 'interview_generate' | 'interview_grade' | 'interview_report';
+// CR-IVP-01: practice runs belong to the practice screens, never to the session's workflow panel.
+export const PRACTICE_OPERATIONS: readonly RunOperation[] = ['interview_generate', 'interview_grade', 'interview_report'];
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'needs_input' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 export type SkillCoverage = { required: string[]; matched: string[]; missing: string[]; ratio: number; method: string };
 export type ReportMatch = 'strong' | 'partial' | 'missing' | 'not_applicable';
@@ -186,3 +189,17 @@ export type WebhookDeliveryView = { id: string; endpoint_id: string | null; even
 
 export type TelegramStatusView = { enabled: boolean; linked: boolean; bot_username: string | null; linked_at: string | null };
 export type TelegramLinkView = { url: string; expires_at: string };
+
+export type PracticeSection = 'intro' | 'behavioral' | 'situational' | 'technical' | 'cv_deep_dive' | 'gaps' | 'company' | 'logistics';
+export type PracticeLevel = 'entry' | 'mid' | 'senior';
+export type PracticeSet = {
+  id: string; session_id: string; name: string; level: PracticeLevel; sections: { id: PracticeSection; count: number }[];
+  status: 'generating' | 'ready' | 'failed'; run_id: string | null; created_at: string;
+  question_count: number; ready_count: number; known_count: number;
+};
+export type PracticeAttempt = { id: string; answer: string; feedback: unknown; created_at: string };
+export type PracticeQuestion = {
+  id: string; section: PracticeSection; position: number; prompt: string; why: string; key_points: string[];
+  model_answer: string | null; evidence_ids: string[]; ready: boolean; card_rating: 'know' | 'learning' | null; attempts: PracticeAttempt[];
+};
+export type PracticeSetDetail = PracticeSet & { reverse_questions: string[]; questions: PracticeQuestion[] };

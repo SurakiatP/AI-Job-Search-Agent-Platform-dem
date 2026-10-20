@@ -112,6 +112,17 @@ def world(api_context, monkeypatch):
         db.add(delivery)
         db.flush()
         delivery_id = delivery.id
+    from job_search_platform.db.models import InterviewQuestion, InterviewSet
+    with api_context.sessions.begin() as db:
+        practice = InterviewSet(project_id=UUID(project_id), session_id=UUID(session_id), name="Alice set", level="mid",
+                                sections=[{"id": "intro", "count": 1}], reverse_questions=[])
+        db.add(practice)
+        db.flush()
+        question = InterviewQuestion(set_id=practice.id, project_id=UUID(project_id), section="intro", position=0,
+                                     prompt="Tell me about yourself", why="opening", key_points=[], evidence_ids=[])
+        db.add(question)
+        db.flush()
+        practice_ids = {"set_id": str(practice.id), "question_id": str(question.id)}
     photo = api_context.client.post(f"{BASE}/projects/{project_id}/resume-photos", headers=_write_headers(csrf_alice),
                                     files={"file": ("me.jpg", b"\xff\xd8\xff\xe0synthetic", "image/jpeg")})
     assert photo.status_code == 201, photo.text
@@ -127,7 +138,7 @@ def world(api_context, monkeypatch):
              "job_revision_id": job_id, "document_id": str(doc.document), "revision_id": str(doc.revision),
              "file_id": str(doc.file), "run_id": str(run_id), "grant_id": alice_grant["id"], "saved_search_id": saved.json()["id"],
              "webhook_id": hook.json()["id"], "delivery_id": str(delivery_id),
-             "approval_id": str(approval_id), "item_id": item.json()["id"], "hidden_id": hidden.json()["id"], "photo_id": photo.json()["id"],
+             "approval_id": str(approval_id), "item_id": item.json()["id"], "hidden_id": hidden.json()["id"], "photo_id": photo.json()["id"], **practice_ids,
              "adapter": "career_ops"},
     )
 

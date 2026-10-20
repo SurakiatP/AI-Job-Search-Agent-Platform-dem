@@ -30,6 +30,7 @@ from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.services import applications, experience, job_sources, resume, smart_match, tailoring
 from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, fact_claims, require_evidence
 from job_search_platform.services.errors import ServiceError
+from job_search_platform.services import practice
 from job_search_platform.services.approvals import ApprovalService
 from job_search_platform.services.runs import MAX_ACTIVE_SECONDS, append_event
 from job_search_platform.workers.sandbox import RunSandbox
@@ -39,6 +40,23 @@ CLAIM_HEARTBEAT_INTERVAL_SECONDS = 1
 MAX_JEV_CALLS = 101
 JEV_CONCURRENCY = 8
 MAX_CV_TEXT = 200_000
+
+
+def _is_uuid(value: object) -> bool:
+    try:
+        uuid.UUID(str(value))
+        return isinstance(value, str)
+    except ValueError:
+        return False
+
+
+def _practice_items(raw: str) -> list[dict]:
+    """The questions list of a practice reply, or [] (parse_reply does the real validation)."""
+    try:
+        items = _native_json(raw).get("questions")
+    except (AttributeError, TypeError, ValueError):
+        return []
+    return [i for i in items if isinstance(i, dict)] if isinstance(items, list) else []
 
 
 def _native_json(value: str):
@@ -276,6 +294,9 @@ class RunExecutor:
                 return
             if run.operation == "apply_prepare":
                 await self._execute_prepare(run, lease_owner, sandbox)
+                return
+            if run.operation == "interview_generate":
+                await self._execute_practice(run, lease_owner, sandbox)
                 return
             cv_path = await self._materialize(run, sandbox)
             connector = run.config_snapshot.get("connector", {})
@@ -772,6 +793,86 @@ class RunExecutor:
             started = False
             await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "needs_input" if missing else "completed",
                                     result_payload=payload)
+        except ServiceError as exc:
+            await self._stop(run.project_id, started)
+            status = "cancelled" if exc.code == "cancellation_requested" else "failed"
+            await self._finish_after_stop(run, lease_owner, status, None if status == "cancelled" else _safe_message(exc.code))
+        except Exception:
+            await self._stop(run.project_id, started)
+            await self._finish_after_stop(run, lease_owner, "failed", "errors.execution_failed")
+
+    def _practice_inputs(self, run: Run) -> dict | None:
+        """The set's choices, the job and the session's latest evaluation report; None when the set is gone."""
+        from job_search_platform.db.models import InterviewSet, JobRevision
+
+        with self.sessions() as db:
+            row = db.get(InterviewSet, uuid.UUID(run.input_snapshot["set_id"]))
+            job = db.get(JobRevision, run.job_revision_id)
+            if row is None or job is None:
+                return None
+            result = db.scalar(select(Run.evaluation_result).where(
+                Run.project_id == run.project_id, Run.session_id == run.session_id, Run.operation == "evaluate_job",
+                Run.status == "completed").order_by(Run.created_at.desc()).limit(1))
+            return {"level": row.level, "sections": row.sections, "report": (result or {}).get("report"),
+                    "job": {"title": job.title, "company": job.company, "description": job.description}}
+
+    def _store_practice(self, run: Run, questions: list[dict], reverse: list[str]) -> None:
+        from job_search_platform.db.models import InterviewQuestion, InterviewSet
+
+        with self.sessions.begin() as db:
+            row = db.get(InterviewSet, uuid.UUID(run.input_snapshot["set_id"]), with_for_update=True)
+            if row is None:
+                return
+            row.reverse_questions = reverse
+            db.add_all(InterviewQuestion(set_id=row.id, project_id=run.project_id, position=i, ready=False, **q)
+                       for i, q in enumerate(questions))
+
+    async def _execute_practice(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
+        """CR-IVP-01: one LLM round writes the set's questions; the evidence gate drops unsupported model answers."""
+        started = False
+        try:
+            inputs = await asyncio.to_thread(self._practice_inputs, run)
+            if inputs is None:
+                raise ServiceError("not_found")
+            provider = self.gateway().provider_config()
+            text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
+            cv_path = None if text is not None else await self._materialize(run, sandbox)
+            facts = await asyncio.to_thread(self._facts, run.project_id)
+            gate_failure = asyncio.Event()
+
+            async def deny_tool(_call_id: str, _tool_name: str) -> bool:
+                try:
+                    await asyncio.to_thread(self.queue.reserve_tool_call, run.id, lease_owner)
+                except ServiceError:
+                    gate_failure.set()
+                return False  # writing questions needs no tools
+
+            project = await self.runtime.start_project(run.project_id, sandbox.workspace)
+            started = True
+            self.runtime.projects[run.project_id].tool_gate = deny_tool
+            self._record_process(run.id, lease_owner, project)
+            if text is None:
+                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+            if not text.strip():
+                raise ServiceError("cv_text_empty")
+            prompt, instructions = practice.prompt(cv_text=text, facts=facts, output_language=run.output_language, **inputs)
+            began = time.monotonic()
+            await self.runtime.submit(run.project_id, uuid.uuid5(run.id, "interview_generate"), prompt, instructions,
+                                      provider, operation="interview_generate", tool_gate=deny_tool)
+            self._public_event(run.id, "run_progress", {"step": "agent_running"})
+            raw = await self._await_result(run, lease_owner, gate_failure, began)
+            cited = [{"evidence_ids": [i for i in q.get("evidence_ids") or [] if _is_uuid(i)]}
+                     for q in _practice_items(raw)]
+            questions, reverse = practice.parse_reply(
+                raw, inputs["sections"], await asyncio.to_thread(self._fact_claims, run.project_id, cited),
+                await asyncio.to_thread(self._vocabulary, run.project_id))
+            if not questions:
+                raise ServiceError("native_response_invalid")
+            await asyncio.to_thread(self._store_practice, run, questions, reverse)
+            await self._stop(run.project_id, started)
+            started = False
+            await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed",
+                                    result_payload={"kind": "interview_set", "questions": len(questions)})
         except ServiceError as exc:
             await self._stop(run.project_id, started)
             status = "cancelled" if exc.code == "cancellation_requested" else "failed"

@@ -184,3 +184,18 @@ input, textarea { caret-color: var(--primary); }
 @layer base {
   @media (min-width: 768px) { h1 { font-size: 28px; } }
 }
+
+/* CR-IVP-01 flashcards: 3D flip, then the card slides toward the pile it was sorted into. */
+.flashcard { transition: transform 220ms var(--ease-out), opacity 220ms var(--ease-out); }
+.flashcard-inner { transform-style: preserve-3d; transition: transform 460ms var(--ease-out); }
+.flashcard[data-flipped='true'] .flashcard-inner { transform: rotateY(180deg); }
+.flashcard-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.flashcard .face-back { transform: rotateY(180deg); }
+.flashcard[data-leaving='know'] { transform: translateX(28%) rotate(4deg); opacity: 0; }
+.flashcard[data-leaving='learning'] { transform: translateX(-28%) rotate(-4deg); opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .flashcard, .flashcard-inner { transition: none; }
+  .flashcard[data-flipped='true'] .flashcard-inner, .flashcard .face-back, .flashcard[data-leaving] { transform: none; }
+  .flashcard-face { transition: opacity 150ms linear; }
+  .flashcard[data-flipped='true'] .face-front, .flashcard[data-flipped='false'] .face-back { opacity: 0; visibility: hidden; }
+}
