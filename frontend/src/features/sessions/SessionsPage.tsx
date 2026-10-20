@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Briefcase, FileText, Trash2 } from 'lucide-react';
+import { ArrowRight, Briefcase, FileText, Trash2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -56,6 +56,11 @@ export function SessionsPage() {
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const [filter, setFilter] = useState<Filter>('all');
   const [removing, setRemoving] = useState<SessionView | null>(null);
+  const [removed, setRemoved] = useState<SessionView | null>(null);
+  const [undoFailed, setUndoFailed] = useState(false);
+  async function undo(item: SessionView) {
+    try { await apiRequest(`/projects/${projectId}/sessions/${item.id}/restore`, { method: 'POST' }); setRemoved(null); reloadAll(); } catch { setUndoFailed(true); }
+  }
   const base = `/app/projects/${projectId}`;
   const list = sessions.data ?? [];
   // Without the run list we cannot tell the state, so rows fall back to a plain "Open" and filters hide.
@@ -65,7 +70,7 @@ export function SessionsPage() {
   const counts = Object.fromEntries(FILTERS.map(key => [key, key === 'all' ? rows.length : rows.filter(row => group(row.run) === key).length])) as Record<Filter, number>;
   const shown = filter === 'all' || !known ? rows : rows.filter(row => group(row.run) === filter);
   const jobVersion = (id?: string | null) => (jobs.data ?? []).find(job => job.id === id)?.revision;
-  const trashLink = trashCount > 0 && <Button asChild variant="ghost"><Link to="?view=trash"><Trash2 className="size-4" aria-hidden="true" />{s('trash.link', { n: trashCount })}</Link></Button>;
+  const trashLink = trashCount > 0 && <Button asChild variant="outline"><Link to="?view=trash"><Trash2 className="size-4" aria-hidden="true" />{s('trash.link', { n: trashCount })}</Link></Button>;
   if (inTrash) return <section className="grid min-w-0 gap-6">
     <header className="workspace-page-header"><div><h1>{s('trash.title')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{s('trash.subtitle')}</p></div></header>
     {trash.status === 'loading' && !trash.data ? <LoadingState /> : trash.status === 'error' ? <ErrorState onRetry={trash.reload} /> :
@@ -73,6 +78,13 @@ export function SessionsPage() {
   </section>;
   return <section className="grid min-w-0 gap-6">
     <header className="workspace-page-header"><div><h1>{t('nav.evaluate')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{s('list.subtitle')}</p></div><div className="flex flex-wrap items-center gap-2">{trashLink}{rows.length > 0 && <NewSessionButton projectId={projectId}>{t('workspace.newEvaluation')}</NewSessionButton>}</div></header>
+    {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2.5 text-sm">
+      <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words sm:basis-auto">{undoFailed ? s('list.undoFailed') : s('list.moved', { title: removed.job_title ?? removed.title })}</span>
+      <Button type="button" variant="ghost" size="sm" className="max-sm:ml-4" onClick={() => void undo(removed)}>{s('list.undo')}</Button>
+      <Link className="inline-flex min-h-10 items-center font-medium text-primary hover:underline" to="?view=trash">{s('list.openTrash')}</Link>
+      <Button type="button" variant="ghost" size="icon" className="max-sm:ml-auto" aria-label={s('list.dismiss')} onClick={() => setRemoved(null)}><X className="size-4" aria-hidden="true" /></Button>
+    </div>}
     {sessions.status === 'loading' && !sessions.data ? <LoadingState /> : sessions.status === 'error' ? <ErrorState onRetry={sessions.reload} /> :
     rows.length === 0 ? <div className="workspace-panel grid justify-items-start gap-3 p-6 sm:p-8"><h2 className="text-lg font-semibold">{s('list.emptyTitle')}</h2><p className="max-w-xl text-muted-foreground">{s('list.emptyBody')}</p><NewSessionButton projectId={projectId} className="mt-1">{t('workspace.newEvaluation')}</NewSessionButton></div> : <>
       {known && rows.length > 1 && <div role="group" aria-label={s('list.filters.label')} className="flex flex-wrap gap-2">
@@ -108,6 +120,6 @@ export function SessionsPage() {
       title={s('list.delete.title', { title: removing.job_title ?? removing.title })} description={s('list.delete.body')}
       errors={{ session_busy: s('list.delete.busy') }}
       onConfirm={() => apiRequest(`/projects/${projectId}/sessions/${removing.id}`, { method: 'DELETE' }).then(() => undefined)}
-      onDone={() => { setRemoving(null); reloadAll(); }} onClose={() => setRemoving(null)} />}
+      onDone={() => { setRemoved(removing); setUndoFailed(false); setRemoving(null); reloadAll(); }} onClose={() => setRemoving(null)} />}
   </section>;
 }

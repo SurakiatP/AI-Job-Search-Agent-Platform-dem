@@ -109,7 +109,12 @@
       "title": "Delete the evaluation “{{title}}”?",
       "body": "It moves to the trash; you can restore it from the trash on this page. Documents the agent made stay in Documents.",
       "busy": "The agent is still working on this evaluation. Wait for it to finish or stop it first."
-    }
+    },
+    "moved": "Moved “{{title}}” to the trash. You can restore it from the trash.",
+    "undo": "Undo",
+    "openTrash": "Open trash",
+    "dismiss": "Dismiss",
+    "undoFailed": "Could not restore. Try again from the trash."
   },
   "result": {
     "title": "Evaluation result",

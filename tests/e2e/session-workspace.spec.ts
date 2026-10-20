@@ -400,6 +400,16 @@ test('SCR-03 delete an evaluation from the list, and a busy one explains why it 
   await expect(row('Done job')).toHaveCount(0);
   await expect(row('Busy job')).toHaveCount(1);
   expect(deleted).toEqual([ids[0]]);
+  // After deleting: a notice says where it went, with undo and a link to the trash.
+  const notice = page.getByRole('status').filter({ hasText: 'Moved “Done job” to the trash' });
+  await expect(notice.getByRole('link', { name: 'Open trash' })).toHaveAttribute('href', /view=trash/);
+  await page.route(`**/api/v1/projects/${projectId}/sessions/*/restore`, route => {
+    list = [{ ...pairedSession, id: ids[0], title: 'Done job', job_title: 'Done job' }, ...list];
+    return route.fulfill(json({ ...pairedSession, id: ids[0] }));
+  });
+  await notice.getByRole('button', { name: 'Undo' }).click();
+  await expect(row('Done job')).toHaveCount(1);
+  await expect(notice).toHaveCount(0);
 });
 
 test('SCR-03 evaluation trash: restore, restore blocked by a newer pair, delete permanently, empty trash', async ({ page }) => {
