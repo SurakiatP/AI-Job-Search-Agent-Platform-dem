@@ -588,6 +588,8 @@ async def match_job_sources(
             rows = {(r.job_slug, r.content_hash): r for r in db.scalars(select(JobMatchScore).where(
                 JobMatchScore.cv_revision_id == cv_revision_id, JobMatchScore.model == model,
                 JobMatchScore.job_slug.in_([item["slug"] for item in items])))} if ai_on else {}
+            cv_text = db.scalar(select(CVRevisionText.text).where(CVRevisionText.cv_revision_id == cv_revision_id,
+                                                                  CVRevisionText.project_id == project_id)) or ""
         for item in items:
             text = smart_match.job_text(item)
             found = match_skills(cv_skills, text)
@@ -596,6 +598,8 @@ async def match_job_sources(
                 "missing": found["missing"], "required_count": len(found["required"])}
             row = rows.get((item["slug"], smart_match.content_hash(item)))
             item["ai_match"] = None if row is None else {"fit_percent": row.fit_percent, "uncertain": row.uncertain, **row.details}
+            if row:
+                item["ai_match"]["evidence"] = smart_match.evidence_lines(cv_text, item["ai_match"]["skills_evidenced"])
             matched = item["ai_match"]["skills_evidenced"] if row else (found or {}).get("matched", [])
             missing = (row.details["must_missing"] + row.details["nice_missing"]) if row else (found or {}).get("missing", [])
             item["highlight"] = smart_match.highlight_terms(text, matched, missing)

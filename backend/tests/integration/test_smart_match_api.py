@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import func, select
 
-from job_search_platform.db.models import CVRevision, JobMatchScore, Run
+from job_search_platform.db.models import CVRevision, CVRevisionText, JobMatchScore, Run
 from job_search_platform.integrations.jev import JEV_MODEL
 from job_search_platform.services import job_sources, smart_match
 from test_paired_sessions import _project, _upload  # noqa: F401
@@ -88,8 +88,16 @@ def test_ai_status_missing_partial_ready_and_stale_hash_ignored(api_context, mon
     assert body["ai"]["status"] == "partial" and body["ai"]["scored"] == 2
     assert [i["slug"] for i in body["items"][:2]] == ["b", "d"]
     first = body["items"][0]["ai_match"]
+    assert first["evidence"] == {}  # no stored CV text yet: empty, never an error
+    assert all("evidence" not in (i["ai_match"] or {}) for i in body["items"][2:])
     assert first["fit_percent"] == 80 and first["band"] == 4 and first["must_missing"] == ["SQL"] and first["nice_missing"] == ["Docker"]
     assert set(body["items"][0]["highlight"]["missing"]) == {"SQL", "Docker"}
+    cv_text = "Summary\n  Five years of Python services and APIs  \nSQL tuning"
+    with api_context.sessions.begin() as db:
+        db.merge(CVRevisionText(cv_revision_id=UUID(rev), project_id=UUID(pid), text=cv_text))
+    body = client.get(_url(pid, rev, "&q=dev")).json()
+    assert body["items"][0]["ai_match"]["evidence"] == {"Python": "Five years of Python services and APIs"}
+    assert all(line in cv_text for line in body["items"][0]["ai_match"]["evidence"].values())
     assert all(i["ai_match"] is None for i in body["items"][2:])
     for raw, fit in ((raws[0], 10), (raws[2], 20), (raws[4], 30)):
         _score(api_context, pid, rev, raw, fit)

@@ -301,8 +301,8 @@ paths:
         skill profile (keyword dictionary, no AI) and returned sorted by score descending, ties by recency,
         jobs naming fewer than two recognisable skills (match null) last. Items are job-search items plus
         match {score_percent, matched[], missing[], required_count} or null, ai_match (cached Jev score
-        {fit_percent, uncertain, band 1-5, seniority, hard_blocker, skills_evidenced[], must_missing[], nice_missing[]}
-        for the current posting text, or null) and highlight {matched, missing} (skill name to the surface string
+        {fit_percent, uncertain, band 1-5, seniority, hard_blocker, skills_evidenced[], must_missing[], nice_missing[], evidence {skill: the CV line quoting it, verbatim, ending in … when cut
+        at 160 characters; only skills found in the stored CV text; empty when none}} for the current posting text, or null) and highlight {matched, missing} (skill name to the surface string
         found in the posting; plain strings, no markup). Jobs hidden for this project (job slug or company) are
         removed. Scored items come first by fit_percent descending, then keyword order. When q and category are
         both empty and Jev is available the pool is built from the CV's stored categories; with none stored the

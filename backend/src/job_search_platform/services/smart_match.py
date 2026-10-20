@@ -140,3 +140,25 @@ def build_pool(*, q: str, cities, work_mode, posted_within_days, category, pool:
                 items.append(item)
     items.sort(key=lambda item: item["age_days"] if item["age_days"] is not None else 10**6)
     return {"items": items, "total": total}
+
+
+def evidence_lines(cv_text: str, skills: list[str], limit: int = 160) -> dict[str, str]:
+    """Skill -> the CV line (stripped) holding its first mention, verbatim. Over `limit` it is cut at a word
+    boundary and "…" appended; nothing else is ever added, so line minus "…" is always a CV substring."""
+    first = {}
+    for position, name, _ in skill_mentions(cv_text):
+        first.setdefault(name, position)
+    out = {}
+    for skill in skills:
+        if skill not in first:
+            continue
+        start = cv_text.rfind("\n", 0, first[skill]) + 1
+        end = cv_text.find("\n", first[skill])
+        line = cv_text[start:len(cv_text) if end < 0 else end].strip()
+        if len(line) > limit:
+            cut = line[:limit]
+            if not line[limit].isspace() and (space := max(cut.rfind(" "), cut.rfind("\t"))) > 0:
+                cut = cut[:space]  # ponytail: only space/tab as word boundary; Thai has none, so it hard-cuts
+            line = cut.rstrip() + "…"
+        out[skill] = line
+    return out
