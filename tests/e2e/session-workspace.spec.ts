@@ -402,7 +402,7 @@ test('SCR-03 delete an evaluation from the list, and a busy one explains why it 
   expect(deleted).toEqual([ids[0]]);
   // After deleting: a notice says where it went, with undo and a link to the trash.
   const notice = page.getByRole('status').filter({ hasText: 'Moved “Done job” to the trash' });
-  await expect(notice.getByRole('link', { name: 'Open trash' })).toHaveAttribute('href', /view=trash/);
+  await expect(notice.getByRole('link', { name: 'Open trash' })).toHaveAttribute('href', `/app/projects/${projectId}/trash`);
   await page.route(`**/api/v1/projects/${projectId}/sessions/*/restore`, route => {
     list = [{ ...pairedSession, id: ids[0], title: 'Done job', job_title: 'Done job' }, ...list];
     return route.fulfill(json({ ...pairedSession, id: ids[0] }));
@@ -436,8 +436,9 @@ test('SCR-03 evaluation trash: restore, restore blocked by a newer pair, delete 
   await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill(json([])));
   await page.route(`**/api/v1/projects/${projectId}/jobs`, route => route.fulfill(json([])));
   await page.goto(`/app/projects/${projectId}/sessions`);
-  await page.getByRole('link', { name: 'Trash (3)' }).click();
-  await expect(page).toHaveURL(/view=trash/);
+  await expect(page.getByRole('link', { name: 'Trash (3)' })).toHaveCount(0);  // one trash, in the sidebar
+  await page.goto(`/app/projects/${projectId}/sessions?view=trash`);  // old address still lands in the trash
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/trash$`));
   const row = (title: string) => page.getByRole('listitem').filter({ hasText: title });
 
   await row('Old job').getByRole('button', { name: 'Restore' }).click();
@@ -456,7 +457,7 @@ test('SCR-03 evaluation trash: restore, restore blocked by a newer pair, delete 
   await page.getByRole('dialog').getByRole('button', { name: 'Empty trash' }).click();
   await expect(page.getByText('Trash is empty.')).toBeVisible();
   expect(calls).toEqual(['POST restore a1', 'POST restore b2', 'DELETE permanent c3', 'DELETE permanent b2']);
-  await page.getByRole('link', { name: 'Back to evaluations' }).click();
+  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Evaluations', exact: true }).click();
   await expect(row('Old job')).toHaveCount(1);
 });
 

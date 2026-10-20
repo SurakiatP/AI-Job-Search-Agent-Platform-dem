@@ -43,3 +43,24 @@ test('empty trash: sidebar item has no count and the page says what lands here',
   await expect(page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Trash', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText('Trash is empty. Evaluations you delete land here and can be restored.')).toBeVisible();
 });
+
+test('evaluation and document pages have no trash buttons; old trash addresses open the project trash', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const sid = 'a1a1a1a1-0000-4000-8000-000000000000';
+  await page.route(`**/api/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([{ id: sid, project_id: projectId, title: 'Old job', job_title: 'Old job', created_at: at, trashed_at: at }])));
+  await page.route(`**/api/v1/projects/${projectId}/documents/trash`, route => route.fulfill(json([{ id: 'd1d1d1d1-0000-4000-8000-000000000000', document_type: 'cover_letter', title: 'Old letter', trashed_at: at }])));
+  await page.goto(`/app/projects/${projectId}/documents`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Documents' })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('button', { name: /Trash/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.goto(`/app/projects/${projectId}/sessions`);
+  await expect(page.getByRole('main').getByRole('link', { name: /Trash/ })).toHaveCount(0);
+
+  await page.goto(`/app/projects/${projectId}/documents?view=trash`);
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/trash\\?tab=documents$`));
+  await expect(page.getByText('Old letter')).toBeVisible();
+  await page.goto(`/app/projects/${projectId}/sessions?view=trash`);
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/trash$`));
+  await expect(page.getByText('Old job')).toBeVisible();
+});

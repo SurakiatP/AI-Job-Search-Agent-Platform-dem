@@ -33,7 +33,7 @@ export function TrashPage() {
       </TabsList>
       <TabsContent value="evaluations">
         {sessions.status === 'loading' && !sessions.data ? <LoadingState /> : sessions.status === 'error' ? <ErrorState onRetry={sessions.reload} /> :
-          <SessionTrash projectId={projectId} locale={locale} items={sessions.data ?? []} onChanged={changed(sessions.reload)} showBack={false} />}
+          <SessionTrash projectId={projectId} locale={locale} items={sessions.data ?? []} onChanged={changed(sessions.reload)} />}
       </TabsContent>
       <TabsContent value="documents">
         {documents.status === 'loading' && !documents.data ? <LoadingState /> : documents.status === 'error' ? <ErrorState onRetry={documents.reload} /> :

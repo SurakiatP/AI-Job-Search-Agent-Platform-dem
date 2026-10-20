@@ -115,7 +115,7 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
       {document.content_markdown && <Markdown className="max-h-96 overflow-auto">{document.content_markdown}</Markdown>}
       <Button asChild variant="outline" size="sm" className="justify-self-start"><Link to={`/app/projects/${projectId}/documents/${document.id}`}>{openDocument}</Link></Button>
     </article>)}
-    {trashedHere.map(document => <p key={document.id} className="text-sm text-muted-foreground" data-testid="document-in-trash">{document.title} · {inTrashText} · <Link className="text-primary hover:underline" to={`/app/projects/${projectId}/documents?view=trash`}>{openTrash}</Link></p>)}
+    {trashedHere.map(document => <p key={document.id} className="text-sm text-muted-foreground" data-testid="document-in-trash">{document.title} · {inTrashText} · <Link className="text-primary hover:underline" to={`/app/projects/${projectId}/trash?tab=documents`}>{openTrash}</Link></p>)}
     {run.result_file_ids.map((fileId, index) => <ResultFile key={fileId} deleted={deletedText}
       href={`/api/v1/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileId)}/download`}
       label={`${downloads}${run.result_file_ids.length > 1 ? ` ${index + 1}` : ''}`} />)}

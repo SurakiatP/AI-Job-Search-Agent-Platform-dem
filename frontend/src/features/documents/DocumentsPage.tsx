@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Download, File, FileUser, Info, Mail, MessageSquareText, Pencil, RotateCcw, Trash2, type LucideIcon } from 'lucide-react';
+import { Download, File, FileUser, Info, Mail, MessageSquareText, Pencil, RotateCcw, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +20,7 @@ import { ErrorState, LoadingState, MissingResource } from '../projects/PageState
 import { sendJson, useResource } from '../projects/useResource';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { DocumentDeleteMenu } from './DocumentDeleteMenu';
-import { TrashView, deletePermanently, inUseMessage, permanentDescription, permanentTitle, restoreDocument } from './TrashView';
+import { deletePermanently, inUseMessage, permanentDescription, permanentTitle, restoreDocument } from './TrashView';
 import { useFilePreview } from '../../components/CvPreview';
 import { notifyTrashChanged } from '@/lib/trash';
 
@@ -31,8 +31,8 @@ type SessionItem = Pick<SessionView, 'id' | 'title' | 'job_title' | 'job_company
 type DocType = DocumentItem['document_type'];
 
 const copy = {
-  th: { all: 'ทั้งหมด', filter: 'กรองตามประเภท', empty: 'ไม่มีเอกสารในประเภทนี้', evaluate: 'ไปที่หน้าประเมิน', back: 'กลับไปหน้าเอกสาร', type: 'ประเภท', created: 'สร้างเมื่อ', revisions: 'ประวัติฉบับ', current: 'ฉบับปัจจุบัน', metadata: 'รายละเอียด', downloadLatest: 'ดาวน์โหลดฉบับล่าสุด', requestChanges: 'ขอแก้ไข', sourceJob: 'งานต้นทาง', sourceSession: 'เซสชันต้นทาง', sessionDeleted: 'เซสชันถูกลบแล้ว', trash: 'ถังขยะ', trashed: 'ย้ายไปถังขยะแล้ว', undo: 'เลิกทำ', trashFailed: 'ย้ายไปถังขยะไม่สำเร็จ ลองอีกครั้ง', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', inTrash: 'เอกสารนี้อยู่ในถังขยะ', restore: 'กู้คืน', deleteForever: 'ลบถาวร', edit: 'แก้ไข', editTab: 'แก้ไข', previewTab: 'ดูตัวอย่าง', save: 'บันทึก', cancel: 'ยกเลิก', discard: 'ทิ้งการแก้ไขที่ยังไม่บันทึกหรือไม่?', generating: 'กำลังสร้างไฟล์…', manual: 'แก้เอง', ai: 'AI', editor: 'แก้ไขเอกสาร', retry: 'ลองบันทึกอีกครั้ง', exportFailed: 'สร้างไฟล์ไม่สำเร็จ', saveFailed: 'บันทึกไม่สำเร็จ ลองอีกครั้ง', busyDoc: 'มีงานของเอกสารนี้กำลังทำอยู่ ลองใหม่ภายหลัง', restoreVersion: 'กู้คืนเวอร์ชันนี้', restoring: 'กำลังกู้คืน…', restored: 'กู้คืนแล้ว เวอร์ชันใหม่ถูกสร้างขึ้น', restoreFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', promote: 'ใช้เป็น CV หลัก', promoteSent: 'ตั้งเอกสารนี้เป็น CV ของคุณแล้ว', promoteFailed: 'ตั้งเป็น CV ไม่สำเร็จ ลองอีกครั้ง', promoteAsk: 'ใช้ฉบับนี้แทน CV ปัจจุบัน?', promoteConfirm: 'ยืนยัน', promoteCancel: 'ยกเลิก', openApprovals: 'เปิดกล่องคำขออนุมัติ', noSource: 'เอกสารนี้ยังไม่มีต้นฉบับสำหรับสร้างไฟล์ ไม่สามารถบันทึกการแก้ไขได้', queueFull: 'คิวงานเต็ม ลองใหม่ภายหลัง', tooLong: 'เนื้อหายาวเกินไปหรือว่างเปล่า' },
-  en: { all: 'All', filter: 'Filter by type', empty: 'No documents of this type', evaluate: 'Go to Evaluate', back: 'Back to documents', type: 'Type', created: 'Created', revisions: 'Revisions', current: 'Current', metadata: 'Details', downloadLatest: 'Download latest', requestChanges: 'Request changes', sourceJob: 'Source job', sourceSession: 'Source session', sessionDeleted: 'Session deleted', trash: 'Trash', trashed: 'Moved to trash', undo: 'Undo', trashFailed: 'Could not move to trash. Try again.', undoFailed: 'Could not restore. Try again.', inTrash: 'This document is in the trash', restore: 'Restore', deleteForever: 'Delete permanently', edit: 'Edit', editTab: 'Edit', previewTab: 'Preview', save: 'Save', cancel: 'Cancel', discard: 'Discard unsaved changes?', generating: 'Generating file…', manual: 'Edited by you', ai: 'AI', editor: 'Edit document', retry: 'Try saving again', exportFailed: 'Could not generate the file', saveFailed: 'Could not save. Try again.', busyDoc: 'A task for this document is running. Try again later.', restoreVersion: 'Restore this version', restoring: 'Restoring…', restored: 'Restored. A new version was created.', restoreFailed: 'Could not restore. Try again.', promote: 'Use as my CV', promoteSent: 'This document is now your CV.', promoteFailed: 'Could not set it as your CV. Try again.', promoteAsk: 'Replace your current CV with this version?', promoteConfirm: 'Confirm', promoteCancel: 'Cancel', openApprovals: 'Open the approval inbox', noSource: 'This document has no source to build a file from, so edits cannot be saved.', queueFull: 'The job queue is full. Try again later.', tooLong: 'The content is empty or too long' },
+  th: { openTrash: 'เปิดถังขยะ', all: 'ทั้งหมด', filter: 'กรองตามประเภท', empty: 'ไม่มีเอกสารในประเภทนี้', evaluate: 'ไปที่หน้าประเมิน', back: 'กลับไปหน้าเอกสาร', type: 'ประเภท', created: 'สร้างเมื่อ', revisions: 'ประวัติฉบับ', current: 'ฉบับปัจจุบัน', metadata: 'รายละเอียด', downloadLatest: 'ดาวน์โหลดฉบับล่าสุด', requestChanges: 'ขอแก้ไข', sourceJob: 'งานต้นทาง', sourceSession: 'เซสชันต้นทาง', sessionDeleted: 'เซสชันถูกลบแล้ว', trash: 'ถังขยะ', trashed: 'ย้ายไปถังขยะแล้ว', undo: 'เลิกทำ', trashFailed: 'ย้ายไปถังขยะไม่สำเร็จ ลองอีกครั้ง', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', inTrash: 'เอกสารนี้อยู่ในถังขยะ', restore: 'กู้คืน', deleteForever: 'ลบถาวร', edit: 'แก้ไข', editTab: 'แก้ไข', previewTab: 'ดูตัวอย่าง', save: 'บันทึก', cancel: 'ยกเลิก', discard: 'ทิ้งการแก้ไขที่ยังไม่บันทึกหรือไม่?', generating: 'กำลังสร้างไฟล์…', manual: 'แก้เอง', ai: 'AI', editor: 'แก้ไขเอกสาร', retry: 'ลองบันทึกอีกครั้ง', exportFailed: 'สร้างไฟล์ไม่สำเร็จ', saveFailed: 'บันทึกไม่สำเร็จ ลองอีกครั้ง', busyDoc: 'มีงานของเอกสารนี้กำลังทำอยู่ ลองใหม่ภายหลัง', restoreVersion: 'กู้คืนเวอร์ชันนี้', restoring: 'กำลังกู้คืน…', restored: 'กู้คืนแล้ว เวอร์ชันใหม่ถูกสร้างขึ้น', restoreFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', promote: 'ใช้เป็น CV หลัก', promoteSent: 'ตั้งเอกสารนี้เป็น CV ของคุณแล้ว', promoteFailed: 'ตั้งเป็น CV ไม่สำเร็จ ลองอีกครั้ง', promoteAsk: 'ใช้ฉบับนี้แทน CV ปัจจุบัน?', promoteConfirm: 'ยืนยัน', promoteCancel: 'ยกเลิก', openApprovals: 'เปิดกล่องคำขออนุมัติ', noSource: 'เอกสารนี้ยังไม่มีต้นฉบับสำหรับสร้างไฟล์ ไม่สามารถบันทึกการแก้ไขได้', queueFull: 'คิวงานเต็ม ลองใหม่ภายหลัง', tooLong: 'เนื้อหายาวเกินไปหรือว่างเปล่า' },
+  en: { openTrash: 'Open trash', all: 'All', filter: 'Filter by type', empty: 'No documents of this type', evaluate: 'Go to Evaluate', back: 'Back to documents', type: 'Type', created: 'Created', revisions: 'Revisions', current: 'Current', metadata: 'Details', downloadLatest: 'Download latest', requestChanges: 'Request changes', sourceJob: 'Source job', sourceSession: 'Source session', sessionDeleted: 'Session deleted', trash: 'Trash', trashed: 'Moved to trash', undo: 'Undo', trashFailed: 'Could not move to trash. Try again.', undoFailed: 'Could not restore. Try again.', inTrash: 'This document is in the trash', restore: 'Restore', deleteForever: 'Delete permanently', edit: 'Edit', editTab: 'Edit', previewTab: 'Preview', save: 'Save', cancel: 'Cancel', discard: 'Discard unsaved changes?', generating: 'Generating file…', manual: 'Edited by you', ai: 'AI', editor: 'Edit document', retry: 'Try saving again', exportFailed: 'Could not generate the file', saveFailed: 'Could not save. Try again.', busyDoc: 'A task for this document is running. Try again later.', restoreVersion: 'Restore this version', restoring: 'Restoring…', restored: 'Restored. A new version was created.', restoreFailed: 'Could not restore. Try again.', promote: 'Use as my CV', promoteSent: 'This document is now your CV.', promoteFailed: 'Could not set it as your CV. Try again.', promoteAsk: 'Replace your current CV with this version?', promoteConfirm: 'Confirm', promoteCancel: 'Cancel', openApprovals: 'Open the approval inbox', noSource: 'This document has no source to build a file from, so edits cannot be saved.', queueFull: 'The job queue is full. Try again later.', tooLong: 'The content is empty or too long' },
 };
 
 const ROW_GRID = 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_6rem_9rem_9rem]';
@@ -107,12 +107,11 @@ export function DocumentsPage() {
   const { projectId = '' } = useParams();
   const base = `/app/projects/${projectId}`;
   const [filter, setFilter] = useState<DocType | 'all'>('all');
-  const [params, setParams] = useSearchParams();
-  const inTrashView = params.get('view') === 'trash';
+  // The project trash lives in the sidebar; the old `?view=trash` address goes to its documents tab.
+  const inTrashView = useSearchParams()[0].get('view') === 'trash';
   const initialTrashed = (useLocation().state as { trashed?: string } | null)?.trashed;
   const [undo, setUndo] = useState<{ id: string; message: string } | null>(initialTrashed ? { id: initialTrashed, message: c.trashed } : null);
   const result = useResource<DocumentItem[]>(`/projects/${projectId}/documents`);
-  const trash = useResource<DocumentItem[]>(`/projects/${projectId}/documents/trash`);
   const sessions = useResource<SessionItem[]>(`/projects/${projectId}/sessions`);
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
   const w = (key: string, options?: Record<string, unknown>) => t(`documents.${key}`, { ns: 'materialsWorkspace', ...options });
@@ -121,16 +120,16 @@ export function DocumentsPage() {
     const timer = window.setTimeout(() => setUndo(null), 8000);
     return () => window.clearTimeout(timer);
   }, [undo]);
-  if (result.status === 'loading' || trash.status === 'loading' && trash.data === undefined) return <LoadingState />;
+  if (inTrashView) return <Navigate to={`${base}/trash?tab=documents`} replace />;
+  if (result.status === 'loading') return <LoadingState />;
   if (result.status === 'error') return <ErrorState onRetry={result.reload} />;
   const documents = result.data ?? [];
-  const trashed = trash.data ?? [];
-  const reloadAll = () => { result.reload(); trash.reload(); notifyTrashChanged(); };
+  const reloadAll = () => { result.reload(); notifyTrashChanged(); };
   const sessionFor = (document: DocumentItem) => { const id = runs.data?.find(run => run.id === document.source_run_id)?.session_id; return id ? sessions.data?.find(item => item.id === id) : undefined; };
   const evaluateHref = sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : `${base}/sessions`;
   const title = t('pages.documentsTitle', { defaultValue: 'Documents' });
   // Same header block and rhythm as the populated page; the empty message sits in a card under it.
-  if (!documents.length && !trashed.length) return <section className="grid gap-6">
+  if (!documents.length && !undo) return <section className="grid gap-6">
     <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
     <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{title}</h1><p className="text-sm text-muted-foreground">{w('subtitle')}</p></div>
     <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-4 sm:p-5">
@@ -142,7 +141,6 @@ export function DocumentsPage() {
   const chips: [DocType | 'all', string][] = [['all', c.all], ['cv', documentTypeLabel('cv', t)], ['cover_letter', documentTypeLabel('cover_letter', t)], ['application_message', documentTypeLabel('application_message', t)], ['other', documentTypeLabel('other', t)]];
   const visible = filter === 'all' ? documents : documents.filter(document => document.document_type === filter);
   const chipClass = (active: boolean) => cn('min-h-10 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring', active && 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90');
-  const showView = (trashView: boolean) => setParams(trashView ? { view: 'trash' } : {}, { replace: true });
   async function undoTrash() {
     if (!undo) return;
     try { await restoreDocument(projectId, undo.id); setUndo(null); reloadAll(); } catch { setUndo({ id: undo.id, message: c.undoFailed }); }
@@ -152,13 +150,14 @@ export function DocumentsPage() {
     <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{title}</h1><p className="text-sm text-muted-foreground">{w('subtitle')}</p></div>
     {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-4 py-2 text-sm">
       <span>{undo.message}</span>
-      {undo.id && <Button type="button" size="sm" variant="outline" onClick={() => { void undoTrash(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
+      <span className="flex flex-wrap items-center gap-2">
+        {undo.id && <Button type="button" size="sm" variant="outline" onClick={() => { void undoTrash(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
+        <Link className="inline-flex min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=documents`}>{c.openTrash}</Link>
+      </span>
     </div>}
-    <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <button key={value} type="button" aria-pressed={!inTrashView && filter === value}
-      className={chipClass(!inTrashView && filter === value)} onClick={() => { setFilter(value); showView(false); }}>{label}</button>)}
-      <button type="button" aria-pressed={inTrashView} className={cn(chipClass(inTrashView), 'inline-flex items-center gap-1.5')} onClick={() => showView(true)}><Trash2 className="size-4" aria-hidden="true" />{c.trash} ({trashed.length})</button></div>
-    {inTrashView ? <TrashView projectId={projectId} items={trashed} typeLabel={type => documentTypeLabel(type, t)} onChanged={reloadAll} /> :
-    visible.length === 0 ? <p className="text-sm text-muted-foreground">{w('emptyFilter')}</p> :
+    <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <button key={value} type="button" aria-pressed={filter === value}
+      className={chipClass(filter === value)} onClick={() => setFilter(value)}>{label}</button>)}</div>
+    {visible.length === 0 ? <p className="text-sm text-muted-foreground">{w('emptyFilter')}</p> :
       <div className="rounded-lg border bg-card">
         <div aria-hidden="true" className={cn('hidden gap-4 border-b px-5 py-3 text-sm font-medium text-muted-foreground lg:grid', ROW_GRID)}><span>{w('colDocument')}</span><span>{w('colJob')}</span><span>{w('colVersion')}</span><span>{w('colStatus')}</span><span className="text-end">{w('colActions')}</span></div>
         <ul aria-label={title} className="divide-y">{visible.map(document => {
@@ -278,7 +277,7 @@ export function DocumentDetailPage() {
     </div>}
     {confirmDelete && <ConfirmDeleteDialog confirmLabel={c.deleteForever} title={permanentTitle(locale === 'th', document.title)} description={permanentDescription(locale === 'th')}
       errors={{ document_in_use: inUseMessage(locale === 'th', projectId) }} onConfirm={() => deletePermanently(projectId, documentId)}
-      onDone={() => navigate(`${base}/documents?view=trash`)} onClose={() => setConfirmDelete(false)} />}
+      onDone={() => navigate(`${base}/trash?tab=documents`)} onClose={() => setConfirmDelete(false)} />}
     <div className="flex items-start gap-3"><Icon className="mt-1.5 size-5 shrink-0 text-primary" aria-hidden="true" />
       <div className="grid min-w-0 gap-2"><h1 className="break-words text-2xl font-semibold">{document.title}</h1>{document.source_run_id && <div data-testid="ai-document"><AiLabel check /></div>}</div></div>
     {editing && canEdit ? <DocumentEditor c={c} projectId={projectId} documentId={documentId} initial={preview} onClose={stopEditing} onSaved={() => { setPickedId(''); stopEditing(); docs.reload(); revisions.reload(); }} /> :
