@@ -32,3 +32,6 @@ htmlcov/
 /DESIGN.md
 __pycache__/
 *.pyc
+
+# Smart-match eval cache
+.cache/
