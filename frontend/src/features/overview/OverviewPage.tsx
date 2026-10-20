@@ -16,6 +16,7 @@ import { useResource } from '../projects/useResource';
 import { JobRemoveMenu } from '../jobs/JobRemoveMenu';
 import { useOverviewCopy } from './copy';
 import { GettingStarted, HelpPanel } from './GettingStarted';
+import { JourneyStrip } from './JourneyStrip';
 import { latestEvaluations } from './latestEvaluations';
 import { AiLabel } from '@/components/AiMark';
 
@@ -104,6 +105,8 @@ export function OverviewPage() {
       <div className="min-w-0"><h1>{project.data?.name ?? t('nav.overview')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{firstRun ? c.subtitleFirst : t('workspace.overviewSubtitle')}</p></div>
       {!firstRun && <Button asChild variant="outline"><Link to={`${base}/search`}><Search size={17} aria-hidden="true" />{t('workspace.findJobs')}</Link></Button>}
     </header>
+
+    <JourneyStrip base={base} />
 
     {(hasAttention || approvals.status === 'error') && <section aria-labelledby="attention-heading" className="rounded-xl border border-warning/40 bg-card p-5 sm:p-6">
       <div className="mb-3 flex items-center gap-3"><ListChecks size={21} className="text-warning" aria-hidden="true" /><h2 id="attention-heading" className="text-lg font-semibold">{t('workspace.attention')}</h2>{hasAttention && <Badge variant="warning">{attention.length + unmatchedApprovals.length}</Badge>}</div>

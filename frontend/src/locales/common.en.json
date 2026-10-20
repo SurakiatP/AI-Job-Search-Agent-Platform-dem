@@ -246,6 +246,7 @@
     "projectSetup": "Create the project first, then add a CV. Evaluations begin only after you select a CV revision and a job.",
     "creationUncertain": "We could not confirm creation. The project may have been saved. Check your projects before trying again to avoid duplicates.",
     "overviewSubtitle": "Your next actions, current opportunities and the material behind them.",
+    "journey": "Job-search journey",
     "startCv": "Start with your CV",
     "startCvBody": "Add a CV to evaluate opportunities and prepare application documents. You can browse jobs first.",
     "findJobs": "Find jobs",

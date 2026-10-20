@@ -12,7 +12,7 @@
 
 :root {
   --radius: 0.75rem;
-  --shadow-xs: 0 1px 2px rgb(23 35 59 / 0.04);
+  --shadow-xs: 0 1px 2px rgb(27 37 80 / 0.06), 0 2px 8px -2px rgb(27 37 80 / 0.06);
   --background: #F3F4EF;
   --foreground: #1B2550;
   --card: #FFFFFF;
@@ -170,7 +170,7 @@ main[data-stage] h1::before { content: ''; display: block; width: 36px; height: 
 
 @layer components {
   .muted { color: var(--muted-foreground); }
-  .landing-headline { font-family: var(--font-serif); font-size: clamp(27px, 4vw, 42px); line-height: 1.5; font-weight: 500; }
+  .landing-headline { font-family: var(--font-display); font-size: clamp(27px, 4vw, 42px); line-height: 1.4; font-weight: 600; letter-spacing: -0.015em; }
   .chat-text { line-height: 1.9; }
   .document-english { font-family: var(--font-document); font-size: 16px; line-height: 1.9; }
 
@@ -206,7 +206,7 @@ main[data-stage] h1::before { content: ''; display: block; width: 36px; height: 
 .workspace-page-header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .workspace-page-header > :first-child { min-width: 0; }
 .workspace-page-header > button, .workspace-page-header > a { flex-shrink: 0; }
-.workspace-panel { min-width: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--card-foreground); overflow-wrap: anywhere; }
+.workspace-panel { box-shadow: var(--shadow-xs); min-width: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--card-foreground); overflow-wrap: anywhere; }
 ::selection { background: color-mix(in srgb, var(--primary) 22%, transparent); color: var(--foreground); }
 input, textarea { caret-color: var(--primary); }
 * { scrollbar-color: color-mix(in srgb, var(--muted-foreground) 45%, var(--background)) var(--background); scrollbar-width: thin; }
