@@ -17,6 +17,7 @@ import { JobRemoveMenu } from '../jobs/JobRemoveMenu';
 import { useOverviewCopy } from './copy';
 import { GettingStarted, HelpPanel } from './GettingStarted';
 import { latestEvaluations } from './latestEvaluations';
+import { AiLabel } from '@/components/AiMark';
 
 function ResourcePanel({ resource, children }: { resource: { status: string; reload: () => void; data?: unknown }; children: ReactNode }) {
   const { t } = useTranslation();
@@ -134,7 +135,7 @@ export function OverviewPage() {
               return <li key={run.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 p-5" to={runHref(run)}>
                 <div className="min-w-0"><span className="break-words font-semibold">{job?.title ?? pair?.job_title ?? t(`workspace.operations.${run.operation}`)}</span>
                   <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-muted-foreground">{job?.company && <span>{job.company}</span>}{pair?.cv_name && pair.cv_revision != null && <span>{c.usedCv(pair.cv_name, pair.cv_revision)}</span>}<SkillCount coverage={run.evaluation_result?.skill_coverage} locale={locale} /></p></div>
-                <span className="flex items-center gap-3"><FitScore score={run.evaluation_result?.score ?? null} locale={locale} /><ArrowRight size={17} aria-hidden="true" /></span>
+                <span className="flex items-center gap-3">{run.evaluation_result?.score != null && <AiLabel className="max-sm:hidden" />}<FitScore score={run.evaluation_result?.score ?? null} locale={locale} /><ArrowRight size={17} aria-hidden="true" /></span>
               </Link></li>;
             })}</ul>}</ResourcePanel>
         </Section>

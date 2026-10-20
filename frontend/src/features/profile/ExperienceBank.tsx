@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { apiRequest } from '../../lib/api';
 import { ApiError, type ExperienceItem, type ExperienceKind, type ExperienceView } from '../../lib/api-types';
 import { sendJson, type useResource } from '../projects/useResource';
+import { AiLabel } from '@/components/AiMark';
 
 const KINDS: ExperienceKind[] = ['experience', 'education', 'skill', 'certification', 'project', 'other'];
 const copy = {
@@ -83,7 +84,7 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
           ? <FactForm c={c} submitLabel={c.save} onCancel={() => setEditing(null)} initial={{ kind: item.kind, text: item.text, role: item.role ?? '', organization: item.organization ?? '', period: item.period ?? '' }}
               onSubmit={d => act(() => sendJson(`${base}/${item.id}`, 'PUT', toBody(d))).then(() => setEditing(null))} />
           : <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0"><p className="break-words [overflow-wrap:anywhere]">{item.text}</p><p className="text-xs text-muted-foreground">{c.kinds[item.kind]} · {item.source_cv_name ? c.fromCv(item.source_cv_name) : c.mine}</p></div>
+              <div className="min-w-0"><p className="break-words [overflow-wrap:anywhere]">{item.text}</p><p className="text-xs text-muted-foreground">{c.kinds[item.kind]} · {item.source_cv_name ? c.fromCv(item.source_cv_name) : c.mine}</p>{item.source === 'cv' && <AiLabel kind="extracted" className="mt-1.5" />}</div>
               <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => setEditing(item.id)} aria-label={`${c.edit}: ${item.text}`}>{c.edit}</Button>
                 <Button size="sm" variant="ghost" className="text-destructive" aria-label={`${c.remove}: ${item.text}`} onClick={() => void act(() => apiRequest(`${base}/${item.id}`, { method: 'DELETE' })).catch(() => undefined)}>{c.remove}</Button></div>
             </div>}

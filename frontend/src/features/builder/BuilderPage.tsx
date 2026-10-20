@@ -14,6 +14,7 @@ import { BusyNote } from '../../components/BusyNote';
 import { ACCENTS, FIELDS, PERSONAL_KEYS, emptyItem, normalize, type Draft, type Field, type Item, type Lang, type ListSection, type ResumeData, type SectionName, type TemplateId } from './sections';
 import { useResource } from '../projects/useResource';
 import { copy } from './copy';
+import { AiLabel } from '@/components/AiMark';
 
 type Kind = 'cv' | 'document';
 type SaveState = 'saved' | 'saving' | 'dirty' | 'offline' | 'conflict' | 'invalid';
@@ -160,6 +161,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
         <NameEditor key={draft.name ?? ''} c={c} label={kind === 'cv' ? c.cvName : c.docName} initial={draft.name ?? ''}
           url={kind === 'cv' ? `/projects/${projectId}/cvs/${ownerId}` : `/projects/${projectId}/documents/${ownerId}`}
           field={kind === 'cv' ? 'name' : 'title'} max={kind === 'cv' ? 120 : 300} />
+        {kind === 'document' && <AiLabel check className="w-fit" />}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <span role="status" className={`text-sm ${save === 'saved' ? 'text-muted-foreground' : save === 'saving' || save === 'dirty' ? 'text-muted-foreground' : 'text-destructive'}`}>{status}</span>

@@ -302,5 +302,10 @@
     "projectsIntro": "Choose a workspace to continue, or start a separate search with its own CVs and application history.",
     "accessIntro": "Keep your CVs, opportunities and application preparation together in a project workspace.",
     "providerUnavailable": "AI is unavailable because the gateway is not configured. Open AI gateway settings to check the connection."
+  },
+  "ai": {
+    "made": "Made by AI",
+    "extracted": "Extracted by AI",
+    "check": "Check before use"
   }
 }

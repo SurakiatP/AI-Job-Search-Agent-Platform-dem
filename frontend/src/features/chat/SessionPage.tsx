@@ -22,6 +22,7 @@ import { useRun } from './useRun';
 import { RunTimeline } from './RunTimeline';
 import { RelatedDocuments, RunResults } from './RunResults';
 import { ReportListCard } from './EvaluationReportView';
+import { AiLabel } from '@/components/AiMark';
 import { WorkflowPanel, type PrimaryAction } from './WorkflowPanel';
 import { SkillAdvice } from './SkillAdvice';
 import { TailorCard } from './TailorCard';
@@ -59,7 +60,7 @@ function DocCard({ c, base, projectId, doc, busy, onRevise }: { c: typeof copy.e
   const revisions = useResource<{ revision: number; content_markdown?: string | null }[]>(`/projects/${projectId}/documents/${doc.id}/revisions`);
   const content = doc.content_markdown ?? [...(revisions.data ?? [])].sort((a, b) => b.revision - a.revision)[0]?.content_markdown ?? null;
   return <Card><CardContent className="grid gap-3 p-4">
-    <h3 className="min-w-0 break-words font-semibold">{doc.title}{doc.latest_revision ? <span className="ms-2 text-sm font-normal text-muted-foreground">{c.version} {doc.latest_revision.revision}</span> : null}</h3>
+    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="min-w-0 break-words font-semibold">{doc.title}{doc.latest_revision ? <span className="ms-2 text-sm font-normal text-muted-foreground">{c.version} {doc.latest_revision.revision}</span> : null}</h3>{doc.source_run_id && <AiLabel check />}</div>
     {content && <Link to={`${base}/documents/${doc.id}`} className="relative block max-h-28 overflow-hidden rounded-md text-foreground no-underline" title={c.open}>
       <div ref={ref}><Markdown>{content}</Markdown></div><div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" aria-hidden="true" /></Link>}
     <div className="flex flex-wrap items-center gap-2">

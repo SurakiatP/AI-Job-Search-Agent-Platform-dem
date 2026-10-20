@@ -3,6 +3,7 @@ import { useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Minus, PenLine, TriangleAlert, X, MessageCircleQuestion } from 'lucide-react';
 import type { EvaluationReport, ReportMatch } from '../../lib/api-types';
+import { AiLabel } from '@/components/AiMark';
 
 const ORDER: ReportMatch[] = ['strong', 'partial', 'missing', 'not_applicable'];
 const IMPORTANCE = { critical: 0, high: 1, meaningful: 2, preferred: 3, low_signal: 4 } as const;
@@ -72,7 +73,10 @@ export function ReportListCard({ kind, items }: { kind: 'interview' | 'cvChanges
   const Icon = kind === 'interview' ? MessageCircleQuestion : PenLine;
   return <section aria-labelledby={id} className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5">
     <div className="grid gap-1">
-      <h2 id={id} className="flex items-center gap-2 text-lg font-semibold"><Icon className="size-5 shrink-0 text-primary" aria-hidden="true" />{t(`report.${kind}`)}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id={id} className="flex items-center gap-2 text-lg font-semibold"><Icon className="size-5 shrink-0 text-primary" aria-hidden="true" />{t(`report.${kind}`)}</h2>
+        <AiLabel />
+      </div>
       <p className="text-sm text-muted-foreground">{t(`report.${kind}Hint`)}</p>
     </div>
     <ol className="grid max-w-[75ch] gap-2.5">
@@ -87,8 +91,9 @@ export function ReportListCard({ kind, items }: { kind: 'interview' | 'cvChanges
 export function EvaluationReportView({ report }: { report: EvaluationReport }) {
   const { t } = useTranslation('sessionWorkspace');
   const icon = 'size-4 shrink-0';
-  return <div className="grid gap-6">
-    <div className="grid max-w-[70ch] gap-1">
+  return <div className="grid gap-6" data-testid="ai-report">
+    <div className="grid max-w-[70ch] gap-1.5">
+      <AiLabel />
       <p className="text-lg font-semibold leading-snug [text-wrap:balance]">{report.verdict}</p>
       <p className="text-muted-foreground">{report.summary}</p>
     </div>

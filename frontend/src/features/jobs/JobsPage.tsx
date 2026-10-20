@@ -24,6 +24,7 @@ import { ApplicationPanel } from '../applications/ApplicationPanel';
 import { JobRemoveMenu } from './JobRemoveMenu';
 import { NewSessionButton } from '../sessions/NewSessionDialog';
 import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
+import { AiLabel } from '@/components/AiMark';
 
 export function JobsPage() {
   const { t } = useTranslation();
@@ -188,7 +189,7 @@ export function JobDetailPage() {
         </div>
         {evaluation.evaluation_result.skill_coverage && <SkillsFound coverage={evaluation.evaluation_result.skill_coverage} />}
         <details open>
-          <summary className="min-h-10 cursor-pointer content-center font-medium">{t('latestEvaluation')}</summary>
+          <summary className="min-h-10 cursor-pointer content-center font-medium"><span className="inline-flex flex-wrap items-center gap-2">{t('latestEvaluation')}<AiLabel /></span></summary>
           <Markdown className="mt-2" data-testid="evaluation-report">{evaluation.evaluation_result.report_markdown}</Markdown>
         </details>
       </> : <div className="flex flex-col items-start gap-2">
