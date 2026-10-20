@@ -1075,6 +1075,44 @@ paths:
       responses:
         '201': {description: Saved attempt}
         '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/practice-sets:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [sessions]
+      description: Owner-only list of every live practice set in the project's live sessions, newest first, with job_title and job_company (FR-IVP-19).
+      responses:
+        '200': {description: Practice sets}
+  /projects/{project_id}/practice-attempts/{attempt_id}/feedback:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: attempt_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Queues one interview_grade run for a saved answer: five 1-5 scores (structure, relevance, evidence,
+        clarity, company_fit), STAR spans inside the answer, what to add and unused bank facts; a flashcard answer gets
+        a correctness verdict instead. Idempotent while pending or done; asks again after a failure. Logistics
+        questions are not graded (409 practice_not_gradable). Uses the practice quota.
+      responses:
+        '202': {description: Attempt with feedback status pending (or the existing feedback)}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: practice_not_gradable, queue_full or gateway_unconfigured}
+        '429': {description: quota_exceeded}
+  /projects/{project_id}/practice-sets/{set_id}/report:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: set_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Queues one interview_report run: strengths, skills to build, a preparation plan of topics and
+        readiness per section in words. No links, percentages or hiring chances. Replaces the last report unless one
+        is still pending. Uses the practice quota.
+      responses:
+        '202': {description: Set with report status pending}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: practice_set_busy (questions not ready), queue_full or gateway_unconfigured}
+        '429': {description: quota_exceeded}
   /resume-templates:
     get:
       tags: [files]

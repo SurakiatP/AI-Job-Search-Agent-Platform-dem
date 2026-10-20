@@ -24,7 +24,8 @@
     "cv": "CV & experience",
     "allProjects": "All projects",
     "newProject": "New project",
-    "trash": "Trash"
+    "trash": "Trash",
+    "practice": "Interview practice"
   },
   "noProjects": "Your projects will appear here",
   "workspaceTitle": "Your job search workspace",

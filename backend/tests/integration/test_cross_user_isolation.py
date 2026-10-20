@@ -112,7 +112,7 @@ def world(api_context, monkeypatch):
         db.add(delivery)
         db.flush()
         delivery_id = delivery.id
-    from job_search_platform.db.models import InterviewQuestion, InterviewSet
+    from job_search_platform.db.models import InterviewAttempt, InterviewQuestion, InterviewSet
     with api_context.sessions.begin() as db:
         practice = InterviewSet(project_id=UUID(project_id), session_id=UUID(session_id), name="Alice set", level="mid",
                                 sections=[{"id": "intro", "count": 1}], reverse_questions=[])
@@ -122,7 +122,10 @@ def world(api_context, monkeypatch):
                                      prompt="Tell me about yourself", why="opening", key_points=[], evidence_ids=[])
         db.add(question)
         db.flush()
-        practice_ids = {"set_id": str(practice.id), "question_id": str(question.id)}
+        attempt = InterviewAttempt(question_id=question.id, project_id=UUID(project_id), answer="Alice answer")
+        db.add(attempt)
+        db.flush()
+        practice_ids = {"set_id": str(practice.id), "question_id": str(question.id), "attempt_id": str(attempt.id)}
     photo = api_context.client.post(f"{BASE}/projects/{project_id}/resume-photos", headers=_write_headers(csrf_alice),
                                     files={"file": ("me.jpg", b"\xff\xd8\xff\xe0synthetic", "image/jpeg")})
     assert photo.status_code == 201, photo.text

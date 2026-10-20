@@ -67,7 +67,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
         "project_not_empty": 409, "session_busy": 409, "session_not_trashed": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
-        "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409, "cv_not_trashed": 409, "practice_set_limit": 409, "practice_set_busy": 409, "session_pair_required": 409,
+        "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409, "cv_not_trashed": 409, "practice_set_limit": 409, "practice_set_busy": 409, "practice_not_gradable": 409, "session_pair_required": 409,
         "document_busy": 409, "tailor_already_applied": 409, "run_not_awaiting_input": 409, "invalid_answer": 422, "document_source_unavailable": 409,
         "apply_pack_required": 409, "approval_requires_run": 409, "approval_stale": 409, "already_applied": 409, "application_not_applied": 409,
         "upload_too_large": 413, "unsupported_media_type": 415,

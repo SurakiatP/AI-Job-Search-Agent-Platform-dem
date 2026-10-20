@@ -1,6 +1,8 @@
 // Technical round as Quizlet-style flashcards (CR-IVP-01 FR-IVP-10): flip, know / still learning piles, keys and swipe.
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, RotateCcw, Shuffle } from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, RotateCcw, Shuffle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { BusyNote } from '@/components/BusyNote';
 import { Button } from '@/components/ui/button';
 import { AiLabel } from '@/components/AiMark';
 import type { PracticeQuestion } from '@/lib/api-types';
@@ -10,7 +12,7 @@ import type { PracticeCopy } from './copy';
 type Rating = 'know' | 'learning';
 const reduced = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-export function Flashcards({ cards, c, onRate }: { cards: PracticeQuestion[]; c: PracticeCopy; onRate: (id: string, rating: Rating) => void }) {
+export function Flashcards({ cards, c, onRate, onCheck }: { cards: PracticeQuestion[]; c: PracticeCopy; onRate: (id: string, rating: Rating) => void; onCheck?: (id: string, answer: string) => Promise<void> }) {
   const [deck, setDeck] = useState(() => cards.map(card => card.id));
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -117,5 +119,38 @@ export function Flashcards({ cards, c, onRate }: { cards: PracticeQuestion[]; c:
         <Button type="button" variant="ghost" size="icon" className="sm:order-4" aria-label={c.next} disabled={index >= deck.length - 1} onClick={() => go(index + 1)}><ArrowRight className="size-4" aria-hidden="true" /></Button>
       </div>
     </div>
+    {onCheck && <CardCheck key={card.id} c={c} card={card} onCheck={answer => onCheck(card.id, answer)} />}
+  </div>;
+}
+
+function CardCheck({ c, card, onCheck }: { c: PracticeCopy; card: PracticeQuestion; onCheck: (answer: string) => Promise<void> }) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const [answer, setAnswer] = useState('');
+  const [busy, setBusy] = useState(false);
+  const latest = card.attempts[0]?.feedback;
+  const verdict = latest?.status === 'done' && latest.kind === 'card' ? latest : null;
+  const tone = { correct: 'text-success', partial: 'text-warning', incorrect: 'text-destructive' } as const;
+  return <div className="grid justify-items-center gap-3">
+    <button type="button" aria-expanded={open} onClick={() => setOpen(value => !value)}
+      className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {c.cardAnswerToggle}<ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} aria-hidden="true" /></button>
+    {open && <div className="grid w-full max-w-2xl gap-2">
+      <label htmlFor={`${id}-a`} className="text-sm font-medium">{c.cardAnswerLabel}</label>
+      <Textarea id={`${id}-a`} rows={3} maxLength={4000} value={answer} onChange={event => setAnswer(event.target.value)} />
+      <Button type="button" variant="outline" className="min-h-11 justify-self-start" busy={busy} disabled={busy || !answer.trim()}
+        onClick={() => { setBusy(true); void onCheck(answer.trim()).finally(() => setBusy(false)); }}>{c.checkAnswer}</Button>
+    </div>}
+    {latest?.status === 'pending' && <BusyNote label={c.grading} />}
+    {latest?.status === 'failed' && <p role="alert" className="text-sm text-destructive">{c.gradeFailed}</p>}
+    {verdict && <div className="grid w-full max-w-2xl gap-2 rounded-lg border bg-card p-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2"><p className={cn('font-semibold', tone[verdict.verdict])}>{c.verdicts[verdict.verdict]}</p><AiLabel /></div>
+      {verdict.note && <p className="leading-relaxed">{verdict.note}</p>}
+      {verdict.missing.length > 0 && <div className="grid gap-1.5">
+        <p className="font-medium text-muted-foreground" id={`${id}-missing`}>{c.missingPoints}</p>
+        <ul aria-labelledby={`${id}-missing`} className="grid gap-1.5 leading-relaxed">{verdict.missing.map(point => <li key={point} className="flex gap-2">
+          <span className="mt-2 size-1.5 shrink-0 rounded-full bg-warning" aria-hidden="true" /><span className="min-w-0 break-words">{point}</span></li>)}</ul>
+      </div>}
+    </div>}
   </div>;
 }
