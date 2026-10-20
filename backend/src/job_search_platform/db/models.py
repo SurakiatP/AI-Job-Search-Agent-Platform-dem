@@ -443,7 +443,7 @@ class Run(Base):
         UniqueConstraint("project_id", "id", name="uq_runs_project_id"),
         CheckConstraint("status IN ('queued','running','waiting_approval','needs_input','completed','failed','cancelled','interrupted')", name="ck_runs_status"),
         CheckConstraint("length(idempotency_key) BETWEEN 1 AND 128", name="ck_runs_idempotency_key_length"),
-        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs','extract_experience','tailor_cv','apply_prepare','apply_submit','draft_follow_up')", name="ck_runs_operation"),
+        CheckConstraint("operation IN ('evaluate_job','draft_documents','export_document','profile_cv','match_jobs','extract_experience','tailor_cv','apply_prepare','apply_submit','draft_follow_up','interview_generate','interview_grade','interview_report')", name="ck_runs_operation"),
         CheckConstraint("operation IN ('profile_cv','match_jobs','extract_experience') OR (session_id IS NOT NULL AND job_revision_id IS NOT NULL)", name="ck_runs_context_required"),
         CheckConstraint("output_language IN ('th','en')", name="ck_runs_language"),
         CheckConstraint("length(request_digest) = 64", name="ck_runs_digest_length"),
@@ -770,4 +770,63 @@ class ResumeDraft(Base):
         CheckConstraint("(cv_id IS NULL) <> (document_id IS NULL)", name="ck_resume_drafts_owner"),
         CheckConstraint("template_id IN ('onyx','kakuna','ditgar','lotus','teak','saffron')", name="ck_resume_drafts_template"),
         CheckConstraint("document_language IN ('th','en')", name="ck_resume_drafts_language"),
+    )
+
+
+PRACTICE_SECTIONS = ("intro", "behavioral", "situational", "technical", "cv_deep_dive", "gaps", "company", "logistics")
+
+
+class InterviewSet(Base):
+    """One interview practice set of a session (CR-IVP-01). Its status is derived from its questions and run."""
+    __tablename__ = "interview_sets"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    session_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    level: Mapped[str] = mapped_column(String(8), nullable=False)
+    sections: Mapped[list] = mapped_column(JSON, nullable=False)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("runs.id", ondelete="SET NULL"))
+    reverse_questions: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "session_id"], ["sessions.project_id", "sessions.id"], ondelete="CASCADE"),
+        CheckConstraint("level IN ('entry','mid','senior')", name="ck_interview_sets_level"),
+        CheckConstraint("char_length(name) BETWEEN 1 AND 120", name="ck_interview_sets_name"),
+        Index("ix_interview_sets_session", "project_id", "session_id"),
+    )
+
+
+class InterviewQuestion(Base):
+    __tablename__ = "interview_questions"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    set_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("interview_sets.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    section: Mapped[str] = mapped_column(String(16), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    prompt: Mapped[str] = mapped_column(String(600), nullable=False)
+    why: Mapped[str] = mapped_column(String(300), nullable=False)
+    key_points: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    model_answer: Mapped[str | None] = mapped_column(String(3000))
+    evidence_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    ready: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    card_rating: Mapped[str | None] = mapped_column(String(8))
+    __table_args__ = (
+        CheckConstraint(f"section IN ({_in(PRACTICE_SECTIONS)})", name="ck_interview_questions_section"),
+        CheckConstraint("card_rating IS NULL OR card_rating IN ('know','learning')", name="ck_interview_questions_rating"),
+        Index("ix_interview_questions_set", "set_id", "position"),
+    )
+
+
+class InterviewAttempt(Base):
+    __tablename__ = "interview_attempts"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    question_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("interview_questions.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    feedback: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (
+        CheckConstraint("char_length(answer) BETWEEN 1 AND 4000", name="ck_interview_attempts_answer"),
+        Index("ix_interview_attempts_question", "question_id", "created_at"),
     )

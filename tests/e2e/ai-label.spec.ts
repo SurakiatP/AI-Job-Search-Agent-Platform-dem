@@ -25,8 +25,8 @@ test('AI label: evaluation report, CV changes and interview questions; not on ke
   await expect(page.getByRole('region', { name: 'Skills found in your CV' }).getByText(label)).toHaveCount(0);
   await page.getByRole('tab', { name: 'Prepare documents' }).click();
   await expect(page.getByRole('region', { name: 'Fix your CV before applying' }).getByText(label)).toBeVisible();
-  await page.getByRole('tab', { name: 'Application answers' }).click();
-  await expect(page.getByRole('region', { name: 'Questions you may get in the interview' }).getByText(label)).toBeVisible();
+  await page.getByRole('tab', { name: 'Interview practice' }).click();  // CR-IVP-01 moved the prep list here
+  await expect(page.getByRole('region', { name: 'Prepare before the interview' }).getByText(label)).toBeVisible();
 });
 
 test('AI label: agent documents say made by AI and check before use; owner documents do not', async ({ page }) => {

@@ -16,7 +16,7 @@ Operation = Literal["evaluate_job", "draft_documents", "tailor_cv", "apply_prepa
 # profile_cv (CV skill profile, no LLM) and extract_experience (LLM experience-bank extraction) are likewise owner-only and internal.
 # export_document is an owner-only, non-LLM run created by the manual-edit endpoint; never a request operation.
 ViewOperation = Literal["evaluate_job", "draft_documents", "tailor_cv", "export_document", "profile_cv", "match_jobs", "extract_experience",
-                 "apply_prepare", "apply_submit", "draft_follow_up"]
+                 "apply_prepare", "apply_submit", "draft_follow_up", "interview_generate", "interview_grade", "interview_report"]
 DraftKind = Literal["cover_letter", "application_message", "follow_up"]
 
 

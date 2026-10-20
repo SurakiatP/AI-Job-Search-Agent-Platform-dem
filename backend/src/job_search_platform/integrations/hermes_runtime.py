@@ -24,6 +24,10 @@ PARSE_ERRORS = frozenset({"input_path_invalid", "input_size_invalid", "document_
     "document_invalid", "document_encrypted", "unsupported_input", "scanned_pdf_unsupported",
     "empty_input", "extracted_text_limit"})
 
+# Operations the native bridge has a Career Ops context for (infra/hermes/native_bridge.py CAREER_OPS_FILES).
+NATIVE_OPERATIONS = ("evaluate_job", "draft_documents", "extract_experience", "tailor_cv", "apply_prepare",
+                     "interview_generate", "interview_grade", "interview_report")
+
 class RuntimeErrorCode(RuntimeError):
     """Stable error codes; upstream exception text is private."""
 
@@ -273,9 +277,9 @@ class HermesRuntime:
 
     async def submit(self, project_id: UUID, session_id: UUID, prompt: str,
                      instructions: str, provider: ProviderConfig | None, *,
-                     operation: Literal["evaluate_job", "draft_documents", "extract_experience", "tailor_cv", "apply_prepare"],
+                     operation: str,
                      tool_gate: Callable[[str, str], Awaitable[bool]] | None = None) -> None:
-        if operation not in ("evaluate_job", "draft_documents", "extract_experience", "tailor_cv", "apply_prepare"):
+        if operation not in NATIVE_OPERATIONS:
             raise RuntimeErrorCode("native_response_invalid")
         project = self.projects[project_id]
         project.tool_gate = tool_gate

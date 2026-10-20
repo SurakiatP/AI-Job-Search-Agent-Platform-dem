@@ -61,10 +61,12 @@ test('TC-EVR-04 structured report shows fields, counts and a working filter', as
   await expect(page.getByTestId('evaluation-report')).toContainText('Worth applying');
 });
 
-test('TC-EVR-07 interview prep shows in the answers tab and CV changes in the documents tab', async ({ page }) => {
+test('TC-EVR-07 / AC-IVP-08 interview prep shows in the practice tab and CV changes in the documents tab', async ({ page }) => {
   await open(page, { score: 4.2, report, report_markdown: 'x' });
   await page.getByRole('tab', { name: 'Application answers' }).click();
-  const interview = page.getByRole('region', { name: 'Questions you may get in the interview' });
+  await expect(page.getByText(report.interview_prep[0])).toBeHidden();
+  await page.getByRole('tab', { name: 'Interview practice' }).click();
+  const interview = page.getByRole('region', { name: 'Prepare before the interview' });
   await expect(interview).toContainText(report.interview_prep[0]);
   await page.getByRole('tab', { name: 'Prepare documents' }).click();
   const cv = page.getByRole('region', { name: 'Fix your CV before applying' });

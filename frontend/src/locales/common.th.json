@@ -292,7 +292,10 @@
       "tailor_cv": "ปรับ CV",
       "apply_prepare": "เตรียมคำตอบใบสมัคร",
       "apply_submit": "บันทึกว่าสมัครแล้ว",
-      "draft_follow_up": "ร่างข้อความติดตามผล"
+      "draft_follow_up": "ร่างข้อความติดตามผล",
+      "interview_generate": "สร้างชุดซ้อมสัมภาษณ์",
+      "interview_grade": "ให้ความเห็นคำตอบสัมภาษณ์",
+      "interview_report": "สรุปชุดซ้อมสัมภาษณ์"
     },
     "approvalActions": {
       "promote_cv": "ตรวจการใช้ CV ฉบับใหม่",

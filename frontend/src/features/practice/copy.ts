@@ -1,0 +1,96 @@
+// Interview practice copy (CR-IVP-01). Plain words; the page never promises a hiring outcome.
+import type { PracticeLevel, PracticeSection } from '@/lib/api-types';
+
+const th = {
+  tab: 'ซ้อมสัมภาษณ์', title: 'ชุดซ้อมสัมภาษณ์',
+  intro: 'คำถามตั้งจาก CV ประสบการณ์ในคลัง และประกาศงานนี้ คำตอบตัวอย่างใช้เฉพาะข้อเท็จจริงของคุณ',
+  newSet: 'สร้างชุดซ้อม', createSet: 'สร้างชุด', name: 'ชื่อชุด', level: 'ระดับ',
+  levels: { entry: 'จบใหม่', mid: 'ระดับกลาง', senior: 'อาวุโส' } as Record<PracticeLevel, string>,
+  sectionsLegend: 'เลือกส่วนที่จะซ้อม', countLabel: (s: string) => `จำนวนคำถามใน${s}`,
+  total: (n: number) => `รวม ${n} คำถาม (ไม่เกิน 30)`, tooMany: 'เกิน 30 คำถาม ลดบางส่วนลงก่อน',
+  quotaNote: 'สร้างชุดใช้โควตาซ้อม 1 ครั้ง (60 ครั้งต่อวัน แยกจากงานอื่นของเอเจนต์)',
+  defaultName: (n: number) => `ชุดซ้อม ${n}`,
+  quotaUsed: 'ใช้โควตาซ้อมของวันนี้ครบแล้ว ลองใหม่พรุ่งนี้', limit: 'session นี้มีชุดซ้อมครบ 20 ชุดแล้ว ลบชุดเก่าก่อน',
+  emptyTitle: 'ยังไม่มีชุดซ้อม', emptyBody: 'สร้างชุดแรกเพื่อซ้อมตอบคำถามที่งานนี้น่าจะถาม และทบทวนความรู้เทคนิคด้วยแฟลชการ์ด',
+  generating: 'กำลังเขียนคำถามสำหรับงานนี้', generatingBody: 'ใช้เวลาประมาณหนึ่งนาที หน้านี้อัปเดตเอง',
+  failed: 'สร้างคำถามไม่สำเร็จ', retry: 'ลองสร้างใหม่',
+  progress: (r: number, n: number) => `พร้อม ${r} จาก ${n}`, questions: (n: number) => `${n} คำถาม`,
+  options: (n: string) => `ตัวเลือกสำหรับ ${n}`, rename: 'เปลี่ยนชื่อ', del: 'ลบ', save: 'บันทึก', cancel: 'ยกเลิก',
+  renameTitle: 'เปลี่ยนชื่อชุดซ้อม', deleted: (n: string) => `ลบ “${n}” แล้ว`, undo: 'เลิกทำ', dismiss: 'ปิด',
+  failedAction: 'ทำไม่สำเร็จ ลองอีกครั้ง', prepTitle: 'สิ่งที่ควรเตรียมก่อนสัมภาษณ์',
+  prepHint: 'จากผลการประเมินงานนี้ ชุดซ้อมจะตั้งคำถามจากรายการนี้ด้วย',
+  rounds: 'ลำดับรอบ', showRounds: 'ดูลำดับรอบ', hideRounds: 'ซ่อนลำดับรอบ',
+  readyOf: (r: number, n: number) => `พร้อม ${r} จาก ${n}`, knownOf: (r: number, n: number) => `จำได้ ${r} จาก ${n}`,
+  minutes: (m: number) => `~${m} นาที`, cards: (n: number) => `แฟลชการ์ด ${n} ใบ`,
+  reverse: 'คำถามที่ควรถามกลับ', reverseHint: 'ถามตอนท้ายสัมภาษณ์ เพื่อแสดงว่าคุณสนใจงานจริง',
+  why: 'ทำไมถึงถาม', keyPoints: 'ประเด็นที่คำตอบที่ดีควรมี', example: 'คำตอบตัวอย่าง',
+  noExample: 'ในคลังประสบการณ์ยังไม่มีข้อเท็จจริงพอสำหรับคำตอบตัวอย่าง', guidance: 'แนวทางการตอบ',
+  stories: 'เรื่องจากคลังที่หยิบมาเล่าได้', answer: 'คำตอบของคุณ', answerPlaceholder: 'พิมพ์คำตอบเหมือนพูดกับผู้สัมภาษณ์',
+  saveAnswer: 'บันทึกคำตอบ', saved: 'คำตอบที่บันทึกไว้', markReady: 'ทำเครื่องหมายว่าพร้อม', ready: 'พร้อมแล้ว',
+  prev: 'คำถามก่อนหน้า', next: 'คำถามถัดไป', timer: 'จับเวลา 2 นาที', stopTimer: 'หยุดจับเวลา',
+  spoken: (s: string) => `พูดจริงประมาณ ${s}`, back: 'กลับไปที่การประเมิน', notFound: 'ไม่พบชุดซ้อมนี้',
+  card: (i: number, n: number) => `การ์ด ${i} จาก ${n}`, flipHint: 'คลิกหรือกด Space เพื่อพลิก', flipHintTouch: 'แตะเพื่อพลิก · ปัดขวาถ้าจำได้ ปัดซ้ายถ้ายังไม่แม่น',
+  know: 'จำได้แล้ว', learning: 'ยังไม่แม่น', shuffle: 'สลับลำดับ', restart: 'เริ่มใหม่ทั้งหมด',
+  roundDone: 'จบรอบแล้ว', reviewLearning: (n: number) => `ทบทวน ${n} ใบที่ยังไม่แม่น`, back2: 'ด้านหลัง',
+  sections: {
+    intro: 'แนะนำตัวและแรงจูงใจ', behavioral: 'ประสบการณ์ที่ผ่านมา (STAR)', situational: 'สถานการณ์สมมติ',
+    technical: 'ความรู้เชิงเทคนิค', cv_deep_dive: 'เจาะลึก CV', gaps: 'จุดที่ยังขาด', company: 'บริษัทและวัฒนธรรม',
+    logistics: 'เงื่อนไขการจ้าง',
+  } as Record<PracticeSection, string>,
+  sectionHints: {
+    intro: 'เล่าเกี่ยวกับตัวคุณ ทำไมอยากได้งานนี้', behavioral: '“เล่าถึงครั้งที่…” ตอบด้วยสถานการณ์ หน้าที่ สิ่งที่ทำ ผลลัพธ์',
+    situational: '“ถ้าเจอ… คุณจะทำอย่างไร” จากหน้าที่ในประกาศ', technical: 'แฟลชการ์ดความรู้ที่งานนี้ใช้',
+    cv_deep_dive: 'ถามเจาะสิ่งที่เขียนใน CV', gaps: 'ข้อกำหนดที่ CV ยังไม่แสดง ตอบอย่างตรงไปตรงมา',
+    company: 'จากข้อมูลบริษัทในประกาศงาน', logistics: 'วันเริ่มงาน เงินเดือน รูปแบบการทำงาน (แนวทางเท่านั้น)',
+  } as Record<PracticeSection, string>,
+};
+
+const en: typeof th = {
+  tab: 'Interview practice', title: 'Practice sets',
+  intro: 'Questions come from your CV, experience bank and this posting. Example answers use only your own facts.',
+  newSet: 'New practice set', createSet: 'Create set', name: 'Name', level: 'Level',
+  levels: { entry: 'Entry', mid: 'Mid-level', senior: 'Senior' },
+  sectionsLegend: 'Choose what to practise', countLabel: s => `Questions in ${s}`,
+  total: n => `${n} questions in total (up to 30)`, tooMany: 'More than 30 questions. Lower some sections first.',
+  quotaNote: 'Creating a set uses 1 practice run (60 a day, separate from other agent work).',
+  defaultName: n => `Set ${n}`,
+  quotaUsed: "Today's practice runs are used up. Try again tomorrow.", limit: 'This session already has 20 sets. Delete an old one first.',
+  emptyTitle: 'No practice sets yet', emptyBody: 'Create one to rehearse the questions this job is likely to ask and review technical topics with flashcards.',
+  generating: 'Writing questions for this job', generatingBody: 'This takes about a minute. The page updates by itself.',
+  failed: 'The questions could not be written', retry: 'Try again',
+  progress: (r, n) => `${r} of ${n} ready`, questions: n => `${n} questions`,
+  options: n => `Options for ${n}`, rename: 'Rename', del: 'Delete', save: 'Save', cancel: 'Cancel',
+  renameTitle: 'Rename practice set', deleted: n => `“${n}” deleted.`, undo: 'Undo', dismiss: 'Dismiss',
+  failedAction: 'That did not work. Try again.', prepTitle: 'Prepare before the interview',
+  prepHint: "From this job's evaluation. Practice sets also draw questions from this list.",
+  rounds: 'Rounds', showRounds: 'Show rounds', hideRounds: 'Hide rounds',
+  readyOf: (r, n) => `${r} of ${n} ready`, knownOf: (r, n) => `${r} of ${n} known`,
+  minutes: m => `~${m} min`, cards: n => `${n} flashcards`,
+  reverse: 'Questions to ask them', reverseHint: 'Ask these near the end to show real interest in the role.',
+  why: 'Why we ask', keyPoints: 'What a strong answer covers', example: 'Example answer',
+  noExample: 'No facts in your experience bank are enough for an example answer yet.', guidance: 'How to answer',
+  stories: 'Stories from your bank you could tell', answer: 'Your answer', answerPlaceholder: 'Write it the way you would say it to the interviewer',
+  saveAnswer: 'Save answer', saved: 'Saved answers', markReady: 'Mark ready', ready: 'Ready',
+  prev: 'Previous question', next: 'Next question', timer: 'Time 2 minutes', stopTimer: 'Stop timer',
+  spoken: s => `About ${s} when spoken`, back: 'Back to the evaluation', notFound: 'This practice set was not found',
+  card: (i, n) => `Card ${i} of ${n}`, flipHint: 'Click or press Space to flip', flipHintTouch: 'Tap to flip · swipe right if you know it, left if not',
+  know: 'Know it', learning: 'Still learning', shuffle: 'Shuffle', restart: 'Start over',
+  roundDone: 'Round done', reviewLearning: n => `Review the ${n} card${n === 1 ? '' : 's'} still learning`, back2: 'Back',
+  sections: {
+    intro: 'Introduction and motivation', behavioral: 'Past experience (STAR)', situational: 'What would you do',
+    technical: 'Technical knowledge', cv_deep_dive: 'CV deep dive', gaps: 'Gaps to address', company: 'Company and culture',
+    logistics: 'Terms of employment',
+  },
+  sectionHints: {
+    intro: 'About you and why this job', behavioral: '“Tell me about a time…” answered as situation, task, action, result',
+    situational: '“What would you do if…” from the duties in the posting', technical: 'Flashcards on knowledge this job uses',
+    cv_deep_dive: 'Probing what your CV claims', gaps: 'Requirements your CV does not show yet, answered honestly',
+    company: 'From what the posting says about the company', logistics: 'Start date, salary, work arrangement (guidance only)',
+  },
+};
+
+export const practiceCopy = { th, en };
+export type PracticeCopy = typeof th;
+export const SECTION_ORDER: PracticeSection[] = ['intro', 'cv_deep_dive', 'behavioral', 'situational', 'technical', 'gaps', 'company', 'logistics'];
+// ponytail: fixed per-question estimates; tune once real timings exist.
+export const MINUTES: Record<PracticeSection, number> = { intro: 2, cv_deep_dive: 2.5, behavioral: 3, situational: 2.5, technical: 1, gaps: 2.5, company: 2, logistics: 1 };

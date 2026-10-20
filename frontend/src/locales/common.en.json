@@ -292,7 +292,10 @@
       "tailor_cv": "CV tailoring",
       "apply_prepare": "Application answers",
       "apply_submit": "Record as applied",
-      "draft_follow_up": "Follow-up drafting"
+      "draft_follow_up": "Follow-up drafting",
+      "interview_generate": "Write practice questions",
+      "interview_grade": "Feedback on a practice answer",
+      "interview_report": "Practice set summary"
     },
     "approvalActions": {
       "promote_cv": "Review CV promotion",

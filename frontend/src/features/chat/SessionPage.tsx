@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { accountErrorText, useGatewayHelp, useRunGate } from '@/lib/accountGate';
 import { CvPreviewButton } from '@/components/CvPreview';
-import { Link, useParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
+import { PracticeTab } from '../practice/PracticeTab';
+import { practiceCopy } from '../practice/copy';
 import { useTranslation } from 'react-i18next';
 import { Bot, Briefcase, Check, ChevronDown, FileText, Pencil, TriangleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +19,7 @@ import { ErrorState, LoadingState, MissingResource } from '../projects/PageState
 import { useResource } from '../projects/useResource';
 import { NewSessionButton } from '../sessions/NewSessionDialog';
 import { apiRequest } from '../../lib/api';
-import { ApiError, type DocumentView, type Locale, type RunOperation, type RunView, type SessionView } from '../../lib/api-types';
+import { ApiError, PRACTICE_OPERATIONS, type DocumentView, type Locale, type RunOperation, type RunView, type SessionView } from '../../lib/api-types';
 import { useRun } from './useRun';
 import { RunTimeline } from './RunTimeline';
 import { RelatedDocuments, RunResults } from './RunResults';
@@ -87,7 +89,8 @@ export function SessionPage() {
   const workflow = useRun(projectId, sessionId);
   const [outputLanguage, setOutputLanguage] = useState<Locale>(locale);
   const outputLanguageId = useId();
-  const [tab, setTab] = useState('evaluation');
+  const initialTab = useSearchParams()[0].get('tab');
+  const [tab, setTab] = useState(initialTab && ['evaluation', 'documents', 'answers', 'practice', 'history'].includes(initialTab) ? initialTab : 'evaluation');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [accountError, setAccountError] = useState('');
@@ -107,7 +110,7 @@ export function SessionPage() {
   const paired = Boolean(current.cv_revision_id && current.job_revision_id);
   const jobRevision = (jobs.data ?? []).find(item => item.id === current.job_revision_id);
   const active = Boolean(status && ACTIVE.includes(status));
-  const sessionRuns = (runs.data ?? []).filter(run => run.session_id === sessionId);
+  const sessionRuns = (runs.data ?? []).filter(run => run.session_id === sessionId && !PRACTICE_OPERATIONS.includes(run.operation));
   const evalRun = sessionRuns.find(run => run.operation === 'evaluate_job') ?? null;
   const evalReport = evalRun?.evaluation_result?.report ?? null;
   const draftRunIds = new Set(sessionRuns.filter(run => run.operation === 'draft_documents').map(run => run.id));
@@ -185,6 +188,7 @@ export function SessionPage() {
             <TabsTrigger value="evaluation" className={tabClass}>{t('tabs.evaluation')}</TabsTrigger>
             <TabsTrigger value="documents" className={tabClass}>{t('tabs.documents')}</TabsTrigger>
             <TabsTrigger value="answers" className={tabClass}>{t('tabs.answers')}</TabsTrigger>
+            <TabsTrigger value="practice" className={tabClass}>{practiceCopy[locale].tab}</TabsTrigger>
             <TabsTrigger value="history" className={tabClass}>{t('tabs.history')}</TabsTrigger>
           </TabsList>
           <div className="grid min-w-0 gap-1 pb-2">
@@ -212,7 +216,8 @@ export function SessionPage() {
               <TailorCard projectId={projectId} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} run={sessionRuns.find(run => run.operation === 'tailor_cv') ?? null} onChanged={() => { reloadRun(); reloadRuns(); }} />
               <section className="grid gap-3"><h2 className="text-lg font-semibold">{c.docs}</h2>{drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <DocCard key={doc.id} c={c} base={base} projectId={projectId} doc={doc} busy={busy || gate.blocked} onRevise={text => startRun('draft_documents', text, doc.id)} />)}</section>
             </TabsContent>
-            <TabsContent value="answers" forceMount className={`grid gap-4 ${tab === 'answers' ? '' : 'hidden'}`}>{current.job_revision_id && <ApplyCard projectId={projectId} jobId={current.job_revision_id} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} runs={sessionRuns} onChanged={() => { reloadRun(); reloadRuns(); }} />}<ReportListCard kind="interview" items={evalReport?.interview_prep} /></TabsContent>
+            <TabsContent value="answers" forceMount className={`grid gap-4 ${tab === 'answers' ? '' : 'hidden'}`}>{current.job_revision_id && <ApplyCard projectId={projectId} jobId={current.job_revision_id} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} runs={sessionRuns} onChanged={() => { reloadRun(); reloadRuns(); }} />}</TabsContent>
+            <TabsContent value="practice" forceMount className={`grid gap-4 ${tab === 'practice' ? '' : 'hidden'}`}><PracticeTab projectId={projectId} sessionId={sessionId} locale={locale} prep={evalReport?.interview_prep} /></TabsContent>
             <TabsContent value="history" forceMount className={`grid gap-4 ${tab === 'history' ? '' : 'hidden'}`}>
               <h2 className="text-lg font-semibold">{t('tabs.history')}</h2>{sessionRuns.filter(run => run.id !== workflow.run?.id).length === 0 ? <p className="text-sm text-muted-foreground">{t('historyEmpty')}</p> : <div className="grid gap-3">{sessionRuns.filter(run => run.id !== workflow.run?.id).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)).map(run => <div key={run.id} className="grid gap-3 rounded-xl border bg-card p-4"><RunTimeline locale={locale} run={run} events={[]} historical />{run.operation === 'evaluate_job' && <RunResults projectId={projectId} locale={locale} run={run} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} />}</div>)}</div>}
               <div className="flex flex-wrap gap-2"><Button asChild variant="outline" className="min-h-11"><Link to={`${base}/console`}>{t('openHistory')}</Link></Button><Button asChild variant="outline" className="min-h-11"><Link to={`${base}/trash?tab=documents`}>{t('openTrash')}</Link></Button></div>

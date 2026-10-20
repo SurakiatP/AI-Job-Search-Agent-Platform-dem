@@ -31,6 +31,7 @@ from job_search_platform.api.mcp_tasks import mcp_request_state_key
 from job_search_platform.api.oauth import router as oauth_router
 from job_search_platform.api.rest import _http_error, router as rest_router
 from job_search_platform.api.resume import router as resume_router
+from job_search_platform.api.practice import router as practice_router
 from job_search_platform.api.sse import router as sse_router
 from job_search_platform.db.session import make_engine
 from job_search_platform.integrations.hermes_runtime import HermesRuntime
@@ -276,6 +277,7 @@ def create_app(
     app.include_router(rest_router, prefix="/api/v1")
     app.include_router(accounts_router, prefix="/api/v1")
     app.include_router(resume_router, prefix="/api/v1")
+    app.include_router(practice_router, prefix="/api/v1")
     app.include_router(oauth_router, prefix="/api/v1")
     app.include_router(sse_router, prefix="/api/v1")
 

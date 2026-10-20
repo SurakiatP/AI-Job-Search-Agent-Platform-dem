@@ -979,6 +979,102 @@ paths:
               required: [file]
               properties: {file: {type: string, format: binary}, name: {type: string, maxLength: 120}}
       responses: {'201': {description: Created CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}}
+  /projects/{project_id}/sessions/{session_id}/practice-sets:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: session_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      tags: [sessions]
+      description: Owner-only interview practice sets of a live session (CR-IVP-01), newest first, with status (generating, ready, failed) and question_count, ready_count, known_count.
+      responses:
+        '200': {description: Practice sets}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Creates a practice set in a paired session and queues one interview_generate run that writes its
+        questions. At most 20 live sets per session (409 practice_set_limit); 1-6 questions per section and 30 per set.
+        Practice runs use the separate daily quota USER_DAILY_PRACTICE_QUOTA (429 quota_exceeded).
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SetCreate'}}}
+      responses:
+        '201': {description: New set (status generating)}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: practice_set_limit, session_pair_required, queue_full or gateway_unconfigured}
+        '429': {description: quota_exceeded}
+  /projects/{project_id}/practice-sets/{set_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: set_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      tags: [sessions]
+      description: Owner-only set with its questions in order (section, prompt, why, key_points, model_answer citing evidence_ids, ready, card_rating) and up to 20 attempts each, newest first, plus reverse_questions.
+      responses:
+        '200': {description: Set with questions}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [sessions]
+      description: Owner-only rename.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SetUpdate'}}}
+      responses:
+        '200': {description: Renamed set}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags: [sessions]
+      description: Owner-only. Hides the set; restore undoes it. Sets do not go to the project trash; purging the session deletes them.
+      responses:
+        '204': {description: Hidden}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/practice-sets/{set_id}/restore:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: set_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: Owner-only undo of a delete.
+      responses:
+        '200': {description: Restored set}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/practice-sets/{set_id}/retry:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: set_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: Owner-only. Queues question generation again after a failed run; 409 practice_set_busy otherwise.
+      responses:
+        '200': {description: Set (status generating)}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: practice_set_busy}
+  /projects/{project_id}/practice-questions/{question_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: question_id, in: path, required: true, schema: {type: string, format: uuid}}
+    patch:
+      tags: [sessions]
+      description: Owner-only. Marks a written question ready, or rates a flashcard know / learning (null clears it).
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QuestionUpdate'}}}
+      responses:
+        '200': {description: Updated question}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/practice-questions/{question_id}/attempts:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: question_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: Owner-only. Saves a written answer (1-4000 characters); the 20 newest are kept.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AttemptCreate'}}}
+      responses:
+        '201': {description: Saved attempt}
+        '404': {$ref: '#/components/responses/NotFound'}
   /resume-templates:
     get:
       tags: [files]
@@ -2066,6 +2162,40 @@ components:
             file_id: {type: [string, 'null'], format: uuid}
             skill_profile_ready: {type: boolean, default: false}
             skill_count: {type: [integer, 'null'], minimum: 0}
+    SectionChoice:
+      type: object
+      additionalProperties: false
+      required: [id, count]
+      properties:
+        id: {type: string, enum: [intro, behavioral, situational, technical, cv_deep_dive, gaps, company, logistics]}
+        count: {type: integer, minimum: 1, maximum: 6}
+    SetCreate:
+      type: object
+      additionalProperties: false
+      required: [sections]
+      properties:
+        name: {type: [string, 'null'], minLength: 1, maxLength: 120}
+        level: {type: string, enum: [entry, mid, senior], default: mid}
+        output_language: {type: string, enum: [th, en], default: th}
+        sections: {type: array, minItems: 1, maxItems: 8, items: {$ref: '#/components/schemas/SectionChoice'}}
+    SetUpdate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+    QuestionUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        ready: {type: [boolean, 'null']}
+        card_rating: {type: [string, 'null'], enum: [know, learning, null]}
+    AttemptCreate:
+      type: object
+      additionalProperties: false
+      required: [answer]
+      properties:
+        answer: {type: string, minLength: 1, maxLength: 4000}
     BuilderCreate:
       type: object
       additionalProperties: false
@@ -2220,7 +2350,7 @@ components:
         id: {type: string, format: uuid}
         project_id: {type: string, format: uuid}
         session_id: {type: [string, 'null'], format: uuid, description: Null only for profile_cv.}
-        operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, export_document, profile_cv, match_jobs, extract_experience, apply_prepare, apply_submit, draft_follow_up]}
+        operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, export_document, profile_cv, match_jobs, extract_experience, apply_prepare, apply_submit, draft_follow_up, interview_generate, interview_grade, interview_report]}
         status: {type: string, enum: [queued, running, waiting_approval, needs_input, completed, failed, cancelled, interrupted]}
         output_language: {type: string, enum: [th, en]}
         result_file_ids: {type: array, items: {type: string, format: uuid}}

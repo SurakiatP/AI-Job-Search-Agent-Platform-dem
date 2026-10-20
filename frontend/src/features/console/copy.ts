@@ -11,7 +11,7 @@ export const copy = {
     grantName: 'ชื่อ (ไม่บังคับ)', grantNameHint: 'ใช้แสดงในไทม์ไลน์ว่างานมาจากเอเจนต์ตัวไหน',
     opaction: 'ไม่สามารถดำเนินการได้ ลองโหลดสถานะใหม่',
     // timeline
-    ops: { evaluate_job: 'ประเมินงาน', draft_documents: 'ร่างเอกสาร', export_document: 'สร้างไฟล์เอกสาร', profile_cv: 'วิเคราะห์ CV', match_jobs: 'จัดอันดับงานด้วย AI', extract_experience: 'สกัดประสบการณ์จาก CV', tailor_cv: 'ปรับ CV ให้เข้ากับงาน', apply_prepare: 'เตรียมคำตอบใบสมัคร', apply_submit: 'ขอบันทึกว่าสมัครแล้ว', draft_follow_up: 'ร่างข้อความติดตามผล' },
+    ops: { evaluate_job: 'ประเมินงาน', draft_documents: 'ร่างเอกสาร', export_document: 'สร้างไฟล์เอกสาร', profile_cv: 'วิเคราะห์ CV', match_jobs: 'จัดอันดับงานด้วย AI', extract_experience: 'สกัดประสบการณ์จาก CV', tailor_cv: 'ปรับ CV ให้เข้ากับงาน', apply_prepare: 'เตรียมคำตอบใบสมัคร', apply_submit: 'ขอบันทึกว่าสมัครแล้ว', draft_follow_up: 'ร่างข้อความติดตามผล', interview_generate: 'สร้างชุดซ้อมสัมภาษณ์', interview_grade: 'ให้ความเห็นคำตอบสัมภาษณ์', interview_report: 'สรุปชุดซ้อมสัมภาษณ์', },
     filters: { all: 'ทั้งหมด', active: 'กำลังทำ', waiting: 'รออนุมัติ', needsYou: 'ต้องการคุณ', done: 'เสร็จ', failed: 'ล้มเหลว' },
     cols: { op: 'งาน', job: 'ตำแหน่ง', status: 'สถานะ', created: 'เริ่มเมื่อ', duration: 'ใช้เวลา', score: 'คะแนน', session: 'เซสชัน' },
     running: 'กำลังทำงาน', waitingInput: 'รอข้อมูลจากคุณ', untitled: 'งานไม่มีชื่อ', openSession: 'เปิดเซสชัน', retry: 'ลองใหม่', retryOf: 'ลองใหม่จากงานก่อนหน้า',
@@ -52,7 +52,7 @@ export const copy = {
     you: 'You', agentBy: 'Agent', cols2: 'Requester', details: 'Run details', hideDetails: 'Hide details', detailsFailed: 'Could not load details', noEvents: 'No events yet',
     resumed: 'Resumed after a system restart', needsInput: 'Waiting for your input', llmRound: 'AI round', seconds: 's', tokensIn: 'tokens in', tokensOut: 'tokens out', total: 'Total', rounds: 'rounds', latency: 'latency',
     opaction: 'Could not complete the action. Status reloaded.',
-    ops: { evaluate_job: 'Evaluate job', draft_documents: 'Draft documents', export_document: 'Generate file', profile_cv: 'Analyze CV', match_jobs: 'Rank jobs with AI', extract_experience: 'Extract experience from CV', tailor_cv: 'Tailor CV', apply_prepare: 'Prepare application', apply_submit: 'Request submit', draft_follow_up: 'Draft follow-up' },
+    ops: { evaluate_job: 'Evaluate job', draft_documents: 'Draft documents', export_document: 'Generate file', profile_cv: 'Analyze CV', match_jobs: 'Rank jobs with AI', extract_experience: 'Extract experience from CV', tailor_cv: 'Tailor CV', apply_prepare: 'Prepare application', apply_submit: 'Request submit', draft_follow_up: 'Draft follow-up', interview_generate: 'Write practice questions', interview_grade: 'Feedback on a practice answer', interview_report: 'Practice set summary', },
     filters: { all: 'All', active: 'In progress', waiting: 'Needs approval', needsYou: 'Needs you', done: 'Done', failed: 'Failed' },
     cols: { op: 'Task', job: 'Job', status: 'Status', created: 'Started', duration: 'Duration', score: 'Score', session: 'Session' },
     running: 'Running', waitingInput: 'Waiting for your input', untitled: 'Untitled job', openSession: 'Open session', retry: 'Retry', retryOf: 'Retry of an earlier run',

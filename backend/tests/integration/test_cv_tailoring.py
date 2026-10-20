@@ -46,6 +46,9 @@ class _Runtime:
 
     async def submit(self, project_id, session_id, prompt, instructions, provider, **kwargs):
         assert (provider.provider, provider.model, provider.base_url) == ("custom", "ai-analyze", "http://127.0.0.1:54000/v1")
+        # The real runtime and bridge refuse operations they do not know; the fake must too.
+        from job_search_platform.integrations.hermes_runtime import NATIVE_OPERATIONS
+        assert kwargs["operation"] in NATIVE_OPERATIONS, kwargs["operation"]
         self.submits.append((session_id, prompt, kwargs))
 
     async def events(self, project_id):

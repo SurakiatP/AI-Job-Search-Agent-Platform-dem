@@ -66,7 +66,7 @@ function Points({ title, items, icon }: { title: string; items?: string[]; icon:
 }
 
 /** One list from the latest evaluation, shown as its own card on the tab where it is used. */
-export function ReportListCard({ kind, items }: { kind: 'interview' | 'cvChanges'; items?: string[] }) {
+export function ReportListCard({ kind, items, title, hint }: { kind: 'interview' | 'cvChanges'; items?: string[]; title?: string; hint?: string }) {
   const { t } = useTranslation('sessionWorkspace');
   const id = useId();
   if (!items?.length) return null;
@@ -74,10 +74,10 @@ export function ReportListCard({ kind, items }: { kind: 'interview' | 'cvChanges
   return <section aria-labelledby={id} className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5">
     <div className="grid gap-1">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id={id} className="flex items-center gap-2 text-lg font-semibold"><Icon className="size-5 shrink-0 text-primary" aria-hidden="true" />{t(`report.${kind}`)}</h2>
+        <h2 id={id} className="flex items-center gap-2 text-lg font-semibold"><Icon className="size-5 shrink-0 text-primary" aria-hidden="true" />{title ?? t(`report.${kind}`)}</h2>
         <AiLabel />
       </div>
-      <p className="text-sm text-muted-foreground">{t(`report.${kind}Hint`)}</p>
+      <p className="text-sm text-muted-foreground">{hint ?? t(`report.${kind}Hint`)}</p>
     </div>
     <ol className="grid max-w-[75ch] gap-2.5">
       {items.map((item, i) => <li key={item} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2 leading-relaxed">
