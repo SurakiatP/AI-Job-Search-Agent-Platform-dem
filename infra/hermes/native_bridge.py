@@ -30,6 +30,10 @@ CAREER_OPS_FILES = {
     "tailor_cv": ("modes/_shared.md", "modes/_writing.md"),
     # Form answers are pure writing over supplied facts; no tools are asked for.
     "apply_prepare": ("modes/_shared.md", "modes/_writing.md"),
+    # Interview practice (CR-IVP-01) is writing and judging over supplied facts; no tools are asked for.
+    "interview_generate": ("modes/_shared.md", "modes/_writing.md"),
+    "interview_grade": ("modes/_shared.md", "modes/_writing.md"),
+    "interview_report": ("modes/_shared.md", "modes/_writing.md"),
 }
 CAREER_OPS_ALLOWED_FILES = {CAREER_OPS_ROUTER} | {
     relative_path
