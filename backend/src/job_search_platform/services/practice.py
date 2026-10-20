@@ -10,7 +10,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from job_search_platform.db.models import PRACTICE_SECTIONS, InterviewAttempt, InterviewQuestion, InterviewSet, Run
-from job_search_platform.services.applications import _check
+from job_search_platform.services.evidence import claims
+from job_search_platform.services.experience import numbers
 
 MAX_SETS_PER_SESSION = 20
 MAX_PER_SECTION = 6
@@ -67,10 +68,25 @@ def _strings(value, limit: int, size: int) -> list[str]:
     return [v.strip()[:size] for v in value if isinstance(v, str) and v.strip()][:limit] if isinstance(value, list) else []
 
 
+def supported(answer: str, ids: Sequence[str], fact_claims: Mapping[UUID, set[str]],
+              vocabulary: Collection[str] | None, known: set[str]) -> bool:
+    """The CV-tailoring rule (evidence.require_evidence): cites live facts; every number is in them; every other
+    claim is in them or already in the owner's CV."""
+    try:
+        cited = [UUID(i) for i in ids]
+    except ValueError:
+        return False
+    if not cited or any(i not in fact_claims for i in cited):
+        return False
+    backed = set().union(*(fact_claims[i] for i in cited))
+    return numbers(answer) <= backed and claims(answer, vocabulary) - known <= backed
+
+
 def parse_reply(raw: str, sections: Sequence[Mapping], fact_claims: Mapping[UUID, set[str]],
-                vocabulary: Collection[str] | None) -> tuple[list[dict], list[str]]:
+                vocabulary: Collection[str] | None, known: set[str] = frozenset()) -> tuple[list[dict], list[str]]:
     """Questions in requested section order, at most the requested count each; a model answer the evidence gate
-    rejects becomes None (the question stays). Returns (questions, reverse_questions)."""
+    rejects becomes None (the question stays). `known` holds the claims of the owner's CV.
+    Returns (questions, reverse_questions)."""
     fenced = re.search(r"```(?:json)?\s*(.*?)```", raw or "", re.DOTALL)
     try:
         payload = json.loads(fenced.group(1) if fenced else raw)
@@ -89,12 +105,8 @@ def parse_reply(raw: str, sections: Sequence[Mapping], fact_claims: Mapping[UUID
             answer = item.get("model_answer")
             if not isinstance(answer, str) or not answer.strip() or wanted["id"] == "logistics":
                 answer = None
-            else:
-                try:
-                    if _check({"kind": "text"}, answer[:3000], ids, fact_claims, vocabulary) is not None:
-                        answer = None
-                except ValueError:  # an id that is not a UUID
-                    answer = None
+            elif not supported(answer[:3000], ids, fact_claims, vocabulary, known):
+                answer = None
             questions.append({"section": wanted["id"], "prompt": item["prompt"].strip()[:600],
                               "why": (item.get("why") if isinstance(item.get("why"), str) else "").strip()[:300] or "—",
                               "key_points": _strings(item.get("key_points"), 6, 300),

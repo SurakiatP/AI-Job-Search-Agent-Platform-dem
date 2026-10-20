@@ -28,7 +28,7 @@ from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, 
 from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.services import applications, experience, job_sources, resume, smart_match, tailoring
-from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, fact_claims, require_evidence
+from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, claims, fact_claims, require_evidence
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services import practice
 from job_search_platform.services.approvals import ApprovalService
@@ -863,16 +863,20 @@ class RunExecutor:
             raw = await self._await_result(run, lease_owner, gate_failure, began)
             cited = [{"evidence_ids": [i for i in q.get("evidence_ids") or [] if _is_uuid(i)]}
                      for q in _practice_items(raw)]
+            vocabulary = await asyncio.to_thread(self._vocabulary, run.project_id)
             questions, reverse = practice.parse_reply(
                 raw, inputs["sections"], await asyncio.to_thread(self._fact_claims, run.project_id, cited),
-                await asyncio.to_thread(self._vocabulary, run.project_id))
+                vocabulary, known=claims(text, vocabulary))
             if not questions:
                 raise ServiceError("native_response_invalid")
             await asyncio.to_thread(self._store_practice, run, questions, reverse)
+            offered = sum(1 for item in _practice_items(raw) if isinstance(item.get("model_answer"), str) and item["model_answer"].strip())
             await self._stop(run.project_id, started)
             started = False
             await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed",
-                                    result_payload={"kind": "interview_set", "questions": len(questions)})
+                                    result_payload={"kind": "interview_set", "questions": len(questions),
+                                                    "model_answers_offered": offered,
+                                                    "model_answers_kept": sum(1 for q in questions if q["model_answer"])})
         except ServiceError as exc:
             await self._stop(run.project_id, started)
             status = "cancelled" if exc.code == "cancellation_requested" else "failed"
