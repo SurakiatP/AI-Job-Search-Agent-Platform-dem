@@ -201,7 +201,7 @@ function EvidenceList({ ai, c }: { ai: AiMatch; c: Copy }) {
     {ai.skills_evidenced.length === 0 && <span className="text-sm text-muted-foreground">{c.noneMatched}</span>}
     {quoted.length > 0 && <ul className="grid gap-2">{quoted.map(skill => <li key={skill} className="grid min-w-0 gap-1">
       <Badge variant="success" className="w-fit max-w-full break-words">{skill}</Badge>
-      <blockquote title={ai.evidence![skill]} aria-label={`${c.quoteFrom}: ${skill}`} className="line-clamp-2 break-words border-l-2 border-[var(--stage-search)] pl-2 text-xs leading-relaxed text-muted-foreground">{ai.evidence![skill]}</blockquote>
+      <blockquote title={ai.evidence![skill]} aria-label={`${c.quoteFrom}: ${skill}`} className="line-clamp-2 break-words rounded-md bg-[color-mix(in_srgb,var(--stage-search)_7%,transparent)] px-2 py-1 text-xs leading-relaxed text-muted-foreground">{ai.evidence![skill]}</blockquote>
     </li>)}</ul>}
     {bare.length > 0 && <div className="flex flex-wrap gap-1.5">{bare.map(s => <Badge key={s} variant="success" className="break-words">{s}</Badge>)}</div>}
   </div>;
