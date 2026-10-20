@@ -175,7 +175,7 @@ main[data-stage] h1::before { content: ''; display: block; width: 36px; height: 
   .document-english { font-family: var(--font-document); font-size: 16px; line-height: 1.9; }
 
   /* legacy link-styled buttons (Link className="button button-primary") */
-  .button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 40px; gap: 8px; padding: 8px 16px; border: 1px solid transparent; border-radius: calc(var(--radius) - 2px); font-size: 14px; line-height: 1.7; font-weight: 500; text-decoration: none; transition: background-color var(--dur-fast), color var(--dur-fast); }
+  .button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 40px; gap: 8px; padding: 8px 16px; border: 1px solid transparent; border-radius: 22px; font-size: 14px; line-height: 1.7; font-weight: 500; text-decoration: none; transition: background-color var(--dur-fast), color var(--dur-fast); }
   .button-primary { background: var(--primary); color: var(--primary-foreground); }
   .button-primary:hover { background: color-mix(in oklch, var(--primary) 90%, transparent); }
   .button-secondary { background: var(--card); border-color: var(--input); color: var(--foreground); }
