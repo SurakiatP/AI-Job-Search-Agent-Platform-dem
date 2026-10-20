@@ -1,0 +1,1088 @@
+[
+  {
+    "cv_id": "cv-01",
+    "job": {
+      "slug": "senior-backend-engineer-meridian-cloud",
+      "title": "Senior Backend Engineer",
+      "company": "Meridian Cloud Co., Ltd.",
+      "description_markdown": "We are hiring a Senior Backend Engineer to own the APIs behind our booking platform.\n\nRequired: 6+ years building backend services; strong Python (FastAPI or Django); solid SQL and PostgreSQL; Docker; experience running services on AWS; good code review habits.\n\nPreferred: Redis, CI/CD pipelines, experience splitting a monolith into services, and mentoring junior engineers.\n\nYou will design endpoints, improve performance of slow queries, and work with a small team of four engineers. Hybrid work in Bangkok, English-speaking team.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Python",
+        "FastAPI",
+        "PostgreSQL",
+        "AWS",
+        "Docker",
+        "REST API"
+      ]
+    },
+    "label": "good",
+    "reason": "Same family and level; Python, FastAPI, PostgreSQL, AWS all present.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-01",
+    "job": {
+      "slug": "backend-engineer-python-harbor-logistics",
+      "title": "Backend Engineer (Python)",
+      "company": "Harbor Logistics Tech",
+      "description_markdown": "Harbor Logistics Tech is looking for a Backend Engineer to maintain and extend our shipment tracking services.\n\nRequirements: at least 5 years of professional experience; Python and SQL; Docker; AWS (EC2, RDS or ECS); Git and a CI/CD workflow; comfortable writing automated tests.\n\nNice to have: FastAPI, microservices, Redis caching.\n\nResponsibilities include building REST APIs, reviewing teammates' code, and keeping production healthy. We offer flexible hours and a learning budget.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Python",
+        "SQL",
+        "Docker",
+        "AWS",
+        "Git",
+        "CI/CD"
+      ]
+    },
+    "label": "good",
+    "reason": "Backend role at mid-to-senior level; CV exceeds the 5-year minimum and has every must-have.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-01",
+    "job": {
+      "slug": "staff-platform-engineer-northwind-systems",
+      "title": "Staff Platform Engineer",
+      "company": "Northwind Systems",
+      "description_markdown": "Northwind Systems needs a Staff Platform Engineer to define how our services are built and deployed.\n\nRequired: 10+ years of software engineering; expert Python; production Kubernetes and Terraform; AWS architecture; Docker; CI/CD design; ability to set technical direction across several teams.\n\nPreferred: Microservices, observability, cost optimisation.\n\nYou will lead the platform roadmap, mentor senior engineers, and represent engineering in architecture reviews. This is an individual-contributor role with wide influence.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Python",
+        "Kubernetes",
+        "Terraform",
+        "AWS",
+        "Docker",
+        "CI/CD"
+      ]
+    },
+    "label": "maybe",
+    "reason": "Right field, but one level up (10+ years, staff) and Kubernetes/Terraform must-haves are missing from the CV.",
+    "kind": "ambiguous"
+  },
+  {
+    "cv_id": "cv-01",
+    "job": {
+      "slug": "data-engineer-orchid-analytics",
+      "title": "Data Engineer",
+      "company": "Orchid Analytics",
+      "description_markdown": "Orchid Analytics is hiring a Data Engineer to build the pipelines that feed our reporting products.\n\nRequired: 4+ years of experience; Python and SQL; hands-on data engineering with batch pipelines and big data tools such as Spark; AWS.\n\nPreferred: PostgreSQL, Docker, experience with data quality checks.\n\nYou will design and monitor pipelines, model warehouse tables, and work closely with analysts. Prior experience with workflow schedulers is a plus.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Python",
+        "SQL",
+        "Data Engineering",
+        "Big Data",
+        "AWS"
+      ]
+    },
+    "label": "maybe",
+    "reason": "Adjacent specialisation: Python and SQL fit, but data engineering tooling (big data pipelines) is not in the CV.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-01",
+    "job": {
+      "slug": "staff-accountant-greenfield-trading",
+      "title": "Staff Accountant",
+      "company": "Greenfield Trading Co.",
+      "description_markdown": "Greenfield Trading is looking for a Staff Accountant to join our finance team.\n\nRequired: bachelor's degree in accounting; 2+ years of experience in general ledger, accounts payable and month-end closing; Excel; knowledge of Thai VAT and withholding tax filing.\n\nPreferred: QuickBooks or similar software, experience with audit preparation.\n\nYou will record transactions, reconcile bank accounts, prepare tax filings and support the annual audit. Office-based in Bangkok, Monday to Friday.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Accounting",
+        "Excel",
+        "Tax"
+      ]
+    },
+    "label": "no",
+    "reason": "Accounting role; different field with no overlap in required skills.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-01",
+    "job": {
+      "slug": "registered-nurse-ward-sunrise-hospital",
+      "title": "Registered Nurse, General Ward",
+      "company": "Sunrise Hospital",
+      "description_markdown": "Sunrise Hospital is hiring Registered Nurses for the general medical ward.\n\nRequired: valid nursing and midwifery licence; bachelor's degree in nursing; 2+ years of inpatient experience; BLS certification; ability to work rotating day, evening and night shifts.\n\nPreferred: ACLS certification, English communication with international patients.\n\nDuties: assess patients, administer medication, document nursing notes and coordinate with physicians and families.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Patient Care",
+        "Nursing"
+      ]
+    },
+    "label": "no",
+    "reason": "Registered nurse needs a nursing licence and clinical experience; the CV has neither.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-02",
+    "job": {
+      "slug": "junior-data-analyst-thongdee-retail",
+      "title": "นักวิเคราะห์ข้อมูล (Junior Data Analyst)",
+      "company": "บริษัท ทองดี รีเทล จำกัด",
+      "description_markdown": "บริษัท ทองดี รีเทล กำลังรับสมัครนักวิเคราะห์ข้อมูลระดับจูเนียร์ ประจำสำนักงานใหญ่\n\nคุณสมบัติที่จำเป็น: วุฒิปริญญาตรีสาขาสถิติ คณิตศาสตร์ วิทยาการคอมพิวเตอร์ หรือที่เกี่ยวข้อง ประสบการณ์ 0 ถึง 2 ปี เขียน SQL ได้ ใช้ Excel ได้ดี และทำแดชบอร์ดด้วย Power BI ได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เขียน Python (Pandas) ได้ สื่อสารกับทีมธุรกิจได้ดี\n\nหน้าที่: ดึงข้อมูลยอดขาย ทำความสะอาดข้อมูล สร้างรายงานและแดชบอร์ดให้ฝ่ายขาย ทำงานจันทร์ถึงศุกร์ มีสวัสดิการประกันสุขภาพ",
+      "skills": [
+        "SQL",
+        "Power BI",
+        "Excel",
+        "Data Analysis",
+        "Python"
+      ]
+    },
+    "label": "good",
+    "reason": "ตำแหน่งนักวิเคราะห์ข้อมูลระดับจูเนียร์ ตรงกับประสบการณ์ 1.5 ปี และทักษะ SQL, Power BI, Excel ครบ",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-02",
+    "job": {
+      "slug": "junior-data-engineer-krungthep-data",
+      "title": "Data Engineer (Junior)",
+      "company": "บริษัท กรุงเทพ ดาต้า เซอร์วิส จำกัด",
+      "description_markdown": "กรุงเทพ ดาต้า เซอร์วิส เปิดรับ Data Engineer ระดับจูเนียร์ เพื่อช่วยพัฒนาและดูแลระบบนำเข้าข้อมูลของลูกค้า\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 1 ถึง 3 ปี เขียน Python และ Pandas ได้ เขียน SQL ได้คล่อง เข้าใจแนวคิดฐานข้อมูลเชิงสัมพันธ์ เช่น PostgreSQL\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เคยใช้ Docker หรือ Git ในงานจริง\n\nหน้าที่: เขียนสคริปต์ดึงและแปลงข้อมูล ตรวจสอบคุณภาพข้อมูล และดูแลงานที่รันตามเวลา ทีมพร้อมสอนงานผู้ที่ยังไม่มีประสบการณ์ด้าน Cloud",
+      "skills": [
+        "Python",
+        "SQL",
+        "Pandas",
+        "Data Engineering",
+        "PostgreSQL"
+      ]
+    },
+    "label": "good",
+    "reason": "Data Engineer ระดับจูเนียร์ 1-3 ปี ต้องการ Python, SQL, Pandas ซึ่งมีครบตามที่ระบุ",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-02",
+    "job": {
+      "slug": "data-engineer-mid-siamflow",
+      "title": "Data Engineer (ระดับกลาง)",
+      "company": "บริษัท สยามโฟลว์ จำกัด",
+      "description_markdown": "สยามโฟลว์ ต้องการ Data Engineer ระดับกลางเพื่อดูแลระบบข้อมูลของแพลตฟอร์มส่งอาหาร\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ด้านงานข้อมูล 3 ปีขึ้นไป เขียน Python และ SQL ได้ดี มีประสบการณ์ใช้ Docker ในการนำโค้ดขึ้นระบบ และเข้าใจ PostgreSQL\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ประสบการณ์กับ Cloud (AWS) และเครื่องมือจัดตารางงาน\n\nหน้าที่: ออกแบบและดูแลกระบวนการนำเข้าข้อมูล เขียนโค้ดที่ทดสอบได้ และร่วมแก้ปัญหาเมื่อระบบมีปัญหาในเวลาทำงาน",
+      "skills": [
+        "Python",
+        "SQL",
+        "Docker",
+        "Data Engineering",
+        "PostgreSQL"
+      ]
+    },
+    "label": "maybe",
+    "reason": "สายงานตรง แต่ระดับสูงกว่าหนึ่งขั้น (ต้องมี 3 ปีขึ้นไป) และต้องใช้ Docker ซึ่งผู้สมัครยังไม่เคยใช้",
+    "kind": "ambiguous"
+  },
+  {
+    "cv_id": "cv-02",
+    "job": {
+      "slug": "business-analyst-ploenchit-finance",
+      "title": "นักวิเคราะห์ธุรกิจ (Business Analyst)",
+      "company": "บริษัท เพลินจิต ไฟแนนซ์ จำกัด",
+      "description_markdown": "เพลินจิต ไฟแนนซ์ รับสมัครนักวิเคราะห์ธุรกิจเพื่อทำงานร่วมกับฝ่ายสินเชื่อและทีมพัฒนาระบบ\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 2 ถึง 4 ปีด้าน Business Analysis เขียนเอกสารความต้องการทางธุรกิจ (BRD) ได้ จัดประชุมเก็บความต้องการจากผู้มีส่วนได้ส่วนเสีย ใช้ Excel และ SQL ได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ความรู้ด้านธุรกิจสินเชื่อ ทำงานแบบ Agile\n\nหน้าที่: วิเคราะห์ขั้นตอนการทำงานเดิม เสนอแนวทางปรับปรุง และนำเสนอผลต่อผู้บริหาร",
+      "skills": [
+        "Business Analysis",
+        "Excel",
+        "SQL",
+        "Stakeholder Management",
+        "Presentation"
+      ]
+    },
+    "label": "maybe",
+    "reason": "สายงานใกล้เคียง (Business Analyst) ใช้ Excel และ SQL ได้ แต่ต้องมีทักษะวิเคราะห์ความต้องการธุรกิจและเคยทำเอกสารความต้องการ ซึ่งผู้สมัครยังไม่มี",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-02",
+    "job": {
+      "slug": "senior-ml-engineer-vision-labs",
+      "title": "Senior Machine Learning Engineer",
+      "company": "บริษัท วิชั่น แล็บส์ จำกัด",
+      "description_markdown": "Vision Labs กำลังมองหา Senior Machine Learning Engineer เพื่อนำโมเดลด้านภาพถ่ายขึ้นใช้งานจริง\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 6 ปีขึ้นไปด้าน Machine Learning วุฒิปริญญาโทขึ้นไปในสาขาที่เกี่ยวข้อง เชี่ยวชาญ TensorFlow และ Computer Vision เคยนำโมเดลขึ้นระบบจริงด้วย Docker\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: มีผลงานตีพิมพ์ ประสบการณ์ MLOps\n\nหน้าที่: ออกแบบโมเดล ดูแลทีมวิจัยขนาดเล็ก และกำหนดแนวทางทางเทคนิคของผลิตภัณฑ์",
+      "skills": [
+        "Machine Learning",
+        "TensorFlow",
+        "Computer Vision",
+        "Python",
+        "Docker"
+      ]
+    },
+    "label": "no",
+    "reason": "ต้องการวิศวกร Machine Learning ระดับอาวุโส 6 ปีขึ้นไป ผู้สมัครมีประสบการณ์ 1.5 ปีและไม่มี TensorFlow หรือ Computer Vision",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-02",
+    "job": {
+      "slug": "warehouse-officer-baanrak-distribution",
+      "title": "เจ้าหน้าที่คลังสินค้า",
+      "company": "บริษัท บ้านรักษ์ ดิสทริบิวชั่น จำกัด",
+      "description_markdown": "บ้านรักษ์ ดิสทริบิวชั่น รับสมัครเจ้าหน้าที่คลังสินค้า ประจำศูนย์กระจายสินค้า\n\nคุณสมบัติที่จำเป็น: วุฒิ ม.6 ขึ้นไป ร่างกายแข็งแรง ยกของหนักได้ ทำงานเป็นกะได้ มีความรับผิดชอบและตรงต่อเวลา\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: มีใบรับรองขับรถโฟล์คลิฟท์ ผ่านงานคลังสินค้ามาก่อน\n\nหน้าที่: รับสินค้าเข้า จัดเก็บ หยิบสินค้าตามใบสั่ง และตรวจนับสต็อก ค่าจ้างวันละ 450 บาทพร้อมค่าล่วงเวลา",
+      "skills": [
+        "Supply Chain",
+        "การควบคุมสต็อก"
+      ]
+    },
+    "label": "no",
+    "reason": "งานคลังสินค้าภาคปฏิบัติ ไม่เกี่ยวกับงานข้อมูลและไม่ใช้ทักษะที่ผู้สมัครมี",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-03",
+    "job": {
+      "slug": "digital-marketing-specialist-lumiere-beauty",
+      "title": "Digital Marketing Specialist",
+      "company": "บริษัท ลูเมียร์ บิวตี้ จำกัด",
+      "description_markdown": "ลูเมียร์ บิวตี้ รับสมัคร Digital Marketing Specialist เพื่อดูแลช่องทางออนไลน์ของแบรนด์สกินแคร์\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 3 ถึง 5 ปีด้านการตลาดดิจิทัล บริหารงบโฆษณา Facebook Ads ได้ ทำ SEO เบื้องต้น และอ่านรายงาน Google Analytics เป็น\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เคยทำงานกับแบรนด์ความงามหรืออีคอมเมิร์ซ ใช้ Canva ได้\n\nหน้าที่: วางแผนแคมเปญ ติดตามผล สรุปรายงานรายเดือน และทำงานร่วมกับทีมครีเอทีฟ",
+      "skills": [
+        "Digital Marketing",
+        "SEO",
+        "Facebook Ads",
+        "Google Analytics",
+        "Content Marketing"
+      ]
+    },
+    "label": "good",
+    "reason": "Digital Marketing 3-5 ปี ตรงกับประสบการณ์ 4 ปี มี SEO, Facebook Ads, Google Analytics ครบ",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-03",
+    "job": {
+      "slug": "performance-marketing-executive-kinnaree-online",
+      "title": "Performance Marketing Executive",
+      "company": "บริษัท กินรี ออนไลน์ จำกัด",
+      "description_markdown": "กินรี ออนไลน์ ร้านค้าออนไลน์สินค้าเพื่อสุขภาพ ต้องการ Performance Marketing Executive\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 3 ปีขึ้นไปในการยิงโฆษณา Facebook Ads และ Google Ads วิเคราะห์ ROAS และต้นทุนต่อการขาย ด้วย Google Analytics และ Excel\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ประสบการณ์ SEO และ Email Marketing\n\nหน้าที่: บริหารงบโฆษณาเดือนละหลายแสนบาท ทดสอบครีเอทีฟ และรายงานผลรายสัปดาห์ให้ผู้จัดการฝ่ายการตลาด",
+      "skills": [
+        "Facebook Ads",
+        "Google Analytics",
+        "Digital Marketing",
+        "Excel",
+        "E-commerce"
+      ]
+    },
+    "label": "good",
+    "reason": "Performance Marketing ระดับกลาง 3 ปีขึ้นไป เน้น Facebook Ads และ Google Analytics ที่ผู้สมัครทำอยู่แล้ว",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-03",
+    "job": {
+      "slug": "marketing-manager-chaophraya-foods",
+      "title": "ผู้จัดการฝ่ายการตลาด (Marketing Manager)",
+      "company": "บริษัท เจ้าพระยา ฟู้ดส์ จำกัด",
+      "description_markdown": "เจ้าพระยา ฟู้ดส์ รับสมัครผู้จัดการฝ่ายการตลาด เพื่อดูแลแบรนด์อาหารพร้อมทาน\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ด้านการตลาด 7 ปีขึ้นไป อย่างน้อย 2 ปีในตำแหน่งหัวหน้าทีม บริหารงบการตลาดประจำปี วางกลยุทธ์ Digital Marketing และ Branding\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ประสบการณ์สินค้าอุปโภคบริโภค\n\nหน้าที่: บริหารทีม 5 คน อนุมัติแคมเปญ ติดตามผลต่อผู้บริหาร และประสานงานกับเอเจนซี่",
+      "skills": [
+        "Marketing",
+        "Digital Marketing",
+        "Leadership",
+        "Budgeting",
+        "Branding"
+      ]
+    },
+    "label": "maybe",
+    "reason": "สายงานตรง แต่ตำแหน่งสูงกว่าหนึ่งขั้น (ผู้จัดการ 7 ปีขึ้นไป ต้องบริหารทีม) ผู้สมัครมี 4 ปีและยังไม่เคยหัวหน้าทีมจริง",
+    "kind": "ambiguous"
+  },
+  {
+    "cv_id": "cv-03",
+    "job": {
+      "slug": "content-creator-video-pladao-media",
+      "title": "Content Creator (วิดีโอ)",
+      "company": "บริษัท ปลาดาว มีเดีย จำกัด",
+      "description_markdown": "ปลาดาว มีเดีย ต้องการ Content Creator สายวิดีโอ เพื่อผลิตคลิปสั้นให้ลูกค้าหลายแบรนด์\n\nคุณสมบัติที่จำเป็น: ตัดต่อวิดีโอด้วย Premiere Pro ได้คล่อง ประสบการณ์ 2 ปีขึ้นไป เขียนสคริปต์คลิปสั้น เข้าใจเทรนด์บน TikTok และ Instagram\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เขียนแคปชันและ Copywriting ได้ดี ถ่ายภาพนิ่งได้\n\nหน้าที่: คิดคอนเทนต์ ถ่ายทำ ตัดต่อ และส่งงานตามกำหนดรายสัปดาห์",
+      "skills": [
+        "Premiere Pro",
+        "Content Marketing",
+        "Social Media",
+        "Copywriting"
+      ]
+    },
+    "label": "maybe",
+    "reason": "งานคอนเทนต์ใกล้เคียงสายการตลาด แต่ต้องตัดต่อวิดีโอด้วย Premiere Pro เป็นหลัก ซึ่งผู้สมัครไม่มี",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-03",
+    "job": {
+      "slug": "accountant-sathorn-engineering",
+      "title": "นักบัญชี",
+      "company": "บริษัท สาทร เอ็นจิเนียริ่ง จำกัด",
+      "description_markdown": "สาทร เอ็นจิเนียริ่ง รับสมัครนักบัญชี 1 อัตรา\n\nคุณสมบัติที่จำเป็น: วุฒิปริญญาตรีสาขาบัญชี ประสบการณ์ 2 ปีขึ้นไป ทำบัญชีครบวงจร ยื่นภาษี ภ.ง.ด. และ ภ.พ.30 ได้ ใช้ Excel ได้ดี\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เคยใช้โปรแกรมบัญชีสำเร็จรูป\n\nหน้าที่: บันทึกบัญชี กระทบยอดธนาคาร ปิดงบรายเดือน และเตรียมเอกสารให้ผู้สอบบัญชี",
+      "skills": [
+        "Accounting",
+        "Tax",
+        "Excel"
+      ]
+    },
+    "label": "no",
+    "reason": "งานบัญชีต้องใช้วุฒิบัญชีและทักษะภาษีที่ผู้สมัครไม่มี ต่างสายงานโดยสิ้นเชิง",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-03",
+    "job": {
+      "slug": "backend-developer-java-nimman-tech",
+      "title": "Backend Developer (Java)",
+      "company": "บริษัท นิมมาน เทค จำกัด",
+      "description_markdown": "นิมมาน เทค เปิดรับ Backend Developer สาย Java เพื่อพัฒนาระบบหลังบ้านของแอปธนาคาร\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 3 ปีขึ้นไป เขียน Java และ Spring Boot ได้ดี ออกแบบ REST API ได้ เขียน SQL ได้ ใช้ Git\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เคยทำงานกับระบบที่แบ่งเป็น Microservices\n\nหน้าที่: พัฒนาและทดสอบบริการ ร่วมตรวจโค้ด และแก้ไขปัญหาระบบที่ใช้งานจริง",
+      "skills": [
+        "Java",
+        "Spring",
+        "SQL",
+        "REST API",
+        "Git"
+      ]
+    },
+    "label": "no",
+    "reason": "Backend developer ต้องมีประสบการณ์ Java/Spring และฐานข้อมูล ผู้สมัครไม่มีทักษะเหล่านี้",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-04",
+    "job": {
+      "slug": "junior-social-media-executive-palm-coast-travel",
+      "title": "Junior Social Media Executive",
+      "company": "Palm Coast Travel",
+      "description_markdown": "Palm Coast Travel is looking for a Junior Social Media Executive to grow our channels.\n\nRequired: 0 to 2 years of experience in social media or content; good written English; Canva or similar design tool; ability to plan a weekly posting calendar.\n\nPreferred: experience with travel or hospitality brands, basic photo editing, Thai language.\n\nYou will write captions, design graphics, reply to comments and report monthly reach and engagement. Based in Phuket, with a friendly team of five.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Social Media",
+        "Canva",
+        "Copywriting",
+        "Content Marketing"
+      ]
+    },
+    "label": "good",
+    "reason": "Junior social media role matching one year of experience, Canva and copywriting.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-04",
+    "job": {
+      "slug": "marketing-assistant-blue-lagoon-spa",
+      "title": "Marketing Assistant",
+      "company": "Blue Lagoon Spa Group",
+      "description_markdown": "Blue Lagoon Spa Group seeks a Marketing Assistant to support our marketing manager.\n\nRequired: bachelor's degree in marketing, communication or related field; up to 2 years of experience; good English writing; Microsoft Office; Canva.\n\nPreferred: email newsletter experience, social media management.\n\nTasks: draft promotional copy, send monthly newsletters, update the website, prepare simple performance reports in Excel, and help with events. Office in Phuket town.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Marketing",
+        "Email Marketing",
+        "Content Marketing",
+        "Canva",
+        "Microsoft Office"
+      ]
+    },
+    "label": "good",
+    "reason": "Entry-level marketing assistant with content and email duties the CV already covers.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-04",
+    "job": {
+      "slug": "digital-marketing-executive-island-gear",
+      "title": "Digital Marketing Executive",
+      "company": "Island Gear Co., Ltd.",
+      "description_markdown": "Island Gear, an online outdoor equipment shop, is hiring a Digital Marketing Executive.\n\nRequired: 2 to 3 years of digital marketing experience; hands-on SEO (keyword research, on-page optimisation); Google Analytics reporting; social media and email campaigns; fluent English.\n\nPreferred: paid ads (Facebook Ads), e-commerce experience.\n\nYou will plan monthly campaigns, improve organic traffic, and present results to the founder every month. Hybrid, Phuket.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Digital Marketing",
+        "SEO",
+        "Google Analytics",
+        "Social Media",
+        "Email Marketing"
+      ]
+    },
+    "label": "maybe",
+    "reason": "Same family, but asks for 2 to 3 years and SEO as a must-have; the CV has 1 year and no SEO.",
+    "kind": "ambiguous"
+  },
+  {
+    "cv_id": "cv-04",
+    "job": {
+      "slug": "customer-service-executive-seabird-resort",
+      "title": "Customer Service Executive",
+      "company": "Seabird Resort Phuket",
+      "description_markdown": "Seabird Resort Phuket is hiring a Customer Service Executive for our online booking team.\n\nRequired: excellent English communication; 1 year of customer-facing work; Microsoft Office; patient and polite when handling complaints; willing to work shifts including weekends.\n\nPreferred: Thai conversation, experience with reservation systems or social media inboxes.\n\nYou will answer guest messages by email and chat, confirm bookings, handle changes and refunds, and report common issues to the manager.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Customer Service",
+        "Communication",
+        "Microsoft Office",
+        "English"
+      ]
+    },
+    "label": "maybe",
+    "reason": "Customer-facing communication fits, but this is customer service, not marketing.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-04",
+    "job": {
+      "slug": "senior-backend-engineer-coral-fintech",
+      "title": "Senior Backend Engineer",
+      "company": "Coral Fintech",
+      "description_markdown": "Coral Fintech is hiring a Senior Backend Engineer for our payments platform.\n\nRequired: 8+ years of backend development; expert Python or Java; SQL; AWS; Docker; experience designing microservices; strong testing habits.\n\nPreferred: Kubernetes, payment industry knowledge, experience with on-call rotations and incident reviews.\n\nYou will design services, lead technical reviews and mentor engineers. Remote-friendly within Thailand, with two office days per month for planning sessions.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Python",
+        "SQL",
+        "AWS",
+        "Docker",
+        "Microservices"
+      ]
+    },
+    "label": "no",
+    "reason": "Senior engineering role requiring 8+ years of Java/Python; completely different field.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-04",
+    "job": {
+      "slug": "warehouse-supervisor-eastgate-distribution",
+      "title": "Warehouse Supervisor",
+      "company": "Eastgate Distribution",
+      "description_markdown": "Eastgate Distribution needs a Warehouse Supervisor for our Chonburi centre.\n\nRequired: 4+ years in warehouse operations; at least 1 year supervising a team of 10 or more; ERP experience; forklift knowledge; able to work shifts.\n\nPreferred: Lean or 5S training.\n\nYou will schedule staff, manage inbound and outbound flow, keep inventory accurate and report safety incidents.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Supply Chain",
+        "Leadership",
+        "ERP"
+      ]
+    },
+    "label": "no",
+    "reason": "Physical warehouse supervisor role needs logistics experience and team leadership; unrelated to marketing.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-05",
+    "job": {
+      "slug": "accountant-baanmai-property",
+      "title": "นักบัญชี",
+      "company": "บริษัท บ้านใหม่ พร็อพเพอร์ตี้ จำกัด",
+      "description_markdown": "บ้านใหม่ พร็อพเพอร์ตี้ รับสมัครนักบัญชี ประจำสำนักงานใหญ่ กรุงเทพฯ\n\nคุณสมบัติที่จำเป็น: วุฒิปริญญาตรีสาขาบัญชี ประสบการณ์ 3 ถึง 6 ปี ทำบัญชีครบวงจร ยื่นภาษีหัก ณ ที่จ่ายและภาษีมูลค่าเพิ่ม ใช้ Excel ได้ดี\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เคยใช้ QuickBooks หรือโปรแกรมบัญชีอื่น ช่วยจัดทำงบประมาณ\n\nหน้าที่: ปิดงบรายเดือน ดูแลเจ้าหนี้และลูกหนี้ กระทบยอดธนาคาร และประสานงานกับผู้สอบบัญชี",
+      "skills": [
+        "Accounting",
+        "Tax",
+        "Excel",
+        "Budgeting"
+      ]
+    },
+    "label": "good",
+    "reason": "นักบัญชี 3-6 ปี ตรงกับประสบการณ์ 5 ปี และทักษะภาษี Excel ครบ",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-05",
+    "job": {
+      "slug": "tax-accountant-rungruang-trading",
+      "title": "นักบัญชี (เน้นงานภาษี)",
+      "company": "บริษัท รุ่งเรือง เทรดดิ้ง จำกัด",
+      "description_markdown": "รุ่งเรือง เทรดดิ้ง ต้องการนักบัญชีที่เน้นงานภาษีและเอกสารบัญชี\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 4 ปีขึ้นไปด้านบัญชีและภาษี ยื่น ภ.ง.ด.3 ภ.ง.ด.53 ภ.พ.30 ได้ด้วยตนเอง ปิดบัญชีและจัดทำงบการเงินเบื้องต้นได้ ใช้ Excel ได้ดี\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: มีประสบการณ์คำนวณเงินเดือนและประกันสังคม\n\nหน้าที่: บันทึกบัญชี จัดทำรายงานภาษี และตอบข้อซักถามของผู้สอบบัญชีและสรรพากร",
+      "skills": [
+        "Accounting",
+        "Tax",
+        "Excel",
+        "Payroll"
+      ]
+    },
+    "label": "good",
+    "reason": "ตำแหน่งนักบัญชีภาษีระดับกลาง 4 ปีขึ้นไป ผู้สมัครทำงานภาษีประจำเดือนอยู่แล้ว",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-05",
+    "job": {
+      "slug": "accounting-supervisor-thaisiri-manufacturing",
+      "title": "หัวหน้าแผนกบัญชี (Accounting Supervisor)",
+      "company": "บริษัท ไทยสิริ แมนูแฟคเจอริ่ง จำกัด",
+      "description_markdown": "ไทยสิริ แมนูแฟคเจอริ่ง รับสมัครหัวหน้าแผนกบัญชี ดูแลทีมบัญชี 4 คน\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ด้านบัญชี 7 ปีขึ้นไป อย่างน้อย 1 ปีในตำแหน่งหัวหน้างาน ปิดงบการเงินได้ครบ ความรู้ด้านภาษีเป็นอย่างดี ใช้ Excel ได้ดี\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: มีความรู้มาตรฐานการรายงานทางการเงิน และการทำงบประมาณ\n\nหน้าที่: ตรวจงานทีม ปิดงบ ประสานงานกับผู้สอบบัญชี และรายงานผลต่อผู้จัดการฝ่ายการเงิน",
+      "skills": [
+        "Accounting",
+        "Tax",
+        "Excel",
+        "Leadership",
+        "Budgeting"
+      ]
+    },
+    "label": "maybe",
+    "reason": "สายงานเดียวกัน แต่ตำแหน่งสูงขึ้นหนึ่งขั้น (7 ปีขึ้นไป หัวหน้าทีม) ผู้สมัครมี 5 ปีและไม่เคยบริหารทีม",
+    "kind": "ambiguous"
+  },
+  {
+    "cv_id": "cv-05",
+    "job": {
+      "slug": "finance-executive-andaman-energy",
+      "title": "เจ้าหน้าที่การเงิน (Finance Executive)",
+      "company": "บริษัท อันดามัน เอนเนอร์จี จำกัด",
+      "description_markdown": "อันดามัน เอนเนอร์จี รับสมัครเจ้าหน้าที่การเงิน เพื่อสนับสนุนการวางแผนงบประมาณของบริษัท\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 3 ปีขึ้นไปด้านการเงินหรือบัญชี วิเคราะห์งบการเงินและต้นทุนได้ ทำรายงานด้วย Excel และ Power BI ได้ดี\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ความรู้เรื่องการจัดทำงบประมาณและพยากรณ์กระแสเงินสด\n\nหน้าที่: วิเคราะห์ผลประกอบการรายเดือน เตรียมสไลด์นำเสนอผู้บริหาร และติดตามงบประมาณเทียบกับผลจริง",
+      "skills": [
+        "Financial Analysis",
+        "Power BI",
+        "Excel",
+        "Budgeting"
+      ]
+    },
+    "label": "maybe",
+    "reason": "งานการเงินใกล้เคียงบัญชี แต่ต้องวิเคราะห์การเงินและทำ Power BI ซึ่งผู้สมัครไม่มี",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-05",
+    "job": {
+      "slug": "certified-auditor-wattana-audit",
+      "title": "ผู้สอบบัญชีรับอนุญาต (CPA)",
+      "company": "สำนักงานสอบบัญชี วัฒนา ออดิท",
+      "description_markdown": "สำนักงานสอบบัญชี วัฒนา ออดิท รับสมัครผู้สอบบัญชีรับอนุญาต 1 อัตรา\n\nคุณสมบัติที่จำเป็น: ต้องมีใบอนุญาตเป็นผู้สอบบัญชีรับอนุญาต (CPA) ที่ยังไม่หมดอายุ ประสบการณ์สอบบัญชี 5 ปีขึ้นไป ลงนามรับรองงบการเงินได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เคยตรวจสอบบริษัทที่จดทะเบียนหรือบริษัทต่างชาติ\n\nหน้าที่: วางแผนการสอบบัญชี ตรวจสอบงบการเงินของลูกค้า และลงนามในรายงานผู้สอบบัญชี",
+      "skills": [
+        "Auditing",
+        "Accounting",
+        "Tax"
+      ]
+    },
+    "label": "no",
+    "reason": "ผู้สอบบัญชีรับอนุญาตต้องมีใบอนุญาต CPA ซึ่งผู้สมัครไม่มี เป็นข้อกำหนดทางกฎหมาย",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-05",
+    "job": {
+      "slug": "frontend-developer-react-pakchong-digital",
+      "title": "Frontend Developer (React)",
+      "company": "บริษัท ปากช่อง ดิจิทัล จำกัด",
+      "description_markdown": "ปากช่อง ดิจิทัล รับสมัคร Frontend Developer เพื่อพัฒนาเว็บแอปพลิเคชันให้ลูกค้าองค์กร\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 2 ปีขึ้นไป เขียน React และ JavaScript ได้ดี รู้จัก TypeScript และ CSS ใช้ Git ในการทำงานร่วมกับทีม\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เคยทำงานร่วมกับดีไซเนอร์ผ่าน Figma\n\nหน้าที่: พัฒนาหน้าจอ เชื่อมต่อ API เขียนทดสอบ และปรับปรุงประสิทธิภาพของเว็บ",
+      "skills": [
+        "React",
+        "JavaScript",
+        "TypeScript",
+        "CSS",
+        "Git"
+      ]
+    },
+    "label": "no",
+    "reason": "ต้องการนักพัฒนา Frontend (React) ผู้สมัครไม่มีพื้นฐานงานเขียนโปรแกรม",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-06",
+    "job": {
+      "slug": "senior-financial-analyst-fpa-grandview-group",
+      "title": "Senior Financial Analyst (FP&A)",
+      "company": "Grandview Group",
+      "description_markdown": "Grandview Group is hiring a Senior Financial Analyst to join the FP&A team.\n\nRequired: 6+ years in financial planning and analysis; advanced Excel modelling; Power BI dashboards; budgeting and forecasting; ability to present to senior executives.\n\nPreferred: manufacturing or consumer goods background, MBA or CFA.\n\nYou will own the monthly forecast, run variance analysis, support pricing decisions and advise business unit heads. English-speaking environment in central Bangkok.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Financial Analysis",
+        "Budgeting",
+        "Excel",
+        "Power BI",
+        "Presentation"
+      ]
+    },
+    "label": "good",
+    "reason": "Senior FP&A role at 6+ years; the CV has budgeting, Power BI, Excel modelling and 10 years.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-06",
+    "job": {
+      "slug": "finance-manager-ratchada-industries",
+      "title": "Finance Manager",
+      "company": "Ratchada Industries",
+      "description_markdown": "Ratchada Industries seeks a Finance Manager to lead budgeting and management reporting.\n\nRequired: 8+ years in finance, including 3+ years leading a team; owning an annual budget and rolling forecast; financial analysis; knowledge of accounting standards; Excel.\n\nPreferred: Power BI, risk management experience, bank relationship handling.\n\nYou will manage three analysts, advise the CFO on cash flow and capital spending, and improve the month-end close.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Financial Analysis",
+        "Budgeting",
+        "Leadership",
+        "Accounting",
+        "Risk Management"
+      ]
+    },
+    "label": "good",
+    "reason": "Finance manager role (8+ years, budget owner, small team) closely matches the CV's current job.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-06",
+    "job": {
+      "slug": "finance-director-bangkok-health-group",
+      "title": "Finance Director",
+      "company": "Bangkok Health Group",
+      "description_markdown": "Bangkok Health Group is searching for a Finance Director to report to the CEO.\n\nRequired: 15+ years in finance with 5+ years at senior-management level; experience leading fundraising or an IPO; full ownership of budget, treasury and board reporting; leadership of a team of 20 or more.\n\nPreferred: healthcare industry experience, bank and investor relations.\n\nYou will set financial strategy, present to the board and manage relationships with auditors and lenders.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Financial Analysis",
+        "Budgeting",
+        "Leadership",
+        "Risk Management",
+        "Stakeholder Management"
+      ]
+    },
+    "label": "maybe",
+    "reason": "Same family but one level up: 15+ year director role with fundraising, which the CV does not have.",
+    "kind": "ambiguous"
+  },
+  {
+    "cv_id": "cv-06",
+    "job": {
+      "slug": "business-analyst-finance-systems-asia-pacific-retail",
+      "title": "Business Analyst, Finance Systems",
+      "company": "Asia Pacific Retail",
+      "description_markdown": "Asia Pacific Retail seeks a Business Analyst to work on finance and reporting systems.\n\nRequired: 5+ years of experience; strong SQL; data analysis; gathering requirements from finance users and writing clear specifications; Excel.\n\nPreferred: knowledge of ERP finance modules, Power BI, Agile ways of working.\n\nYou will translate reporting needs into specifications, validate data with the development team and support user testing.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Business Analysis",
+        "SQL",
+        "Data Analysis",
+        "Stakeholder Management",
+        "Excel"
+      ]
+    },
+    "label": "maybe",
+    "reason": "Analytical background fits, but the role is business analysis needing SQL and process documentation the CV lacks.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-06",
+    "job": {
+      "slug": "staff-nurse-icu-riverside-medical-centre",
+      "title": "Staff Nurse, ICU",
+      "company": "Riverside Medical Centre",
+      "description_markdown": "Riverside Medical Centre is recruiting Staff Nurses for the intensive care unit.\n\nRequired: valid nursing and midwifery licence; bachelor's degree in nursing; 3+ years of ICU experience; BLS and ACLS certificates; ready for rotating shifts.\n\nPreferred: experience with ventilators and dialysis.\n\nDuties include continuous monitoring of critical patients, medication administration and close coordination with physicians.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Patient Care",
+        "Nursing"
+      ]
+    },
+    "label": "no",
+    "reason": "Clinical nursing role requires a licence and patient-care experience; unrelated to finance.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-06",
+    "job": {
+      "slug": "junior-social-media-executive-lotus-cosmetics",
+      "title": "Junior Social Media Executive",
+      "company": "Lotus Cosmetics",
+      "description_markdown": "Lotus Cosmetics is hiring a Junior Social Media Executive.\n\nRequired: fresh graduates welcome; up to 1 year of experience; creative writing; Canva; active on Instagram and TikTok.\n\nPreferred: photography or video editing skills, knowledge of beauty trends, and basic reporting in Excel.\n\nYou will post daily content, respond to comments and track weekly engagement. Salary 18,000 baht per month, with an office in central Bangkok near the BTS and a casual dress code.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Social Media",
+        "Canva",
+        "Copywriting"
+      ]
+    },
+    "label": "no",
+    "reason": "Entry-level social media position far below the CV's level and in a different field.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-07",
+    "job": {
+      "slug": "registered-nurse-internal-medicine-ward-ruamjai-hospital",
+      "title": "พยาบาลวิชาชีพ หอผู้ป่วยอายุรกรรม",
+      "company": "โรงพยาบาลร่วมใจ",
+      "description_markdown": "โรงพยาบาลร่วมใจ เปิดรับพยาบาลวิชาชีพ หอผู้ป่วยอายุรกรรม จำนวน 3 อัตรา\n\nคุณสมบัติที่จำเป็น: จบปริญญาตรีสาขาพยาบาลศาสตร์ มีใบประกอบวิชาชีพการพยาบาลและการผดุงครรภ์ที่ยังไม่หมดอายุ ประสบการณ์ดูแลผู้ป่วยในอย่างน้อย 3 ปี ผ่านการอบรม BLS ทำงานเป็นเวรได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ผ่านการอบรม ACLS สอนผู้ป่วยและญาติได้ดี\n\nหน้าที่: ประเมินอาการ ให้ยา บันทึกทางการพยาบาล ประสานงานกับแพทย์ และให้ความรู้แก่ผู้ป่วยและญาติ",
+      "skills": [
+        "การพยาบาล",
+        "การดูแลผู้ป่วยใน"
+      ]
+    },
+    "label": "good",
+    "reason": "พยาบาลวิชาชีพอายุรกรรมผู้ป่วยใน 3 ปีขึ้นไป ตรงกับประสบการณ์ 6 ปีและมีใบประกอบวิชาชีพ",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-07",
+    "job": {
+      "slug": "registered-nurse-opd-clinic-samakkhi-clinic",
+      "title": "พยาบาลวิชาชีพ คลินิกผู้ป่วยนอก",
+      "company": "คลินิกสามัคคีเวชกรรม",
+      "description_markdown": "คลินิกสามัคคีเวชกรรม รับสมัครพยาบาลวิชาชีพประจำคลินิกผู้ป่วยนอก ทำงานวันจันทร์ถึงเสาร์ ไม่มีเวรดึก\n\nคุณสมบัติที่จำเป็น: มีใบประกอบวิชาชีพการพยาบาลและการผดุงครรภ์ที่ยังไม่หมดอายุ ประสบการณ์ 2 ปีขึ้นไป ซักประวัติ วัดสัญญาณชีพ ช่วยแพทย์ตรวจ และให้คำแนะนำผู้ป่วยได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: มีประสบการณ์ดูแลผู้ป่วยโรคเรื้อรัง\n\nหน้าที่: ดูแลผู้ป่วยก่อนและหลังพบแพทย์ บันทึกข้อมูลลงระบบ และเตรียมอุปกรณ์ทางการแพทย์",
+      "skills": [
+        "การพยาบาล",
+        "ผู้ป่วยนอก"
+      ]
+    },
+    "label": "good",
+    "reason": "พยาบาลวิชาชีพคลินิกผู้ป่วยนอก ต้องการประสบการณ์ 2 ปีขึ้นไป ผู้สมัครมีใบประกอบและเคยหมุนเวียนงานผู้ป่วยนอก",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-07",
+    "job": {
+      "slug": "registered-nurse-icu-bangkok-central-hospital",
+      "title": "พยาบาลวิชาชีพ หอผู้ป่วยหนัก (ICU)",
+      "company": "โรงพยาบาลกลางกรุงเทพ",
+      "description_markdown": "โรงพยาบาลกลางกรุงเทพ รับสมัครพยาบาลวิชาชีพประจำหอผู้ป่วยหนัก (ICU) อายุรกรรม\n\nคุณสมบัติที่จำเป็น: มีใบประกอบวิชาชีพการพยาบาลและการผดุงครรภ์ที่ยังไม่หมดอายุ ประสบการณ์ในหอผู้ป่วยหนักอย่างน้อย 3 ปี ผ่านการอบรมการพยาบาลผู้ป่วยวิกฤต ใช้เครื่องช่วยหายใจได้ ผ่าน BLS และ ACLS\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ผ่านการอบรมเฉพาะทางสาขาเวชปฏิบัติวิกฤต\n\nหน้าที่: เฝ้าระวังอาการผู้ป่วยวิกฤตต่อเนื่อง ให้ยาตามคำสั่งแพทย์ และสื่อสารกับญาติ",
+      "skills": [
+        "การพยาบาล",
+        "การพยาบาลผู้ป่วยวิกฤต"
+      ]
+    },
+    "label": "maybe",
+    "reason": "พยาบาลวิชาชีพเหมือนกัน แต่ ICU ต้องมีประสบการณ์ ICU 3 ปีและอบรมเฉพาะทาง ซึ่งผู้สมัครไม่มี",
+    "kind": "ambiguous"
+  },
+  {
+    "cv_id": "cv-07",
+    "job": {
+      "slug": "hospital-coordinator-siriraks-health",
+      "title": "เจ้าหน้าที่ประสานงานการรักษา",
+      "company": "โรงพยาบาลศิริรักษ์",
+      "description_markdown": "โรงพยาบาลศิริรักษ์ รับสมัครเจ้าหน้าที่ประสานงานการรักษา ประจำศูนย์ผู้ป่วยต่างประเทศ\n\nคุณสมบัติที่จำเป็น: จบปริญญาตรีสาขาใดก็ได้ ประสบการณ์ทำงานในโรงพยาบาลหรือคลินิก 2 ปีขึ้นไป ใช้ Microsoft Office ได้ดี พูดและเขียนภาษาอังกฤษได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: มีพื้นฐานทางการพยาบาลหรือการแพทย์ ประสานงานเรื่องประกันสุขภาพ\n\nหน้าที่: นัดหมายแพทย์ ติดตามผลตรวจ ประสานข้อมูลกับญาติและบริษัทประกัน ไม่ต้องให้การรักษาผู้ป่วยโดยตรง",
+      "skills": [
+        "Microsoft Office",
+        "Communication",
+        "Customer Service"
+      ]
+    },
+    "label": "maybe",
+    "reason": "งานประสานงานในโรงพยาบาลใกล้เคียงสายสุขภาพ ไม่ต้องใช้ใบประกอบ แต่เป็นงานเอกสารและระบบ ไม่ใช่การพยาบาล",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-07",
+    "job": {
+      "slug": "software-developer-python-siam-digital-works",
+      "title": "Software Developer (Python)",
+      "company": "บริษัท สยาม ดิจิทัล เวิร์คส์ จำกัด",
+      "description_markdown": "สยาม ดิจิทัล เวิร์คส์ รับสมัคร Software Developer สาย Python\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 2 ปีขึ้นไป เขียน Python และ SQL ได้ดี ออกแบบ REST API ได้ ใช้ Git และเขียนทดสอบอัตโนมัติได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ใช้ Docker หรือ Cloud มาก่อน\n\nหน้าที่: พัฒนาระบบหลังบ้านของแอปพลิเคชัน ตรวจโค้ด และดูแลระบบหลังขึ้นใช้งานจริง",
+      "skills": [
+        "Python",
+        "SQL",
+        "Git",
+        "REST API"
+      ]
+    },
+    "label": "no",
+    "reason": "งานพัฒนาซอฟต์แวร์ ต้องการทักษะ Python/SQL ที่ผู้สมัครไม่มี",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-07",
+    "job": {
+      "slug": "marketing-executive-siam-snack",
+      "title": "เจ้าหน้าที่การตลาดออนไลน์",
+      "company": "บริษัท สยาม สแน็ค จำกัด",
+      "description_markdown": "สยาม สแน็ค ต้องการเจ้าหน้าที่การตลาดออนไลน์ 1 อัตรา\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ด้านการตลาดออนไลน์ 2 ปีขึ้นไป ดูแลเพจ Facebook และ Instagram ได้ ยิงโฆษณา Facebook Ads ได้ ใช้ Canva ทำกราฟิกพื้นฐาน\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เข้าใจ SEO และ Google Analytics\n\nหน้าที่: วางแผนโพสต์ประจำสัปดาห์ จัดโปรโมชัน และรายงานผลต่อผู้จัดการฝ่ายการตลาด",
+      "skills": [
+        "Digital Marketing",
+        "Social Media",
+        "Facebook Ads",
+        "Canva"
+      ]
+    },
+    "label": "no",
+    "reason": "ผู้ช่วยนักการตลาดต้องใช้ทักษะสื่อสังคมออนไลน์และโฆษณา ซึ่งต่างสายงานจากการพยาบาลทั้งหมด",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-08",
+    "job": {
+      "slug": "medical-records-officer-thaiwattana-hospital",
+      "title": "เจ้าหน้าที่เวชระเบียน",
+      "company": "โรงพยาบาลไทยวัฒนา",
+      "description_markdown": "โรงพยาบาลไทยวัฒนา รับสมัครเจ้าหน้าที่เวชระเบียน ประจำแผนกผู้ป่วยนอก\n\nคุณสมบัติที่จำเป็น: วุฒิ ปวส. ขึ้นไป ประสบการณ์งานเวชระเบียนหรือธุรการโรงพยาบาล 1 ถึง 3 ปี ใช้ Microsoft Office และ Excel ได้ รักษาความลับข้อมูลผู้ป่วยได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: มีความรู้เรื่องสิทธิประกันสุขภาพและการเบิกจ่าย\n\nหน้าที่: ลงทะเบียนผู้ป่วย จัดเก็บและค้นหาเวชระเบียน ตรวจความครบถ้วนของเอกสาร และทำรายงานสถิติประจำเดือน",
+      "skills": [
+        "Microsoft Office",
+        "Excel",
+        "เวชระเบียน",
+        "Customer Service"
+      ]
+    },
+    "label": "good",
+    "reason": "เจ้าหน้าที่เวชระเบียน 1-3 ปี ตรงกับงานปัจจุบัน 2 ปีของผู้สมัครทุกประการ",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-08",
+    "job": {
+      "slug": "patient-coordinator-front-desk-mettapat-hospital",
+      "title": "เจ้าหน้าที่ประสานงานผู้ป่วย (Front Desk)",
+      "company": "โรงพยาบาลเมตตาภัทร",
+      "description_markdown": "โรงพยาบาลเมตตาภัทร ต้องการเจ้าหน้าที่ประสานงานผู้ป่วยประจำเคาน์เตอร์ต้อนรับ\n\nคุณสมบัติที่จำเป็น: ประสบการณ์งานต้อนรับหรือธุรการในโรงพยาบาล คลินิก หรือบริการ 1 ปีขึ้นไป บุคลิกดี พูดจาสุภาพ ใช้ Microsoft Office ได้ ทำงานเป็นกะได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ใช้ระบบนัดหมายแพทย์มาก่อน พูดภาษาอังกฤษพื้นฐานได้\n\nหน้าที่: ต้อนรับผู้ป่วย นัดหมาย ตอบโทรศัพท์ และตรวจสอบสิทธิการรักษาเบื้องต้น",
+      "skills": [
+        "Customer Service",
+        "Microsoft Office",
+        "Communication"
+      ]
+    },
+    "label": "good",
+    "reason": "ต้อนรับและประสานงานผู้ป่วยโรงพยาบาลเอกชน 1 ปีขึ้นไป ผู้สมัครเคยทำทั้งต้อนรับและนัดหมาย",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-08",
+    "job": {
+      "slug": "hospital-admin-supervisor-bangkok-wellness",
+      "title": "หัวหน้างานบริหารโรงพยาบาล",
+      "company": "โรงพยาบาลกรุงเทพ เวลเนส",
+      "description_markdown": "โรงพยาบาลกรุงเทพ เวลเนส รับสมัครหัวหน้างานบริหารโรงพยาบาล ดูแลเจ้าหน้าที่ธุรการและเวชระเบียน 8 คน\n\nคุณสมบัติที่จำเป็น: ปริญญาตรีขึ้นไป ประสบการณ์งานบริหารหรือธุรการโรงพยาบาล 5 ปีขึ้นไป อย่างน้อย 1 ปีเป็นหัวหน้างาน ทำตารางเวร ควบคุมงบประมาณแผนก ใช้ Excel ได้ดี\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ผ่านการตรวจรับรองคุณภาพโรงพยาบาล\n\nหน้าที่: วางตารางทำงาน ตรวจคุณภาพเอกสาร ติดตามงบประมาณ และรายงานต่อผู้อำนวยการ",
+      "skills": [
+        "Microsoft Office",
+        "Excel",
+        "Leadership",
+        "Budgeting"
+      ]
+    },
+    "label": "maybe",
+    "reason": "งานบริหารโรงพยาบาลเหมือนสายเดิม แต่ระดับสูงกว่าหนึ่งขั้น (ต้อง 5 ปีและดูแลทีม) ผู้สมัครมี 2 ปี",
+    "kind": "ambiguous"
+  },
+  {
+    "cv_id": "cv-08",
+    "job": {
+      "slug": "admin-hr-officer-ruamchai-manufacturing",
+      "title": "เจ้าหน้าที่ธุรการและบุคคล",
+      "company": "บริษัท ร่วมใจ แมนูแฟคเจอริ่ง จำกัด",
+      "description_markdown": "ร่วมใจ แมนูแฟคเจอริ่ง รับสมัครเจ้าหน้าที่ธุรการและบุคคล สำหรับโรงงานขนาดกลาง\n\nคุณสมบัติที่จำเป็น: วุฒิ ปวส. ขึ้นไป ประสบการณ์งานธุรการ 2 ปีขึ้นไป คำนวณเงินเดือนและประกันสังคมได้ ใช้ Excel และ Microsoft Office ได้ดี\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เคยจัดสรรกำลังคนและทำสัญญาจ้าง\n\nหน้าที่: ดูแลเอกสารพนักงาน ลงเวลา คำนวณเงินเดือน และประสานงานกับฝ่ายบริหาร",
+      "skills": [
+        "Payroll",
+        "HR",
+        "Excel",
+        "Microsoft Office"
+      ]
+    },
+    "label": "maybe",
+    "reason": "งานธุรการทั่วไปใกล้เคียง แต่ต้องคำนวณเงินเดือนและงานบุคคล ซึ่งผู้สมัครยังไม่มีประสบการณ์",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-08",
+    "job": {
+      "slug": "registered-nurse-surgical-ward-chaiyaphum-hospital",
+      "title": "พยาบาลวิชาชีพ หอผู้ป่วยศัลยกรรม",
+      "company": "โรงพยาบาลชัยภูมิเมโมเรียล",
+      "description_markdown": "โรงพยาบาลชัยภูมิเมโมเรียล เปิดรับพยาบาลวิชาชีพ หอผู้ป่วยศัลยกรรม\n\nคุณสมบัติที่จำเป็น: ต้องมีใบประกอบวิชาชีพการพยาบาลและการผดุงครรภ์ที่ยังไม่หมดอายุ จบปริญญาตรีสาขาพยาบาลศาสตร์ ประสบการณ์ดูแลผู้ป่วยหลังผ่าตัด 2 ปีขึ้นไป ผ่านการอบรม BLS\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ผ่านการอบรมการดูแลแผล\n\nหน้าที่: ประเมินและดูแลผู้ป่วยก่อนและหลังผ่าตัด ให้ยา ทำแผล และบันทึกทางการพยาบาล",
+      "skills": [
+        "การพยาบาล",
+        "การดูแลผู้ป่วยใน"
+      ]
+    },
+    "label": "no",
+    "reason": "ต้องมีใบประกอบวิชาชีพการพยาบาล ซึ่งผู้สมัครไม่มี เป็นข้อกำหนดทางกฎหมาย",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-08",
+    "job": {
+      "slug": "full-stack-developer-chiangmai-apps",
+      "title": "Full Stack Developer",
+      "company": "บริษัท เชียงใหม่ แอปส์ จำกัด",
+      "description_markdown": "เชียงใหม่ แอปส์ รับสมัคร Full Stack Developer เพื่อพัฒนาเว็บแอปพลิเคชันของลูกค้า\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 3 ปีขึ้นไป เขียน JavaScript ทั้งฝั่ง React และ Node.js ได้ เขียน SQL ได้ ออกแบบ API ได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: TypeScript, Docker\n\nหน้าที่: พัฒนาฟีเจอร์ใหม่ ตรวจโค้ดร่วมกับทีม และดูแลระบบหลังขึ้นใช้งานจริง",
+      "skills": [
+        "Full Stack",
+        "JavaScript",
+        "Node.js",
+        "React",
+        "SQL"
+      ]
+    },
+    "label": "no",
+    "reason": "ต้องเขียนโค้ดและพัฒนาระบบ ซึ่งไม่ตรงกับทักษะหรือประสบการณ์ของผู้สมัคร",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-09",
+    "job": {
+      "slug": "operations-manager-pacific-packaging-works",
+      "title": "Operations Manager",
+      "company": "Pacific Packaging Works",
+      "description_markdown": "Pacific Packaging Works is hiring an Operations Manager for our Rayong plant.\n\nRequired: 7+ years in manufacturing or distribution operations; experience leading a team of 20 or more; Lean Six Sigma; ERP planning (SAP preferred); on-time delivery and scrap-rate improvement track record.\n\nPreferred: Green Belt certification, quality management systems.\n\nYou will run daily production and warehouse routines, set KPIs, and report weekly to the factory director.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Lean Six Sigma",
+        "Supply Chain",
+        "ERP",
+        "Quality Management",
+        "Leadership"
+      ]
+    },
+    "label": "good",
+    "reason": "Operations manager with 7+ years, Lean and ERP: matches the CV's plant management experience.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-09",
+    "job": {
+      "slug": "supply-chain-manager-asean-consumer-brands",
+      "title": "Supply Chain Manager",
+      "company": "ASEAN Consumer Brands",
+      "description_markdown": "ASEAN Consumer Brands needs a Supply Chain Manager to oversee planning, inventory and delivery.\n\nRequired: 8+ years in supply chain or operations; ERP experience; inventory planning and supplier follow-up; Excel; leadership of a team of 10 or more.\n\nPreferred: Lean or Six Sigma training, negotiation with suppliers.\n\nYou will improve forecast accuracy, keep stock levels healthy, and run the monthly KPI review with senior management.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Supply Chain",
+        "ERP",
+        "Lean Six Sigma",
+        "Excel",
+        "Negotiation"
+      ]
+    },
+    "label": "good",
+    "reason": "Supply chain manager, 8+ years with ERP and Lean, which the CV covers.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-09",
+    "job": {
+      "slug": "director-of-operations-sakura-industrial-group",
+      "title": "Director of Operations",
+      "company": "Sakura Industrial Group",
+      "description_markdown": "Sakura Industrial Group is looking for a Director of Operations to oversee three plants in Thailand.\n\nRequired: 12+ years in operations with 4+ years as a site or regional head; full profit and loss responsibility; leading teams of 100 or more; Lean programmes; ERP rollout experience.\n\nPreferred: experience in the automotive industry, Japanese partner management.\n\nYou will set operations strategy, budgets and capital plans, and report to the managing director.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Supply Chain",
+        "Leadership",
+        "Lean Six Sigma",
+        "Budgeting",
+        "ERP"
+      ]
+    },
+    "label": "maybe",
+    "reason": "Same family but one level up: director over multiple sites with P&L ownership, which the CV lacks.",
+    "kind": "ambiguous"
+  },
+  {
+    "cv_id": "cv-09",
+    "job": {
+      "slug": "procurement-manager-siam-steel-works",
+      "title": "Procurement Manager",
+      "company": "Siam Steel Works",
+      "description_markdown": "Siam Steel Works seeks a Procurement Manager for raw materials and spare parts.\n\nRequired: 7+ years in procurement or purchasing; supplier negotiation and contract management; cost reduction projects; ERP; Excel; leadership of a small purchasing team.\n\nPreferred: experience in the metals or heavy industry sector.\n\nYou will run tenders, negotiate annual contracts and manage supplier performance reviews.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Negotiation",
+        "Supply Chain",
+        "ERP",
+        "Budgeting"
+      ]
+    },
+    "label": "maybe",
+    "reason": "Related to supply chain but is a procurement job; the CV has no full-time procurement experience.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-09",
+    "job": {
+      "slug": "staff-nurse-medical-ward-lakeview-hospital",
+      "title": "Staff Nurse, Medical Ward",
+      "company": "Lakeview Hospital",
+      "description_markdown": "Lakeview Hospital is hiring Staff Nurses for its medical ward.\n\nRequired: valid nursing and midwifery licence; bachelor's degree in nursing; 2+ years of inpatient experience; BLS certificate; flexibility to rotate across day, evening and night shifts.\n\nPreferred: ACLS and fluent English.\n\nDuties include patient assessment, medication rounds, nursing documentation and communicating with families.\n\nHow to apply: send your CV and a short cover note through this site. We reply to shortlisted candidates within two weeks, and the process is two interviews.",
+      "skills": [
+        "Patient Care",
+        "Nursing"
+      ]
+    },
+    "label": "no",
+    "reason": "Clinical nursing role that needs a nursing licence; different field entirely.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-09",
+    "job": {
+      "slug": "junior-graphic-designer-bluesky-studio",
+      "title": "Junior Graphic Designer",
+      "company": "Bluesky Studio",
+      "description_markdown": "Bluesky Studio is hiring a Junior Graphic Designer for print and social media work.\n\nRequired: portfolio of design work; Photoshop and Illustrator; up to 2 years of experience; good sense of layout and typography.\n\nPreferred: Figma, simple motion graphics.\n\nYou will design posters, social media banners and brochures for small business clients, and work with account managers to meet deadlines.\n\nBenefits include social security, annual health check-up and 15 days of paid leave. Shortlisted candidates will be contacted by email for a first interview.",
+      "skills": [
+        "Photoshop",
+        "Illustrator",
+        "Figma",
+        "Canva"
+      ]
+    },
+    "label": "no",
+    "reason": "Junior creative role requiring a design portfolio and Adobe skills; no overlap and far below the CV's level.",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-10",
+    "job": {
+      "slug": "stock-control-officer-eksakul-trading",
+      "title": "เจ้าหน้าที่ควบคุมสต็อก",
+      "company": "บริษัท เอกสกุล เทรดดิ้ง จำกัด",
+      "description_markdown": "เอกสกุล เทรดดิ้ง รับสมัครเจ้าหน้าที่ควบคุมสต็อก ประจำคลังสินค้าบางนา\n\nคุณสมบัติที่จำเป็น: วุฒิ ปวส. ขึ้นไป ประสบการณ์ควบคุมสต็อกหรือคลังสินค้า 2 ถึง 4 ปี ใช้ระบบ ERP หรือ WMS ได้ ใช้ Excel ได้ดี ตรวจนับสต็อกและกระทบยอดได้ละเอียด\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: มีใบรับรองการขับรถโฟล์คลิฟท์\n\nหน้าที่: ตรวจนับสินค้าประจำเดือน ติดตามสินค้าค้างส่ง ทำรายงานสต็อก และประสานงานกับฝ่ายขาย",
+      "skills": [
+        "Supply Chain",
+        "ERP",
+        "Excel",
+        "WMS"
+      ]
+    },
+    "label": "good",
+    "reason": "เจ้าหน้าที่ควบคุมสต็อก 2-4 ปี ตรงกับประสบการณ์ 3 ปี ใช้ ERP, WMS, Excel เหมือนกัน",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-10",
+    "job": {
+      "slug": "logistics-coordinator-sriracha-express",
+      "title": "เจ้าหน้าที่ประสานงานขนส่ง (Logistics Coordinator)",
+      "company": "บริษัท ศรีราชา เอ็กซ์เพรส จำกัด",
+      "description_markdown": "ศรีราชา เอ็กซ์เพรส รับสมัครเจ้าหน้าที่ประสานงานขนส่ง ประจำศูนย์กระจายสินค้า\n\nคุณสมบัติที่จำเป็น: ประสบการณ์งานขนส่งหรือคลังสินค้า 1 ถึง 3 ปี วางแผนรอบรถรายวันได้ ติดตามสถานะการจัดส่ง ใช้ Excel ได้ดี สื่อสารกับผู้ขนส่งและลูกค้าได้\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เคยใช้ระบบ ERP หรือ WMS\n\nหน้าที่: จัดตารางรถส่งสินค้า ตรวจเอกสารก่อนปล่อยรถ รายงานสินค้าค้างส่ง และแก้ปัญหาการจัดส่งล่าช้า",
+      "skills": [
+        "Supply Chain",
+        "Excel",
+        "ERP",
+        "Communication"
+      ]
+    },
+    "label": "good",
+    "reason": "เจ้าหน้าที่ประสานงานขนส่ง 1-3 ปี ตรงกับงานจัดรอบรถและติดตามการจัดส่งที่ผู้สมัครทำอยู่",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-10",
+    "job": {
+      "slug": "supply-chain-planner-panthong-consumer",
+      "title": "เจ้าหน้าที่วางแผนซัพพลายเชน (Supply Chain Planner)",
+      "company": "บริษัท พันธุ์ทอง คอนซูมเมอร์ จำกัด",
+      "description_markdown": "พันธุ์ทอง คอนซูมเมอร์ รับสมัครเจ้าหน้าที่วางแผนซัพพลายเชน\n\nคุณสมบัติที่จำเป็น: ประสบการณ์ 3 ปีขึ้นไปด้านคลังสินค้าหรือซัพพลายเชน วางแผนความต้องการสินค้า (Demand Planning) และพยากรณ์ยอดขายด้วย Excel ได้ ใช้ระบบ ERP ได้ วิเคราะห์ข้อมูลสต็อกเพื่อกำหนดจุดสั่งซื้อ\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ใช้ Power BI\n\nหน้าที่: จัดทำแผนสต็อกรายเดือน ทำงานกับฝ่ายขายและฝ่ายจัดซื้อ และติดตามสินค้าขาดหรือล้นสต็อก",
+      "skills": [
+        "Supply Chain",
+        "ERP",
+        "Excel",
+        "Data Analysis"
+      ]
+    },
+    "label": "maybe",
+    "reason": "สายโซ่อุปทานเหมือนกัน แต่ Planner ต้องวางแผนความต้องการสินค้า (Demand Planning) ซึ่งผู้สมัครยังไม่เคยทำ",
+    "kind": "ambiguous"
+  },
+  {
+    "cv_id": "cv-10",
+    "job": {
+      "slug": "purchasing-officer-thaiprasert-furniture",
+      "title": "เจ้าหน้าที่จัดซื้อ",
+      "company": "บริษัท ไทยประเสริฐ เฟอร์นิเจอร์ จำกัด",
+      "description_markdown": "ไทยประเสริฐ เฟอร์นิเจอร์ รับสมัครเจ้าหน้าที่จัดซื้อ 1 อัตรา\n\nคุณสมบัติที่จำเป็น: ประสบการณ์งานจัดซื้อ 2 ปีขึ้นไป เปรียบเทียบราคาและเจรจาต่อรองกับผู้ขายได้ ออกใบสั่งซื้อในระบบ ERP ใช้ Excel ได้ดี\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: มีความรู้เรื่องวัสดุไม้และอุปกรณ์เฟอร์นิเจอร์\n\nหน้าที่: ติดต่อผู้ขาย ขอใบเสนอราคา ติดตามการส่งมอบวัตถุดิบ และประสานงานกับฝ่ายผลิต",
+      "skills": [
+        "Negotiation",
+        "Supply Chain",
+        "Excel",
+        "ERP"
+      ]
+    },
+    "label": "maybe",
+    "reason": "เจ้าหน้าที่จัดซื้อเป็นงานซัพพลายเชนที่อยู่ใกล้เคียงคลังสินค้า แต่ต้องมีทักษะเจรจาต่อรองและเปรียบเทียบราคาซึ่งผู้สมัครไม่เคยทำ",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-10",
+    "job": {
+      "slug": "data-scientist-bluewave-analytics",
+      "title": "Data Scientist",
+      "company": "บริษัท บลูเวฟ อนาไลติกส์ จำกัด",
+      "description_markdown": "บลูเวฟ อนาไลติกส์ รับสมัคร Data Scientist เพื่อพัฒนาโมเดลพยากรณ์ให้ลูกค้าธุรกิจค้าปลีก\n\nคุณสมบัติที่จำเป็น: ปริญญาตรีขึ้นไปสาขาสถิติ วิทยาการคอมพิวเตอร์ หรือที่เกี่ยวข้อง ประสบการณ์ 3 ปีขึ้นไป เขียน Python และ Pandas ได้ดี มีความรู้ Machine Learning และ SQL\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: ประสบการณ์ MLOps\n\nหน้าที่: สร้างและประเมินโมเดล สื่อสารผลกับลูกค้า และนำโมเดลขึ้นใช้งานร่วมกับทีมวิศวกร",
+      "skills": [
+        "Machine Learning",
+        "Python",
+        "SQL",
+        "Data Science",
+        "Pandas"
+      ]
+    },
+    "label": "no",
+    "reason": "Data Scientist ต้องใช้ Machine Learning และปริญญาตรีขึ้นไปด้านสถิติหรือคอมพิวเตอร์ ผู้สมัครไม่มี",
+    "kind": "clear"
+  },
+  {
+    "cv_id": "cv-10",
+    "job": {
+      "slug": "accounting-assistant-sinsuk-trading",
+      "title": "ผู้ช่วยนักบัญชี",
+      "company": "บริษัท สินสุข เทรดดิ้ง จำกัด",
+      "description_markdown": "สินสุข เทรดดิ้ง รับสมัครผู้ช่วยนักบัญชี 1 อัตรา\n\nคุณสมบัติที่จำเป็น: วุฒิ ปวส. หรือปริญญาตรีสาขาบัญชี ประสบการณ์งานบัญชี 1 ปีขึ้นไป บันทึกรายการบัญชีและจัดเตรียมเอกสารภาษีได้ ใช้ Excel ได้ดี\n\nคุณสมบัติที่เป็นข้อได้เปรียบ: เคยใช้โปรแกรมบัญชีสำเร็จรูป\n\nหน้าที่: บันทึกรายการเจ้าหนี้และลูกหนี้ เก็บเอกสารภาษี และช่วยปิดบัญชีประจำเดือน",
+      "skills": [
+        "Accounting",
+        "Excel",
+        "Tax"
+      ]
+    },
+    "label": "no",
+    "reason": "ผู้ช่วยนักบัญชีต้องมีพื้นฐานบัญชีและภาษี ผู้สมัครเรียนสายโลจิสติกส์ ไม่ตรงสาย",
+    "kind": "clear"
+  }
+]
