@@ -44,11 +44,12 @@ jobs:
           chmod 0600 "$RUNNER_TEMP"/core02-private/*
           echo "CORE02_PRIVATE_DIR=$RUNNER_TEMP/core02-private" >> "$GITHUB_ENV"
       - name: Start throwaway MinIO
-        # Service containers cannot pass `server /data`, so MinIO runs as a plain container.
+        # Service containers cannot pass `server /data`, so MinIO runs as a plain container. MinIO no longer
+        # publishes public images on Docker Hub or quay.io; Chainguard ships a free build.
         run: |
           docker run -d --name jsp-ci-minio -p 127.0.0.1:59000:9000 \
             -e MINIO_ROOT_USER=jspciaccess -e MINIO_ROOT_PASSWORD=jsp_ci_minio_throwaway \
-            minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e server /data
+            cgr.dev/chainguard/minio@sha256:cff197fef764642223ef9f4444c903d51aee9b544a7be8bc007fef6b7b00d136 server /data
           for attempt in $(seq 1 30); do
             curl --fail --silent http://127.0.0.1:59000/minio/health/ready && exit 0
             sleep 1
