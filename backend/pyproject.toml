@@ -39,7 +39,10 @@ packages = ["src/job_search_platform"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-markers = ["integration: requires the real local infrastructure or native runtime"]
+markers = [
+    "integration: requires the real local infrastructure or native runtime",
+    "native_runtime: needs the locally built agent image, macOS Keychain or native export tools (not in CI)",
+]
 
 [tool.job-search-platform.upstream]
 hermes = "c8301ea6c9b797184df16a9c5dd462400b264ff4"

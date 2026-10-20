@@ -33,6 +33,7 @@ def test_private_state_rejects_external_symlink(tmp_path):
         HermesRuntime._private_directory(trusted / "state", trusted)
     assert external.stat().st_mode & 0o777 == 0o755
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 def test_native_offline_proof():
     result = subprocess.run([sys.executable, str(ROOT / "scripts/prove_hermes.py"), "--offline"],

@@ -112,6 +112,7 @@ def publication_context(db_session, private_bucket, tmp_path):
     return db_session, sessions, actor, project_row.id, files, store, client, bucket, tmp_path
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_upload_uses_a_dedicated_real_native_parse_runtime(publication_context, monkeypatch):
