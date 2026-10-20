@@ -9,6 +9,8 @@ import { ProjectSidebar } from './ProjectSidebar';
 import type { SidebarProject } from './ProjectSidebar';
 import { VerifyBanner } from './VerifyBanner';
 
+const STAGE_BY_SECTION: Record<string, string> = { profile: 'cv', search: 'search', sessions: 'evaluate', practice: 'evaluate', documents: 'docs', applications: 'track' };
+
 export function AppShell({ children, projects, projectId, sessionId, onReload }: {
   children: ReactNode; projects?: SidebarProject[]; projectId?: string; sessionId?: string; onReload?: () => void;
 }) {
@@ -21,6 +23,7 @@ export function AppShell({ children, projects, projectId, sessionId, onReload }:
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  const stage = STAGE_BY_SECTION[pathname.split('/')[4] ?? ''];
   const sidebarProps = { projects, projectId, sessionId, onReload };
   return <>
     <a href="#main-content" className="skip-link">{t('skipToContent')}</a>
@@ -31,7 +34,7 @@ export function AppShell({ children, projects, projectId, sessionId, onReload }:
       <div className="min-w-0">
         <div className="lg:hidden"><Header menu={<MobileDrawer>{close => <ProjectSidebar {...sidebarProps} onNavigate={close} />}</MobileDrawer>} /></div>
         <VerifyBanner />
-        <main id="main-content" className="mx-auto w-full min-w-0 max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 xl:px-10 xl:py-10" tabIndex={-1}><div key={pathname} className="page-enter">{children}</div></main>
+        <main id="main-content" data-stage={stage} className="mx-auto w-full min-w-0 max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 xl:px-10 xl:py-10" tabIndex={-1}><div key={pathname} className="page-enter">{children}</div></main>
       </div>
     </div>
   </>;

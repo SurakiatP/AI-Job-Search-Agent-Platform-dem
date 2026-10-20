@@ -11,6 +11,8 @@ import { BuildCvButton } from '../builder/BuildCvButton';
 
 type Props = { base: string; cv: { name: string; version: number } | null; job: { title: string; more: number } | null };
 
+const STEP_STAGE = ['cv', 'search', 'evaluate'];
+
 // First-run guide: only the next unfinished step gets the primary button; later steps say what they wait for.
 export function GettingStarted({ base, cv, job }: Props) {
   const { t } = useTranslation();
@@ -31,8 +33,8 @@ export function GettingStarted({ base, cv, job }: Props) {
         const finished = done[index];
         const blocked = index === 2 && !finished;
         return <li key={step.title} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4 gap-y-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-          <span className={cn('grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold', finished ? 'text-success' : next === index ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground')}>
-            {finished ? <><CheckCircle2 size={24} aria-hidden="true" /><span className="sr-only">{c.stepDone}</span></> : index + 1}
+          <span data-stage={STEP_STAGE[index]} data-active={finished || next === index} className={cn('stage-tile !size-9 !rounded-full text-sm font-semibold', !finished && next !== index && 'opacity-70')}>
+            {finished ? <><CheckCircle2 size={20} aria-hidden="true" /><span className="sr-only">{c.stepDone}</span></> : index + 1}
           </span>
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold">{step.title}{next === index && <Badge variant="secondary">{c.nextStep}</Badge>}</p>

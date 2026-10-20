@@ -21,14 +21,15 @@ const copy = {
 export function SmartMatchStart({ locale, cvName, disabled, title, onStart }: { locale: 'th' | 'en'; cvName: string; disabled: boolean; title?: string; onStart: () => void }) {
   const c = copy[locale];
   const icons = [FileText, ListOrdered, Brain];
+  const stages = ['cv', 'search', 'evaluate'];
   // Header spans the card; steps and the start action share one row so the button lines up with the steps.
-  return <section aria-labelledby="smart-start-title" className="grid gap-4 rounded-xl border border-primary/30 bg-gradient-to-b from-accent/60 to-card p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_15rem] lg:gap-x-6">
+  return <section aria-labelledby="smart-start-title" className="grid gap-4 rounded-xl border border-[color:var(--stage-search)]/35 bg-gradient-to-b from-[color-mix(in_srgb,var(--stage-search)_9%,var(--card))] to-card p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_15rem] lg:gap-x-6">
     <div className="flex items-start gap-3 lg:col-span-2">
       <AiMark className="size-10" />
       <div className="min-w-0"><h2 id="smart-start-title" className="text-lg font-semibold">{c.title}</h2><p className="mt-0.5 max-w-2xl text-sm text-muted-foreground">{c.body}</p></div>
     </div>
     <ol className="grid auto-rows-fr gap-2 sm:grid-cols-3">{c.steps.map((step, index) => { const Icon = icons[index]; return <li key={step} className="flex items-center gap-2.5 rounded-lg border bg-card/80 px-3 py-2.5 text-sm">
-      <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-primary"><Icon className="size-3.5" /></span><span className="min-w-0 text-balance">{step}</span>
+      <span aria-hidden="true" data-stage={stages[index]} data-active="true" className="stage-tile !size-7 !rounded-full"><Icon className="size-3.5" /></span><span className="min-w-0 text-balance">{step}</span>
     </li>; })}</ol>
     <div className="grid content-start gap-1.5">
       <Button type="button" size="lg" className="h-auto min-h-12 whitespace-normal py-2 text-center" disabled={disabled} title={title} onClick={onStart} aria-label={c.startWith(cvName)}><Sparkles className="size-4" aria-hidden="true" />{c.start}</Button>
