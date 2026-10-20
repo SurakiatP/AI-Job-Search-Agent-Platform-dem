@@ -15,6 +15,7 @@ from job_search_platform.workers.queue import PostgresRunQueue
 from job_search_platform.workers.supervisor import WorkerSupervisor
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 @pytest.mark.parametrize("unfinished_status", ["queued", "waiting_approval"])
 @pytest.mark.asyncio

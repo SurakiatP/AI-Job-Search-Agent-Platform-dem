@@ -35,6 +35,7 @@ def test_gateway_key_is_never_in_repr_or_snapshot():
     assert "sk-test-gateway" not in str(gateway.snapshot())
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 def test_native_macos_keychain_disposable_entry_roundtrip():
     store = MacOSKeychain()

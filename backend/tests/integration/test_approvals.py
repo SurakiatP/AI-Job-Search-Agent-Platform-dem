@@ -24,6 +24,7 @@ from job_search_platform.workers.supervisor import WorkerSupervisor
 from job_search_platform.integrations.hermes_runtime import HermesRuntime
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 def test_restart_keeps_pending_approval_valid_without_requeue(db_session, tmp_path):
     factory, p, creator, owner_actor, current_cv, run = _setup(db_session)
