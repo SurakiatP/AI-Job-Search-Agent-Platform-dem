@@ -27,3 +27,19 @@ def test_new_numbers_and_unknown_names_still_drop_the_answer():
     assert _answer("I cut answer time by 60%.") is None                     # numbers must come from cited facts
     assert _answer("I built a test set of 500 questions.", ids=()) is None  # uncited
     assert _answer("I built a test set of 500 questions.", ids=("not-a-uuid",)) is None
+
+
+def test_short_fact_labels_map_back_to_real_ids_and_bad_labels_drop():
+    facts = [{"id": str(FACT), "text": "Built a test set of 500 questions for RAG answers", "context": ""}]
+    body, _ = practice.prompt(level="mid", sections=[{"id": "behavioral", "count": 1}], job={"title": "T", "description": "D"},
+                              cv_text=CV, facts=facts, report=None, output_language="en")
+    assert "[F1] Built a test set" in body and str(FACT) not in body  # models copy short labels reliably
+    aliases = practice.aliases(facts)
+    raw = json.dumps({"questions": [{"section": "behavioral", "prompt": "Q", "why": "w", "key_points": [],
+                                     "model_answer": "I built a test set of 500 questions.", "evidence_ids": ["F1"]},
+                                    {"section": "behavioral", "prompt": "Q2", "why": "w", "key_points": [],
+                                     "model_answer": "I built a test set of 500 questions.", "evidence_ids": ["F9"]}]})
+    questions, _ = practice.parse_reply(raw, [{"id": "behavioral", "count": 2}], FACTS, set(), known=claims(CV), aliases=aliases)
+    assert questions[0]["model_answer"] and questions[0]["evidence_ids"] == [str(FACT)]
+    assert questions[1]["model_answer"] is None
+    assert practice.cited_ids(raw, aliases) == {str(FACT)}

@@ -42,14 +42,6 @@ JEV_CONCURRENCY = 8
 MAX_CV_TEXT = 200_000
 
 
-def _is_uuid(value: object) -> bool:
-    try:
-        uuid.UUID(str(value))
-        return isinstance(value, str)
-    except ValueError:
-        return False
-
-
 def _practice_items(raw: str) -> list[dict]:
     """The questions list of a practice reply, or [] (parse_reply does the real validation)."""
     try:
@@ -861,12 +853,12 @@ class RunExecutor:
                                       provider, operation="interview_generate", tool_gate=deny_tool)
             self._public_event(run.id, "run_progress", {"step": "agent_running"})
             raw = await self._await_result(run, lease_owner, gate_failure, began)
-            cited = [{"evidence_ids": [i for i in q.get("evidence_ids") or [] if _is_uuid(i)]}
-                     for q in _practice_items(raw)]
+            labels = practice.aliases(facts)
+            cited = [{"evidence_ids": sorted(practice.cited_ids(raw, labels))}]
             vocabulary = await asyncio.to_thread(self._vocabulary, run.project_id)
             questions, reverse = practice.parse_reply(
                 raw, inputs["sections"], await asyncio.to_thread(self._fact_claims, run.project_id, cited),
-                vocabulary, known=claims(text, vocabulary))
+                vocabulary, known=claims(text, vocabulary), dropped=(dropped := {}), aliases=labels)
             if not questions:
                 raise ServiceError("native_response_invalid")
             await asyncio.to_thread(self._store_practice, run, questions, reverse)
@@ -876,7 +868,8 @@ class RunExecutor:
             await asyncio.to_thread(self.queue.finish, run.id, lease_owner, "completed",
                                     result_payload={"kind": "interview_set", "questions": len(questions),
                                                     "model_answers_offered": offered,
-                                                    "model_answers_kept": sum(1 for q in questions if q["model_answer"])})
+                                                    "model_answers_kept": sum(1 for q in questions if q["model_answer"]),
+                                                    "model_answers_dropped": dropped})
         except ServiceError as exc:
             await self._stop(run.project_id, started)
             status = "cancelled" if exc.code == "cancellation_requested" else "failed"
