@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Briefcase, FileText } from 'lucide-react';
+import { ArrowRight, Briefcase, FileText, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { ItemMenu } from '@/components/ItemMenu';
+import { apiRequest } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { JobRevisionView, Locale, RunView, SessionView } from '@/lib/api-types';
 import { NewSessionButton } from './NewSessionDialog';
@@ -14,7 +17,7 @@ import { ErrorState, LoadingState } from '../projects/PageStates';
 
 type Filter = 'all' | 'attention' | 'progress' | 'done' | 'stopped' | 'notStarted';
 const FILTERS: Filter[] = ['all', 'attention', 'progress', 'done', 'stopped', 'notStarted'];
-const columns = 'md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,11rem)]';
+const columns = 'md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,11rem)_auto]';
 
 // Group by the latest run of the session; `null` means no run yet.
 function group(run: RunView | null): Filter {
@@ -47,6 +50,7 @@ export function SessionsPage() {
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const [filter, setFilter] = useState<Filter>('all');
+  const [removing, setRemoving] = useState<SessionView | null>(null);
   const base = `/app/projects/${projectId}`;
   const list = sessions.data ?? [];
   // Without the run list we cannot tell the state, so rows fall back to a plain "Open" and filters hide.
@@ -64,13 +68,13 @@ export function SessionsPage() {
         {FILTERS.filter(key => key === 'all' || counts[key] > 0).map(key => <Button key={key} type="button" size="sm" variant={filter === key ? 'secondary' : 'ghost'} aria-pressed={filter === key} onClick={() => setFilter(key)}>{s(`list.filters.${key}`)} ({counts[key]})</Button>)}
       </div>}
       <div className="workspace-panel overflow-hidden">
-        <div className={cn('hidden gap-4 border-b px-6 py-3 text-sm font-medium text-muted-foreground md:grid', columns)} aria-hidden="true"><span>{s('list.opportunity')}</span><span>{s('list.comparedUsing')}</span><span>{s('list.latest')}</span><span>{s('list.next')}</span></div>
+        <div className={cn('hidden gap-4 border-b px-6 py-3 text-sm font-medium text-muted-foreground md:grid', columns)} aria-hidden="true"><span>{s('list.opportunity')}</span><span>{s('list.comparedUsing')}</span><span>{s('list.latest')}</span><span>{s('list.next')}</span><span className="w-11" /></div>
         <ul className="divide-y">{shown.map(({ session, run, paired }) => {
           const action = known ? nextAction(run, paired) : 'open';
           const version = jobVersion(session.job_revision_id);
           const titleId = `eval-${session.id}`;
-          return <li key={session.id} className={cn('grid min-w-0 items-center gap-3 p-4 sm:p-5 md:gap-4 md:px-6', columns)}>
-            <div className="min-w-0"><Link id={titleId} className="break-words font-semibold text-foreground hover:underline" to={`${base}/sessions/${session.id}`}>{session.job_title ?? session.title}</Link>{session.job_company && <p className="mt-0.5 break-words text-sm text-muted-foreground">{session.job_company}</p>}</div>
+          return <li key={session.id} className={cn('relative grid min-w-0 items-center gap-3 p-4 sm:p-5 md:gap-4 md:px-6', columns)}>
+            <div className="min-w-0 max-md:pr-10"><Link id={titleId} className="break-words font-semibold text-foreground hover:underline" to={`${base}/sessions/${session.id}`}>{session.job_title ?? session.title}</Link>{session.job_company && <p className="mt-0.5 break-words text-sm text-muted-foreground">{session.job_company}</p>}</div>
             <div className="grid min-w-0 gap-1 text-sm">
               <span className="text-xs text-muted-foreground md:hidden">{s('list.comparedUsing')}</span>
               {paired ? <>
@@ -83,9 +87,16 @@ export function SessionsPage() {
               {run && <span className="text-xs text-muted-foreground"><time dateTime={run.created_at}>{relativeTime(run.created_at, Date.now(), locale)}</time></span>}
             </div>
             <Button asChild variant="outline" className="h-auto min-h-11 w-full justify-between whitespace-normal py-2 text-left md:w-auto"><Link to={`${base}/sessions/${session.id}`} aria-describedby={titleId}>{s(`list.actions.${action}`)}<ArrowRight className="size-4 shrink-0" aria-hidden="true" /></Link></Button>
+            <ItemMenu className="max-md:absolute max-md:right-2 max-md:top-2 md:justify-self-end" label={s('list.options', { title: session.job_title ?? session.title })}
+              actions={[{ label: s('list.delete.action'), icon: <Trash2 className="size-4" aria-hidden="true" />, destructive: true, onSelect: () => setRemoving(session) }]} />
           </li>;
         })}</ul>
       </div>
     </>}
+    {removing && <ConfirmDeleteDialog confirmLabel={s('list.delete.action')}
+      title={s('list.delete.title', { title: removing.job_title ?? removing.title })} description={s('list.delete.body')}
+      errors={{ session_busy: s('list.delete.busy') }}
+      onConfirm={() => apiRequest(`/projects/${projectId}/sessions/${removing.id}`, { method: 'DELETE' }).then(() => undefined)}
+      onDone={() => { setRemoving(null); sessions.reload(); }} onClose={() => setRemoving(null)} />}
   </section>;
 }

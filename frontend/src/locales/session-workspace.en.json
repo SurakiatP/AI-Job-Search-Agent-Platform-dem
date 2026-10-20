@@ -102,7 +102,14 @@
       "open": "Open"
     },
     "emptyTitle": "No evaluations yet",
-    "emptyBody": "Pick a saved job and one of your CVs. The agent reads the posting, compares it with your CV, and returns an AI fit score from 1 to 5, the skills it found and a written report."
+    "emptyBody": "Pick a saved job and one of your CVs. The agent reads the posting, compares it with your CV, and returns an AI fit score from 1 to 5, the skills it found and a written report.",
+    "options": "Options for {{title}}",
+    "delete": {
+      "action": "Delete evaluation",
+      "title": "Delete the evaluation “{{title}}”?",
+      "body": "It disappears from this list. Documents the agent made stay in Documents. Agent work history stays in Agent activity.",
+      "busy": "The agent is still working on this evaluation. Wait for it to finish or stop it first."
+    }
   },
   "result": {
     "title": "Evaluation result",

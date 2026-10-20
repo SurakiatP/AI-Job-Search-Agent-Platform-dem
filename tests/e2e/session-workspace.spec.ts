@@ -367,3 +367,37 @@ test('SCR-04 header, language label and rich empty state', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Evaluate this job' })).toHaveCount(1);
   await expect(page.getByText('A written report you can copy')).toBeVisible();
 });
+
+test('SCR-03 delete an evaluation from the list, and a busy one explains why it cannot', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const ids = ['a1', 'b2'].map(key => `${key}${key}${key}${key}${key}${key}${key}${key}-0000-4000-8000-000000000000`);
+  let list = [{ ...pairedSession, id: ids[0], title: 'Done job', job_title: 'Done job' }, { ...pairedSession, id: ids[1], title: 'Busy job', job_title: 'Busy job' }];
+  const deleted: string[] = [];
+  await page.route(`**/api/v1/projects/${projectId}/sessions`, route => route.fulfill(json(list)));
+  await page.route(`**/api/v1/projects/${projectId}/sessions/*`, route => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    const id = route.request().url().split('/').pop()!;
+    if (id === ids[1]) return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ code: 'session_busy', message_key: 'errors.session_busy', retryable: false, correlation_id: '55555555-5555-4555-8555-555555555555' }) });
+    deleted.push(id); list = list.filter(s => s.id !== id);
+    return route.fulfill(json({ mode: 'hidden' }));
+  });
+  await page.route(`**/api/v1/projects/${projectId}/runs`, route => route.fulfill(json([])));
+  await page.route(`**/api/v1/projects/${projectId}/jobs`, route => route.fulfill(json([])));
+  await page.goto(`/app/projects/${projectId}/sessions`);
+  const row = (title: string) => page.getByRole('listitem').filter({ hasText: title });
+
+  await row('Busy job').getByRole('button', { name: 'Options for Busy job' }).click();
+  await page.getByRole('menuitem', { name: 'Delete evaluation' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete evaluation' }).click();
+  await expect(page.getByRole('alert')).toHaveText('The agent is still working on this evaluation. Wait for it to finish or stop it first.');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  await row('Done job').getByRole('button', { name: 'Options for Done job' }).click();
+  await page.getByRole('menuitem', { name: 'Delete evaluation' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Documents the agent made stay in Documents.');
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete evaluation' }).click();
+  await expect(row('Done job')).toHaveCount(0);
+  await expect(row('Busy job')).toHaveCount(1);
+  expect(deleted).toEqual([ids[0]]);
+});
