@@ -11,14 +11,15 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog';
 import { BusyNote } from '../../components/BusyNote';
-import { ACCENTS, FIELDS, PERSONAL_KEYS, emptyItem, normalize, type Draft, type Field, type Item, type Lang, type ListSection, type ResumeData, type SectionName, type TemplateId } from './sections';
+import { ACCENTS, FIELDS, PERSONAL_KEYS, PHOTO_TEMPLATES, TWO_COLUMN, emptyItem, normalize, type Draft, type Field, type Item, type Lang, type ListSection, type ResumeData, type SectionName, type TemplateId } from './sections';
 import { useResource } from '../projects/useResource';
 import { copy } from './copy';
+import { PhotoField } from './PhotoField';
 import { AiLabel } from '@/components/AiMark';
 
 type Kind = 'cv' | 'document';
 type SaveState = 'saved' | 'saving' | 'dirty' | 'offline' | 'conflict' | 'invalid';
-const TEMPLATES: TemplateId[] = ['onyx', 'kakuna', 'ditgar'];
+const TEMPLATES: TemplateId[] = ['onyx', 'kakuna', 'ditgar', 'lotus', 'teak', 'saffron'];
 // Save shortly after typing stops; preview right after each save, at most once per PREVIEW_GAP_MS
 // (the server allows 20 previews a minute).
 const SAVE_DELAY_MS = 400;
@@ -178,7 +179,8 @@ export function BuilderPage({ kind }: { kind: Kind }) {
 
     <div className="grid gap-3 rounded-xl border bg-card p-4 lg:grid-cols-[auto_auto_1fr] lg:items-end">
       <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.template}</legend>
-        <div className="flex flex-wrap gap-2">{TEMPLATES.map(t => <Button key={t} size="sm" variant={draft.template_id === t ? 'default' : 'outline'} aria-pressed={draft.template_id === t} onClick={() => change({ ...draft, template_id: t })}>{c.templates[t]}</Button>)}</div>
+        <div className="flex flex-wrap gap-2">{TEMPLATES.map(t => <Button key={t} size="sm" variant={draft.template_id === t ? 'default' : 'outline'} aria-pressed={draft.template_id === t} onClick={() => change({ ...draft, template_id: t })}>
+          {c.templates[t]}{PHOTO_TEMPLATES.includes(t) && <span className="text-xs font-normal opacity-75">· {c.withPhoto}</span>}</Button>)}</div>
       </fieldset>
       <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.accent}</legend>
         <div className="flex flex-wrap gap-2">{ACCENTS.map(a => <button key={a.id} type="button" aria-label={c.accents[a.id]} aria-pressed={draft.accent === a.id} onClick={() => change({ ...draft, accent: a.id })}
@@ -187,7 +189,8 @@ export function BuilderPage({ kind }: { kind: Kind }) {
       <div className="grid gap-2 lg:w-56"><Label htmlFor="cvb-lang">{c.docLanguage}</Label>
         <select id="cvb-lang" className="min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={draft.document_language} onChange={e => change({ ...draft, document_language: e.target.value as Lang })}>
           <option value="th">ไทย</option><option value="en">English</option></select></div>
-      {draft.template_id === 'ditgar' && <p className="flex items-start gap-2 text-sm text-muted-foreground lg:col-span-3"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />{c.atsWarning}</p>}
+      {r.basics.photo && !PHOTO_TEMPLATES.includes(draft.template_id) && <p className="flex items-start gap-2 text-sm text-muted-foreground lg:col-span-3"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />{c.photoHidden}</p>}
+      {TWO_COLUMN.includes(draft.template_id) && <p className="flex items-start gap-2 text-sm text-muted-foreground lg:col-span-3"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />{c.atsWarning}</p>}
     </div>
 
     <div className="flex gap-2 lg:hidden" role="tablist">
@@ -201,6 +204,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
             {(['name', 'headline', 'email', 'phone'] as const).map(key => <TextField key={key} id={`basics-${key}`} label={c.basicsFields[key]} value={r.basics[key]}
               onChange={value => data(d => { d.basics[key] = value; return d; })} required={key === 'name'} />)}
           </div>
+          <PhotoField projectId={projectId} photoId={r.basics.photo ?? ''} c={c} onChange={id => data(d => { d.basics.photo = id; return d; })} />
           <AddressEditor c={c} locale={locale} data={r} update={data} />
           <div className="grid gap-2">
             <h3 className="text-sm font-medium">{c.links}</h3>

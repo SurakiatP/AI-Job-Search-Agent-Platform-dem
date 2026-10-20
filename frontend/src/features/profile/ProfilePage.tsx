@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { CvPreviewButton } from '@/components/CvPreview';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles, X } from 'lucide-react';
+import { notifyTrashChanged } from '@/lib/trash';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,8 +24,8 @@ import { sendJson, useResource } from '../projects/useResource';
 import { BuildCvButton } from '../builder/BuildCvButton';
 
 const copy = {
-  th: { editBuilder: 'แก้ไขในตัวสร้าง', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ลบ CV “${n}”?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้อีก เซสชันที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง' },
-  en: { editBuilder: 'Edit in builder', cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Make primary', rename: 'Rename', delete: 'Delete', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Delete CV “${n}”?`, delBody: 'This CV leaves the list and can no longer be paired. Sessions that used it keep their results and documents.', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.' },
+  th: { editBuilder: 'แก้ไขในตัวสร้าง', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ย้าย CV “${n}” ไปถังขยะ?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้ จนกว่าจะกู้คืนจากถังขยะ การประเมินที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', delConfirm: 'ย้ายไปถังขยะ', moved: (n: string) => `ย้าย “${n}” ไปถังขยะแล้ว`, undo: 'เลิกทำ', undoFailed: 'เลิกทำไม่สำเร็จ กู้คืนได้จากถังขยะ', openTrash: 'เปิดถังขยะ', dismiss: 'ปิด', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง' },
+  en: { editBuilder: 'Edit in builder', cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Make primary', rename: 'Rename', delete: 'Delete', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Move CV “${n}” to the trash?`, delBody: 'This CV leaves the list and cannot be paired until you restore it from the trash. Evaluations that used it keep their results and documents.', delConfirm: 'Move to trash', moved: (n: string) => `“${n}” moved to the trash.`, undo: 'Undo', undoFailed: 'Undo did not work. Restore it from the trash.', openTrash: 'Open trash', dismiss: 'Dismiss', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.' },
 };
 const formatSize = (bytes: number) => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 const fileType = (filename: string) => filename.split('.').pop()?.toUpperCase() ?? '';
@@ -99,6 +100,8 @@ export function ProfilePage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [rename, setRename] = useState<CVView | null>(null);
   const [remove, setRemove] = useState<CVView | null>(null);
+  const [removed, setRemoved] = useState<CVView | null>(null);
+  const [undoFailed, setUndoFailed] = useState(false);
   const [historyOpen, setHistoryOpen] = useState<string | null>(null);
   const addInput = useRef<HTMLInputElement>(null);
   const versionTarget = useRef<string>('');
@@ -137,6 +140,10 @@ export function ProfilePage() {
     setUploadError(null);
     try { await sendJson(`/projects/${projectId}/cvs/${cv.id}`, 'PATCH', { is_primary: true }); cvs.reload(); primaryRevisions.reload(); } catch { setUploadError('pages.loadError'); }
   }
+  async function undo(cv: CVView) {
+    try { await apiRequest(`/projects/${projectId}/cvs/${cv.id}/restore`, { method: 'POST' }); setRemoved(null); cvs.reload(); primaryRevisions.reload(); notifyTrashChanged(); }
+    catch { setUndoFailed(true); }
+  }
   async function extract(cv: CVView) {
     setExtractError(false);
     try { await apiRequest(`/projects/${projectId}/cvs/${cv.id}/experience-runs`, { method: 'POST' }); bank.reload(); } catch { setExtractError(true); }
@@ -161,6 +168,13 @@ export function ProfilePage() {
     {busy && <p role="status" className="text-sm text-muted-foreground">{w('uploading')}</p>}
     {uploadError && <p className="text-sm text-destructive" role="alert">{t(uploadError)}</p>}
     {extractError && <p className="text-sm text-destructive" role="alert">{c.failed}</p>}
+    {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2.5 text-sm">
+      <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words [overflow-wrap:anywhere] sm:basis-auto">{undoFailed ? c.undoFailed : c.moved(removed.name)}</span>
+      <Button type="button" variant="ghost" size="sm" className="max-sm:ml-4" onClick={() => void undo(removed)}>{c.undo}</Button>
+      <Link className="inline-flex min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=cvs`}>{c.openTrash}</Link>
+      <Button type="button" variant="ghost" size="icon" className="max-sm:ml-auto" aria-label={c.dismiss} onClick={() => setRemoved(null)}><X className="size-4" aria-hidden="true" /></Button>
+    </div>}
     <Tabs value={tab} onValueChange={showTab}>
       <TabsList className="w-full justify-start sm:w-auto">
         <TabsTrigger className="min-h-11 grow sm:grow-0" value="library">{w('tabLibrary')}</TabsTrigger>
@@ -220,7 +234,8 @@ export function ProfilePage() {
       </TabsContent>
     </Tabs>
     {rename && <RenameDialog key={rename.id} cv={rename} c={c} projectId={projectId} onClose={() => setRename(null)} onDone={() => { setRename(null); cvs.reload(); }} />}
-    {remove && <ConfirmDeleteDialog title={c.delTitle(remove.name)} description={c.delBody} confirmLabel={c.delete} errors={{ cv_in_use: c.inUse }}
-      onConfirm={() => apiRequest(`/projects/${projectId}/cvs/${remove.id}`, { method: 'DELETE' }).then(() => undefined)} onDone={() => { setRemove(null); cvs.reload(); primaryRevisions.reload(); }} onClose={() => setRemove(null)} />}
+    {remove && <ConfirmDeleteDialog title={c.delTitle(remove.name)} description={c.delBody} confirmLabel={c.delConfirm}
+      onConfirm={() => apiRequest(`/projects/${projectId}/cvs/${remove.id}`, { method: 'DELETE' }).then(() => undefined)}
+      onDone={() => { setRemoved(remove); setUndoFailed(false); setRemove(null); cvs.reload(); primaryRevisions.reload(); notifyTrashChanged(); }} onClose={() => setRemove(null)} />}
   </section>;
 }

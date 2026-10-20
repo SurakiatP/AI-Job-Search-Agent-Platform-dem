@@ -10,6 +10,7 @@ const cv = (extra: Record<string, unknown> = {}) => ({ id: cvId, name: 'Data CV'
 
 async function cvApi(page: Page, start: { live: unknown[]; trash: unknown[] }) {
   const state = { ...start, calls: [] as string[] };
+  await page.route(`**/api/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([])));
   await page.route(`**/api/v1/projects/${projectId}/cvs**`, route => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace(`/api/v1/projects/${projectId}/cvs`, '');

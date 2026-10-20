@@ -4,7 +4,8 @@ type Copy = {
   title: string; titleDoc: string; backCv: string; backDoc: string; loading: string; loadError: string; retry: string; reload: string;
   saved: string; savedAt: (time: string) => string; saving: string; offline: string; offlineLong: string; conflict: string; conflictLong: string; invalid: (path: string) => string;
   stashFound: string; restore: string; discard: string; preview: string; updatePreview: string; previewFailed: string; rendering: string; edit: string;
-  template: string; templates: Record<TemplateId, string>; accent: string; accents: Record<AccentId, string>; docLanguage: string; atsWarning: string;
+  template: string; templates: Record<TemplateId, string>; accent: string; accents: Record<AccentId, string>; docLanguage: string; atsWarning: string; withPhoto: string;
+  photo: string; addPhoto: string; changePhoto: string; removePhoto: string; photoAlt: string; photoHint: string; photoHidden: string; photoType: string; photoSize: string; photoFailed: string;
   basics: string; basicsFields: Record<'name' | 'headline' | 'email' | 'phone' | 'location', string>; links: string; network: string; url: string; addLink: string; removeLink: string;
   sections: Record<SectionName, string>; empty: string; moveUp: (s: string) => string; moveDown: (s: string) => string; show: (s: string) => string; hide: (s: string) => string;
   summaryPlaceholder: string; referencesNote: string; onRequest: string; itemLabel: (s: string, n: number) => string; up: string; down: string; remove: string; add: (s: string) => string;
@@ -25,9 +26,12 @@ export const copy: Record<'th' | 'en', Copy> = {
     conflictLong: 'ร่างนี้ถูกแก้จากแท็บหรือเครื่องอื่น โหลดร่างล่าสุดก่อนแก้ต่อ', invalid: p => `ข้อมูลบางช่องไม่ถูกต้อง${p ? ` (${p})` : ''}`,
     stashFound: 'พบข้อมูลที่ยังไม่ได้บันทึกในเบราว์เซอร์นี้', restore: 'กู้คืน', discard: 'ทิ้ง',
     preview: 'พรีวิว', updatePreview: 'อัปเดตพรีวิว', previewFailed: 'สร้างพรีวิวไม่สำเร็จ ข้อมูลของคุณยังอยู่ ลองอีกครั้ง', rendering: 'กำลังสร้าง PDF…', edit: 'แก้ไข',
-    template: 'เทมเพลต', templates: { onyx: 'Onyx', kakuna: 'Kakuna', ditgar: 'Ditgar' }, accent: 'สีเน้น',
+    template: 'เทมเพลต', templates: { onyx: 'Onyx', kakuna: 'Kakuna', ditgar: 'Ditgar', lotus: 'Lotus', teak: 'Teak', saffron: 'Saffron' }, accent: 'สีเน้น', withPhoto: 'มีรูป',
+    photo: 'รูปถ่าย', addPhoto: 'เพิ่มรูป', changePhoto: 'เปลี่ยนรูป', removePhoto: 'เอารูปออก', photoAlt: 'รูปใน CV ของคุณ',
+    photoHint: 'JPG หรือ PNG ไม่เกิน 2 MB แสดงในเทมเพลต Lotus, Teak และ Saffron ระบบครอปเป็นรูปแนวตั้ง 3:4 ให้อัตโนมัติ', photoHidden: 'เทมเพลตนี้ไม่แสดงรูป เลือก Lotus, Teak หรือ Saffron ถ้าต้องการใส่รูป',
+    photoType: 'ใช้รูป JPG หรือ PNG', photoSize: 'รูปใหญ่เกิน 2 MB', photoFailed: 'อัปโหลดรูปไม่สำเร็จ ลองอีกครั้ง',
     accents: { indigo: 'คราม', blue: 'น้ำเงิน', teal: 'เขียวน้ำทะเล', green: 'เขียว', rose: 'แดงกุหลาบ', slate: 'เทาเข้ม' }, docLanguage: 'ภาษาของ CV',
-    atsWarning: 'เทมเพลตสองคอลัมน์ ระบบคัดกรองใบสมัคร (ATS) บางระบบอาจอ่านลำดับข้อมูลผิด ถ้าสมัครผ่านระบบออนไลน์ แนะนำ Onyx หรือ Kakuna',
+    atsWarning: 'เทมเพลตสองคอลัมน์ ระบบคัดกรองใบสมัคร (ATS) บางระบบอาจอ่านลำดับข้อมูลผิด ถ้าสมัครผ่านระบบออนไลน์ แนะนำ Onyx, Kakuna, Lotus หรือ Saffron',
     basics: 'ข้อมูลติดต่อ', basicsFields: { name: 'ชื่อ-นามสกุล', headline: 'ตำแหน่งหรือคำแนะนำตัวสั้น ๆ', email: 'อีเมล', phone: 'โทรศัพท์', location: 'ที่อยู่ (จังหวัด)' },
     links: 'ลิงก์', network: 'ชื่อลิงก์', url: 'ที่อยู่ลิงก์', addLink: 'เพิ่มลิงก์', removeLink: 'ลบลิงก์',
     sections: { summary: 'สรุปโปรไฟล์', experience: 'ประสบการณ์ทำงาน', education: 'การศึกษา', skills: 'ทักษะ', projects: 'โครงการ', certifications: 'ใบรับรอง',
@@ -58,9 +62,12 @@ export const copy: Record<'th' | 'en', Copy> = {
     conflictLong: 'This draft was changed in another tab or device. Load the latest draft before you continue.', invalid: p => `Some fields are not valid${p ? ` (${p})` : ''}`,
     stashFound: 'Unsaved changes were found in this browser', restore: 'Restore', discard: 'Discard',
     preview: 'Preview', updatePreview: 'Update preview', previewFailed: 'The preview could not be made. Your data is safe; try again.', rendering: 'Making PDF…', edit: 'Edit',
-    template: 'Template', templates: { onyx: 'Onyx', kakuna: 'Kakuna', ditgar: 'Ditgar' }, accent: 'Accent colour',
+    template: 'Template', templates: { onyx: 'Onyx', kakuna: 'Kakuna', ditgar: 'Ditgar', lotus: 'Lotus', teak: 'Teak', saffron: 'Saffron' }, accent: 'Accent colour',
     accents: { indigo: 'Indigo', blue: 'Blue', teal: 'Teal', green: 'Green', rose: 'Rose', slate: 'Slate' }, docLanguage: 'CV language',
-    atsWarning: 'Two columns: some applicant tracking systems (ATS) read them in the wrong order. For online applications, Onyx or Kakuna is safer.',
+    atsWarning: 'Two columns: some applicant tracking systems (ATS) read them in the wrong order. For online applications, Onyx, Kakuna, Lotus or Saffron is safer.', withPhoto: 'photo',
+    photo: 'Photo', addPhoto: 'Add photo', changePhoto: 'Change photo', removePhoto: 'Remove photo', photoAlt: 'Your CV photo',
+    photoHint: 'JPG or PNG, up to 2 MB. Shown by the Lotus, Teak and Saffron templates. Cropped to a 3:4 portrait for you.', photoHidden: 'This template does not show a photo. Pick Lotus, Teak or Saffron to include it.',
+    photoType: 'Use a JPG or PNG photo.', photoSize: 'The photo is larger than 2 MB.', photoFailed: 'The photo did not upload. Try again.',
     basics: 'Contact details', basicsFields: { name: 'Full name', headline: 'Headline', email: 'Email', phone: 'Phone', location: 'Location' },
     links: 'Links', network: 'Label', url: 'Address', addLink: 'Add link', removeLink: 'Remove link',
     sections: { summary: 'Summary', experience: 'Experience', education: 'Education', skills: 'Skills', projects: 'Projects', certifications: 'Certifications',

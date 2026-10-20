@@ -7,7 +7,7 @@ export type Field = { key: string; kind: FieldKind; th: string; en: string; plac
 export type Item = Record<string, unknown> & { id: string };
 export type ListSection = Exclude<SectionName, 'summary' | 'personal'>;
 export type Address = { line: string; subdistrict: string; district: string; province: string; postcode: string };
-export type Basics = { name: string; headline: string; email: string; phone: string; location: string; address: Address; address_full: boolean; profiles: { id: string; network: string; url: string }[] };
+export type Basics = { name: string; headline: string; email: string; phone: string; location: string; address: Address; address_full: boolean; profiles: { id: string; network: string; url: string }[]; photo?: string };
 export const PERSONAL_KEYS = ['birth_date', 'nationality', 'military_status', 'line_id', 'driving_license', 'expected_salary', 'available_from'] as const;
 export type Personal = Record<(typeof PERSONAL_KEYS)[number], string>;
 export type ResumeData = {
@@ -16,7 +16,10 @@ export type ResumeData = {
   order: SectionName[]; references_on_request: boolean;
 };
 export type Draft = { id: string; cv_id: string | null; document_id: string | null; name?: string; resume_data: ResumeData; template_id: TemplateId; accent: AccentId; document_language: Lang; ats_safe: boolean; updated_at: string };
-export type TemplateId = 'onyx' | 'kakuna' | 'ditgar';
+export type TemplateId = 'onyx' | 'kakuna' | 'ditgar' | 'lotus' | 'teak' | 'saffron';
+// CR-CVT-01: only these templates print the photo; the two-column ones may confuse ATS.
+export const PHOTO_TEMPLATES: TemplateId[] = ['lotus', 'teak', 'saffron'];
+export const TWO_COLUMN: TemplateId[] = ['ditgar', 'teak'];
 export type AccentId = 'indigo' | 'blue' | 'teal' | 'green' | 'rose' | 'slate';
 
 export const ACCENTS: { id: AccentId; hex: string }[] = [

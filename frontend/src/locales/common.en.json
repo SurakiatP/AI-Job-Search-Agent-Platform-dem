@@ -311,6 +311,19 @@
   },
   "trash": {
     "title": "Trash",
-    "subtitle": "Evaluations and documents deleted in this project. Restore them or delete them permanently."
+    "subtitle": "Evaluations, documents and CVs deleted in this project. Restore them or delete them permanently.",
+    "cv": {
+      "empty": "Trash is empty. CVs you delete land here and can be restored.",
+      "note": "Deleting for good removes the CV’s files, text and builder data. This cannot be undone. Evaluations and documents made from it stay and keep its name.",
+      "trashed": "deleted",
+      "restore": "Restore",
+      "purge": "Delete for good",
+      "emptyAll": "Delete all for good",
+      "purgeTitle": "Delete CV “{{name}}” for good?",
+      "emptyTitle": "Delete all {{n}} CVs in the trash for good?",
+      "inUse": "An AI task is still using this CV. Try again when it finishes.",
+      "restoreFailed": "Could not restore “{{name}}”. Try again."
+    },
+    "tabCvs": "CVs"
   }
 }
