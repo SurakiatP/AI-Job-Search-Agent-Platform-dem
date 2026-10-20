@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -120,8 +119,9 @@ def test_dependency_overlay_is_verified_before_compose(monkeypatch, tmp_path) ->
 
 @pytest.mark.integration
 def test_real_postgres_minio_checksum_and_restart_proof() -> None:
-    private_dir = os.environ.get("CORE02_PRIVATE_DIR")
-    assert private_dir, "set CORE02_PRIVATE_DIR to the private directory reported by local_infra.py start"
+    from conftest import PRIVATE_DIR  # same default as every other integration test
+    private_dir = str(PRIVATE_DIR)
+    assert PRIVATE_DIR.is_dir(), "set CORE02_PRIVATE_DIR to the private directory reported by local_infra.py start"
 
     proof = ROOT / "scripts" / "prove_storage.py"
     assert proof.is_file(), "storage proof script is missing"

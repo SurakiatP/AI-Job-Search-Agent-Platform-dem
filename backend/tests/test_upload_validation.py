@@ -95,6 +95,7 @@ async def test_upload_maps_sandbox_scanned_pdf_error_without_publishing(upload_c
     assert error.value.code == "scanned_pdf_unsupported"
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_pinned_native_sandbox_rejects_docx_zip_expansion():

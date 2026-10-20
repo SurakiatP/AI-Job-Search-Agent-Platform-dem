@@ -12,6 +12,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 def test_pinned_exporters_round_trip_thai_and_english_with_checksums() -> None:
     result = subprocess.run(

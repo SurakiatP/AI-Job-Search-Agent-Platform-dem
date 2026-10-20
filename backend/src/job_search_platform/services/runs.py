@@ -924,6 +924,12 @@ class RunService:
             raise ServiceError("retry_not_allowed")
         return source
 
+    def list_views(self, actor: Actor, project_id: UUID, query) -> list[RunView]:
+        """Views for every run ``query`` selects, in one session; same output as ``get`` per run."""
+        with self.sessions.begin() as db:
+            authorize(db, actor, project_id, "results:read", "run")
+            return [self._authorized_view(db, actor, run) for run in db.scalars(query).all()]
+
     async def get(self, actor: Actor, project_id: UUID, run_id: UUID) -> RunView:
         with self.sessions.begin() as db:
             authorize(db, actor, project_id, "results:read", "run")

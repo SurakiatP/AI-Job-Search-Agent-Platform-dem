@@ -13,6 +13,8 @@ from a2a.types import SendMessageRequest, TaskState
 from google.protobuf.json_format import MessageToDict, ParseDict
 
 from test_a2a import _grant, _project_and_grant, _start_a2a, _stop_a2a, api_context  # noqa: F401 (fixture)
+from test_mcp import STRUCTURED
+from job_search_platform.services import job_sources
 
 CTX = ClientCallContext(service_parameters={"A2A-Version": "1.0"})
 JOB = {"title": "Synthetic data analyst", "company": "Example Co", "description": "Synthetic role for text-mode A2A."}
@@ -39,13 +41,13 @@ def _reply_text(event) -> str:
     return "\n".join(part.text for part in message.parts)
 
 
-async def _finish_when_queued(services, report: str) -> None:
+async def _finish_when_queued(services, report: str | dict) -> None:
     async with asyncio.timeout(10):
         while (claimed := await asyncio.to_thread(services.queue.claim_next, "a2a-text-worker")) is None:
             await asyncio.sleep(0.1)
     await asyncio.sleep(0.6)
-    await asyncio.to_thread(services.queue.finish, claimed.id, claimed.lease_owner, "completed",
-                            evaluation_result={"report_markdown": report, "score": 4.0})
+    result = report if isinstance(report, dict) else {"report_markdown": report, "score": 4.0}
+    await asyncio.to_thread(services.queue.finish, claimed.id, claimed.lease_owner, "completed", evaluation_result=result)
 
 
 @pytest.mark.integration
@@ -67,7 +69,9 @@ async def test_plain_text_gets_a_guide_listing_only_the_grants_skills(api_contex
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_skill_json_in_text_runs_a_direct_skill(api_context, unused_tcp_port):
+async def test_skill_json_in_text_runs_a_direct_skill(api_context, unused_tcp_port, monkeypatch):
+    # Routing is under test, not Meilisearch: an empty index answer keeps this independent of local job data.
+    monkeypatch.setattr(job_sources, "_search", lambda payload: {"hits": [], "estimatedTotalHits": 0, "facetDistribution": {}})
     _csrf, _pid, grant = await asyncio.to_thread(_project_and_grant, api_context, ["jobs:search"])
     services = api_context.client.app.state.services
     base_url, _app, server, task = await _start_a2a(services, unused_tcp_port)
@@ -102,6 +106,27 @@ async def test_blocking_send_waits_and_returns_the_report_text(api_context, unus
         artifact = event.task.artifacts[0]
         assert "Synthetic blocking report." in [p.text for p in artifact.parts]
         assert any(p.HasField("data") for p in artifact.parts)  # the authorized URI stays
+    finally:
+        await http.aclose()
+        await _stop_a2a(server, task)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_tc_evr_06_structured_report_reaches_a2a_as_its_markdown(api_context, unused_tcp_port):
+    _csrf, _pid, grant = await asyncio.to_thread(_project_and_grant, api_context, ["results:read", "jobs:evaluate"])
+    services = api_context.client.app.state.services
+    base_url, _app, server, task = await _start_a2a(services, unused_tcp_port)
+    client, http = await _client(base_url, grant["token"])
+    try:
+        body = json.dumps({"skill": "evaluate_job", "request": {"job": JOB, "output_language": "en", "idempotency_key": "text-evr-06"}})
+        worker = asyncio.create_task(_finish_when_queued(services, STRUCTURED.model_dump(mode="json")))
+        event = await _one(client, _text(body))
+        await worker
+        assert TaskState.Name(event.task.status.state) == "TASK_STATE_COMPLETED"
+        texts = [p.text for p in event.task.artifacts[0].parts if p.text]
+        assert texts == [STRUCTURED.report_markdown]
+        assert "Synthetic verdict" in texts[0]
     finally:
         await http.aclose()
         await _stop_a2a(server, task)

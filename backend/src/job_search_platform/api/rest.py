@@ -1190,11 +1190,7 @@ async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Servic
         query = query.where(Run.operation.not_in(("profile_cv", "match_jobs", "extract_experience")))
         if actor.kind != "user":
             query = query.where(Run.operation != "export_document")
-        rows = db.scalars(query).all()
-    result = []
-    for row in rows:
-        result.append(await services.runs.get(actor, project_id, row.id))
-    return result
+    return await asyncio.to_thread(services.runs.list_views, actor, project_id, query)
 
 
 @router.post("/projects/{project_id}/runs", status_code=202, response_model=RunView)

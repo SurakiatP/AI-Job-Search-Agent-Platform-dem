@@ -75,6 +75,7 @@ def test_backup_cannot_race_a_live_application_maintenance_lock(migrated_engine,
     assert not archive.exists()
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 def test_backup_rejects_missing_or_tampered_published_objects(migrated_engine, recovery_bucket, tmp_path):
     client, bucket = recovery_bucket
@@ -141,6 +142,7 @@ def test_running_native_execution_prevents_capture(migrated_engine, recovery_buc
     assert not archive.exists()
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 def test_backup_marks_queued_runs_interrupted_before_dump(migrated_engine, recovery_bucket, tmp_path):
     _client_obj, bucket = recovery_bucket
@@ -170,6 +172,7 @@ def test_backup_marks_queued_runs_interrupted_before_dump(migrated_engine, recov
         assert last_event == "run_interrupted"
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_backend_bridge_loss_interrupts_native_run_preserves_completed_output_and_requires_manual_retry(

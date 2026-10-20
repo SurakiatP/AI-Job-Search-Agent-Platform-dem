@@ -66,6 +66,7 @@ def production_factory(migrated_engine, monkeypatch):
                 raise
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_maintenance_excludes_app_before_migration_and_entire_lifespan(production_factory, monkeypatch):
@@ -95,6 +96,7 @@ async def test_maintenance_excludes_app_before_migration_and_entire_lifespan(pro
         assert guard.held
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_production_factory_migrates_serves_owner_and_stops_dispatch(production_factory):
@@ -124,6 +126,7 @@ async def test_production_factory_migrates_serves_owner_and_stops_dispatch(produ
     assert not created[0].supervisor._active
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 @pytest.mark.asyncio
 @pytest.mark.parametrize("host", ["127.0.0.1", "::1"])
@@ -178,6 +181,7 @@ async def test_actual_launcher_serves_inside_running_loop_and_prints_login_url(p
     assert created[0].supervisor._dispatcher is None
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_failed_native_shutdown_attempts_runtime_cleanup_and_keeps_target_locked(production_factory):
@@ -209,13 +213,14 @@ async def test_failed_native_shutdown_attempts_runtime_cleanup_and_keeps_target_
         services.maintenance_lock.close()
 
 
+@pytest.mark.native_runtime  # production_factory needs the local agent runtime metadata
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_actual_built_frontend_with_production_rest_upload_and_session_restore(production_factory, monkeypatch, tmp_path, unused_tcp_port):
     import os
     factory, _ = production_factory
     origin = f"http://127.0.0.1:{unused_tcp_port}"
-    monkeypatch.setenv("JSP_ALLOWED_ORIGINS", origin)
+    monkeypatch.setenv("APP_PUBLIC_ORIGIN", origin)
     app = main.create_app(service_factory=factory, frontend_dist=main.ROOT / "frontend" / "dist")
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=unused_tcp_port, access_log=False, log_config=None))
     task = asyncio.create_task(server.serve())
@@ -239,7 +244,7 @@ async def test_actual_built_frontend_with_production_rest_upload_and_session_res
         environment = dict(os.environ, JSP_E2E_BASE_URL=origin, JSP_E2E_SESSION_FILE=str(config),
                            PLAYWRIGHT_OUTPUT_DIR=str(tmp_path / "playwright-output"))
         process = await asyncio.create_subprocess_exec(
-            "rtk", "proxy", "npm", "test", "--prefix", "tests", "--", "actual-backend.spec.ts", "--workers=1",
+            "npm", "test", "--prefix", "tests", "--", "actual-backend.spec.ts", "--workers=1",
             cwd=main.ROOT, env=environment, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
         )
         output, _ = await asyncio.wait_for(process.communicate(), 180)

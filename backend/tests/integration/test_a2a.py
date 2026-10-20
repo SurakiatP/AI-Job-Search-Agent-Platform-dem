@@ -421,6 +421,7 @@ async def test_a2a_rechecks_grants_and_never_reflects_rejected_input(api_context
         await _stop_a2a(server, server_task)
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_official_a2a_cancel_waits_for_real_native_cleanup(api_context, unused_tcp_port):

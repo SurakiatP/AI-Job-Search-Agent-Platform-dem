@@ -194,6 +194,7 @@ def _restore_args(archive: Path, target):
     )
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 def test_pg_minio_backup_restores_content_auth_reset_and_keychain_invalidation(
     migrated_engine, source_bucket, empty_restore_target, tmp_path, monkeypatch
@@ -328,6 +329,7 @@ def test_pg_minio_backup_restores_content_auth_reset_and_keychain_invalidation(
         target_engine.dispose()
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 @pytest.mark.parametrize("damage", ["missing", "tampered"])
 def test_restore_rejects_missing_or_tampered_manifest_objects_before_serving(
@@ -374,6 +376,7 @@ def test_restore_rejects_missing_or_tampered_manifest_objects_before_serving(
         target_engine.dispose()
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 def test_restore_refuses_nonempty_object_target_without_overwriting(migrated_engine, source_bucket, empty_restore_target, tmp_path):
     source_client, source_name = source_bucket
@@ -387,6 +390,7 @@ def test_restore_refuses_nonempty_object_target_without_overwriting(migrated_eng
     assert target_client.get_object(Bucket=target_bucket, Key="sentinel")["Body"].read() == b"synthetic existing data"
 
 
+@pytest.mark.native_runtime
 @pytest.mark.integration
 def test_failed_restore_quarantines_target_until_a_verified_retry(
     migrated_engine, source_bucket, empty_restore_target, tmp_path, monkeypatch
