@@ -1,6 +1,6 @@
 # Interview practice — CR-IVP-01
 
-Status: design approved by the owner 2026-10-20 (all recommendations accepted; company information comes from the job posting only). Written spec awaiting owner review.
+Status: design approved by the owner 2026-10-20 (all recommendations accepted; company information comes from the job posting only). Written spec approved by the owner 2026-10-20.
 
 ## The why
 
@@ -103,4 +103,4 @@ Cascades follow the session: purging a session deletes its sets. Runs keep `inpu
 
 - **A-IVP-01** Limits (6 per section, 30 per set, 20 sets, 20 attempts, quota 60) are estimates; the owner may change them.
 - **A-IVP-02** The configured model returns this JSON reliably, as for the evaluation report; an invalid reply fails the run with retry.
-- **Q-IVP-01** (owner) Should deleted sets also appear in the project trash? Recommended: no, the undo notice is enough for a set the owner can regenerate.
+- **Q-IVP-01** Answered 2026-10-20 (owner): deleted sets do not go to the project trash; the undo notice is enough.
