@@ -1,7 +1,9 @@
 """PostgreSQL queue claims, worker leases, and execution-budget accounting."""
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime, timedelta, timezone
+import os
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -16,7 +18,12 @@ from job_search_platform.services.runs import MAX_ACTIVE_SECONDS, MAX_TOOL_CALLS
 from job_search_platform.services.skills import SKILL_BY_ID
 
 GLOBAL_CLAIM_LOCK = 728_006
-MAX_ACTIVE_PROJECTS = 2
+MAX_RUNNING_PER_USER = 2
+
+
+def max_active_projects() -> int:
+    """Projects that may run at once across all users; WORKER_MAX_ACTIVE, default 4."""
+    return max(1, int(os.environ.get("WORKER_MAX_ACTIVE") or 4))
 DEFAULT_LEASE_SECONDS = 45
 
 
@@ -44,8 +51,8 @@ class PostgresRunQueue:
                     )
                 ).all()
             )
-            # One running run per user keeps a single account from occupying every worker slot.
-            busy_users = set(db.scalars(
+            # A per-user cap keeps a single account from occupying every worker slot.
+            running_per_user = Counter(db.scalars(
                 select(Project.user_id).join(Run, Run.project_id == Project.id).where(Run.status == "running")
             ).all())
             candidates = db.execute(
@@ -59,10 +66,10 @@ class PostgresRunQueue:
                 exempt = operation == "apply_submit"
                 if project_id in active_projects and not exempt:
                     continue
-                if len(active_projects) >= MAX_ACTIVE_PROJECTS and not exempt:
+                if len(active_projects) >= max_active_projects() and not exempt:
                     break
                 owner_id = db.scalar(select(Project.user_id).where(Project.id == project_id))
-                if owner_id in busy_users and not exempt:
+                if running_per_user[owner_id] >= MAX_RUNNING_PER_USER and not exempt:
                     continue
                 project = db.scalar(
                     select(Project).where(Project.id == project_id).with_for_update()
@@ -99,7 +106,7 @@ class PostgresRunQueue:
                 db.flush()
                 if not exempt:
                     active_projects.add(project_id)
-                    busy_users.add(owner_id)
+                    running_per_user[owner_id] += 1
                 return run
             return None
 

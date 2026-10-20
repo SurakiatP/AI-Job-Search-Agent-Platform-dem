@@ -60,3 +60,23 @@ Proposed fixes:
 
 Production hardware, several users at once, and a model other than `ai-analyze`
 (`openrouter/z-ai/glm-5.3-flash`). The numbers come from one local instance.
+
+## Decisions and results (owner approved all recommendations, 2026-10-20)
+
+- **S-1b done:** `profile_cv` is claimed before older queued runs (test + mutation check).
+- **S-1a done in part:** global cap is `WORKER_MAX_ACTIVE` (default 4, was 2) and each user may have
+  2 running runs (was 1, replaces multi-user Q18). Two runs inside **one project** still run one at a
+  time: the agent runtime keeps one process, state folder and container label per project
+  (`hermes_runtime.py` `start_project`, supervisor cleanup by `platform.project` label). Running a
+  project's jobs in parallel needs that layer keyed by run: a separate change, not done.
+- **S-2a done:** interview operations send OpenRouter `reasoning: {effort: low}` as request extra body
+  (`infra/hermes/native_bridge.py` `REASONING`). Hermes drops `reasoning_config` for a gateway, and
+  the gateway refuses `reasoning_effort` for this model, so both were tried and rejected.
+  Same set definition (11 questions, 4 sections), same session, owner's local instance:
+
+  | | Time | Output tokens | Questions | Example answers |
+  |---|---|---|---|---|
+  | Default reasoning | 683 s | 26,854 | 11 | 5 |
+  | Low reasoning | 72 s | 8,667 | 11 | 5 |
+
+  Earlier default-reasoning runs took 242–308 s with ~45,000 output tokens; provider speed varies.

@@ -41,7 +41,8 @@ def _enqueue(service, actor, db, project_count: int, runs_each: int = 1, *, owne
     return ids
 
 
-def test_two_dispatchers_claim_at_most_two_distinct_projects(db_session):
+def test_two_dispatchers_claim_at_most_two_distinct_projects(db_session, monkeypatch):
+    monkeypatch.setenv("WORKER_MAX_ACTIVE", "2")  # the cap under race; production default is 4
     factory = _factory(db_session)
     service = RunService(factory)
     actor = owner(db_session)

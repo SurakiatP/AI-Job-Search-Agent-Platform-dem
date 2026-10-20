@@ -169,16 +169,22 @@ def test_disabled_owner_makes_grant_unauthorized(db_session):
     assert _code(error) == "unauthorized"
 
 
-def test_one_running_run_per_user_lets_another_user_through(db_session):
+def test_two_running_runs_per_user_and_a_configurable_global_cap(db_session, monkeypatch):
+    # Owner decision 2026-10-20 (replaces multi-user Q18 "1 per user"): 2 per user, global cap WORKER_MAX_ACTIVE.
+    monkeypatch.setenv("WORKER_MAX_ACTIVE", "4")
     factory = _factory(db_session)
     alice, bob = owner(db_session), owner(db_session)
-    a1, a2, b1 = (_ready(db_session, who) for who in (alice, alice, bob))
+    a1, a2, a3, b1 = (_ready(db_session, who) for who in (alice, alice, alice, bob))
     service, queue = RunService(factory), PostgresRunQueue(factory)
     first = _submit(service, alice, *a1, "a1")
-    assert queue.claim_next("w").id == first.id
-    _submit(service, alice, *a2, "a2")
+    second = _submit(service, alice, *a2, "a2")
+    _submit(service, alice, *a3, "a3")
     bob_run = _submit(service, bob, *b1, "b1")
-    assert queue.claim_next("w").id == bob_run.id
-    with factory.begin() as db:  # free the global slot so only the per-user cap can refuse A2
-        db.get(Run, bob_run.id).status = "completed"
-    assert queue.claim_next("w") is None
+    assert [queue.claim_next("w").id for _ in range(3)] == [first.id, second.id, bob_run.id]
+    assert queue.claim_next("w") is None  # alice's third run waits although a global slot is free
+
+    monkeypatch.setenv("WORKER_MAX_ACTIVE", "1")
+    with factory.begin() as db:
+        for run_id in (first.id, second.id):
+            db.get(Run, run_id).status = "completed"
+    assert queue.claim_next("w") is None  # bob's run still fills the only global slot
