@@ -46,7 +46,9 @@ def test_score_and_evaluate(tmp_path):
     m = run_eval.evaluate(scored)
     assert m["ndcg_at_10"] == pytest.approx((ndcg_at_k([2, 0, 1]) + ndcg_at_k([2, 1])) / 2)
     assert m["ndcg_at_10"] < 0.99
-    assert m["precision_at_10"] == pytest.approx((precision_at_k([2, 0, 1]) + precision_at_k([2, 1])) / 2)
+    assert "precision_at_10" not in m
+    assert m["precision_at_2"] == pytest.approx((precision_at_k([2, 0, 1], 2) + precision_at_k([2, 1], 2)) / 2)
+    assert m["pooled_precision_at_20"] == pytest.approx(2 / 5)
     assert m["spearman"] == pytest.approx(spearman([100, 73, 47, 47, 73], [2, 0, 1, 1, 2]))
     assert m["confusion"][5] == {"good": 2, "no": 1}
     assert m["confusion"][3] == {"maybe": 2}
@@ -84,3 +86,58 @@ def test_main_requires_api_key(monkeypatch):
 
 def test_fake_is_used_not_real_client():
     assert not isinstance(FakeJev(), run_eval.JevClient)
+
+
+def _rows(cv, fits_labels):
+    return [{"cv_id": cv, "slug": f"s{i:02d}", "fit_percent": f, "label": lab, "kind": "clear"}
+            for i, (f, lab) in enumerate(fits_labels)]
+
+
+def test_precision_at_2_uses_best_ranked_descending():
+    rows = _rows("a", [(90, "good"), (80, "good"), (10, "no")]) + _rows("b", [(90, "no"), (80, "no"), (10, "good")])
+    assert run_eval.evaluate(rows)["precision_at_2"] == pytest.approx((1.0 + 0.0) / 2)
+
+
+def test_pooled_precision_at_20_is_global_descending():
+    rows = _rows("a", [(100 - i, "good" if i < 10 else "no") for i in range(25)])
+    assert run_eval.evaluate(rows)["pooled_precision_at_20"] == pytest.approx(0.5)  # ascending would give 0.25
+
+
+def test_pooled_precision_ties_break_by_cv_id_then_slug():
+    rows = [{"cv_id": f"c{i:02d}", "slug": "s", "fit_percent": 50, "label": "good" if i == 20 else "no", "kind": "clear"}
+            for i in range(21)]
+    assert run_eval.evaluate(rows)["pooled_precision_at_20"] == 0.0  # c20 ranks 21st
+
+
+def test_cache_write_is_atomic_and_corrupt_cache_ignored(tmp_path, monkeypatch):
+    target = tmp_path / "x.json"
+    target.write_text('{"old": 1}')
+
+    def boom(src, dst):
+        raise OSError("replace failed")
+
+    monkeypatch.setattr(run_eval.os, "replace", boom)
+    with pytest.raises(OSError):
+        run_eval.write_json_atomic(target, {"new": 2})
+    assert target.read_text() == '{"old": 1}' and list(tmp_path.iterdir()) == [target]
+    monkeypatch.undo()
+    run_eval.write_json_atomic(target, {"new": 2})
+    assert run_eval.read_json(target) == {"new": 2} and list(tmp_path.iterdir()) == [target]
+    target.write_text('{"tru')
+    assert run_eval.read_json(target) is None
+
+
+def test_truncated_cache_file_is_recomputed(tmp_path):
+    client = FakeJev()
+    run_eval.score_pairs(PAIRS, CVS, client, tmp_path)
+    for f in tmp_path.iterdir():
+        f.write_text("{")
+    run_eval.score_pairs(PAIRS, CVS, client, tmp_path)
+    assert client.calls == 10
+
+
+def test_format_metrics_lists_four_metrics(tmp_path):
+    text = run_eval.format_metrics(run_eval.evaluate(run_eval.score_pairs(PAIRS, CVS, FakeJev(), tmp_path)))
+    for name in ("ndcg_at_10", "precision_at_2", "pooled_precision_at_20", "spearman"):
+        assert name in text
+    assert "precision_at_10" not in text

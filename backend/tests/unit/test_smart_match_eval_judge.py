@@ -1,5 +1,7 @@
 import json
+import os
 import sys
+import urllib.error
 from pathlib import Path
 
 import pytest
@@ -61,6 +63,59 @@ def test_cache_prevents_second_post(tmp_path):
     judge.judge_pairs(PAIRS[:2], CVS, post, tmp_path)
     again = judge.judge_pairs(PAIRS[:2], CVS, post, tmp_path)
     assert post.calls == 2 and again[1]["judge"] == "no"
+
+
+def test_null_result_never_cached(tmp_path):
+    post = Post("not json")
+    judge.judge_pairs(PAIRS[:1], CVS, post, tmp_path)
+    assert list(tmp_path.glob("judge-*")) == []
+    judge.judge_pairs(PAIRS[:1], CVS, post, tmp_path)
+    assert post.calls == 4
+
+
+@pytest.mark.parametrize("exc", [urllib.error.URLError("x"), TimeoutError(), OSError("x"),
+                                 urllib.error.HTTPError("u", 500, "m", None, None)])
+def test_network_error_retries_once_then_null_uncached(tmp_path, exc):
+    calls = []
+
+    def post(payload):
+        calls.append(1)
+        raise exc
+
+    assert judge.judge_pairs(PAIRS[:1], CVS, post, tmp_path)[0]["judge"] is None
+    assert len(calls) == 2 and list(tmp_path.glob("judge-*")) == []
+
+
+def test_network_error_then_success(tmp_path):
+    seq = [TimeoutError(), reply('{"label": "no", "reason": "x"}')]
+
+    def post(payload):
+        item = seq.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    assert judge.judge_pairs(PAIRS[:1], CVS, post, tmp_path)[0]["judge"] == "no"
+
+
+def test_corrupt_cache_ignored_and_writes_atomic(tmp_path, monkeypatch):
+    post = Post('{"label": "good", "reason": "x"}')
+    judge.judge_pairs(PAIRS[:1], CVS, post, tmp_path)
+    for f in tmp_path.iterdir():
+        f.write_text('["go')
+    replaced = []
+    real = os.replace
+    monkeypatch.setattr(os, "replace", lambda a, b: (replaced.append(b), real(a, b))[1])
+    assert judge.judge_pairs(PAIRS[:1], CVS, post, tmp_path)[0]["judge"] == "good"
+    assert post.calls == 2 and len(replaced) == 1
+
+
+def test_d03_verdict():
+    v = judge.d03_verdict
+    assert v({"vs_owner": None, "owner_n": 0}) == "PENDING (no owner labels)"
+    assert v({"vs_owner": 0.6, "owner_n": 15}) == "ACCEPT"
+    assert v({"vs_owner": 0.59, "owner_n": 15}) == "REJECT"
+    assert v({"vs_owner": 0.9, "owner_n": 14}).startswith("PENDING")
 
 
 def row(i, label, judged):
@@ -147,3 +202,27 @@ def test_live_main_never_leaks_key(monkeypatch, capsys, tmp_path):
     assert seen["key"] == SENTINEL and "kappa" in out.out
     assert SENTINEL not in out.out + out.err
     assert all(SENTINEL not in p.read_text() for p in tmp_path.iterdir())
+
+
+def test_live_main_prints_full_report(monkeypatch, capsys, tmp_path):
+    class UsagePost(Post):
+        def __call__(self, payload):
+            r = super().__call__(payload)
+            r["usage"] = {"prompt_tokens": 10, "completion_tokens": 3}
+            return r
+
+    monkeypatch.setenv("SMART_MATCH_EVAL_LIVE", "1")
+    monkeypatch.setenv("OPENROUTER_API_KEY", SENTINEL)
+    monkeypatch.setattr(judge, "make_post", lambda key: UsagePost('{"label": "good", "reason": "ok"}'))
+    monkeypatch.setattr(judge, "make_jev", lambda key: _FakeJev())
+    monkeypatch.setattr(judge, "PAIRS_LIMIT", 3)
+    monkeypatch.setattr(judge, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(judge, "OWNER_FILE", tmp_path / "none.json")
+    monkeypatch.setattr(sys, "argv", ["judge"])
+    judge.main()
+    out = capsys.readouterr().out
+    for needle in ("ndcg_at_10", "precision_at_2", "pooled_precision_at_20", "spearman", "band",
+                   "kappa judge vs construction", "kappa judge vs owner (n=0)", "D-03: PENDING (no owner labels)",
+                   "total live calls: 6", "elapsed:", "judge tokens: prompt=30 completion=9"):
+        assert needle in out, needle
+    assert "$" not in out and "USD" not in out

@@ -22,7 +22,7 @@ Who: a job seeker who runs Smart match and trusts the top of the list. Job: find
 - FR-SM-04 Before any AI call, a free pre-ranker orders the whole pool by skill-dictionary overlap, title similarity, city and work-mode match; the AI scores the top N of the pool (N unchanged at 100), not the newest N.
 - FR-SM-05 Per CV revision the CV is reduced once to a structured profile (roles, years, skills with one evidence phrase each, languages, education) stored in `cv_revisions.skill_profile`; per-job calls send the profile instead of the full CV when it is present and fresh.
 - FR-SM-06 Score weights and band edges come from a fit on the labelled set, stored as constants with the metrics that justified them.
-- AC-SM-04 On the labelled set, NDCG@10 and top-10 precision are not lower than the Phase A baseline, and at least one improves by 10% or more; otherwise the change is not merged. AC-SM-05 Input tokens per scored job drop or stay equal (measured). AC-SM-06 Old scores stay readable: a new `model` or `pipeline` value rescores, nothing is deleted.
+- AC-SM-04 On the labelled set, NDCG@10 and precision at 2 or pooled precision at 20 are not lower than the Phase A baseline, and at least one improves by 10% or more; otherwise the change is not merged. AC-SM-05 Input tokens per scored job drop or stay equal (measured). AC-SM-06 Old scores stay readable: a new `model` or `pipeline` value rescores, nothing is deleted.
 
 ### Phase C: visible AI (UI, small API addition)
 - FR-SM-07 Each scored job shows one quoted evidence line from the CV for the role fit and for each missing must-have (stored in `details`, no new table).

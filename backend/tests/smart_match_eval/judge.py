@@ -4,6 +4,8 @@ import json
 import os
 import random
 import sys
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -12,12 +14,14 @@ sys.path.insert(0, str(_HERE.parents[1] / "src"))
 sys.path.insert(0, str(_HERE.parent))
 
 from job_search_platform.services import smart_match  # noqa: E402
+from smart_match_eval import run_eval  # noqa: E402
 from smart_match_eval.metrics import cohen_kappa  # noqa: E402
 
 URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "deepseek/deepseek-v4.1-flash-1017"
 LABELS = ("good", "maybe", "no")
 CACHE_DIR = _HERE / ".cache"
+OWNER_FILE = _HERE / "data" / "owner_labels.json"
 PAIRS_LIMIT = None  # tests shrink the live run
 PROMPT = ("You judge how well a job fits a candidate CV. Answer with one JSON object only: "
           '{"label": "good|maybe|no", "reason": "<one line>"}. good = strong fit, maybe = partial or uncertain, no = poor fit.')
@@ -62,19 +66,30 @@ def _parse(response):
     return None
 
 
-def judge_pairs(pairs, cvs, post, cache_dir):
+def _attempt(post, payload, usage):
+    try:
+        response = post(payload)
+    except (urllib.error.URLError, TimeoutError, OSError):  # HTTPError is a URLError
+        return None
+    if isinstance(response, dict) and isinstance(response.get("usage"), dict) and usage is not None:
+        usage.append(response["usage"])
+    return _parse(response)
+
+
+def judge_pairs(pairs, cvs, post, cache_dir, usage=None):
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
     out = []
     for pair in pairs:
         payload = _payload(pair, cvs[pair["cv_id"]])
         path = cache_dir / ("judge-" + hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest() + ".json")
-        if path.exists():
-            parsed = json.loads(path.read_text())
-            parsed = tuple(parsed) if parsed else None
+        cached = run_eval.read_json(path)
+        if isinstance(cached, list) and len(cached) == 2 and cached[0] in LABELS and isinstance(cached[1], str):
+            parsed = tuple(cached)
         else:
-            parsed = _parse(post(payload)) or _parse(post(payload))
-            path.write_text(json.dumps(parsed))
+            parsed = _attempt(post, payload, usage) or _attempt(post, payload, usage)
+            if parsed:  # failures are never cached, so a rerun retries them
+                run_eval.write_json_atomic(path, parsed)
         out.append({"cv_id": pair["cv_id"], "slug": pair["job"]["slug"], "label": pair["label"],
                     "kind": pair["kind"], "judge": parsed[0] if parsed else None,
                     "judge_reason": parsed[1] if parsed else None})
@@ -127,6 +142,30 @@ def owner_sheet(pairs, count=15):
     return "\n\n".join(parts) + "\n"
 
 
+def d03_verdict(report):
+    if not report["owner_n"]:
+        return "PENDING (no owner labels)"
+    if report["owner_n"] < 15:
+        return f"PENDING (only {report['owner_n']} owner labels, need 15)"
+    return "ACCEPT" if report["vs_owner"] >= 0.6 else "REJECT"
+
+
+class _CountingPost:
+    def __init__(self, post):
+        self._post, self.calls = post, 0
+
+    def __call__(self, payload):
+        self.calls += 1
+        return self._post(payload)
+
+
+def _tokens(usage):
+    def total(name):
+        vals = [u.get(name) for u in usage]
+        return sum(vals) if vals and all(isinstance(v, int) for v in vals) else "n/a"
+    return f"judge tokens: prompt={total('prompt_tokens')} completion={total('completion_tokens')}"
+
+
 def main():
     pairs = json.loads((_HERE / "data" / "pairs.json").read_text())
     if sys.argv[1:] == ["sheet"]:
@@ -137,18 +176,25 @@ def main():
     key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
         sys.exit("OPENROUTER_API_KEY is not set in the environment.")
-    from smart_match_eval import run_eval
     pairs = pairs[:PAIRS_LIMIT]
     cvs = {c["id"]: c["text"] for c in json.loads((_HERE / "data" / "cvs.json").read_text())}
-    judged = judge_pairs(pairs, cvs, make_post(key), CACHE_DIR)
-    owner_file = _HERE / "data" / "owner_labels.json"
-    owner = json.loads(owner_file.read_text()) if owner_file.exists() else {}
+    began = time.monotonic()
+    jev = run_eval._Counting(make_jev(key))
+    scored = run_eval.score_pairs(pairs, cvs, jev, CACHE_DIR)
+    post, usage = _CountingPost(make_post(key)), []
+    judged = judge_pairs(pairs, cvs, post, CACHE_DIR, usage)
+    owner = run_eval.read_json(OWNER_FILE) or {}
     report = kappa_report(judged, owner)
+    print(run_eval.format_metrics(run_eval.evaluate(scored)))
     print("kappa judge vs construction:", report["vs_construction"])
     print(f"kappa judge vs owner (n={report['owner_n']}):", report["vs_owner"])
+    print("D-03:", d03_verdict(report))
     print("judge failures (null):", sum(r["judge"] is None for r in judged))
-    for d in disagreements(judged, run_eval.score_pairs(pairs, cvs, make_jev(key), CACHE_DIR)):
+    for d in disagreements(judged, scored):
         print(json.dumps(d))
+    print(f"total live calls: {jev.calls + post.calls} (jev {jev.calls}, judge {post.calls})")
+    print(f"elapsed: {time.monotonic() - began:.1f}s")
+    print(_tokens(usage))
 
 
 if __name__ == "__main__":
