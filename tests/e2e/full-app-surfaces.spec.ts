@@ -11,7 +11,7 @@ const allSurfaces = [
   ...accessSurfaces.map(surface => ({ ...surface, bundle: 'access' })),
   { id: 'profile', route: `/app/projects/${projectId}/profile`, bundle: 'materials' },
   { id: 'documents', route: `/app/projects/${projectId}/documents`, bundle: 'materials' },
-  { id: 'document-trash', route: `/app/projects/${projectId}/documents?view=trash`, bundle: 'materials' },
+  { id: 'document-trash', route: `/app/projects/${projectId}/trash?tab=documents`, bundle: 'materials' },
   { id: 'document-detail', route: `/app/projects/${projectId}/documents/${documentId}`, bundle: 'materials' },
   { id: 'applications', route: `/app/projects/${projectId}/applications`, bundle: 'applications' },
   { id: 'application-board', route: `/app/projects/${projectId}/applications?view=board`, bundle: 'applications' },
