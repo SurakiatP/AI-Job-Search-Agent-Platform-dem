@@ -43,10 +43,23 @@ No product defect was found on the paths exercised. No open security or PDPA def
 
 NFRs: no performance, availability, or capacity number was measured this round → UNKNOWN.
 
+## Fixes applied (2026-10-20, branch qa/release-review)
+
+| ID | Status | Evidence |
+|---|---|---|
+| F-01 | FIXED | `actual-backend.spec.ts` rewritten for today's screens (project, CV upload, posting, evaluation, reload); launcher now sets `APP_PUBLIC_ORIGIN` (the old `JSP_ALLOWED_ORIGINS` is no longer read, so the session was refused) and calls `npm` without the local-only `rtk` proxy. Passes; fails when one assertion is broken on purpose. |
+| F-02 | FIXED | CI backend job starts a pinned throwaway MinIO, builds the frontend, installs Chromium and runs `pytest -m integration` (storage restart proof excluded: it needs the full local stack). Simulated locally with only Postgres + MinIO: 496 passed, 1 skipped. |
+| F-02b | FIXED | `test_a2a_text.py::test_skill_json_in_text_runs_a_direct_skill` relied on the developer's Meilisearch index; it now stubs the index answer like the unit tests do. |
+| F-03 | FIXED | Storage proof uses the conftest private-dir default like every other integration test. |
+| F-04 | FIXED | TC-EVR-06: MCP resource and A2A task both return a structured report as its Markdown; both tests fail when either path is broken on purpose. |
+| F-05 | FIXED | `test_tc_cvb_13_uploaded_cv_tailoring_stays_markdown`. |
+
+Not verified: the workflow change on GitHub Actions itself (needs a pushed PR).
+
 ## Gate
 
-**CONCERNS** — no P0 AC failing, no open security/PDPA defect, but the real-stack smoke test is red
-(F-01), CI skips the integration tests (F-02), and NFRs are unmeasured.
+**CONCERNS** — F-01..F-05 fixed; remaining: NFRs unmeasured, and the CI change is unproven until it
+runs on a PR.
 
 Recommendation for the manual: **go**, after F-01 is fixed (small). The manual covers only shipped
 features; deferred work (results dashboard, application email sending, production-readiness items)

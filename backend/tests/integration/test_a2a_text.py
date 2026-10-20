@@ -14,6 +14,7 @@ from google.protobuf.json_format import MessageToDict, ParseDict
 
 from test_a2a import _grant, _project_and_grant, _start_a2a, _stop_a2a, api_context  # noqa: F401 (fixture)
 from test_mcp import STRUCTURED
+from job_search_platform.services import job_sources
 
 CTX = ClientCallContext(service_parameters={"A2A-Version": "1.0"})
 JOB = {"title": "Synthetic data analyst", "company": "Example Co", "description": "Synthetic role for text-mode A2A."}
@@ -68,7 +69,9 @@ async def test_plain_text_gets_a_guide_listing_only_the_grants_skills(api_contex
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_skill_json_in_text_runs_a_direct_skill(api_context, unused_tcp_port):
+async def test_skill_json_in_text_runs_a_direct_skill(api_context, unused_tcp_port, monkeypatch):
+    # Routing is under test, not Meilisearch: an empty index answer keeps this independent of local job data.
+    monkeypatch.setattr(job_sources, "_search", lambda payload: {"hits": [], "estimatedTotalHits": 0, "facetDistribution": {}})
     _csrf, _pid, grant = await asyncio.to_thread(_project_and_grant, api_context, ["jobs:search"])
     services = api_context.client.app.state.services
     base_url, _app, server, task = await _start_a2a(services, unused_tcp_port)
