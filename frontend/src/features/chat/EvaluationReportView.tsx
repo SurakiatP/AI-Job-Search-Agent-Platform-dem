@@ -92,8 +92,8 @@ export function EvaluationReportView({ report }: { report: EvaluationReport }) {
   const { t } = useTranslation('sessionWorkspace');
   const icon = 'size-4 shrink-0';
   return <div className="grid gap-6" data-testid="ai-report">
-    <div className="grid max-w-[70ch] gap-1.5">
-      <AiLabel />
+    <div className="grid max-w-[70ch] gap-1">
+      <AiLabel className="mb-1.5" />
       <p className="text-lg font-semibold leading-snug [text-wrap:balance]">{report.verdict}</p>
       <p className="text-muted-foreground">{report.summary}</p>
     </div>
