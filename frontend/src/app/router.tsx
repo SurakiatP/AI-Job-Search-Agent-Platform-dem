@@ -15,6 +15,7 @@ import './routes.css';
 
 const DocumentDetailPage = lazy(() => import('../features/documents/DocumentsPage').then(module => ({ default: module.DocumentDetailPage })));
 const DocumentsPage = lazy(() => import('../features/documents/DocumentsPage').then(module => ({ default: module.DocumentsPage })));
+const TrashPage = lazy(() => import('../features/trash/TrashPage').then(module => ({ default: module.TrashPage })));
 const SessionPage = lazy(() => import('../features/chat/SessionPage').then(module => ({ default: module.SessionPage })));
 const SessionsPage = lazy(() => import('../features/sessions/SessionsPage').then(module => ({ default: module.SessionsPage })));
 const JobDetailPage = lazy(() => import('../features/jobs/JobsPage').then(module => ({ default: module.JobDetailPage })));
@@ -133,7 +134,7 @@ export function AppRoutes() {
     <Route path="/app/account" element={<AppWorkspace />}><Route index element={<AccountPage />} /></Route>
     <Route path="/app/settings" element={<AppWorkspace />}><Route index element={<SettingsPage />} /></Route>
     <Route path="/app/projects" element={<AppWorkspace />}><Route index element={<ProjectsPage />} /><Route path="new" element={<NewProjectPage />} /></Route>
-    <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="overview" element={<OverviewPage />} /><Route path="console" element={<ConsolePage />} /><Route path="search" element={<SearchPage />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions" element={<SessionsPage />} /><Route path="sessions/:sessionId" element={<SessionPage />} /><Route path="applications" element={<JobsPage />} /><Route path="jobs" element={<Navigate to="../applications" replace />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /><Route path="cvs/:cvId/builder" element={<BuilderPage kind="cv" />} /><Route path="documents/:documentId/builder" element={<BuilderPage kind="document" />} /></Route>
+    <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="overview" element={<OverviewPage />} /><Route path="trash" element={<TrashPage />} /><Route path="console" element={<ConsolePage />} /><Route path="search" element={<SearchPage />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions" element={<SessionsPage />} /><Route path="sessions/:sessionId" element={<SessionPage />} /><Route path="applications" element={<JobsPage />} /><Route path="jobs" element={<Navigate to="../applications" replace />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /><Route path="cvs/:cvId/builder" element={<BuilderPage kind="cv" />} /><Route path="documents/:documentId/builder" element={<BuilderPage kind="document" />} /></Route>
     </Route><Route path="*" element={<NotFoundPage />} />
   </Routes></Suspense>;
 }

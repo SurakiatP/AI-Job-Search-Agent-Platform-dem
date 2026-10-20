@@ -15,6 +15,7 @@ import { relativeTime } from '../console/shared';
 import { useResource } from '../projects/useResource';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { SessionTrash } from './SessionTrash';
+import { notifyTrashChanged } from '@/lib/trash';
 
 type Filter = 'all' | 'attention' | 'progress' | 'done' | 'stopped' | 'notStarted';
 const FILTERS: Filter[] = ['all', 'attention', 'progress', 'done', 'stopped', 'notStarted'];
@@ -51,7 +52,7 @@ export function SessionsPage() {
   const trash = useResource<SessionView[]>(`/projects/${projectId}/sessions?view=trash`);
   const inTrash = useSearchParams()[0].get('view') === 'trash';
   const trashCount = trash.data?.length ?? 0;
-  const reloadAll = () => { sessions.reload(); trash.reload(); };
+  const reloadAll = () => { sessions.reload(); trash.reload(); notifyTrashChanged(); };
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const [filter, setFilter] = useState<Filter>('all');

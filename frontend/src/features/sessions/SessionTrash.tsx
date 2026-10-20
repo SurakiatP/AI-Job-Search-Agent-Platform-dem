@@ -9,7 +9,7 @@ import { apiRequest } from '@/lib/api';
 import { ApiError, type Locale, type SessionView } from '@/lib/api-types';
 import { relativeTime } from '../console/shared';
 
-export function SessionTrash({ projectId, locale, items, onChanged }: { projectId: string; locale: Locale; items: SessionView[]; onChanged: () => void }) {
+export function SessionTrash({ projectId, locale, items, onChanged, showBack = true }: { projectId: string; locale: Locale; items: SessionView[]; onChanged: () => void; showBack?: boolean }) {
   const { t: s } = useTranslation('sessionWorkspace');
   const base = `/app/projects/${projectId}`;
   const api = `/projects/${projectId}/sessions`;
@@ -37,7 +37,7 @@ export function SessionTrash({ projectId, locale, items, onChanged }: { projectI
   }
 
   return <div className="grid gap-4">
-    <Button asChild variant="ghost" className="-ml-3 justify-self-start"><Link to={`${base}/sessions`}><ArrowLeft className="size-4" aria-hidden="true" />{s('trash.back')}</Link></Button>
+    {showBack && <Button asChild variant="ghost" className="-ml-3 justify-self-start"><Link to={`${base}/sessions`}><ArrowLeft className="size-4" aria-hidden="true" />{s('trash.back')}</Link></Button>}
     {items.length === 0 ? <p className="text-muted-foreground">{s('trash.empty')}</p> : <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="max-w-2xl text-sm text-muted-foreground">{s('trash.note')}</p>

@@ -22,6 +22,7 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { DocumentDeleteMenu } from './DocumentDeleteMenu';
 import { TrashView, deletePermanently, inUseMessage, permanentDescription, permanentTitle, restoreDocument } from './TrashView';
 import { useFilePreview } from '../../components/CvPreview';
+import { notifyTrashChanged } from '@/lib/trash';
 
 type DocumentItem = { id: string; has_builder_draft?: boolean; document_type: 'cv' | 'cover_letter' | 'application_message' | 'other'; title: string; content_markdown?: string | null; output_language?: 'th' | 'en' | null; source_run_id?: string | null; partial?: boolean; trashed_at?: string | null; latest_revision?: { id: string; revision: number } | null };
 type DocumentRevision = { document_id: string; id?: string; revision?: number; created_at?: string; source_cv_revision_id?: string | null; source_job_revision_id?: string | null; file_id?: string | null; content_markdown?: string | null; origin?: 'agent' | 'manual' };
@@ -38,7 +39,7 @@ const ROW_GRID = 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_6rem_9rem_9rem]';
 const typeIcon: Record<DocType, LucideIcon> = { cv: FileUser, cover_letter: Mail, application_message: MessageSquareText, other: File };
 const downloadUrl = (projectId: string, fileId: string) => `/api/v1/projects/${projectId}/files/${fileId}/download`;
 
-function documentTypeLabel(type: DocType, t: (key: string, options: { defaultValue: string }) => string) {
+export function documentTypeLabel(type: DocType, t: (key: string, options: { defaultValue: string }) => string) {
   const labels = { cv: ['pages.docTypeCv', 'CV'], cover_letter: ['pages.docTypeCoverLetter', 'Cover letter'], application_message: ['pages.docTypeApplicationMessage', 'Application message'], other: ['pages.docTypeOther', 'Other document'] } as const;
   const [key, fallback] = labels[type];
   return t(key, { defaultValue: fallback });
@@ -124,7 +125,7 @@ export function DocumentsPage() {
   if (result.status === 'error') return <ErrorState onRetry={result.reload} />;
   const documents = result.data ?? [];
   const trashed = trash.data ?? [];
-  const reloadAll = () => { result.reload(); trash.reload(); };
+  const reloadAll = () => { result.reload(); trash.reload(); notifyTrashChanged(); };
   const sessionFor = (document: DocumentItem) => { const id = runs.data?.find(run => run.id === document.source_run_id)?.session_id; return id ? sessions.data?.find(item => item.id === id) : undefined; };
   const evaluateHref = sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : `${base}/sessions`;
   const title = t('pages.documentsTitle', { defaultValue: 'Documents' });

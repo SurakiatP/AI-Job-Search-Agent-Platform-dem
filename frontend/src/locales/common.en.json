@@ -23,7 +23,8 @@
     "documents": "Documents",
     "cv": "CV & experience",
     "allProjects": "All projects",
-    "newProject": "New project"
+    "newProject": "New project",
+    "trash": "Trash"
   },
   "noProjects": "Your projects will appear here",
   "workspaceTitle": "Your job search workspace",
@@ -307,5 +308,9 @@
     "made": "Made by AI",
     "extracted": "Extracted by AI",
     "check": "Check before use"
+  },
+  "trash": {
+    "title": "Trash",
+    "subtitle": "Evaluations and documents deleted in this project. Restore them or delete them permanently."
   }
 }
