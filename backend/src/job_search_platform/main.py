@@ -355,6 +355,7 @@ def create_app(
             ("/projects/{project_id}/cv", {}),
             ("/projects/{project_id}/cvs", {"name": {"type": "string", "maxLength": 120}}),
             ("/projects/{project_id}/cvs/{cv_id}/revisions", {}),
+            ("/projects/{project_id}/resume-photos", {}),
         ):
             cv_upload = schema["paths"].get(upload_path, {}).get("post", {})
             if cv_upload:

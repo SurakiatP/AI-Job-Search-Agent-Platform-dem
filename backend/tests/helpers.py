@@ -74,15 +74,17 @@ def session(db, project_id, title: str = "Synthetic session") -> ConversationSes
     return value
 
 
-def primary_cv(db, project_id) -> CV:
+def primary_cv(db, project_id):
     """The project's primary CV, created on first use."""
-    from sqlalchemy import select
-    found = db.scalar(select(CV).where(CV.project_id == project_id, CV.is_primary, CV.removed_at.is_(None)))
+    # Only columns every schema since 0014 has, so migration tests on old revisions can use it too.
+    from types import SimpleNamespace
+    from uuid import uuid4
+    from sqlalchemy import insert, select
+    found = db.scalar(select(CV.id).where(CV.project_id == project_id, CV.is_primary, CV.removed_at.is_(None)))
     if found is None:
-        found = CV(project_id=project_id, name="CV หลัก", is_primary=True)
-        db.add(found)
-        db.flush()
-    return found
+        found = uuid4()
+        db.execute(insert(CV).values(id=found, project_id=project_id, name="CV หลัก", is_primary=True))
+    return SimpleNamespace(id=found)
 
 
 def revisions(db, project_id):

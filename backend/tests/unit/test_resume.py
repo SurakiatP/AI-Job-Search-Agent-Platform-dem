@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import subprocess
@@ -183,3 +184,17 @@ def test_thai_pdf_text_layer_matches_the_source_text(tmp_path):
     text = subprocess.run([pdftotext, str(path), "-"], capture_output=True, text=True).stdout
     for word in ("ใช้ติดตาม", "ชั่วโมง", "ตัวชี้วัด"):
         assert word in text, word
+
+
+def test_ac_cvp_01_render_bundle_adds_the_photo_only_to_photo_templates():
+    jpeg = b"\xff\xd8\xff\xe0" + b"\x00" * 20
+    data = rs.ResumeData.model_validate({"basics": {"name": "Alex", "photo": "00000000-0000-4000-8000-000000000001"}})
+    for template in rs.TEMPLATES:
+        files = rs.render_bundle(data, template, "indigo", "en", jpeg)
+        theme = json.loads(files["theme.json"])
+        if template in rs.PHOTO_TEMPLATES:
+            assert theme["photo"] == "photo.jpg" and files["photo.jpg"] == jpeg
+        else:
+            assert theme["photo"] is None and "photo.jpg" not in files
+    assert json.loads(rs.render_bundle(data, "lotus", "indigo", "en", b"GIF89a")["theme.json"])["photo"] is None
+    assert "0000-4000" not in rs.plain_text(data, "en")

@@ -21,7 +21,7 @@
       #if filled(data.basics.headline) { linebreak(); text(size: 10pt)[#data.basics.headline] }
       #v(4pt)
       #set text(size: 8.6pt)
-      #contacts().join(linebreak())
+      #contacts(link-fill: white).join(linebreak())
     ]
     #block(inset: (x: 14pt))[
       #for name in side {

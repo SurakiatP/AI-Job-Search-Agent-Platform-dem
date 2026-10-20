@@ -4,7 +4,9 @@ from __future__ import annotations
 from uuid import UUID
 
 import pytest
-from sqlalchemy import func, select
+from datetime import datetime, timezone
+
+from sqlalchemy import func, select, update
 
 from job_search_platform.db.models import (CV, CVRevision, CVRevisionText, ExperienceItem, ResumeDraft, Run,
                                            StoredFile)
@@ -12,6 +14,13 @@ from resume_samples import thai_long
 from test_cv_builder import _Render
 from test_paired_sessions import JOB, PREFIX, _project, _session, _upload
 from test_rest_api import _object_exists, _owner, _seed_completed_run, _seed_document, _write_headers, api_context  # noqa: F401
+
+
+def _settle_runs(ctx) -> None:
+    """Uploads and new sessions queue AI runs; finish them so only the run a test seeds can block."""
+    with ctx.sessions.begin() as db:
+        db.execute(update(Run).where(Run.status.in_(("queued", "running")))
+                   .values(status="cancelled", finished_at=datetime.now(timezone.utc)))
 
 
 def _builder_cv(ctx, csrf, pid) -> tuple[str, dict]:
@@ -42,6 +51,7 @@ def test_ac_cvt_01_to_03_trash_restore_and_purge_keep_history(api_context):
             ExperienceItem.builder_cv_id == UUID(cv_id), ExperienceItem.removed_at.is_(None)))
     assert facts > 0 and _object_exists(api_context, key)
 
+    _settle_runs(api_context)
     url = f"{PREFIX}/{pid}/cvs/{cv_id}"
     live = client.delete(f"{url}/permanent", headers=headers)
     assert live.status_code == 409 and live.json()["code"] == "cv_not_trashed"
@@ -96,12 +106,13 @@ def test_ac_cvt_02_purge_keeps_a_file_a_document_still_uses(api_context):
     with api_context.sessions.begin() as db:  # a tailored CV promoted into this CV shares the document's file
         db.add(CVRevision(project_id=UUID(pid), cv_id=UUID(cv["id"]), revision=2, file_id=shared.file))
     own = cv["latest_revision"]["file_id"]
+    _settle_runs(api_context)
     assert client.delete(f"{PREFIX}/{pid}/cvs/{cv['id']}", headers=headers).status_code == 204
     assert client.delete(f"{PREFIX}/{pid}/cvs/{cv['id']}/permanent", headers=headers).status_code == 204
     with api_context.sessions() as db:
         assert db.get(StoredFile, shared.file) is not None and db.get(StoredFile, UUID(own)) is None
     assert _object_exists(api_context, shared.key)
-    assert client.get(f"{PREFIX}/{pid}/documents/{shared.document}").status_code == 200
+    assert str(shared.document) in [d["id"] for d in client.get(f"{PREFIX}/{pid}/documents").json()]
 
 
 @pytest.mark.integration

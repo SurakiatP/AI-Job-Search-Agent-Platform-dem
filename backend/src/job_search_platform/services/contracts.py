@@ -307,6 +307,7 @@ class CVView(DTO):
     revision_count: int
     in_use: bool
     has_builder_draft: bool = False
+    trashed_at: datetime | None = None
 
 
 class DocumentView(DTO):

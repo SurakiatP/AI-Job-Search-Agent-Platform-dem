@@ -31,10 +31,12 @@
   }
 }
 
-#let contacts() = {
+// `link-fill` colours profile links; on an accent background pass white, or they vanish into it.
+#let contacts(link-fill: none) = {
   let b = data.basics
   let parts = (theme.address, b.email, b.phone).filter(filled).map(v => [#v])
-  parts += b.profiles.filter(p => filled(p.url)).map(p => link(p.url)[#if filled(p.network) { p.network } else { p.url }])
+  let label(p) = if filled(p.network) { p.network } else { p.url }
+  parts += b.profiles.filter(p => filled(p.url)).map(p => link(p.url, if link-fill == none { label(p) } else { text(fill: link-fill, label(p)) }))
   parts
 }
 
@@ -102,6 +104,14 @@
       stack(spacing: 9pt, ..items.map(i => block(breakable: entry-breakable(i), width: 100%, entry(name, i, color: color))))
     }
   }
+}
+
+// The owner's photo (CR-CVT-01), only in photo templates. 3:4 portrait, or a circle cut from its upper part.
+#let has-photo = theme.at("photo", default: none) != none
+#let photo(width, round: false, ring: none) = if has-photo {
+  let height = if round { width } else { width * 4 / 3 }
+  box(width: width, height: height, radius: if round { 50% } else { 2pt }, clip: true,
+    stroke: ring, image(theme.photo, width: 100%, height: width * 4 / 3, fit: "cover"))
 }
 
 // A heading never sits alone at the bottom of a page: it sticks to what follows it.

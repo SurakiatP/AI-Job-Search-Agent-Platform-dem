@@ -8,7 +8,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
-TEMPLATES = {"onyx": True, "kakuna": True, "ditgar": False}  # id -> reads in order for ATS
+TEMPLATES = {"onyx": True, "kakuna": True, "ditgar": False,  # id -> reads in order for ATS
+             "lotus": True, "teak": False, "saffron": True}
+PHOTO_TEMPLATES = frozenset({"lotus", "teak", "saffron"})  # CR-CVT-01: only these print basics.photo
+PHOTO_MAX_BYTES = 2 * 1024 * 1024
+PHOTO_TYPES = {b"\xff\xd8\xff": ("image/jpeg", "jpg"), b"\x89PNG\r\n\x1a\n": ("image/png", "png")}
 ACCENTS = {"indigo": "#3730A3", "blue": "#1D4ED8", "teal": "#115E59", "green": "#166534", "rose": "#9F1239", "slate": "#334155"}
 SECTIONS = ("summary", "personal", "experience", "education", "skills", "projects", "certifications", "languages", "awards",
             "publications", "volunteer", "references", "interests")
@@ -67,6 +71,14 @@ class Basics(_M):
     address: Address = Field(default_factory=Address)
     address_full: bool = False
     profiles: list[Profile] = Field(default_factory=list, max_length=10)
+    photo: str = ""  # id of a resume_photo file of the same project (checked on save); never in AI text
+
+    @field_validator("photo")
+    @classmethod
+    def check_photo(cls, value: str) -> str:
+        if value:
+            UUID(value)
+        return value
 
 
 class Personal(_M):
@@ -372,7 +384,32 @@ def from_bank(rows: list, name: str = "") -> ResumeData:
     return data
 
 
-def render_bundle(data: ResumeData, template: str, accent: str, lang: str) -> dict[str, bytes]:
+def photo_type(body: bytes) -> tuple[str, str] | None:
+    """(mime, extension) from the first bytes; the declared type is never trusted."""
+    return next((kind for magic, kind in PHOTO_TYPES.items() if body.startswith(magic)), None)
+
+
+async def load_photo(db_factory, object_store, project_id, data: ResumeData, template: str) -> bytes | None:
+    """Photo bytes for a photo template, else None. A missing or unreadable photo renders the CV without it."""
+    if template not in PHOTO_TEMPLATES or not data.basics.photo:
+        return None
+    from job_search_platform.db.models import StoredFile
+    from sqlalchemy import select
+
+    with db_factory() as db:
+        key = db.scalar(select(StoredFile.storage_key).where(
+            StoredFile.project_id == project_id, StoredFile.id == UUID(data.basics.photo),
+            StoredFile.kind == "resume_photo", StoredFile.publication_state == "published"))
+    if key is None:
+        return None
+    try:
+        body = await object_store.get(key)
+    except Exception:
+        return None
+    return body if photo_type(body) else None
+
+
+def render_bundle(data: ResumeData, template: str, accent: str, lang: str, photo: bytes | None = None) -> dict[str, bytes]:
     """Files for one Typst compile: user data only as JSON, read by the template with json() and printed as text."""
     if template not in TEMPLATES or accent not in ACCENTS or lang not in LABELS:
         raise ValueError("render_options")
@@ -380,12 +417,17 @@ def render_bundle(data: ResumeData, template: str, accent: str, lang: str) -> di
     if data.references_on_request:
         payload["sections"]["references"]["items"] = []
     theme = {"accent": ACCENTS[accent], "lang": lang, "references_on_request": data.references_on_request,
-             "address": address_text(data, lang), "personal": personal_rows(data, lang)}
+             "address": address_text(data, lang), "personal": personal_rows(data, lang), "photo": None}
+    kind = photo_type(photo) if photo and template in PHOTO_TEMPLATES else None
     files = {"resume.json": json.dumps(payload, ensure_ascii=False).encode(),
              "labels.json": json.dumps(LABELS[lang], ensure_ascii=False).encode(),
              "theme.json": json.dumps(theme).encode(),
              "main.typ": (TEMPLATE_DIR / f"{template}.typ").read_bytes(),
              "common.typ": (TEMPLATE_DIR / "common.typ").read_bytes()}
+    if kind:
+        theme["photo"] = f"photo.{kind[1]}"
+        files["theme.json"] = json.dumps(theme).encode()
+        files[theme["photo"]] = photo
     return files
 
 

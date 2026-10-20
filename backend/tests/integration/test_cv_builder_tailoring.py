@@ -33,14 +33,19 @@ class _TemplateRuntime(_Runtime):
         return await self.render(files, main)
 
 
-def _builder_session(ctx, script, *, template="kakuna", accent="teal"):
+def _builder_session(ctx, script, *, template="kakuna", accent="teal", photo=None):
     ctx.runtime.render_typst = _Render()
     csrf = _owner(ctx)
     pid = _project(ctx, csrf)
+    data = DATA
+    if photo is not None:
+        photo_id = ctx.client.post(f"{PREFIX}/{pid}/resume-photos", files={"file": ("me.jpg", photo, "image/jpeg")},
+                                   headers=_write_headers(csrf)).json()["id"]
+        data = {**DATA, "basics": {**DATA["basics"], "photo": photo_id}}
     cv_id = ctx.client.post(f"{PREFIX}/{pid}/cvs/builder", json={"name": "Builder CV"}, headers=_write_headers(csrf)).json()["id"]
     draft = ctx.client.get(f"{PREFIX}/{pid}/cvs/{cv_id}/draft").json()
     saved = ctx.client.put(f"{PREFIX}/{pid}/cvs/{cv_id}/draft", headers=_write_headers(csrf), json={
-        "resume_data": DATA, "template_id": template, "accent": accent, "document_language": "en", "updated_at": draft["updated_at"]})
+        "resume_data": data, "template_id": template, "accent": accent, "document_language": "en", "updated_at": draft["updated_at"]})
     assert saved.status_code == 200, saved.text
     revision = ctx.client.post(f"{PREFIX}/{pid}/cvs/{cv_id}/draft/publish", headers=_write_headers(csrf)).json()
     cancel_queued_extract_runs(ctx.sessions)
@@ -170,3 +175,18 @@ def test_cr02_tailored_cv_title_can_be_renamed(api_context):
     assert renamed.json()["title"] == "CV สำหรับ Example Co"
     assert ctx.client.get(f"{PREFIX}/{pid}/documents/{document_id}/draft").json()["name"] == "CV สำหรับ Example Co"
     assert ctx.client.patch(f"{PREFIX}/{pid}/documents/{document_id}", json={"title": ""}, headers=_write_headers(csrf)).status_code == 422
+
+
+@pytest.mark.integration
+def test_ac_cvp_03_tailored_cv_keeps_the_photo_but_ai_never_sees_it(api_context):
+    from test_resume_photo import JPEG
+
+    ctx = api_context
+    csrf, pid, session, facts, runtime = _builder_session(ctx, [], template="saffron", photo=JPEG)
+    runtime.script = [[_edit("Packaged services with Docker", facts["docker"])]]
+    assert _tailor(ctx, csrf, pid, session, "photo-1").status_code == 202
+    _execute_next(ctx, runtime)
+    revision = _tailored(ctx, pid)
+    photo_id = revision.resume_data["basics"]["photo"]
+    assert photo_id and runtime.render.calls[-1]["photo.jpg"] == JPEG
+    assert runtime.submits and all(photo_id not in prompt for _, prompt, _ in runtime.submits)

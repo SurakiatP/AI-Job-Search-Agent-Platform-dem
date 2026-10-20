@@ -112,6 +112,9 @@ def world(api_context, monkeypatch):
         db.add(delivery)
         db.flush()
         delivery_id = delivery.id
+    photo = api_context.client.post(f"{BASE}/projects/{project_id}/resume-photos", headers=_write_headers(csrf_alice),
+                                    files={"file": ("me.jpg", b"\xff\xd8\xff\xe0synthetic", "image/jpeg")})
+    assert photo.status_code == 201, photo.text
     state = _alice_state(api_context, project_id)
     assert state == (ALICE_PROJECT_NAME, {session_id: ALICE_SESSION_TITLE})
     csrf_bob = _login(api_context, bob.user_id)
@@ -124,7 +127,7 @@ def world(api_context, monkeypatch):
              "job_revision_id": job_id, "document_id": str(doc.document), "revision_id": str(doc.revision),
              "file_id": str(doc.file), "run_id": str(run_id), "grant_id": alice_grant["id"], "saved_search_id": saved.json()["id"],
              "webhook_id": hook.json()["id"], "delivery_id": str(delivery_id),
-             "approval_id": str(approval_id), "item_id": item.json()["id"], "hidden_id": hidden.json()["id"],
+             "approval_id": str(approval_id), "item_id": item.json()["id"], "hidden_id": hidden.json()["id"], "photo_id": photo.json()["id"],
              "adapter": "career_ops"},
     )
 

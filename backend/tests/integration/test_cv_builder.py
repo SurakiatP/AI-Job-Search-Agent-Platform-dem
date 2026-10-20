@@ -101,7 +101,8 @@ def test_tc_cvb_04_template_and_accent_reach_the_render(ctx):
         assert json.loads(call["theme.json"])["accent"] == hexcode
         assert call["main.typ"].startswith(f"// {template.capitalize()}".encode())
     listing = ctx.client.get("/api/v1/resume-templates").json()
-    assert {t["id"]: t["ats_safe"] for t in listing["templates"]} == {"onyx": True, "kakuna": True, "ditgar": False}
+    assert {t["id"]: t["ats_safe"] for t in listing["templates"]} == {  # CR-CVT-01 added the photo templates
+        "onyx": True, "kakuna": True, "ditgar": False, "lotus": True, "teak": False, "saffron": True}
     assert len(listing["accents"]) == 6
 
 

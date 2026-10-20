@@ -531,8 +531,10 @@ class RunExecutor:
         """Render resume data with its template in the sandbox and publish it as the tailored CV document."""
         template, accent = style.get("template_id", "onyx"), style.get("accent", "indigo")
         lang = run.output_language if run.output_language in ("th", "en") else "th"
+        model = resume.ResumeData.model_validate(data)
+        photo = await resume.load_photo(self.sessions, self.object_store, run.project_id, model, template)
         try:
-            body = await self.runtime.render_typst(resume.render_bundle(resume.ResumeData.model_validate(data), template, accent, lang))
+            body = await self.runtime.render_typst(resume.render_bundle(model, template, accent, lang, photo))
         except Exception:
             raise ServiceError("export_failed") from None
         sandbox.staging_path("tailored-cv.pdf").write_bytes(body)
