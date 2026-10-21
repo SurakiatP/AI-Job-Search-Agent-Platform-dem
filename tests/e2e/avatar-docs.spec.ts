@@ -26,7 +26,7 @@ test('docs outline page opens from the landing page', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('banner').getByRole('link', { name: 'คู่มือ', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'คู่มือการใช้งาน', level: 1 })).toBeVisible();
-  await expect(page.getByText('เร็ว ๆ นี้')).toHaveCount(6);
+  await expect(page.getByText('เร็ว ๆ นี้')).toHaveCount(8);
 });
 
 test('account: upload, choose a built-in picture, remove; bad type and size are refused before any request', async ({ page }) => {

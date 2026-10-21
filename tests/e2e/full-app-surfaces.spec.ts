@@ -96,6 +96,32 @@ test('landing tour is compact and remains keyboard navigable', async ({ page }) 
   await expect(tour.getByRole('tab').nth(1)).toBeFocused();
   await expect(tour.getByRole('tab').nth(1)).toHaveAttribute('aria-selected', 'true');
 });
+const featureTabs = {
+  en: ['Add CV', 'Build CV', 'Search', 'Evaluate', 'Interview practice', 'Draft', 'Track', 'Job alerts', 'Connect'],
+  th: ['ใส่ CV', 'สร้าง CV', 'ค้นหางาน', 'ประเมิน', 'ซ้อมสัมภาษณ์', 'ร่างเอกสาร', 'ติดตามสมัคร', 'แจ้งเตือนงาน', 'เชื่อม agent'],
+};
+const featureSlugs = ['add-cv', 'build-cv', 'search', 'evaluate', 'practice', 'draft', 'track', 'alerts', 'connect'];
+
+for (const locale of ['en', 'th'] as const) {
+  test(`landing tour lists every feature and each feature page renders (${locale})`, async ({ page }) => {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await useAccessFixture(page, true);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/');
+    const tabs = page.locator('#how').getByRole('tab');
+    await expect(tabs).toHaveText(featureTabs[locale]);
+    await tabs.nth(4).click();
+    await expect(page.locator('#how').getByRole('tabpanel')).toContainText(locale === 'en' ? 'Practise for the interview' : 'ซ้อมสัมภาษณ์');
+    for (const slug of featureSlugs) {
+      await page.goto(`/features/${slug}`);
+      await expect(page).toHaveURL(`/features/${slug}`);
+      await expect(page.getByRole('heading', { level: 1 })).not.toBeEmpty();
+      await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toContainText(featureTabs[locale][featureSlugs.indexOf(slug)]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    }
+  });
+}
+
 test('landing demo is labelled illustrative and states what the app will not do', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useAccessFixture(page, true);
