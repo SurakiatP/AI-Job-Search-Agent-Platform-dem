@@ -108,10 +108,20 @@ def main():
     if not key:
         sys.exit("OPENROUTER_API_KEY is not set in the environment.")
     pairs = json.loads((_HERE / "data" / "pairs.json").read_text())
+    pooled = "--pool" in sys.argv[1:]
+    if pooled:
+        from smart_match_eval import pool
+        labels = read_json(pool.POOL_LABELS)
+        if labels is None:
+            sys.exit(f"--pool needs {pool.POOL_LABELS} (blind same-family labels).")
+        pairs = pool.pool_pairs(pairs, labels)
     cvs = {c["id"]: c["text"] for c in json.loads((_HERE / "data" / "cvs.json").read_text())}
     client = _Counting(JevClient(key))
     began = time.monotonic()
-    print(format_metrics(evaluate(score_pairs(pairs, cvs, client, CACHE_DIR))))
+    scored = score_pairs(pairs, cvs, client, CACHE_DIR)
+    print(format_metrics(evaluate(scored)))
+    if pooled:
+        print(pool.format_pool_metrics(pool.pool_metrics(scored)))
     print(f"live calls: {client.calls}\nelapsed: {time.monotonic() - began:.1f}s")
 
 
