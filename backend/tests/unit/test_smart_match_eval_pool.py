@@ -62,3 +62,11 @@ def test_pool_metrics_hand_computed():
 
 def test_pool_metrics_empty_cross():
     assert pool.pool_metrics([_row("a", "s", 100, "good")])["cross_family_leak"] == 0.0
+
+
+def test_recall_good_at_10_counts_good_jobs_found_in_top_10():
+    # one CV, 12 jobs: 2 good, ranked 1st and 11th by fit -> recall 1/2
+    scored = [{"cv_id": "cv-01", "slug": f"j{i:02d}", "fit_percent": 90 - i, "label": "no", "kind": "clear"} for i in range(12)]
+    scored[0]["label"] = "good"
+    scored[10]["label"] = "good"
+    assert pool.pool_metrics(scored)["recall_good_at_10"] == 0.5

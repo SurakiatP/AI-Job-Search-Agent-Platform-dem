@@ -64,17 +64,19 @@ def pool_metrics(scored):
     by_cv = defaultdict(list)
     for r in scored:
         by_cv[r["cv_id"]].append(r)
-    precs = []
+    precs, recalls = [], []
     for rows in by_cv.values():
         rows = sorted(rows, key=lambda r: (-r["fit_percent"], r["cv_id"], r["slug"]))
         precs.append(precision_at_k([VALUE[r["label"]] for r in rows], 5))
+        goods = sum(r["label"] == "good" for r in rows)
+        recalls.append(sum(r["label"] == "good" for r in rows[:10]) / goods if goods else 1.0)
     cross = [r for r in scored if r["kind"] == "cross-family"]
     leak = sum(smart_match.band(r["fit_percent"]) >= 4 for r in cross) / len(cross) if cross else 0.0
-    return {"precision_at_5": sum(precs) / len(precs), "cross_family_leak": leak}
+    return {"precision_at_5": sum(precs) / len(precs), "recall_good_at_10": sum(recalls) / len(recalls), "cross_family_leak": leak}
 
 
 def format_pool_metrics(m):
-    return f"precision_at_5: {m['precision_at_5']:.3f}\ncross_family_leak: {m['cross_family_leak']:.3f}"
+    return f"precision_at_5: {m['precision_at_5']:.3f}\nrecall_good_at_10: {m['recall_good_at_10']:.3f}\ncross_family_leak: {m['cross_family_leak']:.3f}"
 
 
 def main():

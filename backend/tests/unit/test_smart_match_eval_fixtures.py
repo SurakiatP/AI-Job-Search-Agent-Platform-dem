@@ -26,7 +26,7 @@ def test_cvs_schema_and_mix():
 
 def test_pairs_counts_and_schema():
     assert len(PAIRS) == 60
-    assert Counter(p["label"] for p in PAIRS) == {"good": 20, "maybe": 20, "no": 20}
+    assert Counter(p["label"] for p in PAIRS) == {"good": 20, "maybe": 18, "no": 22}  # pairs 32 (cv-06) and 44 (cv-08) relabelled maybe->no after blind review
     assert sum(p["kind"] == "ambiguous" for p in PAIRS) == 10
     assert {p["kind"] for p in PAIRS} == {"clear", "ambiguous"}
     for p in PAIRS:
