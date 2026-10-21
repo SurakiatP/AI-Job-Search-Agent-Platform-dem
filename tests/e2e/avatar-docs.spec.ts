@@ -20,13 +20,14 @@ test('landing: Docs link sits left of Open app and the account picture sits righ
   await expect(page).toHaveURL(/\/app\/account$/);
 });
 
-test('docs outline page opens from the landing page', async ({ page }) => {
+test('docs page opens from the landing page and every topic is a link', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await useSyntheticApplication(page);
   await page.goto('/');
   await page.getByRole('banner').getByRole('link', { name: 'คู่มือ', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'คู่มือการใช้งาน', level: 1 })).toBeVisible();
-  await expect(page.getByText('เร็ว ๆ นี้')).toHaveCount(8);
+  await expect(page.getByText('เร็ว ๆ นี้')).toHaveCount(0);
+  await expect(page.locator('main ul a[href^="/docs/"]')).toHaveCount(9);
 });
 
 test('account: upload, choose a built-in picture, remove; bad type and size are refused before any request', async ({ page }) => {

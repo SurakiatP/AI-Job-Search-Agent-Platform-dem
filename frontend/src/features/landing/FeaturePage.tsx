@@ -1,4 +1,5 @@
-import { ArrowLeft, ArrowRight, Check, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { Tick } from './Reveal';
 import { Link, Navigate, useParams } from 'react-router';
 import { useLocale } from '../../app/providers';
 import { useOwnerSession } from '../../lib/api';
@@ -65,7 +66,7 @@ export function FeaturePage() {
         <ul className="grid gap-2 text-sm">
           {page.good.map(text => <li key={text} className="flex items-start gap-2"><Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" /><span>{text}</span></li>)}
         </ul>
-        <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>{page.note}</span></p>
+        <p className="flex items-start gap-2.5 border-t pt-4 text-sm text-muted-foreground"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3" /></span><span>{page.note}</span></p>
       </section>
 
       <section aria-labelledby="more-title" className="grid gap-4">

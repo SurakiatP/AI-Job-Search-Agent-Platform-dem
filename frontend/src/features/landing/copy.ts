@@ -1,6 +1,6 @@
 const th = {
-  headlineA: 'สมัครงานให้ตรงจุด',
-  headlineB: 'พร้อม AI ช่วยประเมิน',
+  headlineA: 'ให้ AI เทียบ CV กับงาน',
+  headlineB: 'แล้วบอกเหตุผลให้คุณ',
   sub: 'ใส่ CV กับประกาศงาน แล้วรับผลประเมินความเหมาะสมและเอกสารสมัครงานที่ปรับให้ตรงตำแหน่ง — คุณตรวจและส่งเองทุกครั้ง',
   cta: 'สร้างบัญชี',
   signup: 'เริ่มใช้งาน',
@@ -12,14 +12,19 @@ const th = {
   noSubmit: 'ไม่ส่งใบสมัครอัตโนมัติ คุณตรวจเองและสมัครเองทุกครั้ง',
   demo: {
     label: 'ตัวอย่างประกอบ · ข้อมูลสาธิต',
-    title: 'เทียบ CV ผู้วิเคราะห์ข้อมูล (v4) กับงานนี้',
-    job: 'Senior Data Analyst · บริษัทตัวอย่าง จำกัด',
-    fit: 'ความเหมาะสมโดย AI',
-    fitNote: 'AI ประเมินจาก CV เทียบกับประกาศงาน',
-    skills: 'ทักษะที่พบ',
-    skillsValue: '8 จาก 11',
-    skillsNote: 'นับจากคำสำคัญ ไม่ใช้ AI',
-    waiting: 'รอคุณตรวจการแก้ CV',
+    title: 'Senior Data Analyst',
+    company: 'บริษัทตัวอย่าง จำกัด',
+    list: 'เส้นทางของงานนี้',
+    progress: 'ขั้นที่ 3 จาก 5',
+    steps: [
+      { stage: 'cv', title: 'CV ผู้วิเคราะห์ข้อมูล (v4) พร้อมใช้', note: 'เก็บไว้พร้อมไฟล์ต้นฉบับ', state: 'done' },
+      { stage: 'search', title: 'บันทึกงานนี้จากการค้นหา', note: 'อยู่ในโปรเจกต์ของคุณแล้ว', state: 'done' },
+      { stage: 'evaluate', title: 'ประเมินความเหมาะสม', note: 'พบทักษะ 8 จาก 11 นับจากคำสำคัญ ไม่ใช้ AI', state: 'done' },
+      { stage: 'docs', title: 'ปรับ CV และร่างจดหมายสมัครงานแล้ว', note: 'รอคุณตรวจการแก้ CV', state: 'current' },
+      { stage: 'track', title: 'ติดตามใบสมัคร', note: 'คุณสมัครเอง แล้วบันทึกสถานะที่นี่', state: 'next' },
+    ],
+    score: '4.2 / 5',
+    ai: 'AI',
   },
   stepsTitle: 'เริ่มอย่างไร',
   how: [
@@ -66,6 +71,7 @@ const th = {
     submitNote: 'ไม่ส่งแทนคุณ',
   },
   agent: {
+    flow: 'ขั้นตอนเมื่อ agent ภายนอกขออนุมัติ',
     title: 'เชื่อมกับ agent ภายนอกได้',
     body: 'เปิดให้ผู้ช่วย AI ของคุณทำงานแทนในขอบเขตที่คุณกำหนดและเพิกถอนได้ งานเสี่ยงต้องรอคุณอนุมัติ ปิดไว้เป็นค่าเริ่มต้น',
     token: 'my-agent',
@@ -76,11 +82,14 @@ const th = {
     reject: 'ปฏิเสธ',
   },
   closing: 'พร้อมเริ่มสมัครงานแบบตรงจุดหรือยัง',
+  closingSub: 'ใส่ CV ครั้งเดียว แล้วใช้ประเมินและปรับเอกสารได้กับทุกงานในโปรเจกต์',
+  controlTitle: 'สิ่งที่อยู่ในมือคุณเสมอ',
+  control: ['คุณตรวจทุกอย่างก่อนนำไปใช้', 'คุณสมัครเอง ระบบไม่ส่งแทน', 'ข้อมูลแต่ละโปรเจกต์แยกกัน'],
 };
 
 const en: typeof th = {
-  headlineA: 'Apply with precision,',
-  headlineB: 'with AI-assisted preparation',
+  headlineA: 'Let AI match your CV to the job,',
+  headlineB: 'and tell you why',
   sub: 'Add your CV and a job posting, get a fit evaluation and tailored application documents — you review and submit every time.',
   cta: 'Create account',
   signup: 'Get started',
@@ -92,14 +101,19 @@ const en: typeof th = {
   noSubmit: 'No automatic submission. You review everything and apply yourself.',
   demo: {
     label: 'Illustrative demo · Sample data',
-    title: 'Compared: Data Analyst CV (v4) with this job',
-    job: 'Senior Data Analyst · Sample Company Ltd.',
-    fit: 'AI fit',
-    fitNote: 'AI compares your CV with the posting',
-    skills: 'Skills found',
-    skillsValue: '8 of 11',
-    skillsNote: 'Counted from keywords, no AI',
-    waiting: 'Waiting for you to review the CV changes',
+    title: 'Senior Data Analyst',
+    company: 'Sample Company Ltd.',
+    list: 'Journey of this job',
+    progress: 'Step 3 of 5',
+    steps: [
+      { stage: 'cv', title: 'Data Analyst CV (v4) is ready', note: 'Kept with its original file', state: 'done' },
+      { stage: 'search', title: 'Saved this job from your search', note: 'It is in your project now', state: 'done' },
+      { stage: 'evaluate', title: 'Fit evaluation', note: 'Skills found: 8 of 11, counted from keywords, no AI', state: 'done' },
+      { stage: 'docs', title: 'CV changes and letter drafted', note: 'Waiting for you to review the CV changes', state: 'current' },
+      { stage: 'track', title: 'Track your application', note: 'You apply yourself, then record the status here', state: 'next' },
+    ],
+    score: '4.2 / 5',
+    ai: 'AI',
   },
   stepsTitle: 'How to start',
   how: [
@@ -146,6 +160,7 @@ const en: typeof th = {
     submitNote: 'Never done for you',
   },
   agent: {
+    flow: 'How an outside agent asks',
     title: 'Connects to outside agents',
     body: 'Let your own AI assistant work for you within limits you set and can revoke. Risky actions wait for your approval. Off by default.',
     token: 'my-agent',
@@ -156,6 +171,9 @@ const en: typeof th = {
     reject: 'Reject',
   },
   closing: 'Ready to apply with precision?',
+  closingSub: 'Add your CV once, then evaluate jobs and tailor documents for every job in the project.',
+  controlTitle: 'What stays in your control',
+  control: ['You review everything before it is used', 'You apply yourself; the app never submits', 'Each project keeps its own data'],
 };
 
 export const landingCopy: Record<'th' | 'en', typeof th> = { th, en };

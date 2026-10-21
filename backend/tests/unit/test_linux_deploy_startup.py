@@ -52,3 +52,10 @@ def test_forwarded_for_trusted_only_from_loopback(monkeypatch):
     assert _client_seen(config, "198.51.100.7", "203.0.113.9") == "198.51.100.7"
     config = run_local._server_config(None, "127.0.0.1", 8000)
     assert _client_seen(config, "127.0.0.1", None) == "127.0.0.1"
+
+
+def test_container_deploy_may_listen_on_all_interfaces_but_proxy_trust_stays_loopback(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["run_local.py", "--host", "0.0.0.0"])
+    assert run_local._parser().parse_args().host == "0.0.0.0"
+    config = run_local._server_config(None, "0.0.0.0", 8000)
+    assert config.host == "0.0.0.0" and config.forwarded_allow_ips == "127.0.0.1"
