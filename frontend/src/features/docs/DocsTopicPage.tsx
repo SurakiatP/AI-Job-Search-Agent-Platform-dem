@@ -17,17 +17,17 @@ export function DocsTopicPage() {
   const status = useOwnerSession().status;
   const index = topics.findIndex(item => item.id === slug);
   const topic = topics[index];
+  const titleOf = (id: string) => c.list[topics.findIndex(item => item.id === id)].title;
   const [page, setPage] = useState<{ title: string; body: string } | null | undefined>(undefined);
   useEffect(() => {
     setPage(undefined);
-    const raw = topic ? loadPage(topic.file) : undefined;
+    const raw = topic ? loadPage(topic.file, locale) : undefined;
     if (!raw) { setPage(null); return; }
     let live = true;
-    raw.then(text => live && setPage(prepare(text)), () => live && setPage(null));
+    raw.then(text => live && setPage(prepare(text, titleOf)), () => live && setPage(null));
     return () => { live = false; };
-  }, [topic]);
+  }, [topic, locale]);
   const previous = topics[index - 1], next = topics[index + 1];
-  const titleOf = (id: string) => c.list[topics.findIndex(item => item.id === id)].title;
 
   return <div className="min-h-svh text-foreground">
     <Header actions={<>
@@ -48,7 +48,6 @@ export function DocsTopicPage() {
       </nav>
 
       <article className="min-w-0">
-        {locale === 'en' && topic && <p role="note" className="mb-6 rounded-lg bg-accent px-4 py-3 text-sm leading-relaxed text-accent-foreground">{c.thaiOnly}</p>}
         {page === undefined && <p className="text-muted-foreground">{c.loading}</p>}
         {page === null && <div className="grid gap-4">
           <h1 className="text-3xl font-semibold leading-tight">{c.notFound}</h1>

@@ -2,6 +2,7 @@
 projectRoot: ..
 languages:
   - th
+  - en
 books:
   user-guide:
     title:

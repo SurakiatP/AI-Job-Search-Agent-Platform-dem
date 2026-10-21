@@ -33,9 +33,20 @@ test('docs: an unknown topic says so and links back to the guide', async ({ page
   await expect(page.getByRole('link', { name: 'กลับไปคู่มือ' })).toHaveAttribute('href', '/docs');
 });
 
-test('docs: English UI tells the reader the detailed guide is Thai only', async ({ page }) => {
+test('docs: related-question links read as topic titles, not page ids', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await useSyntheticApplication(page);
+  await page.goto('/docs/interview-practice');
+  const related = page.locator('.manual-body a[href^="/docs/"]');
+  expect(await related.count()).toBeGreaterThan(0);
+  for (const text of await related.allInnerTexts()) expect(text).not.toMatch(/^[a-z]+(-[a-z]+)+$/);
+});
+
+test('docs: English UI shows the English guide with no Thai-only notice', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   await page.goto('/docs/getting-started');
-  await expect(page.getByText(/available in Thai only/i)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Getting started' })).toBeVisible();
+  await expect(page.getByText(/available in Thai only/i)).toHaveCount(0);
+  expect(await page.locator('.manual-body').innerText()).not.toMatch(/[\u0E00-\u0E7F]/);
 });
