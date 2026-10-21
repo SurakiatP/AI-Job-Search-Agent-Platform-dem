@@ -1,0 +1,127 @@
+# Production deploy on the customer platform. Same shape as 10service/websearch:
+# bind mounts under ${DATA_PATH} (no docker volumes), one published port, external network ai4thai_net.
+# Required variables come from GitLab CI/CD (see README "Deploy on GitLab").
+
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jobsearch_platform_core02
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/postgres:/var/lib/postgresql/data"
+    networks: [app_net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d jobsearch_platform_core02"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: cgr.dev/chainguard/minio@sha256:cff197fef764642223ef9f4444c903d51aee9b544a7be8bc007fef6b7b00d136
+    restart: unless-stopped
+    command: ["server", "/data", "--address", ":9000"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+    volumes:
+      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/minio:/data"
+    networks: [app_net]
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.55.0@sha256:ff546679970126f8822e15d1b6a06bfbff1f2ce2e43f810cfb5258012f92de5c
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?Set MEILI_MASTER_KEY}
+      MEILI_DB_PATH: /meili_data/data.ms
+    volumes:
+      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/meili:/meili_data"
+    networks: [app_net]
+
+  litellm-db:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: ${LITELLM_DB_PASSWORD:?Set LITELLM_DB_PASSWORD}
+    volumes:
+      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/litellm-db:/var/lib/postgresql/data"
+    networks: [app_net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  litellm:
+    image: ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a
+    restart: unless-stopped
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      STORE_MODEL_IN_DB: "True"
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?Set LITELLM_SALT_KEY}
+      DATABASE_URL: postgresql://litellm:${LITELLM_DB_PASSWORD}@litellm-db:5432/litellm
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY}
+    volumes:
+      - ./infra/litellm/config.yaml:/app/config.yaml:ro
+    networks: [app_net]
+
+  app:
+    image: jobsearch-app:${IMAGE_TAG:-1.0.0-0}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jobsearch-web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      litellm:
+        condition: service_started
+    ports:
+      - "${PORT:-10360}:8000"
+    environment:
+      # HOME and DATA_PATH are the same path inside and outside the container: the agent runtime hands
+      # workspace paths to the host Docker, which must find them at the same location.
+      HOME: ${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/home
+      CORE02_PRIVATE_DIR: ${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/private
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?Set MEILI_MASTER_KEY}
+      JSP_POSTGRES_HOST: postgres
+      JSP_POSTGRES_PORT: "5432"
+      JSP_MINIO_ENDPOINT: http://minio:9000
+      MEILI_URL: http://meilisearch:7700
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_API_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY}
+      APP_PUBLIC_ORIGIN: ${APP_PUBLIC_ORIGIN:-https://jobsearch.aiforthai.in.th}
+      JSP_ALLOWED_ORIGINS: ${APP_PUBLIC_ORIGIN:-https://jobsearch.aiforthai.in.th}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    volumes:
+      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}:${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}"
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [app_net, ai4thai_net]
+
+networks:
+  app_net:
+  ai4thai_net:
+    external: true
