@@ -25,6 +25,21 @@ test('AC-IVP-01 create a set from the session tab and land on its page', async (
   expect(body.sections).toContainEqual({ id: 'technical', count: 5 });
 });
 
+test('AC-IVP-01b the question language is chosen per set: defaults to the app language, can be switched', async ({ page }) => {
+  await boot(page);
+  const state = await practiceApi(page, { sets: [] });
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
+  await page.getByRole('tab', { name: 'Interview practice' }).click();
+  await page.getByRole('button', { name: 'New practice set' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'New practice set' });
+  const group = dialog.getByRole('group', { name: 'Question language' });
+  await expect(group.getByRole('radio', { name: 'English' })).toBeChecked();
+  await group.getByRole('radio', { name: 'ไทย' }).check();
+  await dialog.getByRole('button', { name: 'Create set' }).click();
+  await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}/practice/${setId}$`));
+  expect(state.created[0].output_language).toBe('th');
+});
+
 test('AC-IVP-05 rename, delete with undo from the session tab', async ({ page }) => {
   await boot(page);
   const state = await practiceApi(page);

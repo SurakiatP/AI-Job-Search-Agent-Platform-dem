@@ -82,6 +82,8 @@ function CreateDialog({ c, api, projectId, sessionId, locale, defaultName, onClo
   const id = useId();
   const [name, setName] = useState(defaultName);
   const [level, setLevel] = useState<PracticeLevel>('mid');
+  // Defaults to the app language, but the set can be written in the other one (the interview may be in a different language).
+  const [language, setLanguage] = useState<Locale>(locale);
   const [counts, setCounts] = useState<Partial<Record<PracticeSection, number>>>(DEFAULTS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -92,7 +94,7 @@ function CreateDialog({ c, api, projectId, sessionId, locale, defaultName, onClo
     if (!chosen.length || total > 30) return;
     setBusy(true); setError('');
     try {
-      const set = await sendJson<PracticeSet>(api, 'POST', { name: name.trim() || defaultName, level, output_language: locale, sections: chosen.map(s => ({ id: s, count: counts[s] })) });
+      const set = await sendJson<PracticeSet>(api, 'POST', { name: name.trim() || defaultName, level, output_language: language, sections: chosen.map(s => ({ id: s, count: counts[s] })) });
       navigate(`/app/projects/${projectId}/sessions/${sessionId}/practice/${set.id}`);
     } catch (caught) {
       const code = caught instanceof ApiError ? caught.code : '';
@@ -109,6 +111,13 @@ function CreateDialog({ c, api, projectId, sessionId, locale, defaultName, onClo
           <div className="flex flex-wrap gap-1 rounded-lg bg-secondary p-1">{(['entry', 'mid', 'senior'] as const).map(value => <label key={value} className="relative flex-1">
             <input type="radio" name={`${id}-level`} value={value} checked={level === value} onChange={() => setLevel(value)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
             <span className="flex min-h-10 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">{c.levels[value]}</span>
+          </label>)}</div>
+        </fieldset>
+        <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.questionLanguage}</legend>
+          <p className="text-xs text-muted-foreground">{c.questionLanguageHint}</p>
+          <div className="flex flex-wrap gap-1 rounded-lg bg-secondary p-1">{(['th', 'en'] as const).map(value => <label key={value} className="relative flex-1">
+            <input type="radio" name={`${id}-language`} value={value} checked={language === value} onChange={() => setLanguage(value)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
+            <span className="flex min-h-10 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">{value === 'th' ? 'ไทย' : 'English'}</span>
           </label>)}</div>
         </fieldset>
         <fieldset className="grid gap-2"><legend className="mb-2 text-sm font-medium">{c.sectionsLegend}</legend>
