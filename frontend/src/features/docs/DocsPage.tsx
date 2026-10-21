@@ -1,4 +1,4 @@
-import { ClipboardList, FileText, FileUser, Rocket, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { Bell, ClipboardList, MessagesSquare, FileText, FileUser, Rocket, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link } from 'react-router';
 import { useLocale } from '../../app/providers';
 import { useOwnerSession } from '../../lib/api';
@@ -17,7 +17,9 @@ const copy = {
       { title: 'เพิ่ม CV และคลังประสบการณ์', body: 'อัปโหลด CV ให้ AI สกัดประสบการณ์ แล้วตรวจและแก้ไขเองได้' },
       { title: 'ค้นหาและประเมินงาน', body: 'ค้นประกาศงานจริงในไทย ใช้ Smart match และอ่านผลประเมินพร้อมเหตุผล' },
       { title: 'ปรับ CV และร่างเอกสาร', body: 'ให้เอเจนต์ปรับ CV และร่างจดหมาย โดยใช้เฉพาะข้อมูลที่คุณมีจริง' },
+      { title: 'ซ้อมสัมภาษณ์', body: 'สร้างชุดคำถามจากการประเมินงาน ซ้อมตอบ ทบทวนด้วยแฟลชการ์ด และขอความเห็นจาก AI' },
       { title: 'ติดตามใบสมัคร', body: 'ลากการ์ดบนบอร์ดเพื่อบันทึกสถานะ แอปไม่ส่งใบสมัครแทนคุณ' },
+      { title: 'แจ้งเตือนงานใหม่', body: 'บันทึกการค้นหา แล้วรับสรุปงานใหม่ทางอีเมล Telegram หรือ webhook' },
       { title: 'ความปลอดภัยและข้อมูลของคุณ', body: 'ข้อมูลแต่ละโปรเจกต์แยกกัน และสิ่งที่อาจถูกส่งไปยังบริการ AI' },
     ] satisfies Topic[],
   },
@@ -29,12 +31,14 @@ const copy = {
       { title: 'Add your CV and experience bank', body: 'Upload a CV, let AI extract your experience, then check and edit it yourself.' },
       { title: 'Search and evaluate jobs', body: 'Search real jobs in Thailand, use Smart match and read the evaluation with its reasons.' },
       { title: 'Tailor your CV and draft documents', body: 'Let the agent tailor your CV and draft letters, using only what you really have.' },
+      { title: 'Interview practice', body: 'Create question sets from a job evaluation, practise answers, review with flashcards and get AI feedback.' },
       { title: 'Track applications', body: 'Drag cards on the board to record status. The app never submits for you.' },
+      { title: 'Job alerts', body: 'Save a search and get new-job digests by email, Telegram or webhook.' },
       { title: 'Security and your data', body: 'Each project is kept separate, and what may be sent to an AI service.' },
     ] satisfies Topic[],
   },
 };
-const icons = [Rocket, FileUser, Search, FileText, ClipboardList, ShieldCheck];
+const icons = [Rocket, FileUser, Search, FileText, MessagesSquare, ClipboardList, Bell, ShieldCheck];
 
 // Outline for now: each topic becomes a real page later.
 export function DocsPage() {

@@ -26,7 +26,7 @@ test('docs outline page opens from the landing page', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('banner').getByRole('link', { name: 'คู่มือ', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'คู่มือการใช้งาน', level: 1 })).toBeVisible();
-  await expect(page.getByText('เร็ว ๆ นี้')).toHaveCount(6);
+  await expect(page.getByText('เร็ว ๆ นี้')).toHaveCount(8);
 });
 
 test('account: upload, choose a built-in picture, remove; bad type and size are refused before any request', async ({ page }) => {
@@ -75,7 +75,7 @@ test('landing menu: each feature has its own page; other links reach their secti
   await expect(page.getByRole('heading', { name: 'How it works', level: 2 })).toBeVisible();
   await expect(page.getByRole('listitem').filter({ hasText: 'AI reads and scores' })).toBeVisible();
   await page.getByRole('link', { name: /^Next: / }).click();
-  await expect(page).toHaveURL(/\/features\/draft$/);
+  await expect(page).toHaveURL(/\/features\/practice$/);
   await page.getByRole('navigation', { name: 'Main menu' }).getByRole('link', { name: 'Data & connections' }).click();
   await expect(page).toHaveURL(/\/data$/);
   await expect(page.getByRole('heading', { name: 'Your data and connecting an agent', level: 1 })).toBeVisible();
