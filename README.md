@@ -17,3 +17,20 @@ See [local operation](docs/engineering/local-operation.md) for pinned setup, loc
 [ADR-015](docs/adr/ADR-015-python-stack-deviation.md) records how the delivered stack (Python/FastAPI, React) deviates from TOR §7 and when each deviation should be revisited.
 
 [ADR-017](docs/adr/ADR-017-systemd-single-vm.md) records the single-VM systemd deployment (instead of Kubernetes); the runbook is [infra/deploy/README.md](infra/deploy/README.md).
+
+## Deploy on GitLab (customer platform)
+
+Values given to the platform team: project `jobsearch`, `DATA_PATH=/home/search/Thoughtmind/jobsearch/data`,
+frontend port `10360`, domain `https://jobsearch.aiforthai.in.th`.
+
+1. Add these **protected, masked** variables in GitLab → Settings → CI/CD → Variables:
+   `POSTGRES_USER`, `POSTGRES_PASSWORD`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` (8+ chars), `MEILI_MASTER_KEY`,
+   `LITELLM_MASTER_KEY` (starts `sk-`), `LITELLM_SALT_KEY`, `LITELLM_DB_PASSWORD`, `OPENROUTER_API_KEY`.
+   Optional: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_STARTTLS`, `TELEGRAM_BOT_TOKEN`.
+2. Merge into `main`, then run the manual **deploy** job. It builds the image `jobsearch-app:1.0.0-<pipeline number>`
+   and starts the stack with `docker compose`.
+3. First start takes several minutes: the app fetches the pinned agent sources and builds its tool image once
+   (kept in `DATA_PATH/home`). Progress: `docker logs -f jobsearch-web`.
+
+The app container mounts `/var/run/docker.sock` so the agent runtime can start its tool containers; the platform
+team must allow this on the runner host.
