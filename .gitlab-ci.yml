@@ -26,6 +26,8 @@ unit-tests:
   tags:
     - ai4thai-gpu1
   script:
+    # the slim image has no git; test_pinned_source_validation builds a throwaway repo with it
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends git >/dev/null
     - pip install --quiet uv==0.12.2
     - uv sync --locked --project backend --all-groups
     - cd backend && uv run --locked pytest tests/unit -q
