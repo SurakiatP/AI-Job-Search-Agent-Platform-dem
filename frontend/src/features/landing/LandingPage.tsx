@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
-import { Info, Plug, ShieldCheck } from 'lucide-react';
+import { Plug, ShieldCheck } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { useOwnerSession } from '../../lib/api';
 import { Header } from '../../components/Header';
@@ -62,7 +62,7 @@ export function LandingPage() {
               <p className="col-start-2 text-sm leading-relaxed text-muted-foreground sm:text-base">{step.body}</p>
             </li>)}
         </Stagger>
-        <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>{c.noSubmit}</span></p>
+        <p className="flex items-start gap-2.5 border-t pt-4 text-sm text-muted-foreground"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3" /></span><span>{c.noSubmit}</span></p>
       </section>
 
       <Tour />

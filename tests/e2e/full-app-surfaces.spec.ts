@@ -242,3 +242,20 @@ test('landing demo with reduced motion has no animation or transition on its ste
   expect(await demo.locator('.landing-tick-draw').first().evaluate(el => getComputedStyle(el).strokeDashoffset)).toBe('0px');
   await context.close();
 });
+
+for (const locale of ['th', 'en'] as const) {
+  test(`landing page carries no exclamation or info marks (${locale})`, async ({ page }) => {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await useAccessFixture(page, true);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/');
+    const marks = page.locator('main svg.lucide-info, main svg.lucide-triangle-alert, main svg.lucide-circle-alert, main svg.lucide-octagon-alert');
+    await expect(page.locator('#how').getByRole('tab')).toHaveCount(9);
+    await expect(marks, 'warning or info icon on the landing page').toHaveCount(0);
+    for (const tab of await page.locator('#how').getByRole('tab').all()) {
+      await tab.click();
+      await expect(marks, 'warning or info icon on the landing page').toHaveCount(0);
+    }
+    expect(await page.locator('main').innerText(), 'an exclamation mark in the landing text').not.toContain('!');
+  });
+}

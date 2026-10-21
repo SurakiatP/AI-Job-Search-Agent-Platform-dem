@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { AlertTriangle, Bell, Check, ClipboardList, Clock, Download, FileText, FileUser, Search, Sparkles } from 'lucide-react';
+import { Bell, Check, ClipboardList, Clock, Download, FileText, FileUser, Search, Sparkles } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { FitScore } from '../../components/FitScore';
 import { SkillCoverage } from '../../components/SkillCoverage';
@@ -52,7 +52,7 @@ export function StepPanel({ index }: { index: number }) {
     <ul className="grid gap-3">{p.jobs.map((j, i) => <li key={j.title} className={cn(row, i === 0 && 'border-primary bg-accent')}>
       <span className="font-semibold leading-snug">{j.title}</span>
       <span className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{j.company} · {j.place}</span>
-      <span className="flex flex-wrap gap-2"><Badge variant="outline">{j.age}</Badge>{j.stale && <Badge variant="warning" className="gap-1"><AlertTriangle className="size-3" aria-hidden="true" />{p.staleLabel}</Badge>}</span>
+      <span className="flex flex-wrap gap-2"><Badge variant="outline">{j.age}</Badge>{j.stale && <Badge variant="warning" className="gap-1"><Clock className="size-3" aria-hidden="true" />{p.staleLabel}</Badge>}</span>
     </li>)}</ul>
   </Shell>;
   if (slug === 'evaluate') return <Shell label={label}>
