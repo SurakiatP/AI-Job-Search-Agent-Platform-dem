@@ -15,6 +15,9 @@ This page collects the jobs you have saved and shows how far each one has got. Y
 ![Applications page](/manual/applications.en.png)
 *Example screen with made-up data*
 
+![Example clip: switching to the board view](/manual/applications.en.mp4)
+*Example clip with made-up data*
+
 ## How to track your applications
 
 1. Go to {{ui:"Applications"}}.

@@ -18,6 +18,9 @@ You can search for jobs in Thailand on this page. Smart match lets the agent rea
 ![Evaluation page](/manual/session.en.png)
 *Example screen with made-up data*
 
+![Example clip: typing a search](/manual/search.en.mp4)
+*Example clip with made-up data*
+
 ## How to search for jobs and check your fit
 
 There are 2 ways.

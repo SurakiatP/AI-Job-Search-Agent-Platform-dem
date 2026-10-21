@@ -18,6 +18,9 @@ sources: [frontend/src/features/search/SearchPage.tsx, frontend/src/features/sea
 ![หน้าการประเมินงาน](/manual/session.th.png)
 *ภาพตัวอย่างจากข้อมูลสมมุติ*
 
+![คลิปตัวอย่าง: พิมพ์คำค้นหา](/manual/search.th.mp4)
+*คลิปตัวอย่างจากข้อมูลสมมุติ*
+
 ## วิธีค้นหางานและประเมินความเหมาะสม
 
 ทำได้ 2 วิธี

@@ -37,6 +37,7 @@ test('docs: related-question links read as topic titles, not page ids', async ({
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await useSyntheticApplication(page);
   await page.goto('/docs/interview-practice');
+  await expect(page.locator('.manual-body')).toBeVisible();
   const related = page.locator('.manual-body a[href^="/docs/"]');
   expect(await related.count()).toBeGreaterThan(0);
   for (const text of await related.allInnerTexts()) expect(text).not.toMatch(/^[a-z]+(-[a-z]+)+$/);
@@ -49,4 +50,16 @@ test('docs: English UI shows the English guide with no Thai-only notice', async 
   await expect(page.getByRole('heading', { level: 1, name: 'Getting started' })).toBeVisible();
   await expect(page.getByText(/available in Thai only/i)).toHaveCount(0);
   expect(await page.locator('.manual-body').innerText()).not.toMatch(/[\u0E00-\u0E7F]/);
+});
+
+test('docs: pages with a clip show a playable video with controls and a caption', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await useSyntheticApplication(page);
+  for (const topic of ['interview-practice', 'search-and-evaluate', 'track-applications']) {
+    await page.goto(`/docs/${topic}`);
+    const video = page.locator('.manual-body video');
+    await expect(video).toHaveCount(1);
+    await expect(video).toHaveAttribute('controls', '');
+    expect(await video.getAttribute('src')).toMatch(/^\/manual\/[\w-]+\.th\.mp4$/);
+  }
 });

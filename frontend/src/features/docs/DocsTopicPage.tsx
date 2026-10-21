@@ -57,6 +57,9 @@ export function DocsTopicPage() {
           <p className="mb-2 text-sm font-medium text-[var(--stage,var(--primary))]">{c.topicOf(index + 1, topics.length)}</p>
           <h1 className="mb-8 text-3xl font-semibold leading-tight sm:text-4xl">{page.title}</h1>
           <div className="manual-body"><Markdown remarkPlugins={[remarkGfm]} components={{
+            img: ({ src, alt }) => src?.endsWith('.mp4')
+              ? <video src={src} controls muted playsInline preload="metadata" aria-label={alt} />
+              : <img src={src} alt={alt ?? ''} loading="lazy" />,
             a: ({ href, children }) => href?.startsWith('/') ? <Link to={href}>{children}</Link> : <a href={href}>{children}</a>,
           }}>{page.body}</Markdown></div>
           <nav aria-label={c.pager} className="mt-14 grid gap-3 border-t pt-6 sm:grid-cols-2">

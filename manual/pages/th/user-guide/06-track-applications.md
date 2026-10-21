@@ -15,6 +15,9 @@ sources: [frontend/src/features/applications/ApplicationBoard.tsx, frontend/src/
 ![หน้าใบสมัคร](/manual/applications.th.png)
 *ภาพตัวอย่างจากข้อมูลสมมุติ*
 
+![คลิปตัวอย่าง: สลับเป็นมุมมองบอร์ด](/manual/applications.th.mp4)
+*คลิปตัวอย่างจากข้อมูลสมมุติ*
+
 ## วิธีติดตามใบสมัคร
 
 1. เข้าเมนู “{{ui:"ใบสมัคร"}}”

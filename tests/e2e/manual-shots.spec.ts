@@ -1,7 +1,8 @@
 // Tooling, not a test: refreshes the pictures used by the in-app manual from synthetic data.
 // Run: MANUAL_SHOTS=1 JSP_E2E_BASE_URL=http://127.0.0.1:4175 npm test --prefix tests -- manual-shots.spec.ts
-import { test } from '@playwright/test';
+import { test, type Page } from '@playwright/test';
 import { useSyntheticApplication, projectId, sessionId } from '../fixtures/application';
+import { boot, practiceApi, setId } from '../fixtures/practice';
 
 const shots: [string, string][] = [
   ['signup', '/signup'],
@@ -12,15 +13,27 @@ const shots: [string, string][] = [
   ['session', `/app/projects/${projectId}/sessions/${sessionId}`],
   ['applications', `/app/projects/${projectId}/applications`],
   ['settings', '/app/settings'],
+  ['practice-tab', `/app/projects/${projectId}/sessions/${sessionId}?tab=practice`],
+  ['practice-set', `/app/projects/${projectId}/sessions/${sessionId}/practice/${setId}`],
+  ['alerts', `/app/projects/${projectId}/search`],
 ];
+
+async function alertsApi(page: Page) {
+  const row = { id: '00000000-0000-4000-8000-000000000001', name: 'Data analyst in Bangkok', filters: { q: 'Data analyst', city: 'Bangkok' }, frequency: 'daily', digest_enabled: true, push_enabled: false, next_run_at: '2026-10-22T01:00:00Z', last_sent_at: '2026-10-21T01:00:00Z', created_at: '2026-10-15T00:00:00Z' };
+  const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  await page.route(`**/v1/projects/${projectId}/job-search**`, r => r.fulfill(json(r.request().url().includes('/facets') ? { total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 0, thai_postings: 0 } : { items: [], total: 0, limit: 20, offset: 0 })));
+  await page.route(`**/v1/projects/${projectId}/webhooks`, r => r.fulfill(json([])));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, r => r.fulfill(json({ items: [row], status: { email_verified: true, notifications_enabled: true } })));
+}
 
 test.skip(!process.env.MANUAL_SHOTS, 'manual picture refresh only');
 for (const locale of ['th', 'en'] as const) {
   for (const [name, path] of shots) {
     test(`manual picture ${name} ${locale}`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
-      await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
-      await useSyntheticApplication(page);
+      if (name.startsWith('practice')) { await boot(page); await practiceApi(page, {}); } else await useSyntheticApplication(page);
+      await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale); // after boot(): it sets its own locale
+      if (name === 'alerts') await alertsApi(page);
       await page.goto(path);
       await page.waitForTimeout(1200);
       if (name === 'search') { await page.getByRole('button', { name: /ดูข้อมูลตัวอย่าง|sample/i }).click(); await page.waitForTimeout(600); }

@@ -1,6 +1,6 @@
 ---
 id: getting-started
-title: Get started
+title: Getting started
 audience: []
 book: user-guide
 kind: how-to
