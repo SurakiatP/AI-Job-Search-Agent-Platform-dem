@@ -28,7 +28,7 @@ from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, 
 from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.services import applications, experience, job_sources, resume, smart_match, tailoring
-from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, claims, fact_claims, require_evidence
+from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, claims, fact_claims, require_evidence, summary_claims
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services import practice
 from job_search_platform.services.approvals import ApprovalService
@@ -593,9 +593,13 @@ class RunExecutor:
         with self.sessions() as db:
             return bank_vocabulary(db, project_id)
 
-    def _facts(self, project_id: uuid.UUID) -> list[dict]:
+    def _facts(self, project_id: uuid.UUID, job_text: str | None = None) -> list[dict]:
         with self.sessions() as db:
-            return experience.fact_records(db, project_id)
+            return experience.fact_records(db, project_id, job_text, limit=40)
+
+    def _profile_summary(self, project_id: uuid.UUID) -> str | None:
+        with self.sessions() as db:
+            return experience.profile_summary(db, project_id)
 
     async def _execute_tailor(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> None:
         """Evidence-gated CV tailoring: autopilot rounds publish one revision; interactive stores proposals only."""
@@ -613,7 +617,7 @@ class RunExecutor:
             if data is not None:
                 text = resume.plain_text(data, run.output_language if run.output_language in ("th", "en") else "th")
             cv_path = None if text is not None else await self._materialize(run, sandbox)
-            facts = await asyncio.to_thread(self._facts, run.project_id)
+            facts = await asyncio.to_thread(self._facts, run.project_id, job_text)
             gate_failure = asyncio.Event()
 
             async def reserve_tool(_call_id: str, _tool_name: str) -> bool:
@@ -749,7 +753,8 @@ class RunExecutor:
             provider = self.gateway().provider_config()
             text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
             cv_path = None if text is not None else await self._materialize(run, sandbox)
-            facts = await asyncio.to_thread(self._facts, run.project_id)
+            facts = await asyncio.to_thread(self._facts, run.project_id, f"{job['title']}\n{job['description']}\n" + " ".join(str(q.get("label", "")) for q in questions))
+            summary = await asyncio.to_thread(self._profile_summary, run.project_id)
             gate_failure = asyncio.Event()
 
             async def deny_tool(_call_id: str, _tool_name: str) -> bool:
@@ -770,7 +775,8 @@ class RunExecutor:
             if not text.strip():
                 raise ServiceError("cv_text_empty")
             prompt, instructions = applications.pack_prompt(
-                text, job["title"], f"{job['title']}\n{job['description']}", questions, facts, run.output_language)
+                text, job["title"], f"{job['title']}\n{job['description']}", questions, facts, run.output_language,
+                summary)
             began = time.monotonic()
             await self.runtime.submit(run.project_id, uuid.uuid5(run.id, "apply_prepare"), prompt, instructions,
                                       provider, operation="apply_prepare", tool_gate=deny_tool)
@@ -778,7 +784,7 @@ class RunExecutor:
             answers = applications.parse_answers(await self._await_result(run, lease_owner, gate_failure, began))
             entries, missing = applications.gate_answers(
                 answers, questions, await asyncio.to_thread(self._fact_claims, run.project_id, answers),
-                await asyncio.to_thread(self._vocabulary, run.project_id))
+                await asyncio.to_thread(self._vocabulary, run.project_id), summary_claims(summary))
             payload = {"kind": "apply_pack", "state": "parked" if missing else "ready",
                        "answers": entries, "missing_required": missing}
             await self._stop(run.project_id, started)

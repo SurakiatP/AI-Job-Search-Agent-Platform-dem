@@ -35,7 +35,7 @@ test('experience bank groups facts, adds and removes, and shows extraction resul
     extraction: { run_id: 'r1', status: 'completed', cv_id: cv.id, summary: { added: 2, duplicates: 1, rejected: 1 } } });
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
   const section = page.getByRole('region', { name: 'Experience bank' });
-  await expect(section.getByRole('heading', { name: 'Data Engineer · SCB · 2022–2024' })).toBeVisible();
+  await expect(section.getByRole('heading', { name: 'Data Engineer · SCB' })).toBeVisible();
   await expect(section.getByText('From CV: Data CV').first()).toBeVisible();
   await expect(section.getByRole('status')).toContainText('Added 2, duplicates 1, dropped 1');
   await section.getByLabel('Fact').fill('Python');
@@ -116,4 +116,80 @@ test('a failed bank load offers a retry', async ({ page }) => {
   await expect(section.getByRole('alert')).toContainText('Could not load the experience bank');
   await section.getByRole('button', { name: 'Retry' }).click();
   await expect(section.getByText('Ran BigQuery')).toBeVisible();
+});
+
+test('experience bank files facts under categories, shows years and sends the new fields', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const state = { items: [{ ...fact('a', 'Built Airflow pipelines'), start_date: '2022-03', end_date: '2024-01', is_current: false, employment_type: 'full_time', location: 'Bangkok' },
+    { ...fact('b', 'Python'), kind: 'skill', role: null, organization: null, period: null }, { ...fact('c', 'BSc Computer Science'), kind: 'education', role: null, organization: null, period: null }] as Item[],
+    extraction: null, provider_configured: true, years_of_experience: 1.9 };
+  await bank(page, state);
+  await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
+  const section = page.getByRole('region', { name: 'Experience bank' });
+  await expect(section.getByText('1.9 years of work experience in total')).toBeVisible();
+  for (const name of ['Work experience', 'Education', 'Skill']) await expect(section.getByRole('heading', { name })).toBeVisible();
+  await expect(section.getByText('Mar 2022 – Jan 2024 · Full time · Bangkok')).toBeVisible();
+  await section.getByLabel('Fact').fill('Led a migration');
+  await section.getByText('More details').click();
+  await section.getByLabel('I still work here').check();
+  await expect(section.getByLabel('End')).toBeDisabled();
+  const sent = page.waitForRequest(r => r.method() === 'POST' && r.url().includes('/experience'));
+  await section.getByRole('button', { name: 'Add fact' }).click();
+  expect((await sent).postDataJSON()).toMatchObject({ text: 'Led a migration', is_current: true, end_date: null, employment_type: null });
+});
+
+test('skill group select appears only for skills and is sent in the request', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await bank(page, { items: [], extraction: null, provider_configured: true });
+  await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
+  const section = page.getByRole('region', { name: 'Experience bank' });
+  await expect(section.getByLabel('Skill group')).toHaveCount(0);
+  await section.getByLabel('Fact').fill('Airflow');
+  await section.getByLabel('Type').selectOption('skill');
+  await expect(section.getByLabel('Skill group')).toContainText('Not set');
+  await section.getByLabel('Skill group').selectOption('tools');
+  let sent = page.waitForRequest(r => r.method() === 'POST' && r.url().includes('/experience'));
+  await section.getByRole('button', { name: 'Add fact' }).click();
+  expect((await sent).postDataJSON()).toMatchObject({ kind: 'skill', skill_group: 'tools' });
+  await expect(section.getByRole('button', { name: 'Remove: Airflow' })).toBeVisible();
+  await section.getByLabel('Fact').fill('Led a team');
+  await section.getByLabel('Type').selectOption('skill');
+  await section.getByLabel('Skill group').selectOption('soft');
+  await section.getByLabel('Type').selectOption('experience');
+  await expect(section.getByLabel('Skill group')).toHaveCount(0);
+  sent = page.waitForRequest(r => r.method() === 'POST' && r.url().includes('/experience'));
+  await section.getByRole('button', { name: 'Add fact' }).click();
+  expect((await sent).postDataJSON()).toMatchObject({ kind: 'experience', skill_group: null });
+});
+
+test('skills are grouped under sub-headings with counts and ungrouped last', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const skill = (id: string, text: string, skill_group: string | null) => ({ ...fact(id, text), kind: 'skill', role: null, organization: null, period: null, skill_group });
+  await bank(page, { items: [skill('a', 'Python', 'technical'), skill('b', 'SQL', 'technical'), skill('c', 'Airflow', 'tools'), skill('d', 'Leadership', 'soft'),
+    skill('e', 'Thai', 'language'), skill('f', 'Banking', 'domain'), skill('g', 'Misc', null)] as Item[], extraction: null, provider_configured: true });
+  await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
+  const section = page.getByRole('region', { name: 'Experience bank' });
+  const names = ['Technical skills', 'Tools & technology', 'Soft skills', 'Languages', 'Domain knowledge', 'Ungrouped'];
+  await expect(section.getByRole('heading', { level: 4 })).toHaveText(names.map((n, i) => new RegExp(`^${n.replace('&', '\\&')}\\s*${[2, 1, 1, 1, 1, 1][i]} ${i === 0 ? 'facts' : 'fact'}$`)));
+  await expect(section.getByRole('heading', { name: /^Technical skills/ }).locator('xpath=following-sibling::ul[1]').getByRole('listitem')).toHaveCount(2);
+});
+
+test('education uses degree and institution labels in the form and list', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await bank(page, { items: [{ ...fact('a', 'BSc Computer Science'), kind: 'education', role: 'Computer Science', organization: 'Chulalongkorn University' }] as Item[], extraction: null, provider_configured: true });
+  await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
+  const section = page.getByRole('region', { name: 'Experience bank' });
+  await expect(section.getByLabel('Role', { exact: false })).toBeVisible();
+  await expect(section.getByLabel('Degree / major')).toHaveCount(0);
+  await section.getByLabel('Type').selectOption('education');
+  await expect(section.getByLabel('Degree / major')).toBeVisible();
+  await expect(section.getByLabel('Institution')).toBeVisible();
+  await expect(section.getByLabel('Role')).toHaveCount(0);
+  await expect(section.getByLabel('Organization')).toHaveCount(0);
+  await expect(section.getByText('Degree / major: Computer Science')).toBeVisible();
+  await expect(section.getByText('Institution: Chulalongkorn University')).toBeVisible();
 });

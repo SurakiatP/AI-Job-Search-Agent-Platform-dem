@@ -96,8 +96,10 @@ export type ApplicationEventView = { id: string; kind: 'stage_changed' | 'note' 
 export type ApplicationCardView = { job_revision_id: string; title: string; company: string | null; created_at: string; stage: ApplicationStage; has_contact: boolean; last_activity_at: string };
 export type ApplicationDetailView = { job_revision_id: string; title: string; company: string | null; stage: ApplicationStage; contact: ApplicationContact; events: ApplicationEventView[] };
 export type ExperienceKind = 'experience' | 'education' | 'skill' | 'certification' | 'project' | 'other';
-export type ExperienceItem = { id: string; kind: ExperienceKind; text: string; role: string | null; organization: string | null; period: string | null; source: 'cv' | 'owner'; source_cv_id: string | null; source_cv_name: string | null; created_at: string };
-export type ExperienceView = { items: ExperienceItem[]; extraction: { run_id: string; status: RunStatus; cv_id: string; summary: { added: number; duplicates: number; rejected: number } | null } | null; provider_configured: boolean };
+export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship' | 'freelance';
+export type SkillGroup = 'technical' | 'tools' | 'soft' | 'language' | 'domain';
+export type ExperienceItem = { id: string; kind: ExperienceKind; skill_group: SkillGroup | null; text: string; role: string | null; organization: string | null; period: string | null; employment_type: EmploymentType | null; location: string | null; start_date: string | null; end_date: string | null; is_current: boolean; industry: string | null; responsibilities: string | null; achievements: string | null; skills_used: string | null; source: 'cv' | 'owner'; source_cv_id: string | null; source_cv_name: string | null; created_at: string };
+export type ExperienceView = { items: ExperienceItem[]; extraction: { run_id: string; status: RunStatus; cv_id: string; summary: { added: number; duplicates: number; rejected: number } | null } | null; provider_configured: boolean; years_of_experience: number };
 export type RunOperation = 'evaluate_job' | 'draft_documents' | 'export_document' | 'profile_cv' | 'match_jobs' | 'extract_experience' | 'tailor_cv' | 'apply_prepare' | 'apply_submit' | 'draft_follow_up'
   | 'interview_generate' | 'interview_grade' | 'interview_report';
 // CR-IVP-01: practice runs belong to the practice screens, never to the session's workflow panel.

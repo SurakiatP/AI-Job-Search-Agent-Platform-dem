@@ -760,6 +760,7 @@ async def list_experience(project_id: UUID, actor=Depends(owner_actor), services
     with services.sessions() as db:
         authorize(db, actor, project_id, "read", "cv")
         return {"items": [experience.item_view(db, item) for item in experience.list_items(db, project_id)],
+                "years_of_experience": experience.years_of_experience(db, project_id),
                 "extraction": _extraction(db, project_id),
                 "provider_configured": bool(GatewaySettings.from_env().api_key)}
 
