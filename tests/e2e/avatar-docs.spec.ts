@@ -75,7 +75,7 @@ test('landing menu: each feature has its own page; other links reach their secti
   await expect(page.getByRole('heading', { name: 'How it works', level: 2 })).toBeVisible();
   await expect(page.getByRole('listitem').filter({ hasText: 'AI reads and scores' })).toBeVisible();
   await page.getByRole('link', { name: /^Next: / }).click();
-  await expect(page).toHaveURL(/\/features\/draft$/);
+  await expect(page).toHaveURL(/\/features\/practice$/);
   await page.getByRole('navigation', { name: 'Main menu' }).getByRole('link', { name: 'Data & connections' }).click();
   await expect(page).toHaveURL(/\/data$/);
   await expect(page.getByRole('heading', { name: 'Your data and connecting an agent', level: 1 })).toBeVisible();
