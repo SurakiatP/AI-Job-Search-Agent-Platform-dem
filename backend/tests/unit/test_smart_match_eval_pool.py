@@ -14,30 +14,44 @@ CVS = {c["id"]: c["text"] for c in json.loads((DATA / "cvs.json").read_text(enco
 LABELS = {f"{s}+{c}": {"label": "maybe", "reason": "SECRET-REASON"} for s, c in pool.same_family_pairs(PAIRS)}
 
 
-def test_pooled_covers_every_pair_once_with_a_label_kind():
+def test_pooled_labels_follow_job_text_family_not_original_cv():
     pooled = pool.pool_pairs(PAIRS, LABELS)
-    assert len(pooled) == 600 and len({(p["cv_id"], p["job"]["slug"]) for p in pooled}) == 600
-    original = {(p["cv_id"], p["job"]["slug"]): p["label"] for p in PAIRS}
-    same = set(pool.same_family_pairs(PAIRS))
-    assert len(same) == 60 and not {(s, c) for s, c in same} & {(s, c) for c, s in original}
+    slugs = {p["job"]["slug"] for p in PAIRS} - pool.BORDERLINE
+    assert pool.BORDERLINE and len(pooled) == 10 * len(slugs)
+    assert len({(p["cv_id"], p["job"]["slug"]) for p in pooled}) == len(pooled)
+    assert not {p["job"]["slug"] for p in pooled} & pool.BORDERLINE
+    original = {(p["cv_id"], p["job"]["slug"]): p for p in PAIRS}
+    need = set(pool.same_family_pairs(PAIRS))
+    assert not {(c, s) for s, c in need} & set(original)
     for p in pooled:
-        k, slug = (p["cv_id"], p["job"]["slug"])
-        if (k, slug) in original:
-            assert p["label"] == original[(k, slug)]
-        elif (slug, k) in same:
-            assert (p["kind"], p["label"]) == ("same-family", "maybe")
+        cv, slug = p["cv_id"], p["job"]["slug"]
+        if (cv, slug) in original:
+            assert (p["label"], p["kind"]) == (original[(cv, slug)]["label"], original[(cv, slug)]["kind"])
+        elif pool.CV_FAMILY[cv] == pool.JOB_FAMILY[slug]:
+            assert (slug, cv) in need and (p["kind"], p["label"]) == ("same-family", "maybe")
         else:
-            assert (p["kind"], p["label"]) == ("cross-family", "no")
+            assert (slug, cv) not in need and (p["kind"], p["label"]) == ("cross-family", "no")
+
+
+def test_hard_coded_family_mapping():
+    assert pool.JOB_FAMILY["senior-backend-engineer-meridian-cloud"] == "software_data"
+    assert pool.CV_FAMILY["cv-01"] == pool.CV_FAMILY["cv-02"] == "software_data" and pool.CV_FAMILY["cv-03"] == "marketing"
+    pooled = {(p["cv_id"], p["job"]["slug"]): p for p in pool.pool_pairs(PAIRS, LABELS)}
+    # software CVs are never cross-family against a backend job, whichever CV that job was originally paired with
+    for cv in ("cv-01", "cv-02"):
+        assert pooled[(cv, "senior-backend-engineer-meridian-cloud")]["kind"] != "cross-family"
+    assert pooled[("cv-05", "senior-backend-engineer-meridian-cloud")]["label"] == "no"
 
 
 def test_missing_same_family_label_raises():
+    assert pool.same_family_pairs(PAIRS)
     with pytest.raises(KeyError):
         pool.pool_pairs(PAIRS, {})
 
 
 def test_sheet_is_blind():
     sheet = pool.owner_style_sheet_for_pool(PAIRS, CVS)
-    assert sheet.count("(id: ") == 60
+    assert sheet.count("(id: ") == len(pool.same_family_pairs(PAIRS))
     assert "SECRET-REASON" not in sheet and "same-family" not in sheet and "cross-family" not in sheet
     slug, cv = pool.same_family_pairs(PAIRS)[0]
     assert f"(id: {slug}+{cv})" in sheet

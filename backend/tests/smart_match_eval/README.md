@@ -29,14 +29,17 @@ The sheet has 15 pairs (5 per label, at least 3 ambiguous, seeded). Fill in `You
 
 ## Pooled mode
 
-The 60-pair set is saturated (all headline metrics 1.0), so `--pool` scores every CV against all 60 jobs (600 pairs):
+The 60-pair set is saturated (all headline metrics 1.0), so `--pool` scores every CV against every non-borderline job (55 jobs, 550 pairs):
 
     SMART_MATCH_EVAL_LIVE=1 OPENROUTER_API_KEY=... python backend/tests/smart_match_eval/run_eval.py --pool
 
-Labels: the 60 original pairs keep theirs; a job against a CV from another role family (families: cv-01/02, 03/04, 05/06,
-07/08, 09/10; a job's family is that of the CV it was written for) is `no` (kind `cross-family`); a job against the sibling
-CV of its own family (60 pairs, kind `same-family`) is read from `data/pool_labels.json`
+A job's family comes only from `data/job_families.json` (`{"families": {slug: family}, "borderline": {slug: reason}}`,
+classified blind from job text); `borderline` jobs are left out of the pool entirely. A CV's family is fixed in `pool.py`
+(cv-01/02 software_data, 03/04 marketing, 05/06 finance_accounting, 07/08 healthcare, 09/10 operations_logistics).
+Labels: an original pair keeps its label and kind; any other pair whose job family differs from the CV family is `no`
+(kind `cross-family`); the rest (kind `same-family`) are read from `data/pool_labels.json`
 (`{"<slug>+<cv_id>": {"label": "good|maybe|no", "reason": "..."}}`), supplied by a blind labeller from
-`python backend/tests/smart_match_eval/pool.py sheet`. Without that file `--pool` refuses to run. The 60 original pairs are
-already cached, so the first run costs about 540 Jev calls. Output adds `precision_at_5` (macro over CVs) and
+`python backend/tests/smart_match_eval/pool.py sheet` (lists only pairs not yet labelled). `--pool` refuses to run without
+that file and raises KeyError if a pair is missing. Original pairs are already cached, so the first run costs a few hundred
+Jev calls. Output adds `precision_at_5` (macro over CVs) and
 `cross_family_leak` (share of cross-family pairs landing in band 4 or 5; 0 is best).
