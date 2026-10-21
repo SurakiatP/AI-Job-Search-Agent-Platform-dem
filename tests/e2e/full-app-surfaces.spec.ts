@@ -127,7 +127,18 @@ test('landing demo is labelled illustrative and states what the app will not do'
   await useAccessFixture(page, true);
   await page.goto('/');
   await expect(page.getByText('Illustrative demo · Sample data').first()).toBeVisible();
-  await expect(page.getByText('Compared: Data Analyst CV (v4) with this job')).toBeVisible();
+  const demo = page.getByRole('region', { name: 'Illustrative demo · Sample data' });
+  await expect(demo.getByRole('heading', { name: 'Senior Data Analyst' })).toBeVisible();
+  await expect(demo.getByText('Step 3 of 5')).toBeVisible();
+  const steps = demo.getByRole('list', { name: 'Journey of this job' }).getByRole('listitem');
+  await expect(steps).toHaveCount(5);
+  await expect(steps.nth(2)).toContainText('Fit evaluation');
+  await expect(steps.nth(2).getByText('AI', { exact: true })).toBeVisible();
+  await expect(steps.nth(2)).toContainText('4.2 / 5');
+  await expect(steps.nth(2)).toContainText('Skills found: 8 of 11, counted from keywords, no AI');
+  await expect(steps.nth(3)).toHaveAttribute('aria-current', 'step');
+  await expect(steps.nth(3)).toContainText('Waiting for you to review the CV changes');
+  await expect(steps.nth(4)).toContainText('You apply yourself');
   await expect(page.getByText('You need a CV file (PDF, DOCX or text).')).toBeVisible();
   await expect(page.getByText('AI features need a configured AI provider.')).toBeVisible();
   await expect(page.getByText('No automatic submission.')).toBeVisible();
@@ -178,4 +189,45 @@ test('evaluation dialog returns keyboard focus to its launch action', async ({ p
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(trigger).toBeFocused();
+});
+
+test('landing hero puts AI first and lists what stays in the visitor\'s control with ticks', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useAccessFixture(page, true);
+  await page.goto('/');
+  const h1 = page.getByRole('heading', { level: 1 });
+  await expect(h1).toContainText('AI');
+  await expect(h1.locator('.landing-ai')).toHaveText('AI');
+  const promises = page.getByRole('list', { name: 'What stays in your control' }).first();
+  await expect(promises.getByRole('listitem')).toHaveText(['You review everything before it is used', 'You apply yourself; the app never submits', 'Each project keeps its own data']);
+  await expect(promises.locator('svg.landing-tick')).toHaveCount(3);
+  const closing = page.getByRole('region', { name: 'Ready to apply with precision?' });
+  await expect(closing.getByRole('list', { name: 'What stays in your control' }).getByRole('listitem')).toHaveCount(3);
+});
+
+test('landing demo plays a short sequence: ticks draw in and the last step settles; reduced motion shows the end state at once', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useAccessFixture(page, true);
+  await page.goto('/');
+  const demo = page.getByRole('region', { name: 'Illustrative demo · Sample data' });
+  const last = demo.getByRole('listitem').last();
+  await expect(demo).toHaveAttribute('data-play', 'true');
+  await expect.poll(() => last.evaluate(el => getComputedStyle(el).opacity), { timeout: 5000 }).toBe('1');
+  const tick = demo.locator('.landing-tick-draw').first();
+  await expect.poll(() => tick.evaluate(el => getComputedStyle(el).strokeDashoffset), { timeout: 5000 }).toBe('0px');
+});
+
+test('landing demo with reduced motion has no animation or transition on its steps', async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useAccessFixture(page, true);
+  await page.goto('/');
+  const demo = page.getByRole('region', { name: 'Illustrative demo · Sample data' });
+  for (const li of await demo.getByRole('listitem').all()) {
+    expect(await li.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+    expect(await li.evaluate(el => getComputedStyle(el).opacity)).toBe('1');
+  }
+  expect(await demo.locator('.landing-tick-draw').first().evaluate(el => getComputedStyle(el).strokeDashoffset)).toBe('0px');
+  await context.close();
 });

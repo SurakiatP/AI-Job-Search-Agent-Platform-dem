@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { Info } from 'lucide-react';
 import { useLocale } from '../../app/providers';
@@ -7,11 +8,20 @@ import { Button } from '../../components/ui/button';
 import { landingCopy } from './copy';
 import { DemoCard } from './LandingPreview';
 import { LandingMenu, LandingNav } from './LandingNav';
-import { Reveal } from './Reveal';
+import { Stagger, Tick } from './Reveal';
 import { Tour } from './Tour';
 import './landing.css';
 
 const wrap = 'mx-auto w-full max-w-6xl px-4 sm:px-6';
+
+/** What stays in the visitor's hands, each with a drawn tick. */
+function Controls({ items, label }: { items: readonly string[]; label: string }) {
+  return <Stagger aria-label={label} className="grid gap-2 text-sm">
+    {items.map((item, index) => <li key={item} style={{ '--i': index } as CSSProperties} className="flex items-center gap-2.5">
+      <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3" /></span>{item}
+    </li>)}
+  </Stagger>;
+}
 
 export function LandingPage() {
   const { locale } = useLocale();
@@ -30,28 +40,27 @@ export function LandingPage() {
       <section className={`${wrap} grid items-center gap-10 pt-10 sm:pt-14 lg:grid-cols-2 lg:gap-12 lg:pt-16`}>
         <div className="grid content-start justify-items-start gap-5">
           <h1 className="landing-headline max-w-2xl not-italic [text-wrap:balance]">
-            <span className="block">{c.headlineA}</span><span>{c.headlineB}</span>
+            <span className="block">{c.headlineA.split('AI').flatMap((part, index) => index === 0 ? [part] : [<span key={index} className="landing-ai">AI</span>, part])}</span><span>{c.headlineB}</span>
           </h1>
           <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">{c.sub}</p>
           <div className="flex flex-wrap items-center gap-3">
             {cta('lg')}
             <Button asChild size="lg" variant="outline"><a href="#steps">{c.secondary}</a></Button>
           </div>
+          <Controls items={c.control} label={c.controlTitle} />
         </div>
         <div className="min-w-0"><DemoCard /></div>
       </section>
 
       <section id="steps" aria-labelledby="steps-title" className={`${wrap} grid scroll-mt-16 gap-6`}>
         <h2 id="steps-title" className="text-2xl font-semibold not-italic sm:text-3xl">{c.stepsTitle}</h2>
-        <Reveal className="landing-reveal">
-          <ol className="grid gap-6 md:grid-cols-3 md:gap-0">
-            {c.how.map((step, index) => <li key={step.title} className="grid grid-cols-[2rem_minmax(0,1fr)] content-start gap-x-3 gap-y-1 md:border-l md:px-6 md:first:border-l-0 md:first:pl-0">
+        <Stagger as="ol" className="grid gap-6 md:grid-cols-3 md:gap-0">
+            {c.how.map((step, index) => <li key={step.title} style={{ '--i': index } as CSSProperties} className="grid grid-cols-[2rem_minmax(0,1fr)] content-start gap-x-3 gap-y-1 md:border-l md:px-6 md:first:border-l-0 md:first:pl-0">
               <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">{index + 1}</span>
               <h3 className="self-center text-lg font-semibold leading-snug not-italic">{step.title}</h3>
               <p className="col-start-2 text-sm leading-relaxed text-muted-foreground sm:text-base">{step.body}</p>
             </li>)}
-          </ol>
-        </Reveal>
+        </Stagger>
         <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>{c.noSubmit}</span></p>
       </section>
 
@@ -80,9 +89,13 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className={`${wrap} grid justify-items-start gap-5`}>
-        <h2 className="max-w-2xl text-2xl font-semibold not-italic sm:text-3xl">{c.closing}</h2>
-        {cta('lg')}
+      <section aria-labelledby="closing-title" className={`${wrap}`}>
+        <div className="grid justify-items-start gap-5 rounded-2xl bg-accent px-6 py-8 sm:px-10 sm:py-10">
+          <h2 id="closing-title" className="max-w-2xl text-2xl font-semibold not-italic sm:text-3xl">{c.closing}</h2>
+          <p className="max-w-xl text-accent-foreground/80">{c.closingSub}</p>
+          <Controls items={c.control} label={c.controlTitle} />
+          {cta('lg')}
+        </div>
       </section>
     </main>
     <footer className={`${wrap} flex flex-wrap items-center justify-between gap-3 border-t py-5 text-sm text-muted-foreground`}>

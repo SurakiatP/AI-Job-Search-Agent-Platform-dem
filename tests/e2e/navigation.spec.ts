@@ -60,14 +60,14 @@ test('anonymous visitors still see sign-up and log-in on the landing header', as
 test('every page supports direct links, back/forward, locale changes and responsive navigation', async ({ page }) => {
   await useSyntheticApplication(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'สมัครงานให้ตรงจุด', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'ให้ AI เทียบ CV กับงาน', level: 1 })).toBeVisible();
   await page.screenshot({ path: '/tmp/ui02-landing-desktop.png', fullPage: true });
   await expect(page.getByRole('banner').getByRole('link', { name: 'เปิดแอป', exact: true })).toBeVisible();
   await page.getByRole('banner').getByRole('link', { name: 'เปิดแอป', exact: true }).click();
   await expect(page).toHaveURL(/\/app\/projects/);
   await page.goBack();
   await page.getByRole('button', { name: 'EN', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Apply with precision', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Let AI match your CV', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'How to start' })).toBeVisible();
   await expect(page.getByRole('banner').getByRole('link', { name: 'Open app', exact: true })).toBeVisible();
   await page.getByRole('banner').getByRole('link', { name: 'Open app' }).click();
