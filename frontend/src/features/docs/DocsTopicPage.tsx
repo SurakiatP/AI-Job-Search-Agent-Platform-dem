@@ -6,6 +6,7 @@ import { Link, useParams } from 'react-router';
 import { useLocale } from '../../app/providers';
 import { useOwnerSession } from '../../lib/api';
 import { Header } from '../../components/Header';
+import { LandingMenu, LandingNav } from '../landing/LandingNav';
 import { Button } from '../../components/ui/button';
 import { loadPage, prepare, topics } from './topics';
 import { docsCopy } from './copy';
@@ -30,7 +31,7 @@ export function DocsTopicPage() {
   const previous = topics[index - 1], next = topics[index + 1];
 
   return <div className="min-h-svh text-foreground">
-    <Header actions={<>
+    <Header menu={<LandingMenu signedOut={status !== 'ready' && status !== 'loading'} />} nav={<LandingNav />} actions={<>
       <Button asChild size="sm" variant="ghost"><Link to="/docs">{c.back}</Link></Button>
       {status === 'ready' && <Button asChild size="sm"><Link to="/app/projects">{c.openApp}</Link></Button>}
     </>} />

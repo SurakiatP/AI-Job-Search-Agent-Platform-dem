@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useLocale } from '../../app/providers';
 import { useOwnerSession } from '../../lib/api';
 import { Header } from '../../components/Header';
+import { LandingMenu, LandingNav } from '../landing/LandingNav';
 import { Button } from '../../components/ui/button';
 import { landingCopy } from '../landing/copy';
 import { docsCopy } from './copy';
@@ -16,7 +17,7 @@ export function DocsPage() {
   const how = landingCopy[locale].how;
   const status = useOwnerSession().status;
   return <div className="min-h-svh text-foreground">
-    <Header actions={<>
+    <Header menu={<LandingMenu signedOut={status !== 'ready' && status !== 'loading'} />} nav={<LandingNav />} actions={<>
       <Button asChild size="sm" variant="ghost"><Link to="/">{c.home}</Link></Button>
       {status === 'ready'
         ? <Button asChild size="sm"><Link to="/app/projects">{c.openApp}</Link></Button>

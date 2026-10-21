@@ -109,3 +109,15 @@ test('docs: on a phone the sections stay reachable as chips', async ({ page }) =
   await page.goto('/docs/interview-practice');
   await expect(page.getByRole('navigation', { name: 'ในหน้านี้' }).getByRole('link').first()).toBeVisible();
 });
+
+test('docs: the index and every topic page carry the same site menu as the landing page', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await useSyntheticApplication(page);
+  for (const path of ['/', '/docs', ...topics.map(topic => `/docs/${topic}`)]) {
+    await page.goto(path);
+    const menu = page.getByRole('banner').getByRole('navigation', { name: 'เมนูหลัก' });
+    await expect(menu, path).toBeVisible();
+    for (const name of ['ฟีเจอร์', 'วิธีทำงาน', 'ข้อมูลและการเชื่อมต่อ', 'คู่มือ']) await expect(menu.getByText(name, { exact: true }), `${path} ${name}`).toBeVisible();
+  }
+});
