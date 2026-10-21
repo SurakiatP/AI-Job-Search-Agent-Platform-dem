@@ -4,6 +4,8 @@ WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# the in-app manual reads these Markdown pages at build time
+COPY manual/pages /src/manual/pages
 RUN npm run build
 
 FROM python:3.12-slim

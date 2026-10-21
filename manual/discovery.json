@@ -1,0 +1,2211 @@
+{
+  "version": 1,
+  "project": {
+    "adapter": "react-spa",
+    "packageRoots": [],
+    "scripts": [],
+    "runFiles": []
+  },
+  "docs": [
+    {
+      "path": "docs/01_OVERVIEW_DESIGN.md",
+      "kind": "design",
+      "title": "01 — Overview / Dashboard design handoff",
+      "headings": [
+        "01 — Overview / Dashboard design handoff",
+        "  Visual reference",
+        "  Workspace and implementation boundary",
+        "  Purpose and hierarchy",
+        "  Page anatomy and UI components",
+        "    Layout",
+        "    Theme / styling",
+        "  Behavior and existing data",
+        "    Source identity",
+        "    Attention and agent states",
+        "    Actions and destinations",
+        "  Canonical bilingual copy",
+        "  States not shown in the main raster",
+        "  Responsive and accessibility handoff",
+        "  Image-to-implementation corrections",
+        "  Claude Code acceptance checklist — after owner approval",
+        "  Generation provenance"
+      ]
+    },
+    {
+      "path": "docs/01_OVERVIEW_DESIGN_V2.md",
+      "kind": "design",
+      "title": "01 — Overview / Dashboard · v2",
+      "headings": [
+        "01 — Overview / Dashboard · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/02_JOB_SEARCH_DESIGN.md",
+      "kind": "design",
+      "title": "02 — Job Search design handoff",
+      "headings": [
+        "02 — Job Search design handoff",
+        "  Scope and source",
+        "  Purpose",
+        "  Regions and components",
+        "  Match semantics — normative",
+        "  Existing data and state",
+        "  Required states",
+        "  Layout, language and accessibility",
+        "  Handoff gates",
+        "  Provenance"
+      ]
+    },
+    {
+      "path": "docs/02_JOB_SEARCH_DESIGN_V2.md",
+      "kind": "design",
+      "title": "02 — Job Search Workspace · v2",
+      "headings": [
+        "02 — Job Search Workspace · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/02_JOB_SEARCH_DESIGN_V3.md",
+      "kind": "design",
+      "title": "02 — Job Search Workspace · v3",
+      "headings": [
+        "02 — Job Search Workspace · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/02_JOB_SEARCH_DESIGN_V4.md",
+      "kind": "design",
+      "title": "02 — Job Search Workspace · v4",
+      "headings": [
+        "02 — Job Search Workspace · v4",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/03_EVALUATION_SESSIONS_DESIGN.md",
+      "kind": "design",
+      "title": "03 — Evaluation Sessions index",
+      "headings": [
+        "03 — Evaluation Sessions index",
+        "  Purpose",
+        "  Components and behavior",
+        "  Existing source and data",
+        "    Source and result rules",
+        "    Derived display states",
+        "  Visual and responsive rules",
+        "  Copy and missing states",
+        "  Acceptance after approval",
+        "  Provenance"
+      ]
+    },
+    {
+      "path": "docs/03_EVALUATION_SESSIONS_DESIGN_V2.md",
+      "kind": "design",
+      "title": "03 — Evaluation Sessions index · v2",
+      "headings": [
+        "03 — Evaluation Sessions index · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/03_EVALUATION_SESSIONS_DESIGN_V3.md",
+      "kind": "design",
+      "title": "03 — Evaluation Sessions index · v3",
+      "headings": [
+        "03 — Evaluation Sessions index · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/04_EVALUATION_WORKSPACE_DESIGN.md",
+      "kind": "design",
+      "title": "04 — Evaluation Session Workspace",
+      "headings": [
+        "04 — Evaluation Session Workspace",
+        "  Version 2 — requested refinements",
+        "    Paired-source presentation",
+        "    Agent workflow presentation",
+        "    Motion specification for Claude Code",
+        "    Additional v2 acceptance gates",
+        "  Purpose and represented state",
+        "  Components and actions",
+        "  Source, score and document rules",
+        "  Run / approval lifecycle — preserve existing contracts",
+        "    Approval safety",
+        "  Other tabs and retained capabilities",
+        "  Layout / accessibility / copy",
+        "  Missing/error states and implementation gates",
+        "  Provenance"
+      ]
+    },
+    {
+      "path": "docs/04_EVALUATION_WORKSPACE_DESIGN_V3.md",
+      "kind": "design",
+      "title": "04 — Evaluation Session Workspace · v3",
+      "headings": [
+        "04 — Evaluation Session Workspace · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/04_EVALUATION_WORKSPACE_DESIGN_V4.md",
+      "kind": "design",
+      "title": "04 — Evaluation Session Workspace · v4",
+      "headings": [
+        "04 — Evaluation Session Workspace · v4",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/05_APPLICATIONS_DESIGN.md",
+      "kind": "design",
+      "title": "05 — Applications tracking",
+      "headings": [
+        "05 — Applications tracking",
+        "  Purpose and source",
+        "  Components and behavior",
+        "  Existing data and contracts",
+        "    Stage semantics",
+        "  Board view — retained, not pictured",
+        "  Add-posting form — preserve existing capability",
+        "  States and boundaries",
+        "  Layout and accessibility",
+        "  Acceptance after owner approval",
+        "  Provenance"
+      ]
+    },
+    {
+      "path": "docs/05_APPLICATIONS_DESIGN_V2.md",
+      "kind": "design",
+      "title": "05 — Applications · v2",
+      "headings": [
+        "05 — Applications · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/06_JOB_DETAIL_DESIGN.md",
+      "kind": "design",
+      "title": "06 — Job Detail",
+      "headings": [
+        "06 — Job Detail",
+        "  Purpose and source",
+        "  Regions and components",
+        "  Existing contracts — unchanged",
+        "  States and accessibility",
+        "  Image interpretation and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/06_JOB_DETAIL_DESIGN_V2.md",
+      "kind": "design",
+      "title": "06 — Job Detail · v2",
+      "headings": [
+        "06 — Job Detail · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/06_JOB_DETAIL_DESIGN_V3.md",
+      "kind": "design",
+      "title": "06 — Job Detail · v3",
+      "headings": [
+        "06 — Job Detail · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/06_JOB_DETAIL_DESIGN_V4.md",
+      "kind": "design",
+      "title": "06 — Job Detail · v4",
+      "headings": [
+        "06 — Job Detail · v4",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/07_CV_EXPERIENCE_DESIGN.md",
+      "kind": "design",
+      "title": "07 — CV & Experience",
+      "headings": [
+        "07 — CV & Experience",
+        "  Scope and existing implementation",
+        "  Regions and UI components",
+        "  Behavior and preserved capabilities",
+        "  Data and API boundaries",
+        "  Image review notes",
+        "  Bilingual labels",
+        "  States, responsive behavior and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/07_CV_EXPERIENCE_DESIGN_V2.md",
+      "kind": "design",
+      "title": "07 — CV & Experience · v2",
+      "headings": [
+        "07 — CV & Experience · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/07_CV_EXPERIENCE_DESIGN_V3.md",
+      "kind": "design",
+      "title": "07 — CV & Experience · v3",
+      "headings": [
+        "07 — CV & Experience · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/08_DOCUMENTS_DESIGN.md",
+      "kind": "design",
+      "title": "08 — Documents",
+      "headings": [
+        "08 — Documents",
+        "  Scope and existing implementation",
+        "  Regions and UI components",
+        "  Behavior and preserved capabilities",
+        "  Data and API boundaries",
+        "  Image review notes",
+        "  Bilingual labels",
+        "  States, responsive behavior and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/08_DOCUMENTS_DESIGN_V2.md",
+      "kind": "design",
+      "title": "08 — Documents library · v2",
+      "headings": [
+        "08 — Documents library · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/09_DOCUMENT_DETAIL_DESIGN.md",
+      "kind": "design",
+      "title": "09 — Document Detail",
+      "headings": [
+        "09 — Document Detail",
+        "  Scope and existing implementation",
+        "  Regions and UI components",
+        "  Behavior and preserved capabilities",
+        "  Data and API boundaries",
+        "  Image review notes",
+        "  Bilingual labels",
+        "  States, responsive behavior and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/09_DOCUMENT_DETAIL_DESIGN_V2.md",
+      "kind": "design",
+      "title": "09 — Document Detail · v2",
+      "headings": [
+        "09 — Document Detail · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/09_DOCUMENT_DETAIL_DESIGN_V3.md",
+      "kind": "design",
+      "title": "09 — Document Detail · v3",
+      "headings": [
+        "09 — Document Detail · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/09_DOCUMENT_DETAIL_DESIGN_V4.md",
+      "kind": "design",
+      "title": "09 — Document Detail · v4",
+      "headings": [
+        "09 — Document Detail · v4",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/10_AGENT_ACTIVITY_DESIGN.md",
+      "kind": "design",
+      "title": "10 — Agent Activity",
+      "headings": [
+        "10 — Agent Activity",
+        "  Scope and existing implementation",
+        "  Regions and UI components",
+        "  Behavior and preserved capabilities",
+        "  Data and API boundaries",
+        "  Image review notes",
+        "  Bilingual labels",
+        "  States, responsive behavior and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/10_AGENT_ACTIVITY_DESIGN_V2.md",
+      "kind": "design",
+      "title": "10 — Agent Activity / Console · v2",
+      "headings": [
+        "10 — Agent Activity / Console · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/10_AGENT_ACTIVITY_DESIGN_V3.md",
+      "kind": "design",
+      "title": "10 — Agent Activity / Console · v3",
+      "headings": [
+        "10 — Agent Activity / Console · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/11_SETTINGS_DESIGN.md",
+      "kind": "design",
+      "title": "11 — Settings",
+      "headings": [
+        "11 — Settings",
+        "  Scope and existing implementation",
+        "  Regions and UI components",
+        "  Behavior and preserved capabilities",
+        "  Data and API boundaries",
+        "  Image review notes",
+        "  Bilingual labels",
+        "  States, responsive behavior and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/11_SETTINGS_DESIGN_V2.md",
+      "kind": "design",
+      "title": "11 — Settings · v2",
+      "headings": [
+        "11 — Settings · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/12_PROJECTS_DESIGN.md",
+      "kind": "design",
+      "title": "12 — Projects",
+      "headings": [
+        "12 — Projects",
+        "  Scope and existing implementation",
+        "  Regions and UI components",
+        "  Behavior and preserved capabilities",
+        "  Data and API boundaries",
+        "  Image review notes",
+        "  Bilingual labels",
+        "  States, responsive behavior and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/12_PROJECTS_DESIGN_V2.md",
+      "kind": "design",
+      "title": "12 — Projects · v2",
+      "headings": [
+        "12 — Projects · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/12_PROJECTS_DESIGN_V3.md",
+      "kind": "design",
+      "title": "12 — Projects · v3",
+      "headings": [
+        "12 — Projects · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/13_NEW_PROJECT_DESIGN.md",
+      "kind": "design",
+      "title": "13 — New Project",
+      "headings": [
+        "13 — New Project",
+        "  Scope and existing implementation",
+        "  Regions and UI components",
+        "  Behavior and preserved capabilities",
+        "  Data and API boundaries",
+        "  Image review notes",
+        "  Bilingual labels",
+        "  States, responsive behavior and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/13_NEW_PROJECT_DESIGN_V2.md",
+      "kind": "design",
+      "title": "13 — New Project · v2",
+      "headings": [
+        "13 — New Project · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/14_LANDING_DESIGN.md",
+      "kind": "design",
+      "title": "14 — Public Landing",
+      "headings": [
+        "14 — Public Landing",
+        "  Scope and existing implementation",
+        "  Regions and UI components",
+        "  Behavior and preserved capabilities",
+        "  Data and API boundaries",
+        "  Image review notes",
+        "  Bilingual labels",
+        "  States, responsive behavior and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/14_LANDING_DESIGN_V2.md",
+      "kind": "design",
+      "title": "14 — Public Landing · v2",
+      "headings": [
+        "14 — Public Landing · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/14_LANDING_DESIGN_V3.md",
+      "kind": "design",
+      "title": "14 — Public Landing · v3",
+      "headings": [
+        "14 — Public Landing · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/15_LOGIN_DESIGN.md",
+      "kind": "design",
+      "title": "15 — Login",
+      "headings": [
+        "15 — Login",
+        "  Scope and existing implementation",
+        "  Regions and UI components",
+        "  Behavior and preserved capabilities",
+        "  Data and API boundaries",
+        "  Image review notes",
+        "  Bilingual labels",
+        "  States, responsive behavior and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/15_LOGIN_DESIGN_V2.md",
+      "kind": "design",
+      "title": "15 — Login · v2",
+      "headings": [
+        "15 — Login · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/16_SIGNUP_DESIGN.md",
+      "kind": "design",
+      "title": "16 — Sign Up",
+      "headings": [
+        "16 — Sign Up",
+        "  Scope and existing implementation",
+        "  Regions and UI components",
+        "  Behavior and preserved capabilities",
+        "  Data and API boundaries",
+        "  Image review notes",
+        "  Bilingual labels",
+        "  States, responsive behavior and implementation acceptance"
+      ]
+    },
+    {
+      "path": "docs/16_SIGNUP_DESIGN_V2.md",
+      "kind": "design",
+      "title": "16 — Sign Up · v2",
+      "headings": [
+        "16 — Sign Up · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/16_SIGNUP_DESIGN_V3.md",
+      "kind": "design",
+      "title": "16 — Sign Up · v3",
+      "headings": [
+        "16 — Sign Up · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/17_FORGOT_PASSWORD_DESIGN.md",
+      "kind": "design",
+      "title": "17 — Forgot Password",
+      "headings": [
+        "17 — Forgot Password",
+        "  Scope and source",
+        "  Regions and UI components",
+        "  Behavior and states",
+        "  Data, security and existing contracts",
+        "  Image interpretation",
+        "  Bilingual labels",
+        "  Responsive and accessibility requirements",
+        "  Later acceptance and verification"
+      ]
+    },
+    {
+      "path": "docs/17_FORGOT_PASSWORD_DESIGN_V2.md",
+      "kind": "design",
+      "title": "17 — Forgot Password · v2",
+      "headings": [
+        "17 — Forgot Password · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/18_RESET_PASSWORD_DESIGN.md",
+      "kind": "design",
+      "title": "18 — Reset Password",
+      "headings": [
+        "18 — Reset Password",
+        "  Scope and source",
+        "  Regions and UI components",
+        "  Behavior and states",
+        "  Data, security and existing contracts",
+        "  Image interpretation",
+        "  Bilingual labels",
+        "  Responsive and accessibility requirements",
+        "  Later acceptance and verification"
+      ]
+    },
+    {
+      "path": "docs/18_RESET_PASSWORD_DESIGN_V2.md",
+      "kind": "design",
+      "title": "18 — Reset Password · v2",
+      "headings": [
+        "18 — Reset Password · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/19_VERIFY_EMAIL_DESIGN.md",
+      "kind": "design",
+      "title": "19 — Verify Email",
+      "headings": [
+        "19 — Verify Email",
+        "  Scope and source",
+        "  Regions and UI components",
+        "  Behavior and states",
+        "  Data, security and existing contracts",
+        "  Image interpretation",
+        "  Bilingual labels",
+        "  Responsive and accessibility requirements",
+        "  Later acceptance and verification"
+      ]
+    },
+    {
+      "path": "docs/19_VERIFY_EMAIL_DESIGN_V2.md",
+      "kind": "design",
+      "title": "19 — Verify Email · v2",
+      "headings": [
+        "19 — Verify Email · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/20_ACCOUNT_DESIGN.md",
+      "kind": "design",
+      "title": "20 — Account",
+      "headings": [
+        "20 — Account",
+        "  Scope and source",
+        "  Regions and UI components",
+        "  Behavior and states",
+        "  Data, security and existing contracts",
+        "  Image interpretation",
+        "  Bilingual labels",
+        "  Responsive and accessibility requirements",
+        "  Later acceptance and verification"
+      ]
+    },
+    {
+      "path": "docs/20_ACCOUNT_DESIGN_V2.md",
+      "kind": "design",
+      "title": "20 — Account · v2",
+      "headings": [
+        "20 — Account · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/21_OAUTH_CONSENT_DESIGN.md",
+      "kind": "design",
+      "title": "21 — OAuth Consent",
+      "headings": [
+        "21 — OAuth Consent",
+        "  Scope and source",
+        "  Regions and UI components",
+        "  Behavior and states",
+        "  Data, security and existing contracts",
+        "  Image interpretation",
+        "  Bilingual labels",
+        "  Responsive and accessibility requirements",
+        "  Later acceptance and verification"
+      ]
+    },
+    {
+      "path": "docs/21_OAUTH_CONSENT_DESIGN_V2.md",
+      "kind": "design",
+      "title": "21 — OAuth Consent · v2",
+      "headings": [
+        "21 — OAuth Consent · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/21_OAUTH_CONSENT_DESIGN_V3.md",
+      "kind": "design",
+      "title": "21 — OAuth Consent · v3",
+      "headings": [
+        "21 — OAuth Consent · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/21_OAUTH_CONSENT_DESIGN_V4.md",
+      "kind": "design",
+      "title": "21 — OAuth Consent · v4",
+      "headings": [
+        "21 — OAuth Consent · v4",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/22_DIGEST_UNSUBSCRIBE_DESIGN.md",
+      "kind": "design",
+      "title": "22 — Digest Unsubscribe",
+      "headings": [
+        "22 — Digest Unsubscribe",
+        "  Scope and source",
+        "  Regions and UI components",
+        "  Behavior and states",
+        "  Data, security and existing contracts",
+        "  Image interpretation",
+        "  Bilingual labels",
+        "  Responsive and accessibility requirements",
+        "  Later acceptance and verification"
+      ]
+    },
+    {
+      "path": "docs/22_DIGEST_UNSUBSCRIBE_DESIGN_V2.md",
+      "kind": "design",
+      "title": "22 — Digest Unsubscribe · v2",
+      "headings": [
+        "22 — Digest Unsubscribe · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/CODEX_22_PAGE_DESIGN_REVIEW.md",
+      "kind": "design",
+      "title": "22 Page Design Review — มุมมองผู้ใช้ใหม่",
+      "headings": [
+        "22 Page Design Review — มุมมองผู้ใช้ใหม่",
+        "  ขอบเขตและการตีความคะแนน",
+        "  คะแนนรวมและลำดับปรับ",
+        "    สิ่งที่ต้องแก้ก่อนใช้ภาพเป็น reference รอบถัดไป",
+        "  ผลรายหน้า",
+        "    01 — Overview / Dashboard",
+        "    02 — Job Search Workspace",
+        "    03 — Evaluation Sessions index",
+        "    04 — Evaluation Session Workspace (v2)",
+        "    05 — Applications (List)",
+        "    06 — Job Detail",
+        "    07 — CV & Experience",
+        "    08 — Documents library",
+        "    09 — Document Detail",
+        "    10 — Agent Activity / Console",
+        "    11 — Settings",
+        "    12 — Projects",
+        "    13 — New Project",
+        "    14 — Public Landing",
+        "    15 — Login",
+        "    16 — Sign Up",
+        "    17 — Forgot Password",
+        "    18 — Reset Password",
+        "    19 — Verify Email",
+        "    20 — Account",
+        "    21 — OAuth Consent",
+        "    22 — Digest Unsubscribe",
+        "  ความสอดคล้องข้ามหน้าและจุดสะดุดของผู้ใช้ใหม่",
+        "  จำลองการเดินทางของคนที่เพิ่งเข้าใช้",
+        "  แผนวัดกับ prototype และผู้ใช้จริง",
+        "  Review boundary",
+        "  Synthesis หลัง Assessment B อิสระ"
+      ]
+    },
+    {
+      "path": "docs/CODEX_22_PAGE_DESIGN_REVIEW_V2.md",
+      "kind": "design",
+      "title": "22 Page Design Review — Round 2",
+      "headings": [
+        "22 Page Design Review — Round 2",
+        "  เกณฑ์และขอบเขต",
+        "  คะแนนเปรียบเทียบ — selected images เท่านั้น",
+        "  ลำดับปรับต่อ — 6 remaining P2",
+        "  รายหน้า — prior finding / สิ่งที่เห็น / งานคงเหลือ",
+        "    01 — Overview / Dashboard v2",
+        "    02 — Job Search Workspace v4",
+        "    03 — Evaluation Sessions index v3",
+        "    04 — Evaluation Session Workspace v4",
+        "    05 — Applications List v2",
+        "    06 — Job Detail v4",
+        "    07 — CV & Experience v3",
+        "    08 — Documents library v2",
+        "    09 — Document Detail v4",
+        "    10 — Agent Activity v3",
+        "    11 — Settings v2",
+        "    12 — Projects v3",
+        "    13 — New Project v2",
+        "    14 — Public Landing v3",
+        "    15 — Login v2",
+        "    16 — Sign Up v3",
+        "    17 — Forgot Password v2",
+        "    18 — Reset Password v2",
+        "    19 — Verify Email v2",
+        "    20 — Account v2",
+        "    21 — OAuth Consent v4",
+        "    22 — Digest Unsubscribe v2",
+        "  สิ่งที่ผู้ใช้ใหม่ได้จากรอบนี้",
+        "  Motion / pixel art — ประเมินแผนแยกจากภาพนิ่ง",
+        "  ขอบเขตการรับรองและหลักฐานของ A",
+        "  Parent synthesis after independent B"
+      ]
+    },
+    {
+      "path": "docs/CODEX_22_PAGE_REVIEW_EVIDENCE.md",
+      "kind": "doc",
+      "title": "Assessment B — หลักฐานภาพแนวคิด 22 หน้า",
+      "headings": [
+        "Assessment B — หลักฐานภาพแนวคิด 22 หน้า",
+        "  ผลตรวจ artifact",
+        "    Identity ของภาพที่ตรวจ",
+        "  Detector: รันจริง แต่ไม่ยืนยันคุณภาพ PNG",
+        "  ตรวจภาพเสี่ยงสูงแยกต่างหาก",
+        "  ทำซ้ำและขอบเขตความเชื่อมั่น"
+      ]
+    },
+    {
+      "path": "docs/CODEX_22_PAGE_REVIEW_EVIDENCE_V2.md",
+      "kind": "doc",
+      "title": "Assessment B — Round 2 static concept evidence",
+      "headings": [
+        "Assessment B — Round 2 static concept evidence",
+        "  หลักฐาน artifact",
+        "    Selected artifact identities",
+        "  Detector attempt ที่รันจริง",
+        "  ภาพเสี่ยงสูงที่เปิดตรวจจริง",
+        "  Motion และ pixel art เป็นสเปกเท่านั้น",
+        "  คำสั่งตรวจและสิ่งที่ไม่ได้วัด"
+      ]
+    },
+    {
+      "path": "docs/CODEX_ALL_PAGES_HANDOFF.md",
+      "kind": "doc",
+      "title": "Round1 archive — 22 page concepts",
+      "headings": [
+        "Round1 archive — 22 page concepts",
+        "  Review outcome — Assessment A",
+        "  Final six pages",
+        "  Implementation truth"
+      ]
+    },
+    {
+      "path": "docs/CODEX_ALL_PAGES_REDESIGN_V2.md",
+      "kind": "doc",
+      "title": "All22 pages — review-led redesign, round2",
+      "headings": [
+        "All22 pages — review-led redesign, round2",
+        "  Current references",
+        "  Selected page index",
+        "  Shared visual decisions",
+        "  Changes motivated by the review",
+        "  Shared implementation boundaries",
+        "    Reading order for Claude Code",
+        "  Later verification",
+        "  Final independent review and remaining acceptance",
+        "    Mandatory source and UX guardrails for Claude Code"
+      ]
+    },
+    {
+      "path": "docs/CODEX_PAGES_07_16_HANDOFF.md",
+      "kind": "doc",
+      "title": "Pages 07–16 — Claude Code handoff requirements",
+      "headings": [
+        "Pages 07–16 — Claude Code handoff requirements",
+        "  Review index",
+        "  Authority and location",
+        "  Shared component system",
+        "  Responsive, bilingual and accessibility requirements",
+        "  States and security boundaries",
+        "  Later implementation gates",
+        "  Evidence for this batch",
+        "  Artifact verification — 2026-10-17"
+      ]
+    },
+    {
+      "path": "docs/CODEX_PAGE_DESIGN_CHECKLIST.md",
+      "kind": "design",
+      "title": "Page-by-page visual design handoff",
+      "headings": [
+        "Page-by-page visual design handoff",
+        "  Current progress",
+        "  Pages",
+        "  Subviews to cover with their parent page",
+        "  File conventions",
+        "  Current page gates",
+        "  Shared instruction for Claude Code"
+      ]
+    },
+    {
+      "path": "docs/CODEX_PIXEL_MOTION_V2.md",
+      "kind": "doc",
+      "title": "Pixel art and motion — round2 concept contract",
+      "headings": [
+        "Pixel art and motion — round2 concept contract",
+        "  Purpose and art direction",
+        "  Motion rules for Claude Code",
+        "  Accessibility, performance and lifecycle",
+        "  Acceptance after actual implementation"
+      ]
+    },
+    {
+      "path": "docs/CODEX_REDESIGN_V2_GALLERY.md",
+      "kind": "doc",
+      "title": "Round2 — all22 selected page images",
+      "headings": [
+        "Round2 — all22 selected page images",
+        "  01 — Overview / Dashboard (v2)",
+        "  02 — Job Search Workspace (v4)",
+        "  03 — Evaluation Sessions index (v3)",
+        "  04 — Evaluation Session Workspace (v4)",
+        "  05 — Applications (v2)",
+        "  06 — Job Detail (v4)",
+        "  07 — CV & Experience (v3)",
+        "  08 — Documents library (v2)",
+        "  09 — Document Detail (v4)",
+        "  10 — Agent Activity / Console (v3)",
+        "  11 — Settings (v2)",
+        "  12 — Projects (v3)",
+        "  13 — New Project (v2)",
+        "  14 — Public Landing (v3)",
+        "  15 — Login (v2)",
+        "  16 — Sign Up (v3)",
+        "  17 — Forgot Password (v2)",
+        "  18 — Reset Password (v2)",
+        "  19 — Verify Email (v2)",
+        "  20 — Account (v2)",
+        "  21 — OAuth Consent (v4)",
+        "  22 — Digest Unsubscribe (v2)"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/01_OVERVIEW_DESIGN_V2.md",
+      "kind": "design",
+      "title": "01 — Overview / Dashboard · v2",
+      "headings": [
+        "01 — Overview / Dashboard · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/02_JOB_SEARCH_DESIGN_V4.md",
+      "kind": "design",
+      "title": "02 — Job Search Workspace · v4",
+      "headings": [
+        "02 — Job Search Workspace · v4",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/03_EVALUATION_SESSIONS_DESIGN_V3.md",
+      "kind": "design",
+      "title": "03 — Evaluation Sessions index · v3",
+      "headings": [
+        "03 — Evaluation Sessions index · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/04_EVALUATION_WORKSPACE_DESIGN_V4.md",
+      "kind": "design",
+      "title": "04 — Evaluation Session Workspace · v4",
+      "headings": [
+        "04 — Evaluation Session Workspace · v4",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/05_APPLICATIONS_DESIGN_V2.md",
+      "kind": "design",
+      "title": "05 — Applications · v2",
+      "headings": [
+        "05 — Applications · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/06_JOB_DETAIL_DESIGN_V4.md",
+      "kind": "design",
+      "title": "06 — Job Detail · v4",
+      "headings": [
+        "06 — Job Detail · v4",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/07_CV_EXPERIENCE_DESIGN_V3.md",
+      "kind": "design",
+      "title": "07 — CV & Experience · v3",
+      "headings": [
+        "07 — CV & Experience · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/08_DOCUMENTS_DESIGN_V2.md",
+      "kind": "design",
+      "title": "08 — Documents library · v2",
+      "headings": [
+        "08 — Documents library · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/09_DOCUMENT_DETAIL_DESIGN_V4.md",
+      "kind": "design",
+      "title": "09 — Document Detail · v4",
+      "headings": [
+        "09 — Document Detail · v4",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/10_AGENT_ACTIVITY_DESIGN_V3.md",
+      "kind": "design",
+      "title": "10 — Agent Activity / Console · v3",
+      "headings": [
+        "10 — Agent Activity / Console · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/11_SETTINGS_DESIGN_V2.md",
+      "kind": "design",
+      "title": "11 — Settings · v2",
+      "headings": [
+        "11 — Settings · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/12_PROJECTS_DESIGN_V3.md",
+      "kind": "design",
+      "title": "12 — Projects · v3",
+      "headings": [
+        "12 — Projects · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/13_NEW_PROJECT_DESIGN_V2.md",
+      "kind": "design",
+      "title": "13 — New Project · v2",
+      "headings": [
+        "13 — New Project · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/14_LANDING_DESIGN_V3.md",
+      "kind": "design",
+      "title": "14 — Public Landing · v3",
+      "headings": [
+        "14 — Public Landing · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/15_LOGIN_DESIGN_V2.md",
+      "kind": "design",
+      "title": "15 — Login · v2",
+      "headings": [
+        "15 — Login · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/16_SIGNUP_DESIGN_V3.md",
+      "kind": "design",
+      "title": "16 — Sign Up · v3",
+      "headings": [
+        "16 — Sign Up · v3",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/17_FORGOT_PASSWORD_DESIGN_V2.md",
+      "kind": "design",
+      "title": "17 — Forgot Password · v2",
+      "headings": [
+        "17 — Forgot Password · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/18_RESET_PASSWORD_DESIGN_V2.md",
+      "kind": "design",
+      "title": "18 — Reset Password · v2",
+      "headings": [
+        "18 — Reset Password · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/19_VERIFY_EMAIL_DESIGN_V2.md",
+      "kind": "design",
+      "title": "19 — Verify Email · v2",
+      "headings": [
+        "19 — Verify Email · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/20_ACCOUNT_DESIGN_V2.md",
+      "kind": "design",
+      "title": "20 — Account · v2",
+      "headings": [
+        "20 — Account · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/21_OAUTH_CONSENT_DESIGN_V4.md",
+      "kind": "design",
+      "title": "21 — OAuth Consent · v4",
+      "headings": [
+        "21 — OAuth Consent · v4",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/22_DIGEST_UNSUBSCRIBE_DESIGN_V2.md",
+      "kind": "design",
+      "title": "22 — Digest Unsubscribe · v2",
+      "headings": [
+        "22 — Digest Unsubscribe · v2",
+        "  Visual and first-user intent",
+        "  Functional scope and contracts — retained",
+        "  Motion specification — explanation only, no code",
+        "  Pixel art and asset treatment",
+        "  Responsive, bilingual and state requirements",
+        "  Acceptance before implementation completion"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/CODEX_22_PAGE_DESIGN_REVIEW_V2.md",
+      "kind": "design",
+      "title": "22 Page Design Review — Round 2",
+      "headings": [
+        "22 Page Design Review — Round 2",
+        "  เกณฑ์และขอบเขต",
+        "  คะแนนเปรียบเทียบ — selected images เท่านั้น",
+        "  ลำดับปรับต่อ — 6 remaining P2",
+        "  รายหน้า — prior finding / สิ่งที่เห็น / งานคงเหลือ",
+        "    01 — Overview / Dashboard v2",
+        "    02 — Job Search Workspace v4",
+        "    03 — Evaluation Sessions index v3",
+        "    04 — Evaluation Session Workspace v4",
+        "    05 — Applications List v2",
+        "    06 — Job Detail v4",
+        "    07 — CV & Experience v3",
+        "    08 — Documents library v2",
+        "    09 — Document Detail v4",
+        "    10 — Agent Activity v3",
+        "    11 — Settings v2",
+        "    12 — Projects v3",
+        "    13 — New Project v2",
+        "    14 — Public Landing v3",
+        "    15 — Login v2",
+        "    16 — Sign Up v3",
+        "    17 — Forgot Password v2",
+        "    18 — Reset Password v2",
+        "    19 — Verify Email v2",
+        "    20 — Account v2",
+        "    21 — OAuth Consent v4",
+        "    22 — Digest Unsubscribe v2",
+        "  สิ่งที่ผู้ใช้ใหม่ได้จากรอบนี้",
+        "  Motion / pixel art — ประเมินแผนแยกจากภาพนิ่ง",
+        "  ขอบเขตการรับรองและหลักฐานของ A",
+        "  Parent synthesis after independent B"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/CODEX_22_PAGE_REVIEW_EVIDENCE_V2.md",
+      "kind": "design",
+      "title": "Assessment B — Round 2 static concept evidence",
+      "headings": [
+        "Assessment B — Round 2 static concept evidence",
+        "  หลักฐาน artifact",
+        "    Selected artifact identities",
+        "  Detector attempt ที่รันจริง",
+        "  ภาพเสี่ยงสูงที่เปิดตรวจจริง",
+        "  Motion และ pixel art เป็นสเปกเท่านั้น",
+        "  คำสั่งตรวจและสิ่งที่ไม่ได้วัด"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/CODEX_ALL_PAGES_REDESIGN_V2.md",
+      "kind": "design",
+      "title": "All22 pages — review-led redesign, round2",
+      "headings": [
+        "All22 pages — review-led redesign, round2",
+        "  Current references",
+        "  Selected page index",
+        "  Shared visual decisions",
+        "  Changes motivated by the review",
+        "  Shared implementation boundaries",
+        "    Reading order for Claude Code",
+        "  Later verification",
+        "  Final independent review and remaining acceptance",
+        "    Mandatory source and UX guardrails for Claude Code"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/CODEX_PAGE_DESIGN_CHECKLIST.md",
+      "kind": "design",
+      "title": "Page-by-page visual design handoff",
+      "headings": [
+        "Page-by-page visual design handoff",
+        "  Current progress",
+        "  Pages",
+        "  Subviews to cover with their parent page",
+        "  File conventions",
+        "  Current page gates",
+        "  Shared instruction for Claude Code"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/CODEX_PIXEL_MOTION_V2.md",
+      "kind": "design",
+      "title": "Pixel art and motion — round2 concept contract",
+      "headings": [
+        "Pixel art and motion — round2 concept contract",
+        "  Purpose and art direction",
+        "  Motion rules for Claude Code",
+        "  Accessibility, performance and lifecycle",
+        "  Acceptance after actual implementation"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/CODEX_REDESIGN_V2_GALLERY.md",
+      "kind": "design",
+      "title": "Round2 — all22 selected page images",
+      "headings": [
+        "Round2 — all22 selected page images",
+        "  01 — Overview / Dashboard (v2)",
+        "  02 — Job Search Workspace (v4)",
+        "  03 — Evaluation Sessions index (v3)",
+        "  04 — Evaluation Session Workspace (v4)",
+        "  05 — Applications (v2)",
+        "  06 — Job Detail (v4)",
+        "  07 — CV & Experience (v3)",
+        "  08 — Documents library (v2)",
+        "  09 — Document Detail (v4)",
+        "  10 — Agent Activity / Console (v3)",
+        "  11 — Settings (v2)",
+        "  12 — Projects (v3)",
+        "  13 — New Project (v2)",
+        "  14 — Public Landing (v3)",
+        "  15 — Login (v2)",
+        "  16 — Sign Up (v3)",
+        "  17 — Forgot Password (v2)",
+        "  18 — Reset Password (v2)",
+        "  19 — Verify Email (v2)",
+        "  20 — Account (v2)",
+        "  21 — OAuth Consent (v4)",
+        "  22 — Digest Unsubscribe (v2)"
+      ]
+    },
+    {
+      "path": "docs/codex-ux-ui-migate/README.md",
+      "kind": "readme",
+      "title": "Claude Code — latest UX/UI handoff",
+      "headings": [
+        "Claude Code — latest UX/UI handoff",
+        "  Start here",
+        "  Instructions for Claude Code",
+        "  Contents"
+      ]
+    },
+    {
+      "path": "docs/contracts/a2a.md",
+      "kind": "doc",
+      "title": "A2A contract",
+      "headings": [
+        "A2A contract",
+        "  Authentication and scope",
+        "  Requests",
+        "  Tasks and results",
+        "  Verification"
+      ]
+    },
+    {
+      "path": "docs/contracts/mcp.md",
+      "kind": "doc",
+      "title": "MCP contract",
+      "headings": [
+        "MCP contract",
+        "  OAuth 2.1 (FR-P03)",
+        "  Tasks, MRTR and caching (FR-P02)"
+      ]
+    },
+    {
+      "path": "docs/demo/README.md",
+      "kind": "readme",
+      "title": "Runbook สาธิตระบบ",
+      "headings": [
+        "Runbook สาธิตระบบ",
+        "  1. เริ่มบริการและแอป",
+        "  2. ตั้งค่า OpenRouter (เจ้าของเครื่องเท่านั้น)",
+        "  3. เตรียมข้อมูลก่อนสาธิต (ทำก่อนเริ่ม 15 นาที)",
+        "  4. ลำดับการสาธิต (ประมาณ 20 นาที)",
+        "  5. หยุดระบบ"
+      ]
+    },
+    {
+      "path": "docs/demo/jobs.md",
+      "kind": "doc",
+      "title": "ตำแหน่งงานตัวอย่าง (ข้อมูลสมมติ)",
+      "headings": [
+        "ตำแหน่งงานตัวอย่าง (ข้อมูลสมมติ)",
+        "  1. Senior Frontend Developer — เหมาะมาก",
+        "  2. Full-stack Developer — เหมาะปานกลาง",
+        "  3. Data Engineer — เหมาะน้อย",
+        "  4. AI Engineer (LLM) — เหมาะมาก สำหรับ `cv-ai-engineer-th.pdf`",
+        "  5. Computer Vision Engineer — เหมาะปานกลาง สำหรับ `cv-ai-engineer-th.pdf`"
+      ]
+    },
+    {
+      "path": "docs/demo/tor-roadmap.md",
+      "kind": "doc",
+      "title": "งานของ Agent ตาม TOR: สถานะและแผนถัดไป",
+      "headings": [
+        "งานของ Agent ตาม TOR: สถานะและแผนถัดไป",
+        "  โครงสร้างปัจจุบัน",
+        "  สถานะตาม TOR",
+        "  แผนถัดไป",
+        "  คำถามถึงลูกค้า"
+      ]
+    },
+    {
+      "path": "docs/glossary.md",
+      "kind": "doc",
+      "title": "Glossary — user-facing terms",
+      "headings": [
+        "Glossary — user-facing terms"
+      ]
+    },
+    {
+      "path": "docs/tests/TC-CVB.md",
+      "kind": "doc",
+      "title": "Test cases — CV builder with Typst templates (CVB)",
+      "headings": [
+        "Test cases — CV builder with Typst templates (CVB)",
+        "  Risk ranking",
+        "  Test data and setup",
+        "  TC-CVB-01 Build a CV from nothing and evaluate with it",
+        "  TC-CVB-02 Autosave after typing stops",
+        "  TC-CVB-03 Draft conflict between two tabs",
+        "  TC-CVB-04 Template and accent switch reaches the PDF",
+        "  TC-CVB-05 Render failure on publish writes nothing",
+        "  TC-CVB-06 References never reach the model or the CV text",
+        "  TC-CVB-07 Every CV-required page offers Build a CV",
+        "  TC-CVB-08 Tailoring cannot touch protected fields",
+        "  TC-CVB-09 Unevidenced highlight is rejected",
+        "  TC-CVB-10 Tailored builder CV keeps template and accent",
+        "  TC-CVB-11 Preview of a tailored CV on the Documents page",
+        "  TC-CVB-12 Editing a tailored CV makes a new version and leaves the bank alone",
+        "  TC-CVB-13 Uploaded CV tailoring is unchanged",
+        "  TC-CVB-14 Resume data validation",
+        "  TC-CVB-15 Drafts are owner-only and project-scoped"
+      ]
+    },
+    {
+      "path": "docs/tests/test-summary-2026-10-20-pre-manual.md",
+      "kind": "doc",
+      "title": "Test summary — pre-manual review, 2026-10-20",
+      "headings": [
+        "Test summary — pre-manual review, 2026-10-20",
+        "  What ran (evidence)",
+        "  Findings",
+        "  Coverage (newest specs)",
+        "  Fixes applied (2026-10-20, branch qa/release-review)",
+        "  Gate"
+      ]
+    }
+  ],
+  "routes": [],
+  "notes": [],
+  "sections": [],
+  "roles": [
+    {
+      "name": "user",
+      "source": "frontend/src/features/chat/SessionPage.tsx:178"
+    }
+  ],
+  "permissions": [],
+  "states": [
+    {
+      "name": "ACTIVE",
+      "values": [
+        "queued",
+        "running",
+        "waiting_approval"
+      ],
+      "source": "frontend/src/features/chat/SessionPage.tsx:42"
+    },
+    {
+      "name": "ACTIVE_STAGES",
+      "values": [
+        "saved",
+        "applied",
+        "responded",
+        "interview",
+        "offer",
+        "hired"
+      ],
+      "source": "frontend/src/lib/applicationStages.ts:3"
+    },
+    {
+      "name": "ADV_KEYS",
+      "values": [
+        "seniority",
+        "employment_type",
+        "company_type",
+        "skills",
+        "posting_language",
+        "salary_min"
+      ],
+      "source": "frontend/src/features/search/AdvancedFilters.tsx:11"
+    },
+    {
+      "name": "AVATAR_PRESETS",
+      "values": [
+        "compass",
+        "briefcase",
+        "spark",
+        "mountain"
+      ],
+      "source": "frontend/src/components/Avatar.tsx:5"
+    },
+    {
+      "name": "ApplicationStage",
+      "values": [
+        "saved",
+        "applied",
+        "responded",
+        "interview",
+        "offer",
+        "hired",
+        "rejected",
+        "withdrawn"
+      ],
+      "source": "frontend/src/lib/api-types.ts:92"
+    },
+    {
+      "name": "CAPS",
+      "values": [
+        "results:read",
+        "jobs:evaluate",
+        "documents:draft",
+        "cv:tailor",
+        "jobs:search",
+        "applications:apply",
+        "applications:write"
+      ],
+      "source": "frontend/src/features/console/AgentsTab.tsx:15"
+    },
+    {
+      "name": "CLOSED_STAGES",
+      "values": [
+        "rejected",
+        "withdrawn"
+      ],
+      "source": "frontend/src/lib/applicationStages.ts:4"
+    },
+    {
+      "name": "DIMS",
+      "values": [
+        "structure",
+        "relevance",
+        "evidence",
+        "clarity",
+        "company_fit"
+      ],
+      "source": "frontend/src/features/practice/Feedback.tsx:12"
+    },
+    {
+      "name": "DraftKind",
+      "values": [
+        "cover_letter",
+        "application_message"
+      ],
+      "source": "frontend/src/features/chat/SessionPage.tsx:41"
+    },
+    {
+      "name": "EVENTS",
+      "values": [
+        "run.waiting_approval",
+        "run.needs_input",
+        "run.completed",
+        "run.failed",
+        "run.cancelled",
+        "digest.ready"
+      ],
+      "source": "frontend/src/features/settings/WebhookSettings.tsx:13"
+    },
+    {
+      "name": "ExperienceKind",
+      "values": [
+        "experience",
+        "education",
+        "skill",
+        "certification",
+        "project",
+        "other"
+      ],
+      "source": "frontend/src/lib/api-types.ts:98"
+    },
+    {
+      "name": "FILTERS",
+      "values": [
+        "all",
+        "attention",
+        "progress",
+        "done",
+        "stopped",
+        "notStarted"
+      ],
+      "source": "frontend/src/features/sessions/SessionsPage.tsx:20"
+    },
+    {
+      "name": "FieldKind",
+      "values": [
+        "text",
+        "month",
+        "url",
+        "textarea",
+        "lines",
+        "level",
+        "bool",
+        "keywords"
+      ],
+      "source": "frontend/src/features/builder/sections.ts:5"
+    },
+    {
+      "name": "KINDS",
+      "values": [
+        "experience",
+        "education",
+        "skill",
+        "certification",
+        "project",
+        "other"
+      ],
+      "source": "frontend/src/features/profile/ExperienceBank.tsx:13"
+    },
+    {
+      "name": "Kind",
+      "values": [
+        "cv",
+        "document"
+      ],
+      "source": "frontend/src/features/builder/BuilderPage.tsx:20"
+    },
+    {
+      "name": "LIST_KEYS",
+      "values": [
+        "seniority",
+        "employment_type",
+        "company_type",
+        "skills"
+      ],
+      "source": "frontend/src/features/search/SavedSearches.tsx:16"
+    },
+    {
+      "name": "Mode",
+      "values": [
+        "rename",
+        "delete"
+      ],
+      "source": "frontend/src/features/projects/ProjectActions.tsx:12"
+    },
+    {
+      "name": "ORDER",
+      "values": [
+        "strong",
+        "partial",
+        "missing",
+        "not_applicable"
+      ],
+      "source": "frontend/src/features/chat/EvaluationReportView.tsx:8"
+    },
+    {
+      "name": "PARTS",
+      "values": [
+        "S",
+        "T",
+        "A",
+        "R"
+      ],
+      "source": "frontend/src/features/practice/Feedback.tsx:13"
+    },
+    {
+      "name": "PERSONAL_KEYS",
+      "values": [
+        "birth_date",
+        "nationality",
+        "military_status",
+        "line_id",
+        "driving_license",
+        "expected_salary",
+        "available_from"
+      ],
+      "source": "frontend/src/features/builder/sections.ts:11"
+    },
+    {
+      "name": "PHOTO_TEMPLATES",
+      "values": [
+        "lotus",
+        "teak",
+        "saffron"
+      ],
+      "source": "frontend/src/features/builder/sections.ts:21"
+    },
+    {
+      "name": "PRACTICE_OPERATIONS",
+      "values": [
+        "interview_generate",
+        "interview_grade",
+        "interview_report"
+      ],
+      "source": "frontend/src/lib/api-types.ts:104"
+    },
+    {
+      "name": "PracticeLevel",
+      "values": [
+        "entry",
+        "mid",
+        "senior"
+      ],
+      "source": "frontend/src/lib/api-types.ts:194"
+    },
+    {
+      "name": "RUN_DONE",
+      "values": [
+        "completed",
+        "failed",
+        "cancelled",
+        "interrupted"
+      ],
+      "source": "frontend/src/features/search/SearchPage.tsx:59"
+    },
+    {
+      "name": "RunStatus",
+      "values": [
+        "queued",
+        "running",
+        "waiting_approval",
+        "needs_input",
+        "completed",
+        "failed",
+        "cancelled",
+        "interrupted"
+      ],
+      "source": "frontend/src/lib/api-types.ts:105"
+    },
+    {
+      "name": "SECTION_ORDER",
+      "values": [
+        "intro",
+        "cv_deep_dive",
+        "behavioral",
+        "situational",
+        "technical",
+        "gaps",
+        "company",
+        "logistics"
+      ],
+      "source": "frontend/src/features/practice/copy.ts:120"
+    },
+    {
+      "name": "STEPS",
+      "values": [
+        "evaluate_job",
+        "tailor_cv",
+        "draft_documents",
+        "apply_prepare"
+      ],
+      "source": "frontend/src/features/chat/WorkflowPanel.tsx:12"
+    },
+    {
+      "name": "STEP_STAGE",
+      "values": [
+        "cv",
+        "search",
+        "evaluate"
+      ],
+      "source": "frontend/src/features/overview/GettingStarted.tsx:14"
+    },
+    {
+      "name": "SaveState",
+      "values": [
+        "saved",
+        "saving",
+        "dirty",
+        "offline",
+        "conflict",
+        "invalid"
+      ],
+      "source": "frontend/src/features/builder/BuilderPage.tsx:21"
+    },
+    {
+      "name": "TABS",
+      "values": [
+        "timeline",
+        "approvals",
+        "agents",
+        "connect"
+      ],
+      "source": "frontend/src/features/console/ConsolePage.tsx:11"
+    },
+    {
+      "name": "TEMPLATES",
+      "values": [
+        "onyx",
+        "kakuna",
+        "ditgar",
+        "lotus",
+        "teak",
+        "saffron"
+      ],
+      "source": "frontend/src/features/builder/BuilderPage.tsx:22"
+    },
+    {
+      "name": "TWO_COLUMN",
+      "values": [
+        "ditgar",
+        "teak"
+      ],
+      "source": "frontend/src/features/builder/sections.ts:22"
+    },
+    {
+      "name": "TailorMode",
+      "values": [
+        "autopilot",
+        "interactive"
+      ],
+      "source": "frontend/src/lib/api-types.ts:113"
+    },
+    {
+      "name": "stages",
+      "values": [
+        "cv",
+        "search",
+        "evaluate"
+      ],
+      "source": "frontend/src/features/search/SmartMatchStart.tsx:24"
+    }
+  ],
+  "forms": [
+    {
+      "name": "avatar-preset",
+      "source": "frontend/src/features/account/AccountPage.tsx:64",
+      "detail": "radio"
+    },
+    {
+      "name": "saved-search-frequency",
+      "source": "frontend/src/features/search/SavedSearches.tsx:154",
+      "detail": "radio"
+    }
+  ],
+  "messages": [
+    {
+      "name": "Application message",
+      "source": "frontend/src/features/chat/SessionPage.tsx:39"
+    },
+    {
+      "name": "Could not load the preview. Try again or download the file.",
+      "source": "frontend/src/components/CvPreview.tsx:11"
+    },
+    {
+      "name": "Get new-job digests on Telegram through the platform bot. Open the link, then press Start in the chat.",
+      "source": "frontend/src/features/settings/TelegramSettings.tsx:25"
+    },
+    {
+      "name": "Job Search access token",
+      "source": "frontend/src/features/console/clients.ts:97"
+    },
+    {
+      "name": "Job description",
+      "source": "frontend/src/features/search/SearchPage.tsx:108"
+    },
+    {
+      "name": "Receive HMAC-signed push notifications when agent tasks change state or a digest is ready.",
+      "source": "frontend/src/features/settings/WebhookSettings.tsx:31"
+    },
+    {
+      "name": "Something went wrong. Try again.",
+      "source": "frontend/src/features/digest/UnsubscribePage.tsx:15"
+    },
+    {
+      "name": "unsafe redirect",
+      "source": "frontend/src/features/oauth/ConsentPage.tsx:63"
+    },
+    {
+      "name": "useDraft requires DraftProvider",
+      "source": "frontend/src/app/drafts.tsx:26"
+    },
+    {
+      "name": "useFileDraft requires DraftProvider",
+      "source": "frontend/src/app/drafts.tsx:33"
+    },
+    {
+      "name": "useLocale requires AppProviders",
+      "source": "frontend/src/app/providers.tsx:52"
+    },
+    {
+      "name": "useTheme requires ThemeProvider",
+      "source": "frontend/src/app/theme.ts:40"
+    },
+    {
+      "name": "ข้อความสมัครงาน",
+      "source": "frontend/src/features/chat/SessionPage.tsx:38"
+    },
+    {
+      "name": "ทำรายการไม่สำเร็จ ลองอีกครั้ง",
+      "source": "frontend/src/features/digest/UnsubscribePage.tsx:13"
+    },
+    {
+      "name": "รับการแจ้งเตือนแบบ push ที่ลงลายเซ็น HMAC เมื่องานของเอเจนต์เปลี่ยนสถานะหรือมีสรุปงานใหม่",
+      "source": "frontend/src/features/settings/WebhookSettings.tsx:17"
+    },
+    {
+      "name": "รับสรุปงานใหม่ทาง Telegram ผ่านบอตของแพลตฟอร์ม เปิดลิงก์แล้วกด Start ในแชต",
+      "source": "frontend/src/features/settings/TelegramSettings.tsx:15"
+    },
+    {
+      "name": "รายละเอียดงาน",
+      "source": "frontend/src/features/search/SearchPage.tsx:77"
+    },
+    {
+      "name": "โหลดตัวอย่างไม่สำเร็จ ลองอีกครั้งหรือดาวน์โหลดไฟล์",
+      "source": "frontend/src/components/CvPreview.tsx:10"
+    }
+  ],
+  "api": [
+    {
+      "name": "DELETE /projects/{project_id}/sessions/{session_id}\", response_model=Session",
+      "source": "backend/src/job_search_platform/api/rest.py:366"
+    }
+  ],
+  "flags": [],
+  "env": [
+    {
+      "name": "ADMIN_EMAILS",
+      "source": "backend/src/job_search_platform/services/accounts.py:87"
+    },
+    {
+      "name": "APP_PUBLIC_ORIGIN",
+      "source": "backend/src/job_search_platform/main.py:88"
+    },
+    {
+      "name": "CORE02_PRIVATE_DIR",
+      "source": "backend/src/job_search_platform/integrations/gateway.py:33"
+    },
+    {
+      "name": "DATABASE_URL",
+      "source": "backend/src/job_search_platform/db/session.py:11"
+    },
+    {
+      "name": "DOCKER_CONFIG",
+      "source": "backend/src/job_search_platform/integrations/hermes_runtime.py:92"
+    },
+    {
+      "name": "DOCKER_HOST",
+      "source": "backend/src/job_search_platform/integrations/hermes_runtime.py:93"
+    },
+    {
+      "name": "JSP_DEV_ORIGIN",
+      "source": "backend/src/job_search_platform/main.py:90"
+    },
+    {
+      "name": "JSP_LOG_LEVEL",
+      "source": "backend/src/job_search_platform/integrations/logging.py:45"
+    },
+    {
+      "name": "LANGFUSE_HOST",
+      "source": "backend/src/job_search_platform/integrations/tracing.py:35"
+    },
+    {
+      "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+      "source": "backend/src/job_search_platform/integrations/tracing.py:48"
+    },
+    {
+      "name": "SHARE_PUBLIC_ORIGIN",
+      "source": "backend/src/job_search_platform/api/rest.py:1271"
+    },
+    {
+      "name": "SMTP_FROM",
+      "source": "backend/src/job_search_platform/integrations/mailer.py:44"
+    },
+    {
+      "name": "SMTP_HOST",
+      "source": "backend/src/job_search_platform/integrations/mailer.py:35"
+    },
+    {
+      "name": "SMTP_PASSWORD",
+      "source": "backend/src/job_search_platform/integrations/mailer.py:39"
+    },
+    {
+      "name": "SMTP_PASSWORD_FILE",
+      "source": "backend/src/job_search_platform/integrations/mailer.py:40"
+    },
+    {
+      "name": "SMTP_PORT",
+      "source": "backend/src/job_search_platform/integrations/mailer.py:45"
+    },
+    {
+      "name": "SMTP_PROVIDER",
+      "source": "backend/src/job_search_platform/integrations/mailer.py:32"
+    },
+    {
+      "name": "SMTP_STARTTLS",
+      "source": "backend/src/job_search_platform/integrations/mailer.py:46"
+    },
+    {
+      "name": "SMTP_USERNAME",
+      "source": "backend/src/job_search_platform/integrations/mailer.py:38"
+    },
+    {
+      "name": "WEBHOOK_ALLOW_PRIVATE",
+      "source": "backend/src/job_search_platform/services/webhooks.py:68"
+    },
+    {
+      "name": "WORKER_MAX_ACTIVE",
+      "source": "backend/src/job_search_platform/workers/queue.py:26"
+    }
+  ],
+  "integrations": [],
+  "seed": [
+    "docs/demo/README.md",
+    "docs/demo/cv-ai-engineer-th.html",
+    "docs/demo/cv-ai-engineer-th.pdf",
+    "docs/demo/cv-en.html",
+    "docs/demo/cv-en.pdf",
+    "docs/demo/cv-th.html",
+    "docs/demo/cv-th.pdf",
+    "docs/demo/jobs.md",
+    "docs/demo/three-doors.sh",
+    "docs/demo/tor-roadmap.md",
+    "frontend/src/features/search/sampleJobs.ts"
+  ],
+  "uiStrings": {
+    "count": 0,
+    "sample": []
+  },
+  "truncated": []
+}

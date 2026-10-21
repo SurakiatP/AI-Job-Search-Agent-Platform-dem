@@ -1,0 +1,56 @@
+# manual-kit config. Text fields take a string or { th: ..., en: ... }.
+projectRoot: ..
+languages:
+  - th
+  - en
+books:
+  user-guide:
+    title:
+      th: คู่มือผู้ใช้
+      en: User guide
+    audience:
+      th: ผู้หางานที่ใช้แอปนี้
+      en: Job seekers using the app
+    description:
+      th: วิธีใช้งานแอปตั้งแต่สร้างบัญชีจนถึงติดตามใบสมัคร
+      en: How to use the app from sign-up to tracking applications
+document:
+  title: คู่มือการใช้งาน AI Job Search Agent Platform
+  client: ""
+  docNumber: ""
+  version: "1.0"
+  classification: ""
+  approvers: []
+  revisions: []
+  purpose: ""
+  glossary: []
+  logos: []
+  developer: "(รอระบุ)"
+outputs:
+  pdf: true
+  docx: false
+  dir: dist
+  web: true
+media: steps
+adapter:
+  type: react-spa
+  strings: { literals: all }
+capture:
+  baseUrl: http://127.0.0.1:8010
+  allowlist:
+    - localhost
+    - 127.0.0.1
+  environment: local
+wording:
+  superlatives: true
+  forbidden: []
+  allow: [TXT, ATS, URL, STAR]
+web:
+  brand:
+    name: AI Job Search Agent Platform
+    colors:
+      brand: "#2B45C4"
+      accent: "#0F766E"
+discover:
+  include: [frontend/src, backend/src, docs]
+  exclude: ['**/*.test.*', '**/*.spec.*', 'docs/superpowers/**', 'docs/plans/**', 'docs/adr/**', 'docs/ux-redesign/**', 'docs/engineering/**']

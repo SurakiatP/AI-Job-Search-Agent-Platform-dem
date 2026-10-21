@@ -155,6 +155,7 @@ main[data-stage='search'] { --stage: var(--stage-search); }
 main[data-stage='evaluate'] { --stage: var(--stage-evaluate); }
 main[data-stage='docs'] { --stage: var(--stage-docs); }
 main[data-stage='track'] { --stage: var(--stage-track); }
+main[data-stage='brand'] { --stage: var(--primary); }
 main[data-stage] h1::before { content: ''; display: block; width: 36px; height: 4px; margin-bottom: 10px; border-radius: 9999px; background: var(--stage); }
 /* Indeterminate bar for long jobs without a percentage. */
 .busy-bar { position: relative; height: 4px; overflow: hidden; border-radius: 9999px; background: color-mix(in oklch, var(--primary) 15%, transparent); }
@@ -232,3 +233,31 @@ input, textarea { caret-color: var(--primary); }
   .flashcard-face { transition: opacity 150ms linear; }
   .flashcard[data-flipped='true'] .face-front, .flashcard[data-flipped='false'] .face-back { opacity: 0; visibility: hidden; }
 }
+
+/* Manual pages (docs): reading column for the Markdown written with manual-kit. */
+.manual-body { font-size: 1rem; line-height: 1.85; max-width: 42rem; }
+/* The first h2 now sits in its own section, so spacing comes from the section, not :first-child. */
+.manual-body > section { margin: 2.5rem 0 0; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+.manual-body > section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.manual-body > section > h2 { margin: 0 0 0.75rem; padding: 0; border: 0; }
+.manual-body section[data-callout='note'] { padding: 1.1rem 1.25rem; border: 0; border-radius: 0.75rem; background: color-mix(in srgb, var(--stage, var(--primary)) 9%, var(--card)); }
+.manual-body figure { margin: 1.5rem 0; }
+.manual-body figure img, .manual-body figure video { margin: 0; }
+.manual-body figcaption { margin-top: 0.5rem; font-size: 0.85rem; line-height: 1.5; color: var(--muted-foreground); }
+.manual-body h2 { margin: 2.5rem 0 0.75rem; font-size: 1.25rem; font-weight: 600; line-height: 1.4; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+.manual-body h2:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+.manual-body h3 { margin: 1.5rem 0 0.5rem; font-size: 1.05rem; font-weight: 600; }
+.manual-body p { margin: 0.75rem 0; }
+.manual-body strong { font-weight: 600; color: var(--stage, var(--primary)); }
+.manual-body a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.manual-body ol { margin: 0.75rem 0; padding: 0; list-style: none; counter-reset: step; }
+.manual-body ol > li { position: relative; margin: 0.5rem 0; padding-left: 2.5rem; counter-increment: step; }
+.manual-body ol > li::before { content: counter(step); position: absolute; left: 0; top: 0.2rem; display: grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 9999px; background: color-mix(in srgb, var(--stage, var(--primary)) 14%, var(--card)); color: var(--stage, var(--primary)); font-size: 0.8rem; font-weight: 600; line-height: 1; }
+.manual-body ul { margin: 0.75rem 0; padding-left: 1.25rem; list-style: disc; }
+.manual-body ul li { margin: 0.35rem 0; }
+.manual-body li > ul, .manual-body li > ol { margin: 0.35rem 0; }
+.manual-body blockquote { margin: 1rem 0; padding: 0.75rem 1rem; border-radius: 0.5rem; background: color-mix(in srgb, var(--stage, var(--primary)) 8%, var(--card)); }
+.manual-body table { width: 100%; margin: 1rem 0; border-collapse: collapse; font-size: 0.9rem; }
+.manual-body th, .manual-body td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.manual-body video, .manual-body img { display: block; width: 100%; height: auto; margin: 1.25rem 0 0.4rem; border: 1px solid var(--border); border-radius: 0.75rem; box-shadow: var(--shadow-xs); }
+.manual-body p:has(> img) + p > em:only-child { display: block; margin-bottom: 1rem; font-size: 0.85rem; color: var(--muted-foreground); font-style: normal; }

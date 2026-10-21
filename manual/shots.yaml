@@ -1,0 +1,10 @@
+# Screenshots ({{shot:id}}) and step-by-step images ({{steps:id}}).
+# Actions run first, then the highlight is drawn and the image is taken.
+# shots:
+#   sign-in:
+#     url: /login
+#     caption: { th: หน้าเข้าสู่ระบบ, en: The sign-in page }
+#     highlight: "button[type=submit]"
+#     mask: [".email"]
+shots: {}
+steps: {}
