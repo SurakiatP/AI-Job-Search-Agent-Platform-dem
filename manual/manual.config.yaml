@@ -44,7 +44,7 @@ capture:
 wording:
   superlatives: true
   forbidden: []
-  allow: [TXT, ATS, URL]
+  allow: [TXT, ATS, URL, STAR]
 web:
   brand:
     name: AI Job Search Agent Platform

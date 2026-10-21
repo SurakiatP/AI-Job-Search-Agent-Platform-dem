@@ -1,4 +1,4 @@
-import { ArrowRight, Bell, ClipboardList, MessagesSquare, FileText, FileUser, Rocket, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, Bell, FilePenLine, ClipboardList, MessagesSquare, FileText, FileUser, Rocket, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link } from 'react-router';
 import { useLocale } from '../../app/providers';
 import { useOwnerSession } from '../../lib/api';
@@ -9,7 +9,7 @@ import { landingCopy } from '../landing/copy';
 import { docsCopy } from './copy';
 import { topics } from './topics';
 
-const icons = [Rocket, FileUser, Search, FileText, MessagesSquare, ClipboardList, Bell, ShieldCheck];
+const icons = [Rocket, FileUser, FilePenLine, Search, FileText, MessagesSquare, ClipboardList, Bell, ShieldCheck];
 
 export function DocsPage() {
   const { locale } = useLocale();

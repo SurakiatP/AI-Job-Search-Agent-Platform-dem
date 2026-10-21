@@ -1,12 +1,12 @@
 import type { Locator, Page } from '@playwright/test';
 
-// Draws numbered orange rings over elements, for the manual pictures and clips (never used by real tests).
+// Draws numbered orange rings over elements that are already on screen (never scrolls, so rings cannot drift), for the manual pictures and clips (never used by real tests).
 export async function ring(page: Page, targets: Locator[]) {
   const boxes = [];
   for (const target of targets) {
-    await target.first().scrollIntoViewIfNeeded();
+    await target.first().waitFor();
     const box = await target.first().boundingBox();
-    if (!box) throw new Error('highlight target not visible');
+    if (!box || box.y < 0 || box.y + box.height > (page.viewportSize()?.height ?? 800)) throw new Error('highlight target is outside the picture');
     boxes.push(box);
   }
   await page.evaluate(list => {
@@ -22,4 +22,18 @@ export async function ring(page: Page, targets: Locator[]) {
       document.body.appendChild(ring);
     });
   }, boxes);
+}
+
+// A blue step caption at the bottom of the screen, so a clip explains itself without sound.
+export async function caption(page: Page, text: string) {
+  await page.evaluate(t => {
+    let bar = document.querySelector<HTMLElement>('[data-manual-caption]');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.setAttribute('data-manual-caption', '');
+      bar.style.cssText = 'position:fixed;z-index:99999;left:50%;top:16px;transform:translateX(-50%);max-width:880px;padding:14px 26px;border-radius:14px;background:#2B45C4;color:#fff;font:600 20px/1.5 Prompt,Noto Sans Thai,sans-serif;text-align:center;box-shadow:0 8px 28px rgba(43,69,196,.35);pointer-events:none';
+      document.body.appendChild(bar);
+    }
+    bar.textContent = t;
+  }, text);
 }

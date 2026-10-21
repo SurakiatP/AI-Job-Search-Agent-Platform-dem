@@ -12,18 +12,24 @@ sources: [frontend/src/features/landing/copy.ts, frontend/src/features/projects/
 
 This page explains how your data is stored and used, and what you can control. Read it before you upload a CV. There are no steps you must follow.
 
-![Settings page — Circle 1 = the account security link](/manual/settings.en.png)
-*Example screen with made-up data*
+**Before you start**
+
+- You are logged in (how to sign up and log in is in [[getting-started]]).
+- The steps below only let you look. They do not change your data.
+
+![Settings — circle 1 = the account security link](/manual/settings.en.png)
 
 ## How to check your data
 
 1. Go to {{ui:"All projects"}} to see your separate projects.
-2. Go to {{ui:"CV & experience"}} to check the facts the AI can use.
+2. Go to {{ui:"CV & experience"}} to check the facts the AI can use (how to add and edit them is in [[cv-and-experience]]).
 3. Go to {{ui:"Settings"}}, then select {{ui:"AI gateway"}} to see the AI connection status.
-4. Open the {{ui:"Webhooks"}} or {{ui:"Project sharing"}} card to check what you have turned on.
+4. On the {{ui:"Settings"}} page, select {{ui:"Webhooks"}} or {{ui:"Project sharing"}} in the list to check what you have turned on.
 
 ## Good to know
 
+- What the AI does: ranks and evaluates jobs, and writes CV drafts, cover letters, interview practice questions and AI feedback. See [[search-and-evaluate]], [[tailor-and-draft]] and [[interview-practice]]. All of it is a draft for you to check. The status of an application and sending it ([[track-applications]]) are yours.
+- What the AI does not do: it does not send applications for you, does not change your original CV file, and does not use facts that are not in your experience bank.
 - The data of each project is kept separate. The CV, jobs and documents of one project never mix with another.
 - An AI request may send the part of your CV it needs to an outside AI service, for example when it ranks or evaluates jobs.
 - The AI can use only the facts in your experience bank.

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { useSyntheticApplication } from '../fixtures/application';
 
-const topics = ['getting-started', 'cv-and-experience', 'search-and-evaluate', 'tailor-and-draft',
+const topics = ['getting-started', 'cv-and-experience', 'build-cv', 'search-and-evaluate', 'tailor-and-draft',
   'interview-practice', 'track-applications', 'job-alerts', 'safety-and-data'];
 
 test('docs: every topic card opens its own manual page, none says coming soon', async ({ page }) => {
@@ -53,18 +53,43 @@ test('docs: English UI shows the English guide with no Thai-only notice', async 
   expect(await page.locator('.manual-body').innerText()).not.toMatch(/[\u0E00-\u0E7F]/);
 });
 
-test('docs: pages with a clip show a playable video with controls and a caption', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
-  await useSyntheticApplication(page);
-  for (const topic of ['interview-practice', 'search-and-evaluate', 'track-applications']) {
-    await page.goto(`/docs/${topic}`);
-    const video = page.locator('.manual-body video');
-    await expect(video).toHaveCount(1);
-    await expect(video).toHaveAttribute('controls', '');
-    expect(await video.getAttribute('src')).toMatch(/^\/manual\/[\w-]+\.th\.mp4$/);
-    expect(await video.getAttribute('poster')).toMatch(/^\/manual\/[\w-]+\.th\.poster\.png$/);
-  }
-});
+const clips: Record<string, string[]> = {
+  'build-cv': ['build'], 'search-and-evaluate': ['search', 'evaluate'], 'tailor-and-draft': ['tailor'],
+  'interview-practice': ['practice'], 'track-applications': ['applications'],
+};
+const aiPictures: Record<string, string> = {
+  'cv-and-experience': 'ai-experience', 'search-and-evaluate': 'ai-evaluation', 'tailor-and-draft': 'ai-tailor', 'interview-practice': 'ai-feedback',
+};
+
+for (const locale of ['th', 'en'] as const) {
+  test(`docs ${locale}: clips are playable videos with controls and a cover picture, and are 15 seconds or longer`, async ({ page }) => {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await useSyntheticApplication(page);
+    for (const [topic, names] of Object.entries(clips)) {
+      await page.goto(`/docs/${topic}`);
+      const videos = page.locator('.manual-body video');
+      await expect(videos, topic).toHaveCount(names.length);
+      for (const [index, name] of names.entries()) {
+        const video = videos.nth(index);
+        await expect(video).toHaveAttribute('controls', '');
+        expect(await video.getAttribute('src')).toBe(`/manual/${name}.${locale}.mp4`);
+        expect(await video.getAttribute('poster')).toBe(`/manual/${name}.${locale}.poster.png`);
+        await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.duration), { message: `${topic}/${name} duration` }).toBeGreaterThanOrEqual(15);
+      }
+    }
+  });
+
+  test(`docs ${locale}: the pages that use AI show a picture of the AI result`, async ({ page }) => {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await useSyntheticApplication(page);
+    for (const [topic, name] of Object.entries(aiPictures)) {
+      await page.goto(`/docs/${topic}`);
+      const image = page.locator(`.manual-body img[src="/manual/${name}.${locale}.png"]`);
+      await expect(image, topic).toHaveCount(1);
+      await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth), { message: `${topic} picture loads` }).toBeGreaterThan(0);
+    }
+  });
+}
 
 test('docs: pictures are figures with captions, and a long page offers an on-this-page list', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));

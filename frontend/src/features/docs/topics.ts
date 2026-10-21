@@ -3,12 +3,13 @@ export type Stage = 'brand' | 'cv' | 'search' | 'evaluate' | 'docs' | 'track';
 export const topics = [
   { id: 'getting-started', file: '01-getting-started', stage: 'brand' },
   { id: 'cv-and-experience', file: '02-cv-and-experience', stage: 'cv' },
-  { id: 'search-and-evaluate', file: '03-search-and-evaluate', stage: 'search' },
-  { id: 'tailor-and-draft', file: '04-tailor-and-draft', stage: 'docs' },
-  { id: 'interview-practice', file: '05-interview-practice', stage: 'evaluate' },
-  { id: 'track-applications', file: '06-track-applications', stage: 'track' },
-  { id: 'job-alerts', file: '07-job-alerts', stage: 'search' },
-  { id: 'safety-and-data', file: '08-safety-and-data', stage: 'brand' },
+  { id: 'build-cv', file: '03-build-cv', stage: 'cv' },
+  { id: 'search-and-evaluate', file: '04-search-and-evaluate', stage: 'search' },
+  { id: 'tailor-and-draft', file: '05-tailor-and-draft', stage: 'docs' },
+  { id: 'interview-practice', file: '06-interview-practice', stage: 'evaluate' },
+  { id: 'track-applications', file: '07-track-applications', stage: 'track' },
+  { id: 'job-alerts', file: '08-job-alerts', stage: 'search' },
+  { id: 'safety-and-data', file: '09-safety-and-data', stage: 'brand' },
 ] as const satisfies readonly { id: string; file: string; stage: Stage }[];
 
 const pages = import.meta.glob('../../../../manual/pages/*/user-guide/*.md', { query: '?raw', import: 'default' }) as Record<string, () => Promise<string>>;

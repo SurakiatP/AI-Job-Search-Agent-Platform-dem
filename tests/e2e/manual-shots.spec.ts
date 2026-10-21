@@ -4,6 +4,8 @@ import { test, type Locator, type Page } from '@playwright/test';
 import { useSyntheticApplication, projectId, sessionId } from '../fixtures/application';
 import { ring } from '../fixtures/manualRing';
 import { boot, practiceApi, setId } from '../fixtures/practice';
+import { builderScene, cvId, evaluationScene, experienceScene, feedbackScene, tailorScene } from '../fixtures/manualScenes';
+import { builderApi } from '../fixtures/builder';
 
 // Each picture circles what the page's steps tell the reader to use (Thai | English label).
 const marks: Record<string, (page: Page) => Locator[]> = {
@@ -16,6 +18,13 @@ const marks: Record<string, (page: Page) => Locator[]> = {
   'practice-set': p => [p.locator('textarea').first(), p.getByRole('button', { name: /บันทึกคำตอบ|Save answer/i }).first()],
   applications: p => [p.getByText(/^(บอร์ด|Board)$/).first(), p.getByText(/^(เพิ่มประกาศงาน|Add posting)$/i).first()],
   alerts: p => [p.getByRole('combobox').last(), p.locator('button:has(svg.lucide-mail)').first()],
+  'build-start': p => [p.getByRole('dialog').getByRole('button').last()],
+  'build-editor': p => [p.getByLabel(/ชื่อ-นามสกุล|Full name/).first(), p.getByRole('button', { name: /^(อัปเดตพรีวิว|Update preview)$/ }).first()],
+  'build-template': p => [p.getByRole('button', { name: /Lotus/ }).first(), p.getByLabel(/ภาษาของ CV|CV language/).first()],
+  'ai-evaluation': p => [p.getByText(/ควรสมัคร: ทักษะหลัก|Worth applying: most core/).first()],
+  'ai-tailor': p => [p.getByRole('button', { name: /^(ใช้ข้อเสนอที่เลือก|Apply selected)$/ })],
+  'ai-feedback': p => [p.getByRole('region', { name: /ความเห็นจาก AI|AI feedback/ }).getByRole('heading').first()],
+  'ai-experience': p => [p.getByRole('button', { name: /AI/ }).first()],
   settings: p => [p.getByRole('link', { name: /ความปลอดภัยของบัญชี|Account security/i }).first()],
 };
 
@@ -31,6 +40,13 @@ const shots: [string, string][] = [
   ['practice-tab', `/app/projects/${projectId}/sessions/${sessionId}?tab=practice`],
   ['practice-set', `/app/projects/${projectId}/sessions/${sessionId}/practice/${setId}`],
   ['alerts', `/app/projects/${projectId}/search`],
+  ['build-start', `/app/projects/${projectId}/overview`],
+  ['build-editor', `/app/projects/${projectId}/cvs/${cvId}/builder`],
+  ['build-template', `/app/projects/${projectId}/cvs/${cvId}/builder`],
+  ['ai-evaluation', `/app/projects/${projectId}/sessions/${sessionId}`],
+  ['ai-tailor', `/app/projects/${projectId}/sessions/${sessionId}`],
+  ['ai-feedback', `/app/projects/${projectId}/sessions/${sessionId}/practice/${setId}`],
+  ['ai-experience', `/app/projects/${projectId}/profile?tab=experience`],
 ];
 
 async function alertsApi(page: Page) {
@@ -46,14 +62,29 @@ for (const locale of ['th', 'en'] as const) {
   for (const [name, path] of shots) {
     test(`manual picture ${name} ${locale}`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
-      if (name.startsWith('practice')) { await boot(page); await practiceApi(page, {}); } else await useSyntheticApplication(page);
+      if (name === 'ai-feedback') await feedbackScene(page, locale);
+      else if (name.startsWith('practice')) { await boot(page); await practiceApi(page, {}); } else await useSyntheticApplication(page);
+      if (name === 'build-start') await builderApi(page);
+      if (name === 'build-editor' || name === 'build-template') await builderScene(page, locale);
+      if (name === 'ai-evaluation') await evaluationScene(page, locale);
+      if (name === 'ai-tailor') await tailorScene(page, locale);
+      if (name === 'ai-experience') await experienceScene(page, locale);
       if (name === 'signup') await page.route('**/v1/auth/session', r => r.fulfill({ status: 401, contentType: 'application/json', body: '{"code":"unauthorized"}' }));
       await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale); // after boot(): it sets its own locale
       if (name === 'alerts') await alertsApi(page);
       await page.goto(path);
       await page.waitForTimeout(1200);
       if (name === 'search') { await page.getByRole('button', { name: /ดูข้อมูลตัวอย่าง|sample/i }).click(); await page.waitForTimeout(600); }
-      if (marks[name]) await ring(page, marks[name](page));
+      if (name === 'build-start') { await page.getByRole('button', { name: /สร้าง CV|Build a CV/ }).first().click(); await page.waitForTimeout(500); }
+      if (name === 'ai-tailor') {
+        await page.getByRole('tab').nth(1).click();
+        await page.getByLabel(/^(เลือกเอง|Interactive)/).check();
+        await page.getByRole('button', { name: /^(ปรับ CV|Tailor CV)$/ }).click();
+        await page.getByRole('button', { name: /^(ใช้ข้อเสนอที่เลือก|Apply selected)$/ }).waitFor();
+        await page.getByRole('checkbox', { name: /(เลือกข้อเสนอ|Select proposal) 1/ }).check();
+      }
+      if (name === 'ai-feedback') await page.getByRole('region', { name: /ความเห็นจาก AI|AI feedback/ }).evaluate(el => el.scrollIntoView({ block: 'start' }));
+      if (marks[name]) { if (name !== 'ai-feedback') await marks[name](page)[0].first().scrollIntoViewIfNeeded(); await ring(page, marks[name](page)); }
       const text = await page.locator('body').innerText();
       if (/ไม่สามารถโหลด|ไม่สำเร็จ|Could not load|Failed to load|couldn.t load/i.test(text)) throw new Error(`${name}.${locale} shows an error, not a usable picture`);
       await page.screenshot({ path: `../frontend/public/manual/${name}.${locale}.png` });

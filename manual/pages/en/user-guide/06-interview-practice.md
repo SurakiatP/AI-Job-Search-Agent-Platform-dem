@@ -10,36 +10,39 @@ sources: [frontend/src/features/practice/copy.ts, frontend/src/features/practice
 ---
 ## What is interview practice
 
-The app writes a set of practice questions from the evaluation of one job. The questions are based on your CV, your experience bank and that job posting. You can type your answers, review what you know with flashcards, and ask the AI for feedback. You need an evaluation of the job first.
+The app writes a set of practice questions from the evaluation of one job. The questions are based on your CV, your experience bank and that job posting. You can type your answers, review what you know with flashcards, and ask the AI for feedback. 
+**Before you start**
 
-![Interview practice tab on an evaluation — Circle 1 = the new practice set button](/manual/practice-tab.en.png)
-*Example screen with made-up data*
+- You need an evaluation of the job first. See [[search-and-evaluate]]. An evaluation needs a CV you have added. See [[cv-and-experience]].
+- Have some experience in your bank, so the app can write example answers.
 
-![A practice set page — Circle 1 = where you type, 2 = the save button](/manual/practice-set.en.png)
-*Example screen with made-up data*
+![Interview practice tab on an evaluation — circle 1 = the new practice set button](/manual/practice-tab.en.png)
 
-![Example clip: typing an answer — The orange ring shows where the answer is typed](/manual/practice.en.mp4)
-*Example clip with made-up data*
+![A practice set — circle 1 = where you type, 2 = the save button](/manual/practice-set.en.png)
+
+![AI feedback on a practice answer: five scores, your answer split by STAR and what to add — circle 1 = the AI feedback heading](/manual/ai-feedback.en.png)
+
+![Video: type an answer, ask for AI feedback and read it](/manual/practice.en.mp4)
 
 ## How to practice for interviews
 
-1. Open the evaluation of the job you want.
+1. Go to {{ui:"Evaluations"}} in the left menu, then open the evaluation of the job you want.
 2. Open the {{ui:"Interview practice"}} tab.
-3. Click {{ui:"New practice set"}}.
+3. Click {{ui:"New practice set"}}. The {{ui:"New practice set"}} window opens.
 4. Enter {{ui:"Name"}}.
 5. Select {{ui:"Level"}}.
 6. Select {{ui:"Question language"}}: {{ui:"ไทย"}} or {{ui:"English"}}.
 7. Choose the sections to practice and how many questions for each.
 8. Click {{ui:"Create set"}}.
-9. Wait while the questions are written.
+9. Wait while the questions are written. The screen shows {{ui:"Writing questions for this job"}}.
 10. Open the practice set and select a question.
 11. Type {{ui:"Your answer"}}.
-12. Click {{ui:"Save answer"}}.
-13. Click {{ui:"Get AI feedback"}}.
+12. Click {{ui:"Save answer"}}. Your answer appears under {{ui:"Saved answers"}}.
+13. Click {{ui:"Get AI feedback"}}. This button shows after you save an answer.
 14. Read the report under {{ui:"AI feedback"}}.
-15. In {{ui:"Technical knowledge"}}, flip a flashcard to see the answer.
+15. Select {{ui:"Technical knowledge"}} in the list of rounds, then flip a flashcard to see the answer.
 16. Click {{ui:"Know it"}} or {{ui:"Still learning"}}.
-17. When you are ready, click {{ui:"Write my summary"}}.
+17. Select {{ui:"Summary and plan"}} in the list of rounds, then click {{ui:"Write my summary"}}.
 
 ## Good to know
 
@@ -49,6 +52,7 @@ The app writes a set of practice questions from the evaluation of one job. The q
 - It takes about a minute to create a set. The page updates by itself.
 - Sample answers use only your own facts. If your bank does not have enough, the app does not write them.
 - AI feedback looks at story, fit to the job, evidence and clarity, with a score out of 5. It does not predict whether you will get the job.
+- The AI writes the questions, example answers, feedback and summary. Your answers, and your choices of {{ui:"Know it"}} or {{ui:"Mark ready"}}, are your own. Read and judge them before you use them.
 - To flip a flashcard, click it or press Space. On a phone, tap it.
 
 ## Problems and fixes

@@ -6,20 +6,25 @@ book: user-guide
 kind: how-to
 routes: []
 covers: []
-sources: [frontend/src/features/search/SearchPage.tsx, frontend/src/features/search/SmartMatchStart.tsx, frontend/src/features/sessions/NewSessionDialog.tsx, frontend/src/locales/session-workspace.th.json]
+sources: [frontend/src/features/search/SearchPage.tsx, frontend/src/features/search/SmartMatchStart.tsx, frontend/src/features/sessions/NewSessionDialog.tsx, frontend/src/locales/session-workspace.th.json, frontend/src/components/AiMark.tsx, frontend/src/locales/search-workspace.en.json, frontend/src/locales/session-workspace.en.json]
 ---
 ## What is searching and evaluating jobs
 
 You can search for jobs in Thailand on this page. Smart match lets the agent read your chosen CV and put the jobs that fit you first, with a score out of 5 and what is still missing. An evaluation compares one CV with one job posting. You need a CV in the project first.
 
-![Job search page (sample data) — Circle 1 = switch to Smart match, 2 = the search box](/manual/search.en.png)
-*Example screen with made-up data*
+Before you start, get these ready:
 
-![Evaluation page — Circle 1 = the evaluate button](/manual/session.en.png)
-*Example screen with made-up data*
+- At least one CV in the project. See [[cv-and-experience]] or [[build-cv]].
+- A confirmed email address. See [[getting-started]]. Ranking and evaluation use AI, so they cannot start until you confirm your email.
+- You do not need to save a job first. You can pick one straight from the search page.
 
-![Example clip: typing a search — The orange ring shows the box in use](/manual/search.en.mp4)
-*Example clip with made-up data*
+![Job search (sample data) — circle 1 = switch to Smart match, 2 = the search box](/manual/search.en.png)
+
+![What the AI agent returns: a 1–5 score, a verdict and each job requirement matched against your CV — circle 1 = the verdict](/manual/ai-evaluation.en.png)
+
+![Video: search, pick a job and let the agent evaluate it](/manual/search.en.mp4)
+
+![Video: reading the AI agent’s job evaluation](/manual/evaluate.en.mp4)
 
 ## How to search for jobs and check your fit
 
@@ -27,12 +32,12 @@ There are 2 ways.
 
 ### Way 1 Use Smart match
 
-1. Go to {{ui:"Job search"}}.
+1. Go to {{ui:"Job search"}}. It is in the left menu of the project.
 2. Select the {{ui:"Smart match"}} mode.
 3. Select {{ui:"CV to match against"}}.
 4. Set the filters you want.
 5. Click {{ui:"Start Smart match"}}.
-6. Wait until the agent has ranked the jobs.
+6. Wait until the agent has ranked the jobs. While it works, the screen shows "Reading your CV" and "Shortlisting jobs".
 7. Open a job to see the reasons and the matching and missing skills.
 8. Click {{ui:"Save job"}} on the jobs you like.
 
@@ -44,11 +49,12 @@ There are 2 ways.
 4. The {{ui:"New session"}} window opens.
 5. Select the {{ui:"CV"}} you want.
 6. Click {{ui:"Start session"}}.
-7. Open the {{ui:"Evaluation"}} tab to see the result.
+7. Open the {{ui:"Evaluation"}} tab to see the result. The screen shows the heading "Evaluation result" with an "AI fit" label.
 
 ## Good to know
 
 - Smart match uses AI every time it runs, so it waits for you to start it.
+- Smart match ranking and the evaluation use AI, and the evaluation carries a "Made by AI" label. The skills found in your CV are matched by keywords from the posting, with no AI. If AI ranking is not finished, the system shows a keyword ranking first.
 - The content of your CV is sent to an AI service to rank the jobs.
 - The score is an AI estimate to help you decide. It does not predict whether you will get the job, so check the evidence yourself.
 - If you change your CV later, only new evaluations are affected.
