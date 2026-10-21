@@ -1,158 +1,286 @@
 {
-  "senior-backend-engineer-meridian-cloud+cv-02": {
-    "label": "no",
-    "reason": "1.5 yrs junior data analyst vs 6+ yrs senior backend; no Docker/AWS"
-  },
-  "backend-engineer-python-harbor-logistics+cv-02": {
-    "label": "no",
-    "reason": "1.5 yrs data analyst vs 5+ yrs backend; no Docker/AWS/CI-CD"
-  },
-  "staff-platform-engineer-northwind-systems+cv-02": {
-    "label": "no",
-    "reason": "1.5 yrs vs 10+ yrs staff level; no Kubernetes/Terraform/AWS"
-  },
-  "data-engineer-orchid-analytics+cv-02": {
-    "label": "no",
-    "reason": "1.5 yrs vs 4+ yrs; no Spark or AWS pipeline experience"
-  },
-  "junior-data-analyst-thongdee-retail+cv-01": {
-    "label": "no",
-    "reason": "Senior backend engineer; junior analyst role, no Power BI dashboards"
-  },
-  "junior-data-engineer-krungthep-data+cv-01": {
-    "label": "maybe",
-    "reason": "Has Python/SQL/PostgreSQL but senior backend, not data work; level far below"
-  },
-  "data-engineer-mid-siamflow+cv-01": {
-    "label": "maybe",
-    "reason": "Python, SQL, Docker, PostgreSQL, AWS present but no data pipeline experience"
-  },
-  "senior-ml-engineer-vision-labs+cv-01": {
-    "label": "no",
-    "reason": "No ML, TensorFlow, computer vision or master's degree"
-  },
-  "digital-marketing-specialist-lumiere-beauty+cv-04": {
-    "label": "no",
-    "reason": "1 yr social media vs 3-5 yrs; no paid ads or SEO"
-  },
-  "performance-marketing-executive-kinnaree-online+cv-04": {
-    "label": "no",
-    "reason": "No paid ads experience vs 3+ yrs Facebook/Google Ads required"
-  },
-  "marketing-manager-chaophraya-foods+cv-04": {
-    "label": "no",
-    "reason": "1 yr junior vs 7+ yrs with 2 yrs team lead"
-  },
-  "content-creator-video-pladao-media+cv-04": {
-    "label": "maybe",
-    "reason": "Content/social background but no Premiere Pro video editing; 1 yr vs 2+"
-  },
-  "junior-social-media-executive-palm-coast-travel+cv-03": {
-    "label": "maybe",
-    "reason": "Has skills but 4 yrs vs 0-2 junior level; English only fair"
-  },
-  "marketing-assistant-blue-lagoon-spa+cv-03": {
-    "label": "maybe",
-    "reason": "Overqualified (4 yrs vs up to 2); English writing only fair"
-  },
-  "digital-marketing-executive-island-gear+cv-03": {
-    "label": "maybe",
-    "reason": "4 yrs SEO, GA, social, email fits, but English fair not fluent"
-  },
-  "accountant-baanmai-property+cv-06": {
-    "label": "maybe",
-    "reason": "Accounting degree but FP&A manager; no tax filing, far overqualified"
-  },
-  "tax-accountant-rungruang-trading+cv-06": {
-    "label": "no",
-    "reason": "FP&A leader; no hands-on PND/PP30 tax filing, role far below level"
-  },
-  "accounting-supervisor-thaisiri-manufacturing+cv-06": {
-    "label": "maybe",
-    "reason": "10 yrs, leads 3, but finance/FP&A not accounting close; tax knowledge not shown"
-  },
-  "finance-executive-andaman-energy+cv-06": {
-    "label": "maybe",
-    "reason": "Meets all must-haves but senior manager vs executive level"
-  },
-  "certified-auditor-wattana-audit+cv-06": {
-    "label": "no",
-    "reason": "No CPA licence, required"
-  },
-  "senior-financial-analyst-fpa-grandview-group+cv-05": {
-    "label": "no",
-    "reason": "Accountant; no FP&A, Power BI, 6+ yrs analysis or English presenting"
-  },
-  "finance-manager-ratchada-industries+cv-05": {
-    "label": "no",
-    "reason": "5 yrs accountant, no team lead vs 8+ yrs with 3+ leading"
-  },
-  "finance-director-bangkok-health-group+cv-05": {
-    "label": "no",
-    "reason": "5 yrs vs 15+ yrs director with IPO and team 20+"
-  },
-  "registered-nurse-internal-medicine-ward-ruamjai-hospital+cv-08": {
-    "label": "no",
-    "reason": "Not a nurse; no licence or nursing degree"
-  },
-  "registered-nurse-opd-clinic-samakkhi-clinic+cv-08": {
-    "label": "no",
-    "reason": "Not a nurse; no nursing licence"
-  },
-  "registered-nurse-icu-bangkok-central-hospital+cv-08": {
-    "label": "no",
-    "reason": "Not a nurse; no licence, ICU or ventilator experience"
-  },
-  "hospital-coordinator-siriraks-health+cv-08": {
-    "label": "maybe",
-    "reason": "2+ yrs hospital admin fits, but has diploma not bachelor and basic English"
-  },
-  "medical-records-officer-thaiwattana-hospital+cv-07": {
-    "label": "no",
-    "reason": "RN with no records/admin experience; different work"
-  },
-  "patient-coordinator-front-desk-mettapat-hospital+cv-07": {
-    "label": "no",
-    "reason": "RN with no reception/admin experience; different work"
-  },
-  "hospital-admin-supervisor-bangkok-wellness+cv-07": {
-    "label": "no",
-    "reason": "No hospital admin or supervisor/budget experience"
-  },
-  "registered-nurse-surgical-ward-chaiyaphum-hospital+cv-07": {
-    "label": "maybe",
-    "reason": "Licence, degree, BLS present but medical ward, no post-op surgical experience"
-  },
-  "operations-manager-pacific-packaging-works+cv-10": {
-    "label": "no",
-    "reason": "3 yrs stock officer vs 7+ yrs leading 20+, no Lean"
-  },
-  "supply-chain-manager-asean-consumer-brands+cv-10": {
-    "label": "no",
-    "reason": "3 yrs officer vs 8+ yrs with team of 10+"
-  },
-  "director-of-operations-sakura-industrial-group+cv-10": {
-    "label": "no",
-    "reason": "3 yrs officer vs 12+ yrs site head with P&L"
-  },
-  "procurement-manager-siam-steel-works+cv-10": {
-    "label": "no",
-    "reason": "No procurement experience; officer vs 7+ yr manager"
-  },
-  "stock-control-officer-eksakul-trading+cv-09": {
-    "label": "maybe",
-    "reason": "Has inventory and cycle-count experience but ops manager far above officer level"
-  },
-  "logistics-coordinator-sriracha-express+cv-09": {
-    "label": "no",
-    "reason": "Plant ops manager; no daily dispatch/route planning, level far off"
-  },
-  "supply-chain-planner-panthong-consumer+cv-09": {
-    "label": "maybe",
-    "reason": "Inventory/production planning and SAP but manager overqualified; demand forecasting not explicit"
-  },
-  "purchasing-officer-thaiprasert-furniture+cv-09": {
-    "label": "maybe",
-    "reason": "Supplier negotiation but no full-time purchasing experience; overqualified"
-  }
+ "senior-backend-engineer-meridian-cloud+cv-02": {
+  "label": "no",
+  "reason": "1.5 yrs junior data analyst vs 6+ yrs senior backend; no Docker/AWS"
+ },
+ "backend-engineer-python-harbor-logistics+cv-02": {
+  "label": "no",
+  "reason": "1.5 yrs data analyst vs 5+ yrs backend; no Docker/AWS/CI-CD"
+ },
+ "staff-platform-engineer-northwind-systems+cv-02": {
+  "label": "no",
+  "reason": "1.5 yrs vs 10+ yrs staff level; no Kubernetes/Terraform/AWS"
+ },
+ "data-engineer-orchid-analytics+cv-02": {
+  "label": "no",
+  "reason": "1.5 yrs vs 4+ yrs; no Spark or AWS pipeline experience"
+ },
+ "junior-data-analyst-thongdee-retail+cv-01": {
+  "label": "no",
+  "reason": "Senior backend engineer; junior analyst role, no Power BI dashboards"
+ },
+ "junior-data-engineer-krungthep-data+cv-01": {
+  "label": "maybe",
+  "reason": "Has Python/SQL/PostgreSQL but senior backend, not data work; level far below"
+ },
+ "data-engineer-mid-siamflow+cv-01": {
+  "label": "maybe",
+  "reason": "Python, SQL, Docker, PostgreSQL, AWS present but no data pipeline experience"
+ },
+ "senior-ml-engineer-vision-labs+cv-01": {
+  "label": "no",
+  "reason": "No ML, TensorFlow, computer vision or master's degree"
+ },
+ "digital-marketing-specialist-lumiere-beauty+cv-04": {
+  "label": "no",
+  "reason": "1 yr social media vs 3-5 yrs; no paid ads or SEO"
+ },
+ "performance-marketing-executive-kinnaree-online+cv-04": {
+  "label": "no",
+  "reason": "No paid ads experience vs 3+ yrs Facebook/Google Ads required"
+ },
+ "marketing-manager-chaophraya-foods+cv-04": {
+  "label": "no",
+  "reason": "1 yr junior vs 7+ yrs with 2 yrs team lead"
+ },
+ "content-creator-video-pladao-media+cv-04": {
+  "label": "maybe",
+  "reason": "Content/social background but no Premiere Pro video editing; 1 yr vs 2+"
+ },
+ "junior-social-media-executive-palm-coast-travel+cv-03": {
+  "label": "maybe",
+  "reason": "Has skills but 4 yrs vs 0-2 junior level; English only fair"
+ },
+ "marketing-assistant-blue-lagoon-spa+cv-03": {
+  "label": "maybe",
+  "reason": "Overqualified (4 yrs vs up to 2); English writing only fair"
+ },
+ "digital-marketing-executive-island-gear+cv-03": {
+  "label": "maybe",
+  "reason": "4 yrs SEO, GA, social, email fits, but English fair not fluent"
+ },
+ "accountant-baanmai-property+cv-06": {
+  "label": "maybe",
+  "reason": "Accounting degree but FP&A manager; no tax filing, far overqualified"
+ },
+ "tax-accountant-rungruang-trading+cv-06": {
+  "label": "no",
+  "reason": "FP&A leader; no hands-on PND/PP30 tax filing, role far below level"
+ },
+ "accounting-supervisor-thaisiri-manufacturing+cv-06": {
+  "label": "maybe",
+  "reason": "10 yrs, leads 3, but finance/FP&A not accounting close; tax knowledge not shown"
+ },
+ "finance-executive-andaman-energy+cv-06": {
+  "label": "maybe",
+  "reason": "Meets all must-haves but senior manager vs executive level"
+ },
+ "certified-auditor-wattana-audit+cv-06": {
+  "label": "no",
+  "reason": "No CPA licence, required"
+ },
+ "senior-financial-analyst-fpa-grandview-group+cv-05": {
+  "label": "no",
+  "reason": "Accountant; no FP&A, Power BI, 6+ yrs analysis or English presenting"
+ },
+ "finance-manager-ratchada-industries+cv-05": {
+  "label": "no",
+  "reason": "5 yrs accountant, no team lead vs 8+ yrs with 3+ leading"
+ },
+ "finance-director-bangkok-health-group+cv-05": {
+  "label": "no",
+  "reason": "5 yrs vs 15+ yrs director with IPO and team 20+"
+ },
+ "registered-nurse-internal-medicine-ward-ruamjai-hospital+cv-08": {
+  "label": "no",
+  "reason": "Not a nurse; no licence or nursing degree"
+ },
+ "registered-nurse-opd-clinic-samakkhi-clinic+cv-08": {
+  "label": "no",
+  "reason": "Not a nurse; no nursing licence"
+ },
+ "registered-nurse-icu-bangkok-central-hospital+cv-08": {
+  "label": "no",
+  "reason": "Not a nurse; no licence, ICU or ventilator experience"
+ },
+ "hospital-coordinator-siriraks-health+cv-08": {
+  "label": "maybe",
+  "reason": "2+ yrs hospital admin fits, but has diploma not bachelor and basic English"
+ },
+ "medical-records-officer-thaiwattana-hospital+cv-07": {
+  "label": "no",
+  "reason": "RN with no records/admin experience; different work"
+ },
+ "patient-coordinator-front-desk-mettapat-hospital+cv-07": {
+  "label": "no",
+  "reason": "RN with no reception/admin experience; different work"
+ },
+ "hospital-admin-supervisor-bangkok-wellness+cv-07": {
+  "label": "no",
+  "reason": "No hospital admin or supervisor/budget experience"
+ },
+ "registered-nurse-surgical-ward-chaiyaphum-hospital+cv-07": {
+  "label": "maybe",
+  "reason": "Licence, degree, BLS present but medical ward, no post-op surgical experience"
+ },
+ "operations-manager-pacific-packaging-works+cv-10": {
+  "label": "no",
+  "reason": "3 yrs stock officer vs 7+ yrs leading 20+, no Lean"
+ },
+ "supply-chain-manager-asean-consumer-brands+cv-10": {
+  "label": "no",
+  "reason": "3 yrs officer vs 8+ yrs with team of 10+"
+ },
+ "director-of-operations-sakura-industrial-group+cv-10": {
+  "label": "no",
+  "reason": "3 yrs officer vs 12+ yrs site head with P&L"
+ },
+ "procurement-manager-siam-steel-works+cv-10": {
+  "label": "no",
+  "reason": "No procurement experience; officer vs 7+ yr manager"
+ },
+ "stock-control-officer-eksakul-trading+cv-09": {
+  "label": "maybe",
+  "reason": "Has inventory and cycle-count experience but ops manager far above officer level"
+ },
+ "logistics-coordinator-sriracha-express+cv-09": {
+  "label": "no",
+  "reason": "Plant ops manager; no daily dispatch/route planning, level far off"
+ },
+ "supply-chain-planner-panthong-consumer+cv-09": {
+  "label": "maybe",
+  "reason": "Inventory/production planning and SAP but manager overqualified; demand forecasting not explicit"
+ },
+ "purchasing-officer-thaiprasert-furniture+cv-09": {
+  "label": "maybe",
+  "reason": "Supplier negotiation but no full-time purchasing experience; overqualified"
+ },
+ "staff-accountant-greenfield-trading+cv-05": {
+  "label": "good",
+  "reason": "5y accountant, AP/AR/GL, VAT/WHT filing, QuickBooks, audit prep: all must-haves"
+ },
+ "staff-accountant-greenfield-trading+cv-06": {
+  "label": "maybe",
+  "reason": "10y FP&A finance manager with B.Acc; overqualified, no explicit GL/AP/tax filing"
+ },
+ "registered-nurse-ward-sunrise-hospital+cv-07": {
+  "label": "good",
+  "reason": "6y medical ward RN, valid licence, BLS+ACLS, rotating shifts"
+ },
+ "registered-nurse-ward-sunrise-hospital+cv-08": {
+  "label": "no",
+  "reason": "Medical records clerk, no nursing licence or degree"
+ },
+ "warehouse-officer-baanrak-distribution+cv-09": {
+  "label": "no",
+  "reason": "Plant operations manager far above a daily-wage warehouse officer role"
+ },
+ "warehouse-officer-baanrak-distribution+cv-10": {
+  "label": "good",
+  "reason": "3y warehouse/stock control, WMS/ERP, forklift certificate"
+ },
+ "accountant-sathorn-engineering+cv-05": {
+  "label": "good",
+  "reason": "5y full-cycle accountant, PND/PP30 filing, Excel, accounting software"
+ },
+ "accountant-sathorn-engineering+cv-06": {
+  "label": "maybe",
+  "reason": "Senior FP&A manager, overqualified, no explicit full-cycle bookkeeping or tax filing"
+ },
+ "backend-developer-java-nimman-tech+cv-01": {
+  "label": "maybe",
+  "reason": "Strong backend 8y but Python stack, no Java/Spring Boot must-have"
+ },
+ "backend-developer-java-nimman-tech+cv-02": {
+  "label": "no",
+  "reason": "1.5y data analyst, no Java, Spring or REST API work"
+ },
+ "senior-backend-engineer-coral-fintech+cv-01": {
+  "label": "good",
+  "reason": "8y backend, Python, SQL, AWS, Docker, microservices, testing, payments"
+ },
+ "senior-backend-engineer-coral-fintech+cv-02": {
+  "label": "no",
+  "reason": "1.5y junior analyst vs 8+ years senior backend required"
+ },
+ "warehouse-supervisor-eastgate-distribution+cv-09": {
+  "label": "maybe",
+  "reason": "Ops manager with warehouse and team leadership, above level; forklift not stated"
+ },
+ "warehouse-supervisor-eastgate-distribution+cv-10": {
+  "label": "maybe",
+  "reason": "3y vs 4+ years, no supervising experience of 10+ team"
+ },
+ "frontend-developer-react-pakchong-digital+cv-01": {
+  "label": "maybe",
+  "reason": "Senior backend dev, no React/JavaScript/CSS frontend experience"
+ },
+ "frontend-developer-react-pakchong-digital+cv-02": {
+  "label": "no",
+  "reason": "Data analyst, no React/JavaScript/TypeScript, under 2 years"
+ },
+ "staff-nurse-icu-riverside-medical-centre+cv-07": {
+  "label": "maybe",
+  "reason": "Licensed RN with ACLS but no ICU experience vs 3+ years ICU required"
+ },
+ "staff-nurse-icu-riverside-medical-centre+cv-08": {
+  "label": "no",
+  "reason": "Hospital admin clerk, no nursing licence or ICU experience"
+ },
+ "junior-social-media-executive-lotus-cosmetics+cv-03": {
+  "label": "maybe",
+  "reason": "4+y digital marketing exec overqualified for up-to-1-year junior role"
+ },
+ "junior-social-media-executive-lotus-cosmetics+cv-04": {
+  "label": "good",
+  "reason": "1y social media content, Instagram/TikTok, Canva, Excel reporting"
+ },
+ "software-developer-python-siam-digital-works+cv-01": {
+  "label": "good",
+  "reason": "8y Python/FastAPI, SQL, REST API, Git, tests, Docker/AWS"
+ },
+ "software-developer-python-siam-digital-works+cv-02": {
+  "label": "maybe",
+  "reason": "Python/SQL/Git but 1.5y analyst, no REST API design or automated tests"
+ },
+ "marketing-executive-siam-snack+cv-03": {
+  "label": "good",
+  "reason": "4+y online marketing, Facebook Ads, page management, Canva, SEO/GA"
+ },
+ "marketing-executive-siam-snack+cv-04": {
+  "label": "maybe",
+  "reason": "1y vs 2+ years, no paid ads experience (Facebook Ads required)"
+ },
+ "full-stack-developer-chiangmai-apps+cv-01": {
+  "label": "maybe",
+  "reason": "Strong backend but no React/Node.js JavaScript experience"
+ },
+ "full-stack-developer-chiangmai-apps+cv-02": {
+  "label": "no",
+  "reason": "1.5y analyst, no React, Node.js or API design vs 3+ years"
+ },
+ "staff-nurse-medical-ward-lakeview-hospital+cv-07": {
+  "label": "good",
+  "reason": "6y medical ward RN, valid licence, BLS, rotating shifts"
+ },
+ "staff-nurse-medical-ward-lakeview-hospital+cv-08": {
+  "label": "no",
+  "reason": "Medical records clerk, no nursing licence or degree"
+ },
+ "data-scientist-bluewave-analytics+cv-01": {
+  "label": "no",
+  "reason": "Backend engineer, no Machine Learning or Pandas modelling work"
+ },
+ "data-scientist-bluewave-analytics+cv-02": {
+  "label": "maybe",
+  "reason": "Stats grad with Python/Pandas/SQL but 1.5y vs 3+, no ML"
+ },
+ "accounting-assistant-sinsuk-trading+cv-05": {
+  "label": "maybe",
+  "reason": "5y full accountant, one level above 1y assistant accountant role"
+ },
+ "accounting-assistant-sinsuk-trading+cv-06": {
+  "label": "no",
+  "reason": "Senior finance manager 10y far above assistant accountant level"
+ }
 }
