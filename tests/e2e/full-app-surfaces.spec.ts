@@ -127,7 +127,16 @@ test('landing demo is labelled illustrative and states what the app will not do'
   await useAccessFixture(page, true);
   await page.goto('/');
   await expect(page.getByText('Illustrative demo · Sample data').first()).toBeVisible();
-  await expect(page.getByText('Compared: Data Analyst CV (v4) with this job')).toBeVisible();
+  const demo = page.getByRole('region', { name: 'Illustrative demo · Sample data' });
+  await expect(demo.getByRole('heading', { name: 'Senior Data Analyst' })).toBeVisible();
+  await expect(demo.getByText('Step 3 of 5')).toBeVisible();
+  const steps = demo.getByRole('list', { name: 'Journey of this job' }).getByRole('listitem');
+  await expect(steps).toHaveCount(5);
+  await expect(steps.nth(2)).toContainText('AI fit 4.2 / 5');
+  await expect(steps.nth(2)).toContainText('Skills found: 8 of 11, counted from keywords, no AI');
+  await expect(steps.nth(3)).toHaveAttribute('aria-current', 'step');
+  await expect(steps.nth(3)).toContainText('Waiting for you to review the CV changes');
+  await expect(steps.nth(4)).toContainText('You apply yourself');
   await expect(page.getByText('You need a CV file (PDF, DOCX or text).')).toBeVisible();
   await expect(page.getByText('AI features need a configured AI provider.')).toBeVisible();
   await expect(page.getByText('No automatic submission.')).toBeVisible();

@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { AlertTriangle, Bell, Check, Clock, Download, FileText, Search } from 'lucide-react';
+import type { CSSProperties, ReactNode } from 'react';
+import { AlertTriangle, Bell, Check, ClipboardList, Clock, Download, FileText, FileUser, Search, Sparkles } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { FitScore } from '../../components/FitScore';
 import { SkillCoverage } from '../../components/SkillCoverage';
@@ -128,30 +128,44 @@ export function StepPanel({ index }: { index: number }) {
   </Shell>;
 }
 
-/** Hero card in plain words. Illustrative: nothing here is read from an account. */
+const stageIcon = { cv: FileUser, search: Search, evaluate: Sparkles, docs: FileText, track: ClipboardList } as const;
+
+/** Hero card: one job's journey through the app's five stages. Illustrative: nothing here is read from an account. */
 export function DemoCard() {
   const { locale } = useLocale();
   const d = landingCopy[locale].demo;
-  return <section aria-label={d.label} className="grid min-w-0 gap-4 rounded-xl border bg-card p-4 sm:p-6">
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <Badge variant="outline">{d.label}</Badge>
+  return <section aria-label={d.label} className="grid min-w-0 gap-5 rounded-xl border bg-card p-5 shadow-sm sm:p-6">
+    <Badge variant="outline" className="w-fit">{d.label}</Badge>
+    <div className="grid gap-1">
+      <h2 className="text-2xl font-semibold leading-snug not-italic">{d.title}</h2>
+      <p className="text-sm text-muted-foreground">{d.company}</p>
     </div>
-    <div className="grid gap-1 border-b pb-4">
-      <h2 className="text-lg font-semibold leading-snug not-italic">{d.title}</h2>
-      <p className="text-sm text-muted-foreground">{d.job}</p>
-    </div>
-    <div className="grid gap-4 sm:grid-cols-2">
-      <div className="grid content-start gap-1 rounded-lg border bg-background/60 p-3">
-        <span className="text-sm text-muted-foreground">{d.fit}</span>
-        <FitScore score={4.2} size="lg" locale={locale} />
-        <span className="text-sm text-muted-foreground">{d.fitNote}</span>
-      </div>
-      <div className="grid content-start gap-1 rounded-lg border bg-background/60 p-3">
-        <span className="text-sm text-muted-foreground">{d.skills}</span>
-        <span className="text-3xl font-semibold tabular-nums">{d.skillsValue}</span>
-        <span className="text-sm text-muted-foreground">{d.skillsNote}</span>
+    <div className="grid gap-2">
+      <span className="text-sm font-medium tabular-nums text-success">{d.progress}</span>
+      <div aria-hidden="true" className="grid grid-cols-5 gap-1.5">
+        {d.steps.map(step => <span key={step.stage} className="h-2 rounded-full" style={{ background: step.state === 'next' ? 'var(--muted)' : `var(--stage-${step.stage})`, opacity: step.state === 'current' ? 0.55 : 1 }} />)}
       </div>
     </div>
-    <p className="flex items-center gap-2 rounded-lg bg-warning/15 px-3 py-2 text-sm font-medium text-warning"><Clock className="size-4 shrink-0" aria-hidden="true" />{d.waiting}</p>
+    <ol aria-label={d.list} className="grid">
+      {d.steps.map((step, index) => {
+        const Icon = stageIcon[step.stage as keyof typeof stageIcon];
+        const last = index === d.steps.length - 1;
+        return <li key={step.stage} data-stage={step.stage} aria-current={step.state === 'current' ? 'step' : undefined} className="relative grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3">
+          {!last && <span aria-hidden="true" className={cn('absolute left-[1.0625rem] top-9 h-[calc(100%-1.75rem)] w-0.5 rounded-full', step.state === 'done' ? 'opacity-40' : 'bg-border')} style={step.state === 'done' ? { background: `var(--stage-${step.stage})` } : undefined} />}
+          <span style={step.state === 'current' ? { '--tw-ring-color': `var(--stage-${step.stage})` } as CSSProperties : undefined} className={cn('stage-tile !size-9 !rounded-full', step.state === 'current' && 'ring-2 ring-offset-2 ring-offset-card', step.state === 'next' && 'opacity-50')} data-stage={step.stage} data-active={step.state !== 'next'}>
+            {step.state === 'done' ? <Check className="size-4" aria-hidden="true" /> : <Icon className="size-4" aria-hidden="true" />}
+          </span>
+          <div className={cn('grid min-w-0 gap-0.5 pb-5', last && 'pb-0')}>
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium leading-snug">
+              <span>{step.title}</span>{' '}
+              {step.stage === 'evaluate' && <Badge variant="success" className="tabular-nums">{d.score}</Badge>}
+            </p>
+            <p className={cn('text-sm leading-relaxed [overflow-wrap:anywhere]', step.state === 'current' ? 'flex items-center gap-1.5 font-medium text-warning' : 'text-muted-foreground')}>
+              {step.state === 'current' && <Clock className="size-4 shrink-0" aria-hidden="true" />}{step.note}
+            </p>
+          </div>
+        </li>;
+      })}
+    </ol>
   </section>;
 }
