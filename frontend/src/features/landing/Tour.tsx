@@ -5,7 +5,7 @@ import { landingCopy } from './copy';
 import { featureSlugs } from './featurePages';
 import { StepPanel } from './LandingPreview';
 
-/** A compact five-step product tour using the standard, keyboard-operable tabs pattern. */
+/** A compact nine-step product tour using the standard, keyboard-operable tabs pattern. */
 export function Tour() {
   const { locale } = useLocale();
   const c = landingCopy[locale];
@@ -14,7 +14,7 @@ export function Tour() {
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
       <h2 id="how-title" className="mb-6 text-2xl font-semibold not-italic sm:mb-8 sm:text-3xl">{c.tourTitle}</h2>
       <Tabs defaultValue="0" className="min-w-0">
-        <TabsList aria-label={c.tourLabel} className="grid h-auto w-full grid-cols-2 gap-1 bg-muted p-1 sm:grid-cols-5">
+        <TabsList aria-label={c.tourLabel} className="grid h-auto w-full grid-cols-2 gap-1 rounded-2xl bg-muted p-1 xl:rounded-full sm:grid-cols-3 xl:grid-cols-9">
           {c.steps.map((step, index) => <TabsTrigger key={step.tab} value={String(index)} className="min-h-10 min-w-0 px-2 text-xs leading-snug sm:px-3 sm:text-sm">{step.tab}</TabsTrigger>)}
         </TabsList>
         {c.steps.map((step, index) => <TabsContent key={step.tab} value={String(index)} className="mt-4 rounded-xl border bg-card p-4 sm:mt-5 sm:p-6">

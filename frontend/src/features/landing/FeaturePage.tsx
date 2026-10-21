@@ -70,7 +70,7 @@ export function FeaturePage() {
 
       <section aria-labelledby="more-title" className="grid gap-4">
         <h2 id="more-title" className="text-lg font-semibold">{u.others}</h2>
-        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <ul className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {featureSlugs.map((s, i) => <li key={s}><Link to={`/features/${s}`} aria-current={i === index ? 'page' : undefined} className="block min-h-11 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent aria-[current=page]:border-primary aria-[current=page]:bg-accent">{c.steps[i].tab}</Link></li>)}
         </ul>
         <div className="flex flex-wrap justify-between gap-3">
