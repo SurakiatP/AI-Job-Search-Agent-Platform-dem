@@ -71,6 +71,7 @@ const th = {
     submitNote: 'ไม่ส่งแทนคุณ',
   },
   agent: {
+    flow: 'ขั้นตอนเมื่อ agent ภายนอกขออนุมัติ',
     title: 'เชื่อมกับ agent ภายนอกได้',
     body: 'เปิดให้ผู้ช่วย AI ของคุณทำงานแทนในขอบเขตที่คุณกำหนดและเพิกถอนได้ งานเสี่ยงต้องรอคุณอนุมัติ ปิดไว้เป็นค่าเริ่มต้น',
     token: 'my-agent',
@@ -159,6 +160,7 @@ const en: typeof th = {
     submitNote: 'Never done for you',
   },
   agent: {
+    flow: 'How an outside agent asks',
     title: 'Connects to outside agents',
     body: 'Let your own AI assistant work for you within limits you set and can revoke. Risky actions wait for your approval. Off by default.',
     token: 'my-agent',

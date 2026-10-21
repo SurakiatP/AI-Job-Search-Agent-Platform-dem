@@ -1,9 +1,10 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
-import { Info } from 'lucide-react';
+import { Info, Plug, ShieldCheck } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { useOwnerSession } from '../../lib/api';
 import { Header } from '../../components/Header';
+import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { landingCopy } from './copy';
 import { DemoCard } from './LandingPreview';
@@ -36,7 +37,7 @@ export function LandingPage() {
       {status !== 'ready' && status !== 'loading' && <Button asChild size="sm" variant="ghost" className="hidden sm:inline-flex"><Link to="/login">{c.login}</Link></Button>}
       {cta('sm')}
     </>} />
-    <main className="grid gap-16 pb-12 sm:gap-20 sm:pb-16">
+    <main className="grid grid-cols-[minmax(0,1fr)] gap-16 pb-12 sm:gap-20 sm:pb-16">
       <section className={`${wrap} grid items-center gap-10 pt-10 sm:pt-14 lg:grid-cols-2 lg:gap-12 lg:pt-16`}>
         <div className="grid content-start justify-items-start gap-5">
           <h1 className="landing-headline max-w-2xl not-italic [text-wrap:balance]">
@@ -66,25 +67,45 @@ export function LandingPage() {
 
       <Tour />
 
-      <section id="data" className={`${wrap} grid scroll-mt-16 gap-7`} aria-labelledby="diff-title">
-        <h2 id="diff-title" className="text-2xl font-semibold not-italic sm:text-3xl">{c.diffTitle}</h2>
-        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-          <section className="grid content-start gap-4" aria-labelledby="local-title">
-            <h3 id="local-title" className="text-xl font-semibold not-italic">{c.local.title}</h3>
-            <p className="max-w-prose leading-relaxed text-muted-foreground">{c.local.body}</p>
-            <ul className="grid gap-2 text-sm">
-              {c.local.rows.map(row => <li key={row} className="border-t pt-2">{row}</li>)}
-              <li className="border-t pt-2"><span className="font-medium">{c.local.submit}</span><span className="text-muted-foreground"> · {c.local.submitNote}</span></li>
+      <section id="data" className={`${wrap} grid scroll-mt-16 gap-8`} aria-labelledby="diff-title">
+        <h2 id="diff-title" className="max-w-2xl text-2xl font-semibold not-italic sm:text-3xl">{c.diffTitle}</h2>
+        <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
+          <section aria-labelledby="local-title" className="grid content-start gap-5 rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
+            <span aria-hidden="true" className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground"><ShieldCheck className="size-5" /></span>
+            <div className="grid gap-2">
+              <h3 id="local-title" className="text-xl font-semibold not-italic sm:text-2xl">{c.local.title}</h3>
+              <p className="max-w-prose text-base leading-relaxed text-muted-foreground">{c.local.body}</p>
+            </div>
+            <ul className="grid gap-3 border-t pt-5 text-base">
+              {[...c.local.rows, `${c.local.submit} · ${c.local.submitNote}`].map(row => <li key={row} className="flex items-start gap-3">
+                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3.5" /></span>{row}
+              </li>)}
             </ul>
           </section>
-          <section className="grid content-start gap-4 border-t pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8" aria-labelledby="agent-title">
-            <h3 id="agent-title" className="text-xl font-semibold not-italic">{c.agent.title}</h3>
-            <p className="max-w-prose leading-relaxed text-muted-foreground">{c.agent.body}</p>
-            <ul className="grid gap-2 text-sm">
-              <li className="border-t pt-2"><span className="font-medium">{c.agent.token}</span><span className="text-muted-foreground"> · {c.agent.scopes}</span></li>
-              <li className="border-t pt-2">{c.agent.request}</li>
-              <li className="border-t pt-2">{c.agent.approve} / {c.agent.reject}</li>
-            </ul>
+          <section aria-labelledby="agent-title" className="grid content-start gap-5 rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
+            <span aria-hidden="true" className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground"><Plug className="size-5" /></span>
+            <div className="grid gap-2">
+              <h3 id="agent-title" className="text-xl font-semibold not-italic sm:text-2xl">{c.agent.title}</h3>
+              <p className="max-w-prose text-base leading-relaxed text-muted-foreground">{c.agent.body}</p>
+            </div>
+            <div className="grid gap-3 border-t pt-5">
+              <Badge variant="outline" className="w-fit">{c.panel.sample}</Badge>
+              <ol aria-label={c.agent.flow} className="grid gap-3">
+                <li className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/60 px-4 py-3 text-sm">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground" aria-hidden="true">1</span>
+                  <span className="font-medium">{c.agent.token}</span><span className="text-muted-foreground">· {c.agent.scopes}</span>
+                </li>
+                <li className="flex items-center gap-2 rounded-xl bg-warning/12 px-4 py-3 text-sm font-medium text-warning">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-warning/20 text-xs font-semibold" aria-hidden="true">2</span>
+                  {c.agent.request}
+                </li>
+                <li className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/60 px-4 py-3 text-sm">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground" aria-hidden="true">3</span>
+                  <span className="rounded-full bg-primary px-3 py-1 font-medium text-primary-foreground">{c.agent.approve}</span>
+                  <span className="rounded-full border bg-card px-3 py-1 font-medium">{c.agent.reject}</span>
+                </li>
+              </ol>
+            </div>
           </section>
         </div>
       </section>

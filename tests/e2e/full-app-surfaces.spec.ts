@@ -83,18 +83,41 @@ test('projects offer an explicit workspace continuation', async ({ page }) => {
   await expect(page).toHaveURL(`/app/projects/${projectId}/overview`);
 });
 
-test('landing tour is compact and remains keyboard navigable', async ({ page }) => {
+test('landing tour strip follows the page scroll, stays in view, and its links jump to the step', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useAccessFixture(page, true);
-  await page.setViewportSize({ width: 1440, height: 1000 });
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    const strip = page.getByRole('navigation', { name: 'Steps' });
+    const links = strip.getByRole('link');
+    await expect(links).toHaveCount(9);
+    const steps = page.locator('#how article');
+    await expect(steps).toHaveCount(9);
+    for (const index of [0, 3, 6, 8]) {
+      await steps.nth(index).evaluate(el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - innerHeight * 0.3));
+      await expect(links.nth(index), `step ${index + 1} at ${viewport.width}px`).toHaveAttribute('aria-current', 'step');
+      if (index > 0) expect((await strip.boundingBox())!.y, 'strip stays pinned under the header').toBeLessThan(110);
+    }
+    await links.nth(4).click();
+    await expect(links.nth(4)).toHaveAttribute('aria-current', 'step');
+    await expect.poll(async () => Math.round((await steps.nth(4).boundingBox())!.y)).toBeLessThan(260);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    // clipping can hide a too-wide layout from scrollWidth, so measure the content itself (the strip scrolls sideways on purpose)
+    expect(await page.evaluate(() => [...document.querySelectorAll('main *')].filter(el => el.getBoundingClientRect().right > innerWidth + 1 && !el.closest('#how ul')).length), `content wider than the ${viewport.width}px screen`).toBe(0);
+  }
+});
+
+test('landing data section: two readable cards with ticks and a three-part approval flow', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useAccessFixture(page, true);
   await page.goto('/');
-  const tour = page.locator('#how');
-  expect((await tour.boundingBox())!.height).toBeLessThan(1200);
-  const first = tour.getByRole('tab').first();
-  await first.focus();
-  await page.keyboard.press('ArrowRight');
-  await expect(tour.getByRole('tab').nth(1)).toBeFocused();
-  await expect(tour.getByRole('tab').nth(1)).toHaveAttribute('aria-selected', 'true');
+  const mine = page.getByRole('region', { name: 'Your workspace and AI' });
+  await expect(mine.locator('svg.landing-tick')).toHaveCount(4);
+  const flow = page.getByRole('list', { name: 'How an outside agent asks' });
+  await expect(flow.getByRole('listitem')).toHaveCount(3);
+  await expect(flow.getByRole('listitem').nth(2)).toContainText('Approve');
+  await expect(flow.getByRole('listitem').nth(2)).toContainText('Reject');
 });
 const featureTabs = {
   en: ['Add CV', 'Build CV', 'Search', 'Evaluate', 'Interview practice', 'Draft', 'Track', 'Job alerts', 'Connect'],
@@ -108,10 +131,11 @@ for (const locale of ['en', 'th'] as const) {
     await useAccessFixture(page, true);
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto('/');
-    const tabs = page.locator('#how').getByRole('tab');
+    const tabs = page.locator('#how').getByRole('navigation').getByRole('link');
     await expect(tabs).toHaveText(featureTabs[locale]);
     await tabs.nth(4).click();
-    await expect(page.locator('#how').getByRole('tabpanel')).toContainText(locale === 'en' ? 'Practise for the interview' : 'ซ้อมสัมภาษณ์');
+    await expect(page.locator('#how article').nth(4)).toContainText(locale === 'en' ? 'Practise for the interview' : 'ซ้อมสัมภาษณ์');
+    await expect(tabs.nth(4)).toHaveAttribute('aria-current', 'step');
     for (const slug of featureSlugs) {
       await page.goto(`/features/${slug}`);
       await expect(page).toHaveURL(`/features/${slug}`);
