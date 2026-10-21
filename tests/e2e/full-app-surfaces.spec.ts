@@ -83,29 +83,72 @@ test('projects offer an explicit workspace continuation', async ({ page }) => {
   await expect(page).toHaveURL(`/app/projects/${projectId}/overview`);
 });
 
-test('landing tour strip follows the page scroll, stays in view, and its links jump to the step', async ({ page }) => {
+test('landing tour on a wide screen: scrolling down slides the steps sideways, the strip follows, links jump', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useAccessFixture(page, true);
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
-    await page.setViewportSize(viewport);
-    await page.goto('/');
-    const strip = page.getByRole('navigation', { name: 'Steps' });
-    const links = strip.getByRole('link');
-    await expect(links).toHaveCount(9);
-    const steps = page.locator('#how article');
-    await expect(steps).toHaveCount(9);
-    for (const index of [0, 3, 6, 8]) {
-      await steps.nth(index).evaluate(el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - innerHeight * 0.3));
-      await expect(links.nth(index), `step ${index + 1} at ${viewport.width}px`).toHaveAttribute('aria-current', 'step');
-      if (index > 0) expect((await strip.boundingBox())!.y, 'strip stays pinned under the header').toBeLessThan(110);
-    }
-    await links.nth(4).click();
-    await expect(links.nth(4)).toHaveAttribute('aria-current', 'step');
-    await expect.poll(async () => Math.round((await steps.nth(4).boundingBox())!.y)).toBeLessThan(260);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    // clipping can hide a too-wide layout from scrollWidth, so measure the content itself (the strip scrolls sideways on purpose)
-    expect(await page.evaluate(() => [...document.querySelectorAll('main *')].filter(el => el.getBoundingClientRect().right > innerWidth + 1 && !el.closest('#how ul')).length), `content wider than the ${viewport.width}px screen`).toBe(0);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const strip = page.getByRole('navigation', { name: 'Steps' });
+  const links = strip.getByRole('link');
+  const steps = page.locator('#how article');
+  await expect(links).toHaveCount(9);
+  await expect(steps).toHaveCount(9);
+  const outer = page.locator('#how-scroll');
+  const scrollToProgress = (p: number) => outer.evaluate((el, value) => {
+    const stage = el.firstElementChild as HTMLElement;
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - stage.getBoundingClientRect().height * 0 - 57.6 + value * (el.offsetHeight - stage.offsetHeight));
+  }, p);
+  await scrollToProgress(0);
+  await expect(links.first()).toHaveAttribute('aria-current', 'step');
+  const x0 = (await steps.nth(1).boundingBox())!.x;
+  expect(x0, 'the next step waits at the right').toBeGreaterThan(900);
+  await scrollToProgress(0.5);
+  await expect(links.nth(4)).toHaveAttribute('aria-current', 'step');
+  const x1 = (await steps.nth(1).boundingBox())!.x;
+  expect(x1, 'scrolling down moved step 2 to the left').toBeLessThan(x0 - 600);
+  expect((await steps.nth(4).boundingBox())!.x, 'step 5 is in the middle of the stage').toBeLessThan(300);
+  await scrollToProgress(1);
+  await expect(links.nth(8)).toHaveAttribute('aria-current', 'step');
+  for (const index of [0, 8]) expect((await strip.boundingBox())!.y, 'strip stays under the header').toBeLessThan(120);
+  await links.nth(2).click();
+  await expect(links.nth(2)).toHaveAttribute('aria-current', 'step');
+  await expect.poll(async () => Math.round((await steps.nth(2).boundingBox())!.x)).toBeLessThan(300);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('landing tour on a phone: steps stack, the sticky strip follows the scroll and its links jump to the step', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useAccessFixture(page, true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const strip = page.getByRole('navigation', { name: 'Steps' });
+  const links = strip.getByRole('link');
+  const steps = page.locator('#how article');
+  await expect(links).toHaveCount(9);
+  await expect(steps).toHaveCount(9);
+  for (const index of [0, 3, 6, 8]) {
+    await steps.nth(index).evaluate(el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - innerHeight * 0.3));
+    await expect(links.nth(index), `step ${index + 1}`).toHaveAttribute('aria-current', 'step');
+    if (index > 0) expect((await strip.boundingBox())!.y, 'strip stays pinned under the header').toBeLessThan(110);
   }
+  await links.nth(4).click();
+  await expect(links.nth(4)).toHaveAttribute('aria-current', 'step');
+  expect(await page.evaluate(() => [...document.querySelectorAll('main *')].filter(el => el.getBoundingClientRect().right > innerWidth + 1 && !el.closest('#how ul')).length), 'content wider than the screen').toBe(0);
+});
+
+test('landing tour with reduced motion does not hijack the scroll: steps stack on a wide screen too', async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useAccessFixture(page, true);
+  await page.goto('/');
+  await expect(page.locator('#how-scroll')).toHaveCount(0);
+  const steps = page.locator('#how article');
+  await expect(steps).toHaveCount(9);
+  const first = (await steps.nth(0).boundingBox())!, second = (await steps.nth(1).boundingBox())!;
+  expect(Math.abs(first.x - second.x)).toBeLessThan(2);
+  expect(second.y).toBeGreaterThan(first.y + first.height - 1);
+  await context.close();
 });
 
 test('landing data section: two readable cards with ticks and a three-part approval flow', async ({ page }) => {
