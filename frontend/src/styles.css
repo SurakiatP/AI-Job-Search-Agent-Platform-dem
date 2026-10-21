@@ -155,6 +155,7 @@ main[data-stage='search'] { --stage: var(--stage-search); }
 main[data-stage='evaluate'] { --stage: var(--stage-evaluate); }
 main[data-stage='docs'] { --stage: var(--stage-docs); }
 main[data-stage='track'] { --stage: var(--stage-track); }
+main[data-stage='brand'] { --stage: var(--primary); }
 main[data-stage] h1::before { content: ''; display: block; width: 36px; height: 4px; margin-bottom: 10px; border-radius: 9999px; background: var(--stage); }
 /* Indeterminate bar for long jobs without a percentage. */
 .busy-bar { position: relative; height: 4px; overflow: hidden; border-radius: 9999px; background: color-mix(in oklch, var(--primary) 15%, transparent); }
@@ -235,6 +236,14 @@ input, textarea { caret-color: var(--primary); }
 
 /* Manual pages (docs): reading column for the Markdown written with manual-kit. */
 .manual-body { font-size: 1rem; line-height: 1.85; max-width: 42rem; }
+/* The first h2 now sits in its own section, so spacing comes from the section, not :first-child. */
+.manual-body > section { margin: 2.5rem 0 0; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+.manual-body > section:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.manual-body > section > h2 { margin: 0 0 0.75rem; padding: 0; border: 0; }
+.manual-body section[data-callout='note'] { padding: 1.1rem 1.25rem; border: 0; border-radius: 0.75rem; background: color-mix(in srgb, var(--stage, var(--primary)) 9%, var(--card)); }
+.manual-body figure { margin: 1.5rem 0; }
+.manual-body figure img, .manual-body figure video { margin: 0; }
+.manual-body figcaption { margin-top: 0.5rem; font-size: 0.85rem; line-height: 1.5; color: var(--muted-foreground); }
 .manual-body h2 { margin: 2.5rem 0 0.75rem; font-size: 1.25rem; font-weight: 600; line-height: 1.4; padding-top: 1.25rem; border-top: 1px solid var(--border); }
 .manual-body h2:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
 .manual-body h3 { margin: 1.5rem 0 0.5rem; font-size: 1.05rem; font-weight: 600; }

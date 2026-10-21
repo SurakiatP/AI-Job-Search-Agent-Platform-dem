@@ -12,13 +12,13 @@ sources: [frontend/src/features/search/SearchPage.tsx, frontend/src/features/sea
 
 You can search for jobs in Thailand on this page. Smart match lets the agent read your chosen CV and put the jobs that fit you first, with a score out of 5 and what is still missing. An evaluation compares one CV with one job posting. You need a CV in the project first.
 
-![Job search page (sample data)](/manual/search.en.png)
+![Job search page (sample data) — Circle 1 = switch to Smart match, 2 = the search box](/manual/search.en.png)
 *Example screen with made-up data*
 
-![Evaluation page](/manual/session.en.png)
+![Evaluation page — Circle 1 = the evaluate button](/manual/session.en.png)
 *Example screen with made-up data*
 
-![Example clip: typing a search](/manual/search.en.mp4)
+![Example clip: typing a search — The orange ring shows the box in use](/manual/search.en.mp4)
 *Example clip with made-up data*
 
 ## How to search for jobs and check your fit

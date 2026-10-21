@@ -18,7 +18,7 @@ export function DocsTopicPage() {
   const index = topics.findIndex(item => item.id === slug);
   const topic = topics[index];
   const titleOf = (id: string) => c.list[topics.findIndex(item => item.id === id)].title;
-  const [page, setPage] = useState<{ title: string; body: string } | null | undefined>(undefined);
+  const [page, setPage] = useState<ReturnType<typeof prepare> | null | undefined>(undefined);
   useEffect(() => {
     setPage(undefined);
     const raw = topic ? loadPage(topic.file, locale) : undefined;
@@ -56,12 +56,31 @@ export function DocsTopicPage() {
         {page && topic && <>
           <p className="mb-2 text-sm font-medium text-[var(--stage,var(--primary))]">{c.topicOf(index + 1, topics.length)}</p>
           <h1 className="mb-8 text-3xl font-semibold leading-tight sm:text-4xl">{page.title}</h1>
-          <div className="manual-body"><Markdown remarkPlugins={[remarkGfm]} components={{
-            img: ({ src, alt }) => src?.endsWith('.mp4')
-              ? <video src={src} controls muted playsInline preload="metadata" aria-label={alt} />
-              : <img src={src} alt={alt ?? ''} loading="lazy" />,
-            a: ({ href, children }) => href?.startsWith('/') ? <Link to={href}>{children}</Link> : <a href={href}>{children}</a>,
-          }}>{page.body}</Markdown></div>
+          <nav aria-label={c.onThisPage} className="mb-8 flex flex-wrap gap-2">
+            {page.sections.map((section, position) => <a key={section.heading} href={`#section-${position + 1}`}
+              className="rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>)}
+          </nav>
+          <div className="manual-body">
+            {page.sections.map((section, position) => {
+              const note = /ข้อควรทราบ|good to know/i.test(section.heading);
+              const Wrapper = 'section';
+              return <Wrapper key={section.heading} id={`section-${position + 1}`} data-callout={note ? 'note' : undefined} className="scroll-mt-24">
+                <h2>{section.heading}</h2>
+                <Markdown remarkPlugins={[remarkGfm]} components={{
+                  p: ({ node, children }) => {
+                    const media = node?.children.length === 1 && node.children[0].type === 'element' && ['img', 'video'].includes(node.children[0].tagName);
+                    if (!media) return <p>{children}</p>;
+                    const alt = String((node!.children[0] as { properties?: { alt?: string } }).properties?.alt ?? '');
+                    return <figure>{children}<figcaption>{alt} · {c.madeUp}</figcaption></figure>;
+                  },
+                  img: ({ src, alt }) => src?.endsWith('.mp4')
+                    ? <video src={src} poster={src.replace(/\.mp4$/, '.poster.png')} controls muted playsInline preload="metadata" aria-label={alt} />
+                    : <img src={src} alt={alt ?? ''} loading="lazy" />,
+                  a: ({ href, children }) => href?.startsWith('/') ? <Link to={href}>{children}</Link> : <a href={href}>{children}</a>,
+                }}>{section.body}</Markdown>
+              </Wrapper>;
+            })}
+          </div>
           <nav aria-label={c.pager} className="mt-14 grid gap-3 border-t pt-6 sm:grid-cols-2">
             {previous ? <Link to={`/docs/${previous.id}`} className="flex items-center gap-2 rounded-lg border bg-card p-4 text-sm font-medium hover:bg-accent"><ArrowLeft className="size-4 shrink-0" aria-hidden="true" />{titleOf(previous.id)}</Link> : <span />}
             {next && <Link to={`/docs/${next.id}`} className="flex items-center justify-end gap-2 rounded-lg border bg-card p-4 text-right text-sm font-medium hover:bg-accent sm:col-start-2">{titleOf(next.id)}<ArrowRight className="size-4 shrink-0" aria-hidden="true" /></Link>}

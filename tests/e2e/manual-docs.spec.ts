@@ -19,6 +19,7 @@ for (const topic of topics) {
     await page.goto(`/docs/${topic}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByRole('heading', { level: 2 }).first()).toBeVisible();
+    await expect(page.locator('main[data-stage]')).toHaveCount(1); // colour theme and the bar above the title
     const text = await page.locator('main').innerText();
     expect(text).not.toContain('{{');
     expect(text).not.toContain('[[');
@@ -61,5 +62,27 @@ test('docs: pages with a clip show a playable video with controls and a caption'
     await expect(video).toHaveCount(1);
     await expect(video).toHaveAttribute('controls', '');
     expect(await video.getAttribute('src')).toMatch(/^\/manual\/[\w-]+\.th\.mp4$/);
+    expect(await video.getAttribute('poster')).toMatch(/^\/manual\/[\w-]+\.th\.poster\.png$/);
   }
+});
+
+test('docs: pictures are figures with captions, and a long page offers an on-this-page list', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await useSyntheticApplication(page);
+  await page.goto('/docs/search-and-evaluate');
+  const figures = page.locator('.manual-body figure');
+  await expect(figures.first()).toBeVisible();
+  expect(await figures.count()).toBeGreaterThan(0);
+  for (let i = 0; i < await figures.count(); i++) await expect(figures.nth(i).locator('figcaption')).not.toBeEmpty();
+  const toc = page.getByRole('navigation', { name: 'ในหน้านี้' });
+  await expect(toc.getByRole('link')).toHaveCount(await page.locator('.manual-body h2').count());
+  await toc.getByRole('link').nth(1).click();
+  await expect(page).toHaveURL(/#/);
+});
+
+test('docs: the Good to know section is a callout', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await page.goto('/docs/getting-started');
+  await expect(page.locator('.manual-body section[data-callout="note"]')).toHaveCount(1);
 });

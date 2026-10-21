@@ -12,10 +12,10 @@ sources: [frontend/src/features/auth/AuthPages.tsx, frontend/src/features/auth/c
 
 This page takes you from creating an account and confirming your email to making your first project. A project is the space that holds the CV, jobs and documents for one job hunt. You can use it as soon as you have an account. No special permission is needed.
 
-![Sign-up page](/manual/signup.en.png)
+![Sign-up page — Circle 1 = the create-account button](/manual/signup.en.png)
 *Example screen with made-up data*
 
-![Your projects](/manual/projects.en.png)
+![Your projects — Circle 1 = the new-project button](/manual/projects.en.png)
 *Example screen with made-up data*
 
 ## How to get started

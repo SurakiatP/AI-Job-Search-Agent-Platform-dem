@@ -2,6 +2,7 @@
 // Run: MANUAL_SHOTS=1 JSP_E2E_BASE_URL=http://127.0.0.1:4175 npm test --prefix tests -- manual-clips.spec.ts
 import { test, type Page } from '@playwright/test';
 import { useSyntheticApplication, projectId, sessionId } from '../fixtures/application';
+import { ring } from '../fixtures/manualRing';
 import { boot, practiceApi, setId } from '../fixtures/practice';
 
 test.skip(!process.env.MANUAL_SHOTS, 'manual clip refresh only');
@@ -27,7 +28,7 @@ for (const locale of ['th', 'en'] as const) {
     await page.goto(`/app/projects/${projectId}/sessions/${sessionId}/practice/${setId}`);
     await page.waitForTimeout(1200);
     const answer = page.locator('textarea').first();
-    await glide(page, answer); await answer.click();
+    await glide(page, answer); await ring(page, [answer]); await answer.click();
     await page.keyboard.type(locale === 'th' ? 'ผมทำชุดทดสอบ 500 ข้อ แล้วเทียบผลก่อนเลือกโมเดล' : 'I built a 500-question test set and compared results before choosing the model.', { delay: 35 });
     await page.waitForTimeout(900);
     const video = page.video()!; await page.close(); await video.saveAs(`/tmp/manual-clips/practice.${locale}.webm`);
@@ -39,7 +40,7 @@ for (const locale of ['th', 'en'] as const) {
     await page.waitForTimeout(1000);
     await page.getByRole('button', { name: /ดูข้อมูลตัวอย่าง|sample/i }).click(); await page.waitForTimeout(900);
     const box = page.getByPlaceholder(/Frontend/).first();
-    await glide(page, box); await box.click();
+    await glide(page, box); await ring(page, [box]); await box.click();
     await page.keyboard.type('Frontend', { delay: 90 }); await page.waitForTimeout(1400);
     const video = page.video()!; await page.close(); await video.saveAs(`/tmp/manual-clips/search.${locale}.webm`);
   });
@@ -48,7 +49,8 @@ for (const locale of ['th', 'en'] as const) {
     await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale); await page.addInitScript(cursor);
     await page.goto(`/app/projects/${projectId}/applications`);
     await page.waitForTimeout(1200);
-    await glide(page, page.getByRole('button', { name: /บอร์ด|Board/ })); await page.getByRole('button', { name: /บอร์ด|Board/ }).click();
+    const boardButton = page.getByText(/^(บอร์ด|Board)$/).first();
+    await glide(page, boardButton); await ring(page, [boardButton]); await boardButton.click();
     await page.waitForTimeout(1600);
     const video = page.video()!; await page.close(); await video.saveAs(`/tmp/manual-clips/applications.${locale}.webm`);
   });

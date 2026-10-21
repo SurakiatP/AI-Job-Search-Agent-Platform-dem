@@ -12,7 +12,7 @@ sources: [frontend/src/features/profile/ProfilePage.tsx, frontend/src/features/p
 
 The experience bank holds the facts from your CV, such as jobs, education and skills. The AI uses only the facts in this bank and never adds things you do not have. So you can check and fix the facts before you go on. You can use it with any account that has a project.
 
-![CV and experience page](/manual/profile.en.png)
+![CV and experience page — Circle 1 = add a CV, 2 = the experience bank tab](/manual/profile.en.png)
 *Example screen with made-up data*
 
 ## How to add your CV and experience bank

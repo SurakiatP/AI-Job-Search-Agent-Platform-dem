@@ -12,7 +12,7 @@ sources: [frontend/src/features/search/SavedSearches.tsx, frontend/src/features/
 
 You save a search, and the app sends you a summary of new jobs that match your filters on a schedule. Email is the main channel. You can also turn on Telegram or a webhook. You must confirm your email first.
 
-![A saved search with its alert buttons](/manual/alerts.en.png)
+![A saved search with its alert buttons — Circle 1 = how often, 2 = the email switch](/manual/alerts.en.png)
 *Example screen with made-up data*
 
 ## How to get alerts for new jobs

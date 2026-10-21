@@ -12,13 +12,13 @@ sources: [frontend/src/features/practice/copy.ts, frontend/src/features/practice
 
 The app writes a set of practice questions from the evaluation of one job. The questions are based on your CV, your experience bank and that job posting. You can type your answers, review what you know with flashcards, and ask the AI for feedback. You need an evaluation of the job first.
 
-![Interview practice tab on an evaluation](/manual/practice-tab.en.png)
+![Interview practice tab on an evaluation — Circle 1 = the new practice set button](/manual/practice-tab.en.png)
 *Example screen with made-up data*
 
-![A practice set page](/manual/practice-set.en.png)
+![A practice set page — Circle 1 = where you type, 2 = the save button](/manual/practice-set.en.png)
 *Example screen with made-up data*
 
-![Example clip: typing an answer](/manual/practice.en.mp4)
+![Example clip: typing an answer — The orange ring shows where the answer is typed](/manual/practice.en.mp4)
 *Example clip with made-up data*
 
 ## How to practice for interviews

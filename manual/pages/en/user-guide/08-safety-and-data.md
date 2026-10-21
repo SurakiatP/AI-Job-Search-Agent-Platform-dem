@@ -12,7 +12,7 @@ sources: [frontend/src/features/landing/copy.ts, frontend/src/features/projects/
 
 This page explains how your data is stored and used, and what you can control. Read it before you upload a CV. There are no steps you must follow.
 
-![Settings page](/manual/settings.en.png)
+![Settings page — Circle 1 = the account security link](/manual/settings.en.png)
 *Example screen with made-up data*
 
 ## How to check your data

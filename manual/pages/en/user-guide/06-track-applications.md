@@ -12,10 +12,10 @@ sources: [frontend/src/features/applications/ApplicationBoard.tsx, frontend/src/
 
 This page collects the jobs you have saved and shows how far each one has got. You can see them as a list or as a board. The app does not send applications for you. You apply yourself on the company website, then record the status here.
 
-![Applications page](/manual/applications.en.png)
+![Applications page — Circle 1 = switch to the board, 2 = add a posting](/manual/applications.en.png)
 *Example screen with made-up data*
 
-![Example clip: switching to the board view](/manual/applications.en.mp4)
+![Example clip: switching to the board view — The orange ring shows the button being pressed](/manual/applications.en.mp4)
 *Example clip with made-up data*
 
 ## How to track your applications
