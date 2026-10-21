@@ -5,7 +5,7 @@ import { test, type Locator, type Page } from '@playwright/test';
 import { jobId, projectId, sessionId, useSyntheticApplication } from '../fixtures/application';
 import { builderApi, cvId } from '../fixtures/builder';
 import { boot, practiceApi, setId } from '../fixtures/practice';
-import { caption, ring } from '../fixtures/manualRing';
+import { caption, ring, showTemplate } from '../fixtures/manualRing';
 import { evaluationScene, feedbackScene, tailorScene } from '../fixtures/manualScenes';
 
 test.skip(!process.env.MANUAL_SHOTS, 'manual clip refresh only');
@@ -59,9 +59,12 @@ for (const locale of ['th', 'en'] as const) {
     await step(page, T(locale, '3. กรอกชื่อ-นามสกุล', '3. Enter your full name'), page.getByLabel(/ชื่อ-นามสกุล|Full name/).first(), typeInto(T(locale, 'สมชาย ทดสอบ', 'Somchai Example')));
     await step(page, T(locale, '4. ใส่ตำแหน่งที่ต้องการ', '4. Add the role you want'), page.getByLabel(/ตำแหน่งหรือคำแนะนำ|Headline/).first(), typeInto(T(locale, 'นักวิเคราะห์ข้อมูล', 'Data Analyst')));
     await step(page, T(locale, '5. ใส่อีเมลที่ใช้สมัครงาน', '5. Add the email you apply with'), page.getByLabel(/^(อีเมล|Email)/).first(), typeInto('somchai@example.com', 45));
-    await step(page, T(locale, '6. เลือกเทมเพลตที่ชอบ', '6. Pick a template'), page.getByRole('button', { name: /Lotus/ }).first(), 'click', 2600);
-    await step(page, T(locale, '7. กด “อัปเดตพรีวิว” เพื่อดูตัวอย่าง', '7. Click “Update preview” to see it'), page.getByRole('button', { name: /^(อัปเดตพรีวิว|Update preview)$/ }).first(), 'click', 3000);
-    await step(page, T(locale, '8. พอใจแล้วกด “บันทึกเป็นเวอร์ชันใหม่”', '8. Happy? Click “Save as new version”'), page.getByRole('button', { name: /บันทึกเป็นเวอร์ชันใหม่|Save as new version/ }).first(), 'click', 3500);
+    await step(page, T(locale, '6. กด “อัปเดตพรีวิว” เพื่อดูตัวอย่าง CV', '6. Click “Update preview” to see your CV'), page.getByRole('button', { name: /^(อัปเดตพรีวิว|Update preview)$/ }).first(), async t => { await t.click(); await showTemplate(page, 'onyx', locale); }, 3200);
+    for (const [index, template] of ['Kakuna', 'Lotus', 'Saffron'].entries()) {
+      await step(page, T(locale, `${7 + index}. ลองเทมเพลต ${template} แล้วดูพรีวิวเปลี่ยนตาม`, `${7 + index}. Try the ${template} template and watch the preview change`), page.getByRole('button', { name: new RegExp(template) }).first(),
+        async t => { await t.click(); await showTemplate(page, template.toLowerCase(), locale); }, 3200);
+    }
+    await step(page, T(locale, '10. พอใจแล้วกด “บันทึกเป็นเวอร์ชันใหม่”', '10. Happy? Click “Save as new version”'), page.getByRole('button', { name: /บันทึกเป็นเวอร์ชันใหม่|Save as new version/ }).first(), 'click', 3500);
     await finish(page, 'build', locale);
   });
 

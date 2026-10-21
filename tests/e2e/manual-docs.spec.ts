@@ -58,7 +58,7 @@ const clips: Record<string, string[]> = {
   'interview-practice': ['practice'], 'track-applications': ['applications'],
 };
 const aiPictures: Record<string, string> = {
-  'cv-and-experience': 'ai-experience', 'search-and-evaluate': 'ai-evaluation', 'tailor-and-draft': 'ai-tailor', 'interview-practice': 'ai-feedback',
+  'cv-and-experience': 'ai-experience', 'build-cv': 'build-gallery', 'search-and-evaluate': 'ai-evaluation', 'tailor-and-draft': 'ai-tailor', 'interview-practice': 'ai-feedback',
 };
 
 for (const locale of ['th', 'en'] as const) {

@@ -28,7 +28,9 @@ Before you start, get these ready:
 
 ![Choose a template, accent colour and CV language — circle 1 = the Lotus template, 2 = CV language](/manual/build-template.en.png)
 
-![Video: build a CV from naming it to saving it](/manual/build.en.mp4)
+![All six templates, rendered by the app itself: Onyx, Kakuna, Ditgar, Lotus, Teak and Saffron (“Photo” = can show a photo, “Two columns” = some applicant tracking systems may misread the order)](/manual/build-gallery.en.png)
+
+![Video: build a CV, from naming it and filling it in to trying three templates with live preview and saving](/manual/build.en.mp4)
 
 ## How to build a CV in the app
 

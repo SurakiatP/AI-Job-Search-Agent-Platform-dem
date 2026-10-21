@@ -2,7 +2,7 @@
 // Run: MANUAL_SHOTS=1 JSP_E2E_BASE_URL=http://127.0.0.1:4175 npm test --prefix tests -- manual-shots.spec.ts
 import { test, type Locator, type Page } from '@playwright/test';
 import { useSyntheticApplication, projectId, sessionId } from '../fixtures/application';
-import { ring } from '../fixtures/manualRing';
+import { ring, showTemplate, templateGallery } from '../fixtures/manualRing';
 import { boot, practiceApi, setId } from '../fixtures/practice';
 import { builderScene, cvId, evaluationScene, experienceScene, feedbackScene, tailorScene } from '../fixtures/manualScenes';
 import { builderApi } from '../fixtures/builder';
@@ -43,6 +43,7 @@ const shots: [string, string][] = [
   ['build-start', `/app/projects/${projectId}/overview`],
   ['build-editor', `/app/projects/${projectId}/cvs/${cvId}/builder`],
   ['build-template', `/app/projects/${projectId}/cvs/${cvId}/builder`],
+  ['build-gallery', '/'],
   ['ai-evaluation', `/app/projects/${projectId}/sessions/${sessionId}`],
   ['ai-tailor', `/app/projects/${projectId}/sessions/${sessionId}`],
   ['ai-feedback', `/app/projects/${projectId}/sessions/${sessionId}/practice/${setId}`],
@@ -72,9 +73,21 @@ for (const locale of ['th', 'en'] as const) {
       if (name === 'signup') await page.route('**/v1/auth/session', r => r.fulfill({ status: 401, contentType: 'application/json', body: '{"code":"unauthorized"}' }));
       await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale); // after boot(): it sets its own locale
       if (name === 'alerts') await alertsApi(page);
+      if (name === 'build-gallery') {
+        await page.setViewportSize({ width: 1280, height: 640 });
+        await templateGallery(page, locale, { photo: locale === 'th' ? 'มีรูป' : 'Photo', two: locale === 'th' ? 'สองคอลัมน์' : 'Two columns' });
+        await page.screenshot({ path: `../frontend/public/manual/build-gallery.${locale}.png`, fullPage: true });
+        return;
+      }
       await page.goto(path);
       await page.waitForTimeout(1200);
       if (name === 'search') { await page.getByRole('button', { name: /ดูข้อมูลตัวอย่าง|sample/i }).click(); await page.waitForTimeout(600); }
+      if (name === 'build-editor' || name === 'build-template') {
+        await page.getByRole('button', { name: /^(อัปเดตพรีวิว|Update preview)$/ }).waitFor();
+        if (name === 'build-template') await page.getByRole('button', { name: /Lotus/ }).first().click();
+        await page.getByText(/^(บันทึกแล้ว|Saved)/).first().waitFor();
+        await showTemplate(page, name === 'build-template' ? 'lotus' : 'onyx', locale);
+      }
       if (name === 'build-start') { await page.getByRole('button', { name: /สร้าง CV|Build a CV/ }).first().click(); await page.waitForTimeout(500); }
       if (name === 'ai-tailor') {
         await page.getByRole('tab').nth(1).click();
