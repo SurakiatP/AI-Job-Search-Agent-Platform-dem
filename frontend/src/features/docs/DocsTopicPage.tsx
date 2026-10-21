@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Link, useParams } from 'react-router';
@@ -41,8 +41,16 @@ export function DocsTopicPage() {
           {topics.map((item, position) => <li key={item.id} className="shrink-0">
             <Link to={`/docs/${item.id}`} aria-current={item.id === slug ? 'page' : undefined}
               className="flex items-baseline gap-2 rounded-lg px-3 py-2 text-sm leading-snug text-muted-foreground hover:bg-accent hover:text-accent-foreground aria-[current=page]:bg-accent aria-[current=page]:font-semibold aria-[current=page]:text-accent-foreground">
-              <span className="tabular-nums text-xs opacity-70">{position + 1}</span><span>{c.list[position].title}</span>
+              <span className="tabular-nums text-xs opacity-70">{position + 1}</span><span className="flex-1">{c.list[position].title}</span>
+              {item.id === slug && page && <ChevronDown className="hidden size-4 shrink-0 self-center lg:block" aria-hidden="true" />}
             </Link>
+            {item.id === slug && page && <nav aria-label={c.onThisPage} className="ml-[1.35rem] mt-1 hidden border-l-2 border-[var(--stage,var(--primary))]/30 pl-2 lg:block">
+              <ul className="grid gap-0.5">
+                {page.sections.map((section, sectionIndex) => <li key={section.heading}>
+                  <a href={`#section-${sectionIndex + 1}`} className="block rounded-md px-3 py-1.5 text-sm leading-snug text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>
+                </li>)}
+              </ul>
+            </nav>}
           </li>)}
         </ol>
       </nav>
@@ -56,7 +64,7 @@ export function DocsTopicPage() {
         {page && topic && <>
           <p className="mb-2 text-sm font-medium text-[var(--stage,var(--primary))]">{c.topicOf(index + 1, topics.length)}</p>
           <h1 className="mb-8 text-3xl font-semibold leading-tight sm:text-4xl">{page.title}</h1>
-          <nav aria-label={c.onThisPage} className="mb-8 flex flex-wrap gap-2">
+          <nav aria-label={c.onThisPage} className="mb-8 flex flex-wrap gap-2 lg:hidden">
             {page.sections.map((section, position) => <a key={section.heading} href={`#section-${position + 1}`}
               className="rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>)}
           </nav>

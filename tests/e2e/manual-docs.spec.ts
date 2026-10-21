@@ -86,3 +86,26 @@ test('docs: the Good to know section is a callout', async ({ page }) => {
   await page.goto('/docs/getting-started');
   await expect(page.locator('.manual-body section[data-callout="note"]')).toHaveCount(1);
 });
+
+test('docs: on desktop the sections are a sub-list under the open topic in the side menu, not a chip row', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await useSyntheticApplication(page);
+  await page.goto('/docs/interview-practice');
+  const menu = page.getByRole('navigation', { name: 'หัวข้อในคู่มือ' });
+  const sections = menu.getByRole('navigation', { name: 'ในหน้านี้' }).getByRole('link');
+  await expect(sections.first()).toBeVisible();
+  expect(await sections.count()).toBe(await page.locator('.manual-body h2').count());
+  await expect(menu.getByRole('navigation', { name: 'ในหน้านี้' })).toHaveCount(1); // only the open topic expands
+  await expect(page.getByRole('navigation', { name: 'ในหน้านี้' })).toHaveCount(1); // the chip row is hidden here
+  await sections.nth(2).click();
+  await expect(page).toHaveURL(/#section-3$/);
+});
+
+test('docs: on a phone the sections stay reachable as chips', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await useSyntheticApplication(page);
+  await page.goto('/docs/interview-practice');
+  await expect(page.getByRole('navigation', { name: 'ในหน้านี้' }).getByRole('link').first()).toBeVisible();
+});
