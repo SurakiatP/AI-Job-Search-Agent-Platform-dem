@@ -1,0 +1,68 @@
+# Same layout as 10service/websearch: docker:dind image, runner tag ai4thai-gpu1, deploy is a manual job on main.
+# Secrets are protected GitLab CI/CD variables (README "Deploy on GitLab"); none are stored here.
+image: docker:latest
+
+services:
+  - docker:dind
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  # Host directory for the persistent data (bind mounts, no docker volumes)
+  DATA_PATH: "/home/search/Thoughtmind/jobsearch/data"
+  # Published port of the web app (the platform proxies jobsearch.aiforthai.in.th to it)
+  PORT: "10360"
+  # Image tag: 1.0.0-<pipeline number>, e.g. 1.0.0-1
+  IMAGE_TAG: "1.0.0-${CI_PIPELINE_IID}"
+
+stages:
+  - test
+  - deploy
+
+unit-tests:
+  stage: test
+  image: python:3.12-slim
+  services: []
+  tags:
+    - ai4thai-gpu1
+  script:
+    # the slim image has no git; test_pinned_source_validation builds a throwaway repo with it
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends git >/dev/null
+    - pip install --quiet uv==0.12.2
+    - uv sync --locked --project backend --all-groups
+    - cd backend && uv run --locked pytest tests/unit -q
+
+compose-config:
+  stage: test
+  tags:
+    - ai4thai-gpu1
+  script:
+    - |
+      POSTGRES_USER=u POSTGRES_PASSWORD=p MINIO_ROOT_USER=m MINIO_ROOT_PASSWORD=mmmmmmmm \
+      MEILI_MASTER_KEY=k LITELLM_MASTER_KEY=k LITELLM_SALT_KEY=k LITELLM_DB_PASSWORD=d \
+      OPENROUTER_API_KEY=o docker compose config -q
+
+deploy:
+  stage: deploy
+  tags:
+    - ai4thai-gpu1
+  before_script:
+    - docker info
+  script:
+    - echo "Deploying jobsearch-app:${IMAGE_TAG} on port ${PORT}"
+    - mkdir -p "${DATA_PATH}"
+    - docker compose -p jobsearch up -d --build --remove-orphans
+    - docker image ls jobsearch-app --format '{{.Repository}}:{{.Tag}}'
+  when: manual
+  only:
+    - main
+
+down:
+  stage: deploy
+  tags:
+    - ai4thai-gpu1
+  script:
+    - docker compose -p jobsearch down
+  when: manual
+  only:
+    - main

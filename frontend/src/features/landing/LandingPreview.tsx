@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { AlertTriangle, Bell, Check, Clock, Download, FileText, Search } from 'lucide-react';
+import type { CSSProperties, ReactNode } from 'react';
+import { Bell, Check, ClipboardList, Clock, Download, FileText, FileUser, Search, Sparkles } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { FitScore } from '../../components/FitScore';
 import { SkillCoverage } from '../../components/SkillCoverage';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { stageLabel } from '../../lib/applicationStages';
 import { landingCopy, previewCopy } from './copy';
 import { featureSlugs } from './featurePages';
+import { Tick, useSeen } from './Reveal';
 
 const coverage = {
   required: ['React', 'TypeScript', 'Tailwind', 'Git', 'REST', 'Vite', 'Jest', 'Playwright', 'Docker', 'CI/CD', 'GraphQL', 'Next.js', 'AWS', 'Figma'],
@@ -51,7 +52,7 @@ export function StepPanel({ index }: { index: number }) {
     <ul className="grid gap-3">{p.jobs.map((j, i) => <li key={j.title} className={cn(row, i === 0 && 'border-primary bg-accent')}>
       <span className="font-semibold leading-snug">{j.title}</span>
       <span className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{j.company} · {j.place}</span>
-      <span className="flex flex-wrap gap-2"><Badge variant="outline">{j.age}</Badge>{j.stale && <Badge variant="warning" className="gap-1"><AlertTriangle className="size-3" aria-hidden="true" />{p.staleLabel}</Badge>}</span>
+      <span className="flex flex-wrap gap-2"><Badge variant="outline">{j.age}</Badge>{j.stale && <Badge variant="warning" className="gap-1"><Clock className="size-3" aria-hidden="true" />{p.staleLabel}</Badge>}</span>
     </li>)}</ul>
   </Shell>;
   if (slug === 'evaluate') return <Shell label={label}>
@@ -128,30 +129,50 @@ export function StepPanel({ index }: { index: number }) {
   </Shell>;
 }
 
-/** Hero card in plain words. Illustrative: nothing here is read from an account. */
+const stageIcon = { cv: FileUser, search: Search, evaluate: Sparkles, docs: FileText, track: ClipboardList } as const;
+
+/** Hero card: one job's journey through the app's five stages. Illustrative: nothing here is read from an account.
+ *  Plays once when it is on screen (ticks draw, steps rise in turn, the strip fills, the score settles). */
 export function DemoCard() {
   const { locale } = useLocale();
   const d = landingCopy[locale].demo;
-  return <section aria-label={d.label} className="grid min-w-0 gap-4 rounded-xl border bg-card p-4 sm:p-6">
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <Badge variant="outline">{d.label}</Badge>
+  const [ref, play] = useSeen<HTMLElement>(0.3);
+  return <section ref={ref} data-play={play} aria-label={d.label} className="demo-card grid min-w-0 gap-5 rounded-2xl border bg-card p-5 shadow-md sm:p-6">
+    <Badge variant="outline" className="w-fit">{d.label}</Badge>
+    <div className="grid gap-1">
+      <h2 className="text-2xl font-semibold leading-snug not-italic">{d.title}</h2>
+      <p className="text-sm text-muted-foreground">{d.company}</p>
     </div>
-    <div className="grid gap-1 border-b pb-4">
-      <h2 className="text-lg font-semibold leading-snug not-italic">{d.title}</h2>
-      <p className="text-sm text-muted-foreground">{d.job}</p>
-    </div>
-    <div className="grid gap-4 sm:grid-cols-2">
-      <div className="grid content-start gap-1 rounded-lg border bg-background/60 p-3">
-        <span className="text-sm text-muted-foreground">{d.fit}</span>
-        <FitScore score={4.2} size="lg" locale={locale} />
-        <span className="text-sm text-muted-foreground">{d.fitNote}</span>
-      </div>
-      <div className="grid content-start gap-1 rounded-lg border bg-background/60 p-3">
-        <span className="text-sm text-muted-foreground">{d.skills}</span>
-        <span className="text-3xl font-semibold tabular-nums">{d.skillsValue}</span>
-        <span className="text-sm text-muted-foreground">{d.skillsNote}</span>
+    <div className="grid gap-2">
+      <span className="text-sm font-medium tabular-nums text-primary">{d.progress}</span>
+      <div aria-hidden="true" className="grid grid-cols-5 gap-1.5">
+        {d.steps.map((step, index) => <span key={step.stage} style={{ '--i': index } as CSSProperties} className={cn('demo-seg h-2 rounded-full', step.state === 'done' && 'bg-primary', step.state === 'current' && 'bg-warning/70', step.state === 'next' && 'bg-muted')} />)}
       </div>
     </div>
-    <p className="flex items-center gap-2 rounded-lg bg-warning/15 px-3 py-2 text-sm font-medium text-warning"><Clock className="size-4 shrink-0" aria-hidden="true" />{d.waiting}</p>
+    <ol aria-label={d.list} className="grid">
+      {d.steps.map((step, index) => {
+        const Icon = stageIcon[step.stage as keyof typeof stageIcon];
+        const last = index === d.steps.length - 1;
+        return <li key={step.stage} style={{ '--i': index } as CSSProperties} aria-current={step.state === 'current' ? 'step' : undefined} className="demo-step relative grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3">
+          {!last && <span aria-hidden="true" className={cn('absolute left-[1.0625rem] top-9 h-[calc(100%-1.75rem)] w-0.5 rounded-full', step.state === 'done' ? 'bg-primary/35' : 'bg-border')} />}
+          <span aria-hidden="true" className={cn('grid size-9 place-items-center rounded-full',
+            step.state === 'done' && 'bg-primary text-primary-foreground',
+            step.state === 'current' && 'bg-warning/15 text-warning ring-2 ring-warning ring-offset-2 ring-offset-card',
+            step.state === 'next' && 'bg-muted text-muted-foreground')}>
+            {step.state === 'done' ? <Tick draw /> : <Icon className="size-4" />}
+          </span>
+          <div className={cn('grid min-w-0 gap-0.5 pb-5', last && 'pb-0')}>
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium leading-snug">
+              <span>{step.title}</span>{' '}
+              {(step.stage === 'evaluate' || step.stage === 'docs') && <Badge variant="secondary" className="gap-1"><Sparkles className="size-3" aria-hidden="true" />{d.ai}</Badge>}
+              {step.stage === 'evaluate' && <Badge variant="success" className="demo-score tabular-nums">{d.score}</Badge>}
+            </p>
+            <p className={cn('text-sm leading-relaxed [overflow-wrap:anywhere]', step.state === 'current' ? 'flex items-center gap-1.5 font-medium text-warning' : 'text-muted-foreground')}>
+              {step.state === 'current' && <Clock className="size-4 shrink-0" aria-hidden="true" />}{step.note}
+            </p>
+          </div>
+        </li>;
+      })}
+    </ol>
   </section>;
 }

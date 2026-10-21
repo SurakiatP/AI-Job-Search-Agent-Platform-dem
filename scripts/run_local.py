@@ -25,7 +25,8 @@ def _server_config(app, host: str, port: int):
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", choices=("127.0.0.1", "::1"), default="127.0.0.1")
+    parser.add_argument("--host", choices=("127.0.0.1", "::1", "0.0.0.0"), default="127.0.0.1",
+                        help="0.0.0.0 only inside the container deploy; the platform proxy is the public edge")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--open-browser", action="store_true", help="open the login page in the default browser")
     parser.add_argument("--build-frontend", action="store_true", help="build the frontend before starting")
