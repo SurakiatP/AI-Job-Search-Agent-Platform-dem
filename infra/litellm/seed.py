@@ -12,7 +12,7 @@ MASTER_KEY_FILE = os.environ.get("LITELLM_MASTER_KEY_FILE", "/run/secrets/litell
 KEY_OUT = os.environ.get("LITELLM_APP_KEY_FILE") or (sys.argv[1] if len(sys.argv) > 1 else "/out/litellm_app_key")
 MODEL = {
     "model_name": "ai-analyze",
-    "litellm_params": {"model": os.environ.get("AI_ANALYZE_UPSTREAM_MODEL") or "openrouter/z-ai/glm-5.3-flash", "api_key": "os.environ/OPENROUTER_API_KEY"},
+    "litellm_params": {"model": os.environ.get("AI_ANALYZE_UPSTREAM_MODEL") or "openrouter/openai/gpt-6-luna", "api_key": "os.environ/OPENROUTER_API_KEY"},
 }
 KEY_ALIAS = "job-search-app"
 
