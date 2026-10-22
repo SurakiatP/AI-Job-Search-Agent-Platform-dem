@@ -903,11 +903,32 @@ class RunExecutor:
             labels = practice.aliases(facts)
             cited = [{"evidence_ids": sorted(practice.cited_ids(raw, labels))}]
             vocabulary = await asyncio.to_thread(self._vocabulary, run.project_id)
+            fact_claims_by_id = await asyncio.to_thread(self._fact_claims, run.project_id, cited)
+            known_claims = claims(text, vocabulary)
             questions, reverse = practice.parse_reply(
-                raw, inputs["sections"], await asyncio.to_thread(self._fact_claims, run.project_id, cited),
-                vocabulary, known=claims(text, vocabulary), dropped=(dropped := {}), aliases=labels)
+                raw, inputs["sections"], fact_claims_by_id, vocabulary, known=known_claims,
+                dropped=(dropped := {}), aliases=labels, rejected=(rejected := []))
             if not questions:
                 raise ServiceError("native_response_invalid")
+            rewritten = 0
+            if rejected:  # one rewrite that names what to remove; it goes through the same evidence gate
+                try:
+                    rewrite, rewrite_instructions = practice.rewrite_prompt(rejected, facts)
+                    began = time.monotonic()
+                    await self.runtime.submit(run.project_id, uuid.uuid5(run.id, "rewrite"), rewrite, rewrite_instructions,
+                                              provider, operation=run.operation, tool_gate=deny_tool)
+                    found = practice.parse_rewrite(await self._await_result(run, lease_owner, gate_failure, began), rejected,
+                                                   fact_claims_by_id, vocabulary, known_claims)
+                    ids_by_index = {r["index"]: r["ids"] for r in rejected}
+                    for index, answer in found.items():
+                        questions[index]["model_answer"] = practice.clean(answer, 3000)
+                        questions[index]["evidence_ids"] = ids_by_index[index]
+                    rewritten = len(found)
+                except ServiceError as exc:
+                    if gate_failure.is_set() or exc.code in {"cancellation_requested", "execution_stopped"}:
+                        raise
+                except Exception:  # the first answers stand; a failed rewrite must never fail the set
+                    pass
             await asyncio.to_thread(self._store_practice, run, questions, reverse)
             offered = sum(1 for item in _practice_items(raw) if isinstance(item.get("model_answer"), str) and item["model_answer"].strip())
             await self._stop(run.project_id, started)
@@ -916,7 +937,8 @@ class RunExecutor:
                                     result_payload={"kind": "interview_set", "questions": len(questions),
                                                     "model_answers_offered": offered,
                                                     "model_answers_kept": sum(1 for q in questions if q["model_answer"]),
-                                                    "model_answers_dropped": dropped})
+                                                    "model_answers_dropped": dropped,
+                                                    "model_answers_rewritten": rewritten})
         except ServiceError as exc:
             await self._stop(run.project_id, started)
             await asyncio.to_thread(self._store_practice_state, run, {"status": "failed"})

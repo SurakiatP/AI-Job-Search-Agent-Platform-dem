@@ -84,3 +84,21 @@ def test_draft_saying_eager_to_learn_a_missing_skill_is_not_a_claim():
     assert sc("draft", honest, case) > 90
     assert sc("draft", claim, case) < 80  # one claimed skill costs 22.5 points
     assert sc("draft", base + f" I am eager to learn {p['trap']}.", case) > 90
+
+
+def test_practice_v2_does_not_punish_gaps_or_logistics():
+    """An ideal reply (answers only where an honest answer exists, gaps/logistics null) must score ~100."""
+    case = D["cases"]["practice"][0]
+    p, j = P["p0"], J["j0"]
+    fid = p["facts"][0]
+    fact_text = fid["text"]
+    qs = [{"section": "intro", "prompt": f"Why {j['title']} at the company?", "why": j["title"], "key_points": ["a"],
+           "model_answer": fact_text, "evidence_ids": ["F1"]}]
+    qs += [{"section": "behavioral", "prompt": f"Tell me about {p['skills_listed'][0]}", "why": "w", "key_points": ["a"],
+            "model_answer": fact_text, "evidence_ids": ["F1"]} for _ in range(2)]
+    qs += [{"section": "technical", "prompt": f"Explain {p['skills_listed'][1]}", "why": "w", "key_points": ["a"],
+            "model_answer": fact_text, "evidence_ids": ["F1"]} for _ in range(3)]
+    qs += [{"section": "gaps", "prompt": f"How would you learn {j['required'][-1]}?", "why": j["required"][-1], "key_points": ["a"], "model_answer": None, "evidence_ids": []},
+           {"section": "logistics", "prompt": "When can you start?", "why": "w", "key_points": ["a"], "model_answer": None, "evidence_ids": []}]
+    raw = json.dumps({"questions": qs, "reverse_questions": ["a", "b", "c"]})
+    assert sc("practice", raw, case) > 95

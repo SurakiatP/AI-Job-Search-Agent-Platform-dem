@@ -15,6 +15,7 @@ from pathlib import Path
 
 OUT = Path(__file__).parent / "data" / "gold.v1.json"
 NS = uuid.UUID("6d0a1d2e-0000-4000-8000-000000000001")
+PFX, JPFX, SHIFT = "p", "j", 0  # build_holdout.py overrides these to make a second, unseen set
 
 # family: (job title, six required skills, EN bullet templates, TH bullet templates)
 FAMILIES = [
@@ -98,7 +99,7 @@ def build_persona(i):
         bullets = []
         for k in range(3):
             t = templ[(k + r + i) % len(templ)]
-            bullets.append(t.format(**dict(s, a=2 + (i * 3 + k * 2 + r) % 8, b=3 + (i + k * 4 + r * 3) % 9)))
+            bullets.append(t.format(**dict(s, a=2 + (i * 3 + k * 2 + r + SHIFT) % 8, b=3 + (i + k * 4 + r * 3 + SHIFT) % 9)))
         roles.append({"title": title if r == 0 else "Junior " + title, "org": org, "start": start, "end": end, "bullets": bullets})
     degree, field = EDU[i]
     edu_line = f"{degree} degree in {field}, {SCHOOLS[i]} (20{14 + i % 3}-20{18 + i % 3})"
@@ -118,11 +119,11 @@ def build_persona(i):
     facts.append({"text": edu_line, "context": f"{degree} degree, {SCHOOLS[i]}"})
     facts.append({"text": extra, "context": "Side project"})  # last on purpose: tailor/test scorers read it as the supportable fact
     for k, f in enumerate(facts):
-        f["id"] = str(uuid.uuid5(NS, f"p{i}-f{k}"))
+        f["id"] = str(uuid.uuid5(NS, f"{PFX}{i}-f{k}"))
     gold_facts = ([{"text": b, "org": r["org"], "start": r["start"]} for r in roles for b in r["bullets"]]
                   + [{"text": edu_line, "org": None, "start": None}] + [{"text": sk, "org": None, "start": None} for sk in listed])
     return {
-        "id": f"p{i}", "lang": "th" if thai else "en", "family": title, "cv": cv, "facts": facts, "skills_listed": listed,
+        "id": f"{PFX}{i}", "lang": "th" if thai else "en", "family": title, "cv": cv, "facts": facts, "skills_listed": listed,
         "gold_facts": gold_facts, "education_level": degree, "supportable": supportable, "trap": trap,
         "orgs": [r["org"] for r in roles], "titles": [r["title"] for r in roles], "first_start": roles[-1]["start"],
     }
@@ -136,32 +137,32 @@ def build_job(i, strong=False):
             f"What you will do: own delivery of {title.lower()} work, review others' work, and explain results to non-experts.\n"
             f"Requirements: {', '.join(req)}. {2 + i % 4}+ years of relevant experience. Thai and English communication.\n"
             f"We offer hybrid work in Bangkok, health insurance and a learning budget.")
-    return {"id": f"j{i}{'s' if strong else ''}", "title": title, "company": ORGS[(i + 4) % 10], "description": desc, "required": req}
+    return {"id": f"{JPFX}{i}{'s' if strong else ''}", "title": title, "company": ORGS[(i + 4) % 10], "description": desc, "required": req}
 
 
 def band(cov):
     return [4, 5] if cov >= 0.8 else [3, 4] if cov >= 0.5 else [2, 3] if cov >= 0.3 else [1, 2]
 
 
-def main():
+def main(out=None):
     personas = [build_persona(i) for i in range(10)]
     jobs = [build_job(i) for i in range(10)] + [build_job(i, True) for i in (0, 5, 7)]
     by_id = {j["id"]: j for j in jobs}
-    pairs = [(0, "j0s"), (5, "j5s"), (7, "j7s"), (2, "j2"), (4, "j4"), (9, "j9"), (1, "j1"), (0, "j3"), (3, "j6"), (5, "j8")]
+    pairs = [(0, f"{JPFX}0s"), (5, f"{JPFX}5s"), (7, f"{JPFX}7s"), (2, f"{JPFX}2"), (4, f"{JPFX}4"), (9, f"{JPFX}9"), (1, f"{JPFX}1"), (0, f"{JPFX}3"), (3, f"{JPFX}6"), (5, f"{JPFX}8")]
     evaluate = []
     for p, j in pairs:
         text = personas[p]["cv"]
         has = {s: present(s, text) for s in by_id[j]["required"]}
         cov = sum(has.values()) / len(has)
-        evaluate.append({"id": f"ev{len(evaluate)}", "persona": f"p{p}", "job": j, "requirements_present": has,
+        evaluate.append({"id": f"ev{len(evaluate)}", "persona": f"{PFX}{p}", "job": j, "requirements_present": has,
                          "coverage": round(cov, 2), "score_band": band(cov)})
     cases = {
-        "extract": [{"id": f"ex{i}", "persona": f"p{i}"} for i in range(10)],
+        "extract": [{"id": f"ex{i}", "persona": f"{PFX}{i}"} for i in range(10)],
         "evaluate": evaluate,
-        "draft": [{"id": f"dr{i}", "persona": f"p{i}", "job": f"j{i}",
+        "draft": [{"id": f"dr{i}", "persona": f"{PFX}{i}", "job": f"{JPFX}{i}",
                    "kind": ["cover_letter", "application_message", "cover_letter", "cover_letter", "application_message",
                             "cover_letter", "cover_letter", "application_message", "cover_letter", "cover_letter"][i]} for i in range(10)],
-        "tailor": [{"id": f"ta{i}", "persona": f"p{i}", "job": f"j{i}", "missing": [personas[i]["supportable"], personas[i]["trap"]],
+        "tailor": [{"id": f"ta{i}", "persona": f"{PFX}{i}", "job": f"{JPFX}{i}", "missing": [personas[i]["supportable"], personas[i]["trap"]],
                     "supportable": personas[i]["supportable"], "trap": personas[i]["trap"]} for i in range(10)],
         "apply": [], "practice": [],
     }
@@ -184,19 +185,20 @@ def main():
              "gold": {"type": "profile_years"}},
             {"id": "q7", "label": "What is your salary expectation?", "kind": "text", "required": False, "gold": {"type": "null"}},
         ]
-        cases["apply"].append({"id": f"ap{i}", "persona": f"p{i}", "job": f"j{i}", "questions": qs})
-        cases["practice"].append({"id": f"pr{i}", "persona": f"p{i}", "job": f"j{i}", "level": "mid",
+        cases["apply"].append({"id": f"ap{i}", "persona": f"{PFX}{i}", "job": f"{JPFX}{i}", "questions": qs})
+        cases["practice"].append({"id": f"pr{i}", "persona": f"{PFX}{i}", "job": f"{JPFX}{i}", "level": "mid",
                                   "sections": [{"id": "intro", "count": 1}, {"id": "behavioral", "count": 2},
                                                {"id": "technical", "count": 3}, {"id": "gaps", "count": 1}, {"id": "logistics", "count": 1}]})
     # profile summary for apply: years of experience computed from the two dated roles, the way the app does
     for c in cases["apply"]:
-        p = personas[int(c["persona"][1:])]
+        p = personas[int(c["persona"][len(PFX):])]
         y0, m0 = int(p["first_start"][:4]), int(p["first_start"][5:7])
         c["profile_years"] = round(((2026 - y0) * 12 + (10 - m0) + 1) / 12, 1)
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({"version": 1, "note": "Synthetic; every name, employer and number is invented.",
+    out = out or OUT
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({"version": 1, "note": "Synthetic; every name, employer and number is invented.",
                                "personas": personas, "jobs": jobs, "cases": cases}, ensure_ascii=False, indent=1) + "\n")
-    print("wrote", OUT, {k: len(v) for k, v in cases.items()})
+    print("wrote", out, {k: len(v) for k, v in cases.items()})
 
 
 if __name__ == "__main__":

@@ -23,12 +23,14 @@ from pathlib import Path
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "backend" / "src"))
+sys.path.insert(0, os.environ.get("BENCH_BACKEND_SRC") or str(ROOT / "backend" / "src"))  # BENCH_BACKEND_SRC: measure an older checkout
 from job_search_platform.services import applications, experience, practice, tailoring  # noqa: E402
 from job_search_platform.services.evidence import claims  # noqa: E402
 from job_search_platform.workers.executor import RunExecutor  # noqa: E402
 
 DATA = Path(__file__).parent / "data" / "gold.v1.json"
+HOLDOUT = Path(__file__).parent / "data" / "gold.holdout.v1.json"
+CURRENT_MODE = "low"
 SAVE_TEXT = False  # set by --save-text: keep the raw model reply in the results file
 MODES = {"default": None, "low": {"effort": "low"}, "off": {"enabled": False}, "none": {"effort": "none"}, "minimal": {"effort": "minimal"}}
 TASKS = ["evaluate", "draft", "extract", "tailor", "apply", "practice"]
@@ -232,25 +234,39 @@ def score_apply(raw, case, persona, job):
                                                                 "evidence_ok": round(ev, 2), "invented_answers": null_wrong}
 
 
-def score_practice(raw, case, persona, job):
+def score_practice(raw, case, persona, job, rewrite=None):
+    """v2: answers are judged only where an honest first-person answer can exist (not gaps/logistics) and
+    relevance ignores logistics. Weights: coverage .30, answered .25, key points .10, reverse questions .05, relevance .30."""
     from uuid import UUID
     voc = {norm(v) for v in persona["orgs"] + persona["titles"]}
     fc = {UUID(f["id"]): claims(f["text"] + " . " + f["context"], voc, True) for f in persona["facts"]}
     labels = practice.aliases(persona["facts"])
     dropped = {}
-    questions, reverse = practice.parse_reply(raw or "", case["sections"], fc, voc, claims(persona["cv"], voc), dropped, labels)
+    known = claims(persona["cv"], voc)
+    rejected = []
+    try:
+        questions, reverse = practice.parse_reply(raw or "", case["sections"], fc, voc, known, dropped, labels, rejected)
+    except TypeError:  # an older checkout (BENCH_BACKEND_SRC) without the rewrite step
+        questions, reverse = practice.parse_reply(raw or "", case["sections"], fc, voc, known, dropped, labels)
     if not questions:
         return 0.0, {"valid": False}
+    rewritten = 0
+    if rewrite and rejected:  # the app's single rewrite step, through the same gate
+        for index, text in practice.parse_rewrite(rewrite, rejected, fc, voc, known).items():
+            questions[index]["model_answer"] = practice.clean(text, 3000)
+            rewritten += 1
     wanted = sum(s["count"] for s in case["sections"])
     coverage = min(1.0, len(questions) / wanted)
-    graded = [q for q in questions if q["section"] != "logistics"]
-    kept = sum(q["model_answer"] is not None for q in graded) / max(len(graded), 1)
+    answerable = [q for q in questions if q["section"] not in ("gaps", "logistics")]
+    kept = sum(q["model_answer"] is not None for q in answerable) / max(len(answerable), 1)
     points = sum(bool(q["key_points"]) for q in questions) / len(questions)
-    terms = job["required"] + persona["skills_listed"] + persona["orgs"]
-    related = sum(any(present(t, q["prompt"] + " " + q["why"]) for t in terms) for q in questions) / len(questions)
+    terms = job["required"] + persona["skills_listed"] + persona["orgs"] + persona["titles"] + [job["title"], job["company"]]
+    judged = [q for q in questions if q["section"] != "logistics"]
+    related = sum(any(present(t, q["prompt"] + " " + q["why"] + " " + " ".join(q["key_points"])) for t in terms) for q in judged) / max(len(judged), 1)
     rev = min(1.0, len(reverse) / 3)
-    return 100 * (0.35 * coverage + 0.2 * kept + 0.15 * points + 0.1 * rev + 0.2 * related), {
-        "questions": len(questions), "answers_kept": round(kept, 2), "dropped": dropped}
+    return 100 * (0.30 * coverage + 0.25 * kept + 0.10 * points + 0.05 * rev + 0.30 * related), {
+        "questions": len(questions), "answers_kept": round(kept, 2), "related": round(related, 2), "dropped": dropped,
+        "rewritten": rewritten, "rewritable": len(rejected)}
 
 
 SCORERS = {"extract": score_extract, "evaluate": score_evaluate, "draft": score_draft, "tailor": score_tailor,
@@ -307,12 +323,32 @@ def prices(models):
                 "cache": float(listed[m]["pricing"].get("input_cache_read") or listed[m]["pricing"]["prompt"]) * 1e6} for m in models}
 
 
+def rewrite_step(alias, out, case, persona, key, price):
+    """What the app does after a practice reply: one rewrite call for answers the gate dropped. {} when none."""
+    from uuid import UUID
+    voc = {norm(v) for v in persona["orgs"] + persona["titles"]}
+    fc = {UUID(f["id"]): claims(f["text"] + " . " + f["context"], voc, True) for f in persona["facts"]}
+    rejected = []
+    if not hasattr(practice, "rewrite_prompt"):
+        return {}
+    practice.parse_reply(out["text"] or "", case["sections"], fc, voc, claims(persona["cv"], voc), {}, practice.aliases(persona["facts"]), rejected)
+    if not rejected:
+        return {}
+    prompt, system = practice.rewrite_prompt(rejected, persona["facts"])
+    try:
+        return call(alias, system, prompt, key, 8000, MODES[CURRENT_MODE])
+    except (urllib.error.URLError, OSError, ValueError):
+        return {}
+
+
 def worker(model, alias, jobs, data, key, price, max_tokens, sink, lock, log, mode):
     for task, case in jobs:
         prompt, system = build_prompt(task, case, data)
         persona = next(p for p in data["personas"] if p["id"] == case["persona"])
         job = next((j for j in data["jobs"] if j["id"] == case.get("job")), None)
         result = {"model": model, "task": task, "case": case["id"]}
+        global CURRENT_MODE
+        CURRENT_MODE = mode
         for attempt in (1, 2):
             try:
                 out = call(alias, system, prompt, key, max_tokens, MODES[mode])
@@ -324,7 +360,19 @@ def worker(model, alias, jobs, data, key, price, max_tokens, sink, lock, log, mo
         if SAVE_TEXT:
             result["text"] = out.get("text")
         if "error" not in out:
-            score, details = SCORERS[task](out["text"], case, persona, job)
+            if task == "practice":
+                rw = rewrite_step(alias, out, case, persona, key, price)
+                out["total_s"] += rw.get("total_s", 0)
+                out["completion_tokens"] = (out.get("completion_tokens") or 0) + (rw.get("completion_tokens") or 0)
+                out["prompt_tokens"] = (out.get("prompt_tokens") or 0) + (rw.get("prompt_tokens") or 0)
+                result["total_s"] = out["total_s"]
+                result["completion_tokens"] = out["completion_tokens"]
+                result["prompt_tokens"] = out["prompt_tokens"]
+                if SAVE_TEXT:
+                    result["rewrite_text"] = rw.get("text")
+                score, details = SCORERS[task](out["text"], case, persona, job, rw.get("text"))
+            else:
+                score, details = SCORERS[task](out["text"], case, persona, job)
             result.update({"quality": round(score, 1), "details": details,
                            "cost_usd": (((out["prompt_tokens"] or 0) - (out.get("cached_tokens") or 0)) * price["in"] + (out.get("cached_tokens") or 0) * price["cache"]
                                         + (out["completion_tokens"] or 0) * price["out"]) / 1e6})
@@ -338,7 +386,7 @@ def worker(model, alias, jobs, data, key, price, max_tokens, sink, lock, log, mo
 
 
 def run(args):
-    data = json.loads(DATA.read_text())
+    data = json.loads((HOLDOUT if args.dataset == "holdout" else DATA).read_text())
     models, tasks = args.models, args.tasks
     key = KEYFILE.read_text().strip()
     price = prices(models)
@@ -374,7 +422,7 @@ def run(args):
                 print("cleanup failed for", a, type(exc).__name__)
     out = Path(args.out_dir) / f"{args.tag}.json"
     out.write_text(json.dumps({"tag": args.tag, "models": models, "prices_per_mtok": price, "max_tokens": args.max_tokens, "reasoning": args.reasoning,
-                               "dataset": "gold.v1", "results": sink}, ensure_ascii=False, indent=1))
+                               "dataset": "gold.holdout.v1" if args.dataset == "holdout" else "gold.v1", "results": sink}, ensure_ascii=False, indent=1))
     print("wrote", out)
     report(out)
 
@@ -425,15 +473,34 @@ def main():
     r.add_argument("--samples", type=int, default=10)
     r.add_argument("--max-tokens", type=int, default=16000)
     r.add_argument("--save-text", action="store_true")
+    r.add_argument("--dataset", choices=["dev", "holdout"], default="dev")
     r.add_argument("--reasoning", choices=list(MODES), default="low")
     r.add_argument("--tag", default=time.strftime("%Y-%m-%d"))
     r.add_argument("--out-dir", default=str(Path(__file__).parent / "results"))
+    rs = sub.add_parser("rescore", help="recompute quality of a results file (saved with --save-text) with the current scorers")
+    rs.add_argument("file")
+    rs.add_argument("--dataset", choices=["dev", "holdout"], default="dev")
     rp = sub.add_parser("report")
     rp.add_argument("file")
     args = ap.parse_args()
     global SAVE_TEXT
     SAVE_TEXT = getattr(args, "save_text", False)
-    if args.cmd == "run":
+    if args.cmd == "rescore":
+        data = json.loads((HOLDOUT if args.dataset == "holdout" else DATA).read_text())
+        d = json.loads(Path(args.file).read_text())
+        for r in d["results"]:
+            if "text" not in r:
+                continue
+            case = next(c for c in data["cases"][r["task"]] if c["id"] == r["case"])
+            persona = next(p for p in data["personas"] if p["id"] == case["persona"])
+            job = next((j for j in data["jobs"] if j["id"] == case.get("job")), None)
+            extra = (r.get("rewrite_text"),) if r["task"] == "practice" else ()
+            score, details = SCORERS[r["task"]](r["text"], case, persona, job, *extra)
+            r["quality"], r["details"] = round(score, 1), details
+        out = Path(args.file).with_name(Path(args.file).stem + ".rescored.json")
+        out.write_text(json.dumps(d, ensure_ascii=False, indent=1))
+        report(out)
+    elif args.cmd == "run":
         Path(args.out_dir).mkdir(parents=True, exist_ok=True)
         run(args)
     else:

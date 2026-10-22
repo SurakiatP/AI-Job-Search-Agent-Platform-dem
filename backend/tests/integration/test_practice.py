@@ -71,9 +71,10 @@ def test_ac_ivp_01_and_02_generate_keeps_requested_counts_and_gates_model_answer
     runtime = _PracticeRuntime(ctx.tmp_path / "ws", [reply])
     _execute_next(ctx, runtime)
     assert _run(ctx, view["run_id"]).status == "completed"
-    (_, prompt, kwargs), = runtime.submits
-    assert kwargs["operation"] == "interview_generate"
+    (_, prompt, kwargs), (_, rewrite, rewrite_kwargs) = runtime.submits  # the 40-clusters answer earns one rewrite call
+    assert kwargs["operation"] == "interview_generate" == rewrite_kwargs["operation"]
     assert JOB["title"] in prompt and "behavioral" in prompt and "Packaged services with Docker" in prompt
+    assert "Answers to rewrite" in rewrite and "40" in rewrite and '"model_answer": "Wrote Terraform modules"' not in rewrite  # uncited: no basis to rewrite from
 
     detail = _detail(ctx, pid, view["id"]).json()
     assert detail["status"] == "ready" and detail["reverse_questions"][0] == "How is the team organised?"
@@ -247,3 +248,34 @@ def test_ivp_purging_the_session_deletes_its_sets(api_context):
     with ctx.sessions() as db:
         assert db.get(InterviewSet, UUID(view["id"])) is None
         assert db.scalar(select(func.count()).select_from(InterviewAttempt)) == 0
+
+
+@pytest.mark.integration
+def test_ivp_one_rewrite_rescues_a_dropped_answer_and_stays_gated(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, _ = _setup(ctx, [])
+    _settle(ctx)
+    view = _create(ctx, csrf, pid, session["id"], sections=[{"id": "behavioral", "count": 2}]).json()
+    first = {"questions": [_q("behavioral", "A", answer="Operated 40 Kubernetes clusters", ids=[facts["k8s"]]),
+                           _q("behavioral", "B", answer="Operated 41 Kubernetes clusters", ids=[facts["k8s"]])]}
+    second = {"answers": [{"index": 0, "model_answer": "Operated Kubernetes clusters"},       # passes: no number
+                          {"index": 1, "model_answer": "Operated 99 Kubernetes clusters"}]}   # still unsupported: stays dropped
+    runtime = _PracticeRuntime(ctx.tmp_path / "ws", [first, second])
+    _execute_next(ctx, runtime)
+    assert _run(ctx, view["run_id"]).status == "completed" and len(runtime.submits) == 2
+    answers = [q["model_answer"] for q in _detail(ctx, pid, view["id"]).json()["questions"]]
+    assert answers == ["Operated Kubernetes clusters", None]
+    assert _run(ctx, view["run_id"]).result_payload["model_answers_rewritten"] == 1
+
+
+@pytest.mark.integration
+def test_ivp_a_failed_rewrite_never_fails_the_set(api_context):
+    ctx = api_context
+    csrf, pid, session, facts, _ = _setup(ctx, [])
+    _settle(ctx)
+    view = _create(ctx, csrf, pid, session["id"], sections=[{"id": "behavioral", "count": 1}]).json()
+    first = {"questions": [_q("behavioral", "A", answer="Operated 40 Kubernetes clusters", ids=[facts["k8s"]])]}
+    runtime = _PracticeRuntime(ctx.tmp_path / "ws", [first, "not json at all"])
+    _execute_next(ctx, runtime)
+    assert _run(ctx, view["run_id"]).status == "completed"
+    assert _detail(ctx, pid, view["id"]).json()["questions"][0]["model_answer"] is None
