@@ -19,6 +19,7 @@ MAX_PER_SET = 30
 MAX_ATTEMPTS = 20
 MAX_REVERSE = 5
 WRITTEN = frozenset(PRACTICE_SECTIONS) - {"technical"}
+NO_MODEL_ANSWER = frozenset({"logistics", "gaps"})  # no honest first-person answer exists for these
 
 # What each section asks; the model reads this, the owner never sees it.
 SECTION_BRIEFS = {
@@ -78,7 +79,11 @@ def prompt(*, level: str, sections: Sequence[Mapping], job: Mapping, cv_text: st
         "correct general answer and never claim anything about the candidate. `model_answer`: an example answer in the "
         "candidate's voice built only from the facts you cite in `evidence_ids`; every number, employer, title and "
         "skill in it must appear in those facts; use null when the facts are not enough, and always null for "
-        "logistics. Also give up to 5 `reverse_questions` the candidate could ask the interviewer, from the posting. "
+        "logistics and gaps (null for logistics and gaps: a gaps question names something the candidate lacks, so give only "
+        "`key_points` for it). In every `model_answer`: never name the hiring company (say \"the company\" instead), never use "
+        "numbers from the posting as if they were the candidate's, write plain Thai or English words only (no framework "
+        "labels such as STAR, ROI or Situation/Task/Action/Result), and name only skills, employers and numbers that "
+        "appear in the cited facts. Also give up to 5 `reverse_questions` the candidate could ask the interviewer, from the posting. "
         "Return ONLY JSON shaped as {\"questions\": [{\"section\": \"<id>\", \"prompt\": \"…\", \"why\": \"…\", "
         "\"key_points\": [\"…\"], \"model_answer\": \"…\"|null, \"evidence_ids\": [\"F1\"]}], "
         "\"reverse_questions\": [\"…\"]}."
@@ -153,7 +158,7 @@ def parse_reply(raw: str, sections: Sequence[Mapping], fact_claims: Mapping[UUID
         for item in by_section.get(wanted["id"], [])[:wanted["count"]]:
             ids = _resolve(item.get("evidence_ids") or [], aliases or {})
             answer = item.get("model_answer")
-            if not isinstance(answer, str) or not answer.strip() or wanted["id"] == "logistics":
+            if not isinstance(answer, str) or not answer.strip() or wanted["id"] in NO_MODEL_ANSWER:
                 answer = None
             elif reason := unsupported(answer[:3000], ids, fact_claims, vocabulary, known):
                 answer = None

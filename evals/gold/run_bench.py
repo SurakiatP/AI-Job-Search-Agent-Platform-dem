@@ -29,6 +29,7 @@ from job_search_platform.services.evidence import claims  # noqa: E402
 from job_search_platform.workers.executor import RunExecutor  # noqa: E402
 
 DATA = Path(__file__).parent / "data" / "gold.v1.json"
+SAVE_TEXT = False  # set by --save-text: keep the raw model reply in the results file
 MODES = {"default": None, "low": {"effort": "low"}, "off": {"enabled": False}, "none": {"effort": "none"}, "minimal": {"effort": "minimal"}}
 TASKS = ["evaluate", "draft", "extract", "tailor", "apply", "practice"]
 BASE = (os.environ.get("LITELLM_BASE_URL") or "http://127.0.0.1:54000").rstrip("/")
@@ -142,6 +143,19 @@ def score_evaluate(raw, case, persona, job):
     return 100 * (0.4 * band + 0.4 * acc + 0.2 * schema), {"score": score, "band": case["score_band"], "req_acc": round(acc, 2)}
 
 
+LEARN = ("เรียนรู้", "ศึกษา", "พัฒนา", "ยินดี", "กระตือรือร้น", "ตั้งใจ", "พร้อม", "ยังไม่", "ไม่มีประสบการณ์", "eager", "learn", "keen", "yet", "not yet")
+
+
+def claims_skill(skill, text):
+    """True when the text names the skill without saying the candidate wants to learn it or lacks it (±110 characters)."""
+    low = text.lower()
+    for m in re.finditer(r"(?<![a-z0-9])" + re.escape(skill.lower()) + r"(?![a-z0-9])", low):
+        window = low[max(0, m.start() - 110): m.end() + 110]
+        if not any(w in window for w in LEARN):
+            return True
+    return False
+
+
 def score_draft(raw, case, persona, job):
     text = re.sub(r"^```(?:markdown|md)?\s*\n|\n```\s*$", "", (raw or "").strip())
     if not text:
@@ -150,8 +164,8 @@ def score_draft(raw, case, persona, job):
     mentions = float(norm(job["company"]) in norm(text)) * 0.5 + float(norm(job["title"]) in norm(text)) * 0.5
     thai = sum("฀" <= c <= "๿" for c in text) / max(len(text), 1)
     language = 1.0 if thai >= 0.3 else 0.0
-    allowed = experience.numbers(persona["cv"] + " " + " ".join(f["text"] for f in persona["facts"]))
-    trap = present(persona["trap"], text)
+    allowed = experience.numbers(persona["cv"] + " " + " ".join(f["text"] for f in persona["facts"]) + " " + job["description"])
+    trap = claims_skill(persona["trap"], text)
     bad_numbers = not experience.numbers(text) <= allowed
     honest = 1.0 - 0.5 * trap - 0.5 * bad_numbers
     placeholder = re.search(r"\[[^\]\n]{2,40}\]", text) is not None
@@ -307,6 +321,8 @@ def worker(model, alias, jobs, data, key, price, max_tokens, sink, lock, log, mo
                 out = {"error": type(exc).__name__ + ": " + str(exc)[:120], "total_s": None}
                 time.sleep(3)
         result.update({k: v for k, v in out.items() if k != "text"})
+        if SAVE_TEXT:
+            result["text"] = out.get("text")
         if "error" not in out:
             score, details = SCORERS[task](out["text"], case, persona, job)
             result.update({"quality": round(score, 1), "details": details,
@@ -408,12 +424,15 @@ def main():
     r.add_argument("--tasks", nargs="+", default=TASKS, choices=TASKS)
     r.add_argument("--samples", type=int, default=10)
     r.add_argument("--max-tokens", type=int, default=16000)
+    r.add_argument("--save-text", action="store_true")
     r.add_argument("--reasoning", choices=list(MODES), default="low")
     r.add_argument("--tag", default=time.strftime("%Y-%m-%d"))
     r.add_argument("--out-dir", default=str(Path(__file__).parent / "results"))
     rp = sub.add_parser("report")
     rp.add_argument("file")
     args = ap.parse_args()
+    global SAVE_TEXT
+    SAVE_TEXT = getattr(args, "save_text", False)
     if args.cmd == "run":
         Path(args.out_dir).mkdir(parents=True, exist_ok=True)
         run(args)

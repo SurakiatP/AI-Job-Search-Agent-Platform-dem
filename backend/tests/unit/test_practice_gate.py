@@ -70,3 +70,18 @@ def test_report_prompt_names_scores_in_plain_words():
                                                 questions=[q], job={"title": "AI Engineer"}, report=None, output_language="th")
     assert "company_fit" not in body and "เข้ากับบริษัท 4/5" in body and "โครงเรื่อง 4/5" in body
     assert "field names" in instructions
+
+
+def test_gaps_answers_are_never_kept():
+    """A gaps question names a skill the candidate lacks; a model answer for it is always dropped (honest by design)."""
+    raw = json.dumps({"questions": [{"section": "gaps", "prompt": "Q", "why": "w", "key_points": ["a"],
+                                     "model_answer": "I built a test set of 500 questions.", "evidence_ids": [str(FACT)]}]})
+    questions, _ = practice.parse_reply(raw, [{"id": "gaps", "count": 1}], FACTS, set(), known=claims(CV))
+    assert questions[0]["model_answer"] is None and questions[0]["key_points"] == ["a"]
+
+
+def test_prompt_tells_the_model_what_not_to_put_in_a_model_answer():
+    body, instructions = practice.prompt(level="mid", sections=[{"id": "gaps", "count": 1}], job={"title": "T", "description": "D"},
+                                         cv_text=CV, facts=[], report=None, output_language="th")
+    for rule in ("never name the hiring company", "numbers from the posting", "STAR", "null for logistics and gaps"):
+        assert rule in instructions, rule

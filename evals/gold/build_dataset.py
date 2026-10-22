@@ -115,7 +115,8 @@ def build_persona(i):
     supportable, trap = req[4], req[5]
     extra = f"Used {supportable} in a side project and shipped it to {2 + i % 4} colleagues"
     assert not present(supportable, cv) and not present(trap, cv), (i, supportable, trap)
-    facts.append({"text": extra, "context": "Side project"})
+    facts.append({"text": edu_line, "context": f"{degree} degree, {SCHOOLS[i]}"})
+    facts.append({"text": extra, "context": "Side project"})  # last on purpose: tailor/test scorers read it as the supportable fact
     for k, f in enumerate(facts):
         f["id"] = str(uuid.uuid5(NS, f"p{i}-f{k}"))
     gold_facts = ([{"text": b, "org": r["org"], "start": r["start"]} for r in roles for b in r["bullets"]]
@@ -166,9 +167,8 @@ def main():
     }
     for i in range(10):
         p, j = personas[i], jobs[i]
-        outside = FAMILIES[(i + 5) % 10][1][0]
-        if present(outside, p["cv"]):
-            outside = FAMILIES[(i + 5) % 10][1][1]
+        bank = p["cv"] + " " + " ".join(f["text"] for f in p["facts"])
+        outside = next(sk for sk in FAMILIES[(i + 5) % 10][1] + FAMILIES[(i + 6) % 10][1] if not present(sk, bank))
         qs = [
             {"id": "q1", "label": "Which tools or languages have you used at work?", "kind": "text", "required": True,
              "gold": {"type": "keywords", "any": p["skills_listed"][:4], "min": 2}},

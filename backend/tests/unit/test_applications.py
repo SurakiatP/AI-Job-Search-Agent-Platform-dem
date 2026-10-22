@@ -93,7 +93,7 @@ def test_profile_summary_line_precedes_facts_and_its_number_is_supported_for_ans
     support = summary_claims("Years of experience: 3.5")
     ok, _ = gate_answers(_answers(why=("I have 3.5 years with Docker", [F1])), QUESTIONS[:1], FACTS, summary_claims=support)
     assert ok[0]["answer"] is not None
-    bad, _ = gate_answers(_answers(why=("I have 5 years with Docker", [F1])), QUESTIONS[:1], FACTS, summary_claims=support)
+    bad, _ = gate_answers(_answers(why=("I have 9 years with Docker", [F1])), QUESTIONS[:1], FACTS, summary_claims=support)
     assert bad[0]["reason"] == "unsupported_claim"
     none, _ = gate_answers(_answers(why=("I have 3.5 years with Docker", [F1])), QUESTIONS[:1], FACTS)
     assert none[0]["reason"] == "unsupported_claim"
@@ -102,3 +102,13 @@ def test_profile_summary_line_precedes_facts_and_its_number_is_supported_for_ans
 def test_tailoring_prompt_has_no_profile_summary():
     from job_search_platform.services.tailoring import round_prompt
     assert "Years of experience" not in round_prompt("cv", "Job", "Python", ["Go"], [], "en")[0]
+
+
+def test_draft_prompt_forbids_derived_numbers_and_unsupported_skills():
+    from job_search_platform.workers.executor import RunExecutor
+    from types import SimpleNamespace
+    run = SimpleNamespace(operation="draft_documents", output_language="th",
+                          input_snapshot={"job": {"title": "T", "company": "C", "description": "D"}, "draft_kind": "cover_letter"})
+    prompt, _ = RunExecutor._prompt(run, "CV text", ["fact one"])
+    for rule in ("Do not add up or recompute numbers", "Never claim a skill the CV and facts do not show"):
+        assert rule in prompt, rule
