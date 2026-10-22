@@ -30,3 +30,17 @@ def test_practice_runs_ask_for_low_reasoning_and_others_keep_the_model_default()
     assert all(reasoning.get(op) == low for op in ("interview_generate", "interview_grade", "interview_report"))
     assert reasoning.get("evaluate_job") is None and reasoning.get("tailor_cv") is None
     assert 'request_overrides=REASONING.get(request.get("operation"))' in source
+
+
+def test_hermes_default_effort_is_made_to_agree_with_the_env_override():
+    """Hermes sends reasoning_effort (default medium) at the top level; a different reasoning.effort in extra_body
+    makes OpenRouter answer 400 (seen with gpt-6-luna). The agent must be given the same effort as its config."""
+    source = (Path(__file__).resolve().parents[3] / "infra" / "hermes" / "native_bridge.py").read_text()
+    assert "reasoning_config=" in source and "_wire_reasoning(" in source
+    start = source.index("def _wire_reasoning(")
+    namespace = {}
+    exec(source[start: source.index("\n\n\n", start)], namespace)
+    wire = namespace["_wire_reasoning"]
+    assert wire({"extra_body": {"reasoning": {"effort": "low"}}}) == {"enabled": True, "effort": "low"}
+    assert wire({"extra_body": {"reasoning": {"effort": "high"}}}) == {"enabled": True, "effort": "high"}
+    assert wire(None) is None and wire({}) is None
