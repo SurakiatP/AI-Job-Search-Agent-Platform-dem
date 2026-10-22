@@ -1,0 +1,28 @@
+[
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/frontend/src/app/routes.css",
+    "line": 14,
+    "snippet": "border-inline-start: 3px solid",
+    "importedBy": [
+      "router.tsx"
+    ]
+  },
+  {
+    "antipattern": "gradient-text",
+    "name": "Gradient text",
+    "description": "Gradient text is decorative rather than meaningful — a common AI tell, especially on headings and metrics. Use solid colors for text.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/frontend/src/features/landing/landing.css",
+    "line": 40,
+    "snippet": "background-clip: text + gradient",
+    "importedBy": [
+      "LandingPage.tsx"
+    ]
+  }
+]

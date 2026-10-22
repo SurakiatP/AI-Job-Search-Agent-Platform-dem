@@ -1,0 +1,310 @@
+"""WP5 ingest run: per-board isolation, failed boards never delete, lock, idempotency. Fake fetchers."""
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+
+import pytest
+from sqlalchemy import select, text
+from sqlalchemy.orm import sessionmaker
+
+from job_search_platform.db.models import IngestRun, JobPosting
+from job_search_platform.integrations.job_boards import BoardError
+from job_search_platform.services import job_store
+from job_search_platform.services.errors import ServiceError
+
+T0 = datetime(2026, 10, 14, tzinfo=timezone.utc)
+
+
+def _raw(i):
+    return {"id": i, "title": "Engineer", "absolute_url": f"https://g/{i}", "location": {"name": "Bangkok"}}
+
+
+class Fetch:
+    def __init__(self, plan):
+        self.plan = plan  # {(source, board): list | Exception}
+
+    def __call__(self, source, board, **_):
+        result = self.plan.get((source, board), [])
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+def _run(sessions, plan, at, boards=None):
+    return job_store.run_ingest(sessions, boards=boards or {"greenhouse": ["a", "b"]}, sources=("greenhouse",),
+                                fetch=Fetch(plan), clock=lambda: at, sleep=lambda s: None)
+
+
+@pytest.mark.integration
+def test_board_failure_isolated(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    run = _run(sessions, {("greenhouse", "a"): BoardError("status_500"), ("greenhouse", "b"): [_raw(1)]}, T0)
+    assert run.status == "partial" and run.created == 1
+    assert run.per_board["greenhouse:a"]["state"] == "failed" and run.per_board["greenhouse:b"]["state"] == "ok"
+
+
+@pytest.mark.integration
+def test_failed_fetch_never_counts_as_missing(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    _run(sessions, {("greenhouse", "a"): [_raw(1)]}, T0)
+    for h in (1, 2):
+        _run(sessions, {("greenhouse", "a"): BoardError("timeout")}, T0 + timedelta(hours=h))
+    with sessions() as db:
+        assert db.scalar(select(JobPosting.missed_runs).where(JobPosting.external_id == "1")) == 0
+
+
+@pytest.mark.integration
+def test_all_boards_failed_is_failed(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    run = _run(sessions, {("greenhouse", "a"): BoardError("x"), ("greenhouse", "b"): BoardError("x")}, T0)
+    assert run.status == "failed"
+
+
+@pytest.mark.integration
+def test_rerun_with_same_input_is_idempotent(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    plan = {("greenhouse", "a"): [_raw(1), _raw(2)]}
+    _run(sessions, plan, T0)
+    second = _run(sessions, plan, T0 + timedelta(hours=1))
+    assert (second.created, second.updated, second.deleted) == (0, 0, 0)
+
+
+@pytest.mark.integration
+def test_second_run_refused_while_locked(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    with sessions() as holder:
+        holder.execute(text("SELECT pg_advisory_lock(hashtext('ingest'))"))
+        with pytest.raises(ServiceError) as caught:
+            _run(sessions, {}, T0)
+        assert caught.value.code == "ingest_running"
+        holder.execute(text("SELECT pg_advisory_unlock(hashtext('ingest'))"))
+
+
+@pytest.mark.integration
+def test_deadline_skips_remaining_boards(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    now = [T0]
+
+    def fetch(source, board, **_):
+        if board == "a":
+            now[0] = T0 + timedelta(minutes=21)  # board a "took" 21 minutes
+        return [_raw(1)]
+
+    run = job_store.run_ingest(sessions, boards={"greenhouse": ["a", "b"]}, sources=("greenhouse",),
+                               fetch=fetch, clock=lambda: now[0], sleep=lambda s: None)
+    assert run.per_board["greenhouse:a"]["state"] == "ok"
+    assert run.per_board["greenhouse:b"]["state"] == "skipped"
+
+
+@pytest.mark.integration
+def test_no_targets_is_ok_with_zero_counts(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    run = job_store.run_ingest(sessions, boards={}, sources=("greenhouse",), fetch=Fetch({}),
+                               clock=lambda: T0, sleep=lambda s: None)
+    assert run.status == "ok" and run.per_board == {}
+    assert (run.fetched, run.created, run.updated, run.deleted) == (0, 0, 0, 0)
+
+
+@pytest.mark.integration
+def test_unexpected_exception_isolated_and_lock_released(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    run = _run(sessions, {("greenhouse", "a"): ValueError("boom"), ("greenhouse", "b"): [_raw(1)]}, T0)
+    assert run.status == "partial"
+    assert run.per_board["greenhouse:a"] == {"state": "failed", "error": "ValueError"}
+    assert run.per_board["greenhouse:b"]["state"] == "ok"
+    _run(sessions, {}, T0 + timedelta(hours=1))  # lock was released
+
+
+@pytest.mark.integration
+def test_apply_board_error_rolls_back_that_board_only(migrated_engine, monkeypatch):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    real = job_store.apply_board
+
+    def flaky(db, source, board, rows, now):
+        real(db, source, board, rows, now)  # pending writes must roll back
+        if board == "a":
+            raise RuntimeError("db down")
+        return {"fetched": len(rows), "created": len(rows), "updated": 0, "deleted": 0, "skipped_old": 0}
+
+    monkeypatch.setattr(job_store, "apply_board", flaky)
+    run = _run(sessions, {("greenhouse", "a"): [_raw(1)], ("greenhouse", "b"): [_raw(2)]}, T0)
+    assert run.per_board["greenhouse:a"] == {"state": "failed", "error": "RuntimeError"}
+    assert run.per_board["greenhouse:b"]["state"] == "ok"
+    with sessions() as db:
+        assert db.scalars(select(JobPosting.board)).all() == ["b"]
+
+
+@pytest.mark.integration
+def test_final_step_failure_marks_run_failed_and_releases_lock(migrated_engine, monkeypatch):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+
+    def boom(db, now):
+        raise RuntimeError("cluster fail")
+
+    monkeypatch.setattr(job_store, "recompute_clusters", boom)
+    with pytest.raises(RuntimeError):
+        _run(sessions, {("greenhouse", "a"): [_raw(1)]}, T0)
+    with sessions() as db:
+        row = db.scalars(select(IngestRun).order_by(IngestRun.started_at.desc())).first()
+        assert row.status == "failed" and row.finished_at is not None
+        assert row.per_board["greenhouse:a"]["state"] == "ok" and row.created == 1
+    monkeypatch.undo()
+    with migrated_engine.connect() as other:  # lock really free on a separate backend
+        assert other.scalar(text("SELECT pg_try_advisory_lock(hashtext('ingest'))")) is True
+        other.execute(text("SELECT pg_advisory_unlock(hashtext('ingest'))"))
+    assert _run(sessions, {("greenhouse", "a"): [_raw(1)], ("greenhouse", "b"): []}, T0 + timedelta(hours=1)).status == "ok"  # lock released
+
+
+@pytest.mark.integration
+def test_empty_fetch_marks_board_suspicious_shrink(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    _run(sessions, {("greenhouse", "a"): [_raw(1)]}, T0, boards={"greenhouse": ["a"]})
+    for h in (1, 2, 3):
+        run = _run(sessions, {("greenhouse", "a"): []}, T0 + timedelta(hours=h), boards={"greenhouse": ["a"]})
+    assert run.per_board["greenhouse:a"] == {"state": "failed", "error": "suspicious_shrink"}
+    with sessions() as db:
+        assert db.scalar(select(JobPosting.missed_runs).where(JobPosting.external_id == "1")) == 0
+
+
+class _Index:
+    """Minimal in-memory Meilisearch stand-in; fail=True makes every call raise."""
+
+    def __init__(self, fail=False):
+        self.fail, self.docs, self.exists = fail, {}, False
+
+    def _t(self):
+        from job_search_platform.integrations.meili import MeiliError
+        if self.fail:
+            raise MeiliError("unreachable")
+        return 0
+
+    def wait(self, uid, **_): pass
+    def index_exists(self, i): self._t(); return self.exists
+    def create_index(self, i): self.exists = True; return self._t()
+    def update_settings(self, i, s): return self._t()
+    def delete_index(self, i): return self._t()
+    def swap(self, a, b): return self._t()
+    def add_documents(self, i, docs): self.docs.update({d["id"]: d for d in docs}); return self._t()
+    def delete_documents(self, i, ids): [self.docs.pop(x, None) for x in ids]; return self._t()
+
+
+def _run_idx(sessions, plan, at, index):
+    return job_store.run_ingest(sessions, boards={"greenhouse": ["a"]}, sources=("greenhouse",),
+                                fetch=Fetch(plan), clock=lambda: at, sleep=lambda s: None, index=index)
+
+
+@pytest.mark.integration
+def test_index_failure_keeps_store_and_dirty_rows(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    run = _run_idx(sessions, {("greenhouse", "a"): [_raw(1)]}, T0, (_Index(fail=True), "jobs"))
+    assert run.status == "partial" and run.created == 1
+    assert run.per_board["index"]["state"] == "index_failed"
+    with sessions() as db:
+        assert db.scalar(select(JobPosting.index_dirty).where(JobPosting.external_id == "1")) is True
+        assert db.get(IngestRun, run.id).status == "partial"
+
+
+@pytest.mark.integration
+def test_index_sync_after_commit(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    idx = _Index()
+    first = _run_idx(sessions, {("greenhouse", "a"): [_raw(1)]}, T0, (idx, "jobs"))
+    assert first.status == "ok" and first.per_board["index"]["state"] == "rebuilt" and len(idx.docs) == 1
+    second = _run_idx(sessions, {("greenhouse", "a"): [_raw(1), {**_raw(2), "title": "Designer"}]}, T0 + timedelta(hours=1), (idx, "jobs"))
+    assert second.per_board["index"]["state"] == "ok" and len(idx.docs) == 2
+
+
+@pytest.mark.integration
+def test_no_index_configured_runs_as_before(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    run = _run_idx(sessions, {("greenhouse", "a"): [_raw(1)]}, T0, None)
+    assert run.status == "ok" and run.created == 1 and "index" not in run.per_board
+
+
+import functools
+import json as _json
+
+from job_search_platform.services import job_crawl
+
+
+def _crawl_result(**counts):
+    return {"state": "ok", "requests": 1, "blocked": 0, "fetched": 0, "created": 0, "deleted": 0, **counts}
+
+
+@pytest.mark.integration
+def test_crawl_phase_failure_isolated_and_counted(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    calls = []
+
+    def crawl(sessions_, site, **kw):
+        calls.append((site, kw["budget_seconds"]))
+        if site == "jobtopgun":
+            return {**_crawl_result(), "state": "failed", "error": "http_503"}
+        return _crawl_result(fetched=4, created=3)
+
+    run = job_store.run_ingest(sessions, boards={"greenhouse": ["a"]}, sources=("greenhouse",),
+                               fetch=Fetch({("greenhouse", "a"): [_raw(1)]}), clock=lambda: T0,
+                               sleep=lambda s: None, crawl_sites=["jobtopgun", "jobbkk"], crawl=crawl)
+    assert run.status == "partial" and run.created == 1 + 3
+    assert run.per_board["crawl:jobtopgun"]["error"] == "http_503"
+    assert run.per_board["crawl:jobbkk"]["state"] == "ok"
+    assert calls == [("jobtopgun", 900), ("jobbkk", 900)]
+
+
+@pytest.mark.integration
+def test_crawl_exception_does_not_abort_run(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+
+    def crawl(sessions_, site, **kw):
+        raise RuntimeError("bug")
+
+    run = job_store.run_ingest(sessions, boards={}, sources=(), clock=lambda: T0, sleep=lambda s: None,
+                               crawl_sites=["jobbkk"], crawl=crawl)
+    assert run.status == "failed" and run.per_board["crawl:jobbkk"] == {"state": "failed", "error": "RuntimeError"}
+
+
+@pytest.mark.integration
+def test_crawl_site_skipped_past_run_total(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    times = iter([T0] + [T0 + timedelta(minutes=51)] * 10)
+    run = job_store.run_ingest(sessions, boards={}, sources=(), clock=lambda: next(times), sleep=lambda s: None,
+                               crawl_sites=["jobbkk"], crawl=lambda *a, **k: pytest.fail("must not crawl"))
+    assert run.per_board["crawl:jobbkk"] == {"state": "skipped"}
+
+
+@pytest.mark.integration
+def test_same_job_on_both_boards_collapses_to_one_canonical(migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    posting = {"@context": "https://schema.org", "@type": "JobPosting", "title": "Data Engineer",
+               "datePosted": (T0 - timedelta(days=1)).date().isoformat(),
+               "hiringOrganization": {"name": "Acme Co., Ltd."},
+               "jobLocation": {"address": {"addressRegion": "Bangkok"}}, "description": "<p>Synthetic</p>"}
+    detail = f'<script type="application/ld+json">{_json.dumps(posting)}</script>'
+    stamp = (T0 - timedelta(days=1)).astimezone(job_crawl.BANGKOK).strftime("%Y-%m-%d %H:%M:%S")
+    old = (T0 - timedelta(days=200)).astimezone(job_crawl.BANGKOK).strftime("%Y-%m-%d %H:%M:%S")
+
+    def rsc(items):
+        return ("<script>self.__next_f.push([1,"
+                + _json.dumps("5:" + _json.dumps({"jobpost_list": items}, separators=(",", ":"))) + "])</script>")
+
+    jtg, bkk = "https://www.jobtopgun.com", "https://www.jobbkk.com"
+    pages = {
+        f"{jtg}/robots.txt": "User-agent: *\n", f"{bkk}/robots.txt": "User-agent: *\n",
+        f"{jtg}/sitemap.xml": f"<sitemapindex><sitemap><loc>{jtg}/sitemaps/jobs-snapshot/sitemap/0.xml</loc></sitemap></sitemapindex>",
+        f"{jtg}/sitemaps/jobs-snapshot/sitemap/0.xml": f"<urlset><url><loc>{jtg}/th/jobs/j1-1</loc></url></urlset>",
+        f"{jtg}/th/jobs/j1-1": detail, f"{bkk}/jobs/detail/7/11": detail,
+        job_crawl._BKK_LIST.format(1): rsc([{"jobpost_id": 11, "company_id": 7, "created_at": stamp, "updated_at": stamp}]),
+        job_crawl._BKK_LIST.format(2): rsc([]), job_crawl._BKK_LIST.format(3): rsc([]),
+        job_crawl._BKK_LIST.format(4): rsc([{"jobpost_id": 1, "company_id": 7, "created_at": old, "updated_at": old}]),
+    }
+
+    def transport(url):
+        return (200, {}, pages[url].encode()) if url in pages else (404, {}, b"")
+
+    crawl = functools.partial(job_crawl.crawl_site, transport=transport, monotonic=lambda: 0.0)
+    run = job_store.run_ingest(sessions, boards={}, sources=(), clock=lambda: T0, sleep=lambda s: None,
+                               crawl_sites=["jobtopgun", "jobbkk"], crawl=crawl)
+    assert run.status == "ok" and run.created == 2 and run.merged == 1
+    with sessions() as db:
+        canonical = db.scalars(select(JobPosting).where(JobPosting.canonical_id.is_(None))).all()
+    assert len(canonical) == 1

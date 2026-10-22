@@ -1,0 +1,22 @@
+{
+  "page_id": "10",
+  "page": "Agent Activity",
+  "version": "v1",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "10-agent-activity-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "0093a0b4cfd854727eba81095e0aabc6b783f7b9726a6883cd4ab343baeb1840",
+  "embedded_prompt": true,
+  "handoff": "../10_AGENT_ACTIVITY_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false
+}

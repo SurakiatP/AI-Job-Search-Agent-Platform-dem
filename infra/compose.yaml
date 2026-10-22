@@ -1,0 +1,544 @@
+name: jobsearch-core02
+
+x-langfuse-env: &langfuse-env
+  CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+  CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+  CLICKHOUSE_USER: langfuse
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  REDIS_HOST: langfuse-valkey
+  REDIS_PORT: "6379"
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  NEXTAUTH_URL: http://127.0.0.1:${CORE02_LANGFUSE_PORT:-53000}
+  TELEMETRY_ENABLED: "false"
+
+x-langfuse-depends: &langfuse-depends
+  langfuse-db:
+    condition: service_healthy
+  langfuse-clickhouse:
+    condition: service_healthy
+  langfuse-valkey:
+    condition: service_healthy
+  langfuse-minio:
+    condition: service_healthy
+
+services:
+  postgres:
+    image: job-search-platform/postgres:17.11-alpine-gosu-1.19-6456aaa0f3c8
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+      additional_contexts:
+        gosu_source: ${GOSU_SOURCE_DIR:?Set GOSU_SOURCE_DIR to the pinned external gosu checkout}
+      args:
+        GOSU_SOURCE_COMMIT: ${GOSU_SOURCE_COMMIT:?Set GOSU_SOURCE_COMMIT using scripts/local_infra.py}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jobsearch_platform_core02
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets:
+      - postgres_user
+      - postgres_password
+    ports:
+      - "127.0.0.1:${CORE02_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres17_alpine_data:/var/lib/postgresql/data
+    networks:
+      - storage_private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    labels:
+      com.job-search-platform.task: core02-storage
+
+  minio:
+    image: job-search-platform/minio-oss:7aac2a2c5b7c882e68c1ce017d8256be2feea27f
+    build:
+      context: ./minio
+      dockerfile: Dockerfile
+      additional_contexts:
+        minio_source: ${MINIO_SOURCE_DIR:?Set MINIO_SOURCE_DIR to the pinned external MinIO checkout}
+      args:
+        MINIO_SOURCE_COMMIT: ${MINIO_SOURCE_COMMIT:?Set MINIO_SOURCE_COMMIT using scripts/local_infra.py}
+    restart: unless-stopped
+    command: ["server", "/data", "--address", ":9000"]
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_access_key
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_secret_key
+    secrets:
+      - minio_access_key
+      - minio_secret_key
+    ports:
+      - "127.0.0.1:${CORE02_MINIO_PORT:-59000}:9000"
+    volumes:
+      - minio_data:/data
+    networks:
+      - storage_private
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "/bin/busybox", "wget", "-q", "-T", "2", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    labels:
+      com.job-search-platform.task: core02-storage
+
+  litellm-db:
+    image: job-search-platform/postgres:17.11-alpine-gosu-1.19-6456aaa0f3c8
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD_FILE: /run/secrets/litellm-db-password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets:
+      - litellm-db-password
+    volumes:
+      - litellm_db_data:/var/lib/postgresql/data
+    networks:
+      - litellm_private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U litellm"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    labels:
+      com.job-search-platform.task: litellm-gateway
+
+  litellm:
+    image: ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a
+    restart: unless-stopped
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export LITELLM_MASTER_KEY="$$(cat /run/secrets/litellm-master-key)"
+        LITELLM_SALT_KEY="$$(cat /run/secrets/litellm-salt-key)"
+        UI_PASSWORD="$$(cat /run/secrets/litellm-ui-password)"
+        DATABASE_URL="postgresql://litellm:$$(cat /run/secrets/litellm-db-password)@litellm-db:5432/litellm"
+        && exec docker/prod_entrypoint.sh --config /app/config.yaml --port 4000
+    environment:
+      STORE_MODEL_IN_DB: "True"
+      UI_USERNAME: owner
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    secrets:
+      - litellm-master-key
+      - litellm-salt-key
+      - litellm-ui-password
+      - litellm-db-password
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    ports:
+      - "127.0.0.1:${CORE02_LITELLM_PORT:-54000}:4000"
+    networks:
+      - litellm_private
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+    labels:
+      com.job-search-platform.task: litellm-gateway
+
+  litellm-seed:
+    profiles: ["seed"]
+    image: ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a
+    restart: "no"
+    depends_on:
+      litellm:
+        condition: service_healthy
+    entrypoint: ["python", "/seed/seed.py", "/out/litellm_app_key"]
+    environment:
+      OPENROUTER_KEY_PRESENT: ${OPENROUTER_KEY_PRESENT:-}
+      AI_ANALYZE_UPSTREAM_MODEL: ${AI_ANALYZE_UPSTREAM_MODEL:-openrouter/openai/gpt-6-luna}
+    secrets:
+      - litellm-master-key
+    volumes:
+      - ./litellm/seed.py:/seed/seed.py:ro
+      - ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/litellm_app_key:/out/litellm_app_key
+    networks:
+      - litellm_private
+    labels:
+      com.job-search-platform.task: litellm-gateway
+
+  meilisearch:
+    # getmeili/meilisearch v1.55.0 (Community Edition, MIT), multi-arch index digest. Job search index (FR-J01).
+    image: getmeili/meilisearch:v1.55.0@sha256:ff546679970126f8822e15d1b6a06bfbff1f2ce2e43f810cfb5258012f92de5c
+    restart: unless-stopped
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export MEILI_MASTER_KEY="$$(cat /run/secrets/meili-master-key)"
+        && exec meilisearch
+    environment:
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_DB_PATH: /meili_data/data.ms
+    secrets:
+      - meili-master-key
+    volumes:
+      - meili-data:/meili_data
+    ports:
+      - "127.0.0.1:${CORE02_MEILI_PORT:-57700}:7700"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    labels:
+      com.job-search-platform.task: job-search-index
+
+  mailpit:
+    # axllent/mailpit v1.31.5 (== :latest on 2026-10-14), multi-arch index digest. Dev mail sink only.
+    image: axllent/mailpit:v1.31.5@sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${CORE02_MAILPIT_SMTP_PORT:-51025}:1025"
+      - "127.0.0.1:${CORE02_MAILPIT_UI_PORT:-58025}:8025"
+    labels:
+      com.job-search-platform.task: accounts-mail
+
+  prometheus:
+    # Prometheus v3.15.0 built from pinned source (Go 1.27.2, x/net v0.60.0): 0 High/Critical (spec A1.2).
+    image: job-search-platform/prometheus:3.15.0-go1.27.2-5241a27fe3c6
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+      additional_contexts:
+        prometheus_source: ${PROMETHEUS_SOURCE_DIR:?Set PROMETHEUS_SOURCE_DIR to the pinned external Prometheus checkout}
+      args:
+        PROMETHEUS_SOURCE_COMMIT: ${PROMETHEUS_SOURCE_COMMIT:?Set PROMETHEUS_SOURCE_COMMIT using scripts/local_infra.py}
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      - --web.listen-address=0.0.0.0:9090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${CORE02_PROMETHEUS_PORT:-59090}:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    labels:
+      com.job-search-platform.task: observability
+
+  grafana:
+    # grafana/grafana v13.2.4 (OSS edition, AGPL-3.0) keeping only the Prometheus datasource, rebuilt from pinned source (Go 1.27.2, x/net v0.60.0): 0 High/Critical (spec A1.3).
+    image: job-search-platform/grafana:13.2.4-promds13.2.3-go1.27.2-6d21418acde6
+    build:
+      context: ./grafana
+      additional_contexts:
+        grafana_prom_ds_source: ${GRAFANA_PROM_DS_SOURCE_DIR:?Set GRAFANA_PROM_DS_SOURCE_DIR to the pinned external grafana-prometheus-datasource checkout}
+      args:
+        GRAFANA_PROM_DS_SOURCE_COMMIT: ${GRAFANA_PROM_DS_SOURCE_COMMIT:?Set GRAFANA_PROM_DS_SOURCE_COMMIT using scripts/local_infra.py}
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana-admin-password
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GRAFANA_PROMETHEUS_URL: ${GRAFANA_PROMETHEUS_URL:-http://prometheus:9090}
+    secrets:
+      - grafana-admin-password
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${CORE02_GRAFANA_PORT:-53300}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    labels:
+      com.job-search-platform.task: observability
+
+  langfuse-db:
+    profiles: ["langfuse"]
+    image: job-search-platform/postgres:17.11-alpine-gosu-1.19-6456aaa0f3c8
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: langfuse
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD_FILE: /run/secrets/langfuse-db-password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets:
+      - langfuse-db-password
+    volumes:
+      - langfuse_db_data:/var/lib/postgresql/data
+    networks:
+      - langfuse_private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U langfuse"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    labels:
+      com.job-search-platform.task: langfuse
+
+  langfuse-clickhouse:
+    profiles: ["langfuse"]
+    image: clickhouse/clickhouse-server:25.12.11.4-distroless@sha256:f72a88eba5b89e80faea55f048bc0827d4a8a09c4f62701bf9dc802c9e049f53
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - langfuse_clickhouse_data:/var/lib/clickhouse
+      - langfuse_clickhouse_logs:/var/log/clickhouse-server
+      - ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-clickhouse-users.xml:/etc/clickhouse-server/users.d/langfuse.xml:ro
+    networks:
+      - langfuse_private
+    healthcheck:  # distroless: no shell or wget; /ping needs no auth
+      test: ["CMD", "/usr/bin/clickhouse", "local", "--query", "SELECT * FROM url('http://127.0.0.1:8123/ping', 'LineAsString')"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+    labels:
+      com.job-search-platform.task: langfuse
+
+  langfuse-valkey:
+    profiles: ["langfuse"]
+    image: valkey/valkey:8-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+    restart: unless-stopped
+    command: ["valkey-server", "/run/secrets/langfuse-valkey-conf"]
+    secrets:
+      - langfuse-valkey-conf
+    networks:
+      - langfuse_private
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(sed -n 's/^requirepass //p' /run/secrets/langfuse-valkey-conf)\" valkey-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    labels:
+      com.job-search-platform.task: langfuse
+
+  langfuse-minio:
+    profiles: ["langfuse"]
+    image: job-search-platform/minio-oss:7aac2a2c5b7c882e68c1ce017d8256be2feea27f
+    restart: unless-stopped
+    entrypoint: ["/bin/busybox", "sh", "-c", "/bin/busybox mkdir -p /data/langfuse && exec /usr/bin/minio server /data --address :9000"]
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/langfuse-minio-access-key
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/langfuse-minio-secret-key
+    secrets:
+      - langfuse-minio-access-key
+      - langfuse-minio-secret-key
+    volumes:
+      - langfuse_minio_data:/data
+    networks:
+      - langfuse_private
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "/bin/busybox", "wget", "-q", "-T", "2", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    labels:
+      com.job-search-platform.task: langfuse
+
+  langfuse-worker:
+    profiles: ["langfuse"]
+    image: langfuse/langfuse-worker:4.56.0@sha256:3f7571ff3a725ebdcdf4c35e06bdf8c3f8325770691c673793ad61b328265e13
+    restart: unless-stopped
+    depends_on: *langfuse-depends
+    entrypoint: ["sh", "-c", ". /langfuse/env.sh && exec dumb-init -- ./worker/entrypoint.sh node worker/dist/index.js"]
+    environment: *langfuse-env
+    secrets:
+      - langfuse-db-password
+      - langfuse-clickhouse-password
+      - langfuse-redis-password
+      - langfuse-minio-access-key
+      - langfuse-minio-secret-key
+      - langfuse-nextauth-secret
+      - langfuse-salt
+      - langfuse-encryption-key
+    volumes:
+      - ./langfuse/env.sh:/langfuse/env.sh:ro
+    networks:
+      - langfuse_private
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://'+require('os').hostname()+':3030/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    labels:
+      com.job-search-platform.task: langfuse
+
+  langfuse-web:
+    profiles: ["langfuse"]
+    image: langfuse/langfuse:4.56.0@sha256:b1948c7c0931f277975b985e30e73536b1bca5822705ddd9a89ba7c1ed79b3ee
+    restart: unless-stopped
+    depends_on: *langfuse-depends
+    entrypoint: ["sh", "-c", ". /langfuse/env.sh && exec dumb-init -- ./web/entrypoint.sh node ./web/server.js --keepAliveTimeout 110000"]
+    environment:
+      <<: *langfuse-env
+      HOSTNAME: 0.0.0.0
+      AUTH_DISABLE_SIGNUP: "true"
+      LANGFUSE_INIT_ORG_ID: job-search
+      LANGFUSE_INIT_ORG_NAME: job-search
+      LANGFUSE_INIT_PROJECT_ID: job-search-platform
+      LANGFUSE_INIT_PROJECT_NAME: job-search-platform
+      LANGFUSE_INIT_USER_EMAIL: owner@jobsearch.local
+      LANGFUSE_INIT_USER_NAME: owner
+    secrets:
+      - langfuse-db-password
+      - langfuse-clickhouse-password
+      - langfuse-redis-password
+      - langfuse-minio-access-key
+      - langfuse-minio-secret-key
+      - langfuse-nextauth-secret
+      - langfuse-salt
+      - langfuse-encryption-key
+      - langfuse-ui-password
+      - langfuse-public-key
+      - langfuse-secret-key
+    volumes:
+      - ./langfuse/env.sh:/langfuse/env.sh:ro
+    ports:
+      - "127.0.0.1:${CORE02_LANGFUSE_PORT:-53000}:3000"
+    networks:
+      - langfuse_private
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/public/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    labels:
+      com.job-search-platform.task: langfuse
+
+networks:
+  litellm_private:
+    driver: bridge
+  storage_private:
+    driver: bridge
+  langfuse_private:
+    driver: bridge
+
+volumes:
+  meili-data:
+    labels:
+      com.job-search-platform.task: job-search-index
+  postgres17_alpine_data:
+    name: jobsearch-core02-postgres17-alpine-data
+    labels:
+      com.job-search-platform.task: core02-storage
+  minio_data:
+    labels:
+      com.job-search-platform.task: core02-storage
+  litellm_db_data:
+    name: jobsearch-core02-litellm-db-data
+    labels:
+      com.job-search-platform.task: litellm-gateway
+  langfuse_db_data:
+    name: jobsearch-core02-langfuse-db-data
+    labels:
+      com.job-search-platform.task: langfuse
+  langfuse_clickhouse_data:
+    labels:
+      com.job-search-platform.task: langfuse
+  langfuse_clickhouse_logs:
+    labels:
+      com.job-search-platform.task: langfuse
+  langfuse_minio_data:
+    labels:
+      com.job-search-platform.task: langfuse
+  prometheus-data:
+    labels:
+      com.job-search-platform.task: observability
+  grafana-data:
+    labels:
+      com.job-search-platform.task: observability
+
+secrets:
+  meili-master-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/meili-master-key
+  grafana-admin-password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/grafana-admin-password
+  postgres_user:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/postgres-user
+  postgres_password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/postgres-password
+  minio_access_key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/minio-access-key
+  minio_secret_key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/minio-secret-key
+  litellm-master-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/litellm-master-key
+  litellm-salt-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/litellm-salt-key
+  litellm-db-password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/litellm-db-password
+  litellm-ui-password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/litellm-ui-password
+  langfuse-db-password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-db-password
+  langfuse-clickhouse-password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-clickhouse-password
+  langfuse-redis-password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-redis-password
+  langfuse-minio-access-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-minio-access-key
+  langfuse-minio-secret-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-minio-secret-key
+  langfuse-nextauth-secret:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-nextauth-secret
+  langfuse-salt:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-salt
+  langfuse-encryption-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-encryption-key
+  langfuse-ui-password:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-ui-password
+  langfuse-public-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-public-key
+  langfuse-secret-key:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-secret-key
+  langfuse-valkey-conf:
+    file: ${CORE02_PRIVATE_DIR:?Set CORE02_PRIVATE_DIR using scripts/local_infra.py start}/langfuse-valkey.conf

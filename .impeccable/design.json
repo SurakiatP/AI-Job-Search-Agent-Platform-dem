@@ -1,0 +1,632 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-16T00:00:00+00:00",
+  "title": "Design System: AI Job Search Agent Platform",
+  "extensions": {
+    "colorMeta": {
+      "background": {
+        "role": "neutral",
+        "displayName": "Background",
+        "tonalRamp": [
+          "oklch(15% 0.0054 274.97)",
+          "oklch(25% 0.0054 274.97)",
+          "oklch(37% 0.0054 274.97)",
+          "oklch(49% 0.0054 274.97)",
+          "oklch(61% 0.0054 274.97)",
+          "oklch(73% 0.0054 274.97)",
+          "oklch(85% 0.0054 274.97)",
+          "oklch(95% 0.0054 274.97)"
+        ]
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.0485 263.22)",
+          "oklch(25% 0.0485 263.22)",
+          "oklch(37% 0.0485 263.22)",
+          "oklch(49% 0.0485 263.22)",
+          "oklch(61% 0.0485 263.22)",
+          "oklch(73% 0.0485 263.22)",
+          "oklch(85% 0.0485 263.22)",
+          "oklch(95% 0.0485 263.22)"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(25% 0.0000 89.88)",
+          "oklch(37% 0.0000 89.88)",
+          "oklch(49% 0.0000 89.88)",
+          "oklch(61% 0.0000 89.88)",
+          "oklch(73% 0.0000 89.88)",
+          "oklch(85% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Primary",
+        "tonalRamp": [
+          "oklch(15% 0.2301 276.97)",
+          "oklch(25% 0.2301 276.97)",
+          "oklch(37% 0.2301 276.97)",
+          "oklch(49% 0.2301 276.97)",
+          "oklch(61% 0.2301 276.97)",
+          "oklch(73% 0.2301 276.97)",
+          "oklch(85% 0.2301 276.97)",
+          "oklch(95% 0.2301 276.97)"
+        ]
+      },
+      "primary-foreground": {
+        "role": "neutral",
+        "displayName": "Primary Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.0000 89.88)",
+          "oklch(25% 0.0000 89.88)",
+          "oklch(37% 0.0000 89.88)",
+          "oklch(49% 0.0000 89.88)",
+          "oklch(61% 0.0000 89.88)",
+          "oklch(73% 0.0000 89.88)",
+          "oklch(85% 0.0000 89.88)",
+          "oklch(95% 0.0000 89.88)"
+        ]
+      },
+      "secondary": {
+        "role": "neutral",
+        "displayName": "Secondary",
+        "tonalRamp": [
+          "oklch(15% 0.0099 267.36)",
+          "oklch(25% 0.0099 267.36)",
+          "oklch(37% 0.0099 267.36)",
+          "oklch(49% 0.0099 267.36)",
+          "oklch(61% 0.0099 267.36)",
+          "oklch(73% 0.0099 267.36)",
+          "oklch(85% 0.0099 267.36)",
+          "oklch(95% 0.0099 267.36)"
+        ]
+      },
+      "secondary-foreground": {
+        "role": "neutral",
+        "displayName": "Secondary Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.0485 263.22)",
+          "oklch(25% 0.0485 263.22)",
+          "oklch(37% 0.0485 263.22)",
+          "oklch(49% 0.0485 263.22)",
+          "oklch(61% 0.0485 263.22)",
+          "oklch(73% 0.0485 263.22)",
+          "oklch(85% 0.0485 263.22)",
+          "oklch(95% 0.0485 263.22)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0099 267.36)",
+          "oklch(25% 0.0099 267.36)",
+          "oklch(37% 0.0099 267.36)",
+          "oklch(49% 0.0099 267.36)",
+          "oklch(61% 0.0099 267.36)",
+          "oklch(73% 0.0099 267.36)",
+          "oklch(85% 0.0099 267.36)",
+          "oklch(95% 0.0099 267.36)"
+        ]
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "Muted Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.0428 259.72)",
+          "oklch(25% 0.0428 259.72)",
+          "oklch(37% 0.0428 259.72)",
+          "oklch(49% 0.0428 259.72)",
+          "oklch(61% 0.0428 259.72)",
+          "oklch(73% 0.0428 259.72)",
+          "oklch(85% 0.0428 259.72)",
+          "oklch(95% 0.0428 259.72)"
+        ]
+      },
+      "accent": {
+        "role": "neutral",
+        "displayName": "Accent",
+        "tonalRamp": [
+          "oklch(15% 0.0310 285.78)",
+          "oklch(25% 0.0310 285.78)",
+          "oklch(37% 0.0310 285.78)",
+          "oklch(49% 0.0310 285.78)",
+          "oklch(61% 0.0310 285.78)",
+          "oklch(73% 0.0310 285.78)",
+          "oklch(85% 0.0310 285.78)",
+          "oklch(95% 0.0310 285.78)"
+        ]
+      },
+      "accent-foreground": {
+        "role": "neutral",
+        "displayName": "Accent Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.1773 277.37)",
+          "oklch(25% 0.1773 277.37)",
+          "oklch(37% 0.1773 277.37)",
+          "oklch(49% 0.1773 277.37)",
+          "oklch(61% 0.1773 277.37)",
+          "oklch(73% 0.1773 277.37)",
+          "oklch(85% 0.1773 277.37)",
+          "oklch(95% 0.1773 277.37)"
+        ]
+      },
+      "destructive": {
+        "role": "semantic",
+        "displayName": "Destructive",
+        "tonalRamp": [
+          "oklch(15% 0.1718 16.94)",
+          "oklch(25% 0.1718 16.94)",
+          "oklch(37% 0.1718 16.94)",
+          "oklch(49% 0.1718 16.94)",
+          "oklch(61% 0.1718 16.94)",
+          "oklch(73% 0.1718 16.94)",
+          "oklch(85% 0.1718 16.94)",
+          "oklch(95% 0.1718 16.94)"
+        ]
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Success",
+        "tonalRamp": [
+          "oklch(15% 0.0897 161.67)",
+          "oklch(25% 0.0897 161.67)",
+          "oklch(37% 0.0897 161.67)",
+          "oklch(49% 0.0897 161.67)",
+          "oklch(61% 0.0897 161.67)",
+          "oklch(73% 0.0897 161.67)",
+          "oklch(85% 0.0897 161.67)",
+          "oklch(95% 0.0897 161.67)"
+        ]
+      },
+      "warning": {
+        "role": "semantic",
+        "displayName": "Warning",
+        "tonalRamp": [
+          "oklch(15% 0.0929 68.37)",
+          "oklch(25% 0.0929 68.37)",
+          "oklch(37% 0.0929 68.37)",
+          "oklch(49% 0.0929 68.37)",
+          "oklch(61% 0.0929 68.37)",
+          "oklch(73% 0.0929 68.37)",
+          "oklch(85% 0.0929 68.37)",
+          "oklch(95% 0.0929 68.37)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Border",
+        "tonalRamp": [
+          "oklch(15% 0.0146 264.49)",
+          "oklch(25% 0.0146 264.49)",
+          "oklch(37% 0.0146 264.49)",
+          "oklch(49% 0.0146 264.49)",
+          "oklch(61% 0.0146 264.49)",
+          "oklch(73% 0.0146 264.49)",
+          "oklch(85% 0.0146 264.49)",
+          "oklch(95% 0.0146 264.49)"
+        ]
+      },
+      "input": {
+        "role": "neutral",
+        "displayName": "Input",
+        "tonalRamp": [
+          "oklch(15% 0.0372 263.47)",
+          "oklch(25% 0.0372 263.47)",
+          "oklch(37% 0.0372 263.47)",
+          "oklch(49% 0.0372 263.47)",
+          "oklch(61% 0.0372 263.47)",
+          "oklch(73% 0.0372 263.47)",
+          "oklch(85% 0.0372 263.47)",
+          "oklch(95% 0.0372 263.47)"
+        ]
+      },
+      "ring": {
+        "role": "neutral",
+        "displayName": "Ring",
+        "tonalRamp": [
+          "oklch(15% 0.2301 276.97)",
+          "oklch(25% 0.2301 276.97)",
+          "oklch(37% 0.2301 276.97)",
+          "oklch(49% 0.2301 276.97)",
+          "oklch(61% 0.2301 276.97)",
+          "oklch(73% 0.2301 276.97)",
+          "oklch(85% 0.2301 276.97)",
+          "oklch(95% 0.2301 276.97)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar",
+        "tonalRamp": [
+          "oklch(15% 0.0204 276.95)",
+          "oklch(25% 0.0204 276.95)",
+          "oklch(37% 0.0204 276.95)",
+          "oklch(49% 0.0204 276.95)",
+          "oklch(61% 0.0204 276.95)",
+          "oklch(73% 0.0204 276.95)",
+          "oklch(85% 0.0204 276.95)",
+          "oklch(95% 0.0204 276.95)"
+        ]
+      },
+      "dark-background": {
+        "role": "neutral",
+        "displayName": "Dark Background",
+        "tonalRamp": [
+          "oklch(15% 0.0270 270.68)",
+          "oklch(25% 0.0270 270.68)",
+          "oklch(37% 0.0270 270.68)",
+          "oklch(49% 0.0270 270.68)",
+          "oklch(61% 0.0270 270.68)",
+          "oklch(73% 0.0270 270.68)",
+          "oklch(85% 0.0270 270.68)",
+          "oklch(95% 0.0270 270.68)"
+        ]
+      },
+      "dark-foreground": {
+        "role": "neutral",
+        "displayName": "Dark Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.0128 266.70)",
+          "oklch(25% 0.0128 266.70)",
+          "oklch(37% 0.0128 266.70)",
+          "oklch(49% 0.0128 266.70)",
+          "oklch(61% 0.0128 266.70)",
+          "oklch(73% 0.0128 266.70)",
+          "oklch(85% 0.0128 266.70)",
+          "oklch(95% 0.0128 266.70)"
+        ]
+      },
+      "dark-card": {
+        "role": "neutral",
+        "displayName": "Dark Card",
+        "tonalRamp": [
+          "oklch(15% 0.0319 268.20)",
+          "oklch(25% 0.0319 268.20)",
+          "oklch(37% 0.0319 268.20)",
+          "oklch(49% 0.0319 268.20)",
+          "oklch(61% 0.0319 268.20)",
+          "oklch(73% 0.0319 268.20)",
+          "oklch(85% 0.0319 268.20)",
+          "oklch(95% 0.0319 268.20)"
+        ]
+      },
+      "dark-primary": {
+        "role": "primary",
+        "displayName": "Dark Primary",
+        "tonalRamp": [
+          "oklch(15% 0.1247 285.13)",
+          "oklch(25% 0.1247 285.13)",
+          "oklch(37% 0.1247 285.13)",
+          "oklch(49% 0.1247 285.13)",
+          "oklch(61% 0.1247 285.13)",
+          "oklch(73% 0.1247 285.13)",
+          "oklch(85% 0.1247 285.13)",
+          "oklch(95% 0.1247 285.13)"
+        ]
+      },
+      "dark-primary-foreground": {
+        "role": "neutral",
+        "displayName": "Dark Primary Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.0318 272.87)",
+          "oklch(25% 0.0318 272.87)",
+          "oklch(37% 0.0318 272.87)",
+          "oklch(49% 0.0318 272.87)",
+          "oklch(61% 0.0318 272.87)",
+          "oklch(73% 0.0318 272.87)",
+          "oklch(85% 0.0318 272.87)",
+          "oklch(95% 0.0318 272.87)"
+        ]
+      },
+      "dark-secondary": {
+        "role": "neutral",
+        "displayName": "Dark Secondary",
+        "tonalRamp": [
+          "oklch(15% 0.0350 265.76)",
+          "oklch(25% 0.0350 265.76)",
+          "oklch(37% 0.0350 265.76)",
+          "oklch(49% 0.0350 265.76)",
+          "oklch(61% 0.0350 265.76)",
+          "oklch(73% 0.0350 265.76)",
+          "oklch(85% 0.0350 265.76)",
+          "oklch(95% 0.0350 265.76)"
+        ]
+      },
+      "dark-secondary-foreground": {
+        "role": "neutral",
+        "displayName": "Dark Secondary Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.0128 266.70)",
+          "oklch(25% 0.0128 266.70)",
+          "oklch(37% 0.0128 266.70)",
+          "oklch(49% 0.0128 266.70)",
+          "oklch(61% 0.0128 266.70)",
+          "oklch(73% 0.0128 266.70)",
+          "oklch(85% 0.0128 266.70)",
+          "oklch(95% 0.0128 266.70)"
+        ]
+      },
+      "dark-muted": {
+        "role": "neutral",
+        "displayName": "Dark Muted",
+        "tonalRamp": [
+          "oklch(15% 0.0350 265.76)",
+          "oklch(25% 0.0350 265.76)",
+          "oklch(37% 0.0350 265.76)",
+          "oklch(49% 0.0350 265.76)",
+          "oklch(61% 0.0350 265.76)",
+          "oklch(73% 0.0350 265.76)",
+          "oklch(85% 0.0350 265.76)",
+          "oklch(95% 0.0350 265.76)"
+        ]
+      },
+      "dark-muted-foreground": {
+        "role": "neutral",
+        "displayName": "Dark Muted Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.0332 260.02)",
+          "oklch(25% 0.0332 260.02)",
+          "oklch(37% 0.0332 260.02)",
+          "oklch(49% 0.0332 260.02)",
+          "oklch(61% 0.0332 260.02)",
+          "oklch(73% 0.0332 260.02)",
+          "oklch(85% 0.0332 260.02)",
+          "oklch(95% 0.0332 260.02)"
+        ]
+      },
+      "dark-accent": {
+        "role": "neutral",
+        "displayName": "Dark Accent",
+        "tonalRamp": [
+          "oklch(15% 0.0618 275.29)",
+          "oklch(25% 0.0618 275.29)",
+          "oklch(37% 0.0618 275.29)",
+          "oklch(49% 0.0618 275.29)",
+          "oklch(61% 0.0618 275.29)",
+          "oklch(73% 0.0618 275.29)",
+          "oklch(85% 0.0618 275.29)",
+          "oklch(95% 0.0618 275.29)"
+        ]
+      },
+      "dark-accent-foreground": {
+        "role": "neutral",
+        "displayName": "Dark Accent Foreground",
+        "tonalRamp": [
+          "oklch(15% 0.0434 286.94)",
+          "oklch(25% 0.0434 286.94)",
+          "oklch(37% 0.0434 286.94)",
+          "oklch(49% 0.0434 286.94)",
+          "oklch(61% 0.0434 286.94)",
+          "oklch(73% 0.0434 286.94)",
+          "oklch(85% 0.0434 286.94)",
+          "oklch(95% 0.0434 286.94)"
+        ]
+      },
+      "dark-destructive": {
+        "role": "semantic",
+        "displayName": "Dark Destructive",
+        "tonalRamp": [
+          "oklch(15% 0.1217 9.98)",
+          "oklch(25% 0.1217 9.98)",
+          "oklch(37% 0.1217 9.98)",
+          "oklch(49% 0.1217 9.98)",
+          "oklch(61% 0.1217 9.98)",
+          "oklch(73% 0.1217 9.98)",
+          "oklch(85% 0.1217 9.98)",
+          "oklch(95% 0.1217 9.98)"
+        ]
+      },
+      "dark-success": {
+        "role": "semantic",
+        "displayName": "Dark Success",
+        "tonalRamp": [
+          "oklch(15% 0.1085 162.36)",
+          "oklch(25% 0.1085 162.36)",
+          "oklch(37% 0.1085 162.36)",
+          "oklch(49% 0.1085 162.36)",
+          "oklch(61% 0.1085 162.36)",
+          "oklch(73% 0.1085 162.36)",
+          "oklch(85% 0.1085 162.36)",
+          "oklch(95% 0.1085 162.36)"
+        ]
+      },
+      "dark-warning": {
+        "role": "semantic",
+        "displayName": "Dark Warning",
+        "tonalRamp": [
+          "oklch(15% 0.0988 79.79)",
+          "oklch(25% 0.0988 79.79)",
+          "oklch(37% 0.0988 79.79)",
+          "oklch(49% 0.0988 79.79)",
+          "oklch(61% 0.0988 79.79)",
+          "oklch(73% 0.0988 79.79)",
+          "oklch(85% 0.0988 79.79)",
+          "oklch(95% 0.0988 79.79)"
+        ]
+      },
+      "dark-border": {
+        "role": "neutral",
+        "displayName": "Dark Border",
+        "tonalRamp": [
+          "oklch(15% 0.0424 264.62)",
+          "oklch(25% 0.0424 264.62)",
+          "oklch(37% 0.0424 264.62)",
+          "oklch(49% 0.0424 264.62)",
+          "oklch(61% 0.0424 264.62)",
+          "oklch(73% 0.0424 264.62)",
+          "oklch(85% 0.0424 264.62)",
+          "oklch(95% 0.0424 264.62)"
+        ]
+      },
+      "dark-input": {
+        "role": "neutral",
+        "displayName": "Dark Input",
+        "tonalRamp": [
+          "oklch(15% 0.0439 263.51)",
+          "oklch(25% 0.0439 263.51)",
+          "oklch(37% 0.0439 263.51)",
+          "oklch(49% 0.0439 263.51)",
+          "oklch(61% 0.0439 263.51)",
+          "oklch(73% 0.0439 263.51)",
+          "oklch(85% 0.0439 263.51)",
+          "oklch(95% 0.0439 263.51)"
+        ]
+      },
+      "dark-ring": {
+        "role": "neutral",
+        "displayName": "Dark Ring",
+        "tonalRamp": [
+          "oklch(15% 0.1247 285.13)",
+          "oklch(25% 0.1247 285.13)",
+          "oklch(37% 0.1247 285.13)",
+          "oklch(49% 0.1247 285.13)",
+          "oklch(61% 0.1247 285.13)",
+          "oklch(73% 0.1247 285.13)",
+          "oklch(85% 0.1247 285.13)",
+          "oklch(95% 0.1247 285.13)"
+        ]
+      },
+      "dark-sidebar": {
+        "role": "neutral",
+        "displayName": "Dark Sidebar",
+        "tonalRamp": [
+          "oklch(15% 0.0525 273.36)",
+          "oklch(25% 0.0525 273.36)",
+          "oklch(37% 0.0525 273.36)",
+          "oklch(49% 0.0525 273.36)",
+          "oklch(61% 0.0525 273.36)",
+          "oklch(73% 0.0525 273.36)",
+          "oklch(85% 0.0525 273.36)",
+          "oklch(95% 0.0525 273.36)"
+        ]
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient-xs",
+        "value": "0 1px 2px rgb(23 35 59 / 0.04)",
+        "purpose": "Existing legacy control elevation; canonical core cards are flat."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Existing brief state feedback."
+      },
+      {
+        "name": "dur-fast",
+        "value": "150ms",
+        "purpose": "Existing transition duration."
+      },
+      {
+        "name": "dur-base",
+        "value": "180ms",
+        "purpose": "Existing transition duration."
+      },
+      {
+        "name": "dur-slow",
+        "value": "240ms",
+        "purpose": "Existing transition duration."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ],
+    "typographyMeta": {
+      "display": {
+        "displayName": "Landing display",
+        "role": "Public landing headline; Noto Serif Thai."
+      },
+      "headline": {
+        "displayName": "Workspace heading",
+        "role": "Global h1; 24px, 28px from 768px."
+      },
+      "body": {
+        "displayName": "Bilingual interface",
+        "role": "Noto Sans Thai leads; Manrope fallback."
+      },
+      "label": {
+        "displayName": "Interface label",
+        "role": "Medium weight for navigation and controls."
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action using the existing shared primitive.",
+      "html": "<button class=\"example\">Find jobs</button>",
+      "css": ".example{font:500 14px/1.7 \"Noto Sans Thai\",sans-serif;background:#4F46E5;color:white;min-height:44px;border:0;border-radius:10px;padding:8px 16px}.example:focus-visible{outline:2px solid #4F46E5;outline-offset:2px}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled field with the established stronger control stroke.",
+      "html": "<label class=\"field\">Search jobs<input placeholder=\"Position, company or skill\"></label>",
+      "css": ".field{display:grid;gap:8px;font:500 14px/1.7 \"Noto Sans Thai\",sans-serif;color:#17233B}.field input{min-height:44px;border:1px solid #828EA5;border-radius:10px;padding:8px 12px;background:white;color:#17233B;font:400 16px/1.7 \"Noto Sans Thai\",sans-serif}"
+    },
+    {
+      "name": "Project navigation",
+      "kind": "nav",
+      "description": "Labelled task navigation with a persistent selected state.",
+      "html": "<nav class=\"rail\" aria-label=\"Project\"><a class=\"selected\" href=\"#\">Overview</a><a href=\"#\">Job search</a><a href=\"#\">Evaluations</a></nav>",
+      "css": ".rail{display:grid;gap:4px;background:#E8EBFA;padding:16px;font:400 14px/1.7 \"Noto Sans Thai\",sans-serif}.rail a{display:flex;align-items:center;min-height:44px;padding:8px 12px;border-radius:12px;color:#17233B;text-decoration:none}.rail .selected{background:#E5E5FC;color:#3730A3;font-weight:600}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Collection Index",
+    "overview": "The shipped application uses a cool, quiet work surface with an indigo project rail and a compact information hierarchy. Its signature is the readable pairing of a CV revision with a job revision: source context stays near the task that uses it. Thai and English share the same sans-serif workhorse stack, while written labels accompany semantic status colours. The public landing page uses its own serif headline treatment within this system.",
+    "keyCharacteristics": [
+      "Cool neutral canvas, white work surfaces, and restrained indigo emphasis.",
+      "Bilingual sans-serif reading with generous body leading.",
+      "Flat bordered panels, aligned rows, and explicit revision context."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic State Rule",
+        "body": "Use colour to reinforce a named state; colour alone must never convey status, selection or uncertainty.",
+        "section": "colors"
+      },
+      {
+        "name": "The Bilingual Reading Rule",
+        "body": "Keep Thai body leading generous and preserve the original language of jobs, CVs and generated documents when changing UI language.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do reuse semantic tokens and the existing primitive system.",
+      "Do keep the selected project, exact revision pair and next action readable.",
+      "Do preserve drafts, URL filters, source transparency and pending decision states.",
+      "Do inspect both languages, themes and narrow layouts with loaded bundled fonts."
+    ],
+    "donts": [
+      "Don't invent scores, progress, freshness or delivery confirmations.",
+      "Don't substitute decorative KPI cards for the user's next action.",
+      "Don't add gradients, excessive nested cards or unnecessary animation.",
+      "Don't create a second component system or change backend contracts during visual work."
+    ]
+  }
+}

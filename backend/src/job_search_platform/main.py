@@ -1,0 +1,462 @@
+"""Local FastAPI application and production service assembly."""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import sys
+from urllib.parse import urlsplit
+import stat
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Any, Callable
+from uuid import uuid4
+
+import boto3
+from alembic import command
+from alembic.config import Config
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy.engine import URL
+from sqlalchemy.orm import sessionmaker
+from pydantic import BaseModel
+
+from job_search_platform import config
+from job_search_platform.api.dependencies import Services
+from job_search_platform.api.accounts import router as accounts_router
+from job_search_platform.api.mcp_tasks import mcp_request_state_key
+from job_search_platform.api.oauth import router as oauth_router
+from job_search_platform.api.rest import _http_error, health_router, router as rest_router
+from job_search_platform.api.resume import router as resume_router
+from job_search_platform.api.practice import router as practice_router
+from job_search_platform.api.sse import router as sse_router
+from job_search_platform.db.session import make_engine
+from job_search_platform.integrations.hermes_runtime import HermesRuntime
+from job_search_platform.integrations import metrics, tracing
+from job_search_platform.integrations.logging import RequestLogMiddleware, configure_logging
+from job_search_platform.integrations.mailer import SmtpMailer
+from job_search_platform.integrations.object_store import S3ObjectStore
+from job_search_platform.integrations import telegram as telegram_integration
+from job_search_platform.integrations.secrets import MacOSKeychain
+from job_search_platform.integrations.telegram import TelegramClient
+from job_search_platform.services.accounts import Accounts
+from job_search_platform.services.approvals import ApprovalService
+from job_search_platform.services.documents import Artifacts, Documents
+from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.maintenance import acquire_maintenance_lock, assert_restore_ready
+from job_search_platform.services.files import Files
+from job_search_platform.services.grants import Grants
+from job_search_platform.services.oauth import OAuth
+from job_search_platform.services.owner_sessions import OwnerSessions
+from job_search_platform.services.runs import RunService
+from job_search_platform.services.saved_searches import SavedSearches
+from job_search_platform.services.settings import Settings
+from job_search_platform.services.telegram import Telegram
+from job_search_platform.services.webhooks import Webhooks
+from job_search_platform.services import contracts
+from job_search_platform.workers.executor import RunExecutor
+from job_search_platform.workers.queue import PostgresRunQueue
+from job_search_platform.workers.supervisor import WorkerSupervisor
+
+ROOT = Path(__file__).resolve().parents[3]
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+PRIVATE_DIR = Path(os.environ.get("CORE02_PRIVATE_DIR") or Path.home() / ".cache" / "job-search-platform" / "core02-runtime-20261003")
+RUNTIME_METADATA = Path.home() / ".cache" / "job-search-platform" / "hermes-runtime.json"
+
+
+def _private_text(name: str) -> str:
+    path = PRIVATE_DIR / name
+    if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode) & config.secret_file_forbidden_bits():
+        raise RuntimeError("private_runtime_credentials_unavailable")
+    return path.read_text(encoding="utf-8").strip()
+
+
+def _migrate(engine) -> None:
+    cfg = Config()
+    cfg.set_main_option("script_location", str(BACKEND_ROOT / "migrations"))
+    cfg.set_main_option("prepend_sys_path", str(BACKEND_ROOT / "src"))
+    with engine.begin() as connection:
+        cfg.attributes["connection"] = connection
+        command.upgrade(cfg, "head")
+
+
+def _owner_sessions(sessions) -> OwnerSessions:
+    public = os.environ.get("APP_PUBLIC_ORIGIN")
+    extra = set() if public else {"http://localhost:8000"}  # unset: both loopback spellings, as before
+    dev = os.environ.get("JSP_DEV_ORIGIN", "").rstrip("/")
+    if dev:
+        parsed = urlsplit(dev)
+        if parsed.hostname not in {"localhost", "127.0.0.1", "::1"} or parsed.scheme != "http" or parsed.path or parsed.query or parsed.fragment:
+            raise RuntimeError("development_origin_must_be_loopback")
+        extra.add(dev)
+    return OwnerSessions(sessions, public_origin=public or "http://127.0.0.1:8000", extra_origins=frozenset(extra))
+
+
+def _secret_store():
+    return MacOSKeychain() if sys.platform == "darwin" else None  # no caller reads it; Keychain exists only on macOS
+
+
+API_PREFIX = "/v1"
+ASYNC_NOTE = ("Background work: answers 202 at once with a run. Poll GET /v1/projects/{project_id}/runs/{run_id} "
+              "or follow its events stream until the run is completed, failed or cancelled.")
+# Background-work routes that left /api/v1 for /v1/async (CR-API-01); everything else only changed prefix.
+_MOVED_ASYNC = [(re.compile(old), new) for old, new in (
+    (r"^projects/([^/]+)/runs$", r"async/projects/\1/agent-runs"),
+    (r"^projects/([^/]+)/runs/([^/]+)/cancel$", r"async/projects/\1/agent-runs/\2/cancel"),
+    (r"^projects/([^/]+)/runs/([^/]+)/tailor/apply$", r"async/projects/\1/agent-runs/\2/cv-tailoring/apply"),
+    (r"^projects/([^/]+)/sessions/([^/]+)/messages$", r"async/projects/\1/sessions/\2/messages"),
+    (r"^projects/([^/]+)/job-search/match/runs$", r"async/projects/\1/smart-matches"),
+    (r"^projects/([^/]+)/cvs/([^/]+)/profile$", r"async/projects/\1/cvs/\2/skill-profiles"),
+    (r"^projects/([^/]+)/cvs/([^/]+)/experience-runs$", r"async/projects/\1/cvs/\2/experience-extractions"),
+    (r"^projects/([^/]+)/documents/([^/]+)/revisions$", r"async/projects/\1/documents/\2/revisions"),
+    (r"^projects/([^/]+)/documents/([^/]+)/revisions/([^/]+)/restore$", r"async/projects/\1/documents/\2/revisions/\3/restore"),
+    (r"^projects/([^/]+)/saved-searches/([^/]+)/preview$", r"async/projects/\1/saved-searches/\2/previews"),
+    (r"^projects/([^/]+)/webhooks/([^/]+)/test$", r"async/projects/\1/webhooks/\2/test-deliveries"),
+    (r"^projects/([^/]+)/webhooks/deliveries/([^/]+)/redeliver$", r"async/projects/\1/webhooks/deliveries/\2/redeliveries"),
+    (r"^projects/([^/]+)/practice-attempts/([^/]+)/feedback$", r"async/projects/\1/practice-attempts/\2/feedback"),
+    (r"^projects/([^/]+)/practice-sets/([^/]+)/report$", r"async/projects/\1/practice-sets/\2/report"),
+)]
+
+
+def moved_location(method: str, rest: str) -> str:
+    """New path for an old /api/v1/<rest> path. Only POSTs moved to /v1/async; GET /runs stays put."""
+    if rest in ("health", "health/ready"):
+        return "/" + rest
+    for pattern, replacement in _MOVED_ASYNC if method == "POST" else ():
+        if pattern.match(rest):
+            return f"{API_PREFIX}/{pattern.sub(replacement, rest)}"
+    return f"{API_PREFIX}/{rest}"
+
+
+def build_services() -> Services:
+    """Assemble pinned local infrastructure without returning credential values."""
+    user = _private_text("postgres-user")
+    password = _private_text("postgres-password")
+    db_url = URL.create("postgresql+psycopg", username=user, password=password,
+                        host=config.postgres_host(), port=config.postgres_port(),
+                        database=config.database_name())
+    engine = make_engine(db_url, connect_args={"connect_timeout": 2})
+    sessions = sessionmaker(engine, expire_on_commit=False)
+
+    access = _private_text("minio-access-key")
+    secret = _private_text("minio-secret-key")
+    client = boto3.client(
+        "s3", endpoint_url=config.minio_endpoint(),
+        aws_access_key_id=access, aws_secret_access_key=secret, region_name="us-east-1",
+        config=__import__("botocore.config", fromlist=["Config"]).Config(
+            signature_version="s3v4", s3={"addressing_style": "path"}, retries={"max_attempts": 2},
+            connect_timeout=2, read_timeout=10),  # bounds the readiness probe too
+    )
+    bucket = config.private_bucket()
+    try:
+        client.head_bucket(Bucket=bucket)
+    except Exception as exc:
+        response = getattr(exc, "response", {})
+        code = str(response.get("Error", {}).get("Code", ""))
+        if code not in {"404", "NoSuchBucket", "NotFound"}:
+            raise RuntimeError("private_object_store_unavailable") from None
+        client.create_bucket(Bucket=bucket)
+    store = S3ObjectStore(client, bucket)
+
+    try:
+        metadata = json.loads(RUNTIME_METADATA.read_text(encoding="utf-8"))
+        image = metadata["image"]
+        if not isinstance(image, str) or not image:
+            raise ValueError
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        raise RuntimeError("native_runtime_metadata_unavailable") from None
+    runtime = HermesRuntime(image)
+    secrets = _secret_store()
+    settings = Settings(sessions)
+    runs = RunService(sessions)
+    files = Files(sessions, store, runtime)
+    documents = Documents(sessions, store)
+    artifacts = Artifacts(sessions, store, lambda project_id, run_id: runtime.workspace_root / str(project_id) / str(run_id) / "staging")
+    approvals = ApprovalService(sessions)
+    queue = PostgresRunQueue(sessions)
+    executor = RunExecutor(sessions, queue, runtime, artifacts, store,
+                           workspace_root=runtime.workspace_root)
+    owner_sessions = _owner_sessions(sessions)
+    share_origin = os.environ.get("SHARE_PUBLIC_ORIGIN", "").rstrip("/") or None
+    mcp_resource = f"{share_origin}/mcp" if share_origin else None
+    grants = Grants(sessions, mcp_resource=mcp_resource)
+    oauth = (OAuth(sessions, issuer=share_origin, resource=mcp_resource,
+                   consent_url=f"{owner_sessions.public_origin}/app/oauth/consent") if share_origin else None)
+    mailer = SmtpMailer.from_env()  # None without SMTP_HOST: Accounts logs mail_disabled and drops mail
+    accounts = Accounts(sessions, owner_sessions, mailer, public_origin=owner_sessions.public_origin, runs=runs,
+                        workspace_root=runtime.workspace_root)
+    bot_token = telegram_integration.load_token(PRIVATE_DIR)  # None: the Telegram channel is off
+    telegram = Telegram(sessions, TelegramClient(bot_token) if bot_token else None)
+    saved_searches = SavedSearches(sessions, mailer, public_origin=owner_sessions.public_origin, telegram=telegram)
+    webhooks = Webhooks(sessions)
+    supervisor = WorkerSupervisor(sessions, queue, executor, runtime, purge=lambda: accounts.purge_due(store),
+                                  digests=saved_searches.housekeeping, deliveries=webhooks.deliver_due,
+                                  prune_deliveries=webhooks.prune_async,
+                                  telegram_poll=telegram.poll if telegram.enabled else None)
+    return Services(sessions=sessions, owner_sessions=owner_sessions, files=files,
+                    documents=documents, runs=runs, grants=grants, settings=settings,
+                    approvals=approvals, supervisor=supervisor, runtime=runtime,
+                    queue=queue, artifacts=artifacts, secret_store=secrets, engine=engine,
+                    accounts=accounts, mailer=mailer, saved_searches=saved_searches, telegram=telegram, webhooks=webhooks, oauth=oauth,
+                    mcp_request_state_key=mcp_request_state_key(PRIVATE_DIR))
+
+
+def _safe_field_names(exc: RequestValidationError) -> dict[str, str] | None:
+    fields: dict[str, str] = {}
+    aliases = {"Idempotency-Key": "idempotency_key"}
+    for error in exc.errors():
+        for part in error.get("loc", ()):
+            field_name = aliases.get(part, part) if isinstance(part, str) else None
+            if field_name in {
+                "name", "locale", "output_language", "notifications_enabled", "title", "company",
+                "source_url", "description", "content", "filename", "file", "mime_type", "session_id",
+                "operation", "cv_revision_id", "job_revision_id", "idempotency_key", "retry_of_id",
+                "action", "revision_id", "expected_cv_revision_id", "target_file_id", "decision",
+                "capabilities", "expires_at", "provider", "model", "credential", "enabled", "base_url",
+                "email", "password", "token", "confirm_email",
+            }:
+                fields[field_name] = "invalid"
+    return fields or None
+
+
+def acquire_service_maintenance(services: Services):
+    """Hold the target lock and refuse an incomplete restore before any startup writes."""
+    if services.engine is None:
+        return None  # controlled transport fixtures only
+    guard = services.maintenance_lock
+    owns_guard = guard is None or not guard.held
+    if owns_guard:
+        guard = acquire_maintenance_lock(PRIVATE_DIR, str(services.engine.url), services.files.object_store.bucket)
+    try:
+        assert_restore_ready(PRIVATE_DIR, str(services.engine.url), services.files.object_store.bucket)
+    except BaseException:
+        if owns_guard:
+            guard.close()
+        raise
+    services.maintenance_lock = guard
+    return guard
+
+
+class _ImmutableAssets(StaticFiles):
+    """Vite puts a content hash in every /assets file name, so a cached copy never goes stale."""
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
+def create_app(
+    services: Services | None = None,
+    *,
+    service_factory: Callable[[], Services] = build_services,
+    frontend_dist: Path | None = None,
+) -> FastAPI:
+    configure_logging()
+    tracing.configure()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        metrics_port = config.metrics_port()
+        metrics_host = config.metrics_host()  # fails startup before anything needs cleaning up
+        current = services or service_factory()
+        owns_guard = current.maintenance_lock is None or not current.maintenance_lock.held
+        guard = acquire_service_maintenance(current)
+        try:
+            if services is None:
+                await __import__("asyncio").to_thread(_migrate, current.engine)
+            app.state.services = current
+            current.shutdown_confirmed = False
+            stop_metrics = None
+            try:
+                if metrics_port:
+                    try:
+                        stop_metrics = metrics.start_listener(metrics_host, metrics_port, current.sessions,
+                                                              metrics.meili_probe, base_engine=current.engine)
+                    except OSError as exc:  # port taken: observability must not stop the app
+                        logging.getLogger(__name__).warning(
+                            "metrics_listener_unavailable", extra={"port": metrics_port, "error": type(exc).__name__})
+                await current.files.reconcile_pending()
+                await current.supervisor.start()
+                yield
+            finally:
+                if stop_metrics is not None:
+                    stop_metrics()
+                supervisor_stopped = False
+                runtime_stopped = False
+                try:
+                    await current.supervisor.close()
+                    supervisor_stopped = True
+                finally:
+                    try:
+                        await current.runtime.close()
+                        runtime_stopped = True
+                    finally:
+                        current.shutdown_confirmed = supervisor_stopped and runtime_stopped
+                        if current.engine is not None:
+                            current.engine.dispose()
+        finally:
+            if owns_guard and guard is not None and current.shutdown_confirmed:
+                guard.close()
+                current.maintenance_lock = None
+
+    app = FastAPI(title="Job Search Platform Application API", version="1.0.0",
+                  servers=[{"url": API_PREFIX}], lifespan=lifespan,
+                  telemetry={"auto_configure": False})
+    # /v1/... answers at once; /v1/async/... starts background work and answers 202 with a run to poll.
+    for router in (rest_router, accounts_router, resume_router, practice_router, oauth_router, sse_router):
+        app.include_router(router, prefix=API_PREFIX)
+    app.include_router(health_router)
+
+    @app.api_route("/api/v1/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)
+    async def api_moved(rest: str, request: Request):
+        return JSONResponse({"code": "api_moved", "message_key": "errors.api_moved", "retryable": False,
+                             "fields": {"location": moved_location(request.method, rest)}}, status_code=410,
+                            headers={"Cache-Control": "no-store"})
+
+    @app.middleware("http")
+    async def no_store_api_responses(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith(API_PREFIX + "/") or request.url.path in ("/health", "/health/ready"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
+    app.add_middleware(RequestLogMiddleware)  # added last, so it wraps everything
+
+    @app.exception_handler(ServiceError)
+    async def service_error_handler(_request: Request, exc: ServiceError):
+        return _http_error(exc)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(_request: Request, exc: RequestValidationError):
+        correlation_id = uuid4()
+        body: dict[str, Any] = {
+            "code": "validation_error", "message_key": "errors.validation_error", "retryable": False,
+            "correlation_id": str(correlation_id),
+        }
+        fields = _safe_field_names(exc)
+        if fields:
+            body["fields"] = fields
+        return JSONResponse(body, status_code=422)
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error_handler(_request: Request, exc: StarletteHTTPException):
+        code = "not_found" if exc.status_code == 404 else "method_not_allowed" if exc.status_code == 405 else "request_rejected"
+        return JSONResponse({
+            "code": code, "message_key": f"errors.{code}", "retryable": False,
+            "correlation_id": str(uuid4()),
+        }, status_code=exc.status_code)
+
+    @app.exception_handler(Exception)
+    async def unexpected_error_handler(_request: Request, _exc: Exception):
+        return JSONResponse({
+            "code": "internal_error", "message_key": "errors.internal_error", "retryable": False,
+            "correlation_id": str(uuid4()),
+        }, status_code=500)
+
+    contract_schema_names = (
+        "ApprovalDecision", "ApprovalRequest", "ApprovalView", "CVRevisionView", "CVUpdate", "CVView", "InlineJob",
+        "DocumentRevisionView", "DocumentView", "ErrorView", "EvaluationResult", "FileView", "GatewayStatusView",
+        "GrantIssueRequest", "GrantIssuedView", "GrantView", "JobCreate", "JobRevisionView",
+        "MessageCreate", "PreferencesUpdate",
+        "PreferencesView", "ReadinessView", "ProjectCreate", "ProjectUpdate", "ProjectView",
+        "RevisionView", "RunEventData", "RunEventView", "RunRequest", "RunRequester", "RunView",
+        "SessionCreate", "SessionView", "SkillCoverage", "ToolConnectorSettingsView", "ToolConnectorUpdate",
+        "ToolConnectorView", "ToolDescriptor", "ToolsView", "UploadRequest",
+    )
+
+    def openapi():
+        if app.openapi_schema is not None:
+            return app.openapi_schema
+        from fastapi.openapi.utils import get_openapi
+        schema = get_openapi(title=app.title, version=app.version, routes=app.routes, servers=app.servers)
+        schema["paths"] = {
+            path.removeprefix(API_PREFIX): operations
+            for path, operations in schema["paths"].items()
+        }
+        for path, operations in schema["paths"].items():
+            if path in ("/health", "/health/ready"):
+                operations["servers"] = [{"url": "/"}]  # outside /v1, where load balancers look
+            elif path.startswith("/async/"):
+                for operation in operations.values():
+                    operation["description"] = (operation.get("description", "") + "\n\n" + ASYNC_NOTE).strip()
+        components = schema.setdefault("components", {}).setdefault("schemas", {})
+        for name in contract_schema_names:
+            model = getattr(contracts, name)
+            if not isinstance(model, type) or not issubclass(model, BaseModel):
+                continue
+            model_schema = model.model_json_schema(ref_template="#/components/schemas/{model}")
+            components.update(model_schema.pop("$defs", {}))
+            components[name] = model_schema
+        for path, operations in schema["paths"].items():
+            for operation in operations.values():
+                if isinstance(operation, dict):
+                    operation.get("responses", {}).pop("422", None)
+        for upload_path, extra in (
+            ("/projects/{project_id}/cv", {}),
+            ("/projects/{project_id}/cvs", {"name": {"type": "string", "maxLength": 120}}),
+            ("/projects/{project_id}/cvs/{cv_id}/revisions", {}),
+            ("/projects/{project_id}/resume-photos", {}),
+        ):
+            cv_upload = schema["paths"].get(upload_path, {}).get("post", {})
+            if cv_upload:
+                cv_upload["requestBody"] = {
+                    "required": True,
+                    "content": {"multipart/form-data": {"schema": {
+                        "type": "object", "required": ["file"],
+                        "properties": {"file": {"type": "string", "format": "binary"}, **extra},
+                    }}},
+                }
+        grant_routes = {
+            "/projects/{project_id}/files/{file_id}/download": {"get"},
+            "/projects/{project_id}/runs": {"get", "post"},
+            "/projects/{project_id}/runs/{run_id}": {"get"},
+            "/projects/{project_id}/runs/{run_id}/events": {"get"},
+            "/projects/{project_id}/runs/{run_id}/cancel": {"post"},
+        }
+        for path, operations in schema["paths"].items():
+            for method, operation in operations.items():
+                if not isinstance(operation, dict):
+                    continue
+                if path in {"/health", "/health/ready"} or (
+                        path.startswith("/auth/") and path not in {"/auth/resend-verification", "/auth/logout"}):
+                    operation["security"] = []
+                elif method in grant_routes.get(path, set()):
+                    operation["security"] = [{"ownerSession": []}, {"projectGrant": []}]
+                else:
+                    operation["security"] = [{"ownerSession": []}]
+        schema["security"] = [{"ownerSession": []}]
+        schema["components"].setdefault("securitySchemes", {}).update({
+            "ownerSession": {"type": "apiKey", "in": "cookie", "name": "jsp_owner_session"},
+            "projectGrant": {"type": "http", "scheme": "bearer"},
+        })
+        for name in [key for key in components if key.startswith("Body_")]:
+            components.pop(name)
+        components.pop("HTTPValidationError", None)
+        components.pop("ValidationError", None)
+        app.openapi_schema = schema
+        return schema
+
+    app.openapi = openapi
+
+    if frontend_dist is not None:
+        dist = Path(frontend_dist).resolve()
+        index = dist / "index.html"
+        if not index.is_file():
+            raise ValueError("frontend_dist_missing_index")
+        app.mount("/assets", _ImmutableAssets(directory=dist / "assets", check_dir=False), name="assets")
+        # The shell names hashed chunks; a stale cached copy after a deploy asks for deleted files (blank page).
+        fresh = {"Cache-Control": "no-cache"}
+
+        @app.get("/{path:path}", include_in_schema=False)
+        async def frontend(path: str):
+            target = (dist / path).resolve()
+            if target.is_relative_to(dist) and target.is_file():
+                return FileResponse(target, headers=fresh)
+            return FileResponse(index, headers=fresh)
+
+    return app

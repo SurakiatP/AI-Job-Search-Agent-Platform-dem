@@ -1,0 +1,4 @@
+SYNTHETIC TEST DATA — fictional vacancy
+Example Laboratory seeks a Research Scientist in Bangkok.
+Requirements: Python, statistical analysis, reproducible experiments,
+and communication in Thai and English. No application submission requested.

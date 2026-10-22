@@ -1,0 +1,22 @@
+{
+  "page_id": "19",
+  "page": "Verify Email",
+  "version": "v1",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "19-verify-email-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "8912804a18dcadf5b71b6ae777a33262f33fa603497946e9ecd0f3b9b9b97f99",
+  "embedded_prompt": true,
+  "handoff": "../19_VERIFY_EMAIL_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false
+}

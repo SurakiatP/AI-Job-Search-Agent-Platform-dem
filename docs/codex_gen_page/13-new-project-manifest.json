@@ -1,0 +1,29 @@
+{
+  "page_id": "13",
+  "page": "New Project",
+  "version": "v1",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "13-new-project-desktop-light-v1.png",
+  "width": 1512,
+  "height": 1040,
+  "sha256": "a8aab2dd26caa858e40bc11057d6dce0f3cfc0c33fd9ebf850d02ee2fbedeb9e",
+  "embedded_prompt": true,
+  "handoff": "../13_NEW_PROJECT_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "generation_mode": "edit",
+  "initial_generation": {
+    "prompt": "Generate ONE meticulous high-fidelity web UI design concept, landscape 1600x1100, English desktop light theme. Job Search platform, consistent approved style: pale indigo sidebar #E8EBFA, workspace #F6F7FB, white flat surfaces, ink #17233B, muted #53627A, primary #4F46E5, dividers #DCE1EB, corners12px. Manrope-like crisp readable type, thin Lucide icons. Elegant professional productivity SaaS with restrained color, generous whitespace, strong hierarchy. NO gradients, glass, decorative illustrations, fake charts, giant KPI tiles or nested cards. Small top right Design concept \u00b7 Sample data. Fictional content only. Global rail Job Search, All projects selected, Account, Settings, theme/language. Main narrow content 660px, back All projects. Heading Create a project. Subtitle Give this job search a home. Simple white form with Project name label, populated example Data analyst search, helper Use a name that helps you recognize this search. Under field a quiet divided explanatory section What happens next: 1 Add a CV 2 Save or find a job 3 Start an evaluation, as text steps not interactive wizard. Primary Create project and secondary Cancel. Footer Project data stays separate from your other searches. Only ONE actual input; no role, location, template, provider or team controls. Elegant balanced whitespace.",
+    "output_hint": "Generated images are saved to /Users/parksurakiat/.codex/generated_images/01a1402e-00aa-7903-a12a-62127b3a8262 as /Users/parksurakiat/.codex/generated_images/01a1402e-00aa-7903-a12a-62127b3a8262/exec-181718bc-a615-44cc-ac14-9bae72751b97.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+    "selected": false
+  },
+  "selection_note": "Corrected navigation"
+}

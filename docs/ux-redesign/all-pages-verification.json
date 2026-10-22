@@ -1,0 +1,1110 @@
+{
+  "date": "2026-10-16",
+  "branch": "feat/ux-core-workspaces",
+  "scope": "Whole application expansion after approved core workspaces",
+  "build": {
+    "command": "npm run build --prefix frontend",
+    "exit_code": 0,
+    "includes_typecheck": true,
+    "largest_js_kb": 455.51,
+    "largest_js_gzip_kb": 139.04,
+    "js_chunks": 46,
+    "log": "all-pages-build.log"
+  },
+  "playwright": {
+    "command": "JSP_E2E_BASE_URL=http://127.0.0.1:4177 npm test --prefix tests -- --reporter=json",
+    "stats": {
+      "startTime": "2026-10-16T12:55:54.270Z",
+      "duration": 94321.95199999999,
+      "expected": 165,
+      "skipped": 1,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "tests": [
+      {
+        "file": "accessibility.spec.ts",
+        "title": "approved routes fit 320px, tablet, and desktop and keep the language control available",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accessibility.spec.ts",
+        "title": "mobile drawer opens and closes by keyboard with focus returned to its trigger",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accessibility.spec.ts",
+        "title": "document language stays English after the UI changes to Thai and partial status is announced",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accessibility.spec.ts",
+        "title": "anonymous auth pages fit 320px with language control and heading",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "landing start leads to login; wrong then right password reaches the requested page",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "the eye button shows and hides the typed password",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "signup shows the check-email state and verify-email consumes then hides the token",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "unverified users see the banner and disabled run controls with an explanation",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "auth pages fit a 320px viewport without horizontal scroll",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "agents list shows given date and revoke calls the grant route",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "delete account needs the typed email; wrong password stays on the page, then success lands on /",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "signup sends the current UI locale",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "verify-email shows the localized invalid-token message",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "login ignores external next=//evil.example",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "login ignores external next=https://evil.example",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "run submit email_unverified shows the localized message",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "run submit quota_exceeded shows the localized message",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "actual-backend.spec.ts",
+        "title": "actual owner API persists project, CV, posting and separate sessions through reload",
+        "expected_status": "skipped",
+        "status": "skipped"
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "submit approval shows answers, evidence, missing list and approving POSTs the decision",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "answer pack has copy buttons, parked reason, and submit is disabled until ready",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "follow-up action appears only for applied jobs",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "grant picker lists both new capabilities in Thai and fits 320px",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "every parked-pack reason the backend emits is translated, never shown as a raw code",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "settings field saves the autopilot limit and the approvals tab badges auto-approved decisions",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "autopilot hint names the agent risk in Thai",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "application-board.spec.ts",
+        "title": "board shows stage columns and moves a card by keyboard, surviving an error and a reload",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "application-board.spec.ts",
+        "title": "board fits 320px in Thai with long titles",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "application-board.spec.ts",
+        "title": "job page edits stage and contact, offers mailto, logs correspondence and notes, newest first",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "application-board.spec.ts",
+        "title": "job page fits 320px in Thai",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "applications-workspace.spec.ts",
+        "title": "applications open as a list and keep the board as a URL-backed view",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "applications-workspace.spec.ts",
+        "title": "add-posting draft validates source and saves an application record",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "applications-workspace.spec.ts",
+        "title": "job detail presents source, evaluation, and documents before tracking and treats content as text",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "applications-workspace.spec.ts",
+        "title": "job evaluation names its exact source pair and labels document versions correctly",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "applications-workspace.spec.ts",
+        "title": "unavailable CV details preserve the report and offer recovery without guessing",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview prioritizes CV readiness and stable evaluation navigation",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "one failed overview resource preserves jobs and sessionless required-input attention",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "CV summary uses named primary CV rather than highest unrelated revision",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "project creation makes one project request and no unpaired session request",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "project switcher retains management and switches scope explicitly",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "populated overview shows actual attention, active work, partial material and named sources",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "uncertain project creation exposes recovery without an automatic second write",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "settings navigation carries explicit project scope through section changes",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "switcher keeps delete-current-session recovery available through route change",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 390 th light",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 390 th dark",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 390 en light",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 390 en dark",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 768 th light",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 768 th dark",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 768 en light",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 768 en dark",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 1440 th light",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 1440 th dark",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 1440 en light",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 1440 en dark",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "cv-tailoring.spec.ts",
+        "title": "interactive tailor: review proposals, apply one, restore an older CV revision",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "cv-tailoring.spec.ts",
+        "title": "tailor card is Thai and fits 320px",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "cv-tailoring.spec.ts",
+        "title": "autopilot result shows the backend stop reason in words",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "document-provenance.spec.ts",
+        "title": "shows each generated document revision source instead of the current CV after a language switch",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "document-provenance.spec.ts",
+        "title": "keeps document access when CV provenance lookup fails or its source is absent",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "timeline shows the requester, llm_round stats with a total, and the resumed line",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "console shows a needs_input run as waiting, in its own filter, and omits unreported token totals",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "console waiting label is localised (Thai)",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "needs_input pack renders per-kind inputs and saving POSTs the answers",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "a model-suggested answer is prefilled with the confirm label and saved through input (en)",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "a model-suggested answer is prefilled with the confirm label and saved through input (th)",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "an optional suggested answer in a ready pack is not described as needing confirmation",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "grant issue form has an optional name sent as label, shown in the list (Thai)",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "experience-bank.spec.ts",
+        "title": "experience bank groups facts, adds and removes, and shows extraction results",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "experience-bank.spec.ts",
+        "title": "experience bank empty states and Thai at 320px",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "experience-bank.spec.ts",
+        "title": "a new CV version refreshes the bank to the queued extraction",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "experience-bank.spec.ts",
+        "title": "each CV card can start an extraction for that CV",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "experience-bank.spec.ts",
+        "title": "a failed bank load offers a retry",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "full-app-surfaces.spec.ts",
+        "title": "all application surfaces have real bilingual themed screenshots and responsive structure",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "full-app-surfaces.spec.ts",
+        "title": "projects offer an explicit workspace continuation",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "full-app-surfaces.spec.ts",
+        "title": "landing tour is compact and remains keyboard navigable",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "full-app-surfaces.spec.ts",
+        "title": "landing explains the configured gateway without obsolete storage or provider claims",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "full-app-surfaces.spec.ts",
+        "title": "expired consent preserves a page heading and a safe next step",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "full-app-surfaces.spec.ts",
+        "title": "evaluation dialog returns keyboard focus to its launch action",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "full-journey.spec.ts",
+        "title": "synthetic Thai and English journey keeps drafts, output language, and routes",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "full-journey.spec.ts",
+        "title": "synthetic upload and transport faults stay explicit without false completion",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "full-journey.spec.ts",
+        "title": "expired approval is visible but cannot be approved from a stale request",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "full-journey.spec.ts",
+        "title": "anonymous visitors are redirected to log in with the original path preserved",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "gateway.spec.ts",
+        "title": "gateway card shows status, models and a safe LiteLLM link; no provider calls",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "gateway.spec.ts",
+        "title": "unconfigured gateway shows the OPENROUTER_API_KEY hint (Thai)",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "gateway.spec.ts",
+        "title": "409 gateway_unconfigured on a run shows guidance pointing to Settings > AI gateway",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "materials-workspace.spec.ts",
+        "title": "CV workspace keeps named identity, primary selection, rename and preferences linked to the right records",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "materials-workspace.spec.ts",
+        "title": "document revision selector shows that revision and its own source CV revision",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "materials-workspace.spec.ts",
+        "title": "first CV upload is the clear next action and creates a named CV",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "landing start action stays in the header and works at desktop and 320px in both languages",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "every page supports direct links, back/forward, locale changes and responsive navigation",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "missing resources and empty project state offer a usable route forward",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "job text renders safely and rejects a javascript source URL",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "new-project redirect can retry after the session list fails",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "empty documents links to a route that exists",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "project server failures show a retry action instead of a missing-resource page",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "unknown project with a 404 response remains a missing-resource page",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "unknown document with a 404 revisions response shows a missing-resource route",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "document revision server failures remain retryable",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "unsaved preference fields survive route changes and remain project scoped",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "enabled primary actions meet normal-text contrast requirements",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "legacy DOC files are rejected before upload with a localized error",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "approve sends chosen project, capabilities and expiry, then returns to the client",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "write-capable scopes are never pre-checked",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "deny returns access_denied to the client",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "expired request explains what to do",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "refuses to follow a non-navigable redirect_url",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "follows a native-app private-use scheme redirect",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "owner-instructions.spec.ts",
+        "title": "submission ambiguity keeps the instruction and reload retries from the immutable source run",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "save, apply, change frequency, toggle email, preview and delete a saved search",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "gate banners explain why no digest is sent",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "unsubscribe page: success and expired link",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "search with panel and the unsubscribe page fit 320px in Thai",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "posted_within_days alone cannot be saved",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "push toggle is enabled only with a digest.ready webhook",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "push toggle is disabled without a digest.ready webhook",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Search keeps location and work mode in the lead and summarizes active filters",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "salary appears only with supplied values, currency and period",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "mobile result detail has a Back action and restores the search URL",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Search exposes loading and empty results with a useful clear action",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "source failure can switch to clearly labelled sample results",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "a load-more error keeps the successful results visible",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "switching projects during a delayed search never shows the earlier project results",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "saving a result and starting its evaluation each send one mutation",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Thai and dark mode keep the Search controls readable without horizontal overflow",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Smart match labels deterministic coverage and reports a partial AI pool",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Smart match without a usable CV explains the prerequisite",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Smart match keeps its CV profiling state visible while processing",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "capture Search workspace font-loaded evidence matrix",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "paired session synthetic fixture loads",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "Session workspace falls back to shared translations for account errors and legacy page keys",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "capture paired session desktop, tablet and mobile evidence in Thai and English light and dark",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "paired session keeps exact immutable context, global evaluation and task tabs",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "task tabs preserve application draft and do not create another run when switching",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "active, waiting, completed and terminal run states stay visible above task tabs",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "unpaired legacy session remains read-only and a newer CV keeps this session bound to its old revision",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "SSE reconnect and task switching keep one watcher and issue no new run mutation",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "empty evaluation can start a real evaluate run and partial completed output remains labelled",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "settings.spec.ts",
+        "title": "project sharing shows a token once, lists metadata only, and revokes the grant",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "shell.spec.ts",
+        "title": "locale/theme/navigation retain distinct project and session drafts only in memory",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "shell.spec.ts",
+        "title": "invalid preferences fall back and System tracks OS while an explicit theme stays fixed",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "shell.spec.ts",
+        "title": "actual sidebar navigation keeps the application document and unsent draft",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "shell.spec.ts",
+        "title": "320px shell keeps the language control visible and drawer returns keyboard focus",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "telegram.spec.ts",
+        "title": "telegram card is hidden when the bot is not configured",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "telegram.spec.ts",
+        "title": "connect opens the bot link then flips to connected after polling; disconnect unlinks",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "telegram.spec.ts",
+        "title": "telegram switch is disabled with a hint until Telegram is linked",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "telegram.spec.ts",
+        "title": "telegram_not_linked conflict shows an error",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "utilities-workspace.spec.ts",
+        "title": "project sharing token is issued in a focus-managed dialog and discarded on dismissal",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "utilities-workspace.spec.ts",
+        "title": "a directly linked mobile settings section is visible in its navigation",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "utilities-workspace.spec.ts",
+        "title": "console timeline filters by task status and exposes requester and run details",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "utilities-workspace.spec.ts",
+        "title": "settings keeps an invalid explicit project scope empty instead of falling back",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "project switcher Escape returns keyboard focus to its trigger",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "session current-run names distinguish preparation, recording and tailoring",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "answer output language is visible and used without visiting document preparation",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "mobile Overview shows the chosen CV before recent documents",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "mobile Search reaches the first opportunity within the initial viewport",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "mobile Search moves focus into detail and returns it to the selected result",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "webhooks.spec.ts",
+        "title": "add a webhook, see the secret once, test, toggle, redeliver and delete",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "webhooks.spec.ts",
+        "title": "webhooks section fits 320px in Thai",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "component identity, partial results and hook ordering",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "cancellation uncertainty remains pending until terminal confirmation",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "late reconciliation cannot regress a terminal run",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "approval fetch recovers without unhandled rejection",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "submission ambiguity and reload retry preserve durable intent",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "restart interruption hides an unconsumed stale approval",
+        "expected_status": "passed",
+        "status": "passed"
+      },
+      {
+        "file": "workflow.spec.ts",
+        "title": "typed API restores the account session CSRF and resumes deduplicated run events",
+        "expected_status": "passed",
+        "status": "passed"
+      }
+    ],
+    "credentials": "synthetic fixtures only",
+    "actual_backend": "skipped: JSP_E2E_SESSION_FILE not configured"
+  },
+  "screenshots": {
+    "route_tab_states": 32,
+    "languages": [
+      "en",
+      "th"
+    ],
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "widths": [
+      1440,
+      820,
+      390
+    ],
+    "before": 58,
+    "after": 384,
+    "affected_recaptures": 108,
+    "checks": [
+      "main and exactly one h1",
+      "Noto Sans Thai font faces loaded",
+      "html locale and theme",
+      "no pageerror",
+      "no page overflow"
+    ],
+    "manifest": "full-app-evidence/manifest.json",
+    "gallery": "full-app-evidence/index.html",
+    "correction_capture_runs": [
+      108,
+      24,
+      12
+    ]
+  },
+  "audits": {
+    "frontend": {
+      "exit_code": 0,
+      "known_vulnerabilities": 0
+    },
+    "tests": {
+      "exit_code": 0,
+      "known_vulnerabilities": 0
+    },
+    "scope": "npm dependency audit; not backend or image audit"
+  },
+  "reviews": {
+    "method": "dual-agent",
+    "assessment_a": "/root/whole_app_design_a",
+    "assessment_b": "/root/whole_app_audit_b",
+    "design_score": 29,
+    "design_max": 40,
+    "technical_score": 16,
+    "technical_max": 20,
+    "scores_scope": "pre-correction whole-app snapshot, not rescored",
+    "detector_runs": 1,
+    "detector_warnings": 1,
+    "detector_errors": 0,
+    "detector_disposition": "unused legacy landing-review-note side-accent rule removed; no rerun",
+    "finish_disposition": "ship",
+    "documentation": {
+      "status": "complete",
+      "agent": "/root/whole_app_documenter",
+      "files": [
+        "DESIGN.md",
+        ".impeccable/design.json"
+      ],
+      "fidelity": "valid 24px base headline token; 28px breakpoint and explicit utility overrides documented",
+      "git_policy": "DESIGN.md is pre-existing ignored local file; not force-added"
+    },
+    "finish_scope": "Verdict passes resolved all three listed material corrections; not a new whole-surface certification.",
+    "finish_report": "ALL_PAGES_FINISH_REVIEW.md",
+    "critique_archive": ".impeccable/critique/2026-10-16T12-58-14Z__frontend-src.md"
+  },
+  "preservation": {
+    "backend_contract_infra_manifest_lockfile_diff": false,
+    "main_unrelated_python_version_preserved": true,
+    "committed": false,
+    "pushed": false,
+    "merged": false
+  },
+  "limitations": [
+    "Live backend/provider/job sources and external delivery not verified",
+    "No comprehensive WCAG/screen-reader/zoom certification",
+    "No physical touch/virtual keyboard tests",
+    "No field or throttled Core Web Vitals measurements"
+  ]
+}

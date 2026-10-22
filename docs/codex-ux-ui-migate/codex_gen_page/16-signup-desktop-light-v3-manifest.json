@@ -1,0 +1,35 @@
+{
+  "page_id": "16",
+  "page": "Sign Up",
+  "version": "v3",
+  "round": "review-led-round2",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "16-signup-desktop-light-v3.png",
+  "width": 1512,
+  "height": 1040,
+  "sha256": "9c8f11843101bd3a810ddf00d5c81ce6ee3fd0690e69af5af2d9e819ab2e6970",
+  "embedded_prompt": true,
+  "handoff": "../16_SIGNUP_DESIGN_V3.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en",
+    "state": "Signup without unsupported promises"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "previous_image": "codex_gen_page/16-signup-desktop-light-v1.png",
+  "previous_handoff": "16_SIGNUP_DESIGN.md",
+  "previous_version_approved": false,
+  "motion_implemented": false,
+  "generation_mode": "edit",
+  "reference_image_paths": [
+    "/Users/parksurakiat/.codex/worktrees/ux-redesign-plan/AI-Job-Search-Agent-Platform-dem/docs/codex_gen_page/16-signup-desktop-light-v2.png"
+  ],
+  "pixel_art_specified": false,
+  "animation_asset_generated": false,
+  "selected_for_current_review": true
+}

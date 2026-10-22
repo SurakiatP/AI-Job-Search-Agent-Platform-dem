@@ -1,0 +1,1364 @@
+"""REST routes. Transport code delegates authorization and long workflows to services."""
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import os
+import re
+import subprocess
+from pathlib import PurePath
+from collections.abc import AsyncIterator
+from datetime import datetime, timezone
+from typing import Annotated, Any, Literal
+from uuid import UUID, uuid4
+
+from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
+from urllib.request import Request as _UrlRequest
+from fastapi.responses import JSONResponse, Response, StreamingResponse
+from pydantic import StringConstraints
+from sqlalchemy import String, cast, delete, exists, func, or_, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
+from job_search_platform.db.models import (
+    Approval, CVRevisionText, DocumentRevision, InterviewSet, ResumeDraft,
+    CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
+    ProjectPreference, StoredFile, Run, RunArtifact, Grant, JobMatchScore, JobSearchHidden,
+    ToolConnectorConfiguration,
+)
+from job_search_platform.services.authorization import authorize, require_scoped_id
+from job_search_platform.services.contracts import (
+    ApplicationCardView, ApplicationContact, ApplicationDetailView, ApplicationEntry, ApplicationEventView,
+    AgentJobFit, AgentJobFitResult, AgentJobSearch, AgentJobSearchResult, ApprovalDecision, ApprovalRequest, ApprovalView, CVPromoteRequest, CVRevisionView, CVUpdate, CVView, DocumentEdit, DocumentRename, DocumentRevisionView, DocumentView,
+    DigestPreviewView, SavedSearchCreate, SavedSearchListView, SavedSearchUpdate, SavedSearchView,
+    ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
+    JobCreate, JobRevisionView, MessageCreate,
+    PreferencesUpdate, ProjectCreate,
+    GatewayStatusView, PreferencesView, ProjectUpdate, ProjectView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
+    ToolConnectorUpdate, ToolConnectorView, ToolsView,
+    QueuedView, WebhookCreate, WebhookCreatedView, WebhookDeliveryView, WebhookUpdate, WebhookView,
+)
+from job_search_platform.services import applications, experience, job_sources, smart_match
+from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
+from job_search_platform.services.runs import actor_scope
+from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
+from job_search_platform.integrations.gateway import GatewaySettings
+from job_search_platform.services.accounts import require_admin
+
+router = APIRouter()
+# Liveness and readiness live at the root (/health, /health/ready) where load balancers look.
+health_router = APIRouter()
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+SAFE_FIELDS = frozenset({
+    "path",
+    "name", "locale", "output_language", "notifications_enabled", "title", "company",
+    "source_url", "description", "content", "filename", "file", "mime_type", "kind",
+    "session_id", "operation", "cv_revision_id", "job_revision_id", "idempotency_key",
+    "retry_of_id", "cv_id", "document_id", "action", "revision_id", "expected_cv_revision_id", "target_file_id",
+    "decision", "capabilities", "expires_at", "provider", "model", "credential", "enabled", "base_url",
+    "retry_after", "reset_at",
+})
+
+
+def _http_error(error: ServiceError) -> JSONResponse:
+    code = error.code
+    status_code = {
+        "unauthorized": 401, "invalid_launch": 401, "invalid_origin": 403,
+        "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
+        "project_not_empty": 409, "session_busy": 409, "session_not_trashed": 409, "idempotency_conflict": 409,
+        "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
+        "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409, "cv_not_trashed": 409, "practice_set_limit": 409, "practice_set_busy": 409, "practice_not_gradable": 409, "session_pair_required": 409,
+        "document_busy": 409, "tailor_already_applied": 409, "run_not_awaiting_input": 409, "invalid_answer": 422, "document_source_unavailable": 409,
+        "apply_pack_required": 409, "approval_requires_run": 409, "approval_stale": 409, "already_applied": 409, "application_not_applied": 409,
+        "upload_too_large": 413, "unsupported_media_type": 415,
+        "job_source_unavailable": 502,
+        "queue_full": 429, "submission_rate_limited": 429,
+        "object_store_unavailable": 503, "service_unavailable": 503,
+        "secret_store_unavailable": 503,
+        "jev_unavailable": 409, "gateway_unconfigured": 409,
+        "duplicate": 409, "bank_full": 409,
+        "email_unverified": 403, "quota_exceeded": 429, "rate_limited": 429, "invalid_credentials": 401,
+        "invalid_token": 400, "invalid_code": 400, "invalid_image": 422, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
+        "saved_search_limit": 409, "invalid_webhook_url": 422, "webhook_limit": 409, "delivery_not_dead": 409, "saved_search_name_taken": 409, "mail_unavailable": 503,
+        "telegram_disabled": 404, "telegram_not_linked": 409, "telegram_unavailable": 503,
+        "draft_conflict": 409, "resume_invalid": 422, "resume_incomplete": 422, "render_failed": 502,
+    }.get(code, 400)
+    fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
+    body = {
+        "code": code if re.fullmatch(r"[a-z][a-z0-9_]{0,79}", code) else "request_failed",
+        "message_key": error.message_key if re.fullmatch(r"[a-z][a-z0-9_.]{0,119}", error.message_key) else "errors.request_failed",
+        "retryable": bool(error.retryable),
+        "correlation_id": str(error.correlation_id),
+    }
+    if fields:
+        body["fields"] = fields
+    return JSONResponse(body, status_code=status_code)
+
+
+def _owner_only(actor) -> None:
+    if actor.kind != "user":
+        raise ServiceError("forbidden")
+
+
+def _require_live_job(db, project_id: UUID, job_id: UUID) -> JobRevision:
+    """Resolve a job revision in this project; soft-removed jobs read as missing."""
+    row = require_scoped_id(db, JobRevision, project_id, job_id)
+    if row.removed_at is not None:
+        raise ServiceError("not_found")
+    return row
+
+
+def _session_view(db, row: ConversationSession, evaluation_run_id: UUID | None = None) -> dict[str, Any]:
+    view: dict[str, Any] = {"id": row.id, "project_id": row.project_id, "title": row.title,
+                            "created_at": row.created_at, "evaluation_run_id": evaluation_run_id,
+                            "trashed_at": row.removed_at}
+    if row.cv_revision_id is None:
+        return view
+    cv_revision = db.get(CVRevision, row.cv_revision_id)
+    job = db.get(JobRevision, row.job_revision_id)
+    cv = db.scalar(select(CV).where(CV.project_id == row.project_id, CV.id == cv_revision.cv_id))
+    outdated = db.scalar(select(exists().where(CVRevision.cv_id == cv_revision.cv_id,
+                                               CVRevision.revision > cv_revision.revision)))
+    view.update(cv_revision_id=row.cv_revision_id, job_revision_id=row.job_revision_id,
+                cv_name=cv.name, cv_revision=cv_revision.revision, job_title=job.title,
+                job_company=job.company, cv_outdated=bool(outdated), cv_file_id=cv_revision.file_id)
+    return view
+
+
+def _visible_session(db, project_id: UUID, session_id: UUID) -> ConversationSession:
+    row = require_scoped_id(db, ConversationSession, project_id, session_id)
+    if row.removed_at is not None:
+        raise ServiceError("not_found")
+    return row
+
+
+def _pair_holder(db, row: ConversationSession) -> UUID | None:
+    """Visible session already holding this session's CV/job pair, if any."""
+    return db.scalar(select(ConversationSession.id).where(
+        ConversationSession.project_id == row.project_id, ConversationSession.id != row.id,
+        ConversationSession.removed_at.is_(None),
+        ConversationSession.cv_revision_id == row.cv_revision_id,
+        ConversationSession.job_revision_id == row.job_revision_id))
+
+
+def _cv_revision_view(revision: CVRevision, file: StoredFile) -> dict[str, Any]:
+    profile = revision.skill_profile if (revision.skill_profile or {}).get("method") == SKILL_METHOD else None
+    return {"skill_profile_ready": profile is not None,
+            "skill_count": len(profile["skills"]) if profile else None,"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
+            "original_filename": file.display_name, "mime_type": file.mime_type, "size_bytes": file.size_bytes,
+            "file_id": file.id}
+
+
+def _cv_view(db, cv: CV) -> dict[str, Any]:
+    rows = db.execute(select(CVRevision, StoredFile).join(
+        StoredFile, (StoredFile.project_id == CVRevision.project_id) & (StoredFile.id == CVRevision.file_id)
+    ).where(CVRevision.cv_id == cv.id, StoredFile.publication_state == "published")
+      .order_by(CVRevision.revision.desc())).all()
+    in_use = db.scalar(select(exists().where(
+        ConversationSession.project_id == cv.project_id,
+        ConversationSession.cv_revision_id.in_(select(CVRevision.id).where(CVRevision.cv_id == cv.id)))))
+    return {"id": cv.id, "name": cv.name, "is_primary": cv.is_primary, "created_at": cv.created_at,
+            "latest_revision": _cv_revision_view(*rows[0]) if rows else None,
+            "revision_count": len(rows), "in_use": bool(in_use), "trashed_at": cv.removed_at,
+            "has_builder_draft": db.scalar(select(exists().where(ResumeDraft.cv_id == cv.id))) or False}
+
+
+def _live_cv(db, project_id: UUID, cv_id: UUID, *, lock: bool = False) -> CV:
+    query = select(CV).where(CV.project_id == project_id, CV.id == cv_id, CV.removed_at.is_(None))
+    cv = db.scalar(query.with_for_update() if lock else query)
+    if cv is None:
+        raise ServiceError("not_found")
+    return cv
+
+
+def _new_job_revision(db, project_id: UUID, *, title: str, company: str | None, source_url: str | None,
+                      description: str) -> JobRevision:
+    """Caller holds the project row lock, which serializes revision numbering."""
+    revision = db.scalar(select(func.coalesce(func.max(JobRevision.revision), 0)).where(JobRevision.project_id == project_id)) + 1
+    row = JobRevision(project_id=project_id, revision=revision, title=title, company=company,
+                      source_url=source_url, description=description)
+    db.add(row)
+    db.flush()
+    return row
+
+
+def _job_view(row: JobRevision, application_status: str = "saved") -> dict[str, Any]:
+    return {"id": row.id, "revision": row.revision, "created_at": row.created_at,
+            "title": row.title, "company": row.company, "source_url": row.source_url, "description": row.description,
+            "application_status": application_status}
+
+
+@router.get("/projects", response_model=list[ProjectView])
+async def list_projects(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        rows = db.scalars(select(Project).where(Project.user_id == actor.user_id).order_by(Project.created_at, Project.id)).all()
+        return [{"id": row.id, "name": row.name, "created_at": row.created_at} for row in rows]
+
+
+@router.post("/projects", status_code=201, response_model=ProjectView)
+async def create_project(body: ProjectCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    row = Project(name=body.name, user_id=actor.user_id)
+    with services.sessions.begin() as db:
+        db.add(row)
+        db.flush()
+        result = {"id": row.id, "name": row.name, "created_at": row.created_at}
+    return result
+
+
+@router.get("/projects/{project_id}", response_model=ProjectView)
+async def get_project(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "project")
+        row = db.get(Project, project_id)
+        if row is None:
+            raise ServiceError("not_found")
+        return {"id": row.id, "name": row.name, "created_at": row.created_at}
+
+
+@router.patch("/projects/{project_id}", response_model=ProjectView)
+async def update_project(project_id: UUID, body: ProjectUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "project")
+        row = db.get(Project, project_id)
+        if row is None:
+            raise ServiceError("not_found")
+        row.name = body.name
+        db.flush()
+        return {"id": row.id, "name": row.name, "created_at": row.created_at}
+
+
+@router.delete("/projects/{project_id}", status_code=204)
+async def delete_project(project_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "project")
+        row = db.scalar(select(Project).where(Project.id == project_id).with_for_update())
+        if row is None:
+            raise ServiceError("not_found")
+        has_durable_data = any(
+            db.scalar(select(func.count()).select_from(model).where(model.project_id == project_id))
+            for model in (ConversationSession, JobRevision, CVRevision, Document, StoredFile, Run,
+                          ProjectPreference, Grant, ToolConnectorConfiguration)
+        )
+        if has_durable_data:
+            raise ServiceError("project_not_empty")
+        db.delete(row)
+
+
+@router.get("/projects/{project_id}/preferences", response_model=PreferencesView)
+async def get_preferences(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "preference")
+        row = db.get(ProjectPreference, project_id)
+        values = row.values if row else {}
+        return {"project_id": project_id, "locale": values.get("locale", "th"),
+                "output_language": values.get("output_language", "th"),
+                "notifications_enabled": values.get("notifications_enabled", True),
+                "submit_autopilot_daily_limit": row.submit_autopilot_daily_limit if row else None,
+                "updated_at": row.updated_at if row else datetime.now(timezone.utc)}
+
+
+@router.patch("/projects/{project_id}/preferences", response_model=PreferencesView)
+async def set_preferences(project_id: UUID, body: PreferencesUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "preference")
+        project = db.scalar(select(Project).where(Project.id == project_id).with_for_update())
+        if project is None:
+            raise ServiceError("not_found")
+        row = db.scalar(select(ProjectPreference).where(ProjectPreference.project_id == project_id).with_for_update())
+        if row is None:
+            row = ProjectPreference(project_id=project_id, values={})
+            db.add(row)
+        values = {"locale": "th", "output_language": "th", "notifications_enabled": True, **(row.values or {})}
+        changes = body.model_dump(exclude_unset=True)
+        if "submit_autopilot_daily_limit" in changes:  # null clears it (autopilot off)
+            row.submit_autopilot_daily_limit = changes.pop("submit_autopilot_daily_limit")
+        values.update(changes)
+        row.values = values
+        row.updated_at = datetime.now(timezone.utc)
+        db.flush()
+        return {"project_id": project_id, **values, "submit_autopilot_daily_limit": row.submit_autopilot_daily_limit,
+                "updated_at": row.updated_at}
+
+
+@router.get("/projects/{project_id}/sessions", response_model=list[SessionView])
+async def list_sessions(project_id: UUID, view: Literal["active", "trash"] = "active", actor=Depends(owner_actor),
+                        services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "session")
+        shown = (ConversationSession.removed_at.is_(None) if view == "active"
+                 else ConversationSession.removed_at.is_not(None) & ConversationSession.purged_at.is_(None))
+        order = (ConversationSession.created_at,) if view == "active" else (ConversationSession.removed_at.desc(),)
+        rows = db.scalars(select(ConversationSession).where(ConversationSession.project_id == project_id, shown)
+                          .order_by(*order, ConversationSession.id)).all()
+        return [_session_view(db, row) for row in rows]
+
+
+@router.get("/projects/{project_id}/sessions/{session_id}", response_model=SessionView)
+async def get_session(project_id: UUID, session_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "session")
+        return _session_view(db, _visible_session(db, project_id, session_id))
+
+
+@router.post("/projects/{project_id}/sessions", status_code=201, response_model=SessionView)
+async def create_session(project_id: UUID, body: SessionCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Create a CV + job session and start its evaluation run in the same transaction."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "session")
+        # Project-first lock order, as in job creation and run submission.
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        cv_revision = require_scoped_id(db, CVRevision, project_id, body.cv_revision_id)
+        _live_cv(db, project_id, cv_revision.cv_id)
+        if body.job_revision_id is not None:
+            job = _require_live_job(db, project_id, body.job_revision_id)
+        else:
+            inline = body.job
+            job = db.scalar(select(JobRevision).where(
+                JobRevision.project_id == project_id, JobRevision.removed_at.is_(None),
+                JobRevision.description == inline.description,
+            ).order_by(JobRevision.revision).limit(1))
+            if job is None:
+                job = _new_job_revision(db, project_id, title=inline.title, company=inline.company,
+                                        source_url=inline.source_url, description=inline.description)
+        existing = db.scalar(select(ConversationSession.id).where(
+            ConversationSession.project_id == project_id,
+            ConversationSession.cv_revision_id == cv_revision.id,
+            ConversationSession.job_revision_id == job.id,
+            ConversationSession.removed_at.is_(None)))
+        if existing is not None:
+            raise ServiceError("session_pair_exists", fields={"session_id": str(existing)})
+        title = body.title or (f"{job.title} · {job.company}" if job.company else job.title)[:200]
+        row = ConversationSession(project_id=project_id, title=title,
+                                  cv_revision_id=cv_revision.id, job_revision_id=job.id)
+        db.add(row)
+        db.flush()
+        preferences = db.get(ProjectPreference, project_id)
+        run = services.runs._submit_in_transaction(
+            db, actor, project_id,
+            RunRequest(session_id=row.id, operation="evaluate_job",
+                       output_language=(preferences.values if preferences else {}).get("output_language", "th"),
+                       idempotency_key=f"session-{row.id}-evaluation"),
+            now=datetime.now(timezone.utc), scope=actor_scope(actor))
+        return _session_view(db, row, run.id)
+
+
+@router.patch("/projects/{project_id}/sessions/{session_id}", response_model=SessionView)
+async def update_session(project_id: UUID, session_id: UUID, body: SessionUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "session")
+        row = db.scalar(select(ConversationSession).where(
+            ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
+        if row is None or row.removed_at is not None:
+            raise ServiceError("not_found")
+        row.title = body.title
+        db.flush()
+        return _session_view(db, row)
+
+
+@router.delete("/projects/{project_id}/sessions/{session_id}", response_model=SessionDeleteResult)
+async def delete_session(project_id: UUID, session_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Move a session to the trash (owner decision 2026-10-20: every delete is restorable first)."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "session")
+        row = db.scalar(select(ConversationSession).where(
+            ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
+        if row is None or row.removed_at is not None:
+            raise ServiceError("not_found")
+        statuses = set(db.scalars(select(Run.status).where(Run.project_id == project_id, Run.session_id == session_id)))
+        if statuses & {"queued", "running", "waiting_approval"}:
+            raise ServiceError("session_busy")
+        row.removed_at = datetime.now(timezone.utc)
+        return {"mode": "hidden"}
+
+
+@router.delete("/projects/{project_id}/sessions/{session_id}/permanent", status_code=204)
+async def purge_session(project_id: UUID, session_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Delete a trashed session for good: its messages and every run that produced no kept document.
+
+    Runs and document revisions are immutable provenance, so a run that published a document the owner keeps
+    stays (with its retry ancestors) and the session row stays as a hidden `purged_at` tombstone for it.
+    """
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "session")
+        row = db.scalar(select(ConversationSession).where(
+            ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
+        if row is None or row.purged_at is not None:
+            raise ServiceError("not_found")
+        if row.removed_at is None:
+            raise ServiceError("session_not_trashed")
+        runs = {r.id: r for r in db.scalars(select(Run).where(Run.project_id == project_id, Run.session_id == session_id))}
+        if any(r.status in {"queued", "running", "waiting_approval"} for r in runs.values()):
+            raise ServiceError("session_busy")
+        keep = set(db.scalars(select(RunArtifact.run_id).where(
+            RunArtifact.project_id == project_id, RunArtifact.run_id.in_(runs)))) if runs else set()
+        stack = list(keep)
+        while stack:  # a kept run's retry_of_id must still resolve
+            parent = runs[stack.pop()].retry_of_id
+            if parent in runs and parent not in keep:
+                keep.add(parent)
+                stack.append(parent)
+        db.execute(delete(InterviewSet).where(InterviewSet.project_id == project_id, InterviewSet.session_id == session_id))
+        db.execute(delete(Message).where(Message.project_id == project_id, Message.session_id == session_id))
+        if doomed := [rid for rid in runs if rid not in keep]:
+            db.execute(delete(Run).where(Run.project_id == project_id, Run.id.in_(doomed)))
+        if keep:
+            row.purged_at = datetime.now(timezone.utc)
+        else:
+            db.delete(row)
+
+
+@router.post("/projects/{project_id}/sessions/{session_id}/restore", response_model=SessionView)
+async def restore_session(project_id: UUID, session_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "session")
+        row = db.scalar(select(ConversationSession).where(
+            ConversationSession.project_id == project_id, ConversationSession.id == session_id).with_for_update())
+        if row is None or row.purged_at is not None:
+            raise ServiceError("not_found")
+        if row.removed_at is not None:
+            if row.cv_revision_id is not None and (holder := _pair_holder(db, row)) is not None:
+                raise ServiceError("session_pair_exists", fields={"session_id": str(holder)})
+            row.removed_at = None
+            db.flush()
+        return _session_view(db, row)
+
+
+@router.get("/projects/{project_id}/sessions/{session_id}/messages")
+async def list_messages(project_id: UUID, session_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "message")
+        require_scoped_id(db, ConversationSession, project_id, session_id)
+        rows = db.scalars(select(Message).where(Message.project_id == project_id, Message.session_id == session_id)
+                          .order_by(Message.created_at, Message.id)).all()
+        return [{"id": r.id, "session_id": r.session_id, "role": r.role, "content": r.content, "created_at": r.created_at} for r in rows]
+
+
+@router.post("/async/projects/{project_id}/sessions/{session_id}/messages", status_code=202)
+async def create_message(project_id: UUID, session_id: UUID, body: MessageCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "message")
+        require_scoped_id(db, ConversationSession, project_id, session_id)
+        row = Message(project_id=project_id, session_id=session_id, role="user", content=body.content)
+        db.add(row)
+        db.flush()
+        return {"id": row.id, "session_id": row.session_id, "role": row.role, "content": row.content, "created_at": row.created_at}
+
+
+@router.get("/projects/{project_id}/jobs", response_model=list[JobRevisionView])
+async def list_jobs(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+        rows = db.execute(
+            select(JobRevision, JobApplicationStatus.status)
+            .outerjoin(
+                JobApplicationStatus,
+                (JobApplicationStatus.project_id == JobRevision.project_id)
+                & (JobApplicationStatus.job_revision_id == JobRevision.id),
+            )
+            .where(JobRevision.project_id == project_id, JobRevision.removed_at.is_(None))
+            .order_by(JobRevision.created_at, JobRevision.revision)
+        ).all()
+        return [_job_view(row, status or "saved") for row, status in rows]
+
+
+def job_filters(
+    seniority: Annotated[str, Query(max_length=200)] = "",
+    employment_type: Annotated[str, Query(max_length=200)] = "",
+    company_type: Annotated[str, Query(max_length=200)] = "",
+    skills: Annotated[str, Query(max_length=400)] = "",
+    posting_language: Annotated[str, Query(pattern="^(th)?$")] = "",
+    salary_min: Annotated[str, Query(pattern=r"^(\d{1,7})?$")] = "",
+) -> dict:
+    """The advanced job-search filters shared by both GET routes; invalid lists give 422."""
+    salary = int(salary_min) if salary_min else None
+    if salary is not None and not 1 <= salary <= 1_000_000:
+        raise RequestValidationError([{"loc": ("query", "salary_min"), "msg": "invalid", "type": "value_error"}])
+    out: dict = {"posting_language": posting_language or None, "salary_min": salary}
+    for name, raw in (("seniority", seniority), ("employment_type", employment_type),
+                      ("company_type", company_type), ("skills", skills)):
+        values = job_sources.parse_choices(raw, name)
+        if values is None:
+            raise RequestValidationError([{"loc": ("query", name), "msg": "invalid", "type": "value_error"}])
+        out[name] = values
+    return out
+
+
+@router.get("/public/job-stats")
+async def public_job_stats():
+    """Unauthenticated, read-only, parameterless landing numbers built from the cached facets only."""
+    facets = await asyncio.to_thread(job_sources.job_facets)
+    return {"total": facets["total"], "new_7d": facets["new_7d"], "thai_postings": facets["thai_postings"],
+            "categories": facets["categories"][:8]}
+
+
+@router.get("/projects/{project_id}/job-search")
+async def search_job_sources(
+    project_id: UUID,
+    q: Annotated[str, Query(max_length=200)] = "",
+    cities: Annotated[str, Query(max_length=400)] = "",
+    work_mode: Annotated[str | None, Query(pattern="^(remote|hybrid|onsite)$")] = None,
+    posted_within_days: Annotated[int | None, Query(ge=1, le=90)] = None,
+    category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
+    company: Annotated[str, Query(max_length=300)] = "",
+    limit: Annotated[int, Query(ge=1, le=20)] = 20,
+    offset: Annotated[int, Query(ge=0, le=1000)] = 0,
+    filters: dict = Depends(job_filters),
+    actor=Depends(owner_actor),
+    services: Services = Depends(get_services),
+):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+    city_list = job_sources.parse_cities(cities)
+    if city_list is None:
+        raise RequestValidationError([{"loc": ("query", "cities"), "msg": "invalid", "type": "value_error"}])
+    return await asyncio.to_thread(
+        job_sources.search_jobs, q=q, cities=city_list, work_mode=work_mode,
+        posted_within_days=posted_within_days, category=category, limit=limit, offset=offset,
+        company=company.strip() or None, **filters)
+
+
+def _direct_skill_route(skill):
+    async def endpoint(project_id: UUID, body, actor=Depends(run_write_actor), services: Services = Depends(get_services)):
+        return await skill.handler(services, actor, body, project_id=project_id)
+    endpoint.__annotations__["body"] = skill.input_model
+    return endpoint
+
+
+for _skill in SKILLS:  # direct skills: one generated REST route each, in registry order
+    if _skill.kind == "direct":
+        router.add_api_route(
+            f"/projects/{{project_id}}/agent/{_skill.id.replace('_', '/')}", _direct_skill_route(_skill),
+            methods=["POST"], operation_id=_skill.id, response_model=_skill.output_model,
+            summary=_skill.name, description=_skill.description)
+
+
+@router.get("/projects/{project_id}/job-search/match")
+async def match_job_sources(
+    project_id: UUID,
+    cv_revision_id: UUID,
+    q: Annotated[str, Query(max_length=200)] = "",
+    cities: Annotated[str, Query(max_length=400)] = "",
+    work_mode: Annotated[str | None, Query(pattern="^(remote|hybrid|onsite)$")] = None,
+    posted_within_days: Annotated[int | None, Query(ge=1, le=90)] = None,
+    category: Annotated[str | None, Query(pattern=r"^[a-z0-9_-]{1,60}$")] = None,
+    pool: Annotated[int, Query(ge=1, le=100)] = 100,
+    offset: Annotated[int, Query(ge=0, le=1000)] = 0,
+    filters: dict = Depends(job_filters),
+    actor=Depends(owner_actor),
+    services: Services = Depends(get_services),
+):
+    """One pool of job-source results: keyword match plus cached Jev scores, highlights and hidden filters."""
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        revision = require_scoped_id(db, CVRevision, project_id, cv_revision_id)
+        if db.scalar(select(CV.id).where(CV.project_id == project_id, CV.id == revision.cv_id,
+                                         CV.removed_at.is_(None))) is None:
+            raise ServiceError("not_found")
+        profile = revision.skill_profile or {}
+        if profile.get("method") != SKILL_METHOD:
+            raise ServiceError("cv_profile_missing", fields={"cv_revision_id": str(revision.id)})
+        cv_skills = list(profile["skills"])
+        gateway = GatewaySettings.from_env()
+        model, ai_on = gateway.decision_model, bool(gateway.api_key)
+        stored = profile.get("categories") if profile.get("categories_model") == model else None
+        hidden = {(kind, value) for kind, value in db.execute(
+            select(JobSearchHidden.kind, JobSearchHidden.value).where(JobSearchHidden.project_id == project_id))}
+    city_list = job_sources.parse_cities(cities)
+    if city_list is None:
+        raise RequestValidationError([{"loc": ("query", "cities"), "msg": "invalid", "type": "value_error"}])
+    auto = not q.strip() and not category
+
+    def run() -> dict:
+        page = smart_match.build_pool(q=q, cities=city_list, work_mode=work_mode, posted_within_days=posted_within_days,
+                                      category=category, pool=pool, offset=offset, cv_categories=stored if ai_on else None,
+                                      filters=filters)
+        items = [item for item in page["items"] if not smart_match.is_hidden(item, hidden)]
+        with services.sessions() as db:
+            rows = {(r.job_slug, r.content_hash): r for r in db.scalars(select(JobMatchScore).where(
+                JobMatchScore.cv_revision_id == cv_revision_id, JobMatchScore.model == model,
+                JobMatchScore.job_slug.in_([item["slug"] for item in items])))} if ai_on else {}
+            cv_text = db.scalar(select(CVRevisionText.text).where(CVRevisionText.cv_revision_id == cv_revision_id,
+                                                                  CVRevisionText.project_id == project_id)) or ""
+        for item in items:
+            text = smart_match.job_text(item)
+            found = match_skills(cv_skills, text)
+            item["match"] = None if found is None else {
+                "score_percent": round(found["ratio"] * 100), "matched": found["matched"],
+                "missing": found["missing"], "required_count": len(found["required"])}
+            row = rows.get((item["slug"], smart_match.content_hash(item)))
+            item["ai_match"] = None if row is None else {"fit_percent": row.fit_percent, "uncertain": row.uncertain, **row.details}
+            if row:
+                item["ai_match"]["evidence"] = smart_match.evidence_lines(cv_text, item["ai_match"]["skills_evidenced"])
+            matched = item["ai_match"]["skills_evidenced"] if row else (found or {}).get("matched", [])
+            missing = (row.details["must_missing"] + row.details["nice_missing"]) if row else (found or {}).get("missing", [])
+            item["highlight"] = smart_match.highlight_terms(text, matched, missing)
+        items.sort(key=lambda i: (i["match"] is None, -(i["match"] or {}).get("score_percent", 0),
+                                  i["age_days"] if i["age_days"] is not None else 10**6))
+        items.sort(key=lambda i: (i["ai_match"] is None, -(i["ai_match"] or {}).get("fit_percent", 0)))  # stable: keyword order inside ties
+        scored = sum(1 for i in items if i["ai_match"])
+        status = "unavailable" if not ai_on else "ready" if scored == len(items) else "partial" if scored else "missing"
+        return {"items": items, "total": page["total"], "offset": offset, "pool": pool,
+                "hidden_count": len(page["items"]) - len(items),
+                "ai": {"status": status, "categories": stored if ai_on and auto else None, "scored": scored}}
+
+    return await asyncio.to_thread(run)
+
+
+@router.post("/async/projects/{project_id}/smart-matches", status_code=202, response_model=RunView)
+async def start_match_run(project_id: UUID, body: MatchRunRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Queue (or return the active) owner-only Jev scoring run for this CV revision and pool."""
+    return await services.runs.submit_match(actor, project_id, body)
+
+
+def _hidden_view(r: JobSearchHidden) -> dict:
+    return {"id": str(r.id), "kind": r.kind, "label": r.label, "created_at": r.created_at.isoformat()}
+
+
+@router.get("/projects/{project_id}/job-search/hidden")
+async def list_hidden(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        rows = db.scalars(select(JobSearchHidden).where(JobSearchHidden.project_id == project_id)
+                          .order_by(JobSearchHidden.created_at.desc())).all()
+        return {"items": [_hidden_view(r) for r in rows]}
+
+
+@router.post("/projects/{project_id}/job-search/hidden", status_code=201)
+async def hide_job_search_item(project_id: UUID, body: HiddenCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    value = body.value if body.kind == "job" else smart_match.company_key(body.value)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.get(Project, project_id) is None:
+            raise ServiceError("not_found")
+        db.execute(pg_insert(JobSearchHidden).values(id=uuid4(), project_id=project_id, kind=body.kind, value=value,
+                                                     label=body.label).on_conflict_do_nothing(constraint="uq_job_search_hidden_key"))
+        row = db.scalar(select(JobSearchHidden).where(JobSearchHidden.project_id == project_id,
+                                                      JobSearchHidden.kind == body.kind, JobSearchHidden.value == value))
+        return _hidden_view(row)
+
+
+@router.delete("/projects/{project_id}/job-search/hidden/{hidden_id}", status_code=204)
+async def unhide_job_search_item(project_id: UUID, hidden_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        row = db.scalar(select(JobSearchHidden).where(JobSearchHidden.project_id == project_id, JobSearchHidden.id == hidden_id))
+        if row is None:
+            raise ServiceError("not_found")
+        db.delete(row)
+    return Response(status_code=204)
+
+
+@router.get("/projects/{project_id}/saved-searches", response_model=SavedSearchListView)
+async def list_saved_searches(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await asyncio.to_thread(services.saved_searches.list, actor, project_id)
+
+
+@router.post("/projects/{project_id}/saved-searches", status_code=201, response_model=SavedSearchView)
+async def create_saved_search(project_id: UUID, body: SavedSearchCreate, actor=Depends(write_actor),
+                              services: Services = Depends(get_services)):
+    _owner_only(actor)
+    return await asyncio.to_thread(services.saved_searches.create, actor, project_id, body)
+
+
+@router.patch("/projects/{project_id}/saved-searches/{saved_search_id}", response_model=SavedSearchView)
+async def update_saved_search(project_id: UUID, saved_search_id: UUID, body: SavedSearchUpdate,
+                              actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    return await asyncio.to_thread(services.saved_searches.update, actor, project_id, saved_search_id, body)
+
+
+@router.delete("/projects/{project_id}/saved-searches/{saved_search_id}", status_code=204)
+async def delete_saved_search(project_id: UUID, saved_search_id: UUID, actor=Depends(write_actor),
+                              services: Services = Depends(get_services)):
+    _owner_only(actor)
+    await asyncio.to_thread(services.saved_searches.delete, actor, project_id, saved_search_id)
+    return Response(status_code=204)
+
+
+@router.post("/async/projects/{project_id}/saved-searches/{saved_search_id}/previews", status_code=202,
+             response_model=DigestPreviewView)
+async def preview_saved_search(project_id: UUID, saved_search_id: UUID, actor=Depends(write_actor),
+                               services: Services = Depends(get_services)):
+    _owner_only(actor)
+    await asyncio.to_thread(services.saved_searches.preview, actor, project_id, saved_search_id)
+    return {"status": "sent"}
+
+
+@router.get("/projects/{project_id}/webhooks", response_model=list[WebhookView])
+async def list_webhooks(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await asyncio.to_thread(services.webhooks.list, actor, project_id)
+
+
+@router.post("/projects/{project_id}/webhooks", status_code=201, response_model=WebhookCreatedView)
+async def create_webhook(project_id: UUID, body: WebhookCreate, actor=Depends(write_actor),
+                         services: Services = Depends(get_services)):
+    _owner_only(actor)
+    return await services.webhooks.create(actor, project_id, body)
+
+
+@router.get("/projects/{project_id}/webhooks/deliveries", response_model=list[WebhookDeliveryView])
+async def list_webhook_deliveries(project_id: UUID, actor=Depends(owner_actor),
+                                  services: Services = Depends(get_services)):
+    return await asyncio.to_thread(services.webhooks.deliveries, actor, project_id)
+
+
+@router.post("/async/projects/{project_id}/webhooks/deliveries/{delivery_id}/redeliveries", status_code=202,
+             response_model=QueuedView)
+async def redeliver_webhook(project_id: UUID, delivery_id: UUID, actor=Depends(write_actor),
+                            services: Services = Depends(get_services)):
+    _owner_only(actor)
+    await asyncio.to_thread(services.webhooks.redeliver, actor, project_id, delivery_id)
+    return {"status": "queued"}
+
+
+@router.patch("/projects/{project_id}/webhooks/{webhook_id}", response_model=WebhookView)
+async def update_webhook(project_id: UUID, webhook_id: UUID, body: WebhookUpdate, actor=Depends(write_actor),
+                         services: Services = Depends(get_services)):
+    _owner_only(actor)
+    return await asyncio.to_thread(services.webhooks.update, actor, project_id, webhook_id, body)
+
+
+@router.delete("/projects/{project_id}/webhooks/{webhook_id}", status_code=204)
+async def delete_webhook(project_id: UUID, webhook_id: UUID, actor=Depends(write_actor),
+                         services: Services = Depends(get_services)):
+    _owner_only(actor)
+    await asyncio.to_thread(services.webhooks.delete, actor, project_id, webhook_id)
+    return Response(status_code=204)
+
+
+@router.post("/async/projects/{project_id}/webhooks/{webhook_id}/test-deliveries", status_code=202, response_model=QueuedView)
+async def test_webhook(project_id: UUID, webhook_id: UUID, actor=Depends(write_actor),
+                       services: Services = Depends(get_services)):
+    _owner_only(actor)
+    await asyncio.to_thread(services.webhooks.send_test, actor, project_id, webhook_id)
+    return {"status": "queued"}
+
+
+def _extraction(db, project_id: UUID) -> dict | None:
+    run = db.scalar(select(Run).where(Run.project_id == project_id, Run.operation == "extract_experience")
+                    .order_by(Run.created_at.desc()).limit(1))
+    if run is None:
+        return None
+    revision = db.get(CVRevision, run.cv_revision_id)
+    summary = (revision.skill_profile or {}).get("experience") if run.status == "completed" else None
+    return {"run_id": str(run.id), "status": run.status, "cv_id": str(revision.cv_id), "summary": summary}
+
+
+@router.get("/projects/{project_id}/experience")
+async def list_experience(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        return {"items": [experience.item_view(db, item) for item in experience.list_items(db, project_id)],
+                "years_of_experience": experience.years_of_experience(db, project_id),
+                "extraction": _extraction(db, project_id),
+                "provider_configured": bool(GatewaySettings.from_env().api_key)}
+
+
+@router.post("/projects/{project_id}/experience", status_code=201)
+async def add_experience(project_id: UUID, body: ExperienceItemCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        return experience.item_view(db, experience.add_item(db, project_id, **body.model_dump()))
+
+
+@router.put("/projects/{project_id}/experience/{item_id}")
+async def replace_experience(project_id: UUID, item_id: UUID, body: ExperienceItemCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        return experience.item_view(db, experience.replace_item(db, project_id, item_id, **body.model_dump()))
+
+
+@router.delete("/projects/{project_id}/experience/{item_id}", status_code=204)
+async def remove_experience(project_id: UUID, item_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        experience.remove_item(db, project_id, item_id)
+    return Response(status_code=204)
+
+
+@router.post("/async/projects/{project_id}/cvs/{cv_id}/experience-extractions", status_code=202, response_model=RunView)
+async def start_experience_run(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Queue (or return the active) owner-only extraction of this CV's latest revision into the experience bank."""
+    return await services.runs.submit_extract(actor, project_id, cv_id)
+
+
+@router.get("/projects/{project_id}/job-search/facets")
+async def job_search_facets(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+    return await asyncio.to_thread(job_sources.job_facets)
+
+
+@router.get(
+    "/projects/{project_id}/jobs/{job_id}/application-status",
+    response_model=JobApplicationStatusView,
+)
+async def get_job_application_status(
+    project_id: UUID,
+    job_id: UUID,
+    actor=Depends(owner_actor),
+    services: Services = Depends(get_services),
+):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+        _require_live_job(db, project_id, job_id)
+        row = db.get(JobApplicationStatus, (project_id, job_id))
+        return {"job_revision_id": job_id, "application_status": row.status if row else "saved"}
+
+
+@router.patch(
+    "/projects/{project_id}/jobs/{job_id}/application-status",
+    response_model=JobApplicationStatusView,
+)
+async def update_job_application_status(
+    project_id: UUID,
+    job_id: UUID,
+    body: JobApplicationStatusUpdate,
+    actor=Depends(write_actor),
+    services: Services = Depends(get_services),
+):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "job")
+        row = applications.set_stage(db, actor, project_id, job_id, body.application_status)
+        return {"job_revision_id": job_id, "application_status": row.status}
+
+
+@router.get("/projects/{project_id}/applications", response_model=list[ApplicationCardView])
+async def list_applications(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+        return applications.board(db, project_id)
+
+
+@router.get("/projects/{project_id}/jobs/{job_id}/application", response_model=ApplicationDetailView)
+async def get_application(project_id: UUID, job_id: UUID, actor=Depends(owner_actor),
+                          services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "job")
+        return applications.detail(db, project_id, job_id)
+
+
+@router.put("/projects/{project_id}/jobs/{job_id}/application/contact", response_model=ApplicationDetailView)
+async def set_application_contact(project_id: UUID, job_id: UUID, body: ApplicationContact,
+                                  actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "job")
+        applications.set_contact(db, actor, project_id, job_id, body)
+        return applications.detail(db, project_id, job_id)
+
+
+@router.post("/projects/{project_id}/jobs/{job_id}/application/events", status_code=201,
+             response_model=ApplicationEventView)
+async def add_application_event(project_id: UUID, job_id: UUID, body: ApplicationEntry,
+                                actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "job")
+        return applications.event_view(applications.add_event(db, actor, project_id, job_id, body))
+
+
+@router.post("/projects/{project_id}/jobs", status_code=201, response_model=JobRevisionView)
+async def create_job(project_id: UUID, body: JobCreate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "job")
+        project = db.scalar(select(Project).where(Project.id == project_id).with_for_update())
+        if project is None:
+            raise ServiceError("not_found")
+        row = _new_job_revision(db, project_id, title=body.title, company=body.company,
+                                source_url=body.source_url, description=body.description)
+        return _job_view(row)
+
+
+@router.delete("/projects/{project_id}/jobs/{job_revision_id}", status_code=204)
+async def remove_job(project_id: UUID, job_revision_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Soft-remove one saved job revision. Idempotent; runs that used it stay readable."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "job")
+        # Same Project-first lock order as run submission, so a run cannot start on a job mid-removal.
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        row = db.scalar(select(JobRevision).where(
+            JobRevision.project_id == project_id, JobRevision.id == job_revision_id).with_for_update())
+        if row is None:
+            raise ServiceError("not_found")
+        if row.removed_at is None:
+            row.removed_at = datetime.now(timezone.utc)
+
+
+@router.delete("/projects/{project_id}/documents/{document_id}", status_code=204)
+async def trash_document(project_id: UUID, document_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Move a drafted document to the trash. Idempotent."""
+    await services.documents.set_trashed(actor, project_id, document_id, True)
+
+
+@router.patch("/projects/{project_id}/documents/{document_id}", response_model=DocumentView)
+async def rename_document(project_id: UUID, document_id: UUID, body: DocumentRename, actor=Depends(write_actor),
+                          services: Services = Depends(get_services)):
+    """Owner renames a live document (for example a tailored CV from the builder)."""
+    await services.documents.rename(actor, project_id, document_id, body.title)
+    return await services.documents.get(actor, project_id, document_id)
+
+
+@router.post("/projects/{project_id}/documents/{document_id}/restore", response_model=DocumentView)
+async def restore_document(project_id: UUID, document_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Take a document out of the trash. Idempotent: restoring a live document returns it unchanged."""
+    await services.documents.set_trashed(actor, project_id, document_id, False)
+    return await services.documents.get(actor, project_id, document_id)
+
+
+@router.delete("/projects/{project_id}/documents/{document_id}/permanent", status_code=204)
+async def delete_document_permanently(project_id: UUID, document_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Hard-delete a trashed document with its revisions and unreferenced files."""
+    _owner_only(actor)
+    await services.documents.delete(actor, project_id, document_id)
+
+
+@router.get("/projects/{project_id}/documents", response_model=list[DocumentView])
+async def list_documents(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await services.documents.list_ready(actor, project_id)
+
+
+@router.get("/projects/{project_id}/documents/trash", response_model=list[DocumentView])
+async def list_trashed_documents(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await services.documents.list_trashed(actor, project_id)
+
+
+@router.get("/projects/{project_id}/documents/{document_id}/revisions", response_model=list[DocumentRevisionView])
+async def document_revisions(project_id: UUID, document_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await services.documents.revisions(actor, project_id, document_id)
+
+
+@router.post("/async/projects/{project_id}/documents/{document_id}/revisions", status_code=202, response_model=RunView)
+async def edit_document(project_id: UUID, document_id: UUID, body: DocumentEdit, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Owner manual edit: queue a non-LLM export run that appends a revision."""
+    _owner_only(actor)
+    return await services.runs.submit_export(actor, project_id, document_id, body)
+
+
+@router.post("/async/projects/{project_id}/documents/{document_id}/revisions/{revision_id}/restore", status_code=202, response_model=RunView)
+async def restore_revision(project_id: UUID, document_id: UUID, revision_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Owner undo: queue an export run that re-publishes an earlier revision's Markdown."""
+    _owner_only(actor)
+    return await services.runs.submit_restore(actor, project_id, document_id, revision_id)
+
+
+@router.post("/projects/{project_id}/runs/{run_id}/input", response_model=RunView)
+async def submit_run_input(project_id: UUID, run_id: UUID, body: RunInput, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Owner fills the missing answers of a parked apply pack; a ready pack completes the run."""
+    _owner_only(actor)
+    return await services.runs.submit_input(actor, project_id, run_id, body.answers)
+
+
+@router.post("/async/projects/{project_id}/agent-runs/{run_id}/cv-tailoring/apply", status_code=202, response_model=RunView)
+async def apply_tailor(project_id: UUID, run_id: UUID, body: TailorApply, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Owner applies chosen interactive tailoring proposals; evidence is re-checked server-side."""
+    _owner_only(actor)
+    return await services.runs.submit_tailor_apply(actor, project_id, run_id, body.proposal_ids)
+
+
+@router.get("/projects/{project_id}/cv", response_model=list[CVRevisionView])
+async def get_cv(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    """Legacy: revisions of the primary CV, newest first."""
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        rows = db.execute(select(CVRevision, StoredFile).join(
+            StoredFile, (StoredFile.project_id == CVRevision.project_id) & (StoredFile.id == CVRevision.file_id)
+        ).join(CV, CV.id == CVRevision.cv_id)
+          .where(CVRevision.project_id == project_id, StoredFile.publication_state == "published",
+                 CV.is_primary, CV.removed_at.is_(None))
+          .order_by(CVRevision.revision.desc())).all()
+        return [_cv_revision_view(*row) for row in rows]
+
+
+async def _upload_cv(services, actor, project_id: UUID, file: UploadFile, **target) -> tuple[dict[str, Any], UUID]:
+    if file.size is not None and file.size > MAX_UPLOAD_BYTES:
+        raise ServiceError("upload_too_large")
+    view = await services.files.upload(actor, project_id, file, file.content_type or "application/octet-stream",
+                                       file.filename or "upload", **target)
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        revision = db.scalar(select(CVRevision).where(
+            CVRevision.project_id == project_id, CVRevision.file_id == view.id
+        ))
+        if revision is None:
+            raise ServiceError("file_unavailable")
+    # Every new CV revision feeds the experience bank; without a provider (or with a full queue) the owner starts it later.
+    with contextlib.suppress(ServiceError):
+        await services.runs.submit_extract(actor, project_id, revision.cv_id, automatic=True)
+    return ({"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
+             "original_filename": view.display_name, "mime_type": view.mime_type, "size_bytes": view.size_bytes,
+             "file_id": view.id},
+            revision.cv_id)
+
+
+@router.post("/projects/{project_id}/cv", status_code=201, response_model=CVRevisionView)
+async def upload_cv(project_id: UUID, file: UploadFile = File(...), actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Legacy: add a revision to the primary CV, creating it if the project has none."""
+    return (await _upload_cv(services, actor, project_id, file))[0]
+
+
+@router.get("/projects/{project_id}/cvs", response_model=list[CVView])
+async def list_cvs(project_id: UUID, view: Literal["active", "trash"] = "active", actor=Depends(owner_actor),
+                   services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "cv")
+        query = select(CV).where(CV.project_id == project_id)
+        query = (query.where(CV.removed_at.is_(None)).order_by(CV.is_primary.desc(), CV.created_at, CV.id) if view == "active"
+                 else query.where(CV.removed_at.is_not(None), CV.purged_at.is_(None)).order_by(CV.removed_at.desc(), CV.id))
+        rows = db.scalars(query).all()
+        return [_cv_view(db, cv) for cv in rows]
+
+
+@router.post("/projects/{project_id}/cvs", status_code=201, response_model=CVView)
+async def create_cv(project_id: UUID, file: UploadFile = File(...),
+                    name: Annotated[str | None, Form(max_length=120)] = None,
+                    actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """New CV from its first upload; named after the file unless a name is given."""
+    cv_name = (name or "").strip() or PurePath(file.filename or "").stem.strip()[:120] or "CV"
+    _, new_cv_id = await _upload_cv(services, actor, project_id, file, new_cv_name=cv_name)
+    with services.sessions() as db:
+        return _cv_view(db, _live_cv(db, project_id, new_cv_id))
+
+
+@router.post("/async/projects/{project_id}/cvs/{cv_id}/skill-profiles", status_code=202, response_model=RunView,
+             responses={200: {"description": "The latest revision already has a skill profile", "content": {"application/json": {"schema": {"type": "object", "properties": {"status": {"const": "ready"}}}}}}})
+async def profile_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Extract the CV's skill names in the sandbox (no AI); 200 {status: ready} when already done."""
+    run = await services.runs.submit_profile(actor, project_id, cv_id)
+    return JSONResponse({"status": "ready"}, status_code=200) if run is None else run
+
+
+@router.post("/projects/{project_id}/cvs/{cv_id}/revisions", status_code=201, response_model=CVRevisionView)
+async def add_cv_revision(project_id: UUID, cv_id: UUID, file: UploadFile = File(...),
+                          actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return (await _upload_cv(services, actor, project_id, file, cv_id=cv_id))[0]
+
+
+@router.patch("/projects/{project_id}/cvs/{cv_id}", response_model=CVView)
+async def update_cv(project_id: UUID, cv_id: UUID, body: CVUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        cv = _live_cv(db, project_id, cv_id, lock=True)
+        if body.name is not None:
+            cv.name = body.name
+        if body.is_primary:
+            db.execute(CV.__table__.update().where(CV.project_id == project_id, CV.id != cv.id, CV.is_primary)
+                       .values(is_primary=False))
+            cv.is_primary = True
+        db.flush()
+        return _cv_view(db, cv)
+
+
+@router.delete("/projects/{project_id}/cvs/{cv_id}", status_code=204)
+async def delete_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Soft-delete a CV; sessions keep their pinned revision. Deleting the primary promotes the newest remaining CV."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        cv = _live_cv(db, project_id, cv_id, lock=True)
+        was_primary = cv.is_primary
+        cv.is_primary = False
+        cv.removed_at = datetime.now(timezone.utc)
+        db.flush()
+        if was_primary:
+            newest = db.scalar(select(CV).where(CV.project_id == project_id, CV.removed_at.is_(None))
+                               .order_by(CV.created_at.desc(), CV.id).limit(1))
+            if newest is not None:
+                newest.is_primary = True
+
+
+def _trashed_cv(db, project_id: UUID, cv_id: UUID) -> CV:
+    cv = db.scalar(select(CV).where(CV.project_id == project_id, CV.id == cv_id, CV.purged_at.is_(None)).with_for_update())
+    if cv is None:
+        raise ServiceError("not_found")
+    return cv
+
+
+@router.post("/projects/{project_id}/cvs/{cv_id}/restore", response_model=CVView)
+async def restore_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Take a CV out of the trash; it becomes primary when the project has none. Idempotent."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        cv = _trashed_cv(db, project_id, cv_id)
+        if cv.removed_at is not None:
+            cv.removed_at = None
+            cv.is_primary = db.scalar(select(CV.id).where(
+                CV.project_id == project_id, CV.is_primary, CV.removed_at.is_(None), CV.id != cv.id)) is None
+            db.flush()
+        return _cv_view(db, cv)
+
+
+def _json_mentions(column, value: str):
+    return cast(column, String).contains(value)
+
+
+@router.delete("/projects/{project_id}/cvs/{cv_id}/permanent", status_code=204)
+async def purge_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Delete a trashed CV's content for good (CR-CVT-01). The CV row and revision numbers stay as a hidden
+    tombstone so evaluations keep naming "CV · vN"; evaluations, documents and experience-bank facts stay."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "write", "cv")
+        if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
+            raise ServiceError("not_found")
+        cv = _trashed_cv(db, project_id, cv_id)
+        if cv.removed_at is None:
+            raise ServiceError("cv_not_trashed")
+        revisions = list(db.scalars(select(CVRevision).where(
+            CVRevision.project_id == project_id, CVRevision.cv_id == cv_id).with_for_update()))
+        ids = [r.id for r in revisions]
+        if ids and (db.scalar(select(exists().where(
+                Run.project_id == project_id, Run.cv_revision_id.in_(ids),
+                Run.status.in_(("queued", "running", "waiting_approval"))))) or db.scalar(select(exists().where(
+                Approval.project_id == project_id, Approval.expected_cv_revision_id.in_(ids), Approval.consumed_at.is_(None))))):
+            raise ServiceError("cv_in_use")
+        draft = db.scalar(select(ResumeDraft).where(ResumeDraft.project_id == project_id, ResumeDraft.cv_id == cv_id))
+        photos = {data["basics"].get("photo") for data in [r.resume_data for r in revisions] + [draft.resume_data if draft else None]
+                  if data and data.get("basics", {}).get("photo")}
+        candidates = {r.file_id for r in revisions if r.file_id is not None}
+        for photo in photos:
+            others = (select(CVRevision.id).where(CVRevision.project_id == project_id, CVRevision.cv_id != cv_id,
+                                                  _json_mentions(CVRevision.resume_data, photo)),
+                      select(DocumentRevision.id).where(DocumentRevision.project_id == project_id,
+                                                        _json_mentions(DocumentRevision.resume_data, photo)),
+                      select(ResumeDraft.id).where(ResumeDraft.project_id == project_id, or_(ResumeDraft.cv_id.is_(None), ResumeDraft.cv_id != cv_id),
+                                                   _json_mentions(ResumeDraft.resume_data, photo)))
+            if not any(db.scalar(select(exists(q))) for q in others):  # a kept tailored CV may share the photo
+                candidates.add(UUID(photo))
+        def used_elsewhere(f: UUID) -> bool:
+            return any(db.scalar(select(exists().where(*where))) for where in (
+                (DocumentRevision.project_id == project_id, DocumentRevision.file_id == f),
+                (RunArtifact.project_id == project_id, RunArtifact.file_id == f),
+                (Approval.project_id == project_id, Approval.target_file_id == f),
+                (JobRevision.project_id == project_id, JobRevision.content_file_id == f),
+                (CVRevision.project_id == project_id, CVRevision.file_id == f, CVRevision.cv_id != cv_id)))
+        doomed = [f for f in candidates if not used_elsewhere(f)]
+        if ids:
+            db.execute(delete(JobMatchScore).where(JobMatchScore.project_id == project_id, JobMatchScore.cv_revision_id.in_(ids)))
+            db.execute(delete(CVRevisionText).where(CVRevisionText.project_id == project_id, CVRevisionText.cv_revision_id.in_(ids)))
+            db.execute(CVRevision.__table__.update().where(CVRevision.project_id == project_id, CVRevision.cv_id == cv_id)
+                       .values(file_id=None, resume_data=None, resume_style=None, skill_profile=None))
+        if draft is not None:
+            db.delete(draft)
+        keys = list(db.scalars(select(StoredFile.storage_key).where(
+            StoredFile.project_id == project_id, StoredFile.id.in_(doomed)))) if doomed else []
+        if doomed:
+            db.execute(delete(StoredFile).where(StoredFile.project_id == project_id, StoredFile.id.in_(doomed)))
+        cv.purged_at = datetime.now(timezone.utc)
+    for key in keys:  # rows are gone; an orphaned private object is harmless
+        with contextlib.suppress(Exception):
+            await services.files.object_store.delete(key)
+
+
+@router.get("/projects/{project_id}/files/{file_id}/download", response_class=StreamingResponse,
+            responses={200: {"description": "Authorized private file stream", "content": {
+                "application/octet-stream": {"schema": {"type": "string", "format": "binary"}}}}})
+async def download_file(project_id: UUID, file_id: UUID, actor=Depends(run_actor), services: Services = Depends(get_services)):
+    row = await asyncio.to_thread(services.files._authorized_row, actor, project_id, file_id)
+    async def chunks() -> AsyncIterator[bytes]:
+        async for chunk in services.files.download_stream(actor, project_id, file_id):
+            yield chunk
+    from urllib.parse import quote
+    headers = {"ETag": f'"{row.checksum_sha256}"', "Cache-Control": "private, no-store",
+               "Content-Disposition": f"attachment; filename*=UTF-8''{quote(row.display_name, safe='')}",
+               "X-Content-Type-Options": "nosniff"}
+    return StreamingResponse(chunks(), media_type="application/octet-stream", headers=headers)
+
+
+@router.get("/projects/{project_id}/runs", response_model=list[RunView])
+async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Services = Depends(get_services)):
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "run")
+        query = select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())
+        query = query.where(Run.operation.not_in(("profile_cv", "match_jobs", "extract_experience")))
+        if actor.kind != "user":
+            query = query.where(Run.operation != "export_document")
+    return await asyncio.to_thread(services.runs.list_views, actor, project_id, query)
+
+
+@router.post("/async/projects/{project_id}/agent-runs", status_code=202, response_model=RunView)
+async def submit_run(
+    project_id: UUID,
+    body: RunRequest,
+    actor=Depends(run_write_actor),
+    services: Services = Depends(get_services),
+    idempotency_key: Annotated[str, StringConstraints(min_length=1, max_length=128)] | None = Header(default=None, alias="Idempotency-Key"),
+):
+    if idempotency_key is not None and idempotency_key != body.idempotency_key:
+        raise ServiceError("idempotency_conflict")
+    return await services.runs.submit(actor, project_id, body)
+
+
+@router.get("/projects/{project_id}/runs/{run_id}", response_model=RunView)
+async def get_run(project_id: UUID, run_id: UUID, actor=Depends(run_actor), services: Services = Depends(get_services)):
+    return await services.runs.get(actor, project_id, run_id)
+
+
+@router.post("/async/projects/{project_id}/agent-runs/{run_id}/cancel", status_code=202, response_model=RunView)
+async def cancel_run(project_id: UUID, run_id: UUID, actor=Depends(run_write_actor), services: Services = Depends(get_services)):
+    return await services.runs.cancel(actor, project_id, run_id)
+
+
+@router.get("/projects/{project_id}/approvals", response_model=list[ApprovalView])
+async def list_approvals(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    from job_search_platform.db.models import Approval
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "read", "approval")
+        ids = db.scalars(select(Approval.id).where(Approval.project_id == project_id).order_by(Approval.expires_at)).all()
+    return [await asyncio.to_thread(services.approvals.get, actor, project_id, approval_id) for approval_id in ids]
+
+
+@router.post("/projects/{project_id}/cv/promote", status_code=200)
+async def promote_cv(project_id: UUID, body: CVPromoteRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.approvals.promote_cv_direct, actor, project_id, body.revision_id, body.expected_cv_revision_id)
+    return {"status": "promoted"}
+
+
+@router.post("/projects/{project_id}/approvals", status_code=201, response_model=ApprovalView)
+async def request_approval(project_id: UUID, body: ApprovalRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    # Agents open approvals from inside their own run; the owner applies a change directly (e.g. /cv/promote).
+    with services.sessions() as db:
+        authorize(db, actor, project_id, "request", "approval")
+    raise ServiceError("approval_requires_run")
+
+
+@router.post("/projects/{project_id}/approvals/{approval_id}/decision", response_model=ApprovalView)
+async def decide_approval(project_id: UUID, approval_id: UUID, body: ApprovalDecision, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return await asyncio.to_thread(services.approvals.resolve, actor, project_id, approval_id, body.decision)
+
+
+@router.get("/projects/{project_id}/grants", response_model=list[GrantView])
+async def list_grants(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await services.grants.list(actor, project_id)
+
+
+@router.post("/projects/{project_id}/grants", status_code=201, response_model=GrantIssuedView)
+async def issue_grant(project_id: UUID, body: GrantIssueRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return await services.grants.issue(actor, project_id, body)
+
+
+@router.delete("/projects/{project_id}/grants/{grant_id}", status_code=204)
+async def revoke_grant(project_id: UUID, grant_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await services.grants.revoke(actor, project_id, grant_id)
+
+
+@router.get("/connect")
+async def connect_info(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    """Where external agents reach this app (Connect page). share_origin is null when the listener is off."""
+    origin = os.environ.get("SHARE_PUBLIC_ORIGIN", "").rstrip("/") or None
+    return {"share_origin": origin, "oauth": origin is not None and services.oauth is not None}
+
+
+@health_router.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+READY_TIMEOUT_SECONDS = 2
+READY_MAX_BODY_BYTES = 4096
+READY_CACHE_SECONDS = 5
+
+
+def _gateway_alive() -> None:
+    gateway = GatewaySettings.from_env()
+    with gateway.opener.open(_UrlRequest(gateway.base_url + "/health/liveliness"), timeout=READY_TIMEOUT_SECONDS) as response:
+        if response.status != 200:
+            raise ValueError
+        response.read(READY_MAX_BODY_BYTES)  # bounded; urllib's timeout is per socket operation, not total
+
+
+def _image_present(image: str) -> None:
+    subprocess.run(["docker", "image", "inspect", image], check=True, capture_output=True, timeout=READY_TIMEOUT_SECONDS)
+
+
+async def _probe(check) -> str:
+    try:
+        await asyncio.wait_for(check(), READY_TIMEOUT_SECONDS)
+        return "ok"
+    except Exception:  # the reason is deliberately dropped: readiness leaks no addresses or errors
+        return "down"
+
+
+async def _check_components(services: Services) -> tuple[int, dict]:
+    def postgres():
+        with services.sessions() as session:
+            session.execute(text("SET LOCAL statement_timeout = 2000"))
+            session.execute(text("SELECT 1"))
+
+    async def sandbox():
+        await asyncio.to_thread(_image_present, services.runtime.image)
+
+    names = ("postgres", "object_store", "llm_gateway", "sandbox_image")
+    results = await asyncio.gather(
+        _probe(lambda: asyncio.to_thread(postgres)), _probe(services.files.object_store.ping),
+        _probe(lambda: asyncio.to_thread(_gateway_alive)), _probe(sandbox))
+    ok = all(value == "ok" for value in results)
+    return (200 if ok else 503), {"status": "ok" if ok else "degraded", "components": dict(zip(names, results))}
+
+
+@health_router.get("/health/ready")
+async def health_ready(request: Request, services: Services = Depends(get_services)):
+    """Cached for a few seconds and single-flight: an unauthenticated caller cannot multiply probes."""
+    state = request.app.state.__dict__.setdefault("readiness", {"at": -1e9, "result": None, "task": None})
+    now = asyncio.get_running_loop().time()
+    if state["result"] is None or now - state["at"] >= READY_CACHE_SECONDS:
+        if state["task"] is None or state["task"].done():
+            state["task"] = asyncio.ensure_future(_check_components(services))
+        state["result"] = await asyncio.shield(state["task"])
+        state["at"] = asyncio.get_running_loop().time()
+    code, body = state["result"]
+    return JSONResponse(body, status_code=code)
+
+
+@router.get("/gateway", response_model=GatewayStatusView)
+async def gateway_status(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(require_admin, services.sessions, actor.user_id)  # operator-only: internal gateway URL and models
+    return await GatewaySettings.from_env().status()
+
+
+@router.get("/projects/{project_id}/settings/tools", response_model=ToolConnectorSettingsView)
+async def get_tool_settings(project_id: UUID, actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await services.settings.get_tools(actor, project_id)
+
+
+@router.put("/projects/{project_id}/settings/tools/{adapter}", response_model=ToolConnectorView)
+async def set_tool_settings(project_id: UUID, adapter: str, body: ToolConnectorUpdate, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return await services.settings.save_tool(actor, project_id, adapter, body)
+
+
+@router.get("/tools", response_model=ToolsView)
+async def list_tools(actor=Depends(owner_actor)):
+    return {"tools": [
+        *({"name": skill.id, "description": skill.description, "required_capability": skill.capability}
+          for skill in SKILLS),
+        {"name": "get_run", "description": "Read an authorized Project run and its published result view.",
+         "required_capability": "results:read"},
+        {"name": "cancel_run", "description": "Request cancellation of an authorized Project run.",
+         "required_capability": "jobs:evaluate"},
+        {"name": "list_results", "description": "List authorized Project runs and generated results.",
+         "required_capability": "results:read"},
+    ]}

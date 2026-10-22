@@ -1,0 +1,2765 @@
+openapi: 3.1.0
+info:
+  title: Job Search Platform Application API
+  version: 1.0.0
+  description: >-
+    Shared REST contract. Owner routes require the local owner session and CSRF token;
+    grant callers use project-bound bearer tokens and cannot read original CVs, uploads,
+    messages, or other raw inputs. Provider credentials and model selection are never
+    accepted by run submission.
+servers:
+  - url: /v1
+security:
+  - ownerSession: []
+tags:
+  - name: auth
+  - name: account
+  - name: projects
+  - name: sessions
+  - name: jobs
+  - name: files
+  - name: runs
+  - name: approvals
+  - name: sharing
+  - name: settings
+  - name: webhooks
+  - name: oauth
+  - name: system
+paths:
+  /projects:
+    get:
+      tags: [projects]
+      responses:
+        '200': {description: Owner projects, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/ProjectView'}}}}}
+    post:
+      tags: [projects]
+      requestBody: {$ref: '#/components/requestBodies/ProjectCreate'}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/ProjectView'}}}}
+  /projects/{project_id}:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [projects]
+      responses:
+        '200': {description: Project, content: {application/json: {schema: {$ref: '#/components/schemas/ProjectView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [projects]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ProjectUpdate'}}}
+      responses: {'200': {description: Updated}}
+    delete:
+      tags: [projects]
+      responses: {'204': {description: Deleted}}
+  /projects/{project_id}/preferences:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [projects]
+      responses: {'200': {description: Preferences, content: {application/json: {schema: {$ref: '#/components/schemas/PreferencesView'}}}}}
+    patch:
+      tags: [projects]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/PreferencesUpdate'}}}
+      responses: {'200': {description: Updated preferences}}
+  /projects/{project_id}/sessions:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [sessions]
+      description: view=active (default) lists visible sessions oldest first; view=trash lists trashed, not purged ones, newest trashed first, with trashed_at.
+      parameters:
+        - {name: view, in: query, required: false, schema: {type: string, enum: [active, trash], default: active}}
+      responses: {'200': {description: Sessions, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/SessionView'}}}}}}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Creates a session pinned to one CV revision and one job (saved
+        revision or inline job, deduplicated by identical description) and starts its
+        evaluation run; the response carries evaluation_run_id. 409 session_pair_exists
+        carries fields.session_id of the existing session for the same pair.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SessionCreate'}}}
+      responses:
+        '201': {description: Created session, content: {application/json: {schema: {$ref: '#/components/schemas/SessionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Duplicate pair (code session_pair_exists)}
+  /projects/{project_id}/sessions/{session_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: session_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [sessions]
+      description: Owner-only session with its CV/job pair details (null fields for legacy unpaired sessions).
+      responses:
+        '200': {description: Session, content: {application/json: {schema: {$ref: '#/components/schemas/SessionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [sessions]
+      description: Owner-only rename. Title is trimmed, 1-200 characters.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SessionUpdate'}}}
+      responses:
+        '200': {description: Renamed session, content: {application/json: {schema: {$ref: '#/components/schemas/SessionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags: [sessions]
+      description: >-
+        Owner-only. Moves the session to the trash (always mode hidden since 2026-10-20; mode deleted is
+        no longer returned): runs, events, documents and approvals stay, and it disappears from the session
+        list, GET (404) and new runs (404). Restore with POST .../restore or delete for good with DELETE .../permanent.
+        Refused with 409 session_busy while any of its runs is queued, running or waiting_approval.
+      responses:
+        '200': {description: Result, content: {application/json: {schema: {$ref: '#/components/schemas/SessionDeleteResult'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Session has active runs (code session_busy)}
+  /projects/{project_id}/sessions/{session_id}/permanent:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: session_id, in: path, required: true, schema: {type: string, format: uuid}}
+    delete:
+      tags: [sessions]
+      description: >-
+        Owner-only. Deletes a trashed session for good: its messages and every run (with events, approvals
+        and evaluation results) that published no document. Runs that published a document stay, with their
+        retry ancestors, as that document's immutable source; the session then stays as a hidden tombstone
+        (404 everywhere). Documents are never deleted here.
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Not in the trash (session_not_trashed) or has active runs (session_busy)}
+  /projects/{project_id}/sessions/{session_id}/restore:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: session_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Un-hides a session hidden by DELETE (idempotent on a visible session). 409
+        session_pair_exists with fields.session_id when a visible session now holds the same CV/job pair.
+      responses:
+        '200': {description: Restored session, content: {application/json: {schema: {$ref: '#/components/schemas/SessionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Pair taken by another session (code session_pair_exists)}
+  /projects/{project_id}/sessions/{session_id}/messages:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: session_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [sessions]
+      responses: {'200': {description: Owner-only message history}}
+  /projects/{project_id}/jobs:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      responses: {'200': {description: Job revision views}}
+    post:
+      tags: [jobs]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/JobCreate'}}}
+      responses: {'201': {description: Created immutable job revision}}
+  /projects/{project_id}/jobs/{job_revision_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: job_revision_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    delete:
+      tags: [jobs]
+      description: >-
+        Owner-only soft removal of one saved job revision (revisions are independent rows; no logical job groups them).
+        Idempotent: removing an already removed job returns 204. Removed jobs disappear from the job list and the
+        application-status routes (404), and new runs for them are refused with 409 job_removed. Existing runs and
+        results stay readable (RunView.job_removed is true).
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Removed}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /public/job-stats:
+    get:
+      tags: [jobs]
+      description: >-
+        Unauthenticated, read-only landing numbers {total, new_7d (int|null), thai_postings, categories (top 8
+        [{value, count}])} built only from the cached Thailand facets. Accepts no query parameters and returns
+        no job items or project data. 502 job_source_unavailable (retryable) on upstream failure.
+      security: []
+      responses:
+        '200': {description: Public job statistics}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/job-search:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: >-
+        Owner-only job search backed by the local search index (Meilisearch), Thailand listings only.
+        Query: q (max 200), cities (comma list, max 5 x 60), work_mode (remote|hybrid|onsite),
+        posted_within_days (1-90), category (slug, max 60), limit (1-20, default 20), offset (0-1000).
+        Items carry slug, title, company, location, cities, work_mode, skills (max 8), category, posted_at,
+        age_days, stale (true when ghost_signals is not empty), ghost_signals (FR-J04 evidence list: old = posted
+        more than 60 days ago, source_flagged = upstream reality.class other than fresh, unlisted = missing from the
+        source at its last check), source_url (http/https, utm_* stripped)
+        and description_markdown (max 50000). Upstream failure returns 502 job_source_unavailable (retryable).
+        Advanced filters (all optional, empty = unset; invalid values give 422): seniority (comma list of
+        intern|junior|middle|senior|lead|staff|principal|c_level), employment_type (full_time|part_time|contract|
+        internship|fellowship), company_type (product|startup|agency|outsource|outstaff|inhouse|government),
+        skills (comma list, max 5, each ^[a-z0-9][a-z0-9.+#-]{0,40}$), posting_language (th), salary_min
+        (1-1000000 THB per month). Comma values mean OR. company (exact company name, max 300, trimmed;
+        empty = unset) is accepted on this route only; Smart match does not filter by company.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: 'Job search page {items, total, limit, offset}'}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/agent/jobs/search:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [jobs]
+      description: >-
+        Direct agent read (skill jobs_search, capability jobs:search; owner session also allowed). Creates no Run.
+        JSON body AgentJobSearch: q (max 200), cities (list, max 5 x 60), work_mode (remote|hybrid|onsite), posted_within_days (1-90),
+        category (slug), limit (1-50, default 20), description_format (markdown|text, default markdown).
+        Each job carries the full description, posting_age_days, stale and ghost_signals (old|source_flagged|unlisted). Upstream failure returns 502 job_source_unavailable.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobSearch'}}}
+      responses:
+        '200': {description: Jobs, content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobSearchResult'}}}}
+        '403': {description: Grant lacks jobs:search}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/agent/jobs/fit:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [jobs]
+      description: >-
+        Direct agent call (skill jobs_fit, capability jobs:evaluate; owner session also allowed). Deterministic keyword
+        coverage of the current CV (cv_id, else the primary CV) against a supplied job or same-Project job revision.
+        No model is called and no Run is created. 400 cv_text_unavailable when no CV text is stored.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobFit'}}}
+      responses:
+        '200': {description: Coverage, content: {application/json: {schema: {$ref: '#/components/schemas/AgentJobFitResult'}}}}
+        '403': {description: Grant lacks jobs:evaluate}
+        '404': {description: Unknown job revision or CV}
+  /projects/{project_id}/agent/applications/list:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [applications]
+      description: >-
+        Direct agent call (skill applications_list, capability results:read; owner session also allowed). Without
+        job_id returns the board cards; with job_id returns that application's detail (contact and event ledger).
+        Read-only; no Run is created.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationsListInput'}}}
+      responses:
+        '200': {description: Board or one application, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationsListResult'}}}}
+        '403': {description: Grant lacks results:read}
+        '404': {description: Unknown job revision}
+  /projects/{project_id}/agent/applications/update:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [applications]
+      description: >-
+        Direct agent call (skill applications_update, capability applications:write; owner session also allowed).
+        Moves an already-applied application to responded, interview, offer, hired, rejected or withdrawn and/or adds a
+        note. Cannot set applied (owner approval) or edit the contact. 409 application_not_applied before the job was
+        applied for; 422 when neither stage nor note is given. No Run is created.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationsUpdateInput'}}}
+      responses:
+        '200': {description: Updated application, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationDetailView'}}}}
+        '403': {description: Grant lacks applications:write}
+        '404': {description: Unknown job revision}
+        '409': {description: Application not applied yet, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/job-search/match:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: >-
+        Owner-only "Smart match", backed by the local search index: the job-search filters (q, cities, work_mode, posted_within_days, category)
+        and the advanced filters below, plus cv_revision_id (a live CV revision of this project) and pool (1-100, default 100, upstream page
+        size) and offset (0-1000, start of the pool chunk). The pool is scored against the revision's stored
+        skill profile (keyword dictionary, no AI) and returned sorted by score descending, ties by recency,
+        jobs naming fewer than two recognisable skills (match null) last. Items are job-search items plus
+        match {score_percent, matched[], missing[], required_count} or null, ai_match (cached Jev score
+        {fit_percent, uncertain, band 1-5, seniority, hard_blocker, skills_evidenced[], must_missing[], nice_missing[], evidence {skill: the CV line quoting it, verbatim, ending in … when cut
+        at 160 characters; only skills found in the stored CV text; empty when none}} for the current posting text, or null) and highlight {matched, missing} (skill name to the surface string
+        found in the posting; plain strings, no markup). Jobs hidden for this project (job slug or company) are
+        removed. Scored items come first by fit_percent descending, then keyword order. When q and category are
+        both empty and Jev is available the pool is built from the CV's stored categories; with none stored the
+        list is empty and ai.status is missing. Response {items, total, offset, pool, hidden_count,
+        ai {status: unavailable|missing|partial|ready, categories|null, scored}}; unavailable means no gateway app key
+        is available (keyword result only).
+        Advanced filters (all optional, empty = unset; invalid values give 422): seniority (comma list of
+        intern|junior|middle|senior|lead|staff|principal|c_level), employment_type (full_time|part_time|contract|
+        internship|fellowship), company_type (product|startup|agency|outsource|outstaff|inhouse|government),
+        skills (comma list, max 5, each ^[a-z0-9][a-z0-9.+#-]{0,40}$), posting_language (th), salary_min
+        (1-1000000 THB per month). Comma values mean OR.
+        409 cv_profile_missing when the revision has no profile yet (POST the CV's /profile first);
+        404 for a foreign or removed CV revision; 502 job_source_unavailable.
+      security: [{ownerSession: []}]
+      parameters:
+        - {name: cv_revision_id, in: query, required: true, schema: {type: string, format: uuid}}
+        - {name: pool, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 100}}
+      responses:
+        '200': {description: 'Scored pool {items, total, offset, pool, hidden_count, ai}'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: CV has no skill profile yet (code cv_profile_missing), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/job-search/hidden:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: 'Owner-only list of jobs and companies hidden from Smart match, newest first: {items: [{id, kind, label, created_at}]}.'
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Hidden entries}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [jobs]
+      description: >-
+        Owner-only. Hides a job (value is the slug) or a company (value is normalised to a case-folded,
+        whitespace-collapsed key). Idempotent: hiding the same entry again returns 201 with the existing id.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/HiddenCreate'}}}
+      responses:
+        '201': {description: 'Hidden entry {id, kind, label, created_at}'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: Invalid body}
+  /projects/{project_id}/job-search/hidden/{hidden_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: hidden_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    delete:
+      tags: [jobs]
+      description: Owner-only. Unhides one entry of this project; another project's id gives 404.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Unhidden}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/saved-searches:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: >-
+        Owner-only (FR-J05). Saved searches, newest first, plus the owner's digest status:
+        email_verified and notifications_enabled. Digest mail is sent only when both are true.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Saved searches, content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchListView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [jobs]
+      description: >-
+        Owner-only. Saves a filter set with a digest frequency. At most 10 per project (409 saved_search_limit);
+        names are unique per project, case-insensitive (409 saved_search_name_taken).
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchCreate'}}}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: 'Limit reached (code saved_search_limit) or name taken (code saved_search_name_taken)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+  /projects/{project_id}/saved-searches/{saved_search_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: saved_search_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      tags: [jobs]
+      description: Owner-only. Renames, changes the frequency or switches the digest, push or Telegram on or off; at least one field is required.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchUpdate'}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/SavedSearchView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: 'Name taken (code saved_search_name_taken) or Telegram switched on without a link (code telegram_not_linked)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+    delete:
+      tags: [jobs]
+      description: Owner-only. Deletes one saved search of this project; another project's id gives 404.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Deleted}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /oauth/requests/{handle}:
+    parameters: [{name: handle, in: path, required: true, schema: {type: string}}]
+    get:
+      tags: [oauth]
+      description: Owner-only (FR-P03). What an MCP client is asking to be allowed to do, for the consent page; the owner's projects are included for the picker.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Pending request, content: {application/json: {schema: {$ref: '#/components/schemas/OAuthConsentView'}}}}
+        '401': {description: No owner session, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {description: 'Unknown, expired or already used request', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /oauth/requests/{handle}/approve:
+    parameters: [{name: handle, in: path, required: true, schema: {type: string}}]
+    post:
+      tags: [oauth]
+      description: Owner-only. Creates the grant for the chosen project and returns the client redirect URL carrying the one-time code, state and iss.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/OAuthApproveRequest'}}}
+      responses:
+        '200': {description: Redirect target, content: {application/json: {schema: {$ref: '#/components/schemas/OAuthRedirectView'}}}}
+        '401': {description: No owner session, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {description: 'Unknown, expired or already used request', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /oauth/requests/{handle}/deny:
+    parameters: [{name: handle, in: path, required: true, schema: {type: string}}]
+    post:
+      tags: [oauth]
+      description: Owner-only. Spends the request and returns the client redirect URL with error=access_denied.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Redirect target, content: {application/json: {schema: {$ref: '#/components/schemas/OAuthRedirectView'}}}}
+        '401': {description: No owner session, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {description: 'Unknown, expired or already used request', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/webhooks:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [webhooks]
+      description: Owner-only (FR-P06). Webhook endpoints of this project, oldest first. The signing secret is never returned here.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Endpoints, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/WebhookView'}}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [webhooks]
+      description: >-
+        Owner-only. Registers an endpoint; the URL must be https and public (SSRF checked, 422 invalid_webhook_url).
+        At most 5 per project (409 webhook_limit). The signing secret is returned once, in this response only.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/WebhookCreate'}}}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/WebhookCreatedView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: 'Limit reached (code webhook_limit)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: 'Invalid body or unsafe URL (code invalid_webhook_url)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/webhooks/deliveries:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [webhooks]
+      description: Owner-only. The 50 most recent deliveries of this project, newest first. Payloads are not returned.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Deliveries, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/WebhookDeliveryView'}}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/webhooks/{webhook_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: webhook_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      tags: [webhooks]
+      description: Owner-only. Changes the subscribed events or enables or disables the endpoint; at least one field is required.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/WebhookUpdate'}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/WebhookView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: Invalid body}
+    delete:
+      tags: [webhooks]
+      description: Owner-only. Deletes one endpoint of this project and its deliveries; another project's id gives 404.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Deleted}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/experience:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [files]
+      description: >-
+        Owner-only experience bank: {items: [{id, kind, text, role, organization, period, source, source_cv_id,
+        source_cv_name, created_at}], extraction: {run_id, status, cv_id, summary: {added, duplicates, rejected} | null}
+        | null, provider_configured: bool}. extraction is the latest extract_experience run; summary is set once it
+        completed. Grants get 401.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: 'Bank items, latest extraction and provider state'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Adds one fact (source owner). 409 duplicate when the normalised text already exists in this
+        project (removed facts included); 409 bank_full at 1,000 live items.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ExperienceItemCreate'}}}
+      responses:
+        '201': {description: 'Created item {id, kind, text, role, organization, period, source, source_cv_id, source_cv_name, created_at}'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Duplicate fact or full bank (codes duplicate, bank_full), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+  /projects/{project_id}/experience/{item_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: item_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    put:
+      tags: [files]
+      description: >-
+        Owner-only. Item text is immutable: a text change inserts a new item and soft-removes this one (new id);
+        a context-only change (kind, role, organization, period) updates in place.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ExperienceItemCreate'}}}
+      responses:
+        '200': {description: 'Resulting item {id, kind, text, role, organization, period, source, source_cv_id, source_cv_name, created_at}'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Duplicate fact (code duplicate), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+    delete:
+      tags: [files]
+      description: Owner-only. Soft-removes one live item of this project; extraction never re-adds a removed fact.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Removed}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/job-search/facets:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: >-
+        Owner-only Thailand facets {total, categories (top 12), cities, seniority, employment_type,
+        company_type, skills (top 20)} as [{value, count}], plus thai_postings (int) and new_7d (int|null, postings
+        from the last 7 days; null when that count is unavailable). cities lists Thai provinces only, most
+        postings first, as [{value (English RTGS name, the value to send as the cities filter), name_th, count}];
+        places that are not a Thai province are left out. A cities filter value that is a province name or
+        alias (English or Thai) also matches postings indexed by that province.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Job search facets}
+        '502': {description: Upstream job source unavailable, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /projects/{project_id}/jobs/{job_id}/application-status:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: job_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [jobs]
+      description: Owner-only status recorded for one immutable job revision; defaults to saved.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Owner application status, content: {application/json: {schema: {$ref: '#/components/schemas/JobApplicationStatusView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [jobs]
+      description: Owner-only stage update (eight stages). Appends a stage_changed ledger event and does not submit an application.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/JobApplicationStatusUpdate'}}}
+      responses:
+        '200': {description: Updated application status, content: {application/json: {schema: {$ref: '#/components/schemas/JobApplicationStatusView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/applications:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [jobs]
+      description: Owner-only application board (TOR FR-T01). Every live job with its stage, contact flag and last activity.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Board cards, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/ApplicationCardView'}}}}}
+  /projects/{project_id}/jobs/{job_id}/application:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: job_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      tags: [jobs]
+      description: Owner-only application detail with recruiter contact and the newest 200 ledger events.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Application detail, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationDetailView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/jobs/{job_id}/application/contact:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: job_id, in: path, required: true, schema: {type: string, format: uuid}}
+    put:
+      tags: [jobs]
+      description: Owner-only recruiter contact. Null clears a field. Appends a contact_updated event when it changes.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationContact'}}}
+      responses:
+        '200': {description: Application detail, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationDetailView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/jobs/{job_id}/application/events:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: job_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [jobs]
+      description: >-
+        Owner-only ledger entry: a note, or a record of email the owner sent or received themselves.
+        Nothing is sent by the platform.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf: [{$ref: '#/components/schemas/ApplicationNote'}, {$ref: '#/components/schemas/ApplicationEmailLog'}]
+              discriminator: {propertyName: kind}
+      responses:
+        '201': {description: Appended event, content: {application/json: {schema: {$ref: '#/components/schemas/ApplicationEventView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/documents:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [files]
+      description: Owner-only generated document metadata and latest revision references.
+      responses: {'200': {description: Documents, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/DocumentView'}}}}}}
+  /projects/{project_id}/documents/{document_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      tags: [files]
+      description: Owner-only rename of a live document (for example a tailored CV opened in the builder). 422 for an empty title.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DocumentRename'}
+      responses:
+        '200': {description: The renamed document, content: {application/json: {schema: {$ref: '#/components/schemas/DocumentView'}}}}
+    delete:
+      tags: [files]
+      description: >-
+        Owner-only move of a drafted document to the trash (soft delete, sets trashed_at). Idempotent. Trashed
+        documents disappear from the document list and from grant, MCP and A2A results (documents, run result files,
+        file downloads and revisions return not found for grants); the owner can still preview them and restore them.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Moved to trash}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/documents/trash:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [files]
+      description: Owner-only trashed documents, newest trashed first, each with trashed_at.
+      responses: {'200': {description: Trashed documents, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/DocumentView'}}}}}}
+  /projects/{project_id}/documents/{document_id}/restore:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: Owner-only restore from the trash. Idempotent, so restoring a document that is not in the trash returns it unchanged.
+      security: [{ownerSession: []}]
+      responses:
+        '200': {description: Restored document, content: {application/json: {schema: {$ref: '#/components/schemas/DocumentView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/documents/{document_id}/permanent:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    delete:
+      tags: [files]
+      description: >-
+        Owner-only permanent delete of a trashed document: its revisions, settled approvals that reference them, run
+        output links and any stored file no longer referenced elsewhere are removed in one transaction; private objects
+        are deleted afterwards on a best-effort basis. Refused with 409 document_not_trashed unless the document is in
+        the trash, and with 409 document_in_use while an approval referencing it is pending or approved but not yet applied.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Deleted}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Not in trash (code document_not_trashed) or in use by a pending approval (code document_in_use)}
+  /projects/{project_id}/documents/{document_id}/revisions:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [files]
+      description: Owner-only immutable document revision metadata.
+      responses: {'200': {description: Revisions, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/DocumentRevisionView'}}}}}}
+  /projects/{project_id}/runs/{run_id}/input:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [runs]
+      description: >-
+        Owner-only. Fills the null answers of a parked apply_prepare pack (run status needs_input). Answers are the
+        candidate's own, so they need no evidence; each is validated against its question kind and choices and is
+        stored with source owner. When every required answer is filled the run becomes completed with state ready;
+        otherwise it stays needs_input and result_payload.missing_required lists what remains.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/RunInput'}}}
+      responses:
+        '200': {description: The updated run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: Not an owner}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: The run is not waiting for input (run_not_awaiting_input)}
+        '422': {description: Unknown or already answered question, or an answer invalid for its kind (invalid_answer)}
+  /projects/{project_id}/cv:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [files]
+      description: Owner-only CV revision metadata; raw content is never a grant resource.
+      responses: {'200': {description: CV revision views}}
+    post:
+      tags: [files]
+      description: Owner-only multipart upload; server validates bytes, type, and size.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties: {file: {type: string, format: binary}}
+      responses: {'201': {description: Published CV revision metadata}}
+  /projects/{project_id}/cvs:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [files]
+      description: >-
+        Owner-only list of named CVs (primary first) with latest revision, revision_count and in_use.
+        view=trash lists CVs in the trash (not permanently deleted), newest first, with trashed_at.
+      parameters:
+        - {name: view, in: query, required: false, schema: {type: string, enum: [active, trash], default: active}}
+      responses: {'200': {description: CVs, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/CVView'}}}}}}
+    post:
+      tags: [files]
+      description: Owner-only multipart upload creating a CV. Name defaults to the filename stem; the project's first CV becomes primary.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties: {file: {type: string, format: binary}, name: {type: string, maxLength: 120}}
+      responses: {'201': {description: Created CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}}
+  /projects/{project_id}/sessions/{session_id}/practice-sets:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: session_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      tags: [sessions]
+      description: Owner-only interview practice sets of a live session (CR-IVP-01), newest first, with status (generating, ready, failed) and question_count, ready_count, known_count.
+      responses:
+        '200': {description: Practice sets}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Creates a practice set in a paired session and queues one interview_generate run that writes its
+        questions. At most 20 live sets per session (409 practice_set_limit); 1-6 questions per section and 30 per set.
+        Practice runs use the separate daily quota USER_DAILY_PRACTICE_QUOTA (429 quota_exceeded).
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SetCreate'}}}
+      responses:
+        '201': {description: New set (status generating)}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: practice_set_limit, session_pair_required, queue_full or gateway_unconfigured}
+        '429': {description: quota_exceeded}
+  /projects/{project_id}/practice-sets/{set_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: set_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      tags: [sessions]
+      description: Owner-only set with its questions in order (section, prompt, why, key_points, model_answer citing evidence_ids, ready, card_rating) and up to 20 attempts each, newest first, plus reverse_questions.
+      responses:
+        '200': {description: Set with questions}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [sessions]
+      description: Owner-only rename.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SetUpdate'}}}
+      responses:
+        '200': {description: Renamed set}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags: [sessions]
+      description: Owner-only. Hides the set; restore undoes it. Sets do not go to the project trash; purging the session deletes them.
+      responses:
+        '204': {description: Hidden}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/practice-sets/{set_id}/restore:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: set_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: Owner-only undo of a delete.
+      responses:
+        '200': {description: Restored set}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/practice-sets/{set_id}/retry:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: set_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: Owner-only. Queues question generation again after a failed run; 409 practice_set_busy otherwise.
+      responses:
+        '200': {description: Set (status generating)}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: practice_set_busy}
+  /projects/{project_id}/practice-questions/{question_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: question_id, in: path, required: true, schema: {type: string, format: uuid}}
+    patch:
+      tags: [sessions]
+      description: Owner-only. Marks a written question ready, or rates a flashcard know / learning (null clears it).
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QuestionUpdate'}}}
+      responses:
+        '200': {description: Updated question}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/practice-questions/{question_id}/attempts:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: question_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: Owner-only. Saves a written answer (1-4000 characters); the 20 newest are kept.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AttemptCreate'}}}
+      responses:
+        '201': {description: Saved attempt}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/practice-sets:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [sessions]
+      description: Owner-only list of every live practice set in the project's live sessions, newest first, with job_title and job_company (FR-IVP-19).
+      responses:
+        '200': {description: Practice sets}
+  /resume-templates:
+    get:
+      tags: [files]
+      description: Owner-only list of CV builder templates (id, ats_safe, photo = prints basics.photo), the 6 accent colours (id, hex) and the 77 Thai provinces (id TH-nn, en, th) for the address province field.
+      responses:
+        '200': {description: Templates and accents}
+  /projects/{project_id}/cvs/builder:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [files]
+      description: Owner-only. Creates a CV with an empty builder draft, or one filled from the live experience bank when from_experience is true.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/BuilderCreate'}}}
+      responses:
+        '201': {description: New CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}
+  /projects/{project_id}/cvs/{cv_id}/draft:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, description: CV id, schema: {type: string, format: uuid}}
+    get:
+      tags: [files]
+      description: Owner-only builder draft of a CV (resume_data, template_id, accent, document_language, ats_safe, updated_at). 404 when the CV has no draft.
+      responses:
+        '200': {description: Draft}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      tags: [files]
+      description: >-
+        Owner-only autosave. resume_data is validated (unknown keys, links other than http/https/mailto, dates other than YYYY or YYYY-MM,
+        more than 50 items per section, 20 highlights per item, texts over 1000 characters, 200 KB in total) and refused 422 resume_invalid
+        with fields.path. updated_at must equal the stored value, else 409 draft_conflict. Rate limit resume_draft_save 60 per minute.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DraftUpdate'}}}
+      responses:
+        '200': {description: Saved draft}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: draft_conflict}
+        '422': {description: resume_invalid}
+  /projects/{project_id}/cvs/{cv_id}/draft/preview:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. Renders the saved draft with its template in the network-disabled sandbox and returns the PDF (not stored). 502 render_failed leaves the draft unchanged. Rate limit resume_preview 20 per minute.
+      responses:
+        '200': {description: PDF, content: {application/pdf: {}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '502': {description: render_failed}
+  /projects/{project_id}/cvs/{cv_id}/draft/publish:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only "save as new version": renders the draft and creates a CV revision (PDF file, resume_data, resume_style) in one transaction; for a CV also the CV text (no references) and the owner facts of this CV in the experience bank.
+        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 502 render_failed writes nothing.
+      responses:
+        '201': {description: New revision}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: draft_conflict or document_busy}
+        '422': {description: resume_incomplete}
+        '502': {description: render_failed}
+  /projects/{project_id}/documents/{document_id}/draft:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: document_id, in: path, required: true, description: tailored document id, schema: {type: string, format: uuid}}
+    get:
+      tags: [files]
+      description: Owner-only builder draft of a tailored document (resume_data, template_id, accent, document_language, ats_safe, updated_at). 404 when the tailored document has no draft.
+      responses:
+        '200': {description: Draft}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      tags: [files]
+      description: >-
+        Owner-only autosave. resume_data is validated (unknown keys, links other than http/https/mailto, dates other than YYYY or YYYY-MM,
+        more than 50 items per section, 20 highlights per item, texts over 1000 characters, 200 KB in total) and refused 422 resume_invalid
+        with fields.path. updated_at must equal the stored value, else 409 draft_conflict. Rate limit resume_draft_save 60 per minute.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DraftUpdate'}}}
+      responses:
+        '200': {description: Saved draft}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: draft_conflict}
+        '422': {description: resume_invalid}
+  /projects/{project_id}/documents/{document_id}/draft/preview:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: document_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. Renders the saved draft with its template in the network-disabled sandbox and returns the PDF (not stored). 502 render_failed leaves the draft unchanged. Rate limit resume_preview 20 per minute.
+      responses:
+        '200': {description: PDF, content: {application/pdf: {}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '502': {description: render_failed}
+  /projects/{project_id}/documents/{document_id}/draft/publish:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: document_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only "save as new version": renders the draft and creates a document revision in one transaction.
+        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 502 render_failed writes nothing.
+      responses:
+        '201': {description: New revision}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: draft_conflict or document_busy}
+        '422': {description: resume_incomplete}
+        '502': {description: render_failed}
+  /projects/{project_id}/cvs/{cv_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      tags: [files]
+      description: Owner-only rename and/or make primary (other CVs are demoted).
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CVUpdate'}}}
+      responses:
+        '200': {description: Updated CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags: [files]
+      description: Owner-only move to the trash (sessions keep their pinned revision); deleting the primary promotes the newest remaining CV.
+      responses:
+        '204': {description: Moved to the trash}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/cvs/{cv_id}/restore:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. Takes a CV out of the trash (idempotent on a live CV); it becomes primary when the project has none. 404 once permanently deleted.
+      responses:
+        '200': {description: Restored CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/cvs/{cv_id}/permanent:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    delete:
+      tags: [files]
+      description: >-
+        Owner-only (CR-CVT-01). Deletes a trashed CV's content for good: uploaded and rendered files, parsed
+        text, builder data and draft, skill profile, job match scores and photos no other CV or document uses.
+        The CV name and revision numbers stay as a hidden tombstone so evaluations still name them; evaluations,
+        documents and experience-bank facts stay. Files a document, run or another CV still uses are kept.
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Not in the trash (cv_not_trashed), or a run or approval still uses it (cv_in_use)}
+  /projects/{project_id}/resume-photos:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [files]
+      description: Owner-only CV photo upload (JPG or PNG, at most 2 MB, type read from the bytes). Never sent to AI.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: {type: object, required: [file], properties: {file: {type: string, format: binary}}}
+      responses:
+        '201': {description: Stored photo id, content: {application/json: {schema: {type: object, properties: {id: {type: string, format: uuid}, mime_type: {type: string}, size_bytes: {type: integer}}}}}}
+        '413': {description: Larger than 2 MB (upload_too_large)}
+        '415': {description: Not a JPG or PNG (unsupported_media_type)}
+  /projects/{project_id}/resume-photos/{photo_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: photo_id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      tags: [files]
+      description: Owner-only. The photo bytes (image/jpeg or image/png).
+      responses:
+        '200': {description: Photo, content: {image/jpeg: {}, image/png: {}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/cvs/{cv_id}/revisions:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: Owner-only multipart upload of a new revision of this CV.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties: {file: {type: string, format: binary}}
+      responses:
+        '201': {description: Published CV revision metadata, content: {application/json: {schema: {$ref: '#/components/schemas/CVRevisionView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/files/{file_id}/download:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: file_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [files]
+      security: [{ownerSession: []}, {projectGrant: []}]
+      description: >-
+        Authenticated binary stream. Owners may read project files. A current
+        results:read grant may stream generated artifacts only; raw CVs, uploads,
+        chat attachments and source inputs remain owner-only. Revalidate the grant
+        during streaming so revocation stops an in-flight transfer. No object key
+        or presigned URL is returned.
+      responses:
+        '200':
+          description: Authorized file bytes
+          headers:
+            Content-Disposition: {schema: {type: string}}
+            ETag: {schema: {type: string}}
+            Cache-Control: {schema: {type: string, const: 'private, no-store'}}
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '403': {description: Grant lacks results:read or file kind is owner-only}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/runs:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [runs]
+      description: Owner list, or grant-visible results filtered to permitted result views.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      responses: {'200': {description: Runs}}
+  /projects/{project_id}/runs/{run_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [runs]
+      security: [{ownerSession: []}, {projectGrant: []}]
+      responses:
+        '200': {description: Authorized run result view, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/runs/{run_id}/events:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: Last-Event-ID
+        in: header
+        schema: {type: integer, minimum: 0}
+    get:
+      tags: [runs]
+      description: Persisted SSE replay; grant authorization is rechecked before each event.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      responses: {'200': {description: text/event-stream, content: {text/event-stream: {schema: {type: string}}}}}
+  /projects/{project_id}/approvals:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [approvals]
+      responses: {'200': {description: Owner-only pending revision-bound approvals}}
+    post:
+      tags: [approvals]
+      description: Agents open approvals from inside their own run, so an owner REST request always fails with 409 approval_requires_run. The owner applies a CV promotion directly with POST /projects/{project_id}/cv/promote.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApprovalRequest'}}}
+      responses:
+        '409': {description: approval_requires_run}
+  /projects/{project_id}/cv/promote:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [approvals]
+      description: Owner-only, owner CSRF auth. Makes the document revision's file the next revision of the CV in one transaction (the owner is the approver); works while another run is active.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CVPromoteRequest'}}}
+      responses:
+        '200': {description: Promoted}
+        '404': {description: Unknown or file-less document revision (not_found)}
+        '409': {description: expected_cv_revision_id is no longer the newest revision of its CV (approval_stale)}
+  /projects/{project_id}/approvals/{approval_id}/decision:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: approval_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [approvals]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApprovalDecision'}}}
+      responses: {'200': {description: One-use approval decision applied}}
+  /projects/{project_id}/grants:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [sharing]
+      responses: {'200': {description: Owner-only grant metadata; token values are never retrievable}}
+    post:
+      tags: [sharing]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/GrantIssueRequest'}}}
+      responses:
+        '201': {description: Token disclosed once, content: {application/json: {schema: {$ref: '#/components/schemas/GrantIssuedView'}}}}
+        '403': {description: 'Owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /connect:
+    get:
+      tags: [sharing]
+      description: Owner-only. Where external agents connect. share_origin is the MCP/A2A listener origin, null when the listener is off; oauth is true when MCP clients can sign in with OAuth instead of a token.
+      responses:
+        '200':
+          description: Connection details
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [share_origin, oauth]
+                properties:
+                  share_origin: {type: [string, 'null']}
+                  oauth: {type: boolean}
+  /projects/{project_id}/grants/{grant_id}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: grant_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    delete:
+      tags: [sharing]
+      responses: {'204': {description: Revoked}}
+  /auth/signup:
+    post:
+      tags: [auth]
+      description: Public. Always 202 check_email, whether or not the email has an account. 429 rate_limited per client IP.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SignupRequest'}}}}
+      responses:
+        '202': {description: Always the same answer, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /auth/verify-email:
+    post:
+      tags: [auth]
+      description: Public. 400 invalid_token when unknown, used or expired.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TokenRequest'}}}}
+      responses:
+        '204': {description: Done}
+  /auth/verify-email/code:
+    post:
+      tags: [auth]
+      description: Public. Verifies the email with the six-digit code from the sign-up mail. 400 invalid_code for a wrong, used, expired or unknown code; 429 after 5 tries per 10 minutes.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CodeRequest'}}}}
+      responses:
+        '204': {description: Done}
+        '400': {description: 'Invalid code (code invalid_code)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /account/avatar:
+    get:
+      tags: [account]
+      description: Session. The uploaded picture (PNG, JPEG or WebP). 404 when none.
+      responses:
+        '200': {description: Image bytes, content: {image/png: {schema: {type: string, format: binary}}}}
+    put:
+      tags: [account]
+      description: Session and CSRF. Raw image bytes as the body, at most 256 KiB. Type is detected from the content; SVG is refused. 422 invalid_image.
+      requestBody: {required: true, content: {application/octet-stream: {schema: {type: string, format: binary}}}}
+      responses:
+        '204': {description: Saved}
+    delete:
+      tags: [account]
+      description: Session and CSRF. Removes the uploaded picture.
+      responses:
+        '204': {description: Removed}
+  /account/avatar-preset:
+    put:
+      tags: [account]
+      description: Session and CSRF. Picks a built-in avatar and removes any uploaded picture.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/AvatarPresetRequest'}}}}
+      responses:
+        '204': {description: Saved}
+  /account/delete-code:
+    post:
+      tags: [account]
+      description: Session. Emails a six-digit code (valid 10 minutes, replaces any earlier one) that DELETE /account then requires. 429 after 3 sends per hour.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Code sent, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /digest/unsubscribe:
+    post:
+      tags: [auth]
+      description: Public. Turns off one saved search's digest from the emailed link token. 400 invalid_token when unknown or malformed.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TokenRequest'}}}}
+      responses:
+        '204': {description: Done}
+        '400': {description: 'Invalid token (code invalid_token)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /auth/resend-verification:
+    post:
+      tags: [auth]
+      description: Session. 202 check_email; no-op when already verified.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Always the same answer, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /auth/login:
+    post:
+      tags: [auth]
+      description: Public. Sets the jsp_owner_session cookie. 401 invalid_credentials is identical for unknown email, wrong password and disabled user.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}}
+      responses:
+        '200': {description: Logged in, content: {application/json: {schema: {$ref: '#/components/schemas/LoginView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /auth/session:
+    post:
+      tags: [auth]
+      description: Cookie. Restores the session after a page reload. 401 unauthorized without a valid cookie.
+      security: []
+      responses:
+        '200': {description: Session, content: {application/json: {schema: {$ref: '#/components/schemas/SessionStateView'}}}}
+  /auth/logout:
+    post:
+      tags: [auth]
+      description: Session and CSRF. Revokes the session and clears the cookie.
+      security: [{ownerSession: []}]
+      responses:
+        '204': {description: Logged out}
+  /auth/password/forgot:
+    post:
+      tags: [auth]
+      description: Public. Always 202 check_email. 429 rate_limited per email.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ForgotPasswordRequest'}}}}
+      responses:
+        '202': {description: Always the same answer, content: {application/json: {schema: {$ref: '#/components/schemas/CheckEmailView'}}}}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /auth/password/reset:
+    post:
+      tags: [auth]
+      description: Public. Sets the password and revokes all sessions; does not log in. 400 invalid_token, 422 weak_password.
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResetPasswordRequest'}}}}
+      responses:
+        '204': {description: Done}
+  /account:
+    get:
+      tags: [account]
+      responses:
+        '200': {description: Current account, content: {application/json: {schema: {$ref: '#/components/schemas/AccountView'}}}}
+    delete:
+      tags: [account]
+      description: Session and CSRF. Starts deletion and clears the cookie. 401 invalid_credentials, 422 confirmation_mismatch.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/DeleteAccountRequest'}}}}
+      responses:
+        '204': {description: Deletion requested}
+  /account/agents:
+    get:
+      tags: [account]
+      description: Every grant on the caller's projects.
+      responses:
+        '200': {description: Connected agents, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AgentView'}}}}}
+  /account/telegram:
+    get:
+      tags: [account]
+      description: Owner-only. Whether the Telegram digest channel is configured (a bot token exists) and linked.
+      responses:
+        '200': {description: Telegram status, content: {application/json: {schema: {$ref: '#/components/schemas/TelegramStatusView'}}}}
+    delete:
+      tags: [account]
+      description: Owner-only. Unlinks the chat and switches Telegram off on every saved search. 404 telegram_disabled without a bot token.
+      responses:
+        '204': {description: Unlinked}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /account/telegram/link:
+    post:
+      tags: [account]
+      description: >-
+        Owner-only. Issues a single-use link code valid 10 minutes and replaces any pending one; open the returned
+        URL in Telegram and press Start. Rate-limited (429 rate_limited). 404 telegram_disabled without a bot token,
+        503 telegram_unavailable when the bot cannot be reached.
+      responses:
+        '200': {description: Link URL, content: {application/json: {schema: {$ref: '#/components/schemas/TelegramLinkView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {description: Rate limited (code rate_limited), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '503': {description: Bot unreachable (code telegram_unavailable), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /health:
+    servers:
+      - url: /
+    get:
+      tags: [system]
+      description: Liveness. Unauthenticated.
+      responses:
+        '200': {description: Process is up, content: {application/json: {schema: {type: object, required: [status], properties: {status: {type: string, enum: [ok]}}}}}}
+  /health/ready:
+    servers:
+      - url: /
+    get:
+      tags: [system]
+      description: >-
+        Readiness. Unauthenticated; each component check is bounded to about 2 s and they run concurrently.
+        Returns no addresses, versions or error text. 200 when all components are ok, 503 when degraded.
+      responses:
+        '200': {description: All components ok, content: {application/json: {schema: {$ref: '#/components/schemas/ReadinessView'}}}}
+        '503': {description: At least one component is down, content: {application/json: {schema: {$ref: '#/components/schemas/ReadinessView'}}}}
+  /gateway:
+    get:
+      tags: [settings]
+      description: >-
+        Owner-only read-only status of the LiteLLM gateway that carries all LLM traffic. Calls the gateway
+        GET /v1/models with the app key (3 s timeout); the key is never returned.
+      responses:
+        '200': {description: Gateway status, content: {application/json: {schema: {$ref: '#/components/schemas/GatewayStatusView'}}}}
+  /projects/{project_id}/settings/tools:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    get:
+      tags: [settings]
+      responses:
+        '200': {description: Project tool connector status, content: {application/json: {schema: {$ref: '#/components/schemas/ToolConnectorSettingsView'}}}}
+  /projects/{project_id}/settings/tools/{adapter}:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: adapter
+        in: path
+        required: true
+        schema: {type: string, enum: [career_ops]}
+    put:
+      tags: [settings]
+      description: Create a new immutable revision of an allowlisted built-in connector setting.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ToolConnectorUpdate'}}}
+      responses:
+        '200': {description: Updated connector status, content: {application/json: {schema: {$ref: '#/components/schemas/ToolConnectorView'}}}}
+  /tools:
+    get:
+      tags: [settings]
+      summary: Discover the fixed platform tool catalog
+      description: Returns platform operations only; no Project data or provider configuration.
+      responses:
+        '200': {description: Allowlisted platform tools, content: {application/json: {schema: {$ref: '#/components/schemas/ToolsView'}}}}
+  /async/projects/{project_id}/agent-runs:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [runs]
+      description: Submit a project-scoped evaluate_job or draft_documents request.
+      security: [{ownerSession: []}, {projectGrant: []}]
+      parameters:
+        - {name: Idempotency-Key, in: header, required: false, schema: {type: string, minLength: 1, maxLength: 128}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/RunRequest'}}}
+      responses:
+        '202': {description: Queued or existing idempotent run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '409': {description: Idempotency key reused with different inputs, or the job was removed (code job_removed)}
+  /async/projects/{project_id}/agent-runs/{run_id}/cancel:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [runs]
+      description: Owner requests cancellation; public status changes only after execution stops.
+      responses: {'202': {description: Cancellation requested, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}}
+  /async/projects/{project_id}/agent-runs/{run_id}/cv-tailoring/apply:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [runs]
+      description: >-
+        Owner-only. Applies chosen proposals of a needs_input interactive tailor_cv run to its base text,
+        re-checking evidence for the whole selection, and queues an export_document run that publishes
+        one revision of the tailored CV, and the interactive run becomes completed. Any failed check rejects the call with evidence_required.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/TailorApply'}}}
+      responses:
+        '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '400': {description: Evidence check failed (evidence_required) or no chosen edit matched the base text (tailor_nothing_to_apply)}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Another export for the tailored CV is queued or running (document_busy), or the run was already applied (tailor_already_applied)}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/sessions/{session_id}/messages:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: session_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [sessions]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MessageCreate'}}}
+      responses: {'202': {description: Accepted conversation message}}
+  /async/projects/{project_id}/smart-matches:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [jobs]
+      description: >-
+        Owner-only. Queues (or returns the active) match_jobs run that scores the job pool with Jev and caches
+        scores per CV revision and posting. match_jobs runs are hidden from the run list, grants, MCP and A2A.
+        409 gateway_unconfigured when no gateway app key is available.
+      security: [{ownerSession: []}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MatchRunRequest'}}}
+      responses:
+        '202': {description: Match run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: No gateway app key (code gateway_unconfigured), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid body}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/cvs/{cv_id}/skill-profiles:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Queues a non-LLM profile_cv run (no session, job or provider) that parses the latest
+        revision in the sandbox and stores only the canonical skill names found (never CV text). Returns the
+        run (202; an already active run for the revision is returned again) or 200 {status: ready} when the
+        revision already has a profile. profile_cv runs are hidden from the run list, grants, MCP and A2A.
+      responses:
+        '200': {description: 'Already profiled: {status: ready}'}
+        '202': {description: Profile run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /async/projects/{project_id}/cvs/{cv_id}/experience-extractions:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: cv_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Queues (or returns the active) extract_experience run that reads the CV's latest revision and
+        adds its verbatim facts to the experience bank. Every CV upload also queues one automatically when a
+        gateway app key is available. extract_experience runs are hidden from the run list, grants, MCP and A2A.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Extraction run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: No gateway app key (code gateway_unconfigured), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '429': {description: 'Project run queue is full (code queue_full), or the daily run quota is spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/documents/{document_id}/revisions:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only manual edit. Queues a non-LLM export_document run that regenerates the
+        PDF/DOCX from the supplied Markdown and appends a revision with origin manual.
+        The run needs no provider configuration and is invisible to grants, MCP and A2A.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DocumentEdit'}}}
+      responses:
+        '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Another draft or export run for the document is queued or running (document_busy), or the document has no published source revision (document_source_unavailable)}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/documents/{document_id}/revisions/{revision_id}/restore:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: document_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: revision_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only undo. Queues a non-LLM export_document run that re-publishes the Markdown of an
+        earlier revision as a new revision of the same document. History stays immutable.
+      responses:
+        '202': {description: Queued export run, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Another draft or export run for the document is queued or running (document_busy)}
+        '429': {description: 'Daily run quota spent (code quota_exceeded, field reset_at)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/saved-searches/{saved_search_id}/previews:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: saved_search_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [jobs]
+      description: Owner-only. Sends the digest for this saved search to the owner now, without changing its schedule.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Sent, content: {application/json: {schema: {$ref: '#/components/schemas/DigestPreviewView'}}}}
+        '403': {description: 'Not an owner, or the owner email is not verified (code email_unverified)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {description: 'Mail is not configured (code mail_unavailable)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/webhooks/{webhook_id}/test-deliveries:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: webhook_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [webhooks]
+      description: Owner-only. Queues a signed ping delivery to this endpoint.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/QueuedView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /async/projects/{project_id}/webhooks/deliveries/{delivery_id}/redeliveries:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: delivery_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [webhooks]
+      description: Owner-only. Re-queues a dead delivery with attempts reset; any other status gives 409 delivery_not_dead.
+      security: [{ownerSession: []}]
+      responses:
+        '202': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/QueuedView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: 'Delivery is not dead (code delivery_not_dead)', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /async/projects/{project_id}/practice-attempts/{attempt_id}/feedback:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: attempt_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Queues one interview_grade run for a saved answer: five 1-5 scores (structure, relevance, evidence,
+        clarity, company_fit), STAR spans inside the answer, what to add and unused bank facts; a flashcard answer gets
+        a correctness verdict instead. Idempotent while pending or done; asks again after a failure. Logistics
+        questions are not graded (409 practice_not_gradable). Uses the practice quota.
+      responses:
+        '202': {description: Attempt with feedback status pending (or the existing feedback)}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: practice_not_gradable, queue_full or gateway_unconfigured}
+        '429': {description: quota_exceeded}
+  /async/projects/{project_id}/practice-sets/{set_id}/report:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: set_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [sessions]
+      description: >-
+        Owner-only. Queues one interview_report run: strengths, skills to build, a preparation plan of topics and
+        readiness per section in words. No links, percentages or hiring chances. Replaces the last report unless one
+        is still pending. Uses the practice quota.
+      responses:
+        '202': {description: Set with report status pending}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: practice_set_busy (questions not ready), queue_full or gateway_unconfigured}
+        '429': {description: quota_exceeded}
+components:
+  securitySchemes:
+    ownerSession:
+      type: apiKey
+      in: cookie
+      name: owner_session
+    projectGrant:
+      type: http
+      scheme: bearer
+  parameters:
+    project_id:
+      name: project_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+  requestBodies:
+    ProjectCreate:
+      required: true
+      content: {application/json: {schema: {$ref: '#/components/schemas/ProjectCreate'}}}
+  responses:
+    Unauthorized:
+      description: Owner session or grant is missing, expired or revoked
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
+    RateLimited:
+      description: Too many attempts (code rate_limited, field retry_after in seconds)
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
+    Unavailable:
+      description: Provider or secret adapter is unavailable
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
+    NotFound:
+      description: Resource is absent or outside the authorized project scope
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
+  schemas:
+    MatchRunRequest:
+      type: object
+      additionalProperties: false
+      required: [cv_revision_id]
+      properties:
+        cv_revision_id: {type: string, format: uuid}
+        q: {type: string, maxLength: 200, default: ''}
+        cities: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 80}, default: []}
+        work_mode: {type: [string, 'null'], enum: [remote, hybrid, onsite, null]}
+        posted_within_days: {type: [integer, 'null'], minimum: 1, maximum: 90}
+        category: {type: [string, 'null'], pattern: '^[a-z0-9_-]{1,60}$'}
+        seniority: {type: array, maxItems: 10, default: [], items: {type: string, enum: [intern, junior, middle, senior, lead, staff, principal, c_level]}}
+        employment_type: {type: array, maxItems: 10, default: [], items: {type: string, enum: [full_time, part_time, contract, internship, fellowship]}}
+        company_type: {type: array, maxItems: 10, default: [], items: {type: string, enum: [product, startup, agency, outsource, outstaff, inhouse, government]}}
+        skills: {type: array, maxItems: 5, default: [], items: {type: string, pattern: '^[a-z0-9][a-z0-9.+#-]{0,40}$'}}
+        posting_language: {type: [string, 'null'], enum: [th, null]}
+        salary_min: {type: [integer, 'null'], minimum: 1, maximum: 1000000, description: THB per month}
+        pool: {type: integer, minimum: 1, maximum: 100, default: 100}
+        offset: {type: integer, minimum: 0, maximum: 1000, default: 0}
+    HiddenCreate:
+      type: object
+      additionalProperties: false
+      required: [kind, value, label]
+      properties:
+        kind: {type: string, enum: [job, company]}
+        value: {type: string, minLength: 1, maxLength: 300}
+        label: {type: string, minLength: 1, maxLength: 300}
+    SavedSearchFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        q: {type: string, maxLength: 200, default: ''}
+        cities: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 80}, default: []}
+        work_mode: {type: [string, 'null'], enum: [remote, hybrid, onsite, null]}
+        category: {type: [string, 'null'], pattern: '^[a-z0-9_-]{1,60}$'}
+        seniority: {type: array, maxItems: 10, default: [], items: {type: string, enum: [intern, junior, middle, senior, lead, staff, principal, c_level]}}
+        employment_type: {type: array, maxItems: 10, default: [], items: {type: string, enum: [full_time, part_time, contract, internship, fellowship]}}
+        company_type: {type: array, maxItems: 10, default: [], items: {type: string, enum: [product, startup, agency, outsource, outstaff, inhouse, government]}}
+        skills: {type: array, maxItems: 5, default: [], items: {type: string, pattern: '^[a-z0-9][a-z0-9.+#-]{0,40}$'}}
+        posting_language: {type: [string, 'null'], enum: [th, null]}
+        salary_min: {type: [integer, 'null'], minimum: 1, maximum: 1000000, description: THB per month}
+    SavedSearchCreate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 80}
+        filters: {$ref: '#/components/schemas/SavedSearchFilters'}
+        frequency: {type: string, enum: [daily, weekly], default: daily}
+    SavedSearchUpdate:
+      type: object
+      additionalProperties: false
+      description: At least one field is required.
+      properties:
+        name: {type: [string, 'null'], minLength: 1, maxLength: 80}
+        frequency: {type: [string, 'null'], enum: [daily, weekly, null]}
+        digest_enabled: {type: [boolean, 'null']}
+        push_enabled: {type: [boolean, 'null']}
+        telegram_enabled: {type: [boolean, 'null']}
+    SavedSearchView:
+      type: object
+      additionalProperties: false
+      required: [id, name, filters, frequency, digest_enabled, next_run_at, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        filters: {$ref: '#/components/schemas/SavedSearchFilters'}
+        frequency: {type: string, enum: [daily, weekly]}
+        digest_enabled: {type: boolean}
+        next_run_at: {type: string, format: date-time}
+        last_sent_at: {type: [string, 'null'], format: date-time}
+        created_at: {type: string, format: date-time}
+        push_enabled: {type: boolean}
+        telegram_enabled: {type: boolean}
+    DigestStatusView:
+      type: object
+      additionalProperties: false
+      required: [email_verified, notifications_enabled]
+      properties:
+        email_verified: {type: boolean}
+        notifications_enabled: {type: boolean}
+    SavedSearchListView:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        items: {type: array, default: [], items: {$ref: '#/components/schemas/SavedSearchView'}}
+        status: {$ref: '#/components/schemas/DigestStatusView'}
+    DigestPreviewView:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {type: string, enum: [sent]}
+    ConsentProject:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+    OAuthConsentView:
+      type: object
+      additionalProperties: false
+      required: [client_name, client_id_host, redirect_uri, requested_scopes, projects, expires_at]
+      properties:
+        client_name: {type: string}
+        client_id_host: {type: string}
+        redirect_uri: {type: string}
+        requested_scopes: {type: array, items: {type: string}}
+        projects: {type: array, items: {$ref: '#/components/schemas/ConsentProject'}}
+        expires_at: {type: string, format: date-time}
+    OAuthApproveRequest:
+      type: object
+      additionalProperties: false
+      required: [project_id, capabilities, expires_at]
+      properties:
+        project_id: {type: string, format: uuid}
+        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
+        expires_at: {type: string, format: date-time}
+    OAuthRedirectView:
+      type: object
+      additionalProperties: false
+      required: [redirect_url]
+      properties:
+        redirect_url: {type: string}
+    WebhookCreate:
+      type: object
+      additionalProperties: false
+      required: [url, events]
+      properties:
+        url: {type: string, minLength: 1, maxLength: 2048}
+        events: {type: array, minItems: 1, maxItems: 6, items: {type: string, enum: [run.waiting_approval, run.needs_input, run.completed, run.failed, run.cancelled, digest.ready]}}
+    WebhookUpdate:
+      type: object
+      additionalProperties: false
+      description: At least one field is required.
+      properties:
+        events: {anyOf: [{type: array, minItems: 1, maxItems: 6, items: {type: string, enum: [run.waiting_approval, run.needs_input, run.completed, run.failed, run.cancelled, digest.ready]}}, {type: 'null'}]}
+        enabled: {type: [boolean, 'null']}
+    WebhookView:
+      type: object
+      additionalProperties: false
+      required: [id, url, events, enabled, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        url: {type: string}
+        events: {type: array, items: {type: string, enum: [run.waiting_approval, run.needs_input, run.completed, run.failed, run.cancelled, digest.ready]}}
+        enabled: {type: boolean}
+        created_at: {type: string, format: date-time}
+    WebhookCreatedView:
+      type: object
+      additionalProperties: false
+      required: [id, url, events, enabled, created_at, secret]
+      properties:
+        id: {type: string, format: uuid}
+        url: {type: string}
+        events: {type: array, items: {type: string, enum: [run.waiting_approval, run.needs_input, run.completed, run.failed, run.cancelled, digest.ready]}}
+        enabled: {type: boolean}
+        created_at: {type: string, format: date-time}
+        secret: {type: string, description: Signing key; shown once}
+    WebhookDeliveryView:
+      type: object
+      additionalProperties: false
+      required: [id, event_type, status, attempts, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        endpoint_id: {type: [string, 'null'], format: uuid}
+        event_type: {type: string}
+        status: {type: string, enum: [pending, delivered, dead]}
+        attempts: {type: integer}
+        last_status_code: {type: [integer, 'null']}
+        last_error: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+        delivered_at: {type: [string, 'null'], format: date-time}
+    QueuedView:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {type: string, enum: [queued]}
+    ExperienceItemCreate:
+      type: object
+      additionalProperties: false
+      required: [kind, text]
+      properties:
+        kind: {type: string, enum: [experience, education, skill, certification, project, other, award, publication, volunteer, interest, language]}
+        text: {type: string, minLength: 1, maxLength: 1000}
+        role: {anyOf: [{type: string, maxLength: 200}, {type: 'null'}]}
+        organization: {anyOf: [{type: string, maxLength: 200}, {type: 'null'}]}
+        period: {anyOf: [{type: string, maxLength: 60}, {type: 'null'}]}
+    RunRequest:
+      type: object
+      additionalProperties: false
+      required: [session_id, operation, output_language, idempotency_key]
+      properties:
+        session_id: {type: string, format: uuid}
+        operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, apply_prepare, apply_submit, draft_follow_up], description: 'apply_prepare needs questions. apply_submit queues an owner approval (submit_application) for the latest ready answer pack: apply_pack_required or already_applied (409) otherwise, where already_applied also covers the same source URL (utm_* ignored) applied in any project of the same user; the owner approving records the job as applied and the system sends nothing. draft_follow_up drafts a follow_up document and needs an applied job (application_not_applied, 409).'}
+        cv_revision_id: {type: [string, 'null'], format: uuid}
+        cv_id: {type: [string, 'null'], format: uuid, description: Latest revision of this CV; omitted means the primary CV. Ignored for paired sessions except that a conflicting value gives 422 session_pair_mismatch.}
+        job_revision_id: {type: [string, 'null'], format: uuid, description: Required unless the session is paired; a paired session fixes the pair and a conflicting id gives 422 session_pair_mismatch.}
+        output_language: {type: string, enum: [th, en]}
+        idempotency_key: {type: string, minLength: 1, maxLength: 128}
+        retry_of_id: {type: [string, 'null'], format: uuid, description: New manual retry of a same-project terminal run; original execution never resumes.}
+        owner_instructions: {type: [string, 'null'], maxLength: 4000, description: Owner-only instructions captured in immutable run inputs; manual retry retains the original instructions.}
+        document_id: {type: [string, 'null'], format: uuid, description: Owner-only draft_documents revise; the first draft is appended as a new revision of this live document.}
+        draft_kind: {type: [string, 'null'], enum: [cover_letter, application_message, follow_up, null], description: 'Owner-only, draft_documents only (follow_up also needs an applied job) (otherwise 422). Forces the first output document_type. On a paired session an existing live document of this kind drafted for the session job receives a new revision instead of a new document.'}
+        tailor_mode: {type: [string, 'null'], enum: [autopilot, interactive, null], description: 'tailor_cv only (otherwise 422); defaults to autopilot. Grants may not send interactive (forbidden).'}
+        questions:
+          type: [array, 'null']
+          minItems: 1
+          maxItems: 40
+          description: 'Required for apply_prepare and rejected otherwise (422). The application form questions, untrusted data; ids must be unique. The run result_payload is an apply_pack: {kind, state ready|parked, answers[{question_id, label (the question text), kind text|choice|boolean, choices (array or null), required, answer|null, evidence_ids, reason?}], missing_required[]}, readable only with results:read. A required question without an evidenced answer parks the pack. A second apply_prepare for the same job while one is queued or running gives 409 document_busy.'
+          items: {$ref: '#/components/schemas/ApplyQuestion'}
+    ApplyQuestion:
+      type: object
+      additionalProperties: false
+      required: [id, label, required, kind]
+      properties:
+        id: {type: string, minLength: 1, maxLength: 64}
+        label: {type: string, minLength: 1, maxLength: 500}
+        required: {type: boolean}
+        kind: {type: string, enum: [text, choice, boolean]}
+        choices: {type: [array, 'null'], minItems: 1, maxItems: 20, items: {type: string, minLength: 1, maxLength: 200}, description: Required for kind choice and not allowed otherwise.}
+    TailorApply:
+      type: object
+      additionalProperties: false
+      required: [proposal_ids]
+      properties:
+        proposal_ids: {type: array, minItems: 1, maxItems: 50, items: {type: integer}}
+    RunInput:
+      type: object
+      additionalProperties: false
+      required: [answers]
+      properties:
+        answers:
+          type: object
+          minProperties: 1
+          maxProperties: 50
+          description: Question id to answer (text, true or false, or one of the choices).
+          additionalProperties:
+            oneOf: [{type: string}, {type: boolean}]
+    DocumentEdit:
+      type: object
+      additionalProperties: false
+      required: [content_markdown]
+      properties:
+        content_markdown: {type: string, minLength: 1, maxLength: 200000}
+        format: {type: [string, 'null'], enum: [pdf, docx, null], description: Defaults to the format of the latest revision file, else pdf.}
+    ProjectCreate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties: {name: {type: string, minLength: 1, maxLength: 200}}
+    ProjectView:
+      type: object
+      additionalProperties: false
+      required: [id, name, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        created_at: {type: string, format: date-time}
+    ProjectUpdate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties: {name: {type: string, minLength: 1, maxLength: 200}}
+    PreferencesUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        locale: {type: string, enum: [th, en]}
+        output_language: {type: string, enum: [th, en]}
+        notifications_enabled: {type: boolean}
+        submit_autopilot_daily_limit: {type: [integer, 'null'], minimum: 1, maximum: 20, description: 'Owner-only. Auto-approve up to N apply_submit approvals per Asia/Bangkok day (records applied only; never sends). null = off.'}
+    PreferencesView:
+      type: object
+      additionalProperties: false
+      required: [project_id, locale, output_language, notifications_enabled, updated_at]
+      properties:
+        project_id: {type: string, format: uuid}
+        locale: {type: string, enum: [th, en]}
+        output_language: {type: string, enum: [th, en]}
+        notifications_enabled: {type: boolean}
+        submit_autopilot_daily_limit: {type: [integer, 'null'], minimum: 1, maximum: 20}
+        updated_at: {type: string, format: date-time}
+    InlineJob:
+      type: object
+      additionalProperties: false
+      required: [title, description]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 300}
+        company: {type: [string, 'null'], maxLength: 300}
+        source_url: {type: [string, 'null'], maxLength: 2048}
+        description: {type: string, minLength: 1, maxLength: 50000}
+    SessionCreate:
+      type: object
+      additionalProperties: false
+      required: [cv_revision_id]
+      description: Exactly one of job_revision_id or job. Title defaults to "job title · company".
+      properties:
+        title: {type: [string, 'null'], minLength: 1, maxLength: 200}
+        cv_revision_id: {type: string, format: uuid}
+        job_revision_id: {type: [string, 'null'], format: uuid}
+        job: {oneOf: [{$ref: '#/components/schemas/InlineJob'}, {type: 'null'}]}
+    SessionUpdate:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties: {title: {type: string, minLength: 1, maxLength: 200}}
+    SessionDeleteResult:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode: {type: string, enum: [deleted, hidden]}
+    SessionView:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, title, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        title: {type: string}
+        created_at: {type: string, format: date-time}
+        cv_revision_id: {type: [string, 'null'], format: uuid}
+        job_revision_id: {type: [string, 'null'], format: uuid}
+        cv_name: {type: [string, 'null']}
+        cv_revision: {type: [integer, 'null']}
+        job_title: {type: [string, 'null']}
+        job_company: {type: [string, 'null']}
+        cv_outdated: {type: boolean, default: false}
+        cv_file_id: {type: [string, 'null'], format: uuid}
+        evaluation_run_id: {type: [string, 'null'], format: uuid, description: Set only on the create response.}
+        trashed_at: {type: [string, 'null'], format: date-time, description: When it was moved to the trash; null for visible sessions.}
+    RevisionView:
+      type: object
+      additionalProperties: false
+      required: [id, revision, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        revision: {type: integer, minimum: 1}
+        created_at: {type: string, format: date-time}
+    JobRevisionView:
+      allOf:
+        - {$ref: '#/components/schemas/RevisionView'}
+        - type: object
+          properties:
+            description: {type: [string, "null"], maxLength: 50000}
+            title: {type: string}
+            company: {type: [string, 'null']}
+            source_url: {type: [string, 'null']}
+            application_status: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn], default: saved}
+    JobApplicationStatusUpdate:
+      type: object
+      additionalProperties: false
+      required: [application_status]
+      properties:
+        application_status: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn]}
+    JobApplicationStatusView:
+      type: object
+      additionalProperties: false
+      required: [job_revision_id, application_status]
+      properties:
+        job_revision_id: {type: string, format: uuid}
+        application_status: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn]}
+    ApplicationContact:
+      type: object
+      additionalProperties: false
+      properties:
+        name: {type: [string, 'null'], minLength: 1, maxLength: 200}
+        email: {type: [string, 'null'], maxLength: 320, pattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'}
+        role: {type: [string, 'null'], minLength: 1, maxLength: 200}
+    ApplicationNote:
+      type: object
+      additionalProperties: false
+      required: [kind, text]
+      properties:
+        kind: {type: string, const: note}
+        text: {type: string, minLength: 1, maxLength: 2000}
+    ApplicationEmailLog:
+      type: object
+      additionalProperties: false
+      required: [kind, direction, subject, occurred_on]
+      properties:
+        kind: {type: string, const: email_logged}
+        direction: {type: string, enum: [sent, received]}
+        subject: {type: string, minLength: 1, maxLength: 300}
+        occurred_on: {type: string, format: date}
+        note: {type: [string, 'null'], minLength: 1, maxLength: 2000}
+    ApplicationEventView:
+      type: object
+      additionalProperties: false
+      required: [id, kind, actor, payload, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        kind: {type: string, enum: [stage_changed, note, contact_updated, email_logged, applied_via_approval]}
+        actor: {type: string, enum: [user, agent, system]}
+        payload: {type: object, additionalProperties: true}
+        created_at: {type: string, format: date-time}
+    ApplicationCardView:
+      type: object
+      additionalProperties: false
+      required: [job_revision_id, title, created_at, stage, has_contact, last_activity_at]
+      properties:
+        job_revision_id: {type: string, format: uuid}
+        title: {type: string}
+        company: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+        stage: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn]}
+        has_contact: {type: boolean}
+        last_activity_at: {type: string, format: date-time}
+    ApplicationDetailView:
+      type: object
+      additionalProperties: false
+      required: [job_revision_id, title, stage, contact]
+      properties:
+        job_revision_id: {type: string, format: uuid}
+        title: {type: string}
+        company: {type: [string, 'null']}
+        stage: {type: string, enum: [saved, applied, responded, interview, offer, hired, rejected, withdrawn]}
+        contact: {$ref: '#/components/schemas/ApplicationContact'}
+        events: {type: array, items: {$ref: '#/components/schemas/ApplicationEventView'}}
+    ApplicationsListInput:
+      type: object
+      additionalProperties: false
+      properties:
+        job_id: {type: [string, 'null'], format: uuid}
+    ApplicationsListResult:
+      type: object
+      additionalProperties: false
+      properties:
+        applications: {type: array, items: {$ref: '#/components/schemas/ApplicationCardView'}}
+        application: {anyOf: [{$ref: '#/components/schemas/ApplicationDetailView'}, {type: 'null'}]}
+    ApplicationsUpdateInput:
+      type: object
+      additionalProperties: false
+      required: [job_id]
+      properties:
+        job_id: {type: string, format: uuid}
+        stage: {type: [string, 'null'], enum: [responded, interview, offer, hired, rejected, withdrawn, null]}
+        note: {type: [string, 'null'], minLength: 1, maxLength: 2000}
+    CVRevisionView:
+      allOf:
+        - {$ref: '#/components/schemas/RevisionView'}
+        - type: object
+          properties:
+            original_filename: {type: string}
+            mime_type: {type: string}
+            size_bytes: {type: integer, minimum: 0}
+            file_id: {type: [string, 'null'], format: uuid}
+            skill_profile_ready: {type: boolean, default: false}
+            skill_count: {type: [integer, 'null'], minimum: 0}
+    SectionChoice:
+      type: object
+      additionalProperties: false
+      required: [id, count]
+      properties:
+        id: {type: string, enum: [intro, behavioral, situational, technical, cv_deep_dive, gaps, company, logistics]}
+        count: {type: integer, minimum: 1, maximum: 6}
+    SetCreate:
+      type: object
+      additionalProperties: false
+      required: [sections]
+      properties:
+        name: {type: [string, 'null'], minLength: 1, maxLength: 120}
+        level: {type: string, enum: [entry, mid, senior], default: mid}
+        output_language: {type: string, enum: [th, en], default: th}
+        sections: {type: array, minItems: 1, maxItems: 8, items: {$ref: '#/components/schemas/SectionChoice'}}
+    SetUpdate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+    QuestionUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        ready: {type: [boolean, 'null']}
+        card_rating: {type: [string, 'null'], enum: [know, learning, null]}
+    AttemptCreate:
+      type: object
+      additionalProperties: false
+      required: [answer]
+      properties:
+        answer: {type: string, minLength: 1, maxLength: 4000}
+    BuilderCreate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+        from_experience: {type: boolean, default: false}
+        document_language: {type: string, enum: [th, en], default: th}
+    DraftUpdate:
+      type: object
+      additionalProperties: false
+      required: [resume_data, template_id, accent, document_language, updated_at]
+      properties:
+        resume_data: {type: object, additionalProperties: true}
+        template_id: {type: string, enum: [onyx, kakuna, ditgar, lotus, teak, saffron]}
+        accent: {type: string, enum: [indigo, blue, teal, green, rose, slate]}
+        document_language: {type: string, enum: [th, en]}
+        updated_at: {type: string, format: date-time}
+    CVUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        name: {type: [string, 'null'], minLength: 1, maxLength: 120}
+        is_primary: {type: [boolean, 'null'], enum: [true, null]}
+    CVView:
+      type: object
+      additionalProperties: false
+      required: [id, name, is_primary, created_at, revision_count, in_use]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        is_primary: {type: boolean}
+        created_at: {type: string, format: date-time}
+        latest_revision: {oneOf: [{$ref: '#/components/schemas/CVRevisionView'}, {type: 'null'}]}
+        revision_count: {type: integer, minimum: 0}
+        in_use: {type: boolean}
+        has_builder_draft: {type: boolean, default: false, description: The CV can be edited in the builder}
+        trashed_at: {type: [string, 'null'], format: date-time, description: Set while the CV is in the trash}
+    DocumentView:
+      type: object
+      additionalProperties: false
+      required: [id, document_type, title]
+      properties:
+        id: {type: string, format: uuid}
+        document_type: {type: string, enum: [cv, cover_letter, application_message, follow_up, other]}
+        title: {type: string}
+        content_markdown: {type: [string, 'null'], minLength: 1, maxLength: 200000}
+        output_language: {type: [string, 'null'], enum: [th, en, null]}
+        source_run_id: {type: [string, 'null'], format: uuid}
+        partial: {type: boolean, default: false}
+        trashed_at: {type: [string, 'null'], format: date-time}
+        has_builder_draft: {type: boolean, default: false, description: A tailored builder CV that can be edited in the builder}
+        latest_revision: {oneOf: [{$ref: '#/components/schemas/RevisionView'}, {type: 'null'}]}
+    DocumentRevisionView:
+      allOf:
+        - {$ref: '#/components/schemas/RevisionView'}
+        - type: object
+          required: [document_id]
+          properties:
+            document_id: {type: string, format: uuid}
+            source_cv_revision_id: {type: [string, 'null'], format: uuid}
+            source_job_revision_id: {type: [string, 'null'], format: uuid}
+            file_id: {type: [string, 'null'], format: uuid}
+            content_markdown: {type: [string, 'null'], minLength: 1, maxLength: 200000}
+            origin: {type: string, enum: [agent, manual], default: agent, description: manual when produced by an owner edit (export_document run).}
+    FileView:
+      type: object
+      additionalProperties: false
+      required: [id, kind, publication_state, display_name, mime_type, size_bytes, checksum_sha256, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        kind: {type: string, enum: [cv_original, job_source, generated_document, chat_attachment]}
+        publication_state: {type: string, enum: [pending, published, unavailable]}
+        display_name: {type: string}
+        mime_type: {type: string}
+        size_bytes: {type: integer, minimum: 0}
+        checksum_sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+        created_at: {type: string, format: date-time}
+    MessageCreate:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties: {content: {type: string, minLength: 1, maxLength: 20000}}
+    JobCreate:
+      type: object
+      additionalProperties: false
+      required: [title, description]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 300}
+        company: {type: [string, 'null'], maxLength: 300}
+        source_url: {type: [string, 'null'], maxLength: 2048}
+        description: {type: string, minLength: 1, maxLength: 50000}
+    UploadRequest:
+      type: object
+      additionalProperties: false
+      required: [filename, mime_type, size_bytes]
+      properties:
+        filename: {type: string, minLength: 1, maxLength: 255}
+        mime_type: {type: string, minLength: 1, maxLength: 200}
+        size_bytes: {type: integer, minimum: 0, maximum: 20971520}
+    EvaluationResult:
+      type: object
+      additionalProperties: false
+      required: [report_markdown]
+      properties:
+        report_markdown: {type: string, minLength: 1, maxLength: 200000}
+        score: {type: [number, 'null'], minimum: 1, maximum: 5, description: Career Ops native 1–5 score; absent when not established.}
+        skill_coverage: {anyOf: [{$ref: '#/components/schemas/SkillCoverage'}, {type: 'null'}], description: Deterministic keyword coverage computed by the platform, separate from the AI score.}
+        report: {anyOf: [{$ref: '#/components/schemas/EvaluationReport'}, {type: 'null'}], description: 'CR-EVR-01 named report fields; null for reports made before 2026-10-20 or when the AI returned Markdown only. report_markdown is built from these fields.'}
+    ReportRequirement:
+      type: object
+      additionalProperties: false
+      required: [requirement, importance, match]
+      properties:
+        requirement: {type: string, minLength: 1, maxLength: 300}
+        importance: {type: string, enum: [critical, high, meaningful, preferred, low_signal]}
+        match: {type: string, enum: [strong, partial, missing, not_applicable]}
+        evidence: {type: string, maxLength: 1000}
+    EvaluationReport:
+      type: object
+      additionalProperties: false
+      required: [verdict, summary]
+      properties:
+        verdict: {type: string, minLength: 1, maxLength: 200}
+        summary: {type: string, minLength: 1, maxLength: 2000}
+        requirements:
+          type: array
+          maxItems: 30
+          items: {$ref: '#/components/schemas/ReportRequirement'}
+        strengths: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
+        risks: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
+        interview_prep: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
+        cv_changes: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 500}}
+    SkillCoverage:
+      type: object
+      additionalProperties: false
+      required: [required, matched, missing, ratio, method]
+      properties:
+        required: {type: array, maxItems: 60, items: {type: string, minLength: 1, maxLength: 80}}
+        matched: {type: array, maxItems: 60, items: {type: string, minLength: 1, maxLength: 80}}
+        missing: {type: array, maxItems: 60, items: {type: string, minLength: 1, maxLength: 80}}
+        ratio: {type: number, minimum: 0, maximum: 1}
+        method: {type: string, maxLength: 40}
+    RunView:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, operation, status, output_language, result_file_ids, created_at]
+      properties:
+        job_revision_id: {type: [string, 'null'], format: uuid}
+        evaluation_result: {anyOf: [{$ref: '#/components/schemas/EvaluationResult'}, {type: 'null'}]}
+        result_payload: {type: [object, 'null'], additionalProperties: true, description: Machine result that is neither an evaluation nor an artifact (tailoring proposals and round summaries).}
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        session_id: {type: [string, 'null'], format: uuid, description: Null only for profile_cv.}
+        operation: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, export_document, profile_cv, match_jobs, extract_experience, apply_prepare, apply_submit, draft_follow_up, interview_generate, interview_grade, interview_report]}
+        status: {type: string, enum: [queued, running, waiting_approval, needs_input, completed, failed, cancelled, interrupted]}
+        output_language: {type: string, enum: [th, en]}
+        result_file_ids: {type: array, items: {type: string, format: uuid}}
+        created_at: {type: string, format: date-time}
+        finished_at: {type: [string, 'null'], format: date-time}
+        retry_of_id: {type: [string, 'null'], format: uuid}
+        job_removed: {type: boolean, default: false}
+        requester: {anyOf: [{$ref: '#/components/schemas/RunRequester'}, {type: 'null'}], description: 'Who requested the run, derived from the run actor scope. Agent grants carry the grant label when one was set.'}
+    RunRequester:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: {type: string, enum: [owner, agent]}
+        grant_id: {type: [string, 'null'], format: uuid}
+        label: {type: [string, 'null'], maxLength: 80}
+    RunEventView:
+      type: object
+      additionalProperties: false
+      required: [sequence, event_type, data, created_at]
+      properties:
+        sequence: {type: integer, minimum: 1}
+        event_type: {type: string}
+        data: {$ref: '#/components/schemas/RunEventData'}
+        created_at: {type: string, format: date-time}
+    RunEventData:
+      type: object
+      additionalProperties: false
+      properties:
+        approval_id: {type: [string, 'null'], format: uuid}
+        step: {type: [string, 'null'], maxLength: 80}
+        status: {type: [string, 'null'], enum: [queued, running, waiting_approval, needs_input, completed, failed, cancelled, interrupted]}
+        artifact_ids: {type: array, items: {type: string, format: uuid}}
+        message_key: {type: [string, 'null'], maxLength: 120}
+        progress_percent: {type: [integer, 'null'], minimum: 0, maximum: 100}
+        round: {type: [integer, 'null'], minimum: 1, maximum: 100, description: tailor_cv round number}
+        coverage: {type: [number, 'null'], minimum: 0, maximum: 1, description: tailor_cv skill coverage after the round}
+        model: {type: [string, 'null'], maxLength: 120, description: llm_round model name}
+        latency_ms: {type: [integer, 'null'], minimum: 0, maximum: 3600000, description: llm_round wall latency}
+        input_tokens: {type: [integer, 'null'], minimum: 0, maximum: 10000000}
+        output_tokens: {type: [integer, 'null'], minimum: 0, maximum: 10000000}
+    ApprovalView:
+      type: object
+      additionalProperties: false
+      required: [id, run_id, action, change_digest, expires_at]
+      properties:
+        decision: {type: [string, 'null'], enum: [approve, reject, null]}
+        applied_at: {type: [string, 'null'], format: date-time}
+        id: {type: string, format: uuid}
+        run_id: {type: string, format: uuid}
+        action: {type: string, enum: [promote_cv, delete_document_revision, delete_file, submit_application]}
+        revision_id: {type: [string, 'null'], format: uuid}
+        expected_cv_revision_id: {type: [string, 'null'], format: uuid}
+        target_file_id: {type: [string, 'null'], format: uuid}
+        target_run_id: {type: [string, 'null'], format: uuid, description: 'submit_application only: the completed apply_prepare run whose pack is submitted.'}
+        change_digest: {type: string, pattern: '^[a-f0-9]{64}$'}
+        expires_at: {type: string, format: date-time}
+        consumed_at: {type: [string, 'null'], format: date-time}
+        decided_by: {type: [string, 'null'], enum: [owner, autopilot, null]}
+    CVPromoteRequest:
+      type: object
+      additionalProperties: false
+      required: [revision_id, expected_cv_revision_id]
+      properties:
+        revision_id: {type: string, format: uuid}
+        expected_cv_revision_id: {type: string, format: uuid}
+    ApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: {type: string, enum: [promote_cv, delete_document_revision, delete_file, submit_application]}
+        revision_id: {type: [string, 'null'], format: uuid}
+        expected_cv_revision_id: {type: [string, 'null'], format: uuid}
+        target_file_id: {type: [string, 'null'], format: uuid}
+        target_run_id: {type: [string, 'null'], format: uuid, description: 'submit_application only (then the only target allowed); that action is opened by the apply_submit run itself and is refused here with 403.'}
+    ApprovalDecision:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties: {decision: {type: string, enum: [approve, reject]}}
+    GrantIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [capabilities, expires_at]
+      properties:
+        capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
+        expires_at: {type: string, format: date-time}
+        label: {type: [string, 'null'], minLength: 1, maxLength: 80, description: Optional name shown as the run requester; trimmed.}
+    GrantIssuedView:
+      type: object
+      additionalProperties: false
+      required: [id, token, project_id, capabilities, expires_at]
+      properties:
+        id: {type: string, format: uuid}
+        token: {type: string}
+        project_id: {type: string, format: uuid}
+        capabilities: {type: array, items: {type: string}}
+        expires_at: {type: string, format: date-time}
+    GrantView:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, capabilities, expires_at]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        capabilities: {type: array, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
+        expires_at: {type: string, format: date-time}
+        revoked_at: {type: [string, 'null'], format: date-time}
+        label: {type: [string, 'null'], maxLength: 80}
+    GatewayStatusView:
+      type: object
+      additionalProperties: false
+      required: [configured, reachable, analyze_model, decision_model, models]
+      properties:
+        configured: {type: boolean}
+        reachable: {type: boolean}
+        base_url: {type: [string, 'null']}
+        analyze_model: {type: string}
+        decision_model: {type: string}
+        models: {type: array, items: {type: string}}
+    ReadinessView:
+      type: object
+      additionalProperties: false
+      required: [status, components]
+      properties:
+        status: {type: string, enum: [ok, degraded]}
+        components:
+          type: object
+          additionalProperties: {type: string, enum: [ok, down]}
+    ToolConnectorUpdate:
+      type: object
+      additionalProperties: false
+      required: [enabled]
+      properties: {enabled: {type: boolean}}
+    ToolConnectorView:
+      type: object
+      additionalProperties: false
+      required: [adapter, enabled, revision, updated_at]
+      properties:
+        adapter: {type: string, enum: [career_ops]}
+        enabled: {type: boolean}
+        revision: {type: integer, minimum: 1}
+        updated_at: {type: string, format: date-time}
+    ToolConnectorSettingsView:
+      type: object
+      additionalProperties: false
+      required: [connectors]
+      properties:
+        connectors: {type: array, items: {$ref: '#/components/schemas/ToolConnectorView'}}
+    AgentJobFit:
+      type: object
+      additionalProperties: false
+      properties:
+        job: {anyOf: [{$ref: '#/components/schemas/JobCreate'}, {type: 'null'}]}
+        job_revision_id: {type: [string, 'null'], format: uuid}
+        cv_id: {type: [string, 'null'], format: uuid}
+    AgentJobFitResult:
+      type: object
+      additionalProperties: false
+      required: [method]
+      properties:
+        method: {type: string}
+        ratio: {type: [number, 'null'], minimum: 0, maximum: 1}
+        required: {type: array, items: {type: string}}
+        matched: {type: array, items: {type: string}}
+        missing: {type: array, items: {type: string}}
+        reason: {type: [string, 'null']}
+    AgentJobItem:
+      type: object
+      additionalProperties: false
+      required: [source_id, title, stale, description, description_format]
+      properties:
+        source_id: {type: string}
+        title: {type: string}
+        company: {type: [string, 'null']}
+        city: {type: [string, 'null']}
+        work_mode: {type: [string, 'null']}
+        posted_at: {type: [string, 'null']}
+        posting_age_days: {type: [integer, 'null']}
+        stale: {type: boolean}
+        ghost_signals: {type: array, items: {type: string, enum: [old, source_flagged, unlisted]}}
+        source_url: {type: [string, 'null']}
+        description: {type: string}
+        description_format: {type: string, enum: [markdown, text]}
+    AgentJobSearch:
+      type: object
+      additionalProperties: false
+      properties:
+        q: {type: string, maxLength: 200, default: ''}
+        cities: {type: array, maxItems: 5, default: [], items: {type: string, minLength: 1, maxLength: 60}}
+        work_mode: {type: [string, 'null'], enum: [remote, hybrid, onsite, null]}
+        posted_within_days: {type: [integer, 'null'], minimum: 1, maximum: 90}
+        category: {type: [string, 'null'], pattern: '^[a-z0-9_-]{1,60}$'}
+        limit: {type: integer, minimum: 1, maximum: 50, default: 20}
+        description_format: {type: string, enum: [markdown, text], default: markdown}
+    AgentJobSearchResult:
+      type: object
+      additionalProperties: false
+      required: [jobs]
+      properties:
+        jobs: {type: array, items: {$ref: '#/components/schemas/AgentJobItem'}}
+    ToolDescriptor:
+      type: object
+      additionalProperties: false
+      required: [name, description, required_capability]
+      properties:
+        name: {type: string, enum: [evaluate_job, draft_documents, tailor_cv, apply_prepare, apply_submit, draft_follow_up, jobs_search, jobs_fit, applications_list, applications_update, get_run, cancel_run, list_results]}
+        description: {type: string}
+        required_capability: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}
+    ToolsView:
+      type: object
+      additionalProperties: false
+      required: [tools]
+      properties:
+        tools: {type: array, items: {$ref: '#/components/schemas/ToolDescriptor'}}
+    ErrorView:
+      type: object
+      additionalProperties: false
+      required: [code, message_key, retryable, correlation_id]
+      properties:
+        code: {type: string}
+        message_key: {type: string}
+        retryable: {type: boolean}
+        fields: {type: [object, 'null'], additionalProperties: {type: string}}
+        correlation_id: {type: string, format: uuid}
+    SignupRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: {type: string, maxLength: 254}
+        password: {type: string, maxLength: 256}
+        locale: {type: string, enum: [th, en], default: th}
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: {type: string, maxLength: 254}
+        password: {type: string, maxLength: 256}
+    TokenRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: {type: string, minLength: 1, maxLength: 256}
+    ForgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: {type: string, maxLength: 254}
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [token, password]
+      properties:
+        token: {type: string, minLength: 1, maxLength: 256}
+        password: {type: string, maxLength: 256}
+    DeleteAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [password, confirm_email, code]
+      properties:
+        password: {type: string, maxLength: 256}
+        confirm_email: {type: string, maxLength: 254}
+        code: {type: string, pattern: '^\\d{6}$'}
+    CodeRequest:
+      type: object
+      additionalProperties: false
+      required: [email, code]
+      properties:
+        email: {type: string, maxLength: 254}
+        code: {type: string, pattern: '^\\d{6}$'}
+    DocumentRename:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: {type: string, minLength: 1, maxLength: 300}
+    CheckEmailView:
+      type: object
+      additionalProperties: false
+      required: [status, mail_enabled]
+      properties:
+        status: {type: string, enum: [check_email]}
+        mail_enabled: {type: boolean, description: 'Server-wide. False when no SMTP is set up, so no message was sent to anyone.'}
+    AccountView:
+      type: object
+      additionalProperties: false
+      required: [id, email, locale, email_verified, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string}
+        locale: {type: string, enum: [th, en]}
+        email_verified: {type: boolean}
+        is_admin: {type: boolean, description: True only for verified accounts listed in ADMIN_EMAILS}
+        avatar_preset: {type: string, nullable: true, enum: [compass, briefcase, spark, mountain]}
+        has_avatar_image: {type: boolean}
+        avatar_version: {type: string, nullable: true, description: Changes whenever the picture changes; use it to refresh caches}
+        created_at: {type: string, format: date-time}
+    AvatarPresetRequest:
+      type: object
+      additionalProperties: false
+      required: [preset]
+      properties:
+        preset: {type: string, enum: [compass, briefcase, spark, mountain]}
+    LoginView:
+      type: object
+      additionalProperties: false
+      required: [user, csrf_token]
+      properties:
+        user: {$ref: '#/components/schemas/AccountView'}
+        csrf_token: {type: string}
+    SessionStateView:
+      type: object
+      additionalProperties: false
+      required: [authenticated, csrf_token, expires_at, user]
+      properties:
+        authenticated: {type: boolean, const: true}
+        csrf_token: {type: string}
+        expires_at: {type: string, format: date-time}
+        user: {$ref: '#/components/schemas/AccountView'}
+    TelegramStatusView:
+      type: object
+      additionalProperties: false
+      required: [enabled, linked]
+      properties:
+        enabled: {type: boolean}
+        linked: {type: boolean}
+        bot_username: {type: [string, 'null']}
+        linked_at: {type: [string, 'null'], format: date-time}
+    TelegramLinkView:
+      type: object
+      additionalProperties: false
+      required: [url, expires_at]
+      properties:
+        url: {type: string}
+        expires_at: {type: string, format: date-time}
+    AgentView:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, project_name, label, capabilities, created_at, expires_at, revoked_at, client_id_host]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        project_name: {type: string}
+        label: {type: [string, 'null']}
+        capabilities: {type: array, items: {type: string}}
+        created_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+        revoked_at: {type: [string, 'null'], format: date-time}
+        client_id_host: {type: [string, 'null']}

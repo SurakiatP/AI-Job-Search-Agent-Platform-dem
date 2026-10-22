@@ -1,0 +1,22 @@
+{
+  "page_id": "09",
+  "page": "Document Detail",
+  "version": "v1",
+  "status": "draft-awaiting-owner-review",
+  "date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "09-document-detail-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "21f376eacb11b33f68ce91cefce9141344ce78bde9f8247f67fb7cf9b8c2c5f0",
+  "embedded_prompt": true,
+  "handoff": "../09_DOCUMENT_DETAIL_DESIGN.md",
+  "variant": {
+    "viewport": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false
+}

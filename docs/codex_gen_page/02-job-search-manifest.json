@@ -1,0 +1,23 @@
+{
+  "page_id": "02",
+  "page": "Job Search",
+  "version": "v1",
+  "status": "owner-approved",
+  "created_date": "2026-10-16",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "02-job-search-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "b5383db7828c3f943f256ff628224c2cb9a0224831662731a88b68c2dc73f1be",
+  "embedded_prompt": true,
+  "handoff": "../02_JOB_SEARCH_DESIGN.md",
+  "variant": {
+    "device": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "approved_date": "2026-10-16"
+}

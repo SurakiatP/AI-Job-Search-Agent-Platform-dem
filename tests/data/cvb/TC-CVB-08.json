@@ -1,0 +1,15 @@
+[
+  {"name": "replace experience highlight", "input": {"path": "sections.experience.items[0].highlights[0]", "op": "replace"}, "expected": "allowed"},
+  {"name": "add project highlight", "input": {"path": "sections.projects.items[0].highlights", "op": "add"}, "expected": "allowed"},
+  {"name": "replace summary", "input": {"path": "summary.content", "op": "replace"}, "expected": "allowed"},
+  {"name": "add skill", "input": {"path": "sections.skills.items", "op": "add"}, "expected": "allowed"},
+  {"name": "reorder skills", "input": {"path": "sections.skills.items", "op": "reorder"}, "expected": "allowed"},
+  {"name": "change name", "input": {"path": "basics.name", "op": "replace"}, "expected": "rejected"},
+  {"name": "change email", "input": {"path": "basics.email", "op": "replace"}, "expected": "rejected"},
+  {"name": "change company", "input": {"path": "sections.experience.items[0].company", "op": "replace"}, "expected": "rejected"},
+  {"name": "change start date", "input": {"path": "sections.experience.items[0].start", "op": "replace"}, "expected": "rejected"},
+  {"name": "change education degree", "input": {"path": "sections.education.items[0].degree", "op": "replace"}, "expected": "rejected"},
+  {"name": "add reference", "input": {"path": "sections.references.items", "op": "add"}, "expected": "rejected"},
+  {"name": "remove experience item", "input": {"path": "sections.experience.items[0]", "op": "remove"}, "expected": "rejected"},
+  {"name": "unknown op", "input": {"path": "summary.content", "op": "delete"}, "expected": "rejected"}
+]

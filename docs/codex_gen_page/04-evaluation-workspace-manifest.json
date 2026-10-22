@@ -1,0 +1,23 @@
+{
+  "page_id": "04",
+  "page": "Evaluation Session Workspace",
+  "version": "v1",
+  "status": "superseded-draft",
+  "created_date": "2026-10-16",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "04-evaluation-workspace-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1039,
+  "sha256": "c53fa8e5d20a739b447c598e89dfbe486b2f8bcd491a376cdacd49a5389e2da9",
+  "embedded_prompt": true,
+  "handoff": "../04_EVALUATION_WORKSPACE_DESIGN.md",
+  "variant": {
+    "device": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "superseded_by": "04-evaluation-workspace-v2-manifest.json"
+}

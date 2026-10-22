@@ -1,0 +1,102 @@
+{
+  "projectScope": "Project settings for",
+  "appearance": "Appearance",
+  "appearanceDescription": "Choose the theme and language used in this browser.",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System",
+  "sharing": {
+    "description": "Create a time-limited access token for this project. Callers with the token can read generated documents when results:read is allowed; they cannot access raw CV uploads or private conversation history.",
+    "defaultOff": "Sharing stays off until you create a token.",
+    "resultsPrivacy": "Generated results may contain personal information. Grant only the capabilities needed."
+  },
+  "loading": "Loading…",
+  "loadError": "We could not load settings.",
+  "retry": "Try again",
+  "tools": {
+    "description": "Enable only the supported Career Ops connector for this project. Availability depends on the local installation."
+  },
+  "careerOps": "Career Ops connector",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "toolsUnavailable": "No supported connector is available.",
+  "sharingDefaultOff": "Sharing stays off until you create a token.",
+  "sharingResultsPrivacy": "Generated results may contain personal information. Grant only the capabilities needed.",
+  "capabilities": "Allowed capabilities",
+  "capability": {
+    "resultsRead": "Read generated results (may contain personal information)",
+    "jobsEvaluate": "Evaluate job postings (AI evaluation and keyword fit check)",
+    "documentsDraft": "Draft application documents and follow-up messages",
+    "cvTailor": "Tailor your CV to a job (saved as a new CV document)",
+    "jobsSearch": "Search job postings (full descriptions)",
+    "applicationsApply": "Prepare application answers from your CV and request that you approve a submission",
+    "applicationsWrite": "Move applications between stages and add notes on the board (never marks a job applied)"
+  },
+  "expiresAfter": "Token expires after",
+  "grantName": "Name (optional)",
+  "createGrant": "Create project token",
+  "activeGrants": "Project tokens",
+  "tokenShownOnce": "Copy this token now",
+  "tokenWarning": "This value is shown once. Copy it before closing or pressing Escape; the value cannot be recovered.",
+  "accessToken": "Project access token",
+  "copyToken": "Copy token",
+  "copied": "Token copied.",
+  "dismissToken": "Done and hide token",
+  "projectLabel": "Project {{projectId}}",
+  "expires": "Expires {{date}}",
+  "expired": "Expired",
+  "revoked": "Revoked",
+  "revoke": "Revoke",
+  "hours_one": "{{count}} hour",
+  "hours_other": "{{count}} hours",
+  "navLabel": "Settings sections",
+  "scope": {
+    "preferences": "This project: language of generated documents, notifications and the daily “Applied” auto-approval limit.",
+    "appearance": "This browser: theme and language apply only here.",
+    "gateway": "Whole app (admin): the AI gateway is shared by every project and user of this app.",
+    "tools": "This project: connector access is set separately for each project.",
+    "sharing": "This project: tokens grant the selected permissions for this project only.",
+    "webhooks": "This project: webhooks belong to the selected project; Telegram is linked to your account."
+  },
+  "telegramScope": "Telegram connection and digest delivery are account-level settings.",
+  "nav": {
+    "preferences": "Documents & notifications",
+    "appearance": "Appearance",
+    "tools": "Tools",
+    "sharing": "Project sharing",
+    "webhooks": "Webhooks",
+    "gateway": "AI gateway"
+  },
+  "themeHeading": "Theme",
+  "languageHeading": "Language",
+  "themeTile": "{{name}} theme",
+  "appliesNow": "Changes apply immediately and are stored in this browser only.",
+  "activeGrantsHint": "Tokens issued for this project and their status.",
+  "noGrants": "No tokens yet.",
+  "gateway": {
+    "description": "Models are served by the local LiteLLM gateway. This card is read-only.",
+    "analyzeModel": "Analysis model",
+    "decisionModel": "Decision model",
+    "models": "Available models",
+    "noModels": "No models are available.",
+    "manage": "Manage models in LiteLLM",
+    "hint": "Set OPENROUTER_API_KEY in .env and restart the infrastructure.",
+    "status": {
+      "notConfigured": "The AI gateway is not configured.",
+      "reachable": "The AI gateway is configured and reachable.",
+      "unreachable": "The AI gateway is configured but not reachable right now."
+    }
+  },
+  "groups": {
+    "you": "You",
+    "project": "This project",
+    "admin": "Admin"
+  },
+  "scopeLabel": {
+    "browser": "This browser",
+    "project": "This project",
+    "app": "Whole app (admin)"
+  },
+  "accountSecurity": "Account security",
+  "accountSecurityHint": "Email, connected assistants and account deletion are on the Account page."
+}

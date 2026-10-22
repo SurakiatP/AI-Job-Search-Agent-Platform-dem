@@ -1,0 +1,281 @@
+"""Account routes: signup, verification, login, password reset, account and connected agents."""
+from __future__ import annotations
+
+import asyncio
+from datetime import datetime
+from typing import Literal
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel, ConfigDict, Field
+
+from job_search_platform.api.dependencies import Services, get_services, owner_actor, write_actor
+from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.owner_sessions import COOKIE_NAME
+
+router = APIRouter()
+
+
+class _Body(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class SignupRequest(_Body):
+    email: str = Field(max_length=254)
+    password: str = Field(max_length=256)
+    locale: Literal["th", "en"] = "th"
+
+
+class LoginRequest(_Body):
+    email: str = Field(max_length=254)
+    password: str = Field(max_length=256)
+
+
+class TokenRequest(_Body):
+    token: str = Field(min_length=1, max_length=256)
+
+
+class ForgotPasswordRequest(_Body):
+    email: str = Field(max_length=254)
+
+
+class ResetPasswordRequest(_Body):
+    token: str = Field(min_length=1, max_length=256)
+    password: str = Field(max_length=256)
+
+
+class CodeRequest(_Body):
+    email: str = Field(max_length=254)
+    code: str = Field(pattern=r"^\d{6}$")
+
+
+class AvatarPresetRequest(_Body):
+    preset: Literal["compass", "briefcase", "spark", "mountain"]
+
+
+class DeleteAccountRequest(_Body):
+    password: str = Field(max_length=256)
+    confirm_email: str = Field(max_length=254)
+    code: str = Field(pattern=r"^\d{6}$")
+
+
+class CheckEmailView(_Body):
+    status: Literal["check_email"]
+    mail_enabled: bool  # server-wide: false when no SMTP is set up, so no message was sent to anyone
+
+
+class AccountView(_Body):
+    id: UUID
+    email: str
+    locale: Literal["th", "en"]
+    email_verified: bool
+    is_admin: bool = False
+    avatar_preset: Literal["compass", "briefcase", "spark", "mountain"] | None = None
+    has_avatar_image: bool = False
+    avatar_version: str | None = None
+    created_at: datetime
+
+
+class LoginView(_Body):
+    user: AccountView
+    csrf_token: str
+
+
+class SessionStateView(_Body):
+    authenticated: Literal[True]
+    csrf_token: str
+    expires_at: datetime
+    user: AccountView
+
+
+class AgentView(_Body):
+    id: UUID
+    project_id: UUID
+    project_name: str
+    label: str | None
+    capabilities: list[str]
+    created_at: datetime
+    expires_at: datetime
+    revoked_at: datetime | None
+    client_id_host: str | None = None
+
+
+class TelegramStatusView(_Body):
+    enabled: bool
+    linked: bool
+    bot_username: str | None = None
+    linked_at: datetime | None = None
+
+
+class TelegramLinkView(_Body):
+    url: str
+    expires_at: datetime
+
+
+def _check_email(services: Services) -> dict:
+    return {"status": "check_email", "mail_enabled": services.accounts.mailer is not None}
+
+
+def _ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+@router.post("/auth/signup", status_code=202, response_model=CheckEmailView)
+async def signup(body: SignupRequest, request: Request, services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.signup, body.email, body.password, body.locale, _ip(request))
+    return _check_email(services)
+
+
+@router.post("/auth/verify-email", status_code=204)
+async def verify_email(body: TokenRequest, services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.verify_email, body.token)
+    return Response(status_code=204)
+
+
+@router.post("/auth/verify-email/code", status_code=204)
+async def verify_email_code(body: CodeRequest, services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.verify_email_code, body.email, body.code)
+    return Response(status_code=204)
+
+
+@router.get("/account/avatar")
+async def get_avatar(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    found = await asyncio.to_thread(services.accounts.avatar_image, actor.user_id)
+    if found is None:
+        raise ServiceError("not_found")
+    data, mime = found
+    return Response(content=data, media_type=mime, headers={"Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff",
+                                                            "Content-Security-Policy": "default-src 'none'; sandbox"})
+
+
+@router.put("/account/avatar", status_code=204)
+async def put_avatar(request: Request, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    limit = 262_144
+    if int(request.headers.get("content-length") or 0) > limit:
+        raise ServiceError("invalid_image")
+    data = b""
+    async for chunk in request.stream():
+        data += chunk
+        if len(data) > limit:
+            raise ServiceError("invalid_image")
+    await asyncio.to_thread(services.accounts.set_avatar_image, actor.user_id, data)
+    return Response(status_code=204)
+
+
+@router.delete("/account/avatar", status_code=204)
+async def delete_avatar(actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.clear_avatar_image, actor.user_id)
+    return Response(status_code=204)
+
+
+@router.put("/account/avatar-preset", status_code=204)
+async def put_avatar_preset(body: AvatarPresetRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.set_avatar_preset, actor.user_id, body.preset)
+    return Response(status_code=204)
+
+
+@router.post("/account/delete-code", status_code=202, response_model=CheckEmailView)
+async def send_deletion_code(actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.send_deletion_code, actor.user_id)
+    return _check_email(services)
+
+
+@router.post("/digest/unsubscribe", status_code=204)
+async def digest_unsubscribe(body: TokenRequest, request: Request, services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.saved_searches.unsubscribe, body.token, _ip(request))
+    return Response(status_code=204)
+
+
+@router.post("/auth/resend-verification", status_code=202, response_model=CheckEmailView)
+async def resend_verification(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.resend_verification, actor.user_id)
+    return _check_email(services)
+
+
+@router.post("/auth/login", response_model=LoginView)
+async def login(body: LoginRequest, request: Request, services: Services = Depends(get_services)):
+    exchange = await asyncio.to_thread(services.accounts.login, body.email, body.password, _ip(request))
+    user = await asyncio.to_thread(services.accounts.account, exchange.actor.user_id)
+    response = JSONResponse(LoginView(user=user, csrf_token=exchange.csrf_token).model_dump(mode="json"))
+    response.set_cookie(COOKIE_NAME, exchange.session_cookie, httponly=True,
+                        secure=services.owner_sessions.secure_cookies, samesite="strict", path="/",
+                        expires=exchange.expires_at)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@router.post("/auth/session", response_model=SessionStateView)
+async def restore_session(request: Request, services: Services = Depends(get_services)):
+    cookie = request.cookies.get(COOKIE_NAME)
+    if not cookie:
+        raise ServiceError("unauthorized")
+    exchange = await services.owner_sessions.current(
+        cookie, origin=request.headers.get("origin", ""), host=request.headers.get("host", ""))
+    user = await asyncio.to_thread(services.accounts.account, exchange.actor.user_id)
+    return JSONResponse(SessionStateView(authenticated=True, csrf_token=exchange.csrf_token,
+                                         expires_at=exchange.expires_at, user=user).model_dump(mode="json"),
+                        headers={"Cache-Control": "no-store"})
+
+
+@router.post("/auth/logout", status_code=204)
+async def logout(request: Request, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.logout, request.cookies[COOKIE_NAME])
+    response = Response(status_code=204)
+    response.delete_cookie(COOKIE_NAME, path="/")
+    return response
+
+
+@router.post("/auth/password/forgot", status_code=202, response_model=CheckEmailView)
+async def forgot_password(body: ForgotPasswordRequest, services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.forgot_password, body.email)
+    return _check_email(services)
+
+
+@router.post("/auth/password/reset", status_code=204)
+async def reset_password(body: ResetPasswordRequest, services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.reset_password, body.token, body.password)
+    return Response(status_code=204)
+
+
+@router.get("/account", response_model=AccountView)
+async def get_account(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await asyncio.to_thread(services.accounts.account, actor.user_id)
+
+
+@router.delete("/account", status_code=204)
+async def delete_account(body: DeleteAccountRequest, actor=Depends(write_actor),
+                         services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.request_deletion, actor.user_id, body.password, body.confirm_email, body.code)
+    response = Response(status_code=204)
+    response.delete_cookie(COOKIE_NAME, path="/")
+    return response
+
+
+@router.get("/account/agents", response_model=list[AgentView])
+async def list_agents(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    return await asyncio.to_thread(services.accounts.agents, actor.user_id)
+
+
+def _telegram(services: Services):
+    if services.telegram is None:
+        raise ServiceError("telegram_disabled")
+    return services.telegram
+
+
+@router.get("/account/telegram", response_model=TelegramStatusView)
+async def telegram_status(actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    if services.telegram is None:
+        return TelegramStatusView(enabled=False, linked=False)
+    return await asyncio.to_thread(services.telegram.status, actor.user_id)
+
+
+@router.post("/account/telegram/link", response_model=TelegramLinkView)
+async def telegram_link(actor=Depends(write_actor), services: Services = Depends(get_services)):
+    return await asyncio.to_thread(_telegram(services).link, actor.user_id)
+
+
+@router.delete("/account/telegram", status_code=204)
+async def telegram_unlink(actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(_telegram(services).unlink, actor.user_id)
+    return Response(status_code=204)

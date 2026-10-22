@@ -1,0 +1,13 @@
+# WP1 observability (spec 2026-10-15-observability-metrics-design.md). The app runs on the host with METRICS_PORT=59464.
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+rule_files:
+  - /etc/prometheus/rules.yml
+scrape_configs:
+  - job_name: app
+    static_configs:
+      - targets: ["host.docker.internal:59464"]
+  - job_name: prometheus
+    static_configs:
+      - targets: ["127.0.0.1:9090"]

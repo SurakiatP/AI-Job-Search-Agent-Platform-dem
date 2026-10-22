@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "source_repository": "https://github.com/grafana/grafana-prometheus-datasource",
+  "source_commit": "6d21418acde6ce31c9f7a6418a88758842a881bb",
+  "plugin_id": "prometheus",
+  "plugin_version": "13.2.3",
+  "license": "AGPL-3.0-only",
+  "builder_image": "golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61",
+  "base_image": "grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f",
+  "unsigned_plugin_allowlist": [
+    "prometheus"
+  ],
+  "overlay_reason": "golang.org/x/net v0.60.0 and builder go1.27.2 fix CVE-2026-78667/78669/97031 found by Trivy in the upstream Grafana 13.2.4 bundled Prometheus datasource plugin binary (spec A1).",
+  "go_mod_sha256": "8e8a739a16027c21e640ec6a783a31fb10767e667ad06d7bbf92410e817b0e3b",
+  "go_sum_sha256": "7614b0f216bd3b88e4d47ccf57d36c11c84b2ef3f728a813893b4d58f60325f6"
+}

@@ -1,0 +1,23 @@
+{
+  "page_id": "03",
+  "page": "Evaluation Sessions index",
+  "version": "v1",
+  "status": "owner-approved",
+  "created_date": "2026-10-16",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "03-evaluation-sessions-desktop-light-v1.png",
+  "width": 1513,
+  "height": 1040,
+  "sha256": "52f6824e4874a9999c3ddd85fcba4aaa20fd60500f35d14a54178815c16e59da",
+  "embedded_prompt": true,
+  "handoff": "../03_EVALUATION_SESSIONS_DESIGN.md",
+  "variant": {
+    "device": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "synthetic_data": true,
+  "implemented": false,
+  "approved_date": "2026-10-16"
+}

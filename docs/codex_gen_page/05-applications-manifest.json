@@ -1,0 +1,26 @@
+{
+  "page_id": "05",
+  "page": "Applications",
+  "version": "v1",
+  "status": "owner-approved",
+  "created_date": "2026-10-16",
+  "timezone": "Asia/Bangkok",
+  "tool": "built-in ImageGen",
+  "image": "05-applications-list-desktop-light-v1.png",
+  "width": 1512,
+  "height": 1040,
+  "sha256": "279694432a32e8293d7ceb15bbf531e859a5533bcbd7e4397aefbf6b605b7036",
+  "embedded_prompt": true,
+  "handoff": "../05_APPLICATIONS_DESIGN.md",
+  "variant": {
+    "view": "list",
+    "device": "desktop",
+    "theme": "light",
+    "language": "en"
+  },
+  "other_views": "Board specified,not image-generated",
+  "synthetic_data": true,
+  "implemented": false,
+  "approval_date": "2026-10-16",
+  "approval_scope": "v1 List image; Board specified, not pictured"
+}

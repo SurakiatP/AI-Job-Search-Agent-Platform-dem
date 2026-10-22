@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Shared helpers for bootstrap.sh and deploy.sh (WP1 part 2, spec 2026-10-15-iac-single-vm-design.md).
+
+check_app_env() {
+  local file="$1"
+  [[ -f "$file" ]] || { echo "missing $file; copy infra/deploy/app.env.example and fill it in" >&2; return 1; }
+  local mode
+  mode=$(stat -c %a "$file" 2>/dev/null || stat -f %Lp "$file")
+  [[ "$mode" == "600" ]] || { echo "$file must be mode 0600 (is $mode)" >&2; return 1; }
+  if grep -nE '^[^#]*CHANGE_ME' "$file" >&2; then
+    echo "replace every CHANGE_ME in $file" >&2; return 1
+  fi
+}
+
+# backup.py/restore.py run host pg_dump/pg_restore; pg_dump refuses a server newer than itself (database is 17).
+check_pg_client() {
+  local tool major
+  for tool in pg_dump pg_restore; do
+    command -v "$tool" >/dev/null || { echo "$tool not found; install postgresql-client-17 (PGDG apt repo, see cloud-init.yaml)" >&2; return 1; }
+  done
+  major=$(pg_dump --version | sed -E 's/^[^0-9]*([0-9]+).*/\1/')
+  (( major >= 17 )) || { echo "pg_dump is version $major but the database is 17; install postgresql-client-17 (PGDG apt repo, see cloud-init.yaml)" >&2; return 1; }
+}
+
+# Parse KEY=VALUE lines without executing them (systemd EnvironmentFile rules: one pair of quotes is stripped).
+load_app_env() {
+  local line key value
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "${line//[[:space:]]/}" || "$line" =~ ^[[:space:]]*# ]] && continue
+    key="${line%%=*}"; value="${line#*=}"
+    [[ "$line" == *=* && "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "invalid line in $1: $line" >&2; return 1; }
+    if [[ "$value" =~ ^\"(.*)\"$ || "$value" =~ ^\'(.*)\'$ ]]; then value="${BASH_REMATCH[1]}"; fi
+    export "$key=$value"
+  done < "$1"
+}
+
+wait_ready() {
+  local url="$1" seconds="$2" deadline=$((SECONDS + $2))
+  while (( SECONDS < deadline )); do
+    # shellcheck disable=SC2086  # CURL_EXTRA and the --resolve pair are deliberately word-split
+    # --resolve: poll this VM, not public DNS (no hairpin NAT needed); TLS still validates the hostname
+    curl --silent --fail --max-time 5 ${DOMAIN:+--resolve $DOMAIN:443:127.0.0.1} ${CURL_EXTRA:-} "$url" >/dev/null && return 0
+    sleep 2
+  done
+  echo "not ready after ${seconds}s: $url" >&2
+  return 1
+}
+
+guard_schema() {
+  local db_head="$1" code_head="$2"
+  [[ "$db_head" == "$code_head" ]] && return 0
+  echo "database is at $db_head but this release expects $code_head; code-only rollback is unsafe." >&2
+  echo "restore the pre-deploy backup instead:" >&2
+  echo "  uv run --locked --project backend python scripts/restore.py --archive /var/backups/job-search-platform/<pre-deploy archive> --target-database <db> --target-bucket <bucket>" >&2
+  return 1
+}
+
+# Needs as_jsp, $upstream and $release from the caller.
+# shellcheck disable=SC2154
+fetch_pinned() {  # name url commit
+  local dir="$upstream/$1"
+  if [[ "$(as_jsp "git -C '$dir' rev-parse HEAD 2>/dev/null" || true)" != "$3" ]]; then
+    as_jsp "rm -rf '$dir' && git init -q '$dir' && git -C '$dir' fetch -q --depth 1 '$2' '$3' && git -C '$dir' checkout -q --detach '$3'"
+  fi
+}
+# shellcheck disable=SC2154
+pin() { as_jsp "cd '$release' && uv run --locked --project backend python -c 'import sys; sys.path.insert(0, \"scripts\"); import local_infra; print(local_infra.$1)'"; }
+
+fetch_all_pinned() {
+  local entry name url key c
+  for entry in \
+    "minio https://github.com/minio/minio.git MINIO_COMMIT" \
+    "gosu https://github.com/tianon/gosu.git GOSU_COMMIT" \
+    "prometheus https://github.com/prometheus/prometheus.git PROMETHEUS_COMMIT" \
+    "caddy https://github.com/caddyserver/caddy.git CADDY_COMMIT" \
+    "grafana-prometheus-datasource https://github.com/grafana/grafana-prometheus-datasource.git GRAFANA_PROM_DS_COMMIT"; do
+    read -r name url key <<<"$entry"
+    c="$(pin "$key")" || return 1 # a failed pin must not pass an empty commit on
+    [[ -n "$c" ]] || return 1
+    fetch_pinned "$name" "$url" "$c" || return 1
+  done
+}

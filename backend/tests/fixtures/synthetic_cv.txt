@@ -1,0 +1,5 @@
+SYNTHETIC TEST DATA — never a real person's CV
+Dr. Mali Example / ดร.มะลิ ตัวอย่าง
+Research Scientist, Example Laboratory, 2022–2026
+Python, statistics, reproducible experiments, Thai and English communication.
+Published a synthetic example of an experiment reproducibility workflow.

@@ -1,0 +1,9 @@
+{
+  "account": {
+    "expiredToggle": "Show expired ({{count}})",
+    "revokeTitle": "Stop {{app}} from using {{project}}?",
+    "revokeBody": "{{app}} will immediately lose access to the project “{{project}}”. You can give access again later.",
+    "revokeConfirm": "Revoke access",
+    "noActive": "No active connected assistants."
+  }
+}

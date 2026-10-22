@@ -1,0 +1,976 @@
+{
+  "recordedAt": "2026-10-16T07:31:45.707550+00:00",
+  "branch": "feat/ux-core-workspaces",
+  "baselineCommit": "c4905b9264edca82d39fc6e406152138bd8c401d",
+  "state": "uncommitted working tree",
+  "frontendAndE2ESourceSha256": "118ac59ec4b2d87ab14d87deccb7237315a3d06f209a52634c894fbce1fe34b7",
+  "browser": {
+    "command": "rtk proxy env JSP_E2E_BASE_URL=http://127.0.0.1:4177 PLAYWRIGHT_OUTPUT_DIR=/tmp/jsp-ux-delivery-regression npm test --prefix tests -- --workers=3 --reporter=json",
+    "engine": "Playwright Chromium",
+    "data": "synthetic page.route fixtures; no provider credentials",
+    "stats": {
+      "startTime": "2026-10-16T07:29:49.012Z",
+      "duration": 54526.549999999996,
+      "expected": 147,
+      "skipped": 1,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "skipReason": "actual-backend.spec.ts requires JSP_E2E_SESSION_FILE; no live backend/provider certification",
+    "tests": [
+      {
+        "file": "accessibility.spec.ts",
+        "title": "approved routes fit 320px, tablet, and desktop and keep the language control available",
+        "status": "expected",
+        "durationMs": 19604
+      },
+      {
+        "file": "accessibility.spec.ts",
+        "title": "mobile drawer opens and closes by keyboard with focus returned to its trigger",
+        "status": "expected",
+        "durationMs": 662
+      },
+      {
+        "file": "accessibility.spec.ts",
+        "title": "document language stays English after the UI changes to Thai and partial status is announced",
+        "status": "expected",
+        "durationMs": 508
+      },
+      {
+        "file": "accessibility.spec.ts",
+        "title": "anonymous auth pages fit 320px with language control and heading",
+        "status": "expected",
+        "durationMs": 1639
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "landing start leads to login; wrong then right password reaches the requested page",
+        "status": "expected",
+        "durationMs": 1013
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "the eye button shows and hides the typed password",
+        "status": "expected",
+        "durationMs": 627
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "signup shows the check-email state and verify-email consumes then hides the token",
+        "status": "expected",
+        "durationMs": 1197
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "unverified users see the banner and disabled run controls with an explanation",
+        "status": "expected",
+        "durationMs": 1319
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "auth pages fit a 320px viewport without horizontal scroll",
+        "status": "expected",
+        "durationMs": 1346
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "agents list shows given date and revoke calls the grant route",
+        "status": "expected",
+        "durationMs": 648
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "delete account needs the typed email; wrong password stays on the page, then success lands on /",
+        "status": "expected",
+        "durationMs": 923
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "signup sends the current UI locale",
+        "status": "expected",
+        "durationMs": 1127
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "verify-email shows the localized invalid-token message",
+        "status": "expected",
+        "durationMs": 500
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "login ignores external next=//evil.example",
+        "status": "expected",
+        "durationMs": 550
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "login ignores external next=https://evil.example",
+        "status": "expected",
+        "durationMs": 625
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "run submit email_unverified shows the localized message",
+        "status": "expected",
+        "durationMs": 900
+      },
+      {
+        "file": "accounts.spec.ts",
+        "title": "run submit quota_exceeded shows the localized message",
+        "status": "expected",
+        "durationMs": 891
+      },
+      {
+        "file": "actual-backend.spec.ts",
+        "title": "actual owner API persists project, CV, posting and separate sessions through reload",
+        "status": "skipped",
+        "durationMs": 222
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "submit approval shows answers, evidence, missing list and approving POSTs the decision",
+        "status": "expected",
+        "durationMs": 674
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "answer pack has copy buttons, parked reason, and submit is disabled until ready",
+        "status": "expected",
+        "durationMs": 658
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "follow-up action appears only for applied jobs",
+        "status": "expected",
+        "durationMs": 1165
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "grant picker lists both new capabilities in Thai and fits 320px",
+        "status": "expected",
+        "durationMs": 500
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "every parked-pack reason the backend emits is translated, never shown as a raw code",
+        "status": "expected",
+        "durationMs": 1088
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "settings field saves the autopilot limit and the approvals tab badges auto-approved decisions",
+        "status": "expected",
+        "durationMs": 1025
+      },
+      {
+        "file": "agent-tools.spec.ts",
+        "title": "autopilot hint names the agent risk in Thai",
+        "status": "expected",
+        "durationMs": 572
+      },
+      {
+        "file": "application-board.spec.ts",
+        "title": "board shows stage columns and moves a card by keyboard, surviving an error and a reload",
+        "status": "expected",
+        "durationMs": 1565
+      },
+      {
+        "file": "application-board.spec.ts",
+        "title": "board fits 320px in Thai with long titles",
+        "status": "expected",
+        "durationMs": 484
+      },
+      {
+        "file": "application-board.spec.ts",
+        "title": "job page edits stage and contact, offers mailto, logs correspondence and notes, newest first",
+        "status": "expected",
+        "durationMs": 948
+      },
+      {
+        "file": "application-board.spec.ts",
+        "title": "job page fits 320px in Thai",
+        "status": "expected",
+        "durationMs": 489
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview prioritizes CV readiness and stable evaluation navigation",
+        "status": "expected",
+        "durationMs": 817
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "one failed overview resource preserves jobs and sessionless required-input attention",
+        "status": "expected",
+        "durationMs": 613
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "CV summary uses named primary CV rather than highest unrelated revision",
+        "status": "expected",
+        "durationMs": 730
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "project creation makes one project request and no unpaired session request",
+        "status": "expected",
+        "durationMs": 762
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "project switcher retains management and switches scope explicitly",
+        "status": "expected",
+        "durationMs": 704
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "populated overview shows actual attention, active work, partial material and named sources",
+        "status": "expected",
+        "durationMs": 781
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "uncertain project creation exposes recovery without an automatic second write",
+        "status": "expected",
+        "durationMs": 583
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "settings navigation carries explicit project scope through section changes",
+        "status": "expected",
+        "durationMs": 646
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "switcher keeps delete-current-session recovery available through route change",
+        "status": "expected",
+        "durationMs": 959
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 390 th light",
+        "status": "expected",
+        "durationMs": 718
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 390 th dark",
+        "status": "expected",
+        "durationMs": 725
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 390 en light",
+        "status": "expected",
+        "durationMs": 706
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 390 en dark",
+        "status": "expected",
+        "durationMs": 1016
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 768 th light",
+        "status": "expected",
+        "durationMs": 669
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 768 th dark",
+        "status": "expected",
+        "durationMs": 535
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 768 en light",
+        "status": "expected",
+        "durationMs": 626
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 768 en dark",
+        "status": "expected",
+        "durationMs": 736
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 1440 th light",
+        "status": "expected",
+        "durationMs": 550
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 1440 th dark",
+        "status": "expected",
+        "durationMs": 599
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 1440 en light",
+        "status": "expected",
+        "durationMs": 450
+      },
+      {
+        "file": "core-workspaces.spec.ts",
+        "title": "overview shell reflows 1440 en dark",
+        "status": "expected",
+        "durationMs": 541
+      },
+      {
+        "file": "cv-tailoring.spec.ts",
+        "title": "interactive tailor: review proposals, apply one, restore an older CV revision",
+        "status": "expected",
+        "durationMs": 1517
+      },
+      {
+        "file": "cv-tailoring.spec.ts",
+        "title": "tailor card is Thai and fits 320px",
+        "status": "expected",
+        "durationMs": 663
+      },
+      {
+        "file": "cv-tailoring.spec.ts",
+        "title": "autopilot result shows the backend stop reason in words",
+        "status": "expected",
+        "durationMs": 627
+      },
+      {
+        "file": "document-provenance.spec.ts",
+        "title": "shows each generated document revision source instead of the current CV after a language switch",
+        "status": "expected",
+        "durationMs": 619
+      },
+      {
+        "file": "document-provenance.spec.ts",
+        "title": "keeps document access when CV provenance lookup fails or its source is absent",
+        "status": "expected",
+        "durationMs": 696
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "timeline shows the requester, llm_round stats with a total, and the resumed line",
+        "status": "expected",
+        "durationMs": 479
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "console shows a needs_input run as waiting, in its own filter, and omits unreported token totals",
+        "status": "expected",
+        "durationMs": 641
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "console waiting label is localised (Thai)",
+        "status": "expected",
+        "durationMs": 546
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "needs_input pack renders per-kind inputs and saving POSTs the answers",
+        "status": "expected",
+        "durationMs": 938
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "a model-suggested answer is prefilled with the confirm label and saved through input (en)",
+        "status": "expected",
+        "durationMs": 849
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "a model-suggested answer is prefilled with the confirm label and saved through input (th)",
+        "status": "expected",
+        "durationMs": 737
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "an optional suggested answer in a ready pack is not described as needing confirmation",
+        "status": "expected",
+        "durationMs": 544
+      },
+      {
+        "file": "durable-runs.spec.ts",
+        "title": "grant issue form has an optional name sent as label, shown in the list (Thai)",
+        "status": "expected",
+        "durationMs": 524
+      },
+      {
+        "file": "experience-bank.spec.ts",
+        "title": "experience bank groups facts, adds and removes, and shows extraction results",
+        "status": "expected",
+        "durationMs": 867
+      },
+      {
+        "file": "experience-bank.spec.ts",
+        "title": "experience bank empty states and Thai at 320px",
+        "status": "expected",
+        "durationMs": 477
+      },
+      {
+        "file": "experience-bank.spec.ts",
+        "title": "a new CV version refreshes the bank to the queued extraction",
+        "status": "expected",
+        "durationMs": 636
+      },
+      {
+        "file": "experience-bank.spec.ts",
+        "title": "each CV card can start an extraction for that CV",
+        "status": "expected",
+        "durationMs": 438
+      },
+      {
+        "file": "experience-bank.spec.ts",
+        "title": "a failed bank load offers a retry",
+        "status": "expected",
+        "durationMs": 521
+      },
+      {
+        "file": "full-journey.spec.ts",
+        "title": "synthetic Thai and English journey keeps drafts, output language, and routes",
+        "status": "expected",
+        "durationMs": 2579
+      },
+      {
+        "file": "full-journey.spec.ts",
+        "title": "synthetic upload and transport faults stay explicit without false completion",
+        "status": "expected",
+        "durationMs": 790
+      },
+      {
+        "file": "full-journey.spec.ts",
+        "title": "expired approval is visible but cannot be approved from a stale request",
+        "status": "expected",
+        "durationMs": 608
+      },
+      {
+        "file": "full-journey.spec.ts",
+        "title": "anonymous visitors are redirected to log in with the original path preserved",
+        "status": "expected",
+        "durationMs": 350
+      },
+      {
+        "file": "gateway.spec.ts",
+        "title": "gateway card shows status, models and a safe LiteLLM link; no provider calls",
+        "status": "expected",
+        "durationMs": 487
+      },
+      {
+        "file": "gateway.spec.ts",
+        "title": "unconfigured gateway shows the OPENROUTER_API_KEY hint (Thai)",
+        "status": "expected",
+        "durationMs": 438
+      },
+      {
+        "file": "gateway.spec.ts",
+        "title": "409 gateway_unconfigured on a run shows guidance pointing to Settings > AI gateway",
+        "status": "expected",
+        "durationMs": 630
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "landing start action stays in the header and works at desktop and 320px in both languages",
+        "status": "expected",
+        "durationMs": 2157
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "every page supports direct links, back/forward, locale changes and responsive navigation",
+        "status": "expected",
+        "durationMs": 5916
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "missing resources and empty project state offer a usable route forward",
+        "status": "expected",
+        "durationMs": 793
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "job text renders safely and rejects a javascript source URL",
+        "status": "expected",
+        "durationMs": 474
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "new-project redirect can retry after the session list fails",
+        "status": "expected",
+        "durationMs": 449
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "empty documents links to a route that exists",
+        "status": "expected",
+        "durationMs": 500
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "project server failures show a retry action instead of a missing-resource page",
+        "status": "expected",
+        "durationMs": 623
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "unknown project with a 404 response remains a missing-resource page",
+        "status": "expected",
+        "durationMs": 487
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "unknown document with a 404 revisions response shows a missing-resource route",
+        "status": "expected",
+        "durationMs": 424
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "document revision server failures remain retryable",
+        "status": "expected",
+        "durationMs": 413
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "unsaved preference fields survive route changes and remain project scoped",
+        "status": "expected",
+        "durationMs": 908
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "enabled primary actions meet normal-text contrast requirements",
+        "status": "expected",
+        "durationMs": 1711
+      },
+      {
+        "file": "navigation.spec.ts",
+        "title": "legacy DOC files are rejected before upload with a localized error",
+        "status": "expected",
+        "durationMs": 422
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "approve sends chosen project, capabilities and expiry, then returns to the client",
+        "status": "expected",
+        "durationMs": 608
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "write-capable scopes are never pre-checked",
+        "status": "expected",
+        "durationMs": 379
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "deny returns access_denied to the client",
+        "status": "expected",
+        "durationMs": 584
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "expired request explains what to do",
+        "status": "expected",
+        "durationMs": 439
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "refuses to follow a non-navigable redirect_url",
+        "status": "expected",
+        "durationMs": 438
+      },
+      {
+        "file": "oauth-consent.spec.ts",
+        "title": "follows a native-app private-use scheme redirect",
+        "status": "expected",
+        "durationMs": 540
+      },
+      {
+        "file": "owner-instructions.spec.ts",
+        "title": "submission ambiguity keeps the instruction and reload retries from the immutable source run",
+        "status": "expected",
+        "durationMs": 703
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "save, apply, change frequency, toggle email, preview and delete a saved search",
+        "status": "expected",
+        "durationMs": 1444
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "gate banners explain why no digest is sent",
+        "status": "expected",
+        "durationMs": 551
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "unsubscribe page: success and expired link",
+        "status": "expected",
+        "durationMs": 1120
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "search with panel and the unsubscribe page fit 320px in Thai",
+        "status": "expected",
+        "durationMs": 927
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "posted_within_days alone cannot be saved",
+        "status": "expected",
+        "durationMs": 439
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "push toggle is enabled only with a digest.ready webhook",
+        "status": "expected",
+        "durationMs": 683
+      },
+      {
+        "file": "saved-searches.spec.ts",
+        "title": "push toggle is disabled without a digest.ready webhook",
+        "status": "expected",
+        "durationMs": 496
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Search keeps location and work mode in the lead and summarizes active filters",
+        "status": "expected",
+        "durationMs": 470
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "salary appears only with supplied values, currency and period",
+        "status": "expected",
+        "durationMs": 494
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "mobile result detail has a Back action and restores the search URL",
+        "status": "expected",
+        "durationMs": 1408
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Search exposes loading and empty results with a useful clear action",
+        "status": "expected",
+        "durationMs": 1008
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "source failure can switch to clearly labelled sample results",
+        "status": "expected",
+        "durationMs": 514
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "a load-more error keeps the successful results visible",
+        "status": "expected",
+        "durationMs": 557
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "switching projects during a delayed search never shows the earlier project results",
+        "status": "expected",
+        "durationMs": 1240
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "saving a result and starting its evaluation each send one mutation",
+        "status": "expected",
+        "durationMs": 540
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Thai and dark mode keep the Search controls readable without horizontal overflow",
+        "status": "expected",
+        "durationMs": 443
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Smart match labels deterministic coverage and reports a partial AI pool",
+        "status": "expected",
+        "durationMs": 2934
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Smart match without a usable CV explains the prerequisite",
+        "status": "expected",
+        "durationMs": 516
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "Smart match keeps its CV profiling state visible while processing",
+        "status": "expected",
+        "durationMs": 477
+      },
+      {
+        "file": "search-workspace.spec.ts",
+        "title": "capture Search workspace font-loaded evidence matrix",
+        "status": "expected",
+        "durationMs": 6016
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "paired session synthetic fixture loads",
+        "status": "expected",
+        "durationMs": 1071
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "Session workspace falls back to shared translations for account errors and legacy page keys",
+        "status": "expected",
+        "durationMs": 512
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "capture paired session desktop, tablet and mobile evidence in Thai and English light and dark",
+        "status": "expected",
+        "durationMs": 6393
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "paired session keeps exact immutable context, global evaluation and task tabs",
+        "status": "expected",
+        "durationMs": 639
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "task tabs preserve application draft and do not create another run when switching",
+        "status": "expected",
+        "durationMs": 657
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "active, waiting, completed and terminal run states stay visible above task tabs",
+        "status": "expected",
+        "durationMs": 3876
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "unpaired legacy session remains read-only and a newer CV keeps this session bound to its old revision",
+        "status": "expected",
+        "durationMs": 754
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "SSE reconnect and task switching keep one watcher and issue no new run mutation",
+        "status": "expected",
+        "durationMs": 742
+      },
+      {
+        "file": "session-workspace.spec.ts",
+        "title": "empty evaluation can start a real evaluate run and partial completed output remains labelled",
+        "status": "expected",
+        "durationMs": 945
+      },
+      {
+        "file": "settings.spec.ts",
+        "title": "project sharing shows a token once, lists metadata only, and revokes the grant",
+        "status": "expected",
+        "durationMs": 1152
+      },
+      {
+        "file": "shell.spec.ts",
+        "title": "locale/theme/navigation retain distinct project and session drafts only in memory",
+        "status": "expected",
+        "durationMs": 851
+      },
+      {
+        "file": "shell.spec.ts",
+        "title": "invalid preferences fall back and System tracks OS while an explicit theme stays fixed",
+        "status": "expected",
+        "durationMs": 421
+      },
+      {
+        "file": "shell.spec.ts",
+        "title": "actual sidebar navigation keeps the application document and unsent draft",
+        "status": "expected",
+        "durationMs": 566
+      },
+      {
+        "file": "shell.spec.ts",
+        "title": "320px shell keeps the language control visible and drawer returns keyboard focus",
+        "status": "expected",
+        "durationMs": 382
+      },
+      {
+        "file": "telegram.spec.ts",
+        "title": "telegram card is hidden when the bot is not configured",
+        "status": "expected",
+        "durationMs": 427
+      },
+      {
+        "file": "telegram.spec.ts",
+        "title": "connect opens the bot link then flips to connected after polling; disconnect unlinks",
+        "status": "expected",
+        "durationMs": 3993
+      },
+      {
+        "file": "telegram.spec.ts",
+        "title": "telegram switch is disabled with a hint until Telegram is linked",
+        "status": "expected",
+        "durationMs": 493
+      },
+      {
+        "file": "telegram.spec.ts",
+        "title": "telegram_not_linked conflict shows an error",
+        "status": "expected",
+        "durationMs": 541
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "project switcher Escape returns keyboard focus to its trigger",
+        "status": "expected",
+        "durationMs": 385
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "session current-run names distinguish preparation, recording and tailoring",
+        "status": "expected",
+        "durationMs": 1132
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "answer output language is visible and used without visiting document preparation",
+        "status": "expected",
+        "durationMs": 545
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "mobile Overview shows the chosen CV before recent documents",
+        "status": "expected",
+        "durationMs": 469
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "mobile Search reaches the first opportunity within the initial viewport",
+        "status": "expected",
+        "durationMs": 479
+      },
+      {
+        "file": "ux-finish.spec.ts",
+        "title": "mobile Search moves focus into detail and returns it to the selected result",
+        "status": "expected",
+        "durationMs": 488
+      },
+      {
+        "file": "webhooks.spec.ts",
+        "title": "add a webhook, see the secret once, test, toggle, redeliver and delete",
+        "status": "expected",
+        "durationMs": 992
+      },
+      {
+        "file": "webhooks.spec.ts",
+        "title": "webhooks section fits 320px in Thai",
+        "status": "expected",
+        "durationMs": 569
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "component identity, partial results and hook ordering",
+        "status": "expected",
+        "durationMs": 734
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "cancellation uncertainty remains pending until terminal confirmation",
+        "status": "expected",
+        "durationMs": 305
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "late reconciliation cannot regress a terminal run",
+        "status": "expected",
+        "durationMs": 883
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "approval fetch recovers without unhandled rejection",
+        "status": "expected",
+        "durationMs": 2263
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "submission ambiguity and reload retry preserve durable intent",
+        "status": "expected",
+        "durationMs": 400
+      },
+      {
+        "file": "workflow-regressions.spec.js",
+        "title": "restart interruption hides an unconsumed stale approval",
+        "status": "expected",
+        "durationMs": 237
+      },
+      {
+        "file": "workflow.spec.ts",
+        "title": "typed API restores the account session CSRF and resumes deduplicated run events",
+        "status": "expected",
+        "durationMs": 486
+      }
+    ]
+  },
+  "build": {
+    "command": "rtk proxy npm run build --prefix frontend",
+    "exitCode": 0,
+    "typecheck": "tsc -b",
+    "outputs": [
+      "dist/assets/index-Cqs9kU8L.css                                      73.11 kB │ gzip:  18.03 kB",
+      "dist/assets/index-C3Zyv2QL.js                                    1,078.25 kB │ gzip: 313.76 kB"
+    ],
+    "warning": "Existing eager-route chunk exceeds Vite500kB guidance; CWV unmeasured."
+  },
+  "npmAudit": {
+    "frontend": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 208,
+        "dev": 3,
+        "optional": 76,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 286
+      }
+    },
+    "tests": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 1,
+        "dev": 3,
+        "optional": 0,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 3
+      }
+    }
+  },
+  "finishRegression": {
+    "beforeFix": {
+      "passed": 0,
+      "failed": 6
+    },
+    "afterFix": {
+      "passed": 6,
+      "failed": 0
+    },
+    "spec": "tests/e2e/ux-finish.spec.ts"
+  },
+  "limits": [
+    "Synthetic API fixtures do not prove deployed REST/SSE/backend/provider correctness.",
+    "Viewport emulation is not physical-device touch proof.",
+    "No VoiceOver/NVDA session, comprehensive WCAG certification, complete200%zoom matrix or measuredCWV.",
+    "Remaining application pages are preserved but not redesigned."
+  ]
+}
