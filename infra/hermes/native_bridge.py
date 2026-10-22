@@ -24,6 +24,13 @@ REASONING = {
     "interview_report": {"extra_body": {"reasoning": {"effort": "low"}}},
 }
 
+# .env can change the effort per operation (AI_REASONING_<OPERATION>); "default" removes the override.
+for _operation, _effort in json.loads(os.environ.get("PLATFORM_REASONING") or "{}").items():
+    if _effort == "default":
+        REASONING.pop(_operation, None)
+    else:
+        REASONING[_operation] = {"extra_body": {"reasoning": {"effort": _effort}}}
+
 CAREER_OPS_FILES = {
     "evaluate_job": ("modes/_shared.md", "modes/oferta.md"),
     "draft_documents": (

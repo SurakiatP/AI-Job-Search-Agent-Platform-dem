@@ -70,3 +70,95 @@ def test_report_prompt_names_scores_in_plain_words():
                                                 questions=[q], job={"title": "AI Engineer"}, report=None, output_language="th")
     assert "company_fit" not in body and "เข้ากับบริษัท 4/5" in body and "โครงเรื่อง 4/5" in body
     assert "field names" in instructions
+
+
+def test_gaps_answers_are_never_kept():
+    """A gaps question names a skill the candidate lacks; a model answer for it is always dropped (honest by design)."""
+    raw = json.dumps({"questions": [{"section": "gaps", "prompt": "Q", "why": "w", "key_points": ["a"],
+                                     "model_answer": "I built a test set of 500 questions.", "evidence_ids": [str(FACT)]}]})
+    questions, _ = practice.parse_reply(raw, [{"id": "gaps", "count": 1}], FACTS, set(), known=claims(CV))
+    assert questions[0]["model_answer"] is None and questions[0]["key_points"] == ["a"]
+
+
+def test_prompt_tells_the_model_what_not_to_put_in_a_model_answer():
+    body, instructions = practice.prompt(level="mid", sections=[{"id": "gaps", "count": 1}], job={"title": "T", "description": "D"},
+                                         cv_text=CV, facts=[], report=None, output_language="th")
+    for rule in ("never name the hiring company", "numbers from the posting", "STAR", "null for logistics and gaps"):
+        assert rule in instructions, rule
+
+
+def _reply(text, ids=(str(FACT),), section="behavioral"):
+    raw = json.dumps({"questions": [{"section": section, "prompt": "Q", "why": "w", "key_points": [],
+                                     "model_answer": text, "evidence_ids": list(ids)}]})
+    dropped = {}
+    questions, _ = practice.parse_reply(raw, [{"id": section, "count": 1}], FACTS, set(), known=claims(CV), dropped=dropped)
+    return questions[0]["model_answer"], dropped
+
+
+def test_unsupported_sentences_are_cut_and_supported_ones_kept():
+    kept, dropped = _reply("I built a test set of 500 questions for RAG answers. The team had 9 people. I enjoyed the work.")
+    assert kept == "I built a test set of 500 questions for RAG answers. I enjoyed the work."
+    assert dropped == {"trimmed": 1}
+
+
+def test_a_kept_sentence_is_checked_on_its_own_never_on_the_whole():
+    kept, _ = _reply("I built a test set of 900 questions. I enjoyed the work. I liked the team.")
+    assert "900" not in (kept or "")
+
+
+def test_too_little_left_drops_the_whole_answer():
+    kept, dropped = _reply("The team had 9 people. It had 12 managers. I built a test set of 500 questions for RAG answers.")
+    assert kept is None and dropped == {"unsupported_number": 1}
+
+
+def test_uncited_or_unknown_citations_are_never_rescued_by_trimming():
+    assert _reply("I built a test set of 500 questions for RAG answers. I enjoyed it.", ids=())[0] is None
+    assert _reply("I built a test set of 500 questions for RAG answers. I enjoyed it.", ids=("not-a-uuid",))[0] is None
+
+
+def test_whole_supported_answer_is_unchanged_and_not_counted_as_trimmed():
+    kept, dropped = _reply("I built a test set of 500 questions for RAG answers.")
+    assert kept == "I built a test set of 500 questions for RAG answers." and dropped == {}
+
+
+
+FACTS_LIST = [{"id": str(FACT), "text": "Built a test set of 500 questions for RAG answers", "context": ""}]
+
+
+def _rejected(text, ids=(str(FACT),), section="behavioral"):
+    raw = json.dumps({"questions": [{"section": section, "prompt": "Q", "why": "w", "key_points": [],
+                                     "model_answer": text, "evidence_ids": list(ids)}]})
+    rejected = []
+    practice.parse_reply(raw, [{"id": section, "count": 1}], FACTS, set(), known=claims(CV), rejected=rejected,
+                         aliases=practice.aliases(FACTS_LIST))
+    return rejected
+
+
+def test_dropped_answers_are_listed_with_what_to_remove():
+    (item,) = _rejected("I built a test set of 900 questions. It took 12 weeks.")
+    assert item["index"] == 0 and item["ids"] == [str(FACT)]
+    assert "900" in item["bad"] and "12" in item["bad"]
+
+
+def test_nothing_to_rewrite_for_kept_trimmed_uncited_or_gaps():
+    assert _rejected("I built a test set of 500 questions for RAG answers.") == []
+    assert _rejected("I built a test set of 500 questions for RAG answers. The team had 9 people. I enjoyed it.") == []  # trimmed
+    assert _rejected("I built a test set of 900 questions.", ids=()) == []  # nothing cited: no honest basis to rewrite from
+    assert _rejected("I built a test set of 900 questions.", section="gaps") == []
+
+
+def test_rewrite_prompt_names_the_problems_and_the_facts():
+    (item,) = _rejected("I built a test set of 900 questions. It took 12 weeks.")
+    prompt, instructions = practice.rewrite_prompt([item], FACTS_LIST)
+    assert "900" in prompt and "Built a test set of 500 questions" in prompt and "F1" in prompt
+    assert "untrusted" in instructions and "Return ONLY JSON" in instructions
+
+
+def test_rewrite_is_checked_by_the_same_gate_and_cannot_add_new_claims():
+    (item,) = _rejected("I built a test set of 900 questions.")
+    good = json.dumps({"answers": [{"index": 0, "model_answer": "I built a test set of 500 questions for RAG answers."}]})
+    bad = json.dumps({"answers": [{"index": 0, "model_answer": "I built a test set of 700 questions."}]})
+    assert practice.parse_rewrite(good, [item], FACTS, set(), claims(CV)) == {0: "I built a test set of 500 questions for RAG answers."}
+    assert practice.parse_rewrite(bad, [item], FACTS, set(), claims(CV)) == {}
+    assert practice.parse_rewrite("not json", [item], FACTS, set(), claims(CV)) == {}
+    assert practice.parse_rewrite(json.dumps({"answers": [{"index": 5, "model_answer": "x"}]}), [item], FACTS, set(), claims(CV)) == {}

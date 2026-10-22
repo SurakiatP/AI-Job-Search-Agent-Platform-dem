@@ -169,6 +169,7 @@ services:
     entrypoint: ["python", "/seed/seed.py", "/out/litellm_app_key"]
     environment:
       OPENROUTER_KEY_PRESENT: ${OPENROUTER_KEY_PRESENT:-}
+      AI_ANALYZE_UPSTREAM_MODEL: ${AI_ANALYZE_UPSTREAM_MODEL:-openrouter/openai/gpt-6-luna}
     secrets:
       - litellm-master-key
     volumes:

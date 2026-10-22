@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from job_search_platform.db.models import ExperienceItem
+from job_search_platform.services.experience import _context_line
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.experience import _found_in, normalize, numbers
 from job_search_platform.services.skill_coverage import extract_skills, mask_skills
@@ -72,16 +73,20 @@ def claims(text: str, vocabulary: Collection[str] | None = None, strict: bool = 
     return numbers(text) | {f"skill:{name}" for name in extract_skills(text)} | _latin_names(text, strict) | names
 
 
+def summary_claims(summary: str | None) -> set[str]:
+    """Claims (e.g. the number in 'Years of experience: 3.5') the profile summary line lets an answer state."""
+    return claims(summary, strict=True) if summary else set()
+
+
 def fact_claims(db: Session, project_id: UUID, ids, vocabulary: Collection[str] | None = None) -> dict[UUID, set[str]]:
     """Claims stated by each live fact of the project (text, role, organization, period), keyed by fact id."""
     wanted = set(ids)
     if not wanted:
         return {}
     vocabulary = bank_vocabulary(db, project_id) if vocabulary is None else vocabulary
-    rows = db.execute(select(ExperienceItem.id, ExperienceItem.text, ExperienceItem.role, ExperienceItem.organization,
-                             ExperienceItem.period).where(
+    rows = db.scalars(select(ExperienceItem).where(
         ExperienceItem.project_id == project_id, ExperienceItem.id.in_(wanted), ExperienceItem.removed_at.is_(None)))
-    return {row.id: claims(" . ".join(v for v in (row.text, row.role, row.organization, row.period) if v), vocabulary, True)
+    return {row.id: claims(" . ".join(v for v in (row.text, _context_line(row), row.period) if v), vocabulary, True)
             for row in rows}
 
 

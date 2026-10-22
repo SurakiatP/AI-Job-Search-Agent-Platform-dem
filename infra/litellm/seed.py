@@ -12,7 +12,7 @@ MASTER_KEY_FILE = os.environ.get("LITELLM_MASTER_KEY_FILE", "/run/secrets/litell
 KEY_OUT = os.environ.get("LITELLM_APP_KEY_FILE") or (sys.argv[1] if len(sys.argv) > 1 else "/out/litellm_app_key")
 MODEL = {
     "model_name": "ai-analyze",
-    "litellm_params": {"model": "openrouter/z-ai/glm-5.3-flash", "api_key": "os.environ/OPENROUTER_API_KEY"},
+    "litellm_params": {"model": os.environ.get("AI_ANALYZE_UPSTREAM_MODEL") or "openrouter/openai/gpt-6-luna", "api_key": "os.environ/OPENROUTER_API_KEY"},
 }
 KEY_ALIAS = "job-search-app"
 
@@ -66,9 +66,12 @@ def seed_model():
     if status != 200:
         print("model_check_failed", flush=True)
         return False
-    if any(m.get("model_name") == MODEL["model_name"] for m in info.get("data", [])):
+    current = [m for m in info.get("data", []) if m.get("model_name") == MODEL["model_name"]]
+    if current and all(m.get("litellm_params", {}).get("model") == MODEL["litellm_params"]["model"] for m in current):
         print("model_present", flush=True)
         return True
+    for m in current:  # the upstream model in .env changed: replace the alias so the new one takes effect
+        call("POST", "/model/delete", {"id": m.get("model_info", {}).get("id")})
     if call("POST", "/model/new", MODEL)[0] == 200:
         print("model_created", flush=True)
         return True
