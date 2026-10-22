@@ -119,5 +119,5 @@ test('grant issue form has an optional name sent as label, shown in the list (Th
   await expect(page.getByText('CI bot')).toBeVisible();
   await page.getByLabel('ชื่อ (ไม่บังคับ)').fill('CI bot');
   await page.getByRole('button', { name: 'ออก token' }).click();
-  await expect.poll(() => seen.grant).toMatchObject({ label: 'CI bot', capabilities: ['results:read', 'jobs:evaluate'] });
+  await expect.poll(() => seen.grant).toMatchObject({ label: 'CI bot', capabilities: ['jobs:search'] });
 });
