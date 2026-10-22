@@ -71,15 +71,28 @@ test('follow-up action appears only for applied jobs', async ({ page }) => {
   await expect.poll(() => seen.runs[0]).toMatchObject({ operation: 'draft_follow_up' });
 });
 
-test('grant picker lists both new capabilities in Thai and fits 320px', async ({ page }) => {
+test('token form offers only job search, checked by default, in Thai and at 320px', async ({ page }) => {
   await mock(page, 'th');
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto(`/app/projects/${projectId}/console?tab=agents`);
-  await expect(page.getByText('jobs:search')).toBeVisible();
-  await expect(page.getByText('applications:apply')).toBeVisible();
-  await expect(page.getByText('ค้นหาประกาศงาน (รายละเอียดฉบับเต็ม)')).toBeVisible();
-  await expect(page.getByText('เตรียมคำตอบใบสมัครจาก CV และขอให้คุณอนุมัติการยื่นสมัคร')).toBeVisible();
+  const form = page.getByRole('group', { name: 'สิทธิ์' });
+  await expect(form.getByRole('checkbox')).toHaveCount(1);
+  await expect(form.getByRole('checkbox', { name: /ค้นหาประกาศงาน/ })).toBeChecked();
+  for (const gone of ['applications:apply', 'applications:write', 'documents:draft', 'cv:tailor', 'jobs:evaluate', 'results:read'])
+    await expect(page.getByText(gone, { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('issuing a token from the agents tab requests job search only', async ({ page }) => {
+  await mock(page, 'th');
+  await page.route(`**/api/v1/projects/${projectId}/grants`, async route => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ id: 'g1', token: 'synthetic-token-not-real', project_id: projectId, capabilities: ['jobs:search'], expires_at: '2026-12-01T00:00:00Z', revoked_at: null }) });
+  });
+  await page.goto(`/app/projects/${projectId}/console?tab=agents`);
+  const sent = page.waitForRequest(r => r.method() === 'POST' && r.url().endsWith('/grants'));
+  await page.getByRole('button', { name: 'ออก token' }).click();
+  expect((await sent).postDataJSON().capabilities).toEqual(['jobs:search']);
 });
 
 const reasonPack = { kind: 'apply_pack', state: 'parked', missing_required: [], answers: ['not_answerable', 'invalid_answer', 'evidence_required', 'unsupported_claim']
