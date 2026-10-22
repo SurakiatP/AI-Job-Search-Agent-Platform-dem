@@ -12,14 +12,15 @@ import type { Copy } from './copy';
 import { CopyButton, Empty, useNow, type Locale } from './shared';
 
 type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor' | 'jobs:search' | 'applications:apply' | 'applications:write';
-const CAPS: Capability[] = ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write'];
+// Only job search can be granted to an outside agent for now; the backend still accepts the other scopes and old grants keep their labels.
+const CAPS: Capability[] = ['jobs:search'];
 type Grant = { id: string; label?: string | null; project_id: string; capabilities: Capability[]; expires_at: string; revoked_at: string | null };
 type Issued = Grant & { token: string };
 
 export function AgentsTab({ projectId, locale, c }: { projectId: string; locale: Locale; c: Copy }) {
   const project = encodeURIComponent(projectId);
   const grants = useResource<Grant[]>(`/projects/${project}/grants`);
-  const [caps, setCaps] = useState<Capability[]>(['results:read', 'jobs:evaluate']);
+  const [caps, setCaps] = useState<Capability[]>(['jobs:search']);
   const [name, setName] = useState('');
   const [hours, setHours] = useState('24');
   const [issued, setIssued] = useState<Issued | null>(null);
