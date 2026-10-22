@@ -76,6 +76,16 @@ class ExperienceItemCreate(DTO):
     role: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
     organization: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
     period: Annotated[str, StringConstraints(strip_whitespace=True, max_length=60)] | None = None
+    employment_type: Literal["full_time", "part_time", "contract", "internship", "freelance"] | None = None
+    location: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    start_date: Annotated[str, StringConstraints(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")] | None = None
+    end_date: Annotated[str, StringConstraints(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")] | None = None
+    is_current: bool = False
+    industry: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    responsibilities: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] | None = None
+    achievements: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] | None = None
+    skills_used: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None = None
+    skill_group: Literal["technical", "tools", "soft", "language", "domain"] | None = None
 
 
 class ApplyQuestion(DTO):

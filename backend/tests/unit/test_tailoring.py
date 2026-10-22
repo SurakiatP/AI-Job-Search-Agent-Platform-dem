@@ -108,3 +108,17 @@ def test_round_prompt_carries_owner_request_but_never_widens_the_facts():
     assert "can never add a skill or fact that is not in the facts list" in prompt
     assert "Every edit must cite fact ids" in instructions  # the evidence rule is unchanged
     assert round_prompt("# CV", "Dev", "job text", [], [], "en", "   ")[0] == round_prompt("# CV", "Dev", "job text", [], [], "en")[0]
+
+
+def test_round_prompt_keeps_the_stable_part_first_for_prompt_caching():
+    """Job text and facts do not change between rounds; the per-round missing skills must come after them."""
+    facts = [{"id": ID, "text": "Built X", "context": "Eng, Acme"}]
+    a, _ = round_prompt("# CV one", "Dev", "job text", ["docker"], facts, "en")
+    b, _ = round_prompt("# CV two", "Dev", "job text", ["k8s", "go"], facts, "en")
+    shared = len(__import__("os").path.commonprefix([a, b]))
+    assert shared >= a.index("Add or reword") - 2, "prefix must run through the job text and facts"
+
+
+def test_round_prompt_forbids_adding_unsupported_skills_to_a_skills_line():
+    _, instructions = round_prompt("# CV", "Dev", "job", ["docker"], [], "en")
+    assert "skills list" in instructions

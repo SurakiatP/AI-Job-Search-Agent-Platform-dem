@@ -1,0 +1,3216 @@
+{
+ "version": 1,
+ "note": "Synthetic; every name, employer and number is invented.",
+ "personas": [
+  {
+   "id": "p0",
+   "lang": "en",
+   "family": "Data Engineer",
+   "cv": "# Anan Prasert\nData Engineer\n\n## Experience\n### Data Engineer - Northwind Labs (2022-01 - Present)\n- Built Python pipelines that cut nightly load time by 2%\n- Modelled SQL marts used by 7 analysts\n- Scheduled Airflow jobs processing 60 GB of data per day\n\n### Junior Data Engineer - Greenfield Co. (2018-04 - 2021-10)\n- Modelled SQL marts used by 6 analysts\n- Scheduled Airflow jobs processing 50 GB of data per day\n- Reduced warehouse cost by 7% with BigQuery partitioning\n\n## Education\n- Bachelor's degree in Computer Science, Chiang Mai University (2014-2018)\n\n## Skills\nPython, SQL, Airflow, BigQuery, Git, Agile",
+   "facts": [
+    {
+     "text": "Built Python pipelines that cut nightly load time by 2%",
+     "context": "Data Engineer, Northwind Labs, 2022-01",
+     "id": "40903792-7a28-5232-90d7-0f5c5ca50a49"
+    },
+    {
+     "text": "Modelled SQL marts used by 7 analysts",
+     "context": "Data Engineer, Northwind Labs, 2022-01",
+     "id": "306ac46e-d80a-5627-b11a-16841fe9f4a1"
+    },
+    {
+     "text": "Scheduled Airflow jobs processing 60 GB of data per day",
+     "context": "Data Engineer, Northwind Labs, 2022-01",
+     "id": "64f33b6e-a3b8-513c-96b6-bb92fecbd890"
+    },
+    {
+     "text": "Modelled SQL marts used by 6 analysts",
+     "context": "Junior Data Engineer, Greenfield Co., 2018-04",
+     "id": "68ff9742-5944-5954-9583-87f701974ecf"
+    },
+    {
+     "text": "Scheduled Airflow jobs processing 50 GB of data per day",
+     "context": "Junior Data Engineer, Greenfield Co., 2018-04",
+     "id": "91189afb-2f96-5812-82c8-1e0c7a4e82fb"
+    },
+    {
+     "text": "Reduced warehouse cost by 7% with BigQuery partitioning",
+     "context": "Junior Data Engineer, Greenfield Co., 2018-04",
+     "id": "659fc7a5-b4d2-5f40-bbe1-ec332ead77ca"
+    },
+    {
+     "text": "Bachelor's degree in Computer Science, Chiang Mai University (2014-2018)",
+     "context": "Bachelor's degree, Chiang Mai University",
+     "id": "a376e9e9-bc53-5bd9-89c6-d03a54cf57d8"
+    },
+    {
+     "text": "Used dbt in a side project and shipped it to 2 colleagues",
+     "context": "Side project",
+     "id": "e2df1fd2-f3a4-53a5-8bc8-a74a6634007a"
+    }
+   ],
+   "skills_listed": [
+    "Python",
+    "SQL",
+    "Airflow",
+    "BigQuery",
+    "Git",
+    "Agile"
+   ],
+   "gold_facts": [
+    {
+     "text": "Built Python pipelines that cut nightly load time by 2%",
+     "org": "Northwind Labs",
+     "start": "2022-01"
+    },
+    {
+     "text": "Modelled SQL marts used by 7 analysts",
+     "org": "Northwind Labs",
+     "start": "2022-01"
+    },
+    {
+     "text": "Scheduled Airflow jobs processing 60 GB of data per day",
+     "org": "Northwind Labs",
+     "start": "2022-01"
+    },
+    {
+     "text": "Modelled SQL marts used by 6 analysts",
+     "org": "Greenfield Co.",
+     "start": "2018-04"
+    },
+    {
+     "text": "Scheduled Airflow jobs processing 50 GB of data per day",
+     "org": "Greenfield Co.",
+     "start": "2018-04"
+    },
+    {
+     "text": "Reduced warehouse cost by 7% with BigQuery partitioning",
+     "org": "Greenfield Co.",
+     "start": "2018-04"
+    },
+    {
+     "text": "Bachelor's degree in Computer Science, Chiang Mai University (2014-2018)",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Python",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "SQL",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Airflow",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "BigQuery",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Git",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Agile",
+     "org": null,
+     "start": null
+    }
+   ],
+   "education_level": "Bachelor's",
+   "supportable": "dbt",
+   "trap": "Kafka",
+   "orgs": [
+    "Northwind Labs",
+    "Greenfield Co."
+   ],
+   "titles": [
+    "Data Engineer",
+    "Junior Data Engineer"
+   ],
+   "first_start": "2018-04"
+  },
+  {
+   "id": "p1",
+   "lang": "en",
+   "family": "Backend Developer",
+   "cv": "# Mali Chaiwat\nBackend Developer\n\n## Experience\n### Backend Developer - Lumen Retail (2021-02 - Present)\n- Tuned PostgreSQL queries and cut p95 latency by 5%\n- Containerised 8 services with Docker for repeatable releases\n- Developed Java services handling 900 requests per second\n\n### Junior Backend Developer - Maple Systems (2017-05 - 2020-11)\n- Containerised 7 services with Docker for repeatable releases\n- Developed Java services handling 800 requests per second\n- Tuned PostgreSQL queries and cut p95 latency by 2%\n\n## Education\n- Bachelor's degree in Software Engineering, Khon Kaen University (2015-2019)\n\n## Skills\nJava, Spring Boot, PostgreSQL, Docker, React, Git, Agile, Communication",
+   "facts": [
+    {
+     "text": "Tuned PostgreSQL queries and cut p95 latency by 5%",
+     "context": "Backend Developer, Lumen Retail, 2021-02",
+     "id": "51b80a60-6e25-5192-8b6a-2d0bbe640c58"
+    },
+    {
+     "text": "Containerised 8 services with Docker for repeatable releases",
+     "context": "Backend Developer, Lumen Retail, 2021-02",
+     "id": "73226051-f8e3-55fb-8fb1-dc20a915f730"
+    },
+    {
+     "text": "Developed Java services handling 900 requests per second",
+     "context": "Backend Developer, Lumen Retail, 2021-02",
+     "id": "acfed089-aee4-54ea-9c5c-5f8dd5dd0e73"
+    },
+    {
+     "text": "Containerised 7 services with Docker for repeatable releases",
+     "context": "Junior Backend Developer, Maple Systems, 2017-05",
+     "id": "db58ab44-79e1-5c48-8b76-43e55239750c"
+    },
+    {
+     "text": "Developed Java services handling 800 requests per second",
+     "context": "Junior Backend Developer, Maple Systems, 2017-05",
+     "id": "fbb0ca1f-ca66-5f1e-8dca-3295342b22be"
+    },
+    {
+     "text": "Tuned PostgreSQL queries and cut p95 latency by 2%",
+     "context": "Junior Backend Developer, Maple Systems, 2017-05",
+     "id": "67fba8d9-8cf5-5382-a12a-617a227a79f7"
+    },
+    {
+     "text": "Bachelor's degree in Software Engineering, Khon Kaen University (2015-2019)",
+     "context": "Bachelor's degree, Khon Kaen University",
+     "id": "22ef65c9-677b-55f5-b348-4e497c221af2"
+    },
+    {
+     "text": "Used Kubernetes in a side project and shipped it to 3 colleagues",
+     "context": "Side project",
+     "id": "25a933c8-c38c-507b-a92e-0cc1a587aa23"
+    }
+   ],
+   "skills_listed": [
+    "Java",
+    "Spring Boot",
+    "PostgreSQL",
+    "Docker",
+    "React",
+    "Git",
+    "Agile",
+    "Communication"
+   ],
+   "gold_facts": [
+    {
+     "text": "Tuned PostgreSQL queries and cut p95 latency by 5%",
+     "org": "Lumen Retail",
+     "start": "2021-02"
+    },
+    {
+     "text": "Containerised 8 services with Docker for repeatable releases",
+     "org": "Lumen Retail",
+     "start": "2021-02"
+    },
+    {
+     "text": "Developed Java services handling 900 requests per second",
+     "org": "Lumen Retail",
+     "start": "2021-02"
+    },
+    {
+     "text": "Containerised 7 services with Docker for repeatable releases",
+     "org": "Maple Systems",
+     "start": "2017-05"
+    },
+    {
+     "text": "Developed Java services handling 800 requests per second",
+     "org": "Maple Systems",
+     "start": "2017-05"
+    },
+    {
+     "text": "Tuned PostgreSQL queries and cut p95 latency by 2%",
+     "org": "Maple Systems",
+     "start": "2017-05"
+    },
+    {
+     "text": "Bachelor's degree in Software Engineering, Khon Kaen University (2015-2019)",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Java",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Spring Boot",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "PostgreSQL",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Docker",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "React",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Git",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Agile",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Communication",
+     "org": null,
+     "start": null
+    }
+   ],
+   "education_level": "Bachelor's",
+   "supportable": "Kubernetes",
+   "trap": "Redis",
+   "orgs": [
+    "Lumen Retail",
+    "Maple Systems"
+   ],
+   "titles": [
+    "Backend Developer",
+    "Junior Backend Developer"
+   ],
+   "first_start": "2017-05"
+  },
+  {
+   "id": "p2",
+   "lang": "en",
+   "family": "Frontend Developer",
+   "cv": "# Ploy Suksan\nFrontend Developer\n\n## Experience\n### Frontend Developer - Bluepeak Bank (2020-03 - Present)\n- Wrote Jest tests that raised coverage to 80%\n- Built React components used across 9 product pages\n- Migrated 40 screens to TypeScript and removed 4 runtime errors\n\n### Junior Frontend Developer - Riverbank Group (2018-06 - 2019-12)\n- Built React components used across 8 product pages\n- Migrated 30 screens to TypeScript and removed 3 runtime errors\n- Wrote Jest tests that raised coverage to 50%\n\n## Education\n- Bachelor's degree in Computer Engineering, Kasetsart University (2016-2020)\n\n## Skills\nReact, TypeScript, CSS, Jest, Git, Agile, Communication, Teamwork",
+   "facts": [
+    {
+     "text": "Wrote Jest tests that raised coverage to 80%",
+     "context": "Frontend Developer, Bluepeak Bank, 2020-03",
+     "id": "5888640d-09a6-5a5f-9bee-10cbfa0e6a8a"
+    },
+    {
+     "text": "Built React components used across 9 product pages",
+     "context": "Frontend Developer, Bluepeak Bank, 2020-03",
+     "id": "6c7863f8-0e7f-5d16-9857-8408a3a903a2"
+    },
+    {
+     "text": "Migrated 40 screens to TypeScript and removed 4 runtime errors",
+     "context": "Frontend Developer, Bluepeak Bank, 2020-03",
+     "id": "89e624e8-50f1-5c46-b06f-3e32401dfd48"
+    },
+    {
+     "text": "Built React components used across 8 product pages",
+     "context": "Junior Frontend Developer, Riverbank Group, 2018-06",
+     "id": "0f35b4b8-022e-5ce1-bc2a-8a9decd61019"
+    },
+    {
+     "text": "Migrated 30 screens to TypeScript and removed 3 runtime errors",
+     "context": "Junior Frontend Developer, Riverbank Group, 2018-06",
+     "id": "e5fb66b0-6dcb-5e1d-80dd-51ba86c1b08a"
+    },
+    {
+     "text": "Wrote Jest tests that raised coverage to 50%",
+     "context": "Junior Frontend Developer, Riverbank Group, 2018-06",
+     "id": "f8c63bdf-0f92-58d8-9a45-72e320c666a2"
+    },
+    {
+     "text": "Bachelor's degree in Computer Engineering, Kasetsart University (2016-2020)",
+     "context": "Bachelor's degree, Kasetsart University",
+     "id": "c09873c2-962f-5f39-a728-c3e29e9c4bb2"
+    },
+    {
+     "text": "Used Figma in a side project and shipped it to 4 colleagues",
+     "context": "Side project",
+     "id": "11d23ea4-7054-5447-b368-718e70b7f75f"
+    }
+   ],
+   "skills_listed": [
+    "React",
+    "TypeScript",
+    "CSS",
+    "Jest",
+    "Git",
+    "Agile",
+    "Communication",
+    "Teamwork"
+   ],
+   "gold_facts": [
+    {
+     "text": "Wrote Jest tests that raised coverage to 80%",
+     "org": "Bluepeak Bank",
+     "start": "2020-03"
+    },
+    {
+     "text": "Built React components used across 9 product pages",
+     "org": "Bluepeak Bank",
+     "start": "2020-03"
+    },
+    {
+     "text": "Migrated 40 screens to TypeScript and removed 4 runtime errors",
+     "org": "Bluepeak Bank",
+     "start": "2020-03"
+    },
+    {
+     "text": "Built React components used across 8 product pages",
+     "org": "Riverbank Group",
+     "start": "2018-06"
+    },
+    {
+     "text": "Migrated 30 screens to TypeScript and removed 3 runtime errors",
+     "org": "Riverbank Group",
+     "start": "2018-06"
+    },
+    {
+     "text": "Wrote Jest tests that raised coverage to 50%",
+     "org": "Riverbank Group",
+     "start": "2018-06"
+    },
+    {
+     "text": "Bachelor's degree in Computer Engineering, Kasetsart University (2016-2020)",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "React",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "TypeScript",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "CSS",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Jest",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Git",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Agile",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Communication",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Teamwork",
+     "org": null,
+     "start": null
+    }
+   ],
+   "education_level": "Bachelor's",
+   "supportable": "Figma",
+   "trap": "GraphQL",
+   "orgs": [
+    "Bluepeak Bank",
+    "Riverbank Group"
+   ],
+   "titles": [
+    "Frontend Developer",
+    "Junior Frontend Developer"
+   ],
+   "first_start": "2018-06"
+  },
+  {
+   "id": "p3",
+   "lang": "th",
+   "family": "Data Analyst",
+   "cv": "# Nattapon Dee\nData Analyst\n\n## Experience\n### Data Analyst - Orchid Logistics (2022-04 - Present)\n- เขียนคิวรี SQL แทนงานรายงานมือ 3 ชั่วโมงต่อสัปดาห์\n- สร้างแดชบอร์ด Power BI ที่ผู้จัดการ 10 คนใช้ดูทุกสัปดาห์\n- เขียนคิวรี SQL แทนงานรายงานมือ 7 ชั่วโมงต่อสัปดาห์\n\n### Junior Data Analyst - Sunrise Trading (2017-07 - 2021-10)\n- สร้างแดชบอร์ด Power BI ที่ผู้จัดการ 9 คนใช้ดูทุกสัปดาห์\n- เขียนคิวรี SQL แทนงานรายงานมือ 6 ชั่วโมงต่อสัปดาห์\n- สร้างแดชบอร์ด Power BI ที่ผู้จัดการ 8 คนใช้ดูทุกสัปดาห์\n\n## Education\n- Master's degree in Statistics, Chulalongkorn University (2014-2018)\n\n## Skills\nSQL, Power BI, Excel, Tableau, Roadmapping, Git, Agile",
+   "facts": [
+    {
+     "text": "เขียนคิวรี SQL แทนงานรายงานมือ 3 ชั่วโมงต่อสัปดาห์",
+     "context": "Data Analyst, Orchid Logistics, 2022-04",
+     "id": "9463a978-8ffd-596b-acfe-1483051e4382"
+    },
+    {
+     "text": "สร้างแดชบอร์ด Power BI ที่ผู้จัดการ 10 คนใช้ดูทุกสัปดาห์",
+     "context": "Data Analyst, Orchid Logistics, 2022-04",
+     "id": "bbecb9c1-2e95-562a-80a6-5ca73d751e4b"
+    },
+    {
+     "text": "เขียนคิวรี SQL แทนงานรายงานมือ 7 ชั่วโมงต่อสัปดาห์",
+     "context": "Data Analyst, Orchid Logistics, 2022-04",
+     "id": "3e125f02-347b-5e64-b625-7ba84de9e78f"
+    },
+    {
+     "text": "สร้างแดชบอร์ด Power BI ที่ผู้จัดการ 9 คนใช้ดูทุกสัปดาห์",
+     "context": "Junior Data Analyst, Sunrise Trading, 2017-07",
+     "id": "54fee0f9-0fe7-5694-a4ce-c5c168abce0d"
+    },
+    {
+     "text": "เขียนคิวรี SQL แทนงานรายงานมือ 6 ชั่วโมงต่อสัปดาห์",
+     "context": "Junior Data Analyst, Sunrise Trading, 2017-07",
+     "id": "02d3463b-93b3-5531-80a8-7035ee0882d0"
+    },
+    {
+     "text": "สร้างแดชบอร์ด Power BI ที่ผู้จัดการ 8 คนใช้ดูทุกสัปดาห์",
+     "context": "Junior Data Analyst, Sunrise Trading, 2017-07",
+     "id": "803190e1-a304-5910-8c16-0ced00f56348"
+    },
+    {
+     "text": "Master's degree in Statistics, Chulalongkorn University (2014-2018)",
+     "context": "Master's degree, Chulalongkorn University",
+     "id": "aae84bd3-2cd7-54e0-9078-7b08882c29f2"
+    },
+    {
+     "text": "Used Python in a side project and shipped it to 5 colleagues",
+     "context": "Side project",
+     "id": "6e659706-bdc1-59e6-9a1b-58c65d5496e8"
+    }
+   ],
+   "skills_listed": [
+    "SQL",
+    "Power BI",
+    "Excel",
+    "Tableau",
+    "Roadmapping",
+    "Git",
+    "Agile"
+   ],
+   "gold_facts": [
+    {
+     "text": "เขียนคิวรี SQL แทนงานรายงานมือ 3 ชั่วโมงต่อสัปดาห์",
+     "org": "Orchid Logistics",
+     "start": "2022-04"
+    },
+    {
+     "text": "สร้างแดชบอร์ด Power BI ที่ผู้จัดการ 10 คนใช้ดูทุกสัปดาห์",
+     "org": "Orchid Logistics",
+     "start": "2022-04"
+    },
+    {
+     "text": "เขียนคิวรี SQL แทนงานรายงานมือ 7 ชั่วโมงต่อสัปดาห์",
+     "org": "Orchid Logistics",
+     "start": "2022-04"
+    },
+    {
+     "text": "สร้างแดชบอร์ด Power BI ที่ผู้จัดการ 9 คนใช้ดูทุกสัปดาห์",
+     "org": "Sunrise Trading",
+     "start": "2017-07"
+    },
+    {
+     "text": "เขียนคิวรี SQL แทนงานรายงานมือ 6 ชั่วโมงต่อสัปดาห์",
+     "org": "Sunrise Trading",
+     "start": "2017-07"
+    },
+    {
+     "text": "สร้างแดชบอร์ด Power BI ที่ผู้จัดการ 8 คนใช้ดูทุกสัปดาห์",
+     "org": "Sunrise Trading",
+     "start": "2017-07"
+    },
+    {
+     "text": "Master's degree in Statistics, Chulalongkorn University (2014-2018)",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "SQL",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Power BI",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Excel",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Tableau",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Roadmapping",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Git",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Agile",
+     "org": null,
+     "start": null
+    }
+   ],
+   "education_level": "Master's",
+   "supportable": "Python",
+   "trap": "A/B testing",
+   "orgs": [
+    "Orchid Logistics",
+    "Sunrise Trading"
+   ],
+   "titles": [
+    "Data Analyst",
+    "Junior Data Analyst"
+   ],
+   "first_start": "2017-07"
+  },
+  {
+   "id": "p4",
+   "lang": "th",
+   "family": "Product Manager",
+   "cv": "# Kanya Wong\nProduct Manager\n\n## Experience\n### Product Manager - Sakura Foods (2021-05 - Present)\n- ดูแล Roadmapping ของผลิตภัณฑ์ที่มีผู้ใช้ 60,000 คน\n- สัมภาษณ์ผู้ใช้ 11 ราย และส่งมอบฟีเจอร์ 8 รายการจากผลที่ได้\n- ดูแล Roadmapping ของผลิตภัณฑ์ที่มีผู้ใช้ 20,000 คน\n\n### Junior Product Manager - Kite Software (2018-08 - 2020-11)\n- สัมภาษณ์ผู้ใช้ 10 ราย และส่งมอบฟีเจอร์ 7 รายการจากผลที่ได้\n- ดูแล Roadmapping ของผลิตภัณฑ์ที่มีผู้ใช้ 90,000 คน\n- สัมภาษณ์ผู้ใช้ 9 ราย และส่งมอบฟีเจอร์ 3 รายการจากผลที่ได้\n\n## Education\n- Bachelor's degree in Business Administration, Thammasat University (2015-2019)\n\n## Skills\nRoadmapping, Jira, User research, SQL, Git, Agile, Communication",
+   "facts": [
+    {
+     "text": "ดูแล Roadmapping ของผลิตภัณฑ์ที่มีผู้ใช้ 60,000 คน",
+     "context": "Product Manager, Sakura Foods, 2021-05",
+     "id": "052f50fa-c4cd-59cf-8a30-05bdc0557db4"
+    },
+    {
+     "text": "สัมภาษณ์ผู้ใช้ 11 ราย และส่งมอบฟีเจอร์ 8 รายการจากผลที่ได้",
+     "context": "Product Manager, Sakura Foods, 2021-05",
+     "id": "09dd201a-8345-5d3b-bbdb-74650e8f038f"
+    },
+    {
+     "text": "ดูแล Roadmapping ของผลิตภัณฑ์ที่มีผู้ใช้ 20,000 คน",
+     "context": "Product Manager, Sakura Foods, 2021-05",
+     "id": "e65f1840-18e0-5453-b425-10046f308327"
+    },
+    {
+     "text": "สัมภาษณ์ผู้ใช้ 10 ราย และส่งมอบฟีเจอร์ 7 รายการจากผลที่ได้",
+     "context": "Junior Product Manager, Kite Software, 2018-08",
+     "id": "13de498e-0bda-5729-a9a7-7ea8ab2a89a1"
+    },
+    {
+     "text": "ดูแล Roadmapping ของผลิตภัณฑ์ที่มีผู้ใช้ 90,000 คน",
+     "context": "Junior Product Manager, Kite Software, 2018-08",
+     "id": "8d3f94e0-85b2-5081-b703-2cf23b7f41dd"
+    },
+    {
+     "text": "สัมภาษณ์ผู้ใช้ 9 ราย และส่งมอบฟีเจอร์ 3 รายการจากผลที่ได้",
+     "context": "Junior Product Manager, Kite Software, 2018-08",
+     "id": "ec6f0fd3-51d5-5d3a-a3c6-f261704cca1b"
+    },
+    {
+     "text": "Bachelor's degree in Business Administration, Thammasat University (2015-2019)",
+     "context": "Bachelor's degree, Thammasat University",
+     "id": "e2a6e215-508a-5350-a2df-33a2dc57e200"
+    },
+    {
+     "text": "Used Stakeholder management in a side project and shipped it to 2 colleagues",
+     "context": "Side project",
+     "id": "29fcd3e6-1fff-5968-b07f-cc9c849bbdd2"
+    }
+   ],
+   "skills_listed": [
+    "Roadmapping",
+    "Jira",
+    "User research",
+    "SQL",
+    "Git",
+    "Agile",
+    "Communication"
+   ],
+   "gold_facts": [
+    {
+     "text": "ดูแล Roadmapping ของผลิตภัณฑ์ที่มีผู้ใช้ 60,000 คน",
+     "org": "Sakura Foods",
+     "start": "2021-05"
+    },
+    {
+     "text": "สัมภาษณ์ผู้ใช้ 11 ราย และส่งมอบฟีเจอร์ 8 รายการจากผลที่ได้",
+     "org": "Sakura Foods",
+     "start": "2021-05"
+    },
+    {
+     "text": "ดูแล Roadmapping ของผลิตภัณฑ์ที่มีผู้ใช้ 20,000 คน",
+     "org": "Sakura Foods",
+     "start": "2021-05"
+    },
+    {
+     "text": "สัมภาษณ์ผู้ใช้ 10 ราย และส่งมอบฟีเจอร์ 7 รายการจากผลที่ได้",
+     "org": "Kite Software",
+     "start": "2018-08"
+    },
+    {
+     "text": "ดูแล Roadmapping ของผลิตภัณฑ์ที่มีผู้ใช้ 90,000 คน",
+     "org": "Kite Software",
+     "start": "2018-08"
+    },
+    {
+     "text": "สัมภาษณ์ผู้ใช้ 9 ราย และส่งมอบฟีเจอร์ 3 รายการจากผลที่ได้",
+     "org": "Kite Software",
+     "start": "2018-08"
+    },
+    {
+     "text": "Bachelor's degree in Business Administration, Thammasat University (2015-2019)",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Roadmapping",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Jira",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "User research",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "SQL",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Git",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Agile",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Communication",
+     "org": null,
+     "start": null
+    }
+   ],
+   "education_level": "Bachelor's",
+   "supportable": "Stakeholder management",
+   "trap": "OKR",
+   "orgs": [
+    "Sakura Foods",
+    "Kite Software"
+   ],
+   "titles": [
+    "Product Manager",
+    "Junior Product Manager"
+   ],
+   "first_start": "2018-08"
+  },
+  {
+   "id": "p5",
+   "lang": "en",
+   "family": "UX Designer",
+   "cv": "# Somsak Lee\nUX Designer\n\n## Experience\n### UX Designer - Meridian Health (2020-06 - Present)\n- Built Prototyping that cut build rework by 9%\n- Designed 3 flows in Figma for a mobile app with 30,000 users\n- Maintained a Design systems of 50 components\n\n### Junior UX Designer - Opal Media (2017-09 - 2019-12)\n- Designed 11 flows in Figma for a mobile app with 20,000 users\n- Maintained a Design systems of 40 components\n- Built Prototyping that cut build rework by 6%\n\n## Education\n- Bachelor's degree in Design, Mahidol University (2016-2020)\n\n## Skills\nFigma, User research, Prototyping, Design systems, Kubernetes, Git, Agile, Communication, Teamwork",
+   "facts": [
+    {
+     "text": "Built Prototyping that cut build rework by 9%",
+     "context": "UX Designer, Meridian Health, 2020-06",
+     "id": "f39f8a34-6bfb-5e88-ab9c-711edcfc2a43"
+    },
+    {
+     "text": "Designed 3 flows in Figma for a mobile app with 30,000 users",
+     "context": "UX Designer, Meridian Health, 2020-06",
+     "id": "16ead6b6-33c3-5f7b-a75b-e91bdc8d330e"
+    },
+    {
+     "text": "Maintained a Design systems of 50 components",
+     "context": "UX Designer, Meridian Health, 2020-06",
+     "id": "ea2c83bf-ef2c-53af-b8e1-100945034e64"
+    },
+    {
+     "text": "Designed 11 flows in Figma for a mobile app with 20,000 users",
+     "context": "Junior UX Designer, Opal Media, 2017-09",
+     "id": "87a73957-14b3-5d4e-8af6-c3ef006a2da0"
+    },
+    {
+     "text": "Maintained a Design systems of 40 components",
+     "context": "Junior UX Designer, Opal Media, 2017-09",
+     "id": "efa961ee-8db1-5bbf-ba58-ae7c377ce725"
+    },
+    {
+     "text": "Built Prototyping that cut build rework by 6%",
+     "context": "Junior UX Designer, Opal Media, 2017-09",
+     "id": "54f2d814-e1cf-593f-a49f-3997a113aa20"
+    },
+    {
+     "text": "Bachelor's degree in Design, Mahidol University (2016-2020)",
+     "context": "Bachelor's degree, Mahidol University",
+     "id": "29c0a5da-e7b5-515b-94c7-a50f2299d61a"
+    },
+    {
+     "text": "Used Usability testing in a side project and shipped it to 3 colleagues",
+     "context": "Side project",
+     "id": "ab822701-bbb1-5487-aeac-1b2c34723383"
+    }
+   ],
+   "skills_listed": [
+    "Figma",
+    "User research",
+    "Prototyping",
+    "Design systems",
+    "Kubernetes",
+    "Git",
+    "Agile",
+    "Communication",
+    "Teamwork"
+   ],
+   "gold_facts": [
+    {
+     "text": "Built Prototyping that cut build rework by 9%",
+     "org": "Meridian Health",
+     "start": "2020-06"
+    },
+    {
+     "text": "Designed 3 flows in Figma for a mobile app with 30,000 users",
+     "org": "Meridian Health",
+     "start": "2020-06"
+    },
+    {
+     "text": "Maintained a Design systems of 50 components",
+     "org": "Meridian Health",
+     "start": "2020-06"
+    },
+    {
+     "text": "Designed 11 flows in Figma for a mobile app with 20,000 users",
+     "org": "Opal Media",
+     "start": "2017-09"
+    },
+    {
+     "text": "Maintained a Design systems of 40 components",
+     "org": "Opal Media",
+     "start": "2017-09"
+    },
+    {
+     "text": "Built Prototyping that cut build rework by 6%",
+     "org": "Opal Media",
+     "start": "2017-09"
+    },
+    {
+     "text": "Bachelor's degree in Design, Mahidol University (2016-2020)",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Figma",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "User research",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Prototyping",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Design systems",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Kubernetes",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Git",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Agile",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Communication",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Teamwork",
+     "org": null,
+     "start": null
+    }
+   ],
+   "education_level": "Bachelor's",
+   "supportable": "Usability testing",
+   "trap": "Accessibility",
+   "orgs": [
+    "Meridian Health",
+    "Opal Media"
+   ],
+   "titles": [
+    "UX Designer",
+    "Junior UX Designer"
+   ],
+   "first_start": "2017-09"
+  },
+  {
+   "id": "p6",
+   "lang": "en",
+   "family": "DevOps Engineer",
+   "cv": "# Pim Arun\nDevOps Engineer\n\n## Experience\n### DevOps Engineer - Coral Telecom (2022-07 - Present)\n- Automated CI/CD pipelines that shortened releases from 4 days to 9 hours\n- Provisioned AWS environments with Terraform for 4 teams\n- Ran Kubernetes clusters serving 80 services\n\n### Junior DevOps Engineer - Birch Partners (2018-01 - 2021-10)\n- Provisioned AWS environments with Terraform for 3 teams\n- Ran Kubernetes clusters serving 70 services\n- Automated CI/CD pipelines that shortened releases from 9 days to 11 hours\n\n## Education\n- Bachelor's degree in Information Technology, KMUTT (2014-2018)\n\n## Skills\nKubernetes, Terraform, AWS, CI/CD, Git, Agile",
+   "facts": [
+    {
+     "text": "Automated CI/CD pipelines that shortened releases from 4 days to 9 hours",
+     "context": "DevOps Engineer, Coral Telecom, 2022-07",
+     "id": "33b2166a-ce55-5630-99e3-8b8861e99549"
+    },
+    {
+     "text": "Provisioned AWS environments with Terraform for 4 teams",
+     "context": "DevOps Engineer, Coral Telecom, 2022-07",
+     "id": "da02e506-241a-5f2d-bf21-b20a74d315e7"
+    },
+    {
+     "text": "Ran Kubernetes clusters serving 80 services",
+     "context": "DevOps Engineer, Coral Telecom, 2022-07",
+     "id": "0b2a10b1-db8b-5830-af87-bbf951e979a4"
+    },
+    {
+     "text": "Provisioned AWS environments with Terraform for 3 teams",
+     "context": "Junior DevOps Engineer, Birch Partners, 2018-01",
+     "id": "3684c212-7ad8-51f0-88d6-c8ed0530ba81"
+    },
+    {
+     "text": "Ran Kubernetes clusters serving 70 services",
+     "context": "Junior DevOps Engineer, Birch Partners, 2018-01",
+     "id": "aaa05a84-d323-512d-b61d-dc14944197c5"
+    },
+    {
+     "text": "Automated CI/CD pipelines that shortened releases from 9 days to 11 hours",
+     "context": "Junior DevOps Engineer, Birch Partners, 2018-01",
+     "id": "61467e3f-a574-587c-8833-eee199311aee"
+    },
+    {
+     "text": "Bachelor's degree in Information Technology, KMUTT (2014-2018)",
+     "context": "Bachelor's degree, KMUTT",
+     "id": "27f52876-aa28-58c1-bd55-2c9e62a41337"
+    },
+    {
+     "text": "Used Prometheus in a side project and shipped it to 4 colleagues",
+     "context": "Side project",
+     "id": "11647f54-8df7-5dab-8d0f-1e02efa7d1ad"
+    }
+   ],
+   "skills_listed": [
+    "Kubernetes",
+    "Terraform",
+    "AWS",
+    "CI/CD",
+    "Git",
+    "Agile"
+   ],
+   "gold_facts": [
+    {
+     "text": "Automated CI/CD pipelines that shortened releases from 4 days to 9 hours",
+     "org": "Coral Telecom",
+     "start": "2022-07"
+    },
+    {
+     "text": "Provisioned AWS environments with Terraform for 4 teams",
+     "org": "Coral Telecom",
+     "start": "2022-07"
+    },
+    {
+     "text": "Ran Kubernetes clusters serving 80 services",
+     "org": "Coral Telecom",
+     "start": "2022-07"
+    },
+    {
+     "text": "Provisioned AWS environments with Terraform for 3 teams",
+     "org": "Birch Partners",
+     "start": "2018-01"
+    },
+    {
+     "text": "Ran Kubernetes clusters serving 70 services",
+     "org": "Birch Partners",
+     "start": "2018-01"
+    },
+    {
+     "text": "Automated CI/CD pipelines that shortened releases from 9 days to 11 hours",
+     "org": "Birch Partners",
+     "start": "2018-01"
+    },
+    {
+     "text": "Bachelor's degree in Information Technology, KMUTT (2014-2018)",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Kubernetes",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Terraform",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "AWS",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "CI/CD",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Git",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Agile",
+     "org": null,
+     "start": null
+    }
+   ],
+   "education_level": "Bachelor's",
+   "supportable": "Prometheus",
+   "trap": "Linux",
+   "orgs": [
+    "Coral Telecom",
+    "Birch Partners"
+   ],
+   "titles": [
+    "DevOps Engineer",
+    "Junior DevOps Engineer"
+   ],
+   "first_start": "2018-01"
+  },
+  {
+   "id": "p7",
+   "lang": "en",
+   "family": "QA Engineer",
+   "cv": "# Tanawat Boon\nQA Engineer\n\n## Experience\n### QA Engineer - Atlas Insurance (2021-08 - Present)\n- Triaged 70 bugs per sprint in Jira\n- Cut release testing from 9 days to 5 with Test automation\n- Automated 30 regression cases in Selenium\n\n### Junior QA Engineer - Summit Works (2017-02 - 2020-11)\n- Cut release testing from 8 days to 4 with Test automation\n- Automated 20 regression cases in Selenium\n- Triaged 40 bugs per sprint in Jira\n\n## Education\n- Bachelor's degree in Computer Science, Prince of Songkla University (2015-2019)\n\n## Skills\nSelenium, Cypress, Test automation, Jira, Google Analytics, Git, Agile, Communication",
+   "facts": [
+    {
+     "text": "Triaged 70 bugs per sprint in Jira",
+     "context": "QA Engineer, Atlas Insurance, 2021-08",
+     "id": "c283d456-293a-5321-8f95-f300665fea94"
+    },
+    {
+     "text": "Cut release testing from 9 days to 5 with Test automation",
+     "context": "QA Engineer, Atlas Insurance, 2021-08",
+     "id": "f89235ab-47f9-53f7-9e97-debd1a718613"
+    },
+    {
+     "text": "Automated 30 regression cases in Selenium",
+     "context": "QA Engineer, Atlas Insurance, 2021-08",
+     "id": "1e4e9d8f-baff-5784-a072-32f23956d45d"
+    },
+    {
+     "text": "Cut release testing from 8 days to 4 with Test automation",
+     "context": "Junior QA Engineer, Summit Works, 2017-02",
+     "id": "76e81ae7-6363-5fa6-a661-4935458d7f95"
+    },
+    {
+     "text": "Automated 20 regression cases in Selenium",
+     "context": "Junior QA Engineer, Summit Works, 2017-02",
+     "id": "2c294043-c315-51c9-9fc6-c8a24460a964"
+    },
+    {
+     "text": "Triaged 40 bugs per sprint in Jira",
+     "context": "Junior QA Engineer, Summit Works, 2017-02",
+     "id": "c8891c80-2abc-52a1-9534-b102a18d4826"
+    },
+    {
+     "text": "Bachelor's degree in Computer Science, Prince of Songkla University (2015-2019)",
+     "context": "Bachelor's degree, Prince of Songkla University",
+     "id": "b71b8146-0f50-590a-b662-c831ad37908b"
+    },
+    {
+     "text": "Used Postman in a side project and shipped it to 5 colleagues",
+     "context": "Side project",
+     "id": "0f96c615-d028-5da5-bb81-6d17c7d09edb"
+    }
+   ],
+   "skills_listed": [
+    "Selenium",
+    "Cypress",
+    "Test automation",
+    "Jira",
+    "Google Analytics",
+    "Git",
+    "Agile",
+    "Communication"
+   ],
+   "gold_facts": [
+    {
+     "text": "Triaged 70 bugs per sprint in Jira",
+     "org": "Atlas Insurance",
+     "start": "2021-08"
+    },
+    {
+     "text": "Cut release testing from 9 days to 5 with Test automation",
+     "org": "Atlas Insurance",
+     "start": "2021-08"
+    },
+    {
+     "text": "Automated 30 regression cases in Selenium",
+     "org": "Atlas Insurance",
+     "start": "2021-08"
+    },
+    {
+     "text": "Cut release testing from 8 days to 4 with Test automation",
+     "org": "Summit Works",
+     "start": "2017-02"
+    },
+    {
+     "text": "Automated 20 regression cases in Selenium",
+     "org": "Summit Works",
+     "start": "2017-02"
+    },
+    {
+     "text": "Triaged 40 bugs per sprint in Jira",
+     "org": "Summit Works",
+     "start": "2017-02"
+    },
+    {
+     "text": "Bachelor's degree in Computer Science, Prince of Songkla University (2015-2019)",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Selenium",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Cypress",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Test automation",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Jira",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Google Analytics",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Git",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Agile",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Communication",
+     "org": null,
+     "start": null
+    }
+   ],
+   "education_level": "Bachelor's",
+   "supportable": "Postman",
+   "trap": "SQL",
+   "orgs": [
+    "Atlas Insurance",
+    "Summit Works"
+   ],
+   "titles": [
+    "QA Engineer",
+    "Junior QA Engineer"
+   ],
+   "first_start": "2017-02"
+  },
+  {
+   "id": "p8",
+   "lang": "en",
+   "family": "Marketing Analyst",
+   "cv": "# Rina Chan\nMarketing Analyst\n\n## Experience\n### Marketing Analyst - Pine Studio (2020-09 - Present)\n- Improved organic traffic by 2% through SEO fixes\n- Reported funnel metrics from Google Analytics to 6 stakeholders\n- Pulled campaign data with SQL for 60 weekly reports\n\n### Junior Marketing Analyst - Lotus Digital (2018-03 - 2019-12)\n- Reported funnel metrics from Google Analytics to 5 stakeholders\n- Pulled campaign data with SQL for 50 weekly reports\n- Improved organic traffic by 7% through SEO fixes\n\n## Education\n- Master's degree in Marketing, NIDA (2016-2020)\n\n## Skills\nGoogle Analytics, SQL, Tableau, SEO, Git, Agile, Communication, Teamwork",
+   "facts": [
+    {
+     "text": "Improved organic traffic by 2% through SEO fixes",
+     "context": "Marketing Analyst, Pine Studio, 2020-09",
+     "id": "c94f765c-876c-5bb4-90bc-23d9270d7217"
+    },
+    {
+     "text": "Reported funnel metrics from Google Analytics to 6 stakeholders",
+     "context": "Marketing Analyst, Pine Studio, 2020-09",
+     "id": "0aaef81f-ea4b-5b83-bf4d-01415d4e0943"
+    },
+    {
+     "text": "Pulled campaign data with SQL for 60 weekly reports",
+     "context": "Marketing Analyst, Pine Studio, 2020-09",
+     "id": "ae8178cc-5590-54fa-9dc5-0b520e55e997"
+    },
+    {
+     "text": "Reported funnel metrics from Google Analytics to 5 stakeholders",
+     "context": "Junior Marketing Analyst, Lotus Digital, 2018-03",
+     "id": "a4c28ecc-c527-5152-8fc1-8761d3a356ba"
+    },
+    {
+     "text": "Pulled campaign data with SQL for 50 weekly reports",
+     "context": "Junior Marketing Analyst, Lotus Digital, 2018-03",
+     "id": "3fb6d0e6-9af0-5e9a-ae08-fcea88ebdc9a"
+    },
+    {
+     "text": "Improved organic traffic by 7% through SEO fixes",
+     "context": "Junior Marketing Analyst, Lotus Digital, 2018-03",
+     "id": "8b97afcc-5d7e-5262-ac5c-10d091ce8078"
+    },
+    {
+     "text": "Master's degree in Marketing, NIDA (2016-2020)",
+     "context": "Master's degree, NIDA",
+     "id": "13433ec6-a3d3-521f-a303-bbf499808b0f"
+    },
+    {
+     "text": "Used Excel in a side project and shipped it to 2 colleagues",
+     "context": "Side project",
+     "id": "9e2d0727-d408-5d36-b841-81ffd2a177a9"
+    }
+   ],
+   "skills_listed": [
+    "Google Analytics",
+    "SQL",
+    "Tableau",
+    "SEO",
+    "Git",
+    "Agile",
+    "Communication",
+    "Teamwork"
+   ],
+   "gold_facts": [
+    {
+     "text": "Improved organic traffic by 2% through SEO fixes",
+     "org": "Pine Studio",
+     "start": "2020-09"
+    },
+    {
+     "text": "Reported funnel metrics from Google Analytics to 6 stakeholders",
+     "org": "Pine Studio",
+     "start": "2020-09"
+    },
+    {
+     "text": "Pulled campaign data with SQL for 60 weekly reports",
+     "org": "Pine Studio",
+     "start": "2020-09"
+    },
+    {
+     "text": "Reported funnel metrics from Google Analytics to 5 stakeholders",
+     "org": "Lotus Digital",
+     "start": "2018-03"
+    },
+    {
+     "text": "Pulled campaign data with SQL for 50 weekly reports",
+     "org": "Lotus Digital",
+     "start": "2018-03"
+    },
+    {
+     "text": "Improved organic traffic by 7% through SEO fixes",
+     "org": "Lotus Digital",
+     "start": "2018-03"
+    },
+    {
+     "text": "Master's degree in Marketing, NIDA (2016-2020)",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Google Analytics",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "SQL",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Tableau",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "SEO",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Git",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Agile",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Communication",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Teamwork",
+     "org": null,
+     "start": null
+    }
+   ],
+   "education_level": "Master's",
+   "supportable": "Excel",
+   "trap": "A/B testing",
+   "orgs": [
+    "Pine Studio",
+    "Lotus Digital"
+   ],
+   "titles": [
+    "Marketing Analyst",
+    "Junior Marketing Analyst"
+   ],
+   "first_start": "2018-03"
+  },
+  {
+   "id": "p9",
+   "lang": "th",
+   "family": "Accountant",
+   "cv": "# Wipa Kul\nAccountant\n\n## Experience\n### Accountant - Harbor Energy (2022-01 - Present)\n- กระทบยอดบัญชี 50 รายการใน Excel ไม่มีรายการค้าง\n- จัดทำรายงาน IFRS ที่ผู้สอบบัญชีภายนอกตรวจสอบ\n- ยื่นภาษีแบบ Tax filing ให้บริษัทย่อย 11 แห่ง\n\n### Junior Accountant - Cedar Finance (2017-04 - 2021-10)\n- จัดทำรายงาน IFRS ที่ผู้สอบบัญชีภายนอกตรวจสอบ\n- ยื่นภาษีแบบ Tax filing ให้บริษัทย่อย 10 แห่ง\n- ปิดบัญชีสิ้นเดือนใน SAP ให้ 5 นิติบุคคล\n\n## Education\n- Bachelor's degree in Accounting, Silpakorn University (2014-2018)\n\n## Skills\nSAP, Excel, IFRS, Tax filing, Python, Git, Agile",
+   "facts": [
+    {
+     "text": "กระทบยอดบัญชี 50 รายการใน Excel ไม่มีรายการค้าง",
+     "context": "Accountant, Harbor Energy, 2022-01",
+     "id": "d6bde29d-efd2-5f06-938e-913ddfc80f52"
+    },
+    {
+     "text": "จัดทำรายงาน IFRS ที่ผู้สอบบัญชีภายนอกตรวจสอบ",
+     "context": "Accountant, Harbor Energy, 2022-01",
+     "id": "64b0fab5-7c1a-5209-8121-1f3ac518fe33"
+    },
+    {
+     "text": "ยื่นภาษีแบบ Tax filing ให้บริษัทย่อย 11 แห่ง",
+     "context": "Accountant, Harbor Energy, 2022-01",
+     "id": "d57e5758-602b-5379-836d-8d7b715da263"
+    },
+    {
+     "text": "จัดทำรายงาน IFRS ที่ผู้สอบบัญชีภายนอกตรวจสอบ",
+     "context": "Junior Accountant, Cedar Finance, 2017-04",
+     "id": "dbf8f558-84e2-5edc-a889-abd2a741a285"
+    },
+    {
+     "text": "ยื่นภาษีแบบ Tax filing ให้บริษัทย่อย 10 แห่ง",
+     "context": "Junior Accountant, Cedar Finance, 2017-04",
+     "id": "99f3a53e-8c83-5955-bc79-0756b8716da2"
+    },
+    {
+     "text": "ปิดบัญชีสิ้นเดือนใน SAP ให้ 5 นิติบุคคล",
+     "context": "Junior Accountant, Cedar Finance, 2017-04",
+     "id": "d6794363-1273-58a8-a4f2-fa6345798600"
+    },
+    {
+     "text": "Bachelor's degree in Accounting, Silpakorn University (2014-2018)",
+     "context": "Bachelor's degree, Silpakorn University",
+     "id": "15da01a2-0626-520d-a757-8c36258b8f05"
+    },
+    {
+     "text": "Used Audit in a side project and shipped it to 3 colleagues",
+     "context": "Side project",
+     "id": "3d034618-70b0-5085-abbd-acb1541a245d"
+    }
+   ],
+   "skills_listed": [
+    "SAP",
+    "Excel",
+    "IFRS",
+    "Tax filing",
+    "Python",
+    "Git",
+    "Agile"
+   ],
+   "gold_facts": [
+    {
+     "text": "กระทบยอดบัญชี 50 รายการใน Excel ไม่มีรายการค้าง",
+     "org": "Harbor Energy",
+     "start": "2022-01"
+    },
+    {
+     "text": "จัดทำรายงาน IFRS ที่ผู้สอบบัญชีภายนอกตรวจสอบ",
+     "org": "Harbor Energy",
+     "start": "2022-01"
+    },
+    {
+     "text": "ยื่นภาษีแบบ Tax filing ให้บริษัทย่อย 11 แห่ง",
+     "org": "Harbor Energy",
+     "start": "2022-01"
+    },
+    {
+     "text": "จัดทำรายงาน IFRS ที่ผู้สอบบัญชีภายนอกตรวจสอบ",
+     "org": "Cedar Finance",
+     "start": "2017-04"
+    },
+    {
+     "text": "ยื่นภาษีแบบ Tax filing ให้บริษัทย่อย 10 แห่ง",
+     "org": "Cedar Finance",
+     "start": "2017-04"
+    },
+    {
+     "text": "ปิดบัญชีสิ้นเดือนใน SAP ให้ 5 นิติบุคคล",
+     "org": "Cedar Finance",
+     "start": "2017-04"
+    },
+    {
+     "text": "Bachelor's degree in Accounting, Silpakorn University (2014-2018)",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "SAP",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Excel",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "IFRS",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Tax filing",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Python",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Git",
+     "org": null,
+     "start": null
+    },
+    {
+     "text": "Agile",
+     "org": null,
+     "start": null
+    }
+   ],
+   "education_level": "Bachelor's",
+   "supportable": "Audit",
+   "trap": "Power BI",
+   "orgs": [
+    "Harbor Energy",
+    "Cedar Finance"
+   ],
+   "titles": [
+    "Accountant",
+    "Junior Accountant"
+   ],
+   "first_start": "2017-04"
+  }
+ ],
+ "jobs": [
+  {
+   "id": "j0",
+   "title": "Data Engineer",
+   "company": "Sakura Foods",
+   "description": "Sakura Foods is hiring a Data Engineer to join a team of 5 people.\nWhat you will do: own delivery of data engineer work, review others' work, and explain results to non-experts.\nRequirements: Python, SQL, Airflow, BigQuery, dbt, Kafka. 2+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "Python",
+    "SQL",
+    "Airflow",
+    "BigQuery",
+    "dbt",
+    "Kafka"
+   ]
+  },
+  {
+   "id": "j1",
+   "title": "Backend Developer",
+   "company": "Meridian Health",
+   "description": "Meridian Health is hiring a Backend Developer to join a team of 6 people.\nWhat you will do: own delivery of backend developer work, review others' work, and explain results to non-experts.\nRequirements: Java, Spring Boot, PostgreSQL, Docker, Kubernetes, Redis. 3+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "Java",
+    "Spring Boot",
+    "PostgreSQL",
+    "Docker",
+    "Kubernetes",
+    "Redis"
+   ]
+  },
+  {
+   "id": "j2",
+   "title": "Frontend Developer",
+   "company": "Coral Telecom",
+   "description": "Coral Telecom is hiring a Frontend Developer to join a team of 7 people.\nWhat you will do: own delivery of frontend developer work, review others' work, and explain results to non-experts.\nRequirements: React, TypeScript, CSS, Jest, Figma, GraphQL. 4+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "React",
+    "TypeScript",
+    "CSS",
+    "Jest",
+    "Figma",
+    "GraphQL"
+   ]
+  },
+  {
+   "id": "j3",
+   "title": "Data Analyst",
+   "company": "Atlas Insurance",
+   "description": "Atlas Insurance is hiring a Data Analyst to join a team of 8 people.\nWhat you will do: own delivery of data analyst work, review others' work, and explain results to non-experts.\nRequirements: SQL, Power BI, Excel, Tableau, Python, A/B testing. 5+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "SQL",
+    "Power BI",
+    "Excel",
+    "Tableau",
+    "Python",
+    "A/B testing"
+   ]
+  },
+  {
+   "id": "j4",
+   "title": "Product Manager",
+   "company": "Pine Studio",
+   "description": "Pine Studio is hiring a Product Manager to join a team of 9 people.\nWhat you will do: own delivery of product manager work, review others' work, and explain results to non-experts.\nRequirements: Roadmapping, Jira, User research, SQL, Stakeholder management, OKR. 2+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "Roadmapping",
+    "Jira",
+    "User research",
+    "SQL",
+    "Stakeholder management",
+    "OKR"
+   ]
+  },
+  {
+   "id": "j5",
+   "title": "UX Designer",
+   "company": "Harbor Energy",
+   "description": "Harbor Energy is hiring a UX Designer to join a team of 10 people.\nWhat you will do: own delivery of ux designer work, review others' work, and explain results to non-experts.\nRequirements: Figma, User research, Prototyping, Design systems, Usability testing, Accessibility. 3+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "Figma",
+    "User research",
+    "Prototyping",
+    "Design systems",
+    "Usability testing",
+    "Accessibility"
+   ]
+  },
+  {
+   "id": "j6",
+   "title": "DevOps Engineer",
+   "company": "Northwind Labs",
+   "description": "Northwind Labs is hiring a DevOps Engineer to join a team of 11 people.\nWhat you will do: own delivery of devops engineer work, review others' work, and explain results to non-experts.\nRequirements: Kubernetes, Terraform, AWS, CI/CD, Prometheus, Linux. 4+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "Kubernetes",
+    "Terraform",
+    "AWS",
+    "CI/CD",
+    "Prometheus",
+    "Linux"
+   ]
+  },
+  {
+   "id": "j7",
+   "title": "QA Engineer",
+   "company": "Lumen Retail",
+   "description": "Lumen Retail is hiring a QA Engineer to join a team of 12 people.\nWhat you will do: own delivery of qa engineer work, review others' work, and explain results to non-experts.\nRequirements: Selenium, Cypress, Test automation, Jira, Postman, SQL. 5+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "Selenium",
+    "Cypress",
+    "Test automation",
+    "Jira",
+    "Postman",
+    "SQL"
+   ]
+  },
+  {
+   "id": "j8",
+   "title": "Marketing Analyst",
+   "company": "Bluepeak Bank",
+   "description": "Bluepeak Bank is hiring a Marketing Analyst to join a team of 13 people.\nWhat you will do: own delivery of marketing analyst work, review others' work, and explain results to non-experts.\nRequirements: Google Analytics, SQL, Tableau, SEO, Excel, A/B testing. 2+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "Google Analytics",
+    "SQL",
+    "Tableau",
+    "SEO",
+    "Excel",
+    "A/B testing"
+   ]
+  },
+  {
+   "id": "j9",
+   "title": "Accountant",
+   "company": "Orchid Logistics",
+   "description": "Orchid Logistics is hiring a Accountant to join a team of 14 people.\nWhat you will do: own delivery of accountant work, review others' work, and explain results to non-experts.\nRequirements: SAP, Excel, IFRS, Tax filing, Audit, Power BI. 3+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "SAP",
+    "Excel",
+    "IFRS",
+    "Tax filing",
+    "Audit",
+    "Power BI"
+   ]
+  },
+  {
+   "id": "j0s",
+   "title": "Data Engineer",
+   "company": "Sakura Foods",
+   "description": "Sakura Foods is hiring a Data Engineer to join a team of 5 people.\nWhat you will do: own delivery of data engineer work, review others' work, and explain results to non-experts.\nRequirements: Python, SQL, Airflow, BigQuery. 2+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "Python",
+    "SQL",
+    "Airflow",
+    "BigQuery"
+   ]
+  },
+  {
+   "id": "j5s",
+   "title": "UX Designer",
+   "company": "Harbor Energy",
+   "description": "Harbor Energy is hiring a UX Designer to join a team of 10 people.\nWhat you will do: own delivery of ux designer work, review others' work, and explain results to non-experts.\nRequirements: Figma, User research, Prototyping, Design systems. 3+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "Figma",
+    "User research",
+    "Prototyping",
+    "Design systems"
+   ]
+  },
+  {
+   "id": "j7s",
+   "title": "QA Engineer",
+   "company": "Lumen Retail",
+   "description": "Lumen Retail is hiring a QA Engineer to join a team of 12 people.\nWhat you will do: own delivery of qa engineer work, review others' work, and explain results to non-experts.\nRequirements: Selenium, Cypress, Test automation, Jira. 5+ years of relevant experience. Thai and English communication.\nWe offer hybrid work in Bangkok, health insurance and a learning budget.",
+   "required": [
+    "Selenium",
+    "Cypress",
+    "Test automation",
+    "Jira"
+   ]
+  }
+ ],
+ "cases": {
+  "extract": [
+   {
+    "id": "ex0",
+    "persona": "p0"
+   },
+   {
+    "id": "ex1",
+    "persona": "p1"
+   },
+   {
+    "id": "ex2",
+    "persona": "p2"
+   },
+   {
+    "id": "ex3",
+    "persona": "p3"
+   },
+   {
+    "id": "ex4",
+    "persona": "p4"
+   },
+   {
+    "id": "ex5",
+    "persona": "p5"
+   },
+   {
+    "id": "ex6",
+    "persona": "p6"
+   },
+   {
+    "id": "ex7",
+    "persona": "p7"
+   },
+   {
+    "id": "ex8",
+    "persona": "p8"
+   },
+   {
+    "id": "ex9",
+    "persona": "p9"
+   }
+  ],
+  "evaluate": [
+   {
+    "id": "ev0",
+    "persona": "p0",
+    "job": "j0s",
+    "requirements_present": {
+     "Python": true,
+     "SQL": true,
+     "Airflow": true,
+     "BigQuery": true
+    },
+    "coverage": 1.0,
+    "score_band": [
+     4,
+     5
+    ]
+   },
+   {
+    "id": "ev1",
+    "persona": "p5",
+    "job": "j5s",
+    "requirements_present": {
+     "Figma": true,
+     "User research": true,
+     "Prototyping": true,
+     "Design systems": true
+    },
+    "coverage": 1.0,
+    "score_band": [
+     4,
+     5
+    ]
+   },
+   {
+    "id": "ev2",
+    "persona": "p7",
+    "job": "j7s",
+    "requirements_present": {
+     "Selenium": true,
+     "Cypress": true,
+     "Test automation": true,
+     "Jira": true
+    },
+    "coverage": 1.0,
+    "score_band": [
+     4,
+     5
+    ]
+   },
+   {
+    "id": "ev3",
+    "persona": "p2",
+    "job": "j2",
+    "requirements_present": {
+     "React": true,
+     "TypeScript": true,
+     "CSS": true,
+     "Jest": true,
+     "Figma": false,
+     "GraphQL": false
+    },
+    "coverage": 0.67,
+    "score_band": [
+     3,
+     4
+    ]
+   },
+   {
+    "id": "ev4",
+    "persona": "p4",
+    "job": "j4",
+    "requirements_present": {
+     "Roadmapping": true,
+     "Jira": true,
+     "User research": true,
+     "SQL": true,
+     "Stakeholder management": false,
+     "OKR": false
+    },
+    "coverage": 0.67,
+    "score_band": [
+     3,
+     4
+    ]
+   },
+   {
+    "id": "ev5",
+    "persona": "p9",
+    "job": "j9",
+    "requirements_present": {
+     "SAP": true,
+     "Excel": true,
+     "IFRS": true,
+     "Tax filing": true,
+     "Audit": false,
+     "Power BI": false
+    },
+    "coverage": 0.67,
+    "score_band": [
+     3,
+     4
+    ]
+   },
+   {
+    "id": "ev6",
+    "persona": "p1",
+    "job": "j1",
+    "requirements_present": {
+     "Java": true,
+     "Spring Boot": true,
+     "PostgreSQL": true,
+     "Docker": true,
+     "Kubernetes": false,
+     "Redis": false
+    },
+    "coverage": 0.67,
+    "score_band": [
+     3,
+     4
+    ]
+   },
+   {
+    "id": "ev7",
+    "persona": "p0",
+    "job": "j3",
+    "requirements_present": {
+     "SQL": true,
+     "Power BI": false,
+     "Excel": false,
+     "Tableau": false,
+     "Python": true,
+     "A/B testing": false
+    },
+    "coverage": 0.33,
+    "score_band": [
+     2,
+     3
+    ]
+   },
+   {
+    "id": "ev8",
+    "persona": "p3",
+    "job": "j6",
+    "requirements_present": {
+     "Kubernetes": false,
+     "Terraform": false,
+     "AWS": false,
+     "CI/CD": false,
+     "Prometheus": false,
+     "Linux": false
+    },
+    "coverage": 0.0,
+    "score_band": [
+     1,
+     2
+    ]
+   },
+   {
+    "id": "ev9",
+    "persona": "p5",
+    "job": "j8",
+    "requirements_present": {
+     "Google Analytics": false,
+     "SQL": false,
+     "Tableau": false,
+     "SEO": false,
+     "Excel": false,
+     "A/B testing": false
+    },
+    "coverage": 0.0,
+    "score_band": [
+     1,
+     2
+    ]
+   }
+  ],
+  "draft": [
+   {
+    "id": "dr0",
+    "persona": "p0",
+    "job": "j0",
+    "kind": "cover_letter"
+   },
+   {
+    "id": "dr1",
+    "persona": "p1",
+    "job": "j1",
+    "kind": "application_message"
+   },
+   {
+    "id": "dr2",
+    "persona": "p2",
+    "job": "j2",
+    "kind": "cover_letter"
+   },
+   {
+    "id": "dr3",
+    "persona": "p3",
+    "job": "j3",
+    "kind": "cover_letter"
+   },
+   {
+    "id": "dr4",
+    "persona": "p4",
+    "job": "j4",
+    "kind": "application_message"
+   },
+   {
+    "id": "dr5",
+    "persona": "p5",
+    "job": "j5",
+    "kind": "cover_letter"
+   },
+   {
+    "id": "dr6",
+    "persona": "p6",
+    "job": "j6",
+    "kind": "cover_letter"
+   },
+   {
+    "id": "dr7",
+    "persona": "p7",
+    "job": "j7",
+    "kind": "application_message"
+   },
+   {
+    "id": "dr8",
+    "persona": "p8",
+    "job": "j8",
+    "kind": "cover_letter"
+   },
+   {
+    "id": "dr9",
+    "persona": "p9",
+    "job": "j9",
+    "kind": "cover_letter"
+   }
+  ],
+  "tailor": [
+   {
+    "id": "ta0",
+    "persona": "p0",
+    "job": "j0",
+    "missing": [
+     "dbt",
+     "Kafka"
+    ],
+    "supportable": "dbt",
+    "trap": "Kafka"
+   },
+   {
+    "id": "ta1",
+    "persona": "p1",
+    "job": "j1",
+    "missing": [
+     "Kubernetes",
+     "Redis"
+    ],
+    "supportable": "Kubernetes",
+    "trap": "Redis"
+   },
+   {
+    "id": "ta2",
+    "persona": "p2",
+    "job": "j2",
+    "missing": [
+     "Figma",
+     "GraphQL"
+    ],
+    "supportable": "Figma",
+    "trap": "GraphQL"
+   },
+   {
+    "id": "ta3",
+    "persona": "p3",
+    "job": "j3",
+    "missing": [
+     "Python",
+     "A/B testing"
+    ],
+    "supportable": "Python",
+    "trap": "A/B testing"
+   },
+   {
+    "id": "ta4",
+    "persona": "p4",
+    "job": "j4",
+    "missing": [
+     "Stakeholder management",
+     "OKR"
+    ],
+    "supportable": "Stakeholder management",
+    "trap": "OKR"
+   },
+   {
+    "id": "ta5",
+    "persona": "p5",
+    "job": "j5",
+    "missing": [
+     "Usability testing",
+     "Accessibility"
+    ],
+    "supportable": "Usability testing",
+    "trap": "Accessibility"
+   },
+   {
+    "id": "ta6",
+    "persona": "p6",
+    "job": "j6",
+    "missing": [
+     "Prometheus",
+     "Linux"
+    ],
+    "supportable": "Prometheus",
+    "trap": "Linux"
+   },
+   {
+    "id": "ta7",
+    "persona": "p7",
+    "job": "j7",
+    "missing": [
+     "Postman",
+     "SQL"
+    ],
+    "supportable": "Postman",
+    "trap": "SQL"
+   },
+   {
+    "id": "ta8",
+    "persona": "p8",
+    "job": "j8",
+    "missing": [
+     "Excel",
+     "A/B testing"
+    ],
+    "supportable": "Excel",
+    "trap": "A/B testing"
+   },
+   {
+    "id": "ta9",
+    "persona": "p9",
+    "job": "j9",
+    "missing": [
+     "Audit",
+     "Power BI"
+    ],
+    "supportable": "Audit",
+    "trap": "Power BI"
+   }
+  ],
+  "apply": [
+   {
+    "id": "ap0",
+    "persona": "p0",
+    "job": "j0",
+    "questions": [
+     {
+      "id": "q1",
+      "label": "Which tools or languages have you used at work?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "keywords",
+       "any": [
+        "Python",
+        "SQL",
+        "Airflow",
+        "BigQuery"
+       ],
+       "min": 2
+      }
+     },
+     {
+      "id": "q2",
+      "label": "Do you have experience with Python?",
+      "kind": "boolean",
+      "required": true,
+      "gold": {
+       "type": "exact",
+       "value": true
+      }
+     },
+     {
+      "id": "q3",
+      "label": "Do you have experience with Figma?",
+      "kind": "boolean",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q4",
+      "label": "What is your highest level of education?",
+      "kind": "choice",
+      "required": true,
+      "choices": [
+       "High school",
+       "Bachelor's",
+       "Master's",
+       "Doctorate"
+      ],
+      "gold": {
+       "type": "exact",
+       "value": "Bachelor's"
+      }
+     },
+     {
+      "id": "q5",
+      "label": "What is your notice period?",
+      "kind": "choice",
+      "required": false,
+      "choices": [
+       "Immediately",
+       "1 month",
+       "2 months",
+       "3 months"
+      ],
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q6",
+      "label": "How many years of relevant experience do you have?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "profile_years"
+      }
+     },
+     {
+      "id": "q7",
+      "label": "What is your salary expectation?",
+      "kind": "text",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     }
+    ],
+    "profile_years": 8.6
+   },
+   {
+    "id": "ap1",
+    "persona": "p1",
+    "job": "j1",
+    "questions": [
+     {
+      "id": "q1",
+      "label": "Which tools or languages have you used at work?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "keywords",
+       "any": [
+        "Java",
+        "Spring Boot",
+        "PostgreSQL",
+        "Docker"
+       ],
+       "min": 2
+      }
+     },
+     {
+      "id": "q2",
+      "label": "Do you have experience with Java?",
+      "kind": "boolean",
+      "required": true,
+      "gold": {
+       "type": "exact",
+       "value": true
+      }
+     },
+     {
+      "id": "q3",
+      "label": "Do you have experience with Terraform?",
+      "kind": "boolean",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q4",
+      "label": "What is your highest level of education?",
+      "kind": "choice",
+      "required": true,
+      "choices": [
+       "High school",
+       "Bachelor's",
+       "Master's",
+       "Doctorate"
+      ],
+      "gold": {
+       "type": "exact",
+       "value": "Bachelor's"
+      }
+     },
+     {
+      "id": "q5",
+      "label": "What is your notice period?",
+      "kind": "choice",
+      "required": false,
+      "choices": [
+       "Immediately",
+       "1 month",
+       "2 months",
+       "3 months"
+      ],
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q6",
+      "label": "How many years of relevant experience do you have?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "profile_years"
+      }
+     },
+     {
+      "id": "q7",
+      "label": "What is your salary expectation?",
+      "kind": "text",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     }
+    ],
+    "profile_years": 9.5
+   },
+   {
+    "id": "ap2",
+    "persona": "p2",
+    "job": "j2",
+    "questions": [
+     {
+      "id": "q1",
+      "label": "Which tools or languages have you used at work?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "keywords",
+       "any": [
+        "React",
+        "TypeScript",
+        "CSS",
+        "Jest"
+       ],
+       "min": 2
+      }
+     },
+     {
+      "id": "q2",
+      "label": "Do you have experience with React?",
+      "kind": "boolean",
+      "required": true,
+      "gold": {
+       "type": "exact",
+       "value": true
+      }
+     },
+     {
+      "id": "q3",
+      "label": "Do you have experience with Selenium?",
+      "kind": "boolean",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q4",
+      "label": "What is your highest level of education?",
+      "kind": "choice",
+      "required": true,
+      "choices": [
+       "High school",
+       "Bachelor's",
+       "Master's",
+       "Doctorate"
+      ],
+      "gold": {
+       "type": "exact",
+       "value": "Bachelor's"
+      }
+     },
+     {
+      "id": "q5",
+      "label": "What is your notice period?",
+      "kind": "choice",
+      "required": false,
+      "choices": [
+       "Immediately",
+       "1 month",
+       "2 months",
+       "3 months"
+      ],
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q6",
+      "label": "How many years of relevant experience do you have?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "profile_years"
+      }
+     },
+     {
+      "id": "q7",
+      "label": "What is your salary expectation?",
+      "kind": "text",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     }
+    ],
+    "profile_years": 8.4
+   },
+   {
+    "id": "ap3",
+    "persona": "p3",
+    "job": "j3",
+    "questions": [
+     {
+      "id": "q1",
+      "label": "Which tools or languages have you used at work?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "keywords",
+       "any": [
+        "SQL",
+        "Power BI",
+        "Excel",
+        "Tableau"
+       ],
+       "min": 2
+      }
+     },
+     {
+      "id": "q2",
+      "label": "Do you have experience with SQL?",
+      "kind": "boolean",
+      "required": true,
+      "gold": {
+       "type": "exact",
+       "value": true
+      }
+     },
+     {
+      "id": "q3",
+      "label": "Do you have experience with Google Analytics?",
+      "kind": "boolean",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q4",
+      "label": "What is your highest level of education?",
+      "kind": "choice",
+      "required": true,
+      "choices": [
+       "High school",
+       "Bachelor's",
+       "Master's",
+       "Doctorate"
+      ],
+      "gold": {
+       "type": "exact",
+       "value": "Master's"
+      }
+     },
+     {
+      "id": "q5",
+      "label": "What is your notice period?",
+      "kind": "choice",
+      "required": false,
+      "choices": [
+       "Immediately",
+       "1 month",
+       "2 months",
+       "3 months"
+      ],
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q6",
+      "label": "How many years of relevant experience do you have?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "profile_years"
+      }
+     },
+     {
+      "id": "q7",
+      "label": "What is your salary expectation?",
+      "kind": "text",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     }
+    ],
+    "profile_years": 9.3
+   },
+   {
+    "id": "ap4",
+    "persona": "p4",
+    "job": "j4",
+    "questions": [
+     {
+      "id": "q1",
+      "label": "Which tools or languages have you used at work?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "keywords",
+       "any": [
+        "Roadmapping",
+        "Jira",
+        "User research",
+        "SQL"
+       ],
+       "min": 2
+      }
+     },
+     {
+      "id": "q2",
+      "label": "Do you have experience with Roadmapping?",
+      "kind": "boolean",
+      "required": true,
+      "gold": {
+       "type": "exact",
+       "value": true
+      }
+     },
+     {
+      "id": "q3",
+      "label": "Do you have experience with SAP?",
+      "kind": "boolean",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q4",
+      "label": "What is your highest level of education?",
+      "kind": "choice",
+      "required": true,
+      "choices": [
+       "High school",
+       "Bachelor's",
+       "Master's",
+       "Doctorate"
+      ],
+      "gold": {
+       "type": "exact",
+       "value": "Bachelor's"
+      }
+     },
+     {
+      "id": "q5",
+      "label": "What is your notice period?",
+      "kind": "choice",
+      "required": false,
+      "choices": [
+       "Immediately",
+       "1 month",
+       "2 months",
+       "3 months"
+      ],
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q6",
+      "label": "How many years of relevant experience do you have?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "profile_years"
+      }
+     },
+     {
+      "id": "q7",
+      "label": "What is your salary expectation?",
+      "kind": "text",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     }
+    ],
+    "profile_years": 8.2
+   },
+   {
+    "id": "ap5",
+    "persona": "p5",
+    "job": "j5",
+    "questions": [
+     {
+      "id": "q1",
+      "label": "Which tools or languages have you used at work?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "keywords",
+       "any": [
+        "Figma",
+        "User research",
+        "Prototyping",
+        "Design systems"
+       ],
+       "min": 2
+      }
+     },
+     {
+      "id": "q2",
+      "label": "Do you have experience with Figma?",
+      "kind": "boolean",
+      "required": true,
+      "gold": {
+       "type": "exact",
+       "value": true
+      }
+     },
+     {
+      "id": "q3",
+      "label": "Do you have experience with Python?",
+      "kind": "boolean",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q4",
+      "label": "What is your highest level of education?",
+      "kind": "choice",
+      "required": true,
+      "choices": [
+       "High school",
+       "Bachelor's",
+       "Master's",
+       "Doctorate"
+      ],
+      "gold": {
+       "type": "exact",
+       "value": "Bachelor's"
+      }
+     },
+     {
+      "id": "q5",
+      "label": "What is your notice period?",
+      "kind": "choice",
+      "required": false,
+      "choices": [
+       "Immediately",
+       "1 month",
+       "2 months",
+       "3 months"
+      ],
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q6",
+      "label": "How many years of relevant experience do you have?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "profile_years"
+      }
+     },
+     {
+      "id": "q7",
+      "label": "What is your salary expectation?",
+      "kind": "text",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     }
+    ],
+    "profile_years": 9.2
+   },
+   {
+    "id": "ap6",
+    "persona": "p6",
+    "job": "j6",
+    "questions": [
+     {
+      "id": "q1",
+      "label": "Which tools or languages have you used at work?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "keywords",
+       "any": [
+        "Kubernetes",
+        "Terraform",
+        "AWS",
+        "CI/CD"
+       ],
+       "min": 2
+      }
+     },
+     {
+      "id": "q2",
+      "label": "Do you have experience with Kubernetes?",
+      "kind": "boolean",
+      "required": true,
+      "gold": {
+       "type": "exact",
+       "value": true
+      }
+     },
+     {
+      "id": "q3",
+      "label": "Do you have experience with Java?",
+      "kind": "boolean",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q4",
+      "label": "What is your highest level of education?",
+      "kind": "choice",
+      "required": true,
+      "choices": [
+       "High school",
+       "Bachelor's",
+       "Master's",
+       "Doctorate"
+      ],
+      "gold": {
+       "type": "exact",
+       "value": "Bachelor's"
+      }
+     },
+     {
+      "id": "q5",
+      "label": "What is your notice period?",
+      "kind": "choice",
+      "required": false,
+      "choices": [
+       "Immediately",
+       "1 month",
+       "2 months",
+       "3 months"
+      ],
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q6",
+      "label": "How many years of relevant experience do you have?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "profile_years"
+      }
+     },
+     {
+      "id": "q7",
+      "label": "What is your salary expectation?",
+      "kind": "text",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     }
+    ],
+    "profile_years": 8.8
+   },
+   {
+    "id": "ap7",
+    "persona": "p7",
+    "job": "j7",
+    "questions": [
+     {
+      "id": "q1",
+      "label": "Which tools or languages have you used at work?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "keywords",
+       "any": [
+        "Selenium",
+        "Cypress",
+        "Test automation",
+        "Jira"
+       ],
+       "min": 2
+      }
+     },
+     {
+      "id": "q2",
+      "label": "Do you have experience with Selenium?",
+      "kind": "boolean",
+      "required": true,
+      "gold": {
+       "type": "exact",
+       "value": true
+      }
+     },
+     {
+      "id": "q3",
+      "label": "Do you have experience with React?",
+      "kind": "boolean",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q4",
+      "label": "What is your highest level of education?",
+      "kind": "choice",
+      "required": true,
+      "choices": [
+       "High school",
+       "Bachelor's",
+       "Master's",
+       "Doctorate"
+      ],
+      "gold": {
+       "type": "exact",
+       "value": "Bachelor's"
+      }
+     },
+     {
+      "id": "q5",
+      "label": "What is your notice period?",
+      "kind": "choice",
+      "required": false,
+      "choices": [
+       "Immediately",
+       "1 month",
+       "2 months",
+       "3 months"
+      ],
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q6",
+      "label": "How many years of relevant experience do you have?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "profile_years"
+      }
+     },
+     {
+      "id": "q7",
+      "label": "What is your salary expectation?",
+      "kind": "text",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     }
+    ],
+    "profile_years": 9.8
+   },
+   {
+    "id": "ap8",
+    "persona": "p8",
+    "job": "j8",
+    "questions": [
+     {
+      "id": "q1",
+      "label": "Which tools or languages have you used at work?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "keywords",
+       "any": [
+        "Google Analytics",
+        "SQL",
+        "Tableau",
+        "SEO"
+       ],
+       "min": 2
+      }
+     },
+     {
+      "id": "q2",
+      "label": "Do you have experience with Google Analytics?",
+      "kind": "boolean",
+      "required": true,
+      "gold": {
+       "type": "exact",
+       "value": true
+      }
+     },
+     {
+      "id": "q3",
+      "label": "Do you have experience with Power BI?",
+      "kind": "boolean",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q4",
+      "label": "What is your highest level of education?",
+      "kind": "choice",
+      "required": true,
+      "choices": [
+       "High school",
+       "Bachelor's",
+       "Master's",
+       "Doctorate"
+      ],
+      "gold": {
+       "type": "exact",
+       "value": "Master's"
+      }
+     },
+     {
+      "id": "q5",
+      "label": "What is your notice period?",
+      "kind": "choice",
+      "required": false,
+      "choices": [
+       "Immediately",
+       "1 month",
+       "2 months",
+       "3 months"
+      ],
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q6",
+      "label": "How many years of relevant experience do you have?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "profile_years"
+      }
+     },
+     {
+      "id": "q7",
+      "label": "What is your salary expectation?",
+      "kind": "text",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     }
+    ],
+    "profile_years": 8.7
+   },
+   {
+    "id": "ap9",
+    "persona": "p9",
+    "job": "j9",
+    "questions": [
+     {
+      "id": "q1",
+      "label": "Which tools or languages have you used at work?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "keywords",
+       "any": [
+        "SAP",
+        "Excel",
+        "IFRS",
+        "Tax filing"
+       ],
+       "min": 2
+      }
+     },
+     {
+      "id": "q2",
+      "label": "Do you have experience with SAP?",
+      "kind": "boolean",
+      "required": true,
+      "gold": {
+       "type": "exact",
+       "value": true
+      }
+     },
+     {
+      "id": "q3",
+      "label": "Do you have experience with Roadmapping?",
+      "kind": "boolean",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q4",
+      "label": "What is your highest level of education?",
+      "kind": "choice",
+      "required": true,
+      "choices": [
+       "High school",
+       "Bachelor's",
+       "Master's",
+       "Doctorate"
+      ],
+      "gold": {
+       "type": "exact",
+       "value": "Bachelor's"
+      }
+     },
+     {
+      "id": "q5",
+      "label": "What is your notice period?",
+      "kind": "choice",
+      "required": false,
+      "choices": [
+       "Immediately",
+       "1 month",
+       "2 months",
+       "3 months"
+      ],
+      "gold": {
+       "type": "null"
+      }
+     },
+     {
+      "id": "q6",
+      "label": "How many years of relevant experience do you have?",
+      "kind": "text",
+      "required": true,
+      "gold": {
+       "type": "profile_years"
+      }
+     },
+     {
+      "id": "q7",
+      "label": "What is your salary expectation?",
+      "kind": "text",
+      "required": false,
+      "gold": {
+       "type": "null"
+      }
+     }
+    ],
+    "profile_years": 9.6
+   }
+  ],
+  "practice": [
+   {
+    "id": "pr0",
+    "persona": "p0",
+    "job": "j0",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro",
+      "count": 1
+     },
+     {
+      "id": "behavioral",
+      "count": 2
+     },
+     {
+      "id": "technical",
+      "count": 3
+     },
+     {
+      "id": "gaps",
+      "count": 1
+     },
+     {
+      "id": "logistics",
+      "count": 1
+     }
+    ]
+   },
+   {
+    "id": "pr1",
+    "persona": "p1",
+    "job": "j1",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro",
+      "count": 1
+     },
+     {
+      "id": "behavioral",
+      "count": 2
+     },
+     {
+      "id": "technical",
+      "count": 3
+     },
+     {
+      "id": "gaps",
+      "count": 1
+     },
+     {
+      "id": "logistics",
+      "count": 1
+     }
+    ]
+   },
+   {
+    "id": "pr2",
+    "persona": "p2",
+    "job": "j2",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro",
+      "count": 1
+     },
+     {
+      "id": "behavioral",
+      "count": 2
+     },
+     {
+      "id": "technical",
+      "count": 3
+     },
+     {
+      "id": "gaps",
+      "count": 1
+     },
+     {
+      "id": "logistics",
+      "count": 1
+     }
+    ]
+   },
+   {
+    "id": "pr3",
+    "persona": "p3",
+    "job": "j3",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro",
+      "count": 1
+     },
+     {
+      "id": "behavioral",
+      "count": 2
+     },
+     {
+      "id": "technical",
+      "count": 3
+     },
+     {
+      "id": "gaps",
+      "count": 1
+     },
+     {
+      "id": "logistics",
+      "count": 1
+     }
+    ]
+   },
+   {
+    "id": "pr4",
+    "persona": "p4",
+    "job": "j4",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro",
+      "count": 1
+     },
+     {
+      "id": "behavioral",
+      "count": 2
+     },
+     {
+      "id": "technical",
+      "count": 3
+     },
+     {
+      "id": "gaps",
+      "count": 1
+     },
+     {
+      "id": "logistics",
+      "count": 1
+     }
+    ]
+   },
+   {
+    "id": "pr5",
+    "persona": "p5",
+    "job": "j5",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro",
+      "count": 1
+     },
+     {
+      "id": "behavioral",
+      "count": 2
+     },
+     {
+      "id": "technical",
+      "count": 3
+     },
+     {
+      "id": "gaps",
+      "count": 1
+     },
+     {
+      "id": "logistics",
+      "count": 1
+     }
+    ]
+   },
+   {
+    "id": "pr6",
+    "persona": "p6",
+    "job": "j6",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro",
+      "count": 1
+     },
+     {
+      "id": "behavioral",
+      "count": 2
+     },
+     {
+      "id": "technical",
+      "count": 3
+     },
+     {
+      "id": "gaps",
+      "count": 1
+     },
+     {
+      "id": "logistics",
+      "count": 1
+     }
+    ]
+   },
+   {
+    "id": "pr7",
+    "persona": "p7",
+    "job": "j7",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro",
+      "count": 1
+     },
+     {
+      "id": "behavioral",
+      "count": 2
+     },
+     {
+      "id": "technical",
+      "count": 3
+     },
+     {
+      "id": "gaps",
+      "count": 1
+     },
+     {
+      "id": "logistics",
+      "count": 1
+     }
+    ]
+   },
+   {
+    "id": "pr8",
+    "persona": "p8",
+    "job": "j8",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro",
+      "count": 1
+     },
+     {
+      "id": "behavioral",
+      "count": 2
+     },
+     {
+      "id": "technical",
+      "count": 3
+     },
+     {
+      "id": "gaps",
+      "count": 1
+     },
+     {
+      "id": "logistics",
+      "count": 1
+     }
+    ]
+   },
+   {
+    "id": "pr9",
+    "persona": "p9",
+    "job": "j9",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro",
+      "count": 1
+     },
+     {
+      "id": "behavioral",
+      "count": 2
+     },
+     {
+      "id": "technical",
+      "count": 3
+     },
+     {
+      "id": "gaps",
+      "count": 1
+     },
+     {
+      "id": "logistics",
+      "count": 1
+     }
+    ]
+   }
+  ]
+ }
+}

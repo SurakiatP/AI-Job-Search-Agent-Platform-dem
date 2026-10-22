@@ -166,6 +166,16 @@ class ExperienceItem(Base):
     role: Mapped[str | None] = mapped_column(String(200))
     organization: Mapped[str | None] = mapped_column(String(200))
     period: Mapped[str | None] = mapped_column(String(60))
+    employment_type: Mapped[str | None] = mapped_column(String(20))
+    location: Mapped[str | None] = mapped_column(String(200))
+    start_date: Mapped[str | None] = mapped_column(String(7))  # YYYY-MM
+    end_date: Mapped[str | None] = mapped_column(String(7))
+    is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    industry: Mapped[str | None] = mapped_column(String(200))
+    responsibilities: Mapped[str | None] = mapped_column(Text)
+    achievements: Mapped[str | None] = mapped_column(Text)
+    skills_used: Mapped[str | None] = mapped_column(Text)
+    skill_group: Mapped[str | None] = mapped_column(String(12))  # only meaningful for kind='skill'
     source: Mapped[str] = mapped_column(String(10), nullable=False)
     source_cv_revision_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     builder_cv_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("cvs.id", ondelete="SET NULL"))
@@ -179,6 +189,7 @@ class ExperienceItem(Base):
         CheckConstraint("kind IN ('experience','education','skill','certification','project','other','award','publication',"
                         "'volunteer','interest','language')", name="ck_experience_items_kind"),
         CheckConstraint("char_length(text) BETWEEN 1 AND 1000", name="ck_experience_items_text_length"),
+        CheckConstraint("skill_group IS NULL OR skill_group IN ('technical','tools','soft','language','domain')", name="ck_experience_items_skill_group"),
         CheckConstraint("source IN ('cv','owner')", name="ck_experience_items_source"),
         CheckConstraint("(source = 'owner') = (source_cv_revision_id IS NULL)", name="ck_experience_items_source_revision"),
         CheckConstraint("length(text_hash) = 64", name="ck_experience_items_hash_length"),
