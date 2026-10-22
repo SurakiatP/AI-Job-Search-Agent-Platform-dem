@@ -31,6 +31,13 @@ for _operation, _effort in json.loads(os.environ.get("PLATFORM_REASONING") or "{
     else:
         REASONING[_operation] = {"extra_body": {"reasoning": {"effort": _effort}}}
 
+def _wire_reasoning(overrides):
+    """The agent's own reasoning config for an operation's override, so the top-level reasoning_effort Hermes sends
+    (default medium) agrees with extra_body's reasoning.effort; OpenRouter answers 400 when the two differ."""
+    effort = (((overrides or {}).get("extra_body") or {}).get("reasoning") or {}).get("effort")
+    return {"enabled": True, "effort": effort} if effort else None
+
+
 CAREER_OPS_FILES = {
     "evaluate_job": ("modes/_shared.md", "modes/oferta.md"),
     "draft_documents": (
@@ -331,6 +338,7 @@ def main():
                     skip_context_files=True, skip_background_review=True,
                     max_iterations=30, run_budget_seconds=900, quiet_mode=True,
                     request_overrides=REASONING.get(request.get("operation")),
+                    reasoning_config=_wire_reasoning(REASONING.get(request.get("operation"))),
                     save_trajectories=False, verbose_logging=False,
                     event_callback=lambda name, data: emit({"event": "progress"}))
                 agent.tools = [t for t in agent.tools if t["function"]["name"] in ALLOWED]
