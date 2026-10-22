@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import stat
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -70,8 +71,12 @@ class GatewaySettings:
             raise ServiceError("gateway_unconfigured")
         return self.api_key
 
-    def provider_config(self) -> ProviderConfig:
-        return ProviderConfig("custom", self.analyze_model, self.base_url + "/v1", self._key())
+    def provider_config(self, operation: str | None = None) -> ProviderConfig:
+        """AI_MODEL_<OPERATION> (a LiteLLM model name) overrides the default analyze model for that operation."""
+        model = os.environ.get("AI_MODEL_" + (operation or "").upper(), "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9._:/-]{1,120}", model):
+            model = self.analyze_model
+        return ProviderConfig("custom", model, self.base_url + "/v1", self._key())
 
     def jev_client(self) -> JevClient:
         return JevClient(self._key(), url=self.base_url + "/jev/decisions", model=self.decision_model)

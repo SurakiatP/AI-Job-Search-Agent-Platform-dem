@@ -28,6 +28,19 @@ PARSE_ERRORS = frozenset({"input_path_invalid", "input_size_invalid", "document_
 NATIVE_OPERATIONS = ("evaluate_job", "draft_documents", "extract_experience", "tailor_cv", "apply_prepare",
                      "interview_generate", "interview_grade", "interview_report")
 
+EFFORTS = frozenset({"low", "medium", "high", "default"})
+
+
+def reasoning_overrides(env) -> dict[str, str]:
+    """Thinking effort per operation from AI_REASONING_<OPERATION>=low|medium|high|default; anything else is ignored."""
+    found = {}
+    for operation in NATIVE_OPERATIONS:
+        value = str(env.get("AI_REASONING_" + operation.upper(), "")).strip().lower()
+        if value in EFFORTS:
+            found[operation] = value
+    return found
+
+
 class RuntimeErrorCode(RuntimeError):
     """Stable error codes; upstream exception text is private."""
 
@@ -142,6 +155,7 @@ class HermesRuntime:
             "PYTHONPATH": str(self.hermes_source), "PYTHONDONTWRITEBYTECODE": "1",
             "PLATFORM_PROJECT_ID": str(project_id),
             "PLATFORM_CAREER_OPS_SOURCE": str(self.career_ops_source),
+            "PLATFORM_REASONING": json.dumps(reasoning_overrides(os.environ)),
             "TERMINAL_ENV": "docker", "TERMINAL_CWD": "/workspace",
             "TERMINAL_DOCKER_IMAGE": self.image, "TERMINAL_DOCKER_IMAGE_PINNED": "1",
             "TERMINAL_CONTAINER_CPU": "1", "TERMINAL_CONTAINER_MEMORY": "512",

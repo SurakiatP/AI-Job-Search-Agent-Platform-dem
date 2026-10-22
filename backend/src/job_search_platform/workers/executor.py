@@ -294,7 +294,7 @@ class RunExecutor:
             connector = run.config_snapshot.get("connector", {})
             if connector.get("enabled") is not True or connector.get("adapter_key") != "career_ops":
                 raise ServiceError("connector_disabled")
-            provider = self.gateway().provider_config()
+            provider = self.gateway().provider_config(run.operation)
 
             gate_failure = asyncio.Event()
 
@@ -475,7 +475,7 @@ class RunExecutor:
         """LLM extraction of candidate facts; only text found verbatim in the CV is stored (additive)."""
         started = False
         try:
-            provider = self.gateway().provider_config()
+            provider = self.gateway().provider_config(run.operation)
             text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
             cv_path = None if text is not None else await self._materialize(run, sandbox)
             gate_failure = asyncio.Event()
@@ -610,7 +610,7 @@ class RunExecutor:
             interactive = run.input_snapshot.get("tailor_mode") == "interactive"
             job = run.input_snapshot["job"]
             job_text = f"{job['title']}\n{job['description']}"
-            provider = self.gateway().provider_config()
+            provider = self.gateway().provider_config(run.operation)
             base_revision_id, text = await asyncio.to_thread(self._tailor_base, run)
             structured = await asyncio.to_thread(self._structured_base, run, base_revision_id)
             data = resume.ResumeData.model_validate(structured[0]) if structured else None
@@ -750,7 +750,7 @@ class RunExecutor:
         try:
             job = run.input_snapshot["job"]
             questions = run.input_snapshot["questions"]
-            provider = self.gateway().provider_config()
+            provider = self.gateway().provider_config(run.operation)
             text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
             cv_path = None if text is not None else await self._materialize(run, sandbox)
             facts = await asyncio.to_thread(self._facts, run.project_id, f"{job['title']}\n{job['description']}\n" + " ".join(str(q.get("label", "")) for q in questions))
@@ -850,7 +850,7 @@ class RunExecutor:
             inputs = await asyncio.to_thread(self._practice_inputs, run)
             if inputs is None:
                 raise ServiceError("not_found")
-            provider = self.gateway().provider_config()
+            provider = self.gateway().provider_config(run.operation)
             text = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
             cv_path = None if text is not None else await self._materialize(run, sandbox)
             facts = await asyncio.to_thread(self._facts, run.project_id)
