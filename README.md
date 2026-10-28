@@ -93,6 +93,7 @@ The deploy follows the customer's `websearch` template: one published port, data
 **Good to know**
 
 - The app container mounts `/var/run/docker.sock` so the agent runtime can start its tool containers. The platform team must allow this on the runner.
+- Every deploy runs a one-shot `litellm-seed` service that adds the `ai-analyze` model to LiteLLM (needs `OPENROUTER_API_KEY`; without it the model is skipped and AI calls fail). `AI_REASONING_*`, `AI_MODEL_*` and `AI_ANALYZE_UPSTREAM_MODEL` in `ENV_FILE` reach the app and LiteLLM.
 - Data lives under `DATA_PATH` (`postgres`, `minio`, `meili`, `litellm-db`, `private`, `home`). Back up that folder.
 - The deploy has not yet been run end to end on the customer platform. Report any problem from the first run.
 

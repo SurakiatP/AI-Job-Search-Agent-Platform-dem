@@ -92,6 +92,27 @@ services:
       - ./infra/litellm/config.yaml:/app/config.yaml:ro
     networks: [app_net]
 
+  litellm-seed:
+    # One-shot on every deploy: adds the ai-analyze model to LiteLLM (idempotent). The app talks to LiteLLM with the master key.
+    image: ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a
+    restart: "no"
+    depends_on:
+      litellm:
+        condition: service_started
+    entrypoint:
+      - sh
+      - -c
+      - umask 077 && printf '%s' "$$LITELLM_MASTER_KEY" > /tmp/master-key && exec python /seed/seed.py /tmp/app-key
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY}
+      LITELLM_MASTER_KEY_FILE: /tmp/master-key
+      LITELLM_URL: http://litellm:4000
+      OPENROUTER_KEY_PRESENT: ${OPENROUTER_API_KEY:+1}
+      AI_ANALYZE_UPSTREAM_MODEL: ${AI_ANALYZE_UPSTREAM_MODEL:-openrouter/openai/gpt-6-luna}
+    volumes:
+      - ./infra/litellm/seed.py:/seed/seed.py:ro
+    networks: [app_net]
+
   app:
     image: jobsearch-app:${IMAGE_TAG:-1.0.0-0}
     build:
@@ -104,8 +125,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
-      litellm:
-        condition: service_started
+      litellm-seed:
+        condition: service_completed_successfully
     ports:
       - "0.0.0.0:${PORT:?PORT is required}:8000"
     environment:
@@ -133,6 +154,23 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # Thinking effort and model per AI task (empty = default); see .env.example
+      AI_REASONING_EVALUATE_JOB: ${AI_REASONING_EVALUATE_JOB:-}
+      AI_MODEL_EVALUATE_JOB: ${AI_MODEL_EVALUATE_JOB:-}
+      AI_REASONING_DRAFT_DOCUMENTS: ${AI_REASONING_DRAFT_DOCUMENTS:-}
+      AI_MODEL_DRAFT_DOCUMENTS: ${AI_MODEL_DRAFT_DOCUMENTS:-}
+      AI_REASONING_EXTRACT_EXPERIENCE: ${AI_REASONING_EXTRACT_EXPERIENCE:-}
+      AI_MODEL_EXTRACT_EXPERIENCE: ${AI_MODEL_EXTRACT_EXPERIENCE:-}
+      AI_REASONING_TAILOR_CV: ${AI_REASONING_TAILOR_CV:-}
+      AI_MODEL_TAILOR_CV: ${AI_MODEL_TAILOR_CV:-}
+      AI_REASONING_APPLY_PREPARE: ${AI_REASONING_APPLY_PREPARE:-}
+      AI_MODEL_APPLY_PREPARE: ${AI_MODEL_APPLY_PREPARE:-}
+      AI_REASONING_INTERVIEW_GENERATE: ${AI_REASONING_INTERVIEW_GENERATE:-}
+      AI_MODEL_INTERVIEW_GENERATE: ${AI_MODEL_INTERVIEW_GENERATE:-}
+      AI_REASONING_INTERVIEW_GRADE: ${AI_REASONING_INTERVIEW_GRADE:-}
+      AI_MODEL_INTERVIEW_GRADE: ${AI_MODEL_INTERVIEW_GRADE:-}
+      AI_REASONING_INTERVIEW_REPORT: ${AI_REASONING_INTERVIEW_REPORT:-}
+      AI_MODEL_INTERVIEW_REPORT: ${AI_MODEL_INTERVIEW_REPORT:-}
     volumes:
       - type: bind
         source: "${DATA_PATH}"
