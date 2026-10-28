@@ -87,3 +87,28 @@ down:
   environment:
     name: production
     action: access
+
+# Creates the test accounts (already verified, no email needed) inside the running app container.
+# TEST_USERS: GitLab file variable (Protected, scope production), one account per line: "<email> <password>".
+# Passwords need at least 10 characters. Never printed. Run it after the first successful deploy.
+create-test-users:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  resource_group: production
+  script:
+    - |
+      set -eu
+      test -s "$TEST_USERS"
+      while read -r email password; do
+        [ -n "$email" ] || continue
+        printf '%s\n' "$password" | docker exec -i jobsearch-web /app/backend/.venv/bin/python /app/scripts/accounts.py create-user --email "$email" || echo "skipped $email (exists or rejected)"
+      done < "$TEST_USERS"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
