@@ -1,6 +1,7 @@
 # Production deploy on the customer platform. Same shape as 10service/websearch:
 # bind mounts under ${DATA_PATH} (no docker volumes), one published port, external network ai4thai_net.
-# Required variables come from GitLab CI/CD (see README "Deploy on GitLab").
+# Every value comes from the GitLab file variable ENV_FILE, copied to .env by the pipeline (README "Deploy on GitLab").
+# The folders under ${DATA_PATH} must exist before the first deploy (create_host_path is off on purpose).
 
 services:
   postgres:
@@ -11,7 +12,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     volumes:
-      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/postgres:/var/lib/postgresql/data"
+      - type: bind
+        source: "${DATA_PATH:?DATA_PATH is required}/postgres"
+        target: /var/lib/postgresql/data
+        bind:
+          create_host_path: false
     networks: [app_net]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d jobsearch_platform_core02"]
@@ -27,7 +32,11 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
     volumes:
-      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/minio:/data"
+      - type: bind
+        source: "${DATA_PATH}/minio"
+        target: /data
+        bind:
+          create_host_path: false
     networks: [app_net]
 
   meilisearch:
@@ -39,7 +48,11 @@ services:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?Set MEILI_MASTER_KEY}
       MEILI_DB_PATH: /meili_data/data.ms
     volumes:
-      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/meili:/meili_data"
+      - type: bind
+        source: "${DATA_PATH}/meili"
+        target: /meili_data
+        bind:
+          create_host_path: false
     networks: [app_net]
 
   litellm-db:
@@ -50,7 +63,11 @@ services:
       POSTGRES_USER: litellm
       POSTGRES_PASSWORD: ${LITELLM_DB_PASSWORD:?Set LITELLM_DB_PASSWORD}
     volumes:
-      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/litellm-db:/var/lib/postgresql/data"
+      - type: bind
+        source: "${DATA_PATH}/litellm-db"
+        target: /var/lib/postgresql/data
+        bind:
+          create_host_path: false
     networks: [app_net]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
@@ -90,12 +107,12 @@ services:
       litellm:
         condition: service_started
     ports:
-      - "${PORT:-10360}:8000"
+      - "0.0.0.0:${PORT:?PORT is required}:8000"
     environment:
       # HOME and DATA_PATH are the same path inside and outside the container: the agent runtime hands
       # workspace paths to the host Docker, which must find them at the same location.
-      HOME: ${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/home
-      CORE02_PRIVATE_DIR: ${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/private
+      HOME: ${DATA_PATH}/home
+      CORE02_PRIVATE_DIR: ${DATA_PATH}/private
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
@@ -117,7 +134,11 @@ services:
       SMTP_STARTTLS: ${SMTP_STARTTLS:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     volumes:
-      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}:${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}"
+      - type: bind
+        source: "${DATA_PATH}"
+        target: "${DATA_PATH}"
+        bind:
+          create_host_path: false
       - /var/run/docker.sock:/var/run/docker.sock
     networks: [app_net, ai4thai_net]
 
