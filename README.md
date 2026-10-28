@@ -80,7 +80,7 @@ The deploy follows the customer's `websearch` template: one published port, data
 | Domain | `https://jobsearch.aiforthai.in.th` |
 | Image tag | `1.0.0-<pipeline number>`, for example `1.0.0-1` |
 
-**Before the first deploy** the platform team creates the data folder and its sub-folders (the compose file does not create them): `postgres`, `minio`, `meili`, `litellm-db`, `home`, `private` under `DATA_PATH`.
+**Before the first deploy** the platform team creates the data folder and four sub-folders (the compose file does not create them): `postgres`, `minio`, `meili`, `litellm-db` under `DATA_PATH`. MinIO and Meilisearch run as unprivileged users, so those two folders must be writable by them (mode 777 worked in a rehearsal). The app creates `home` and `private` itself; if `private` already exists it must be mode 700, or the app stops with `maintenance_private_directory_permissions`.
 
 **Steps**
 
