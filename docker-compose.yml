@@ -76,7 +76,9 @@ services:
       retries: 10
 
   litellm:
-    image: ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a
+    image: jobsearch-litellm:${IMAGE_TAG:-1.0.0-0}
+    build:
+      context: ./infra/litellm
     restart: unless-stopped
     depends_on:
       litellm-db:
@@ -88,13 +90,11 @@ services:
       LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?Set LITELLM_SALT_KEY}
       DATABASE_URL: postgresql://litellm:${LITELLM_DB_PASSWORD}@litellm-db:5432/litellm
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY}
-    volumes:
-      - ./infra/litellm/config.yaml:/app/config.yaml:ro
     networks: [app_net]
 
   litellm-seed:
     # One-shot on every deploy: adds the ai-analyze model to LiteLLM (idempotent). The app talks to LiteLLM with the master key.
-    image: ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a
+    image: jobsearch-litellm:${IMAGE_TAG:-1.0.0-0}
     restart: "no"
     depends_on:
       litellm:
@@ -109,8 +109,6 @@ services:
       LITELLM_URL: http://litellm:4000
       OPENROUTER_KEY_PRESENT: ${OPENROUTER_API_KEY:+1}
       AI_ANALYZE_UPSTREAM_MODEL: ${AI_ANALYZE_UPSTREAM_MODEL:-openrouter/openai/gpt-6-luna}
-    volumes:
-      - ./infra/litellm/seed.py:/seed/seed.py:ro
     networks: [app_net]
 
   app:
