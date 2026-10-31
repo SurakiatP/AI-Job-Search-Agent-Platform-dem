@@ -16,7 +16,7 @@ export type ResumeData = {
   order: SectionName[]; references_on_request: boolean;
 };
 export type Draft = { id: string; cv_id: string | null; document_id: string | null; name?: string; resume_data: ResumeData; template_id: TemplateId; accent: AccentId; document_language: Lang; ats_safe: boolean; updated_at: string };
-export type TemplateId = 'onyx' | 'kakuna' | 'ditgar' | 'lotus' | 'teak' | 'saffron';
+export type TemplateId = string; // a preset id or 'custom:<theme uuid>' (SPEC-RTH)
 // CR-CVT-01: only these templates print the photo; the two-column ones may confuse ATS.
 export const PHOTO_TEMPLATES: TemplateId[] = ['lotus', 'teak', 'saffron'];
 export const TWO_COLUMN: TemplateId[] = ['ditgar', 'teak'];

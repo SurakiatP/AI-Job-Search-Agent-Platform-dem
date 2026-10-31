@@ -31,7 +31,8 @@ def _checked(call, *args) -> rt.ThemeFile:
 @router.get("/resume-themes")
 async def list_themes(actor=Depends(owner_actor), services: Services = Depends(get_services)):
     _owner_only(actor)
-    presets = [{"id": key, "layout": p.layout, "th": p.th, "en": p.en, "ats_safe": rt.flags(p.layout)[0], "photo": rt.flags(p.layout)[1]}
+    presets = [{"id": key, "layout": p.layout, "th": p.th, "en": p.en, "ats_safe": rt.flags(p.layout)[0], "photo": rt.flags(p.layout)[1],
+                "tokens": rt.TokensModel.model_validate(p.tokens).model_dump()}
                for key, p in rt.PRESETS.items()]
     with services.sessions() as db:
         return {"presets": presets, "custom": [store.view(t) for t in store.list_custom(db, actor.user_id)]}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { AlertTriangle, ArrowDown, ArrowLeft, ArrowUp, Eye, EyeOff, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Eye, EyeOff, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { apiRequest } from '../../lib/api';
 import { ApiError } from '../../lib/api-types';
@@ -11,7 +11,9 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog';
 import { BusyNote } from '../../components/BusyNote';
-import { ACCENTS, FIELDS, PERSONAL_KEYS, PHOTO_TEMPLATES, TWO_COLUMN, emptyItem, normalize, type Draft, type Field, type Item, type Lang, type ListSection, type ResumeData, type SectionName, type TemplateId } from './sections';
+import { ACCENTS, FIELDS, PERSONAL_KEYS, emptyItem, normalize, type Draft, type Field, type Item, type Lang, type ListSection, type ResumeData, type SectionName } from './sections';
+import { ThemePanel } from '../themes/ThemePanel';
+import { isCustom, type Working } from '../themes/themes';
 import { useResource } from '../projects/useResource';
 import { copy } from './copy';
 import { PhotoField } from './PhotoField';
@@ -19,7 +21,6 @@ import { AiLabel } from '@/components/AiMark';
 
 type Kind = 'cv' | 'document';
 type SaveState = 'saved' | 'saving' | 'dirty' | 'offline' | 'conflict' | 'invalid';
-const TEMPLATES: TemplateId[] = ['onyx', 'kakuna', 'ditgar', 'lotus', 'teak', 'saffron'];
 // Save shortly after typing stops; preview right after each save, at most once per PREVIEW_GAP_MS
 // (the server allows 20 previews a minute).
 const SAVE_DELAY_MS = 400;
@@ -55,6 +56,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
   const lastPreview = useRef(0);
   const previewBusy = useRef(false);
   const previewAgain = useRef(false);
+  const working = useRef<Working | null>(null); // theme tokens being tried in the customiser, not saved yet
   const [pages, setPages] = useState(0);
 
   const load = useCallback(async () => {
@@ -74,7 +76,8 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     previewBusy.current = true; lastPreview.current = Date.now();
     setPreviewing(true); setPreviewError(false);
     try {
-      const blob = await apiRequest<Blob>(`${base}/preview`, { method: 'POST' });
+      const trying = working.current;
+      const blob = await apiRequest<Blob>(trying ? `${base}/theme-preview` : `${base}/preview`, trying ? { method: 'POST', body: JSON.stringify(trying) } : { method: 'POST' });
       setPages(await pageCount(blob));
       setPdfUrl(old => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(blob); });
     } catch { setPreviewError(true); }
@@ -89,6 +92,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     previewTimer.current = window.setTimeout(() => void preview(), wait);
   }, [preview]);
   useEffect(() => { if (draft && !pdfUrl && !previewing && !previewError) void preview(); }, [draft, pdfUrl, previewing, previewError, preview]);
+  const tryTheme = useCallback((next: Working | null) => { working.current = next; schedulePreview(); }, [schedulePreview]);
   useEffect(() => () => { setPdfUrl(old => { if (old) URL.revokeObjectURL(old); return null; }); }, []);
 
   const persist = useCallback(async () => {
@@ -150,7 +154,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     {pages > 2 && <p role="note" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-sm">{c.tooLong}</p>}
     <div className="relative overflow-hidden rounded-lg border bg-white" style={{ aspectRatio: '1 / 1.414' }}>
       {pdfUrl ? <iframe title={c.preview} src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`} className="size-full border-0" /> : <div className="grid size-full place-items-center p-4 text-sm text-gray-600">{c.loading}</div>}
-      {previewing && pdfUrl && <div className="absolute right-2 top-2 rounded bg-black/70 px-2 py-1 text-xs text-white">{c.rendering}</div>}
+      {previewing && pdfUrl && <div className="absolute right-2 top-2 rounded bg-primary px-2 py-1 text-xs text-primary-foreground">{c.rendering}</div>}
     </div>
   </section>;
 
@@ -177,20 +181,17 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     {published !== null && <div role="status" className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm">{kind === 'cv' ? c.publishedCv(published) : c.publishedDoc(published)} <Link className="font-medium text-primary underline" to={back}>{c.open}</Link></div>}
     {kind === 'document' && <p className="rounded-lg border bg-muted/40 p-3 text-sm">{c.docNote}</p>}
 
-    <div className="grid gap-3 rounded-xl border bg-card p-4 lg:grid-cols-[auto_auto_1fr] lg:items-end">
-      <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.template}</legend>
-        <div className="flex flex-wrap gap-2">{TEMPLATES.map(t => <Button key={t} size="sm" variant={draft.template_id === t ? 'default' : 'outline'} aria-pressed={draft.template_id === t} onClick={() => change({ ...draft, template_id: t })}>
-          {c.templates[t]}{PHOTO_TEMPLATES.includes(t) && <span className="text-xs font-normal opacity-75">· {c.withPhoto}</span>}</Button>)}</div>
-      </fieldset>
-      <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.accent}</legend>
+    <ThemePanel templateId={draft.template_id} accent={draft.accent} hasPhoto={!!r.basics.photo} locale={locale}
+      onPick={id => change({ ...draft, template_id: id })} onWorking={tryTheme} />
+
+    <div className="grid gap-3 rounded-xl border bg-card p-4 lg:grid-cols-[auto_1fr] lg:items-end">
+      {!isCustom(draft.template_id) && <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.accent}</legend>
         <div className="flex flex-wrap gap-2">{ACCENTS.map(a => <button key={a.id} type="button" aria-label={c.accents[a.id]} aria-pressed={draft.accent === a.id} onClick={() => change({ ...draft, accent: a.id })}
           className="grid size-11 place-items-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground"><span className="size-7 rounded-full" style={{ background: a.hex }} /></button>)}</div>
-      </fieldset>
+      </fieldset>}
       <div className="grid gap-2 lg:w-56"><Label htmlFor="cvb-lang">{c.docLanguage}</Label>
         <select id="cvb-lang" className="min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={draft.document_language} onChange={e => change({ ...draft, document_language: e.target.value as Lang })}>
           <option value="th">ไทย</option><option value="en">English</option></select></div>
-      {r.basics.photo && !PHOTO_TEMPLATES.includes(draft.template_id) && <p className="flex items-start gap-2 text-sm text-muted-foreground lg:col-span-3"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />{c.photoHidden}</p>}
-      {TWO_COLUMN.includes(draft.template_id) && <p className="flex items-start gap-2 text-sm text-muted-foreground lg:col-span-3"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />{c.atsWarning}</p>}
     </div>
 
     <div className="flex gap-2 lg:hidden" role="tablist">
