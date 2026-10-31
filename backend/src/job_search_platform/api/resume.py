@@ -180,14 +180,14 @@ class ThemePreview(_Body):
 
 async def _theme_preview(kind, project_id, owner_id, body: ThemePreview, actor, services):
     """Preview the saved draft with tokens that are not saved yet (the theme builder); invalid tokens render nothing."""
-    try:
-        if body.layout not in rs.TEMPLATES:
-            raise rt.ThemeError("layout")
-        tokens = rt.validate_tokens(body.tokens).model_dump()
-    except rt.ThemeError as error:
-        raise ServiceError("theme_invalid", fields={"rule": error.rule}) from None
     with services.sessions.begin() as db:
-        draft = _draft(db, actor, project_id, **_key(kind, owner_id))
+        draft = _draft(db, actor, project_id, **_key(kind, owner_id))  # access first: another owner gets 404, not a validation error
+        try:
+            if body.layout not in rs.TEMPLATES:
+                raise rt.ThemeError("layout")
+            tokens = rt.validate_tokens(body.tokens).model_dump()
+        except rt.ThemeError as error:
+            raise ServiceError("theme_invalid", fields={"rule": error.rule}) from None
         rate_limits.hit(db, "resume_preview", str(actor.user_id))
         data, lang = parse_resume(draft.resume_data), draft.document_language
     return _pdf(await _render(services, project_id, data, body.layout, "indigo", lang, tokens))

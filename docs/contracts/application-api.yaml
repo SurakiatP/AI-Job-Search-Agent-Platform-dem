@@ -934,6 +934,80 @@ paths:
       description: Owner-only list of CV builder templates (id, ats_safe, photo = prints basics.photo), the 6 accent colours (id, hex) and the 77 Thai provinces (id TH-nn, en, th) for the address province field.
       responses:
         '200': {description: Templates and accents}
+  /resume-themes:
+    get:
+      tags: [files]
+      description: Owner-only. Lists the 12 preset themes and the owner's custom themes (id, name, layout, tokens, ats_safe, photo). SPEC-RTH.
+      responses:
+        '200': {description: Presets and custom themes}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Saves a custom theme from name, layout and tokens (accent, font_pair, size, density, heading_style).
+        422 theme_invalid (fields.rule names the failing field); 409 duplicate (name taken) or theme_limit (20 per owner).
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        '201': {description: Saved theme}
+  /resume-themes/import:
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Imports a theme file (JSON, at most 4096 bytes, format jsp-resume-theme version 1). The whole file is validated first;
+        422 theme_invalid with fields.rule saves nothing. A taken name gets a numeric suffix.
+      requestBody:
+        required: true
+        content: {multipart/form-data: {schema: {type: object, properties: {file: {type: string, format: binary}}, required: [file]}}}
+      responses:
+        '201': {description: Imported theme}
+  /resume-themes/{theme_id}/export:
+    parameters: [{name: theme_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      tags: [files]
+      description: Owner-only. Downloads the theme as a JSON file (theme data only, no owner or CV data). 404 for another owner's theme.
+      responses:
+        '200': {description: Theme file, content: {application/json: {schema: {type: object}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /resume-themes/{theme_id}:
+    parameters: [{name: theme_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    delete:
+      tags: [files]
+      description: Owner-only. Deletes a custom theme. 409 theme_in_use (fields.used_by) while a draft or published version uses it.
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: theme_in_use}
+  /projects/{project_id}/cvs/{cv_id}/draft/theme-preview:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. Renders the saved draft with theme tokens that are not saved yet and returns a PDF (not stored). 422 theme_invalid renders nothing; 502 render_failed.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ThemePreview'}}}
+      responses:
+        '200': {description: PDF, content: {application/pdf: {schema: {type: string, format: binary}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: theme_invalid}
+        '502': {description: render_failed}
+  /projects/{project_id}/documents/{document_id}/draft/theme-preview:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: document_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. Same as the CV theme preview, for a tailored document draft.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ThemePreview'}}}
+      responses:
+        '200': {description: PDF, content: {application/pdf: {schema: {type: string, format: binary}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: theme_invalid}
+        '502': {description: render_failed}
   /projects/{project_id}/cvs/builder:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     post:
@@ -2268,10 +2342,17 @@ components:
       required: [resume_data, template_id, accent, document_language, updated_at]
       properties:
         resume_data: {type: object, additionalProperties: true}
-        template_id: {type: string, enum: [onyx, kakuna, ditgar, lotus, teak, saffron]}
+        template_id: {type: string, description: 'A preset id (onyx, kakuna, ditgar, lotus, teak, saffron, paper, compact, banner, classic, portrait, studio) or custom:<theme uuid>.'}
         accent: {type: string, enum: [indigo, blue, teal, green, rose, slate]}
         document_language: {type: string, enum: [th, en]}
         updated_at: {type: string, format: date-time}
+    ThemePreview:
+      type: object
+      additionalProperties: false
+      required: [layout, tokens]
+      properties:
+        layout: {type: string}
+        tokens: {type: object, additionalProperties: true}
     CVUpdate:
       type: object
       additionalProperties: false
