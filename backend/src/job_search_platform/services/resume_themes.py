@@ -97,6 +97,10 @@ def validate_file(raw: bytes) -> ThemeFile:
         raise ThemeError("not_json") from None
     if not isinstance(body, dict):
         raise ThemeError("not_object")
+    return check(body)
+
+
+def check(body: dict) -> ThemeFile:
     try:
         return ThemeFile.model_validate(body)
     except ValidationError as error:
