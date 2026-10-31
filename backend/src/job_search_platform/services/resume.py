@@ -409,15 +409,27 @@ async def load_photo(db_factory, object_store, project_id, data: ResumeData, tem
     return body if photo_type(body) else None
 
 
-def render_bundle(data: ResumeData, template: str, accent: str, lang: str, photo: bytes | None = None) -> dict[str, bytes]:
-    """Files for one Typst compile: user data only as JSON, read by the template with json() and printed as text."""
-    if template not in TEMPLATES or accent not in ACCENTS or lang not in LABELS:
+def render_bundle(data: ResumeData, template: str, accent: str, lang: str, photo: bytes | None = None,
+                  tokens: dict | None = None) -> dict[str, bytes]:
+    """Files for one Typst compile: user data only as JSON, read by the template with json() and printed as text.
+    `tokens` (SPEC-RTH) are validated theme values; only the ones that differ from today's defaults reach theme.json."""
+    if template not in TEMPLATES or lang not in LABELS or (tokens is None and accent not in ACCENTS):
         raise ValueError("render_options")
+    extra: dict = {}
+    if tokens is not None:
+        from job_search_platform.services import resume_themes as rt
+
+        try:
+            checked = rt.validate_tokens(tokens)
+        except rt.ThemeError:
+            raise ValueError("render_options") from None
+        defaults = rt.TokensModel.model_fields
+        extra = {k: v for k, v in checked.model_dump().items() if k != "accent" and v != defaults[k].default}
     payload = data.model_dump()
     if data.references_on_request:
         payload["sections"]["references"]["items"] = []
-    theme = {"accent": ACCENTS[accent], "lang": lang, "references_on_request": data.references_on_request,
-             "address": address_text(data, lang), "personal": personal_rows(data, lang), "photo": None}
+    theme = {"accent": ACCENTS[accent] if tokens is None else checked.accent, "lang": lang, "references_on_request": data.references_on_request,
+             "address": address_text(data, lang), "personal": personal_rows(data, lang), "photo": None, **extra}
     kind = photo_type(photo) if photo and template in PHOTO_TEMPLATES else None
     files = {"resume.json": json.dumps(payload, ensure_ascii=False).encode(),
              "labels.json": json.dumps(LABELS[lang], ensure_ascii=False).encode(),
