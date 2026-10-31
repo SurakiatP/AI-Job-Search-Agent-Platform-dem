@@ -60,6 +60,12 @@ def test_tc_rth_02_non_json_and_oversize_are_rejected(raw):
         rt.validate_file(raw)
 
 
+def test_tc_rth_02_a_valid_theme_over_4096_bytes_is_rejected_for_its_size():
+    with pytest.raises(rt.ThemeError) as caught:
+        rt.validate_file(_file() + b" " * 4100)
+    assert caught.value.rule == "file_size"
+
+
 def test_tc_rth_02_good_file_is_accepted_and_rule_names_the_field():
     theme = rt.validate_file(_file())
     assert (theme.name, theme.layout, theme.tokens.accent) == ("My theme", "onyx", "#3730A3")
