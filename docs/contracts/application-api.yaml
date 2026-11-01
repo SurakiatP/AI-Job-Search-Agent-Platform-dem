@@ -1017,7 +1017,7 @@ paths:
       description: Owner-only. The chosen experience items (1-200 ids of this project) as resume sections. Nothing is saved; the builder merges them into the draft.
       requestBody:
         required: true
-        content: {application/json: {schema: {type: object, additionalProperties: false, required: [item_ids], properties: {item_ids: {type: array, minItems: 1, maxItems: 200, items: {type: string, format: uuid}}}}}}
+        content: {application/json: {schema: {$ref: '#/components/schemas/FromExperience'}}}
       responses:
         '200': {description: "{resume_data}", content: {application/json: {schema: {type: object}}}}
         '404': {$ref: '#/components/responses/NotFound'}
@@ -2360,6 +2360,12 @@ components:
         accent: {type: string, enum: [indigo, blue, teal, green, rose, slate]}
         document_language: {type: string, enum: [th, en]}
         updated_at: {type: string, format: date-time}
+    FromExperience:
+      type: object
+      additionalProperties: false
+      required: [item_ids]
+      properties:
+        item_ids: {type: array, minItems: 1, maxItems: 200, items: {type: string, format: uuid}}
     ThemePreview:
       type: object
       additionalProperties: false
