@@ -2,6 +2,7 @@
   "pageTitle": "Applications",
   "addPosting": "Add posting",
   "closeForm": "Close form",
+  "missingFields": "Enter the job title and the posting text.",
   "listView": "List",
   "boardView": "Board",
   "listLabel": "Applications list",

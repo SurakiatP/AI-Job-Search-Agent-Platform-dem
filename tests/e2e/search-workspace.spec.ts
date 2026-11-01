@@ -476,3 +476,10 @@ test('a Thai query shows the Thai-postings hint with real counts; an English que
   await expect(page.getByRole('heading', { name: 'Job search' })).toBeVisible();
   await expect(page.getByTestId('thai-search-hint')).toHaveCount(0);
 });
+
+test('a Thai query with no results shows the Thai-postings hint exactly once', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await installSearchFixture(page, []);
+  await page.goto(`/app/projects/${projectId}/search?q=${encodeURIComponent('วิเคราะห์ข้อมูล')}`);
+  await expect(page.getByTestId('thai-search-hint')).toHaveCount(1);
+});

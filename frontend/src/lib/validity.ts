@@ -3,11 +3,13 @@
 const text = {
   th: {
     missing: 'กรุณากรอกช่องนี้', email: 'กรุณากรอกอีเมลให้ถูกต้อง เช่น name@example.com', url: 'กรุณากรอกลิงก์ที่ขึ้นต้นด้วย http:// หรือ https://',
-    pattern: 'กรุณากรอกให้ตรงรูปแบบ', range: (min: string, max: string) => `กรุณากรอกค่าระหว่าง ${min}–${max}`, bad: 'ค่านี้ไม่ถูกต้อง',
+    pattern: 'กรุณากรอกให้ตรงรูปแบบ', short: (n: number) => `กรอกอย่างน้อย ${n} ตัวอักษร`, step: 'กรอกเป็นจำนวนเต็ม',
+    range: (min: string, max: string) => min && max ? `กรุณากรอกค่าระหว่าง ${min}–${max}` : min ? `กรุณากรอกค่าอย่างน้อย ${min}` : `กรุณากรอกค่าไม่เกิน ${max}`, bad: 'ค่านี้ไม่ถูกต้อง',
   },
   en: {
     missing: 'Please fill in this field.', email: 'Enter a valid email, e.g. name@example.com.', url: 'Enter a link that starts with http:// or https://.',
-    pattern: 'Match the requested format.', range: (min: string, max: string) => `Enter a value between ${min} and ${max}.`, bad: 'This value is not valid.',
+    pattern: 'Match the requested format.', short: (n: number) => `Enter at least ${n} characters.`, step: 'Enter a whole number.',
+    range: (min: string, max: string) => min && max ? `Enter a value between ${min} and ${max}.` : min ? `Enter a value of ${min} or more.` : `Enter a value of ${max} or less.`, bad: 'This value is not valid.',
   },
 };
 
@@ -18,10 +20,12 @@ function messageFor(el: Field): string {
   const v = el.validity;
   if (v.valueMissing) return m.missing;
   if (v.typeMismatch) return (el as HTMLInputElement).type === 'url' ? m.url : m.email;
-  if (v.patternMismatch || v.tooShort) return el.title || m.pattern;
-  if (v.rangeUnderflow || v.rangeOverflow || v.stepMismatch) {
+  if (v.patternMismatch) return el.title || m.pattern;
+  if (v.tooShort) return m.short((el as HTMLInputElement).minLength);
+  if (v.stepMismatch) return m.step;
+  if (v.rangeUnderflow || v.rangeOverflow) {
     const input = el as HTMLInputElement;
-    return m.range(input.min || '–', input.max || '–');
+    return m.range(input.min, input.max);
   }
   return m.bad;
 }

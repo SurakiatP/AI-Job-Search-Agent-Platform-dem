@@ -59,9 +59,9 @@ test('TC-CVB-04 template and accent choices are saved; ditgar warns about ATS', 
   await useSyntheticApplication(page);
   const state = await builderApi(page);
   await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
-  await page.getByRole('button', { name: 'Ditgar' }).click();
+  await page.getByRole('button', { name: /^Ditgar/ }).click();
   await page.getByRole('button', { name: 'Teal' }).click();
-  await expect(page.getByText(/Two columns: some applicant tracking systems/)).toBeVisible();
+  await expect(page.getByText(/This theme does not read in order/)).toBeVisible();
   await expect.poll(() => state.puts.at(-1)?.template_id).toBe('ditgar');
   expect(state.puts.at(-1).accent).toBe('teal');
 });
@@ -99,7 +99,7 @@ test('builder fits a phone in Thai with edit and preview tabs', async ({ page })
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
   await expect(page.getByRole('heading', { name: 'สร้าง CV', level: 1 })).toBeVisible();
-  await page.getByRole('tab', { name: 'พรีวิว' }).click();
+  await page.getByRole('button', { name: 'พรีวิว' }).click();
   await expect(page.getByTitle('พรีวิว')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
@@ -206,7 +206,7 @@ test('F3 saving a theme without a name focuses the field and links the error to 
   const state = await builderApi(page);
   await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
   await page.getByRole('button', { name: 'Customise this theme' }).click();
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Save as my theme' }).click();
   const name = page.locator('#theme-name');
   await expect(name).toBeFocused();
   await expect(name).toHaveAttribute('aria-invalid', 'true');

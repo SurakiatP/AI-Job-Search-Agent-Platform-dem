@@ -149,8 +149,8 @@ export function ProfilePage() {
     setExtractError(false);
     try { await apiRequest(`/async/projects/${projectId}/cvs/${cv.id}/experience-extractions`, { method: 'POST' }); bank.reload(); } catch { setExtractError(true); }
   }
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
-  const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const date = new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', { dateStyle: 'medium' });
+  const dateTime = new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
   const base = `/app/projects/${projectId}`;
   const list = cvs.data ?? [];
   const primary = list.find(cv => cv.is_primary);
@@ -198,7 +198,7 @@ export function ProfilePage() {
                 <div className="min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="min-w-0 break-words font-semibold [overflow-wrap:anywhere]">{cv.name}</h3>{cv.is_primary && <Badge variant="success"><Star className="me-1 size-3" aria-hidden="true" />{c.primary}</Badge>}</div>
                   {latest && <p className="mt-0.5 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{latest.original_filename} · {dateTime.format(new Date(latest.created_at))} · {formatSize(latest.size_bytes)}</p>}
-                  {!latest && <p className="mt-0.5 text-sm text-muted-foreground">{w('createdAt', { date: dateTime.format(new Date(cv.created_at)) })}</p>}
+                  {!latest && !Number.isNaN(new Date(cv.created_at).getTime()) && <p className="mt-0.5 text-sm text-muted-foreground">{w('createdAt', { date: dateTime.format(new Date(cv.created_at)) })}</p>}
                   {cv.in_use && <p className="mt-0.5 text-xs text-muted-foreground">{c.inUse}</p>}
                 </div>
                 <p className="text-sm"><span className="text-muted-foreground xl:hidden">{w('colVersion')}: </span>{latest ? <>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>}</> : '—'}</p>

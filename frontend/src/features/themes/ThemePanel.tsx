@@ -1,5 +1,6 @@
 // SPEC-RTH theme picker and builder: 1 choose a theme, 2 customise it with a live server preview, 3 save and share as a file.
 import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { AlertTriangle, Check, Download, Palette, Trash2, Upload } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -81,7 +82,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
     try { await action(); } catch (error) { setNote({ kind: 'error', text: explain(error) }); } finally { setBusy(false); }
   }
   const saveTheme = () => {
-    if (edit && !edit.name.trim()) { setNameMissing(true); nameInput.current?.focus(); return; }
+    if (edit && !edit.name.trim()) { flushSync(() => setNameMissing(true)); nameInput.current?.focus(); return; }
     return run(async () => {
     if (!edit) return;
     const saved = await sendJson<Custom>('/resume-themes', 'POST', { name: edit.name.trim(), layout: edit.layout, tokens: edit.tokens });

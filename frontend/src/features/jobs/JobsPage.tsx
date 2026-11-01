@@ -38,14 +38,15 @@ export function JobsPage() {
   const [company, setCompany] = useDraft(projectId, 'new-job', 'company');
   const [sourceUrl, setSourceUrl] = useDraft(projectId, 'new-job', 'source_url');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<'save' | 'source' | null>(null);
+  const [error, setError] = useState<'save' | 'source' | 'missing' | null>(null);
   const [open, setOpen] = useState(() => Boolean(title || description || company || sourceUrl));
   if (result.status === 'loading' && !result.data) return <LoadingState />;
   if (result.status === 'error' && !result.data) return <ErrorState onRetry={result.reload} />;
   const jobs = result.data ?? [];
   const showForm = open;
   async function save() {
-    if (busy || !title.trim() || !description.trim()) return;
+    if (busy) return;
+    if (!title.trim() || !description.trim()) { setError('missing'); return; }
     const safeSource = sourceUrl.trim() ? safeHttpUrl(sourceUrl.trim()) : null;
     if (sourceUrl.trim() && !safeSource) {
       setError('source');
@@ -75,7 +76,7 @@ export function JobsPage() {
           <div className="grid gap-2"><Label htmlFor="job-company">{t('workflow.company')}</Label><Input id="job-company" value={company} maxLength={300} onChange={event => setCompany(event.target.value)} /></div>
           <div className="grid gap-2"><Label htmlFor="job-source-url">{t('workflow.sourceUrl')}</Label><Input id="job-source-url" type="text" inputMode="url" aria-invalid={error === 'source'} value={sourceUrl} maxLength={2048} onChange={event => { setSourceUrl(event.target.value); if (error === 'source') setError(null); }} /></div>
           <div className="grid gap-2"><Label htmlFor="job-description">{t('workflow.posting')}</Label><Textarea id="job-description" rows={8} maxLength={50000} value={description} onChange={event => setDescription(event.target.value)} required /></div>
-          {error && <p role="alert" className="text-sm text-destructive">{appT(error === 'source' ? 'invalidSource' : 'savePostingError')}</p>}
+          {error && <p role="alert" className="text-sm text-destructive">{appT(error === 'source' ? 'invalidSource' : error === 'missing' ? 'missingFields' : 'savePostingError')}</p>}
           <div><Button type="submit" busy={busy} disabled={busy}>{appT('savePosting')}</Button></div>
         </form>
       </CardContent>

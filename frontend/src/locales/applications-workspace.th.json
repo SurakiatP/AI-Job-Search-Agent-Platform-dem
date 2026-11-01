@@ -2,6 +2,7 @@
   "pageTitle": "ใบสมัคร",
   "addPosting": "เพิ่มประกาศงาน",
   "closeForm": "ปิดฟอร์ม",
+  "missingFields": "กรอกชื่อตำแหน่งและรายละเอียดประกาศ",
   "listView": "รายการ",
   "boardView": "บอร์ด",
   "listLabel": "รายการใบสมัคร",

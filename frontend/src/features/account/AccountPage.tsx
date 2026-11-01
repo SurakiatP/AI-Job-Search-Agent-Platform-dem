@@ -87,7 +87,7 @@ function EmailSection() {
       const result = await forgotPassword(account.email);
       setReset(result.mail_enabled === false ? { kind: 'off' } : { kind: 'sent', text: t('account.passwordResetSent', { email: account.email }) });
     } catch (error) {
-      setReset({ kind: 'error', text: error instanceof ApiError && error.code === 'rate_limited' ? t('errors.rate_limited', { seconds: error.fields?.retry_after ?? '60' }) : t('errors.request_failed') });
+      setReset({ kind: 'error', text: error instanceof ApiError && error.code === 'rate_limited' ? t('errors.rate_limited_minutes', { minutes: Math.ceil(Number(error.fields?.retry_after ?? 60) / 60) }) : t('errors.request_failed') });
     }
   }
   async function resend() {
@@ -105,12 +105,13 @@ function EmailSection() {
       <div className="grid w-full gap-2 border-t pt-3">
         <p className="text-sm font-medium">{t('account.passwordLabel')}</p>
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" size="sm" variant="outline" busy={reset.kind === 'busy'} disabled={reset.kind === 'busy'} onClick={() => void sendReset()}>{t('account.passwordReset')}</Button>
+          <Button type="button" size="sm" variant="outline" busy={reset.kind === 'busy'} disabled={reset.kind === 'busy' || reset.kind === 'sent'} onClick={() => void sendReset()}>{t('account.passwordReset')}</Button>
           <span className="text-sm text-muted-foreground">{t('account.passwordResetHint')}</span>
         </div>
-        <div role={reset.kind === 'error' ? 'alert' : 'status'} className={reset.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>
-          {reset.kind === 'off' ? <>{mailOff.mailOffBody} {mailOff.mailOffNext}</> : reset.text}
+        <div role="status" className="text-sm text-muted-foreground">
+          {reset.kind === 'off' ? <>{mailOff.mailOffBody} {mailOff.mailOffNext}</> : reset.kind === 'sent' ? reset.text : null}
         </div>
+        {reset.kind === 'error' && <p role="alert" className="text-sm text-destructive">{reset.text}</p>}
       </div>
     </CardContent>
   </Card>;

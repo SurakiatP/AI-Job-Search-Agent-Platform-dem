@@ -643,7 +643,7 @@ export function SearchPage() {
   const waiting = !sample && !awaiting && (status === 'loading' || (smartActive && cvs.status === 'loading'));
   const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < total;
 
-  return <section className="grid gap-4 sm:gap-6">
+  return <section className="grid gap-3 sm:gap-6">
     <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
     <PageHeader icon={Search} title={c.title} lede={grandTotal != null ? (!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
       ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))) : undefined} />
@@ -655,7 +655,7 @@ export function SearchPage() {
           className={`min-h-11 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? '' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>;
       })}
     </div>
-    <p className="-mt-4 text-sm text-muted-foreground">{tSearch(smart ? 'controls.modeHintMatch' : 'controls.modeHintSearch')}</p>
+    <p className="-mt-2 text-sm text-muted-foreground sm:-mt-4">{tSearch(smart ? 'controls.modeHintMatch' : 'controls.modeHintSearch')}</p>
     {smartActive && ai?.status !== 'unavailable' && <p className="-mt-3 text-xs text-muted-foreground">{c.privacy}</p>}
     {smartActive && gate.blocked && gate.title && <p role="status" className="-mt-3 text-xs text-warning">{gate.title}</p>}
 
@@ -772,7 +772,6 @@ export function SearchPage() {
       {profiling ? <AgentSteps c={c} step={0} scored={0} total={0} /> : waiting ? loadingList : visible.length === 0 && smartActive && ranking && !q && !category && ai?.status === 'missing' ? null : visible.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
         <p className="font-medium">{c.none}</p>
         <p className="text-sm text-muted-foreground">{c.noneNext}</p>
-        {thaiHintLine}
         <Button variant="outline" size="sm" onClick={clear} disabled={!filtered}>{c.clear}</Button>
       </div> : showMobileDetail && selected ? <section className="grid min-w-0 gap-4" aria-label={selected.title}>
         <Button ref={detailBack} type="button" variant="outline" className="justify-self-start" onClick={() => {

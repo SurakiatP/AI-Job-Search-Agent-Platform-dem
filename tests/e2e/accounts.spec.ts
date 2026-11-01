@@ -287,7 +287,7 @@ test('a failed verify link offers a new link only when signed in', async ({ page
   expect(resent).toBe(true);
 });
 
-test('signup and forgot password say so when the server cannot send email', async ({ page }) => {
+test('signup and forgot password say so when email sending is not set up', async ({ page }) => {
   await mockApi(page, true);
   const off = (route: import('@playwright/test').Route) => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email', mail_enabled: false }) });
   await page.route('**/v1/auth/signup', off);
@@ -328,6 +328,6 @@ test('F6 with email turned off the account page explains it instead of claiming 
   await page.route('**/v1/auth/password/forgot', route => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email', mail_enabled: false }) }));
   await signInToAccount(page);
   await page.getByRole('button', { name: 'Email me a password reset link' }).click();
-  await expect(page.getByText('This server cannot send email yet')).toBeVisible();
+  await expect(page.getByText('Email sending is not set up yet')).toBeVisible();
   await expect(page.getByText(/Link sent to/)).toHaveCount(0);
 });

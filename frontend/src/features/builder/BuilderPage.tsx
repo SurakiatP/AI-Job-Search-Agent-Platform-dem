@@ -209,8 +209,8 @@ export function BuilderPage({ kind }: { kind: Kind }) {
           <option value="th">ไทย</option><option value="en">English</option></select></div>
     </div>
 
-    <div className="flex gap-2 lg:hidden" role="tablist">
-      {(['edit', 'preview'] as const).map(t => <Button key={t} role="tab" aria-selected={tab === t} variant={tab === t ? 'default' : 'outline'} className="flex-1" onClick={() => setTab(t)}>{t === 'edit' ? c.edit : c.preview}</Button>)}
+    <div className="flex gap-2 lg:hidden">
+      {(['edit', 'preview'] as const).map(t => <Button key={t} aria-pressed={tab === t} variant={tab === t ? 'default' : 'outline'} className="flex-1" onClick={() => setTab(t)}>{t === 'edit' ? c.edit : c.preview}</Button>)}
     </div>
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
       <div className={`grid content-start gap-3 ${tab === 'edit' ? '' : 'hidden lg:grid'}`}>

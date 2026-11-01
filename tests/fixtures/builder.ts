@@ -13,7 +13,7 @@ export const empty = () => ({
 const presetTokens = { accent: '#4338CA', font_pair: 'sans', size: 'normal', density: 'normal', heading_style: 'plain' };
 export const themeList = () => ({
   presets: [['onyx', 'Onyx', true], ['kakuna', 'Kakuna', true], ['ditgar', 'Ditgar', false], ['lotus', 'Lotus', true], ['teak', 'Teak', true], ['saffron', 'Saffron', true]]
-    .map(([id, name, ats_safe]) => ({ id, layout: id, th: name, en: name, ats_safe, photo: false, tokens: presetTokens })),
+    .map(([id, name, ats_safe]) => ({ id, layout: id, th: name, en: name, ats_safe, photo: ['lotus', 'teak', 'saffron'].includes(id as string), tokens: presetTokens })),
   custom: [],
 });
 

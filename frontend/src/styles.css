@@ -262,7 +262,7 @@ main[data-stage='brand'] { --stage: var(--primary); }
 input, textarea { caret-color: var(--primary); }
 * { scrollbar-color: color-mix(in srgb, var(--muted-foreground) 45%, var(--background)) var(--background); scrollbar-width: thin; }
 @media (max-width: 639px) {
-  .workspace-page-header { flex-direction: column; gap: 16px; }
+  .workspace-page-header { flex-direction: column; gap: 8px; margin-bottom: 0; }
 }
 
 @layer base {

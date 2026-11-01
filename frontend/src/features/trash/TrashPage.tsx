@@ -28,13 +28,14 @@ export function TrashPage() {
   // Decided once, so emptying the open tab does not make the page jump.
   const picked = useRef<string | null>(null);
   if (loaded && !picked.current) picked.current = firstFilled;
+  const settled = [sessions, documents, cvs].every(r => r.status !== 'loading' || r.data);
   const tab = (['evaluations', 'documents', 'cvs'] as const).find(name => name === params.get('tab')) ?? picked.current ?? 'evaluations';
   const changed = (reload: () => void) => () => { reload(); notifyTrashChanged(); };
   const count = (n?: number) => <span className="ms-1.5 rounded-full bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">{n ?? 0}</span>;
   const tabClass = 'min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
   return <section className="grid min-w-0 gap-6">
     <PageHeader icon={Trash2} title={t('trash.title')} lede={t('trash.subtitle')} />
-    <Tabs value={tab} onValueChange={value => setParams({ tab: value }, { replace: true })} className="grid min-w-0 gap-4">
+    {!params.get('tab') && !settled ? <LoadingState /> : <Tabs value={tab} onValueChange={value => setParams({ tab: value }, { replace: true })} className="grid min-w-0 gap-4">
       <TabsList className="h-auto w-full justify-start gap-1 rounded-none border-b bg-transparent p-0">
         <TabsTrigger value="evaluations" className={tabClass}>{t('nav.evaluate')}{count(sessions.data?.length)}</TabsTrigger>
         <TabsTrigger value="documents" className={tabClass}>{t('nav.documents')}{count(documents.data?.length)}</TabsTrigger>
@@ -52,6 +53,6 @@ export function TrashPage() {
         {cvs.status === 'loading' && !cvs.data ? <LoadingState /> : cvs.status === 'error' ? <ErrorState onRetry={cvs.reload} /> :
           <CvTrash projectId={projectId} locale={locale} items={cvs.data ?? []} onChanged={changed(cvs.reload)} />}
       </TabsContent>
-    </Tabs>
+    </Tabs>}
   </section>;
 }
