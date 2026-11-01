@@ -56,7 +56,7 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
       <CardContent>
         <form onSubmit={create} className="grid gap-4">
           <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.capabilities}</legend>
-            {CAPS.map(cap => <label key={cap} className="flex min-h-10 items-center gap-2 text-sm">
+            {CAPS.map(cap => <label key={cap} className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
               <input type="checkbox" className="size-4 accent-primary" checked={caps.includes(cap)} onChange={e => setCaps(cur => e.target.checked ? [...new Set([...cur, cap])] : cur.filter(x => x !== cap))} />
               {c.caps[cap]} <span className="text-xs text-muted-foreground">{cap}</span>
             </label>)}
@@ -69,7 +69,7 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
           </div>
           <div className="grid max-w-xs gap-2">
             <label htmlFor="console-expiry" className="text-sm font-medium">{c.expiry}</label>
-            <select id="console-expiry" value={hours} onChange={e => setHours(e.target.value)} className="min-h-10 rounded-md border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <select id="console-expiry" value={hours} onChange={e => setHours(e.target.value)} className="min-h-11 lg:min-h-10 rounded-md border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <option value="1">{c.h1}</option><option value="24">{c.h24}</option><option value="168">{c.d7}</option>
             </select>
           </div>

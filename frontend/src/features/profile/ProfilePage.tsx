@@ -176,7 +176,7 @@ export function ProfilePage() {
       <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words [overflow-wrap:anywhere] sm:basis-auto">{undoFailed ? c.undoFailed : c.moved(removed.name)}</span>
       <Button type="button" variant="ghost" size="sm" className="max-sm:ml-4" onClick={() => void undo(removed)}>{c.undo}</Button>
-      <Link className="inline-flex min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=cvs`}>{c.openTrash}</Link>
+      <Link className="inline-flex min-h-11 lg:min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=cvs`}>{c.openTrash}</Link>
       <Button type="button" variant="ghost" size="icon" className="max-sm:ml-auto" aria-label={c.dismiss} onClick={() => setRemoved(null)}><X className="size-4" aria-hidden="true" /></Button>
     </div>}
     <Tabs value={tab} onValueChange={showTab}>

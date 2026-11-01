@@ -157,5 +157,7 @@ test('F7 a failed move puts back only its own card, not a move that finished mea
   await page.getByRole('menuitem', { name: 'Applied' }).click();
   await expect(page.getByRole('alert')).toBeVisible({ timeout: 4000 });
   await expect(page.getByRole('region', { name: /^Saved/ }).getByRole('link', { name: 'Slow job' })).toBeVisible();
-  await expect(page.getByRole('region', { name: /^Applied/ }).getByRole('link', { name: 'Fast job' })).toBeVisible();
+  await expect(page.getByRole('region', { name: /^Applied/ }).getByRole('link', { name: 'Fast job' })).toBeVisible();  // the failed card also gets its old activity date back, not the optimistic "updated now"
+  const today = await page.evaluate(() => new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date()));
+  await expect(page.getByRole('region', { name: /^Saved/ })).not.toContainText(today);
 });

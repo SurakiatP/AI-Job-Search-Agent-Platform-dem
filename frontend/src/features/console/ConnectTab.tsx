@@ -19,7 +19,7 @@ function ClientPicker({ c, lang, list, local }: { c: Copy; lang: Lang; list: Cli
   return <div className="grid gap-6">
     <div className="grid gap-2">
       <label htmlFor="connect-client" className="text-sm font-medium">{c.pickClient}</label>
-      <select id="connect-client" value={client.id} onChange={e => pick(e.target.value)} className="min-h-10 max-w-md rounded-md border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <select id="connect-client" value={client.id} onChange={e => pick(e.target.value)} className="min-h-11 lg:min-h-10 max-w-md rounded-md border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {list.map(item => <option key={item.id} value={item.id}>{item.vendor ? `${item.name} · ${item.vendor}` : item.name}</option>)}
       </select>
     </div>

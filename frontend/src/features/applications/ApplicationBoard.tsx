@@ -108,7 +108,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
       setMoved(isUndo ? null : { card: { ...card, stage }, from: card.stage });
       onChanged();
     } catch {
-      setOptimisticCards(current => (current ?? cards).map(item => item.job_revision_id === card.job_revision_id ? { ...item, stage: card.stage } : item));
+      setOptimisticCards(current => (current ?? cards).map(item => item.job_revision_id === card.job_revision_id ? { ...item, stage: card.stage, last_activity_at: card.last_activity_at } : item));
       setError(true);
     } finally { inFlight.current -= 1; }
   }

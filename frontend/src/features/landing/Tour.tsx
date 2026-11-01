@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight } from 'lucide-react';
 import { useLocale } from '../../app/providers';
@@ -10,11 +11,19 @@ import { StepPanel } from './LandingPreview';
 export function Tour() {
   const { locale } = useLocale();
   const c = landingCopy[locale];
+  // The index is a vertical list only from lg up; below that it is a grid, so arrow keys follow a horizontal tablist.
+  const [wide, setWide] = useState(() => typeof matchMedia === 'function' && matchMedia('(min-width: 1024px)').matches);
+  useEffect(() => {
+    const mq = matchMedia('(min-width: 1024px)');
+    const on = () => setWide(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
 
   return <section id="how" aria-labelledby="how-title" className="mt-16 scroll-mt-16 sm:mt-24">
     <div className="mx-auto grid max-w-6xl gap-6 px-4 sm:gap-8 sm:px-6">
       <h2 id="how-title" className="text-2xl font-semibold not-italic sm:text-3xl">{c.tourTitle}</h2>
-      <Tabs orientation="vertical" defaultValue="0" className="grid min-w-0 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
+      <Tabs orientation={wide ? 'vertical' : 'horizontal'} defaultValue="0" className="grid min-w-0 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
         <TabsList aria-label={c.tourLabel} className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3 lg:flex lg:flex-col lg:items-stretch lg:self-start">
           {c.steps.map((step, index) => <TabsTrigger key={step.tab} value={String(index)} className="min-h-11 min-w-0 justify-start whitespace-normal px-3 text-left text-sm leading-snug lg:min-h-10">{step.tab}</TabsTrigger>)}
         </TabsList>

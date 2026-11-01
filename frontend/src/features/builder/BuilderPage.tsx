@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { ArrowDown, ArrowLeft, ArrowUp, Eye, EyeOff, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { PageBack } from '@/components/PageBack';
+import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { apiRequest } from '../../lib/api';
 import { ApiError } from '../../lib/api-types';
@@ -202,10 +203,10 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     </div></div>
   </section>;
 
-  return <div className="mx-auto grid w-full max-w-[1400px] gap-4 p-4 sm:p-6">
+  return <div className="grid gap-6 lg:gap-8">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="grid gap-1">
-        <Link to={back} className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />{kind === 'cv' ? c.backCv : c.backDoc}</Link>
+        <PageBack to={back}>{kind === 'cv' ? c.backCv : c.backDoc}</PageBack>
         <h1 className="text-2xl font-semibold">{kind === 'cv' ? c.title : c.titleDoc}</h1>
         <NameEditor key={draft.name ?? ''} c={c} label={kind === 'cv' ? c.cvName : c.docName} initial={draft.name ?? ''}
           url={kind === 'cv' ? `/projects/${projectId}/cvs/${ownerId}` : `/projects/${projectId}/documents/${ownerId}`}
@@ -327,7 +328,7 @@ function ItemsEditor({ name, data, locale, update }: { name: ListSection; data: 
   return <>
     {name === 'references' && <div className="grid gap-2 rounded-lg bg-muted/40 p-3 text-sm">
       <p>{c.referencesNote}</p>
-      <label className="flex min-h-10 items-center gap-2"><input type="checkbox" className="size-4 accent-primary" checked={data.references_on_request} onChange={e => update(d => { d.references_on_request = e.target.checked; return d; })} />{c.onRequest}</label>
+      <label className="flex min-h-11 lg:min-h-10 items-center gap-2"><input type="checkbox" className="size-4 accent-primary" checked={data.references_on_request} onChange={e => update(d => { d.references_on_request = e.target.checked; return d; })} />{c.onRequest}</label>
     </div>}
     {items.map((item, i) => <fieldset key={item.id} className="grid gap-3 rounded-lg border p-3">
       <legend className="sr-only">{c.itemLabel(c.sections[name], i + 1)}</legend>
@@ -350,7 +351,7 @@ function FieldInput({ field, item, locale, prefix, onChange }: { field: Field; i
   const label = field[locale];
   const placeholder = field.placeholder?.[locale];
   const value = item[field.key];
-  if (field.kind === 'bool') return <label className="flex min-h-10 items-center gap-2 text-sm sm:self-end"><input id={id} type="checkbox" className="size-4 accent-primary" checked={Boolean(value)} onChange={e => onChange(e.target.checked)} />{label}</label>;
+  if (field.kind === 'bool') return <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm sm:self-end"><input id={id} type="checkbox" className="size-4 accent-primary" checked={Boolean(value)} onChange={e => onChange(e.target.checked)} />{label}</label>;
   if (field.kind === 'lines' || field.kind === 'textarea') {
     const text = field.kind === 'lines' ? ((value as string[]) ?? []).join('\n') : String(value ?? '');
     return <div className="grid gap-2 sm:col-span-2"><Label htmlFor={id}>{label}</Label>
@@ -395,7 +396,7 @@ function NameEditor({ c, label, initial, url, field, max }: { c: Copy; label: st
         if (e.key === 'Enter') e.currentTarget.blur();
         if (e.key === 'Escape') { skip.current = true; setValue(saved); e.currentTarget.blur(); }
       }}
-      className="-mx-1 w-full max-w-md rounded-md border border-transparent bg-transparent px-1 py-0.5 text-base text-muted-foreground hover:border-input focus-visible:border-input focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      /* optical: the input padding is pulled back so the text lines up with the title above */ className="-mx-1 w-full max-w-md rounded-md border border-transparent bg-transparent px-1 py-0.5 text-base text-muted-foreground hover:border-input focus-visible:border-input focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
     {failed && <p role="alert" className="text-sm text-destructive">{c.renameFailed}</p>}
   </div>;
 }
@@ -412,13 +413,13 @@ function AddressEditor({ c, locale, data, update }: { c: Copy; locale: Lang; dat
       <TextField id="address-subdistrict" label={c.addressFields.subdistrict} value={a.subdistrict} onChange={v => set('subdistrict', v)} />
       <TextField id="address-district" label={c.addressFields.district} value={a.district} onChange={v => set('district', v)} />
       <div className="grid min-w-0 gap-2"><Label htmlFor="address-province">{c.addressFields.province}</Label>
-        <select id="address-province" className="min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={a.province} onChange={e => set('province', e.target.value)}>
+        <select id="address-province" className="min-h-11 lg:min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={a.province} onChange={e => set('province', e.target.value)}>
           <option value="">{c.chooseProvince}</option>{sorted.map(p => <option key={p.id} value={p.id}>{p[locale]}</option>)}
         </select></div>
       <div className="grid min-w-0 gap-2"><Label htmlFor="address-postcode">{c.addressFields.postcode}</Label>
         <Input id="address-postcode" inputMode="numeric" autoComplete="postal-code" value={a.postcode} onChange={e => set('postcode', e.target.value.replace(/\D/g, '').slice(0, 5))} /></div>
     </div>
-    <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={data.basics.address_full}
+    <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={data.basics.address_full}
       onChange={e => update(d => { d.basics.address_full = e.target.checked; return d; })} />{c.addressFull}</label>
     <p className="text-xs text-muted-foreground">{c.addressNote}</p>
   </fieldset>;

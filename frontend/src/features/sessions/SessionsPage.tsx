@@ -78,7 +78,7 @@ export function SessionsPage() {
       <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words sm:basis-auto">{undoFailed ? s('list.undoFailed') : s('list.moved', { title: removed.job_title ?? removed.title })}</span>
       <Button type="button" variant="ghost" size="sm" className="max-sm:ml-4" onClick={() => void undo(removed)}>{s('list.undo')}</Button>
-      <Link className="inline-flex min-h-10 items-center font-medium text-primary hover:underline" to={trashHref}>{s('list.openTrash')}</Link>
+      <Link className="inline-flex min-h-11 lg:min-h-10 items-center font-medium text-primary hover:underline" to={trashHref}>{s('list.openTrash')}</Link>
       <Button type="button" variant="ghost" size="icon" className="max-sm:ml-auto" aria-label={s('list.dismiss')} onClick={() => setRemoved(null)}><X className="size-4" aria-hidden="true" /></Button>
     </div>}
     {sessions.status === 'loading' && !sessions.data ? <LoadingState /> : sessions.status === 'error' ? <ErrorState onRetry={sessions.reload} /> :

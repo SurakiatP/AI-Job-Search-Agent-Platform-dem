@@ -45,7 +45,7 @@ export function DocsTopicPage() {
               <span className="tabular-nums text-xs opacity-70">{position + 1}</span><span className="flex-1">{c.list[position].title}</span>
               {item.id === slug && page && <ChevronDown className="hidden size-4 shrink-0 self-center lg:block" aria-hidden="true" />}
             </Link>
-            {item.id === slug && page && <nav aria-label={c.onThisPage} className="ml-[1.35rem] mt-1 hidden border-l-2 border-[var(--stage,var(--primary))]/30 pl-2 lg:block">
+            {item.id === slug && page && <nav aria-label={c.onThisPage} className="ml-5 mt-1 hidden border-l-2 border-[var(--stage,var(--primary))]/30 pl-2 lg:block">
               <ul className="grid gap-0.5">
                 {page.sections.map((section, sectionIndex) => <li key={section.heading}>
                   <a href={`#section-${sectionIndex + 1}`} className="block rounded-md px-3 py-1.5 text-sm leading-snug text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>

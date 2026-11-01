@@ -161,7 +161,7 @@ export function JobDetailPage() {
           <h1 className="break-words text-2xl font-semibold">{job.title || t('untitled')}</h1>
           {job.company && <p className="mt-1 break-words text-base text-muted-foreground">{job.company}</p>}
           <p className="mt-1 text-sm text-muted-foreground">{t('revision', { revision: job.revision })}</p>
-          {source && <a className="mt-2 inline-flex min-h-10 items-center gap-1 text-sm text-primary hover:underline" href={source} target="_blank" rel="noreferrer">{t('source')}<ExternalLink className="size-4" aria-hidden="true" /></a>}
+          {source && <a className="mt-2 inline-flex min-h-11 lg:min-h-10 items-center gap-1 text-sm text-primary hover:underline" href={source} target="_blank" rel="noreferrer">{t('source')}<ExternalLink className="size-4" aria-hidden="true" /></a>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={job.application_status ?? 'saved'} locale={locale} />
@@ -179,7 +179,7 @@ export function JobDetailPage() {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <FitScore size="lg" score={score} locale={locale} />
           {band && <Badge variant={band.variant}>{t(band.key)}</Badge>}
-          <Link className="min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{t('evaluationSession')}</Link>
+          <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{t('evaluationSession')}</Link>
         </div>
         <div data-testid="evaluation-provenance" className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
           <span>{t('revision', { revision: job.revision })}</span>
@@ -188,11 +188,11 @@ export function JobDetailPage() {
             : hasExactPair && pair?.cv_revision_id
               ? <>{t('sourceCVId')} <span className="break-all">{pair.cv_revision_id}</span></>
               : t('sourceCVUnavailable')}</span>
-          {evaluationSession.status === 'error' && <button type="button" className="min-h-10 text-primary underline underline-offset-4" onClick={evaluationSession.reload}>{t('retry')}</button>}
+          {evaluationSession.status === 'error' && <button type="button" className="min-h-11 lg:min-h-10 text-primary underline underline-offset-4" onClick={evaluationSession.reload}>{t('retry')}</button>}
         </div>
         {evaluation.evaluation_result.skill_coverage && <SkillsFound coverage={evaluation.evaluation_result.skill_coverage} />}
         <details open>
-          <summary className="min-h-10 cursor-pointer content-center font-medium"><span className="inline-flex flex-wrap items-center gap-2">{t('latestEvaluation')}<AiLabel /></span></summary>
+          <summary className="min-h-11 lg:min-h-10 cursor-pointer content-center font-medium"><span className="inline-flex flex-wrap items-center gap-2">{t('latestEvaluation')}<AiLabel /></span></summary>
           <Markdown className="mt-2" data-testid="evaluation-report">{evaluation.evaluation_result.report_markdown}</Markdown>
         </details>
       </> : <div className="flex flex-col items-start gap-2">
@@ -210,7 +210,7 @@ export function JobDetailPage() {
           <Link className="break-words font-medium text-primary hover:underline" to={`${base}/documents/${doc.id}`}>{doc.title}</Link>
           {doc.latest_revision && <span className="text-sm text-muted-foreground">{t('documentRevision', { revision: doc.latest_revision.revision })}</span>}
         </li>)}</ul>}
-      <Link className="min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/documents`}>{t('allDocuments')}</Link>
+      <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/documents`}>{t('allDocuments')}</Link>
     </section>
 
     <JobDescription text={job.description ?? ''} />

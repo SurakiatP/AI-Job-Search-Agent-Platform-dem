@@ -265,7 +265,7 @@ function SaveJob({ job, c, projectId, saves, tSearch, card = false }: { job: Job
   const existing = saves.find(job);
   const saving = saves.busy === job.slug;
   if (existing) return card
-    ? <span className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-muted px-3 text-sm text-muted-foreground"><BookmarkCheck className="size-4 text-primary" aria-hidden="true" />{c.saved}</span>
+    ? <span className="inline-flex min-h-11 lg:min-h-10 items-center gap-1.5 rounded-md bg-muted px-3 text-sm text-muted-foreground"><BookmarkCheck className="size-4 text-primary" aria-hidden="true" />{c.saved}</span>
     : <Button asChild variant="outline" className="h-auto whitespace-normal text-left"><Link to={`/app/projects/${projectId}/jobs/${existing.id}`}><BookmarkCheck className="size-4 text-primary" aria-hidden="true" />{c.saved}</Link></Button>;
   const checkingId = `save-job-status-${job.slug}${card ? '-card' : ''}`;
   return <>
@@ -746,7 +746,7 @@ export function SearchPage() {
 
     {!sample && !filtered && <div className="flex flex-wrap items-center gap-2">
       <span className="text-sm text-muted-foreground">{tSearch('controls.examplesLabel')}</span>
-      {(tSearch('controls.examples', { returnObjects: true }) as unknown as string[]).map(example => <Button key={example} type="button" variant="outline" size="sm" className="h-auto min-h-10 rounded-full" onClick={() => { setQInput(example); setFilter('q', example); }}>{example}</Button>)}
+      {(tSearch('controls.examples', { returnObjects: true }) as unknown as string[]).map(example => <Button key={example} type="button" variant="outline" size="sm" className="h-auto min-h-11 lg:min-h-10 rounded-full" onClick={() => { setQInput(example); setFilter('q', example); }}>{example}</Button>)}
     </div>}
 
     </div>

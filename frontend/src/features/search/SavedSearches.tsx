@@ -117,7 +117,7 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
     {!saveOpen && notice}
     {items.length > 0 && <ul className="grid gap-2">{items.map(item => <li key={item.id} className="grid min-w-0 gap-2 rounded-md bg-muted/40 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="min-w-0">
-        <button type="button" className="min-h-10 max-w-full break-words text-left font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => onApply(paramsFromFilters(item.filters))}>{item.name}</button>
+        <button type="button" className="min-h-11 lg:min-h-10 max-w-full break-words text-left font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => onApply(paramsFromFilters(item.filters))}>{item.name}</button>
         <p className="text-xs text-muted-foreground">{item.digest_enabled ? c.next(when.format(new Date(item.next_run_at))) : c.off}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -151,7 +151,7 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
         }}>
           <div className="grid gap-2"><Label htmlFor="saved-search-name">{c.name}</Label><Input id="saved-search-name" maxLength={80} value={name} onChange={event => setName(event.target.value)} required /></div>
           <fieldset className="grid gap-1"><legend className="mb-1 text-sm font-medium">{c.frequency}</legend>
-            {(['daily', 'weekly'] as const).map(value => <label key={value} className="flex min-h-10 items-center gap-2 text-sm">
+            {(['daily', 'weekly'] as const).map(value => <label key={value} className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
               <input type="radio" className="size-4 shrink-0 accent-primary" name="saved-search-frequency" value={value} checked={frequency === value} onChange={() => setFrequency(value)} />{value === 'daily' ? c.daily : c.weekly}
             </label>)}
           </fieldset>

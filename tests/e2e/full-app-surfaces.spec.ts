@@ -142,14 +142,14 @@ test('landing data section: two readable cards with ticks and a three-part appro
   await page.goto('/');
   const mine = page.getByRole('region', { name: 'Your workspace and AI' });
   await expect(mine.locator('svg.landing-tick')).toHaveCount(4);
-  const flow = page.getByRole('list', { name: 'How an outside agent asks' });
+  const flow = page.getByRole('list', { name: 'How a connected assistant asks' });
   await expect(flow.getByRole('listitem')).toHaveCount(3);
   await expect(flow.getByRole('listitem').nth(2)).toContainText('Approve');
   await expect(flow.getByRole('listitem').nth(2)).toContainText('Reject');
 });
 const featureTabs = {
   en: ['Add CV', 'Build CV', 'Search', 'Evaluate', 'Interview practice', 'Draft', 'Track', 'Job alerts', 'Connect'],
-  th: ['ใส่ CV', 'สร้าง CV', 'ค้นหางาน', 'ประเมิน', 'ซ้อมสัมภาษณ์', 'ร่างเอกสาร', 'ติดตามสมัคร', 'แจ้งเตือนงาน', 'เชื่อม agent'],
+  th: ['ใส่ CV', 'สร้าง CV', 'ค้นหางาน', 'ประเมิน', 'ซ้อมสัมภาษณ์', 'ร่างเอกสาร', 'ติดตามสมัคร', 'แจ้งเตือนงาน', 'เชื่อมผู้ช่วย'],
 };
 const featureSlugs = ['add-cv', 'build-cv', 'search', 'evaluate', 'practice', 'draft', 'track', 'alerts', 'connect'];
 
@@ -179,8 +179,8 @@ test('landing demo is labelled illustrative and states what the app will not do'
   await page.goto('/');
   await expect(page.getByText('Illustrative demo · Sample data').first()).toBeVisible();
   const demo = page.getByRole('region', { name: 'Illustrative demo · Sample data' });
-  await expect(demo.getByRole('heading', { name: 'Senior Data Analyst' })).toBeVisible();
-  await expect(demo.getByText('Step 3 of 5')).toBeVisible();
+  await expect(demo.getByText('Senior Data Analyst', { exact: true })).toBeVisible();
+  await expect(demo.getByText('Step 4 of 5')).toBeVisible();
   const steps = demo.getByRole('list', { name: 'Journey of this job' }).getByRole('listitem');
   await expect(steps).toHaveCount(5);
   await expect(steps.nth(2)).toContainText('Fit evaluation');
@@ -190,8 +190,12 @@ test('landing demo is labelled illustrative and states what the app will not do'
   await expect(steps.nth(3)).toHaveAttribute('aria-current', 'step');
   await expect(steps.nth(3)).toContainText('Waiting for you to review the CV changes');
   await expect(steps.nth(4)).toContainText('You apply yourself');
-  await expect(page.getByText('You need a CV file (PDF, DOCX or text).')).toBeVisible();
-  await expect(page.getByText('AI features need a configured AI provider.')).toBeVisible();
+  await expect(page.getByText('Upload a CV file (PDF, DOCX or text) or build one in the app with a form.')).toBeVisible();
+  await expect(page.getByText('AI features work once your administrator has set up AI.')).toBeVisible();
+  // honesty: no false CV requirement, no approval sample for drafting (the product never asks for that)
+  await expect(page.getByText(/You need a CV file/i)).toHaveCount(0);
+  await expect(page.getByText(/Approval needed: draft documents/i)).toHaveCount(0);
+  await expect(page.getByText('Approval needed: Record this job as applied · Full-stack Engineer')).toBeVisible();
   await expect(page.getByText('No automatic submission.')).toBeVisible();
   await expect(page.getByRole('main').getByRole('link', { name: 'Create account', exact: true }).first()).toHaveAttribute('href', '/signup');
 });

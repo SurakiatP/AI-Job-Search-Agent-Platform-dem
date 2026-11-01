@@ -48,7 +48,7 @@ export function StepPanel({ index }: { index: number }) {
       <ul className="flex flex-wrap gap-1.5">{pn.skills.map(s => <li key={s}><Badge variant="secondary">{s}</Badge></li>)}</ul></div>
   </Shell>;
   if (slug === 'search') return <Shell label={label}>
-    <div className="flex min-h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-base"><Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="sr-only">{pn.searchLabel}: </span><span className="truncate">{pn.searchValue}</span></div>
+    <div className="flex min-h-11 lg:min-h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-base"><Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="sr-only">{pn.searchLabel}: </span><span className="truncate">{pn.searchValue}</span></div>
     <ul className="grid gap-3">{p.jobs.map((j, i) => <li key={j.title} className={cn(row, i === 0 && 'bg-accent')}>
       <span className="font-semibold leading-snug">{j.title}</span>
       <span className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{j.company} · {j.place}</span>
@@ -140,7 +140,7 @@ export function DemoCard() {
   return <section ref={ref} data-play={play} aria-label={d.label} className="demo-card grid min-w-0 gap-6 rounded-xl border bg-card p-6">
     <Badge variant="outline" className="w-fit">{d.label}</Badge>
     <div className="grid gap-1">
-      <h2 className="text-2xl font-semibold leading-snug not-italic">{d.title}</h2>
+      <p className="font-heading text-2xl font-semibold leading-snug not-italic">{d.title}</p>
       <p className="text-sm text-muted-foreground">{d.company}</p>
     </div>
     <div className="grid gap-2">

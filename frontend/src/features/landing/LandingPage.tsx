@@ -64,12 +64,12 @@ export function LandingPage() {
       </section>
 
       <div className={`${wrap} mt-16 sm:mt-24`}>
-        <section aria-label={c.tagline.join(' ')} className="border-y py-12 sm:py-16">
+        <div className="border-y py-12 sm:py-16">
           <p className="max-w-3xl font-heading text-3xl leading-snug sm:text-4xl lg:text-5xl">
             <span className="block text-muted-foreground">{c.tagline[0]}</span>
             <span className="block">{c.tagline[1]}</span>
           </p>
-        </section>
+        </div>
       </div>
 
       <Tour />
@@ -131,7 +131,7 @@ export function LandingPage() {
         </div>
       </section>
     </main>
-    <footer className={`${wrap} mt-16 grid gap-4 border-t py-8 text-sm text-muted-foreground sm:flex sm:items-center sm:justify-between`}>
+    <footer className={`${wrap} grid gap-4 border-t py-8 text-sm text-muted-foreground sm:flex sm:items-center sm:justify-between`}>
       <nav aria-label={c.footer.label}>
         <ul className="flex flex-wrap gap-x-6 gap-y-1">
           <li><Link to="/how-it-works" className={footerLink}>{c.nav.how}</Link></li>

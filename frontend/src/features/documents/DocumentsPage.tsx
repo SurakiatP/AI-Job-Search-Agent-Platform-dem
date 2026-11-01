@@ -144,7 +144,7 @@ export function DocumentsPage() {
   </section>;
   const chips: [DocType | 'all', string][] = [['all', c.all], ['cv', documentTypeLabel('cv', t)], ['cover_letter', documentTypeLabel('cover_letter', t)], ['application_message', documentTypeLabel('application_message', t)], ['other', documentTypeLabel('other', t)]];
   const visible = filter === 'all' ? documents : documents.filter(document => document.document_type === filter);
-  const chipClass = (active: boolean) => cn('min-h-10 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring', active && 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90');
+  const chipClass = (active: boolean) => cn('min-h-11 lg:min-h-10 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring', active && 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90');
   async function undoTrash() {
     if (!undo) return;
     try { await restoreDocument(projectId, undo.id); setUndo(null); reloadAll(); } catch { setUndo({ id: undo.id, message: c.undoFailed }); }
@@ -158,7 +158,7 @@ export function DocumentsPage() {
       <span>{undo.message}</span>
       <span className="flex flex-wrap items-center gap-2">
         {undo.id && <Button type="button" size="sm" variant="outline" onClick={() => { void undoTrash(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
-        <Link className="inline-flex min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=documents`}>{c.openTrash}</Link>
+        <Link className="inline-flex min-h-11 lg:min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=documents`}>{c.openTrash}</Link>
       </span>
     </div>}
     <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <button key={value} type="button" aria-pressed={filter === value}

@@ -30,7 +30,7 @@ const copy = {
 type Copy = typeof copy.en;
 type Draft = { kind: ExperienceKind; skill_group: SkillGroup | ''; text: string; role: string; organization: string; period: string; employment_type: EmploymentType | ''; location: string; start_date: string; end_date: string; is_current: boolean; industry: string; responsibilities: string; achievements: string; skills_used: string };
 const blank: Draft = { kind: 'experience', skill_group: '', text: '', role: '', organization: '', period: '', employment_type: '', location: '', start_date: '', end_date: '', is_current: false, industry: '', responsibilities: '', achievements: '', skills_used: '' };
-const fieldClass = 'flex min-h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+const fieldClass = 'flex min-h-11 lg:min-h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 const fromItem = (i: ExperienceItem): Draft => ({ kind: i.kind, skill_group: i.skill_group ?? '', text: i.text, role: i.role ?? '', organization: i.organization ?? '', period: i.period ?? '', employment_type: i.employment_type ?? '', location: i.location ?? '', start_date: i.start_date ?? '', end_date: i.end_date ?? '', is_current: i.is_current, industry: i.industry ?? '', responsibilities: i.responsibilities ?? '', achievements: i.achievements ?? '', skills_used: i.skills_used ?? '' });
 const hasExtra = (d: Draft) => Boolean(d.employment_type || d.location || d.start_date || d.end_date || d.is_current || d.industry || d.responsibilities || d.achievements || d.skills_used);
 
@@ -55,7 +55,7 @@ function FactForm({ c, initial, submitLabel, onSubmit, onCancel }: { c: Copy; in
         {text('industry', c.industry, 200)}
         {text('start_date', c.start, 7, 'month')}
         <label className="grid gap-2 text-sm font-medium"><span>{c.end}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Input type="month" value={draft.is_current ? '' : draft.end_date} disabled={draft.is_current} onChange={set('end_date')} /></label>
-        <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={draft.is_current} onChange={event => setDraft(d => ({ ...d, is_current: event.target.checked, end_date: event.target.checked ? '' : d.end_date }))} />{c.current}</label>
+        <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={draft.is_current} onChange={event => setDraft(d => ({ ...d, is_current: event.target.checked, end_date: event.target.checked ? '' : d.end_date }))} />{c.current}</label>
         {area('responsibilities', c.duties, 2000)}
         {area('achievements', c.wins, 2000)}
         <label className="grid gap-2 text-sm font-medium sm:col-span-2"><span>{c.skills}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Input value={draft.skills_used} maxLength={500} onChange={set('skills_used')} /></label>

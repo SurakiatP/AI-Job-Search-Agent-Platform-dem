@@ -251,7 +251,7 @@ export function ForgotPasswordPage() {
       <Button type="submit" busy={busy} disabled={busy || !email}>{busy ? t('auth.working') : t('auth.forgotAction')}</Button>
     </form>}
     {sent && <Button variant="outline" onClick={() => setSent(false)}>{c.differentEmail}</Button>}
-    <p className="text-sm"><Link className={`${linkClass} inline-flex items-center gap-1`} to="/login"><ArrowLeft className="size-4" aria-hidden="true" />{t('auth.backToLogin')}</Link></p>
+    <p className="text-sm"><Link className={`${linkClass} inline-flex min-h-11 items-center gap-1 lg:min-h-10`} to="/login"><ArrowLeft className="size-4" aria-hidden="true" />{t('auth.backToLogin')}</Link></p>
   </AuthLayout>;
 }
 

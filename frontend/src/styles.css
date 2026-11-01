@@ -221,7 +221,8 @@ main[data-stage='brand'] { --stage: var(--primary); }
   .segmented { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius); background: var(--muted); }
   .segmented > * { border-radius: calc(var(--radius) - 2px); color: var(--muted-foreground); }
   .muted { color: var(--muted-foreground); }
-  .landing-headline { font-family: var(--font-display); font-size: clamp(32px, 4.6vw, 42px); line-height: 1.4; max-width: 720px; }
+  .landing-headline { font-family: var(--font-display); font-size: 32px; line-height: 1.4; max-width: 720px; }
+  @media (min-width: 640px) { .landing-headline { font-size: 36px; } }
   .chat-text { line-height: 1.9; }
   .document-english { font-family: var(--font-document); font-size: 16px; line-height: 1.9; }
 

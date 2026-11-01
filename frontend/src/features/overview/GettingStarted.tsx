@@ -59,6 +59,6 @@ export function HelpPanel({ hasCv }: { hasCv: boolean }) {
   return <section aria-labelledby="help-heading" className="workspace-panel self-start p-5 sm:p-6">
     <h2 id="help-heading" className="flex items-center gap-3 text-xl font-semibold"><Compass size={24} className="text-primary" aria-hidden="true" />{c.helpTitle}</h2>
     <ul className="mt-4 grid gap-4">{tips.map(tip => <li key={tip.title} className="border-t pt-4 first:border-t-0 first:pt-0"><p className="font-semibold">{tip.title}</p><p className="mt-1 text-sm text-muted-foreground">{tip.body}</p></li>)}</ul>
-    {hasCv && <Button variant="ghost" size="sm" className="mt-3 -ms-3" onClick={() => { savePreference(helpKey, 'dismissed'); setState('dismissed'); }}>{c.dismissHelp}</Button>}
+    {/* optical: the ghost button text lines up with the text above */}{hasCv && <Button variant="ghost" size="sm" className="mt-3 -ms-3" onClick={() => { savePreference(helpKey, 'dismissed'); setState('dismissed'); }}>{c.dismissHelp}</Button>}
   </section>;
 }

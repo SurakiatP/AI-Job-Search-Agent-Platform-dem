@@ -110,14 +110,14 @@ function CreateDialog({ c, api, projectId, sessionId, locale, defaultName, onClo
         <fieldset className="grid gap-2"><legend className="mb-2 text-sm font-medium">{c.level}</legend>
           <div className="flex flex-wrap gap-1 rounded-lg bg-secondary p-1">{(['entry', 'mid', 'senior'] as const).map(value => <label key={value} className="relative flex-1">
             <input type="radio" name={`${id}-level`} value={value} checked={level === value} onChange={() => setLevel(value)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
-            <span className="flex min-h-10 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">{c.levels[value]}</span>
+            <span className="flex min-h-11 lg:min-h-10 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">{c.levels[value]}</span>
           </label>)}</div>
         </fieldset>
         <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.questionLanguage}</legend>
           <p className="text-xs text-muted-foreground">{c.questionLanguageHint}</p>
           <div className="flex flex-wrap gap-1 rounded-lg bg-secondary p-1">{(['th', 'en'] as const).map(value => <label key={value} className="relative flex-1">
             <input type="radio" name={`${id}-language`} value={value} checked={language === value} onChange={() => setLanguage(value)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
-            <span className="flex min-h-10 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">{value === 'th' ? 'ไทย' : 'English'}</span>
+            <span className="flex min-h-11 lg:min-h-10 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">{value === 'th' ? 'ไทย' : 'English'}</span>
           </label>)}</div>
         </fieldset>
         <fieldset className="grid gap-2"><legend className="mb-2 text-sm font-medium">{c.sectionsLegend}</legend>

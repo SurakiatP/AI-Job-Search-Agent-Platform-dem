@@ -83,7 +83,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
       <code className="break-all rounded bg-muted p-2 text-sm">{secret}</code>
       <p className="text-sm text-warning">{c.secretOnce}</p>
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" className="min-h-10" onClick={() => void copySecret()}>{copyState === 'ok' ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}{c.copy}</Button>
+        <Button variant="outline" className="min-h-11 lg:min-h-10" onClick={() => void copySecret()}>{copyState === 'ok' ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}{c.copy}</Button>
         <Button variant="outline" onClick={() => { setSecret(null); setCopyState(''); }}>{c.secretDone}</Button>
         <span role="status" className={`text-sm ${copyState === 'fail' ? 'text-destructive' : 'text-success'}`}>{copyState === 'ok' ? c.copied : copyState === 'fail' ? c.copyFail : ''}</span>
       </div>
@@ -93,7 +93,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
         <Input id="webhook-url" type="url" inputMode="url" maxLength={2048} value={url} onChange={event => setUrl(event.target.value)} required />
       </Field>
       <fieldset className="grid gap-1"><legend className="mb-1 text-sm font-medium">{c.events}</legend>
-        <div className="grid gap-1 sm:grid-cols-2">{EVENTS.map(event => <label key={event} className="flex min-h-10 items-center gap-2 text-sm">
+        <div className="grid gap-1 sm:grid-cols-2">{EVENTS.map(event => <label key={event} className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
           <input type="checkbox" className="size-4 shrink-0 accent-primary" checked={events.includes(event)} onChange={e => setEvents(prev => e.target.checked ? [...prev, event] : prev.filter(x => x !== event))} />{c.labels[event]}
         </label>)}</div>
       </fieldset>
