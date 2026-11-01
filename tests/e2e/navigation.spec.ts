@@ -68,7 +68,7 @@ test('every page supports direct links, back/forward, locale changes and respons
   await page.goBack();
   await page.getByRole('button', { name: 'EN', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Let AI match your CV', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'How to start' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Three steps to start' })).toBeVisible();
   await expect(page.getByRole('banner').getByRole('link', { name: 'Open app', exact: true })).toBeVisible();
   await page.getByRole('banner').getByRole('link', { name: 'Open app' }).click();
   await expect(page).toHaveURL(/\/app\/projects/);

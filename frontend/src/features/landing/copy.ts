@@ -1,14 +1,17 @@
 const th = {
   headlineA: 'ให้ AI เทียบ CV กับงาน',
   headlineB: 'แล้วบอกเหตุผลให้คุณ',
-  sub: 'ใส่ CV กับประกาศงาน แล้วรับผลประเมินความเหมาะสมและเอกสารสมัครงานที่ปรับให้ตรงตำแหน่ง — คุณตรวจและส่งเองทุกครั้ง',
+  // source: PRODUCT.md (fit score 1-5 with reasons, tailored drafts, user checks and submits); DESIGN.md (FitScore keeps 1-5 denominator)
+  sub: 'ใส่ CV กับประกาศงาน แล้วรับคะแนนความเหมาะสม 1 ถึง 5 พร้อมเหตุผล และร่าง CV กับจดหมายสมัครงานที่ปรับตามตำแหน่ง คุณตรวจทุกฉบับและสมัครเอง',
   cta: 'สร้างบัญชี',
   signup: 'เริ่มใช้งาน',
   login: 'เข้าสู่ระบบ',
   openApp: 'เปิดแอป',
   docs: 'คู่มือ',
   nav: { label: 'เมนูหลัก', menu: 'เมนู', features: 'ฟีเจอร์', how: 'วิธีทำงาน', data: 'ข้อมูลและการเชื่อมต่อ', learnMore: 'ดูว่าทำงานอย่างไร' },
-  secondary: 'ดูวิธีทำงาน',
+  secondary: 'ดูว่าแต่ละส่วนทำอะไร',
+  // source: PRODUCT.md (AI-assisted evaluation and preparation; user decides and submits)
+  tagline: ['AI ช่วยอ่าน เทียบ และร่างให้', 'ส่วนการตัดสินใจและการกดสมัครเป็นของคุณ'] as [string, string],
   noSubmit: 'ไม่ส่งใบสมัครอัตโนมัติ คุณตรวจเองและสมัครเองทุกครั้ง',
   demo: {
     label: 'ตัวอย่างประกอบ · ข้อมูลสาธิต',
@@ -26,13 +29,13 @@ const th = {
     score: '4.2 / 5',
     ai: 'AI',
   },
-  stepsTitle: 'เริ่มอย่างไร',
+  stepsTitle: 'เริ่มได้ในสามขั้น',
   how: [
     { title: 'เพิ่ม CV ของคุณ', body: 'ต้องมีไฟล์ CV (PDF, DOCX หรือข้อความ) ไฟล์อยู่ในโปรเจกต์ของคุณ' },
     { title: 'ค้นหาและประเมินงาน', body: 'ค้นประกาศงานจริงในไทย ฟีเจอร์ AI ต้องตั้งค่าผู้ให้บริการ AI ก่อน' },
     { title: 'ตรวจและติดตามการสมัคร', body: 'ตรวจเอกสารที่ร่างไว้ แล้วบันทึกความคืบหน้าการสมัครของคุณเอง' },
   ],
-  tourTitle: 'ดูให้ละเอียดขึ้น',
+  tourTitle: 'แต่ละส่วนของแอปทำอะไร',
   tourLabel: 'ขั้นตอนการใช้งาน',
   steps: [
     { tab: 'ใส่ CV', eyebrow: 'ใส่ CV ครั้งเดียว', title: 'แนบ CV ครั้งเดียว ใช้ได้กับทุกงาน', body: 'อัปโหลด CV แล้วแอปอ่านทักษะและประสบการณ์ให้ CV ต้นฉบับของคุณจะไม่ถูกแก้ไข' },
@@ -62,10 +65,11 @@ const th = {
     track: { head: 'ติดตามแล้ว 3 งาน', rows: [['Frontend Developer', 'บริษัทตัวอย่าง จำกัด', 'interview', 'เตรียมตัวและบันทึกผล'], ['Data Analyst', 'บริษัทตัวอย่าง จำกัด', 'applied', 'บันทึกคำตอบเมื่อได้รับ'], ['Full-stack Engineer', 'บริษัทตัวอย่าง จำกัด', 'saved', 'ประเมินงานนี้']] as [string, string, 'interview' | 'applied' | 'saved', string][], note: 'การเปลี่ยนสถานะไม่ส่งใบสมัคร' },
     alerts: { name: 'Frontend Developer · กรุงเทพฯ', freq: 'ทุกวัน 08:00 น.', next: 'สรุปถัดไป: พรุ่งนี้ 08:00 น.', channels: [['อีเมล', true], ['Telegram', true], ['Webhook', false]] as [string, boolean][], on: 'เปิด', off: 'ปิด', preview: 'ส่งตัวอย่าง' },
   },
-  diffTitle: 'พื้นที่ทำงานที่เชื่อมกับเครื่องมือของคุณ',
+  diffTitle: 'ข้อมูลของคุณไปที่ไหน และใครทำอะไรได้',
   local: {
     title: 'พื้นที่ทำงานและ AI ของคุณ',
-    body: 'คำขอ AI อาจส่งข้อมูล CV เท่าที่จำเป็นไปยังบริการ AI ภายนอก ข้อมูลของแต่ละโปรเจกต์แยกจากกัน และคุณเป็นผู้ส่งใบสมัครจริงเอง',
+    // source: previous local.body (owner-approved) and PRODUCT.md (project isolation)
+    body: 'แต่ละโปรเจกต์เก็บ CV งาน เอกสาร และกิจกรรมของตัวเอง เมื่อใช้ฟีเจอร์ AI ระบบอาจส่งข้อความจาก CV เท่าที่จำเป็นไปยังบริการ AI ภายนอก',
     rows: ['ข้อมูลแต่ละโปรเจกต์แยกจากกัน', 'ใช้ AI ช่วยประเมินและร่างเอกสาร', 'ข้อมูล CV ที่จำเป็นอาจถูกส่งไปยังบริการ AI'],
     submit: 'ส่งใบสมัคร',
     submitNote: 'ไม่ส่งแทนคุณ',
@@ -81,8 +85,25 @@ const th = {
     approve: 'อนุมัติ',
     reject: 'ปฏิเสธ',
   },
-  closing: 'พร้อมเริ่มสมัครงานแบบตรงจุดหรือยัง',
-  closingSub: 'ใส่ CV ครั้งเดียว แล้วใช้ประเมินและปรับเอกสารได้กับทุกงานในโปรเจกต์',
+  faqTitle: 'คำถามที่ควรถามก่อนเริ่ม',
+  faq: [
+    // source: PRODUCT.md line 28 (users submit applications themselves; Applied is a tracking action)
+    { q: 'ระบบส่งใบสมัครให้ฉันไหม', a: 'ไม่ส่ง คุณสมัครเองบนเว็บของนายจ้างหรือช่องทางที่คุณเลือก แล้วกลับมาบันทึกสถานะไว้ในแอป การเปลี่ยนสถานะเป็นบันทึกของคุณเท่านั้น' },
+    // source: steps[3].body / steps[7].body (keyword skills and digests do not use AI; verified backend skill_coverage.py has no model, saved_searches.py digests import only mailer/telegram/webhooks) and local.body
+    { q: 'ข้อมูล CV ของฉันไปที่ไหน', a: 'CV และงานอยู่ในโปรเจกต์ของคุณ เมื่อใช้ฟีเจอร์ AI ระบบอาจส่งข้อความจาก CV เท่าที่ฟีเจอร์นั้นต้องใช้ไปยังบริการ AI ภายนอก การนับทักษะจากคำสำคัญและสรุปงานใหม่ไม่ใช้ AI' },
+    // source: PRODUCT.md line 20 (no hiring probability), steps[3].body (skills from keywords, kept apart from score)
+    { q: 'คะแนน 4.2 จาก 5 หมายถึงอะไร', a: 'เป็นคะแนนความเหมาะสมที่ AI ให้พร้อมเหตุผลให้คุณตรวจ ไม่ใช่โอกาสได้งาน และแยกจากจำนวนทักษะที่ตรงซึ่งนับจากคำสำคัญ' },
+    // source: PRODUCT.md line 25 (immutable CV revisions bound to job revision in a session)
+    { q: 'ถ้าอัปโหลด CV ใหม่ ผลประเมินเก่าจะเปลี่ยนไหม', a: 'ไม่เปลี่ยน ผลประเมินแต่ละครั้งบอกว่าใช้ CV ฉบับไหนกับประกาศฉบับไหน CV ใหม่จะเป็นฉบับใหม่ ส่วนฉบับเดิมยังอยู่' },
+    // source: steps[1].body (build CV with form, template, accent, save as version)
+    { q: 'ไม่มีไฟล์ CV เริ่มได้ไหม', a: 'ได้ สร้าง CV ในแอปด้วยแบบฟอร์ม เลือกเทมเพลตและสีเน้น แล้วบันทึกเป็นเวอร์ชันเพื่อใช้ประเมินงาน' },
+    // source: steps[8].body and agent.body (limits, revoke, approval, activity page); connection exists only when the user issues access
+    { q: 'ใช้กับผู้ช่วย AI ที่ฉันใช้อยู่ได้ไหม', a: 'ได้ ปิดไว้เป็นค่าเริ่มต้น คุณกำหนดขอบเขตและเพิกถอนได้ งานเสี่ยงต้องรอคุณอนุมัติ และทุกงานแสดงในหน้ากิจกรรม' },
+  ],
+  // source: landing steps (add CV, search or add job posting, evaluate)
+  closing: 'เริ่มจาก CV หนึ่งไฟล์กับงานหนึ่งตำแหน่ง',
+  closingSub: 'สร้างบัญชี ใส่ CV แล้วเลือกงานจากการค้นหาหรือเพิ่มงานเอง จากนั้นเริ่มประเมินงานแรก',
+  footer: { label: 'ลิงก์ท้ายหน้า' },
   controlTitle: 'สิ่งที่อยู่ในมือคุณเสมอ',
   control: ['คุณตรวจทุกอย่างก่อนนำไปใช้', 'คุณสมัครเอง ระบบไม่ส่งแทน', 'ข้อมูลแต่ละโปรเจกต์แยกกัน'],
 };
@@ -90,14 +111,15 @@ const th = {
 const en: typeof th = {
   headlineA: 'Let AI match your CV to the job,',
   headlineB: 'and tell you why',
-  sub: 'Add your CV and a job posting, get a fit evaluation and tailored application documents — you review and submit every time.',
+  sub: 'Add your CV and a job posting. Get a fit score from 1 to 5 with reasons, plus a CV and cover letter drafted for that role. You check every draft and apply yourself.',
   cta: 'Create account',
   signup: 'Get started',
   login: 'Log in',
   openApp: 'Open app',
   docs: 'Docs',
   nav: { label: 'Main menu', menu: 'Menu', features: 'Features', how: 'How it works', data: 'Data & connections', learnMore: 'See how it works' },
-  secondary: 'See how it works',
+  secondary: 'See what each part does',
+  tagline: ['The AI reads, compares and drafts.', 'Deciding and applying stay with you.'],
   noSubmit: 'No automatic submission. You review everything and apply yourself.',
   demo: {
     label: 'Illustrative demo · Sample data',
@@ -115,13 +137,13 @@ const en: typeof th = {
     score: '4.2 / 5',
     ai: 'AI',
   },
-  stepsTitle: 'How to start',
+  stepsTitle: 'Three steps to start',
   how: [
     { title: 'Add your CV', body: 'You need a CV file (PDF, DOCX or text). It stays in your project.' },
     { title: 'Find and evaluate jobs', body: 'Search real jobs in Thailand. AI features need a configured AI provider.' },
     { title: 'Review and track', body: 'Review the drafted documents, then record your own application progress.' },
   ],
-  tourTitle: 'A closer look',
+  tourTitle: 'What each part of the app does',
   tourLabel: 'Steps',
   steps: [
     { tab: 'Add CV', eyebrow: 'Add your CV once', title: 'Attach your CV once, use it for every job', body: 'Upload a CV and the app reads your skills and experience. Your original CV is never edited.' },
@@ -151,10 +173,10 @@ const en: typeof th = {
     track: { head: '3 jobs tracked', rows: [['Frontend Developer', 'Sample Company Ltd.', 'interview', 'Prepare and log the outcome'], ['Data Analyst', 'Sample Company Ltd.', 'applied', 'Log a reply when you get one'], ['Full-stack Engineer', 'Sample Company Ltd.', 'saved', 'Evaluate this job']] as [string, string, 'interview' | 'applied' | 'saved', string][], note: 'Changing a stage does not send an application' },
     alerts: { name: 'Frontend Developer · Bangkok', freq: 'Daily at 08:00', next: 'Next digest: tomorrow 08:00', channels: [['Email', true], ['Telegram', true], ['Webhook', false]] as [string, boolean][], on: 'On', off: 'Off', preview: 'Send preview' },
   },
-  diffTitle: 'A workspace connected to your tools',
+  diffTitle: 'Where your data goes, and who can act on it',
   local: {
     title: 'Your workspace and AI',
-    body: 'AI requests may send the CV content they need to an external AI service. Each project keeps its own data, and you submit applications yourself.',
+    body: 'Each project keeps its own CVs, jobs, documents and activity. When you use an AI feature, the CV text that feature needs may be sent to an external AI service.',
     rows: ['Each project keeps its own data', 'AI helps evaluate and draft documents', 'Required CV content may be sent to an AI service'],
     submit: 'Submit application',
     submitNote: 'Never done for you',
@@ -170,8 +192,18 @@ const en: typeof th = {
     approve: 'Approve',
     reject: 'Reject',
   },
-  closing: 'Ready to apply with precision?',
-  closingSub: 'Add your CV once, then evaluate jobs and tailor documents for every job in the project.',
+  faqTitle: 'Questions worth asking first',
+  faq: [
+    { q: 'Does the app submit applications for me?', a: 'No. You apply yourself on the employer\'s site or your own channel, then record the status here. Changing a status is only your record.' },
+    { q: 'Where does my CV go?', a: 'Your CV and jobs stay in your project. When you use an AI feature, the CV text that feature needs may be sent to an external AI service. Keyword skill counts and new-job digests do not use AI.' },
+    { q: 'What does a score of 4.2 out of 5 mean?', a: 'It is the AI\'s fit score, with reasons for you to check. It is not a chance of being hired, and it is kept apart from the matched-skill count, which comes from keywords.' },
+    { q: 'If I upload a new CV, do old evaluations change?', a: 'No. Each evaluation names the CV version and job version it used. A new CV becomes a new version and the old one stays.' },
+    { q: 'Can I start without a CV file?', a: 'Yes. Build a CV in the app with a form, choose a template and accent colour, and save it as a version to evaluate jobs.' },
+    { q: 'Can I connect the AI assistant I already use?', a: 'Yes. It is off by default. You set its limits and can revoke it, risky actions wait for your approval, and every task shows in the activity page.' },
+  ],
+  closing: 'Start with one CV and one job',
+  closingSub: 'Create an account, add your CV, pick a job from search or add one yourself, then run your first evaluation.',
+  footer: { label: 'Footer links' },
   controlTitle: 'What stays in your control',
   control: ['You review everything before it is used', 'You apply yourself; the app never submits', 'Each project keeps its own data'],
 };

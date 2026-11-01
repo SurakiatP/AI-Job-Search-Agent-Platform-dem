@@ -92,9 +92,49 @@ test('landing tour is compact and remains keyboard navigable', async ({ page }) 
   expect((await tour.boundingBox())!.height).toBeLessThan(1200);
   const first = tour.getByRole('tab').first();
   await first.focus();
-  await page.keyboard.press('ArrowRight');
+  await expect(tour.getByRole('tablist')).toHaveAttribute('aria-orientation', 'vertical');
+  await page.keyboard.press('ArrowDown');
   await expect(tour.getByRole('tab').nth(1)).toBeFocused();
   await expect(tour.getByRole('tab').nth(1)).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('ArrowUp');
+  await expect(tour.getByRole('tab').nth(0)).toBeFocused();
+  await expect(tour.getByRole('tab').nth(0)).toHaveAttribute('aria-selected', 'true');
+});
+
+test('landing skip link targets the main region and moves focus there', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useAccessFixture(page, true);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await page.keyboard.press('Tab');
+  const skip = page.getByRole('link', { name: 'Skip to content' });
+  await expect(skip).toBeFocused();
+  await expect(skip).toHaveAttribute('href', '#main');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main#main')).toBeFocused();
+});
+
+test('landing FAQ has six questions that open, and the footer links to real pages', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useAccessFixture(page, true);
+  await page.goto('/');
+  const faq = page.locator('#faq');
+  await expect(faq.getByRole('heading', { name: 'Questions worth asking first' })).toBeVisible();
+  const items = faq.locator('details');
+  await expect(items).toHaveCount(6);
+  await expect(items.locator('summary')).toHaveText([
+    'Does the app submit applications for me?', 'Where does my CV go?', 'What does a score of 4.2 out of 5 mean?',
+    'If I upload a new CV, do old evaluations change?', 'Can I start without a CV file?', 'Can I connect the AI assistant I already use?',
+  ]);
+  await items.first().locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(items.first()).toHaveAttribute('open', '');
+  await expect(items.first()).toContainText('No. You apply yourself');
+  const footer = page.getByRole('navigation', { name: 'Footer links' });
+  await expect(footer.getByRole('link')).toHaveText(['How it works', 'Data & connections', 'Docs']);
+  await expect(footer.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '/how-it-works');
+  await expect(footer.getByRole('link', { name: 'Data & connections' })).toHaveAttribute('href', '/data');
+  await expect(footer.getByRole('link', { name: 'Docs' })).toHaveAttribute('href', '/docs');
 });
 test('landing data section: two readable cards with ticks and a three-part approval flow', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
@@ -212,8 +252,10 @@ test('landing hero puts AI first and lists what stays in the visitor\'s control 
   const promises = page.getByRole('list', { name: 'What stays in your control' }).first();
   await expect(promises.getByRole('listitem')).toHaveText(['You review everything before it is used', 'You apply yourself; the app never submits', 'Each project keeps its own data']);
   await expect(promises.locator('svg.landing-tick')).toHaveCount(3);
-  const closing = page.getByRole('region', { name: 'Ready to apply with precision?' });
-  await expect(closing.getByRole('list', { name: 'What stays in your control' }).getByRole('listitem')).toHaveCount(3);
+  // The closing repeats the hero's one action, not its promise list.
+  const closing = page.getByRole('region', { name: 'Start with one CV and one job' });
+  await expect(closing.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/signup');
+  await expect(page.getByRole('list', { name: 'What stays in your control' })).toHaveCount(1);
 });
 
 test('landing demo plays a short sequence: ticks draw in and the last step settles; reduced motion shows the end state at once', async ({ page }) => {

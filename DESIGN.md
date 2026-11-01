@@ -82,6 +82,13 @@ spacing:
   md: "16px"
   lg: "24px"
   xl: "40px"
+  stack-tight: "4px"
+  stack: "8px"
+  section: "12px"
+  group: "16px"
+  card: "20px (24px from 640px)"
+  region: "24px (32px from 1024px)"
+  landing-section: "64-96px"
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
@@ -160,7 +167,37 @@ Chat text uses 1.9 line-height; English documents use Manrope first at 16px/1.9.
 
 From the 1024px `lg` breakpoint the shell has a 248px project rail on the `sidebar` colour, and the page sits in one rounded inset panel (`background`, 1px border, 12px radius, 8px gap to the frame). Below `lg` there is no frame and a labelled mobile drawer replaces the rail. Sidebar group labels are visible; rows are plain outline icons, and the active row takes the `--nav-active` fill and its stage-hue icon. Page headers (`PageHeader`) place actions beside the title when space allows and stack below 640px. Keep flex and grid children shrinkable with `min-width: 0`; allow long names to wrap.
 
-Use compact spacing within control groups and wider 24–40px gaps between page regions. Search pairs a result list with an inspector on wide screens. Horizontal scrolling belongs inside genuinely wide data regions.
+Use compact spacing within control groups. Page regions are 24px apart below `lg` and 32px from `lg` (`gap-6 lg:gap-8`); a back link sits 4px above its title. Search pairs a result list with an inspector on wide screens. Horizontal scrolling belongs inside genuinely wide data regions.
+
+## Spacing
+
+The scale is a named set of Tailwind classes, not CSS variables. Allowed steps (px): 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96 (`0.5 1 2 3 4 5 6 8 10 12 16 20 24`). The landing page uses the same set without 20.
+
+| Name | Value | Classes | Where |
+|---|---|---|---|
+| page-pad | 16/24/40 × 24/32/40 | `px-4 py-6 sm:px-6 sm:py-8 xl:px-10 xl:py-10` | `AppShell` main |
+| region-gap | 24, 32 from `lg` | page root `grid gap-6 lg:gap-8` | every page root |
+| back-to-title | 4 | `grid gap-1` around `PageBack` + `PageHeader` | pages with a back link |
+| section-gap | 12 | `grid gap-3` | a heading and its panel |
+| card-pad | 20, 24 from `sm` | `p-5 sm:p-6` | panels, forms, detail cards |
+| card-pad-roomy | 24, 32 from `sm` | `p-6 sm:p-8` | empty states, the one card on a centred page |
+| item-pad | 16 | `p-4` | repeated items: result cards, kanban cards |
+| inset-pad | 12 | `p-3`, `rounded-lg` | a tile inside a card |
+| stack-tight | 4 | `gap-1` | title and meta line |
+| stack | 8 | `gap-2` | chips, button groups, label to control |
+| group | 16 | `gap-4` | blocks inside a card, field to field |
+| group-loose | 24 | `gap-6` | columns and groups inside a region |
+| form | 8 / 16 / 24 | field `grid gap-2`; form `grid gap-4`; actions `flex flex-wrap gap-2 pt-2` | label to control / field to field / last field to actions |
+| toolbar | 8 | `flex flex-wrap items-center gap-2` | filter rows, header actions |
+| list-row | 12×16, 12×20 from `sm` | `px-4 py-3 sm:px-5` with `min-h-14` (one line); `px-4 py-4 sm:px-5` (two lines) | divided lists |
+| table-cell | 8×12 | `px-3 py-2` | data tables |
+| landing-section | 64 to 96 | `mt-16 sm:mt-20`, `mt-16 sm:mt-24`, `mt-20 sm:mt-24` | landing sections, varied on purpose |
+
+Banned: the steps `2.5`, `7`, `9`, `11`, `14`; arbitrary `[..]` spacing; negative margins used for rhythm (an optical nudge on an icon button carries an `// optical:` comment). Gate, expected empty:
+
+```
+cd frontend/src && grep -rnE "(^|[ \"'])(sm:|md:|lg:|xl:)?(-?m[tbxylrse]?|p[tbxylrse]?|gap(-[xy])?)-(2\.5|7|9|11|14)([ \"']|$)" --include='*.tsx' . ; grep -rnE "(^|[ \"'])-m[tb]-[0-9]" --include='*.tsx' .
+```
 
 ## Elevation & Depth
 
@@ -168,9 +205,13 @@ Surfaces are flat: white on the warm page with a 1px hairline and almost no shad
 
 ## Shapes
 
-The base radius is 8px, giving sm 4, md 6, lg 8, xl 12 and 2xl 12. Controls are 8px, cards, panels and dialogs 12px, badges 6px. Pills (`rounded-full`) remain only for avatars, dots, counts and AI prompt-suggestion chips.
+The base radius is 8px, giving sm 4, md 6, lg 8, xl 12 and 2xl 12. Controls are 8px, cards, panels and dialogs 12px, badges 6px. Pills (`rounded-full`) remain only for avatars, dots, counts and AI prompt-suggestion chips. Tab lists are segmented tracks with 8px radius, never pills.
 
 ## Components
+
+### Landing (Persuade surface)
+
+The public page persuades; the app operates. Section order: skip link, hero, three steps, static tagline, tour, data and control, FAQ, closing, footer. The page has one primary action (create account, or open app when signed in), repeated unchanged in the hero and the closing card; the only other hero action is a text link. The tagline is a static two-tone statement between hairlines (muted first line, foreground second), with no scroll animation. The tour is a vertical index (Up and Down keys) beside one panel, never a pill strip and never a card inside a card. Objections are answered in a FAQ ledger of native `details` rows. The one authored motion is the hero demo card, played once on `--ease-out`; reduced motion shows its end state. No icon tiles, no pills outside the list above, no shadows on page cards, no gradient text. Proof comes only from true product facts and real UI states: no statistics, testimonials, logos, user counts, prices, awards or odds. Footer links go only to pages that exist.
 
 ### Buttons
 
