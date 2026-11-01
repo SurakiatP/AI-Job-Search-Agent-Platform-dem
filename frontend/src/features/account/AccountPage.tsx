@@ -147,7 +147,7 @@ function AgentsSection() {
     </li>;
   };
   return <section aria-labelledby="account-agents" className="grid gap-3">
-    <div className="grid gap-1"><h2 id="account-agents" className="text-lg font-semibold">{t('account.agentsSection')}</h2><p className="text-sm text-muted-foreground">{t('account.agentsIntro')}</p></div>
+    <div className="grid gap-1"><h2 id="account-agents" tabIndex={-1} className="text-lg font-semibold">{t('account.agentsSection')}</h2><p className="text-sm text-muted-foreground">{t('account.agentsIntro')}</p></div>
     {agents.status === 'error' ? <ErrorState onRetry={agents.reload} />
       : agents.status === 'loading' && !agents.data ? <LoadingState />
       : all.length === 0 ? <div className="grid gap-1 rounded-xl border border-dashed bg-card p-6"><p className="font-medium">{t('account.noAgents')}</p><p className="text-sm text-muted-foreground">{t('account.noAgentsNext')}</p></div>
@@ -163,6 +163,7 @@ function AgentsSection() {
       description={tu('account.revokeBody', { app: appName(revoking), project: revoking.project_name })}
       confirmLabel={tu('account.revokeConfirm')}
       onConfirm={() => apiRequest<void>(`/projects/${encodeURIComponent(revoking.project_id)}/grants/${encodeURIComponent(revoking.id)}`, { method: 'DELETE' })}
+      returnFocus={() => document.getElementById('account-agents')}
       onDone={() => { setRevoking(null); agents.reload(); }}
       onClose={() => setRevoking(null)} />}
   </section>;

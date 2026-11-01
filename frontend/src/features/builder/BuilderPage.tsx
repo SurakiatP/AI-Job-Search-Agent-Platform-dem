@@ -22,6 +22,7 @@ import { AiLabel } from '@/components/AiMark';
 import { dateLocale } from '../../lib/locale';
 
 type Kind = 'cv' | 'document';
+type SaveResult = 'saved' | 'dirty' | 'draft_conflict' | 'resume_invalid' | 'offline';
 type SaveState = 'saved' | 'saving' | 'dirty' | 'offline' | 'conflict' | 'invalid';
 // Save shortly after typing stops; preview right after each save, at most once per PREVIEW_GAP_MS
 // (the server allows 20 previews a minute).
@@ -54,7 +55,9 @@ export function BuilderPage({ kind }: { kind: Kind }) {
   const latest = useRef<Draft | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   const previewTimer = useRef<number | undefined>(undefined);
-  const inFlight = useRef(false);
+  const flight = useRef<Promise<unknown> | null>(null); // the save in progress, if any
+  const pending = useRef(false); // edits not yet saved
+  const mounted = useRef(true);
   const lastPreview = useRef(0);
   const previewBusy = useRef(false);
   const previewAgain = useRef(false);
@@ -68,9 +71,11 @@ export function BuilderPage({ kind }: { kind: Kind }) {
       const value = await apiRequest<Draft>(base);
       const loaded = { ...value, resume_data: normalize(value.resume_data) };
       latest.current = loaded; setDraft(loaded); setSave('saved');
+    } catch { setLoadError(true); return; }
+    try {
       const kept = localStorage.getItem(stashKey);
       if (kept) { const old = JSON.parse(kept) as Draft; setStash({ ...old, resume_data: normalize(old.resume_data) }); }
-    } catch { setLoadError(true); }
+    } catch { try { localStorage.removeItem(stashKey); } catch { /* storage blocked */ } }
   }, [base, stashKey]);
   useEffect(() => { void load(); }, [load]);
 
@@ -98,40 +103,68 @@ export function BuilderPage({ kind }: { kind: Kind }) {
   const tryTheme = useCallback((next: Working | null) => { working.current = next; setCustomising(next !== null); schedulePreview(); }, [schedulePreview]);
   useEffect(() => () => { setPdfUrl(old => { if (old) URL.revokeObjectURL(old); return null; }); }, []);
 
-  const persist = useCallback(async () => {
+  const persist = useCallback(async (): Promise<SaveResult> => {
+    while (flight.current) await flight.current;
     const current = latest.current;
-    if (!current || inFlight.current) return;
-    inFlight.current = true; setSave('saving');
-    try {
-      const saved = await sendJson<Draft>(base, 'PUT', { resume_data: current.resume_data, template_id: current.template_id, accent: current.accent, document_language: current.document_language, updated_at: current.updated_at });
-      const unchanged = latest.current === current;
-      latest.current = { ...(unchanged ? saved : latest.current!), updated_at: saved.updated_at };
-      setDraft(latest.current);
-      localStorage.removeItem(stashKey);
-      setSavedAt(new Date()); setSave(unchanged ? 'saved' : 'dirty');
-      if (!unchanged) saveTimer.current = window.setTimeout(() => void persist(), 300);
-      schedulePreview();
-    } catch (error) {
-      if (error instanceof ApiError && error.code === 'draft_conflict') setSave('conflict');
-      else if (error instanceof ApiError && error.code === 'resume_invalid') { setSave('invalid'); setInvalidPath(String(error.fields?.path ?? '')); }
-      else { setSave('offline'); localStorage.setItem(stashKey, JSON.stringify(current)); }
-    } finally { inFlight.current = false; }
+    if (!current) return 'offline';
+    if (!pending.current) return 'saved';
+    pending.current = false;
+    const run = (async (): Promise<SaveResult> => {
+      setSave('saving');
+      try {
+        const saved = await sendJson<Draft>(base, 'PUT', { resume_data: current.resume_data, template_id: current.template_id, accent: current.accent, document_language: current.document_language, updated_at: current.updated_at });
+        const unchanged = latest.current === current;
+        latest.current = { ...(unchanged ? saved : latest.current!), updated_at: saved.updated_at };
+        setDraft(latest.current);
+        try { localStorage.removeItem(stashKey); } catch { /* storage blocked */ }
+        setSavedAt(new Date()); setSave(unchanged ? 'saved' : 'dirty');
+        if (!unchanged) saveTimer.current = window.setTimeout(() => void persist(), 300);
+        if (mounted.current) schedulePreview();
+        return unchanged ? 'saved' : 'dirty';
+      } catch (error) {
+        pending.current = true;
+        if (error instanceof ApiError && error.code === 'draft_conflict') { setSave('conflict'); return 'draft_conflict'; }
+        if (error instanceof ApiError && error.code === 'resume_invalid') { setSave('invalid'); setInvalidPath(String(error.fields?.path ?? '')); return 'resume_invalid'; }
+        setSave('offline');
+        try { localStorage.setItem(stashKey, JSON.stringify(current)); } catch { /* storage full or blocked */ }
+        return 'offline';
+      }
+    })();
+    flight.current = run;
+    try { return await run; } finally { flight.current = null; }
   }, [base, schedulePreview, stashKey]);
+  const persistNow = useRef(persist);
+  persistNow.current = persist;
 
   const change = useCallback((next: Draft) => {
-    latest.current = next; setDraft(next); setSave('dirty');
+    latest.current = next; pending.current = true; setDraft(next); setSave('dirty');
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => void persist(), SAVE_DELAY_MS);
   }, [persist]);
-  useEffect(() => () => { window.clearTimeout(saveTimer.current); window.clearTimeout(previewTimer.current); }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      window.clearTimeout(saveTimer.current); window.clearTimeout(previewTimer.current);
+      if (pending.current) void persistNow.current(); // leaving within the save delay must not drop the last edits
+    };
+  }, []);
+  useEffect(() => {
+    if (save === 'saved') return;
+    const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [save]);
 
-  const data = (fn: (d: ResumeData) => ResumeData) => draft && change({ ...draft, resume_data: fn(structuredClone(draft.resume_data)) });
+  const data = (fn: (d: ResumeData) => ResumeData) => { const d = latest.current; if (d) change({ ...d, resume_data: fn(structuredClone(d.resume_data)) }); };
 
   async function publish() {
     setPublishing(true); setPublishError('');
     try {
       window.clearTimeout(saveTimer.current);
-      if (save !== 'saved') await persist();
+      let result = await persist();
+      if (result === 'dirty') result = await persist();
+      if (result !== 'saved') { setPublishError(c.errors[result as keyof typeof c.errors] ?? c.errors.generic); return; }
       const revision = await apiRequest<{ revision: number }>(`${base}/publish`, { method: 'POST' });
       setPublished(revision.revision); setConfirm(false);
     } catch (error) {
@@ -324,8 +357,16 @@ function FieldInput({ field, item, locale, prefix, onChange }: { field: Field; i
       <Textarea id={id} rows={field.kind === 'lines' ? 4 : 3} value={text} placeholder={placeholder}
         onChange={e => onChange(field.kind === 'lines' ? e.target.value.split('\n').slice(0, 20) : e.target.value)} /></div>;
   }
-  if (field.kind === 'keywords') return <TextField id={id} label={label} value={((value as string[]) ?? []).join(', ')} onChange={v => onChange(v.split(',').map(s => s.trimStart()).slice(0, 20))} />;
+  if (field.kind === 'keywords') return <KeywordsInput id={id} label={label} value={(value as string[]) ?? []} onChange={onChange} />;
   return <TextField id={id} label={label} value={String(value ?? '')} placeholder={placeholder} type={field.kind === 'month' ? 'month' : field.kind === 'url' ? 'url' : 'text'} onChange={onChange} />;
+}
+
+const parseKeywords = (text: string) => text.split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);
+/** Keeps the raw text so a comma can be typed and deleted; the list is parsed from it. */
+function KeywordsInput({ id, label, value, onChange }: { id: string; label: string; value: string[]; onChange: (value: unknown) => void }) {
+  const [raw, setRaw] = useState(value.join(', '));
+  if (parseKeywords(raw).join('\u0000') !== value.join('\u0000')) setRaw(value.join(', ')); // changed from outside (restore, import)
+  return <TextField id={id} label={label} value={raw} onChange={v => { setRaw(v); onChange(parseKeywords(v)); }} />;
 }
 
 type Copy = (typeof copy)['en'];

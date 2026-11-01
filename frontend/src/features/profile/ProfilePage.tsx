@@ -190,7 +190,7 @@ export function ProfilePage() {
           <p className="text-sm text-muted-foreground">{w('dropHere')} · {w('accepted')}</p>
         </div>
           : <Card><CardContent className="grid gap-3 p-4 sm:p-5">
-            <h2 className="text-lg font-semibold">{c.cvs}</h2>
+            <h2 id="profile-cvs-title" tabIndex={-1} className="text-lg font-semibold">{c.cvs}</h2>
             <div aria-hidden="true" className={cn('hidden gap-3 border-b px-1 pb-2 text-sm font-medium text-muted-foreground xl:grid', ROW_GRID)}><span>{w('colName')}</span><span>{w('colVersion')}</span><span>{w('colType')}</span><span className="text-end">{w('colActions')}</span></div>
             <ul className="grid divide-y">{list.map(cv => {
               const latest = cv.latest_revision;
@@ -239,6 +239,6 @@ export function ProfilePage() {
     {rename && <RenameDialog key={rename.id} cv={rename} c={c} projectId={projectId} onClose={() => setRename(null)} onDone={() => { setRename(null); cvs.reload(); }} />}
     {remove && <ConfirmDeleteDialog title={c.delTitle(remove.name)} description={c.delBody} confirmLabel={c.delConfirm}
       onConfirm={() => apiRequest(`/projects/${projectId}/cvs/${remove.id}`, { method: 'DELETE' }).then(() => undefined)}
-      onDone={() => { setRemoved(remove); setUndoFailed(false); setRemove(null); cvs.reload(); primaryRevisions.reload(); notifyTrashChanged(); }} onClose={() => setRemove(null)} />}
+      returnFocus={() => document.getElementById('profile-cvs-title')} onDone={() => { setRemoved(remove); setUndoFailed(false); setRemove(null); cvs.reload(); primaryRevisions.reload(); notifyTrashChanged(); }} onClose={() => setRemove(null)} />}
   </section>;
 }

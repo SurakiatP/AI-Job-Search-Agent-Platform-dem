@@ -44,6 +44,7 @@ test('experience bank groups facts, adds and removes, and shows extraction resul
   await expect(section.getByText('Python')).toBeVisible();
   await section.getByRole('button', { name: 'Remove: Ran BigQuery' }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(section.getByText('Ran BigQuery')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Experience bank' })).toBeFocused();
 });
 
 test('experience bank empty states and Thai at 320px', async ({ page }) => {

@@ -108,7 +108,7 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
 
   return <section aria-labelledby="saved-searches-title" className="grid min-w-0 gap-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h2 id="saved-searches-title" className={items.length > 0 ? "text-base font-semibold" : "sr-only"}>{c.title}</h2>
+      <h2 id="saved-searches-title" tabIndex={-1} className={items.length > 0 ? "text-base font-semibold" : "sr-only"}>{c.title}</h2>
       <Button variant="outline" disabled={!savable} onClick={openSave}><Bookmark className="size-4" aria-hidden="true" />{c.save}</Button>
     </div>
     {!savable && items.length === 0 && <p className="text-sm text-muted-foreground">{c.hint}</p>}
@@ -165,6 +165,6 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
     </Dialog>
     {deleting && <ConfirmDeleteDialog title={c.deleteTitle(deleting.name)} description={c.deleteBody} confirmLabel={c.deleteConfirm}
       onConfirm={() => apiRequest(`${base}/${deleting.id}`, { method: 'DELETE' }).then(() => undefined)}
-      onDone={() => { setDeleting(null); list.reload(); }} onClose={() => setDeleting(null)} />}
+      returnFocus={() => document.getElementById('saved-searches-title')} onDone={() => { setDeleting(null); list.reload(); }} onClose={() => setDeleting(null)} />}
   </section>;
 }

@@ -25,7 +25,7 @@ const copy = {
     status: { pending: 'รอส่ง', delivered: 'ส่งแล้ว', dead: 'ล้มเหลว' }, cols: ['เหตุการณ์', 'สถานะ', 'HTTP', 'ครั้ง', 'เวลา', 'การทำงาน'],
     copy: 'คัดลอก', copied: 'คัดลอกแล้ว', copyFail: 'คัดลอกไม่สำเร็จ ลองเลือกข้อความแล้วคัดลอกเอง', loadError: 'โหลดข้อมูลไม่สำเร็จ', retry: 'ลองอีกครั้ง',
     labels: { 'run.waiting_approval': 'รออนุมัติ', 'run.needs_input': 'รอข้อมูล', 'run.completed': 'งานเสร็จ', 'run.failed': 'งานล้มเหลว', 'run.cancelled': 'งานถูกยกเลิก', 'digest.ready': 'สรุปงานใหม่พร้อม' } as Record<WebhookEvent, string>,
-    errors: { invalid_webhook_url: 'URL ต้องเป็น https และชี้ไปยังเซิร์ฟเวอร์สาธารณะ', webhook_limit: 'เพิ่มได้สูงสุด 5 webhook ต่อโปรเจกต์', delivery_not_dead: 'ส่งใหม่ได้เฉพาะรายการที่ล้มเหลว' } as Record<string, string>,
+    errors: { invalid_webhook_url: 'URL ต้องขึ้นต้นด้วย https และเปิดได้จากอินเทอร์เน็ต', webhook_limit: 'เพิ่มได้สูงสุด 5 webhook ต่อโปรเจกต์', delivery_not_dead: 'ส่งใหม่ได้เฉพาะรายการที่ล้มเหลว' } as Record<string, string>,
     error: 'ทำรายการไม่สำเร็จ ลองอีกครั้ง',
   },
   en: {
@@ -39,7 +39,7 @@ const copy = {
     status: { pending: 'Pending', delivered: 'Delivered', dead: 'Failed' }, cols: ['Event', 'Status', 'HTTP', 'Attempts', 'Time', 'Actions'],
     copy: 'Copy', copied: 'Copied', copyFail: 'Could not copy. Select the text and copy it yourself.', loadError: 'Could not load this information.', retry: 'Try again',
     labels: { 'run.waiting_approval': 'Waiting for approval', 'run.needs_input': 'Needs input', 'run.completed': 'Run completed', 'run.failed': 'Run failed', 'run.cancelled': 'Run cancelled', 'digest.ready': 'Digest ready' } as Record<WebhookEvent, string>,
-    errors: { invalid_webhook_url: 'The URL must use https and point to a public server.', webhook_limit: 'You can add up to 5 webhooks per project.', delivery_not_dead: 'Only failed deliveries can be redelivered.' } as Record<string, string>,
+    errors: { invalid_webhook_url: 'Use an https address that can be reached from the internet.', webhook_limit: 'You can add up to 5 webhooks per project.', delivery_not_dead: 'Only failed deliveries can be redelivered.' } as Record<string, string>,
     error: 'Something went wrong. Try again.',
   },
 };

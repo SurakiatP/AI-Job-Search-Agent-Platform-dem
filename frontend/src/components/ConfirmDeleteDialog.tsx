@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../lib/api-types';
 import { Button } from './ui/button';
@@ -11,18 +11,19 @@ export function ConfirmDeleteDialog({ title, description, confirmLabel, onConfir
 }) {
   const th = useTranslation().i18n.language.startsWith('th');
   const [busy, setBusy] = useState(false);
+  const done = useRef(false);
   const [error, setError] = useState<ReactNode>('');
   async function submit() {
     if (busy) return;
     setBusy(true); setError('');
-    try { await onConfirm(); onDone(); } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 404) { onDone(); return; }
+    try { await onConfirm(); done.current = true; onDone(); } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 404) { done.current = true; onDone(); return; }
       setError((caught instanceof ApiError && caught.status === 409 && errors[caught.code]) || (th ? 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง' : 'That did not work. Try again.'));
       setBusy(false);
     }
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
-    <DialogContent fallbackFocus={returnFocus}>
+    <DialogContent onCloseAutoFocus={returnFocus ? event => { if (done.current) { event.preventDefault(); returnFocus()?.focus(); } } : undefined}>
       <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>

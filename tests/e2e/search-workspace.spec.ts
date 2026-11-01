@@ -96,6 +96,28 @@ test('source failure can switch to clearly labelled sample results', async ({ pa
   await expect(page.getByRole('button', { name: 'Back to live data' })).toBeVisible();
 });
 
+test('sample data offers no Save or Evaluate and writes nothing to the project', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const writes: string[] = [];
+  page.on('request', request => { if (request.method() === 'POST' && /\/projects\/[^/]+\/jobs/.test(request.url())) writes.push(request.url()); });
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/facets')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [] }) });
+    return route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ code: 'job_source_unavailable', message_key: 'service.unavailable', retryable: true }) });
+  });
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.goto(`/app/projects/${projectId}/search`);
+  await page.getByRole('button', { name: 'View sample data' }).click();
+  const first = page.locator('[data-job-slug]').first();
+  await expect(first).toBeVisible();
+  await first.click();
+  await expect(page.getByText('Sample data cannot be saved or evaluated. This works on real postings only.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^(save|save job)$|^evaluate/i })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /evaluate/i })).toHaveCount(0);
+  expect(writes).toEqual([]);
+});
+
 test('a load-more error keeps the successful results visible', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);

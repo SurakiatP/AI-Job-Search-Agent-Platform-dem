@@ -101,6 +101,7 @@ export async function login(email: string, password: string): Promise<void> {
 export async function logout(): Promise<void> {
   await authRequest<void>('/auth/logout', undefined, true).catch(() => undefined);
   csrfToken = null;
+  try { Object.keys(localStorage).filter(k => k.startsWith('cvb-draft:')).forEach(k => localStorage.removeItem(k)); } catch { /* storage blocked */ }
   setSession({ status: 'anonymous' });
 }
 export type CheckEmail = { status: 'check_email'; mail_enabled?: boolean };

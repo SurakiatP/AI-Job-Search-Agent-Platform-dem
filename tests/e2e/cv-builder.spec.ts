@@ -200,6 +200,42 @@ test('F7 two draft CVs with the same name show different created times in the pr
   expect(first).not.toBe(second);
 });
 
+test('P2-2 a comma in the keywords field can be deleted', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const state = await builderApi(page);
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  await page.getByRole('button', { name: /^Skills/ }).first().click();
+  await page.getByRole('button', { name: 'Add skills' }).click();
+  const field = page.getByLabel('Keywords (comma separated)');
+  await field.pressSequentially('a, b');
+  await field.press('Backspace'); await field.press('Backspace');
+  await expect(field).toHaveValue('a,');
+  await field.press('Backspace');
+  await expect(field).toHaveValue('a');
+  await expect.poll(() => state.draft.resume_data.sections.skills.items[0]?.keywords).toEqual(['a']);
+});
+
+test('P3-5 a failed save stops the publish and shows why', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const state = await builderApi(page, { failPut: true });
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  await page.getByLabel('Full name').fill('Unsaved Name');
+  await page.getByRole('button', { name: 'Save as new version' }).first().click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Save as new version' }).click();
+  await expect(page.getByRole('dialog').getByRole('alert').filter({ hasText: 'Could not save' })).toBeVisible();
+  expect(state.publishes).toBe(0);
+});
+
+test('P3-6 a corrupt stash does not lock the builder', async ({ page }) => {
+  await page.addInitScript(() => { localStorage.setItem('ui.locale', 'en'); localStorage.setItem('cvb-draft:cv:77777777-7777-4777-8777-777777777777', '{not json'); });
+  await useSyntheticApplication(page);
+  await builderApi(page);
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  await expect(page.getByLabel('Full name')).toBeVisible();
+});
+
 test('F3 saving a theme without a name focuses the field and links the error to it', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
