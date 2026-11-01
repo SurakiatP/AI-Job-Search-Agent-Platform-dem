@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CvPreviewButton } from '@/components/CvPreview';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles, UserRound, X } from 'lucide-react';
 import { notifyTrashChanged } from '@/lib/trash';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import { ApiError, type CVRevisionInfo, type CVView, type ExperienceView } from 
 import { ExperienceBank } from './ExperienceBank';
 import { sendJson, useResource } from '../projects/useResource';
 import { BuildCvButton } from '../builder/BuildCvButton';
+import { PageHeader } from '@/components/PageHeader';
 
 const copy = {
   th: { editBuilder: 'แก้ไขในตัวสร้าง', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ย้าย CV “${n}” ไปถังขยะ?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้ จนกว่าจะกู้คืนจากถังขยะ การประเมินที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', delConfirm: 'ย้ายไปถังขยะ', moved: (n: string) => `ย้าย “${n}” ไปถังขยะแล้ว`, undo: 'เลิกทำ', undoFailed: 'เลิกทำไม่สำเร็จ กู้คืนได้จากถังขยะ', openTrash: 'เปิดถังขยะ', dismiss: 'ปิด', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง' },
@@ -159,9 +160,8 @@ export function ProfilePage() {
     onDrop: (event: React.DragEvent) => { event.preventDefault(); setDragging(false); void upload(event.dataTransfer.files[0], '/cvs'); } };
   return <section className="grid gap-6 lg:gap-8">
     <PageBack to={`${base}/overview`}>{t('nav.overview')}</PageBack>
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{w('title')}</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">{w('subtitle')}</p></div>
-      <div className="flex flex-wrap gap-2"><Button className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button><BuildCvButton projectId={projectId} /></div>
+    <div className="grid">
+      <PageHeader icon={UserRound} title={w('title')} lede={w('subtitle')} actions={<><Button className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button><BuildCvButton projectId={projectId} /></>} />
       <input ref={addInput} className="sr-only" tabIndex={-1} aria-label={c.add} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], '/cvs'); event.target.value = ''; }} />
       <input ref={versionInput} className="sr-only" tabIndex={-1} aria-label={c.upload} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], `/cvs/${versionTarget.current}/revisions`); event.target.value = ''; }} />
     </div>

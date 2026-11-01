@@ -27,6 +27,7 @@ import { categoryLabel } from './categories';
 import { SavedSearchesPanel } from './SavedSearches';
 import { ADV_KEYS, AdvancedFilters, advValueLabel, Presets, splitList, type Facet } from './AdvancedFilters';
 import { BuildCvButton } from '../builder/BuildCvButton';
+import { PageHeader } from '@/components/PageHeader';
 
 type JobSearchItem = {
   slug: string; title: string; company: string | null; location: string | null; cities: string[];
@@ -143,7 +144,7 @@ function useWide() {
   return wide;
 }
 
-const selectClass = 'min-h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+const selectClass = 'min-h-11 lg:min-h-10 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 function MatchBadge({ match, c }: { match: Match | null | undefined; c: Copy }) {
   if (!match) return <Badge variant="secondary">{c.noSkills}</Badge>;
@@ -226,7 +227,7 @@ function AgentSteps({ c, step, scored, total }: { c: Copy; step: 0 | 1 | 2; scor
     <p className="flex items-center gap-2 font-medium"><AiSpinner size="sm" />{c.agentWorking}</p>
     <ol className="grid gap-1.5">{labels.map((label, i) => <li key={i} aria-current={i === step ? 'step' : undefined}
       className={`flex items-center gap-2 ${i < step ? 'text-muted-foreground' : i === step ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-      <span aria-hidden="true" className={`grid size-5 shrink-0 place-items-center rounded-full text-xs ${i <= step ? 'bg-[var(--stage-search)] text-card' : 'border'} ${i === step ? 'motion-safe:animate-pulse' : ''}`}>{i < step ? '✓' : i + 1}</span>
+      <span aria-hidden="true" className={`grid size-6 shrink-0 place-items-center rounded-full text-xs tabular-nums ${i < step ? 'bg-[var(--stage-search)] text-card' : i === step ? 'border-[1.5px] border-foreground font-medium text-foreground' : 'border border-[color:var(--border-strong)]'} ${i === step ? 'motion-safe:animate-pulse' : ''}`}>{i < step ? '✓' : i + 1}</span>
       <span>{label}</span>
     </li>)}</ol>
   </div>;
@@ -640,17 +641,14 @@ export function SearchPage() {
 
   return <section className="grid gap-4 sm:gap-6">
     <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <div className="grid gap-1">
-      <h1 className="min-w-0 break-words text-2xl font-semibold">{c.title}</h1>
-      {grandTotal != null && <p className="text-sm text-muted-foreground">{!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
-        ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))}</p>}
-    </div>
+    <PageHeader icon={Search} title={c.title} lede={grandTotal != null ? (!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
+      ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))) : undefined} />
 
-    <div role="group" aria-label={c.modeLabel} className="inline-flex w-fit max-w-full rounded-lg border bg-muted p-1">
+    <div role="group" aria-label={c.modeLabel} className="segmented w-fit max-w-full">
       {([['search', c.modeSearch], ['match', c.modeMatch]] as const).map(([key, label]) => {
         const on = (key === 'match') === smart;
         return <button key={key} type="button" aria-pressed={on} onClick={() => setSearchMode(key)}
-          className={`min-h-11 rounded-md px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>;
+          className={`min-h-11 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? '' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>;
       })}
     </div>
     <p className="-mt-4 text-sm text-muted-foreground">{tSearch(smart ? 'controls.modeHintMatch' : 'controls.modeHintSearch')}</p>
@@ -711,7 +709,7 @@ export function SearchPage() {
       <Presets locale={locale} get={get} setMany={setMany} />
       {categories.length > 0 && <div role="group" aria-label={c.categories} className="flex flex-wrap gap-2">
         <h3 className="w-full text-sm font-semibold">{c.categories}</h3>
-        {categories.map(f => <Button key={f.value} type="button" variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal rounded-full text-left" aria-pressed={category === f.value}
+        {categories.map(f => <Button key={f.value} type="button" variant="outline" size="sm" className="h-auto whitespace-normal text-left" aria-pressed={category === f.value}
           onClick={() => setFilter('category', category === f.value ? '' : f.value)}>
           {catLabel(f.value)}{f.count ? <span className="text-muted-foreground">{number.format(f.count)}</span> : null}
         </Button>)}
@@ -723,7 +721,7 @@ export function SearchPage() {
         <Button type="button" variant="link" className="h-auto p-0" onClick={clear}>{tSearch('controls.clearFilters')}</Button>
       </div>
       <div className="flex flex-wrap gap-2">
-        {activeFilterChips.map(chip => <Button key={`${chip.key}:${chip.label}`} type="button" variant="secondary" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal text-left" aria-label={tSearch('controls.removeFilter', { label: chip.label })} onClick={() => removeFilter(chip.key)}>
+        {activeFilterChips.map(chip => <Button key={`${chip.key}:${chip.label}`} type="button" variant="secondary" size="sm" className="h-auto max-w-full whitespace-normal text-left" aria-label={tSearch('controls.removeFilter', { label: chip.label })} onClick={() => removeFilter(chip.key)}>
           <span className="break-words">{chip.label}</span><X className="size-3.5 shrink-0" aria-hidden="true" />
         </Button>)}
       </div>
@@ -760,7 +758,7 @@ export function SearchPage() {
       </div>}
       {smartActive && !category && !q && ai?.categories && ai.categories.length > 0 && <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">{c.autoCats}</span>
-        {ai.categories.map(slug => <Button key={slug} type="button" variant="outline" size="sm" className="h-auto min-h-9 rounded-full" onClick={() => setFilter('category', slug)}>{catLabel(slug)}</Button>)}
+        {ai.categories.map(slug => <Button key={slug} type="button" variant="outline" size="sm" className="h-auto" onClick={() => setFilter('category', slug)}>{catLabel(slug)}</Button>)}
       </div>}
       {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-3 py-2 text-sm">
         <span className="[overflow-wrap:anywhere]">{undo.message}</span>

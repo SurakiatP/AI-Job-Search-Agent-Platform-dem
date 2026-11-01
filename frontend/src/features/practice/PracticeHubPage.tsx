@@ -8,6 +8,8 @@ import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import { Progress } from './PracticeTab';
 import { practiceCopy } from './copy';
+import { Mic } from 'lucide-react';
+import { PageHeader } from '@/components/PageHeader';
 
 export function PracticeHubPage() {
   const { projectId = '' } = useParams();
@@ -21,7 +23,7 @@ export function PracticeHubPage() {
   const groups = new Map<string, ProjectPracticeSet[]>();
   for (const set of sets.data ?? []) groups.set(set.session_id, [...(groups.get(set.session_id) ?? []), set]);
   return <section className="grid min-w-0 gap-6">
-    <header className="workspace-page-header"><div><h1>{c.hubTitle}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{c.hubIntro}</p></div></header>
+    <PageHeader icon={Mic} title={c.hubTitle} lede={c.hubIntro} />
     {groups.size === 0 ? <div className="workspace-panel grid justify-items-start gap-3 p-6 sm:p-8">
       <p className="max-w-xl text-muted-foreground">{c.hubEmpty}</p>
       <Button asChild className="min-h-11"><Link to={`${base}/sessions`}>{c.goEvaluations}</Link></Button>

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Download, File, FileUser, Info, Mail, MessageSquareText, Pencil, RotateCcw, type LucideIcon } from 'lucide-react';
+import { Download, File, FileText, FileUser, Info, Mail, MessageSquareText, Pencil, RotateCcw, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,7 @@ import { DocumentDeleteMenu } from './DocumentDeleteMenu';
 import { deletePermanently, inUseMessage, permanentDescription, permanentTitle, restoreDocument } from './TrashView';
 import { useFilePreview } from '../../components/CvPreview';
 import { notifyTrashChanged } from '@/lib/trash';
+import { PageHeader } from '@/components/PageHeader';
 
 type DocumentItem = { id: string; has_builder_draft?: boolean; document_type: 'cv' | 'cover_letter' | 'application_message' | 'other'; title: string; content_markdown?: string | null; output_language?: 'th' | 'en' | null; source_run_id?: string | null; partial?: boolean; trashed_at?: string | null; latest_revision?: { id: string; revision: number } | null };
 type DocumentRevision = { document_id: string; id?: string; revision?: number; created_at?: string; source_cv_revision_id?: string | null; source_job_revision_id?: string | null; file_id?: string | null; content_markdown?: string | null; origin?: 'agent' | 'manual' };
@@ -131,7 +132,7 @@ export function DocumentsPage() {
   // Same header block and rhythm as the populated page; the empty message sits in a card under it.
   if (!documents.length && !undo) return <section className="grid gap-6">
     <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{title}</h1><p className="text-sm text-muted-foreground">{w('subtitle')}</p></div>
+    <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
     <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-4 sm:p-5">
       <h2 className="text-lg font-semibold">{w('emptyTitle')}</h2>
       <p className="text-sm text-muted-foreground">{w('emptyHelp')}</p>
@@ -147,7 +148,7 @@ export function DocumentsPage() {
   }
   return <section className="grid gap-6">
     <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{title}</h1><p className="text-sm text-muted-foreground">{w('subtitle')}</p></div>
+    <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
     {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-4 py-2 text-sm">
       <span>{undo.message}</span>
       <span className="flex flex-wrap items-center gap-2">
@@ -289,13 +290,13 @@ export function DocumentDetailPage() {
             : canEdit && <Button type="button" size="sm" className="min-h-11" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{historical ? w('editFromThis') : w('editCurrent')}</Button>}
           {document.document_type === 'cv' && !document.has_builder_draft && <p className="w-full text-xs text-muted-foreground">{w('templateHint')}</p>}
           {versions.length > 1 && <label className="flex items-center gap-2 text-sm"><span className="text-muted-foreground">{w('colVersion')}</span>
-            <select className="min-h-9 rounded-md border border-input bg-card px-2 text-sm" value={viewed?.id ?? ''} onChange={event => setPickedId(event.target.value)}>
+            <select className="min-h-11 lg:min-h-10 rounded-md border border-input bg-card px-2 text-sm" value={viewed?.id ?? ''} onChange={event => setPickedId(event.target.value)}>
               {newestFirst.map(({ revision, number }) => <option key={revision.id ?? number} value={revision.id ?? ''}>{number}{revision === latestRevision ? ` · ${c.current}` : ''}{revision.origin === 'manual' ? ` · ${c.manual}` : ''}</option>)}</select></label>}</div>
         {historical && <div role="status" data-testid="historical-banner" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm"><span className="flex items-start gap-2"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />{w('historicalBanner', { n: viewedNumber })}</span>
           <Button type="button" size="sm" variant="outline" className="min-h-11" onClick={() => setPickedId('')}>{w('backToCurrent')}</Button></div>}
-        {document.has_builder_draft && viewed?.file_id && <div className="mb-4 overflow-hidden rounded-lg border bg-white" style={{ aspectRatio: '1 / 1.414' }}>
+        {document.has_builder_draft && viewed?.file_id && <div className="mb-4 rounded-xl bg-muted p-4 sm:p-6"><div className="overflow-hidden rounded-lg border bg-white shadow-md" style={{ aspectRatio: '1 / 1.414' }}>
           <PdfFrame url={downloadUrl(projectId, viewed.file_id)} title={w('templatePreview')} />
-        </div>}
+        </div></div>}
         <div ref={contentRef} className={document.has_builder_draft ? 'sr-only' : undefined}><Markdown className={cn('max-w-[68ch]', document.output_language === 'en' && 'document-english')} data-testid="document-content">{preview ?? t('pages.docPreviewUnavailable', { defaultValue: 'A text preview is unavailable. Download the authorized file to review this revision.' })}</Markdown></div>
         {preview && <CopyButton className="mt-4" source={contentRef} markdown={preview} />}
       </CardContent></Card>

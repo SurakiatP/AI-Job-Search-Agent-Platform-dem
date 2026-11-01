@@ -48,7 +48,7 @@ const copy = {
 type Copy = typeof copy.en;
 function useCopy(): Copy { return copy[useTranslation().i18n.language.startsWith('th') ? 'th' : 'en']; }
 
-const rowClass = 'group relative flex items-center gap-0.5 rounded-md text-sm transition-colors hover:bg-accent/60';
+const rowClass = 'group relative flex items-center gap-0.5 rounded-md text-sm transition-colors hover:bg-[color:var(--nav-hover)]';
 // Only the project that matches the route gets the background and accent bar; the active session row is a lighter highlight.
 const currentProjectClass = 'bg-accent text-accent-foreground';
 const activeSessionClass = 'has-[a[aria-current=page]]:bg-accent/60 has-[a[aria-current=page]]:font-medium';
@@ -140,7 +140,7 @@ function ProjectRow({ project, current, sessionId, expanded, version, onToggle, 
         </li>;
       })}
       <li>
-        <button type="button" onClick={() => setCreating(true)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm text-muted-foreground outline-none transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+        <button type="button" onClick={() => setCreating(true)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm text-muted-foreground outline-none transition-colors hover:bg-[color:var(--nav-hover)] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
           <Plus className="size-4 shrink-0" aria-hidden="true" />{c.newSession}
         </button>
         {creating && <NewSessionDialog projectId={project.id} onClose={() => { setCreating(false); onNavigate?.(); }} />}

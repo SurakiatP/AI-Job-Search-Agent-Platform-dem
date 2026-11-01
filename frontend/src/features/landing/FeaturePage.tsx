@@ -40,7 +40,7 @@ export function FeaturePage() {
 
       <section className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12">
         <div className="grid content-start gap-4">
-          <h1 className="text-3xl font-semibold leading-tight [text-wrap:balance] sm:text-4xl">{page.title}</h1>
+          <h1 className="text-3xl font-semibold [text-wrap:balance] sm:text-4xl">{page.title}</h1>
           <p className="max-w-prose text-base leading-relaxed text-muted-foreground sm:text-lg">{page.lead}</p>
           <div className="flex flex-wrap gap-3 pt-1">{cta}<Button asChild size="lg" variant="outline"><Link to="/docs">{u.docs}</Link></Button></div>
         </div>

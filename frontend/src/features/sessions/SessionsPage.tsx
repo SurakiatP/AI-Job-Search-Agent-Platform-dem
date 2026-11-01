@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Briefcase, FileText, Trash2, X } from 'lucide-react';
+import { ArrowRight, Briefcase, FileText, MessagesSquare, Trash2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -15,6 +15,7 @@ import { relativeTime } from '../console/shared';
 import { useResource } from '../projects/useResource';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { notifyTrashChanged } from '@/lib/trash';
+import { PageHeader } from '@/components/PageHeader';
 
 type Filter = 'all' | 'attention' | 'progress' | 'done' | 'stopped' | 'notStarted';
 const FILTERS: Filter[] = ['all', 'attention', 'progress', 'done', 'stopped', 'notStarted'];
@@ -72,7 +73,7 @@ export function SessionsPage() {
   const jobVersion = (id?: string | null) => (jobs.data ?? []).find(job => job.id === id)?.revision;
   if (inTrash) return <Navigate to={trashHref} replace />;
   return <section className="grid min-w-0 gap-6">
-    <header className="workspace-page-header"><div><h1>{t('nav.evaluate')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{s('list.subtitle')}</p></div><div className="flex flex-wrap items-center gap-2">{rows.length > 0 && <NewSessionButton projectId={projectId}>{t('workspace.newEvaluation')}</NewSessionButton>}</div></header>
+    <PageHeader icon={MessagesSquare} title={t('nav.evaluate')} lede={s('list.subtitle')} actions={rows.length > 0 && <NewSessionButton projectId={projectId}>{t('workspace.newEvaluation')}</NewSessionButton>} />
     {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2.5 text-sm">
       <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words sm:basis-auto">{undoFailed ? s('list.undoFailed') : s('list.moved', { title: removed.job_title ?? removed.title })}</span>

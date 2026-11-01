@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Brush, ChevronRight, FileCog, Lock, Share2, Sparkles, Webhook, Wrench } from 'lucide-react';
+import { Brush, ChevronRight, FileCog, Lock, Settings, Share2, Sparkles, Webhook, Wrench } from 'lucide-react';
 import { PageBack } from '@/components/PageBack';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ import { TelegramSettings } from './TelegramSettings';
 import { WebhookSettings } from './WebhookSettings';
 import { ToolSettings } from './ToolSettings';
 import { ProjectPreferences } from '../profile/ProjectPreferences';
+import { PageHeader } from '@/components/PageHeader';
 
 // Grouped by who is affected; the third entry picks the plain-words label from settings:scopeLabel.
 const sections = [['appearance', Brush, 'browser'], ['preferences', FileCog, 'project'], ['tools', Wrench, 'project'], ['sharing', Share2, 'project'], ['webhooks', Webhook, 'project'], ['gateway', Sparkles, 'app']] as const;
@@ -42,10 +43,7 @@ export function SettingsPage() {
 
   return <section className="page-wrap grid gap-4">
     <PageBack to="/app" history>{t('back', { defaultValue: 'Back' })}</PageBack>
-    <div className="grid gap-1">
-      <h1 className="text-2xl font-semibold">{t('pages.settingsTitle', { defaultValue: 'Settings' })}</h1>
-      <p className="max-w-prose text-sm text-muted-foreground">{ts(`scope.${section}`)}</p>
-    </div>
+    <PageHeader icon={Settings} title={t('pages.settingsTitle', { defaultValue: 'Settings' })} lede={ts(`scope.${section}`)} />
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
       <nav aria-label={ts('navLabel')} className="grid min-w-0 gap-4 lg:sticky lg:top-4">
         {groups.filter(group => visible.some(([id]) => (group.ids as readonly string[]).includes(id))).map(group => <div key={group.id} role="group" aria-labelledby={`settings-group-${group.id}`} className="grid min-w-0 gap-1">

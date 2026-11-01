@@ -161,10 +161,10 @@ export function BuilderPage({ kind }: { kind: Kind }) {
       <ul className="flex flex-wrap gap-2">{sampled.map(s => <li key={s} className="rounded-full border border-warning/50 bg-warning/20 px-3 py-1 font-medium">{s}</li>)}</ul>
     </div>}
     {pages > 2 && <p role="note" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-sm">{c.tooLong}</p>}
-    <div className="relative overflow-hidden rounded-lg border bg-white" style={{ aspectRatio: '1 / 1.414' }}>
+    <div className="rounded-xl bg-muted p-4 sm:p-6"><div className="relative overflow-hidden rounded-lg border bg-white shadow-md" style={{ aspectRatio: '1 / 1.414' }}>
       {pdfUrl ? <iframe title={c.preview} src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`} className="absolute -left-4 -top-1.5 h-[calc(100%+2.5rem)] w-[calc(100%+2rem)] max-w-none border-0" /> : <div className="grid size-full place-items-center p-4 text-sm text-gray-600">{c.loading}</div>}
       {previewing && pdfUrl && <div className="absolute right-2 top-2 rounded bg-primary px-2 py-1 text-xs text-primary-foreground">{c.rendering}</div>}
-    </div>
+    </div></div>
   </section>;
 
   return <div className="mx-auto grid w-full max-w-[1400px] gap-4 p-4 sm:p-6">

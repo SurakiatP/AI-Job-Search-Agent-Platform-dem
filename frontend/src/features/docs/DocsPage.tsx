@@ -26,7 +26,7 @@ export function DocsPage() {
     <main className="mx-auto grid w-full max-w-5xl gap-12 px-4 py-10 sm:px-6 sm:py-14">
       <section className="grid max-w-2xl gap-4">
         <span aria-hidden="true" className="grid size-12 place-items-center rounded-xl bg-accent text-accent-foreground"><Sparkles className="size-6" /></span>
-        <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">{c.title}</h1>
+        <h1 className="text-3xl font-semibold sm:text-4xl">{c.title}</h1>
         <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">{c.intro}</p>
       </section>
 

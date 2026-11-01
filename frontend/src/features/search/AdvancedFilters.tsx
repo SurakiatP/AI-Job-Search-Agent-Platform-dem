@@ -64,7 +64,7 @@ export function Presets({ locale, get, setMany }: { locale: 'th' | 'en'; get: (k
     {PRESETS.map(p => {
       const entries = Object.entries(p.params);
       const on = entries.every(([k, v]) => splitList(get(k)).sort().join(',') === v.split(',').sort().join(','));
-      return <Button key={p.id} type="button" variant={on ? 'default' : 'outline'} size="sm" className="min-h-9 whitespace-nowrap rounded-full" aria-pressed={on}
+      return <Button key={p.id} type="button" variant={on ? 'default' : 'outline'} size="sm" className="whitespace-nowrap rounded-full" aria-pressed={on}
         onClick={() => setMany(Object.fromEntries(entries.map(([k, v]) => [k, on ? '' : v])))}>{c.preset[p.id]}</Button>;
     })}
   </div>;
@@ -89,7 +89,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, addition
     setMany({ skills: [...skills, s].join(',') }); setSkillInput('');
   };
   const suggestions = (facets?.skills ?? []).filter(f => !skills.includes(f.value) && SKILL_RE.test(f.value)).slice(0, 10);
-  const chipClass = 'min-h-9 h-auto whitespace-normal rounded-full text-left';
+  const chipClass = 'h-auto whitespace-normal rounded-full text-left';
 
   return <div className="grid gap-3">
     <div>

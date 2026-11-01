@@ -19,9 +19,9 @@ type Edit = Working & { name: string };
 function Seg<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
   return <div role="group" aria-label={label} className="grid gap-1.5">
     <span className="text-sm font-medium">{label}</span>
-    <div className="inline-flex flex-wrap gap-1 rounded-lg bg-secondary p-1">
+    <div className="segmented flex-wrap">
       {options.map(([key, text]) => <button key={key} type="button" aria-pressed={value === key} onClick={() => onChange(key)}
-        className="min-h-11 rounded-md px-3 text-sm text-secondary-foreground transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-primary aria-pressed:text-primary-foreground motion-reduce:transition-none">{text}</button>)}
+        className="min-h-11 rounded-md px-3 text-sm text-secondary-foreground transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none">{text}</button>)}
     </div>
   </div>;
 }
@@ -30,7 +30,7 @@ function Card({ id, name, layout, tokens, selected, c, ats, photo, onPick }: {
   id: string; name: string; layout: string; tokens: Tokens; selected: boolean; c: Copy; ats: boolean; photo: boolean; onPick: (id: string) => void;
 }) {
   return <button type="button" aria-pressed={selected} onClick={() => onPick(id)}
-    className="group grid gap-2 rounded-xl border bg-card p-2 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary motion-reduce:transition-none">
+    className="group grid gap-2 rounded-lg border bg-card p-2 text-left transition-colors hover:border-[color:var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-primary aria-pressed:ring-1 aria-pressed:ring-primary motion-reduce:transition-none">
     <span className="relative block aspect-[3/4] overflow-hidden rounded-sm border bg-white shadow-sm"><ThemeThumb layout={layout} tokens={tokens} />
       {selected && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground" aria-label={c.selected}><Check className="size-3.5" aria-hidden="true" /></span>}
     </span>
@@ -102,7 +102,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
   });
 
   const colourBad = edit ? !accentOk(edit.tokens.accent) : false;
-  return <section aria-labelledby="theme-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 rounded-2xl border bg-accent/30 p-4 sm:p-5">
+  return <section aria-labelledby="theme-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 rounded-xl border bg-card p-4 sm:p-5">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h2 id="theme-title" className="flex items-center gap-2 text-base font-semibold"><Palette className="size-5 text-primary" aria-hidden="true" />{c.title}</h2>
       <div className="flex flex-wrap gap-2">

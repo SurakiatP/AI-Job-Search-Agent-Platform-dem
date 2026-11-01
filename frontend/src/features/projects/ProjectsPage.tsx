@@ -1,12 +1,13 @@
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight, FolderOpen, Plus } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { PageBack } from '../../components/PageBack';
 import { useResource } from './useResource';
 import { ErrorState, LoadingState } from './PageStates';
 import { useProjectCopy } from './copy';
 import { ProjectActions } from './ProjectActions';
+import { PageHeader } from '@/components/PageHeader';
 
 type Project = { id: string; name: string; created_at?: string };
 
@@ -27,7 +28,7 @@ export function ProjectsPage() {
   </section>;
   return <section className="grid min-w-0 gap-7">
     <PageBack to="/app">{t('back', { defaultValue: 'Back' })}</PageBack>
-    <header className="workspace-page-header"><div><h1>{t('pages.projectsTitle')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{t('workspace.projectsIntro')}</p></div><Button asChild><Link to="/app/projects/new"><Plus size={17} aria-hidden="true" />{t('pages.newProject')}</Link></Button></header>
+    <PageHeader icon={FolderOpen} title={t('pages.projectsTitle')} lede={t('workspace.projectsIntro')} actions={<Button asChild><Link to="/app/projects/new"><Plus size={17} aria-hidden="true" />{t('pages.newProject')}</Link></Button>} />
     <ul className="grid gap-3">{projects.map(project => <li key={project.id} className="workspace-panel flex flex-wrap items-center justify-between gap-x-4 gap-y-3 p-4 sm:p-5">
       <div className="min-w-0 flex-1 basis-56">
         <h2 className="text-lg font-semibold"><Link className="break-words text-foreground hover:text-primary hover:underline" to={`/app/projects/${project.id}/overview`}>{project.name}</Link></h2>

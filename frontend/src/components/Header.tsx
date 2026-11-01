@@ -11,7 +11,7 @@ import { Button } from './ui/button';
 export function Wordmark({ compact = false }: { compact?: boolean }) {
   return <span className="flex min-w-0 items-center gap-2 text-sm font-semibold leading-snug">
     <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"><Sparkles aria-hidden="true" size={16} /></span>
-    {!compact && <span className="hidden min-w-0 [overflow-wrap:anywhere] sm:inline">AI Job Search Agent Platform</span>}
+    {!compact && <span className="hidden min-w-0 font-heading font-medium [overflow-wrap:anywhere] sm:inline">AI Job Search Agent Platform</span>}
   </span>;
 }
 
@@ -36,9 +36,9 @@ export function HomeIconLink() {
 export function LanguageSwitch() {
   const { t } = useTranslation();
   const { locale, setLocale } = useLocale();
-  return <div className="inline-flex gap-0.5 rounded-lg bg-muted p-0.5" role="group" aria-label={t('language')}>
+  return <div className="segmented" role="group" aria-label={t('language')}>
     {([['th', 'ไทย'], ['en', 'EN']] as const).map(([value, label]) => (
-      <Button key={value} variant="ghost" size="sm" className="min-w-10 min-h-10" aria-pressed={locale === value} onClick={() => setLocale(value)}>{label}</Button>
+      <Button key={value} variant="ghost" size="sm" className="min-w-10" aria-pressed={locale === value} onClick={() => setLocale(value)}>{label}</Button>
     ))}
   </div>;
 }
@@ -46,7 +46,7 @@ export function LanguageSwitch() {
 export function Header({ menu, nav, actions }: { menu?: ReactNode; nav?: ReactNode; actions?: ReactNode }) {
   const { t } = useTranslation();
   const session = useOwnerSession();
-  return <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-background px-4 py-2 sm:px-6">
+  return <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-3 border-b bg-background px-4 py-2 sm:px-6">
     <div className="flex min-w-0 items-center gap-2">{menu}<HomeLink /></div>
     {nav}
     <div className="flex shrink-0 items-center gap-1 sm:gap-2">

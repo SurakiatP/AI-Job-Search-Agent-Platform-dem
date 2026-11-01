@@ -14,6 +14,8 @@ import { CodeInput } from '../../components/CodeInput';
 import { ApiError, type AccountAgent } from '../../lib/api-types';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
+import { UserCog } from 'lucide-react';
+import { PageHeader } from '../../components/PageHeader';
 
 const avatarCopy = {
   th: { title: 'รูปโปรไฟล์', hint: 'แสดงที่มุมขวาบนทุกหน้า ถ้าไม่ใส่รูป จะใช้ตัวอักษรแรกของอีเมล หรือเลือกรูปสำเร็จรูปด้านล่าง', upload: 'อัปโหลดรูป', remove: 'ลบรูปที่อัปโหลด', choose: 'หรือเลือกรูปสำเร็จรูป', rule: 'PNG, JPEG หรือ WebP ขนาดไม่เกิน 256 KB',
@@ -202,10 +204,7 @@ export function AccountPage() {
   const [deleting, setDeleting] = useState(false);
   if (!account) return <LoadingState />;
   return <div className="mx-auto grid max-w-3xl gap-6">
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="grid gap-1"><h1 className="text-2xl font-semibold leading-snug">{t('account.title')}</h1><p className="text-sm text-muted-foreground">{t('account.description')}</p></div>
-      <Button type="button" variant="outline" onClick={() => void logout()}>{t('auth.logout')}</Button>
-    </div>
+    <PageHeader icon={UserCog} title={t('account.title')} lede={t('account.description')} actions={<Button type="button" variant="outline" onClick={() => void logout()}>{t('auth.logout')}</Button>} />
     <EmailSection />
     <AvatarSection />
     <AgentsSection />

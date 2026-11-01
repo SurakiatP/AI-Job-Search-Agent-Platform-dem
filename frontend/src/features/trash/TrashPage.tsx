@@ -10,6 +10,8 @@ import { SessionTrash } from '../sessions/SessionTrash';
 import { TrashView, type TrashedDocument } from '../documents/TrashView';
 import { documentTypeLabel } from '../documents/DocumentsPage';
 import { CvTrash } from './CvTrash';
+import { Trash2 } from 'lucide-react';
+import { PageHeader } from '@/components/PageHeader';
 
 export function TrashPage() {
   const { projectId = '' } = useParams();
@@ -24,7 +26,7 @@ export function TrashPage() {
   const count = (n?: number) => <span className="ms-1.5 rounded-full bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">{n ?? 0}</span>;
   const tabClass = 'min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
   return <section className="grid min-w-0 gap-6">
-    <header className="workspace-page-header"><div><h1>{t('trash.title')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{t('trash.subtitle')}</p></div></header>
+    <PageHeader icon={Trash2} title={t('trash.title')} lede={t('trash.subtitle')} />
     <Tabs value={tab} onValueChange={value => setParams(value === 'evaluations' ? {} : { tab: value }, { replace: true })} className="grid min-w-0 gap-4">
       <TabsList className="h-auto w-full justify-start gap-1 rounded-none border-b bg-transparent p-0">
         <TabsTrigger value="evaluations" className={tabClass}>{t('nav.evaluate')}{count(sessions.data?.length)}</TabsTrigger>

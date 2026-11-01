@@ -59,12 +59,12 @@ export function DocsTopicPage() {
       <article className="min-w-0">
         {page === undefined && <p className="text-muted-foreground">{c.loading}</p>}
         {page === null && <div className="grid gap-4">
-          <h1 className="text-3xl font-semibold leading-tight">{c.notFound}</h1>
+          <h1 className="text-3xl font-semibold">{c.notFound}</h1>
           <Link to="/docs" className="text-primary underline underline-offset-4">{c.backToGuide}</Link>
         </div>}
         {page && topic && <>
           <p className="mb-2 text-sm font-medium text-[var(--stage,var(--primary))]">{c.topicOf(index + 1, topics.length)}</p>
-          <h1 className="mb-8 text-3xl font-semibold leading-tight sm:text-4xl">{page.title}</h1>
+          <h1 className="mb-8 text-3xl font-semibold sm:text-4xl">{page.title}</h1>
           <nav aria-label={c.onThisPage} className="mb-8 flex flex-wrap gap-2 lg:hidden">
             {page.sections.map((section, position) => <a key={section.heading} href={`#section-${position + 1}`}
               className="rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>)}

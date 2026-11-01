@@ -13,7 +13,7 @@ const copy = {
   th: { docSettings: 'การตั้งค่าเอกสาร', autoLabel: 'อนุมัติการบันทึก “สมัครแล้ว” อัตโนมัติ: จำนวนสูงสุดต่อวัน (เว้นว่าง = ปิด)', autoHint: 'ระบบเพียงบันทึกว่า "สมัครแล้ว" ไม่ส่งใบสมัครให้ คุณยังต้องส่งเองบนเว็บไซต์ของบริษัท ใช้ได้เมื่อชุดคำตอบพร้อมและครบทุกข้อบังคับเท่านั้น เอเจนต์ที่คุณให้สิทธิ์เข้าถึงใบสมัครก็ใช้ฟังก์ชันนี้ได้ สูงสุด N ใบต่อวัน', autoInvalid: 'ใส่จำนวนเต็ม 1-20 หรือเว้นว่าง', notifyHint: 'แจ้งเตือนเมื่องานของเอเจนต์เสร็จหรือรออนุมัติ' },
   en: { docSettings: 'Document settings', autoLabel: 'Automatically approve recording “Applied”: daily limit (blank = off)', autoHint: 'This only records "applied"; nothing is ever sent. You still submit on the company site yourself. Applies only when the answer pack is ready with every required answer filled. Agents you have given application access can also use this, up to N per day.', autoInvalid: 'Enter a whole number from 1 to 20, or leave empty', notifyHint: 'Tell me when an agent task finishes or needs approval' },
 };
-const selectClass = 'flex min-h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
+const selectClass = 'flex min-h-11 lg:min-h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-base transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 
 // Document language, notifications and the auto-record limit for one project (moved here from the CV page, Q-03).
 export function ProjectPreferences({ projectId }: { projectId: string }) {

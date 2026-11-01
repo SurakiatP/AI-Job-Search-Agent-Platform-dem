@@ -28,7 +28,7 @@ export function InfoPage({ slug }: { slug: InfoSlug }) {
         <span aria-current="page" className="font-medium text-foreground">{slug === 'data' ? c.nav.data : c.nav.how}</span>
       </nav>
       <section className="grid max-w-2xl gap-4">
-        <h1 className="text-3xl font-semibold leading-tight [text-wrap:balance] sm:text-4xl">{page.title}</h1>
+        <h1 className="text-3xl font-semibold [text-wrap:balance] sm:text-4xl">{page.title}</h1>
         <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">{page.lead}</p>
       </section>
       {page.sections.map((section, s) => <section key={section.heading} aria-labelledby={`sec-${s}`} className="grid gap-4">

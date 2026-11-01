@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { ArrowRight, FileText, ListChecks, Search, CheckCircle2, Clock3 } from 'lucide-react';
+import { ArrowRight, FileText, LayoutDashboard, ListChecks, Search, CheckCircle2, Clock3 } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { CvPreviewButton } from '@/components/CvPreview';
@@ -19,6 +19,7 @@ import { GettingStarted, HelpPanel } from './GettingStarted';
 import { JourneyStrip } from './JourneyStrip';
 import { latestEvaluations } from './latestEvaluations';
 import { AiLabel } from '@/components/AiMark';
+import { PageHeader } from '@/components/PageHeader';
 
 function ResourcePanel({ resource, children }: { resource: { status: string; reload: () => void; data?: unknown }; children: ReactNode }) {
   const { t } = useTranslation();
@@ -101,10 +102,8 @@ export function OverviewPage() {
   </Section>;
 
   return <div className="grid min-w-0 gap-8">
-    <header className="workspace-page-header">
-      <div className="min-w-0"><h1>{project.data?.name ?? t('nav.overview')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{firstRun ? c.subtitleFirst : t('workspace.overviewSubtitle')}</p></div>
-      {!firstRun && <Button asChild variant="outline"><Link to={`${base}/search`}><Search size={17} aria-hidden="true" />{t('workspace.findJobs')}</Link></Button>}
-    </header>
+    <PageHeader icon={LayoutDashboard} title={project.data?.name ?? t('nav.overview')} lede={firstRun ? c.subtitleFirst : t('workspace.overviewSubtitle')}
+      actions={!firstRun && <Button asChild variant="outline"><Link to={`${base}/search`}><Search size={17} aria-hidden="true" />{t('workspace.findJobs')}</Link></Button>} />
 
     <JourneyStrip base={base} />
 

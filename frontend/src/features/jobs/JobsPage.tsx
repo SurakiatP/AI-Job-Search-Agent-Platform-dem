@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useDraft } from '../../app/drafts';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, ExternalLink, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, Kanban, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { JobRemoveMenu } from './JobRemoveMenu';
 import { NewSessionButton } from '../sessions/NewSessionDialog';
 import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 import { AiLabel } from '@/components/AiMark';
+import { PageHeader } from '@/components/PageHeader';
 
 export function JobsPage() {
   const { t } = useTranslation();
@@ -60,14 +61,12 @@ export function JobsPage() {
   }
   return <section className="grid gap-6">
     <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <div className="min-w-0">
-        <h1 className="break-words text-2xl font-semibold">{appT('pageTitle')}</h1>
-        {jobs.length > 0 && <p className="mt-1 text-base text-muted-foreground">{appT('summary', { tracked: jobs.length, active: jobs.filter(job => ACTIVE_STAGES.includes(job.stage)).length, closed: jobs.filter(job => CLOSED_STAGES.includes(job.stage)).length })}</p>}
-        {jobs.length > 0 && <p className="mt-1 text-sm text-muted-foreground">{appT('recordingNote')}</p>}
-      </div>
-      <Button aria-expanded={showForm} aria-controls="add-job-form" onClick={() => setOpen(value => !value)}>{showForm ? appT('closeForm') : <><Plus className="size-4" aria-hidden="true" />{appT('addPosting')}</>}</Button>
-    </div>
+    <PageHeader icon={Kanban} title={appT('pageTitle')}
+      lede={jobs.length > 0 && <>
+        <p>{appT('summary', { tracked: jobs.length, active: jobs.filter(job => ACTIVE_STAGES.includes(job.stage)).length, closed: jobs.filter(job => CLOSED_STAGES.includes(job.stage)).length })}</p>
+        <p className="mt-1 text-sm">{appT('recordingNote')}</p>
+      </>}
+      actions={<Button aria-expanded={showForm} aria-controls="add-job-form" onClick={() => setOpen(value => !value)}>{showForm ? appT('closeForm') : <><Plus className="size-4" aria-hidden="true" />{appT('addPosting')}</>}</Button>} />
     {showForm && <Card id="add-job-form">
       <CardHeader><CardTitle>{appT('addPostingTitle')}</CardTitle></CardHeader>
       <CardContent>
