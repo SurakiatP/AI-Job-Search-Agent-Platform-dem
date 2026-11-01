@@ -85,11 +85,11 @@ def _draft(db, actor, project_id: UUID, *, cv_id: UUID | None = None, document_i
 
 
 async def _render(services: Services, project_id: UUID, draft_data: rs.ResumeData, layout: str, accent: str, lang: str,
-                  tokens: dict | None = None) -> bytes:
+                  tokens: dict | None = None, sample: list[str] | None = None) -> bytes:
     """`layout` is the template file; `tokens` come from a custom or non-original preset theme (SPEC-RTH)."""
     photo = await rs.load_photo(services.sessions, services.files.object_store, project_id, draft_data, layout)
     try:
-        return await services.runtime.render_typst(rs.render_bundle(draft_data, layout, accent, lang, photo, tokens))
+        return await services.runtime.render_typst(rs.render_bundle(draft_data, layout, accent, lang, photo, tokens, sample or ()))
     except ServiceError:
         raise
     except Exception:  # sandbox, docker or compile failure: the draft stays as it is
@@ -163,7 +163,8 @@ async def _preview(kind, project_id, owner_id, actor, services):
         rate_limits.hit(db, "resume_preview", str(actor.user_id))
         data = parse_resume(draft.resume_data)
         layout, tokens = store.resolve(db, actor.user_id, draft.template_id, draft.accent)
-        options = (layout, draft.accent, draft.document_language, tokens)
+        data, sampled = rs.with_sample(data, draft.document_language)  # preview only: empty core parts show marked sample content
+        options = (layout, draft.accent, draft.document_language, tokens, sampled)
     pdf = await _render(services, project_id, data, *options)
     return _pdf(pdf)
 
@@ -190,7 +191,8 @@ async def _theme_preview(kind, project_id, owner_id, body: ThemePreview, actor, 
             raise ServiceError("theme_invalid", fields={"rule": error.rule}) from None
         rate_limits.hit(db, "resume_preview", str(actor.user_id))
         data, lang = parse_resume(draft.resume_data), draft.document_language
-    return _pdf(await _render(services, project_id, data, body.layout, "indigo", lang, tokens))
+        data, sampled = rs.with_sample(data, lang)
+    return _pdf(await _render(services, project_id, data, body.layout, "indigo", lang, tokens, sampled))
 
 
 async def _publish(kind, project_id, owner_id, actor, services):

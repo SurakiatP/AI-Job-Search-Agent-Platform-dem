@@ -62,3 +62,8 @@ AC: AC-RTH-08, AC-RTH-09 · `P1` · Level: e2e + screenshots · Automate: yes (m
 | TC-RTH-05 | pass | `test_tc_rth_05_themes_are_private_to_their_owner`, delete block incl. published revisions; mutation: owner filter, revision count, limit, unique suffix |
 | TC-RTH-06 | pass | `test_tc_rth_06_theme_preview_uses_unsaved_tokens_and_rejects_bad_ones` |
 | TC-RTH-07 | partly verified | `frontend/tests/themes.html` harness (faked API): 1440 px dark and 390 px light checked in Chrome; no horizontal overflow, all targets >= 40 px, no black. NOT verified: the panel inside the real builder page with a real PDF preview, keyboard walk-through, reduced-motion in a browser |
+
+## TC-RTH-08 Preview of an unfinished CV shows marked sample content (CR from owner, 2026-11-01)
+Level: unit + api + manual. Core parts (contact, summary, experience, education, skills) that are empty and not hidden are filled with invented content in the preview only; the PDF tints them amber with a note, the builder lists what is missing. The draft and published files never contain it.
+Results 2026-11-01: `test_sample_*` (4), `test_empty_cv_preview_renders_marked_sample_text` th/en (real Typst render), `test_preview_of_an_empty_cv_sends_marked_sample_content_but_never_stores_it` pass; mutation checks (hidden-section guard, marker branch in common.typ) each failed a test. Manual: empty CV in Chrome shows the note, five chips and amber parts; the dark PDF-viewer edge around the page is cropped.
+Not verified: the sample note on the contact header (only listed in the builder, not tinted in the PDF); 390 px phone view of the note.

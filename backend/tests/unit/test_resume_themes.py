@@ -140,3 +140,56 @@ def test_tc_rth_04_every_preset_renders(preset, sample, lang, tmp_path):
     text = subprocess.run([pdftotext, str(path), "-"], capture_output=True, text=True).stdout
     assert data.basics.name.split()[0] in text
     assert data.basics.email in text
+
+
+# --- preview sample content (empty parts of the CV show invented content, marked in the PDF) ---
+CORE = ["basics", "summary", "experience", "education", "skills"]
+
+
+def test_sample_fills_an_empty_cv_and_names_every_filled_part():
+    data, sampled = rs.with_sample(rs.ResumeData(), "th")
+    assert sampled == CORE
+    assert data.basics.name and data.summary.content
+    assert all(getattr(data.sections, name).items for name in CORE[2:])
+
+
+def test_sample_leaves_real_content_and_hidden_sections_alone():
+    real = rs.ResumeData.model_validate(english_short())
+    data, sampled = rs.with_sample(real, "en")
+    assert data.basics.name == real.basics.name and "basics" not in sampled
+    hidden = rs.ResumeData()
+    hidden.sections.education.hidden = True
+    hidden.summary_hidden = True
+    _, sampled = rs.with_sample(hidden, "en")
+    assert "education" not in sampled and "summary" not in sampled
+
+
+def test_sample_text_follows_the_document_language():
+    th, _ = rs.with_sample(rs.ResumeData(), "th")
+    en, _ = rs.with_sample(rs.ResumeData(), "en")
+    assert any("฀" <= ch <= "๿" for ch in th.summary.content)
+    assert not any("฀" <= ch <= "๿" for ch in en.summary.content)
+
+
+def test_bundle_marks_sample_parts_only_when_there_are_some():
+    data = rs.ResumeData.model_validate(english_short())
+    plain = json.loads(rs.render_bundle(data, "onyx", "teal", "en")["theme.json"])
+    assert "sample" not in plain  # real CVs keep the exact old bundle
+    marked = json.loads(rs.render_bundle(data, "onyx", "teal", "en", sample=["summary"])["theme.json"])
+    assert marked["sample"]["parts"] == ["summary"] and marked["sample"]["note"]
+
+
+@pytest.mark.parametrize("lang,note,name", [("th", "ตัวอย่าง:", "08x-xxx-xxxx"), ("en", "Sample: nothing from you here yet", "Your Name")])  # pdftotext doubles some Thai marks
+def test_empty_cv_preview_renders_marked_sample_text(lang, note, name, tmp_path):
+    if not _docker_ready():
+        pytest.skip("docker or agent image not ready")
+    pdftotext = shutil.which("pdftotext") or "/opt/homebrew/bin/pdftotext"
+    if not Path(pdftotext).exists():
+        pytest.skip("pdftotext not installed")
+    from job_search_platform.integrations.hermes_runtime import HermesRuntime
+
+    data, sampled = rs.with_sample(rs.ResumeData(), lang)
+    pdf = asyncio.run(HermesRuntime(IMAGE_ID.read_text().strip()).render_typst(rs.render_bundle(data, "kakuna", "teal", lang, sample=sampled)))
+    (tmp_path / "p.pdf").write_bytes(pdf)
+    text = subprocess.run([pdftotext, str(tmp_path / "p.pdf"), "-"], capture_output=True, text=True).stdout
+    assert note in text and name in text

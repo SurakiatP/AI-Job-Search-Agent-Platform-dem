@@ -139,7 +139,7 @@ def test_tc_rth_new_presets_render_with_their_layout_and_the_chosen_accent(ctx):
     assert call["main.typ"].startswith(b"// Kakuna") and theme["accent"] == "#115E59" and theme["heading_style"] == "band"
     assert _save(ctx, cv_id, english_short(), template_id="kakuna", accent="teal").status_code == 200
     ctx.client.post(_url(ctx, cv_id, "/preview"), headers=_write_headers(ctx.csrf))
-    assert set(json.loads(ctx.render.calls[-1]["theme.json"])) == {"accent", "lang", "references_on_request", "address", "personal", "photo"}
+    assert set(json.loads(ctx.render.calls[-1]["theme.json"])) - {"sample"} == {"accent", "lang", "references_on_request", "address", "personal", "photo"}
 
 
 @pytest.mark.integration
@@ -156,3 +156,17 @@ def test_tc_rth_06_theme_preview_uses_unsaved_tokens_and_rejects_bad_ones(ctx):
     ctx.render.fail = True
     assert ctx.client.post(_url(ctx, cv_id, "/theme-preview"), json={"layout": "onyx", "tokens": TOKENS},
                            headers=_write_headers(ctx.csrf)).status_code == 502
+
+
+@pytest.mark.integration
+def test_preview_of_an_empty_cv_sends_marked_sample_content_but_never_stores_it(ctx):
+    cv_id = _new_cv(ctx)
+    for tail, payload in (("/preview", None), ("/theme-preview", {"layout": "onyx", "tokens": TOKENS})):
+        response = ctx.client.post(_url(ctx, cv_id, tail), json=payload, headers=_write_headers(ctx.csrf)) if payload else \
+            ctx.client.post(_url(ctx, cv_id, tail), headers=_write_headers(ctx.csrf))
+        assert response.status_code == 200
+        call = ctx.render.calls[-1]
+        assert json.loads(call["theme.json"])["sample"]["parts"] == ["basics", "summary", "experience", "education", "skills"]
+        assert json.loads(call["resume.json"])["basics"]["name"] == "ชื่อ นามสกุล"
+    stored = ctx.client.get(_url(ctx, cv_id)).json()["resume_data"]
+    assert stored["basics"]["name"] == "" and stored["sections"]["experience"]["items"] == []  # the draft itself stays empty

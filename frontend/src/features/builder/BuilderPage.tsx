@@ -145,15 +145,23 @@ export function BuilderPage({ kind }: { kind: Kind }) {
   const status = { saved: savedAt ? c.savedAt(savedAt.toLocaleTimeString(locale === 'th' ? 'th-TH' : 'en-GB', { hour: '2-digit', minute: '2-digit' })) : c.saved,
     saving: c.saving, dirty: c.saving, offline: c.offline, conflict: c.conflict, invalid: c.invalid(invalidPath) }[save];
 
+  // Same rule as the server's sample fill (services/resume.py with_sample): empty core parts that are not hidden show sample content.
+  const sampled = [!r.basics.name && c.basics, !r.summary.content && !r.summary_hidden && c.sections.summary,
+    ...(['experience', 'education', 'skills'] as const).filter(n => !r.sections[n].items.length && !r.sections[n].hidden).map(n => c.sections[n])].filter(Boolean) as string[];
   const previewPane = <section aria-label={c.preview} className="grid min-h-0 content-start gap-2">
     <div className="flex items-center justify-between gap-2">
       <h2 className="text-sm font-semibold">{c.preview}{pages > 0 && <span className="ml-2 font-normal text-muted-foreground">· {c.pages(pages)}</span>}</h2>
       <Button size="sm" variant="outline" busy={previewing} onClick={() => void preview()}><RefreshCw className="size-4" aria-hidden="true" />{c.updatePreview}</Button>
     </div>
     {previewError && <p role="alert" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-sm">{c.previewFailed}</p>}
+    {sampled.length > 0 && <div role="note" className="grid gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+      <p className="font-semibold">{c.sampleTitle}</p>
+      <p>{c.sampleBody}</p>
+      <ul className="flex flex-wrap gap-2">{sampled.map(s => <li key={s} className="rounded-full border border-warning/50 bg-warning/20 px-3 py-1 font-medium">{s}</li>)}</ul>
+    </div>}
     {pages > 2 && <p role="note" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-sm">{c.tooLong}</p>}
     <div className="relative overflow-hidden rounded-lg border bg-white" style={{ aspectRatio: '1 / 1.414' }}>
-      {pdfUrl ? <iframe title={c.preview} src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`} className="size-full border-0" /> : <div className="grid size-full place-items-center p-4 text-sm text-gray-600">{c.loading}</div>}
+      {pdfUrl ? <iframe title={c.preview} src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`} className="absolute -left-4 -top-1.5 h-[calc(100%+2.5rem)] w-[calc(100%+2rem)] max-w-none border-0" /> : <div className="grid size-full place-items-center p-4 text-sm text-gray-600">{c.loading}</div>}
       {previewing && pdfUrl && <div className="absolute right-2 top-2 rounded bg-primary px-2 py-1 text-xs text-primary-foreground">{c.rendering}</div>}
     </div>
   </section>;

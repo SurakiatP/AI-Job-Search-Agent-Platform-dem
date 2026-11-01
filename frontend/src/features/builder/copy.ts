@@ -14,7 +14,7 @@ type Copy = {
   address: string; addressFields: Record<'line' | 'subdistrict' | 'district' | 'province' | 'postcode', string>; chooseProvince: string;
   addressFull: string; addressNote: string; personalFields: Record<'birth_date' | 'nationality' | 'military_status' | 'line_id' | 'driving_license' | 'expected_salary' | 'available_from', string>;
   personalPlaceholders: Partial<Record<'birth_date' | 'nationality' | 'military_status' | 'line_id' | 'driving_license' | 'expected_salary' | 'available_from', string>>;
-  personalNote: string; cvName: string; docName: string; renameFailed: string; pages: (n: number) => string; tooLong: string;
+  personalNote: string; cvName: string; docName: string; renameFailed: string; pages: (n: number) => string; tooLong: string; sampleTitle: string; sampleBody: string;
   errors: { resume_incomplete: string; render_failed: string; draft_conflict: string; resume_invalid: string; document_busy: string; generic: string };
 };
 
@@ -52,6 +52,7 @@ export const copy: Record<'th' | 'en', Copy> = {
     personalNote: 'ข้อมูลส่วนนี้ซ่อนจาก CV จนกว่าคุณจะกดแสดง และไม่ถูกส่งให้ AI บริษัทต่างชาติและระบบคัดกรองใบสมัครมักไม่ต้องการ',
     cvName: 'ชื่อ CV', docName: 'ชื่อเอกสาร', renameFailed: 'เปลี่ยนชื่อไม่สำเร็จ ลองอีกครั้ง', pages: n => `${n} หน้า`,
     tooLong: 'CV ส่วนใหญ่ควรยาว 1–2 หน้า ลองตัดงานเก่าที่ไม่เกี่ยวข้อง หรือรวม bullet ที่คล้ายกัน',
+    sampleTitle: 'พรีวิวนี้ใช้ข้อมูลตัวอย่างสมมติ', sampleBody: 'ส่วนที่แรเงาสีเหลืองในพรีวิวเป็นตัวอย่าง ไม่ถูกบันทึกหรือส่งออก ยังขาดข้อมูลของคุณในส่วนเหล่านี้:',
     errors: { resume_incomplete: 'ใส่ชื่อและข้อมูลอย่างน้อยหนึ่งหัวข้อก่อนบันทึก', render_failed: 'สร้าง PDF ไม่สำเร็จ ข้อมูลของคุณยังอยู่ ลองอีกครั้ง',
       draft_conflict: 'ร่างนี้ถูกแก้จากที่อื่น โหลดร่างล่าสุดแล้วลองอีกครั้ง', resume_invalid: 'ข้อมูลบางช่องไม่ถูกต้อง', document_busy: 'เอกสารนี้กำลังถูกประมวลผลอยู่ ลองอีกครั้งในอีกสักครู่', generic: 'บันทึกไม่สำเร็จ ลองอีกครั้ง' },
   },
@@ -88,6 +89,7 @@ export const copy: Record<'th' | 'en', Copy> = {
     personalNote: 'Hidden from the CV until you show it, and never sent to AI. Foreign employers and applicant tracking systems often do not want it.',
     cvName: 'CV name', docName: 'Document name', renameFailed: 'Could not rename. Try again.', pages: n => (n === 1 ? '1 page' : `${n} pages`),
     tooLong: 'Most CVs work best at 1–2 pages. Drop older unrelated jobs or merge similar bullets.',
+    sampleTitle: 'This preview uses invented sample content', sampleBody: 'Parts shaded yellow in the preview are samples; they are not saved or exported. Your own content is still missing in:',
     errors: { resume_incomplete: 'Add your name and at least one section before saving.', render_failed: 'The PDF could not be made. Your data is safe; try again.',
       draft_conflict: 'This draft changed elsewhere. Load the latest draft and try again.', resume_invalid: 'Some fields are not valid.', document_busy: 'This document is being processed. Try again shortly.', generic: 'Could not save. Try again.' },
   },

@@ -92,7 +92,7 @@
 }
 
 // Section body; templates choose how headings look and how many skill columns fit.
-#let body(name, skill-columns: 2, color: accent) = {
+#let body-raw(name, skill-columns: 2, color: accent) = {
   if name == "personal" {
     grid(columns: (auto, 1fr), column-gutter: 12pt, row-gutter: 5pt,
       ..theme.personal.map(r => (text(fill: muted)[#r.at(0)], [#r.at(1)])).flatten())
@@ -110,6 +110,19 @@
       stack(spacing: 9pt * dens, ..items.map(i => block(breakable: entry-breakable(i), width: 100%, entry(name, i, color: color))))
     }
   }
+}
+
+// Preview of an unfinished CV: parts filled with invented content get an amber tint, a bar and a note (never on real CVs).
+#let sample-parts = theme.at("sample", default: (parts: (), note: "")).parts
+#let body(name, ..args) = {
+  let inner = body-raw(name, ..args)
+  if name in sample-parts {
+    block(width: 100%, fill: rgb("#FEF3C7"), stroke: (left: 2.5pt + rgb("#B45309")), radius: 2pt, inset: (x: 7pt, y: 5pt), {
+      text(size: 7.5pt, weight: "bold", fill: rgb("#92400E"))[#theme.sample.note]
+      v(3pt)
+      inner
+    })
+  } else { inner }
 }
 
 // The owner's photo (CR-CVT-01), only in photo templates. 3:4 portrait, or a circle cut from its upper part.
