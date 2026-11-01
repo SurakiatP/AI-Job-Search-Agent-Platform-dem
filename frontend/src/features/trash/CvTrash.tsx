@@ -24,11 +24,16 @@ export function CvTrash({ projectId, locale, items, onChanged }: { projectId: st
   const purge = (id: string) => apiRequest(`${api}/${id}/permanent`, { method: 'DELETE' }).then(() => undefined);
   async function emptyTrash() {
     const failed: string[] = [];
+    let inUse = false;
     for (const item of items) {
-      try { await purge(item.id); } catch (caught) { if (!(caught instanceof ApiError && caught.status === 404)) failed.push(item.name); }
+      try { await purge(item.id); } catch (caught) {
+        if (caught instanceof ApiError && caught.status === 404) continue;
+        failed.push(item.name);
+        inUse ||= caught instanceof ApiError && caught.code === 'cv_in_use';
+      }
     }
     onChanged();
-    if (failed.length) throw new ApiError(409, { code: 'cv_in_use', message_key: '', retryable: false });
+    if (failed.length) throw inUse ? new ApiError(409, { code: 'cv_in_use', message_key: '', retryable: false }) : new Error(failed.join(', '));
   }
 
   return <div id="cv-trash" tabIndex={-1} className="grid gap-4 outline-none">

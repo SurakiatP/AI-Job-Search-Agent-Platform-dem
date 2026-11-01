@@ -377,18 +377,23 @@ function NameEditor({ c, label, initial, url, field, max }: { c: Copy; label: st
   const [value, setValue] = useState(initial);
   const [saved, setSaved] = useState(initial);
   const [failed, setFailed] = useState(false);
+  const skip = useRef(false);
+  const sending = useRef<string | null>(null);
   async function commit() {
+    if (skip.current) { skip.current = false; return; }
     const next = value.trim();
     if (!next || next === saved) { setValue(saved); return; }
+    if (sending.current === next) return;
+    sending.current = next;
     try { await sendJson(url, 'PATCH', { [field]: next }); setSaved(next); setValue(next); setFailed(false); }
-    catch { setFailed(true); }
+    catch { setFailed(true); } finally { sending.current = null; }
   }
   return <div className="grid gap-1">
     <label htmlFor="cvb-name" className="sr-only">{label}</label>
     <input id="cvb-name" value={value} maxLength={max} onChange={e => setValue(e.target.value)} onBlur={() => void commit()}
       onKeyDown={e => {
         if (e.key === 'Enter') e.currentTarget.blur();
-        if (e.key === 'Escape') { const input = e.currentTarget; setValue(saved); requestAnimationFrame(() => input.blur()); }
+        if (e.key === 'Escape') { skip.current = true; setValue(saved); e.currentTarget.blur(); }
       }}
       className="-mx-1 w-full max-w-md rounded-md border border-transparent bg-transparent px-1 py-0.5 text-base text-muted-foreground hover:border-input focus-visible:border-input focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
     {failed && <p role="alert" className="text-sm text-destructive">{c.renameFailed}</p>}

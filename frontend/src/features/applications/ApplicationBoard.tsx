@@ -102,14 +102,13 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
   async function move(card: ApplicationCardView, stage: ApplicationStage, isUndo = false) {
     setError(false);
     inFlight.current += 1;
-    const before = visibleCards;
-    setOptimisticCards(before.map(item => item.job_revision_id === card.job_revision_id ? { ...item, stage, last_activity_at: new Date().toISOString() } : item));
+    setOptimisticCards(visibleCards.map(item => item.job_revision_id === card.job_revision_id ? { ...item, stage, last_activity_at: new Date().toISOString() } : item));
     try {
       await sendJson(`/projects/${projectId}/jobs/${card.job_revision_id}/application-status`, 'PATCH', { application_status: stage });
       setMoved(isUndo ? null : { card: { ...card, stage }, from: card.stage });
       onChanged();
     } catch {
-      setOptimisticCards(before);
+      setOptimisticCards(current => (current ?? cards).map(item => item.job_revision_id === card.job_revision_id ? { ...item, stage: card.stage } : item));
       setError(true);
     } finally { inFlight.current -= 1; }
   }

@@ -505,3 +505,35 @@ test('a Thai query with no results shows the Thai-postings hint exactly once', a
   await page.goto(`/app/projects/${projectId}/search?q=${encodeURIComponent('วิเคราะห์ข้อมูล')}`);
   await expect(page.getByTestId('thai-search-hint')).toHaveCount(1);
 });
+
+test('F3 a hidden-items list that fails to load offers a retry instead of claiming nothing is hidden', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const ai = { status: 'partial', categories: null, scored: 1 };
+  const rankedItem = { ...searchItems[0], match: { score_percent: 67, matched: ['SQL', 'Python'], missing: ['Looker'], required_count: 3 }, ai_match: { fit_percent: 72, band: 4, uncertain: true, seniority: 'meets', hard_blocker: false, skills_evidenced: ['SQL'], must_missing: [], nice_missing: ['Looker'], evidence: { SQL: 'Built SQL dashboards for 40 analysts' } }, highlight: { matched: { SQL: 'SQL' }, missing: {} } };
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'cv-data', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', revision_count: 1, in_use: false, latest_revision: { id: 'cv-rev-1', revision: 3, created_at: '2026-10-14T00:00:00Z', original_filename: 'data.pdf', mime_type: 'application/pdf', size_bytes: 12000, file_id: 'cv-file-1' } }]) }));
+  await page.route(`**/v1/projects/${projectId}/job-search/match**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [rankedItem, { ...searchItems[1], slug: 'partial-unscored', match: null, ai_match: null }], total: 124, limit: 100, offset: 0, pool: 2, hidden_count: 1, ai }) }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/job\-search\/match\/runs|\/v1\/async\/projects\/${projectId}\/smart\-matches)(?:\\?.*)?$`), route => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'rank-run-1' }) }));
+  await page.route(`**/v1/projects/${projectId}/runs/rank-run-1`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'rank-run-1', status: 'completed' }) }));
+  let hiddenFails = 1;
+  await page.route(`**/v1/projects/${projectId}/job-search/hidden**`, route => hiddenFails-- > 0 ? route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }) : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [{ id: 'hidden-1', kind: 'job', label: 'Previously hidden analyst role', created_at: '2026-10-01T00:00:00Z' }] }) }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.goto(`/app/projects/${projectId}/search?mode=match`);
+  await page.getByRole('button', { name: /^Start Smart match/ }).click();
+  await page.getByRole('button', { name: 'Hidden (1)' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('We could not load this information.')).toBeVisible();
+  await expect(dialog.getByText('Nothing is hidden', { exact: false })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Try again' }).click();
+  await expect(dialog.getByText('Previously hidden analyst role')).toBeVisible();
+});
+
+test('F2 a failed save is announced once, next to the button that was used', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.route(`**/v1/projects/${projectId}/jobs`, route => route.request().method() === 'POST' ? route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }) : route.fallback());
+  await page.goto(`/app/projects/${projectId}/search`);
+  await page.getByRole('button', { name: 'Save job' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Could not save this job' })).toHaveCount(1);
+});

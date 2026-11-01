@@ -80,13 +80,14 @@ function useSubmit(action: () => Promise<void>) {
   const errorText = useErrorText();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [fieldError, setFieldError] = useState(false); // the failure is about what was typed, not rate limits or the network
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
-    setBusy(true); setError('');
-    try { await action(); } catch (caught) { setError(errorText(caught)); } finally { setBusy(false); }
+    setBusy(true); setError(''); setFieldError(false);
+    try { await action(); } catch (caught) { setError(errorText(caught)); setFieldError(caught instanceof ApiError && ['invalid_credentials', 'weak_password', 'invalid_email'].includes(caught.code)); } finally { setBusy(false); }
   }
-  return { busy, error, setError, submit };
+  return { busy, error, fieldError, setError: (message: string) => { setError(message); setFieldError(Boolean(message)); }, submit };
 }
 
 // One-use tokens come from the emailed link; read once and drop them from the address bar and history.
@@ -112,7 +113,7 @@ export function LoginPage() {
   const next = safeNext(params.get('next'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { busy, error, submit } = useSubmit(() => login(email.trim(), password));
+  const { busy, error, fieldError, submit } = useSubmit(() => login(email.trim(), password));
   if (session.status === 'ready') return <Navigate to={next} replace />;
   return <AuthLayout title={c.loginTitle} intro={t('auth.loginIntro')} side={<SidePoints title={c.loginSide.title}>
     <ul className="grid gap-2 text-muted-foreground">{c.loginSide.points.map(point => <li key={point}>{point}</li>)}</ul>
@@ -120,8 +121,8 @@ export function LoginPage() {
     {params.get('notice') === 'password-reset' && <p role="status" className="text-sm text-success">{c.loginNotice}</p>}
     {params.get('notice') === 'verified' && <p role="status" className="text-sm text-success">{locale === 'th' ? 'ยืนยันอีเมลแล้ว เข้าสู่ระบบได้เลย' : 'Email verified. You can log in now.'}</p>}
     <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
-      <Field id="login-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { 'aria-invalid': true, 'aria-describedby': 'login-error' } : {})} />
-      <Field id="login-password" label={t('auth.password')} type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} {...(error ? { 'aria-invalid': true, 'aria-describedby': 'login-error' } : {})} />
+      <Field id="login-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'login-error' } : {})} />
+      <Field id="login-password" label={t('auth.password')} type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'login-error' } : {})} />
       <Alert id="login-error">{error}</Alert>
       <Button type="submit" busy={busy} disabled={busy || !email || !password}>{busy ? t('auth.working') : t('auth.loginAction')}</Button>
     </form>
@@ -149,7 +150,7 @@ export function SignupPage() {
   const [mailOff, setMailOff] = useState(false);
   const [code, setCode] = useState('');
   const navigate = useNavigate();
-  const { busy, error, submit } = useSubmit(async () => { const r = await signup(email.trim(), password, locale); setMailOff(r.mail_enabled === false); setSent(true); });
+  const { busy, error, fieldError, submit } = useSubmit(async () => { const r = await signup(email.trim(), password, locale); setMailOff(r.mail_enabled === false); setSent(true); });
   const verify = useSubmit(async () => { await verifyEmailCode(email.trim(), code); navigate('/login?notice=verified', { replace: true }); });
   const otp = locale === 'th'
     ? { label: 'รหัส 6 หลักจากอีเมล', hint: 'กรอกรหัสที่เราส่งให้ หรือกดลิงก์ในอีเมลก็ได้ รหัสหมดอายุใน 10 นาที', action: 'ยืนยันอีเมล' }
@@ -176,8 +177,8 @@ export function SignupPage() {
     </li>)}</ol>
   </SidePoints>}>
     <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
-      <Field id="signup-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { 'aria-invalid': true, 'aria-describedby': 'signup-error' } : {})} />
-      <Field id="signup-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} {...(error ? { 'aria-invalid': true, 'aria-describedby': 'signup-error' } : {})} />
+      <Field id="signup-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'signup-error' } : {})} />
+      <Field id="signup-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'signup-error' } : {})} />
       <Alert id="signup-error">{error}</Alert>
       <Button type="submit" busy={busy} disabled={busy || !email || password.length < 10}>{busy ? t('auth.working') : t('auth.signupAction')}</Button>
       <p className="text-sm text-muted-foreground">{c.next}</p>
@@ -241,12 +242,12 @@ export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [mailOff, setMailOff] = useState(false);
-  const { busy, error, submit } = useSubmit(async () => { const r = await forgotPassword(email.trim()); setMailOff(r.mail_enabled === false); setSent(true); });
+  const { busy, error, fieldError, submit } = useSubmit(async () => { const r = await forgotPassword(email.trim()); setMailOff(r.mail_enabled === false); setSent(true); });
   if (sent && mailOff) return <MailOffNotice c={c} onBack={() => setSent(false)} />;
   return <AuthLayout title={sent ? t('auth.checkEmailTitle') : t('auth.forgotTitle')} intro={sent ? t('auth.checkEmailBody') : t('auth.forgotIntro')} icon={sent ? <MailCheck className="size-8 text-primary" aria-hidden="true" /> : undefined}>
     {!sent && <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
-      <Field id="forgot-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} />
-      <Alert>{error}</Alert>
+      <Field id="forgot-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'forgot-error' } : {})} />
+      <Alert id="forgot-error">{error}</Alert>
       <Button type="submit" busy={busy} disabled={busy || !email}>{busy ? t('auth.working') : t('auth.forgotAction')}</Button>
     </form>}
     {sent && <Button variant="outline" onClick={() => setSent(false)}>{c.differentEmail}</Button>}
@@ -263,7 +264,7 @@ export function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [expired, setExpired] = useState(false);
-  const { busy, error, setError, submit } = useSubmit(async () => {
+  const { busy, error, fieldError, setError, submit } = useSubmit(async () => {
     if (!token) return;
     if (password !== confirm) { setError(t('auth.mismatch')); return; }
     try { await resetPassword(token, password); }
@@ -275,11 +276,12 @@ export function ResetPasswordPage() {
     <Button asChild><Link to="/forgot-password">{t('auth.requestNew')}</Link></Button>
     <p className="text-sm"><Link className={linkClass} to="/login">{t('auth.backToLogin')}</Link></p>
   </AuthLayout>;
+  const resetLink = error ? { ...(fieldError ? { 'aria-invalid': true as const } : {}), 'aria-describedby': 'reset-error' } : {};
   return <AuthLayout title={t('auth.resetTitle')}>
     <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
-      <Field id="reset-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} />
-      <Field id="reset-confirm" label={t('auth.confirmPassword')} type="password" autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)} />
-      <Alert>{error}</Alert>
+      <Field id="reset-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} {...resetLink} />
+      <Field id="reset-confirm" label={t('auth.confirmPassword')} type="password" autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)} {...resetLink} />
+      <Alert id="reset-error">{error}</Alert>
       <Button type="submit" busy={busy} disabled={busy || password.length < 10}>{busy ? t('auth.working') : t('auth.resetAction')}</Button>
     </form>
   </AuthLayout>;

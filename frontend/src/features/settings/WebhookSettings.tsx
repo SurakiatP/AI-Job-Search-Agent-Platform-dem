@@ -117,7 +117,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
         </div>
       </li>)}</ul>}
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
-      <h3 id="webhook-deliveries-title" tabIndex={-1} className="text-sm font-semibold outline-none">{c.deliveries}</h3>
+      <h3 className="text-sm font-semibold">{c.deliveries}</h3>
       {deliveries.status === 'error' ? <div className="flex flex-wrap items-center gap-2"><Notice>{c.loadError}</Notice><Button variant="outline" onClick={deliveries.reload}>{c.retry}</Button></div> :
       (deliveries.data ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.noDeliveries}</p> :
         <div className="relative min-w-0 max-w-full overflow-x-auto"><table className="w-full min-w-[32rem] text-left text-sm">
@@ -133,7 +133,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
           </tr>)}</tbody>
         </table></div>}
     </div>
-    {deleting && <ConfirmDeleteDialog title={c.deleteTitle(deleting.url)} description={c.deleteBody} confirmLabel={c.deleteConfirm} returnFocus={() => document.getElementById('webhook-deliveries-title')}
+    {deleting && <ConfirmDeleteDialog title={c.deleteTitle(deleting.url)} description={c.deleteBody} confirmLabel={c.deleteConfirm} returnFocus={() => document.getElementById('webhook-url')}
       onConfirm={() => apiRequest(`${base}/${deleting.id}`, { method: 'DELETE' }).then(() => undefined)}
       onDone={() => { setDeleting(null); hooks.reload(); deliveries.reload(); }} onClose={() => setDeleting(null)} />}
   </SectionCard>;

@@ -142,6 +142,41 @@ test('CR-02 the CV name shows under the title and can be renamed; Esc cancels', 
   expect(state.renames).toHaveLength(1);
 });
 
+test('CR-02 re-entering and leaving the name while the save is in flight sends one PATCH', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const state = await builderApi(page);
+  await page.route(`**/v1/projects/${projectId}/cvs/${cvId}`, async route => {
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return route.fallback();
+  });
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  const name = page.getByLabel('CV name');
+  await name.fill('Held name');
+  await name.press('Enter');
+  await name.focus();
+  await name.blur();
+  await expect.poll(() => state.renames.length).toBeGreaterThan(0);
+  await page.waitForTimeout(600);
+  expect(state.renames).toEqual([{ name: 'Held name' }]);
+});
+
+test('CR-02 Esc then typing a new name sends no PATCH until it is committed', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const state = await builderApi(page);
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  const name = page.getByLabel('CV name');
+  await name.fill('Cancelled');
+  await name.press('Escape');
+  await name.fill('Typed after Esc');
+  await page.waitForTimeout(400);
+  expect(state.renames).toEqual([]);
+  await name.press('Enter');
+  await expect.poll(() => state.renames).toEqual([{ name: 'Typed after Esc' }]);
+});
+
 test('CR-02 an edit is saved and previewed within about a second', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);

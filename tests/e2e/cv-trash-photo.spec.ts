@@ -155,3 +155,15 @@ test('AC-CVP-02 a photo that is too large or not an image is refused before uplo
   await expect(page.getByRole('alert').filter({ hasText: 'The photo is larger than 2 MB.' })).toBeVisible();
   expect(uploads).toBe(0);
 });
+
+test('F4 emptying the CV trash blames an AI task only when one is really using a CV', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await cvApi(page, { live: [], trash: [cv({ is_primary: false, trashed_at: at })] });
+  await page.route(`**/v1/projects/${projectId}/cvs/${cvId}/permanent`, route => route.fulfill(json({}, 500)));
+  await page.goto(`/app/projects/${projectId}/trash?tab=cvs`);
+  await page.getByRole('button', { name: 'Delete all for good' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete all for good' }).click();
+  await expect(page.getByRole('dialog').getByText('That did not work. Try again.')).toBeVisible();
+  await expect(page.getByText('An AI task is still using this CV')).toHaveCount(0);
+});

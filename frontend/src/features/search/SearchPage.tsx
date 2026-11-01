@@ -9,6 +9,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BusyNote } from '@/components/BusyNote';
+import { ErrorState } from '../projects/PageStates';
 import { Spinner } from '@/components/ui/spinner';
 import { AiSpinner } from '@/components/AiMark';
 import { SmartMatchStart } from './SmartMatchStart';
@@ -241,18 +243,18 @@ type SavedJob = { id: string; title: string; company?: string | null; source_url
 function useSavedJobs(projectId: string) {
   const saved = useResource<SavedJob[]>(`/projects/${projectId}/jobs`);
   const [busy, setBusy] = useState<string | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failed, setFailed] = useState<{ slug: string; card: boolean } | null>(null);
   const find = (job: JobSearchItem) => {
     const source = safeHttpUrl(job.source_url);
     return (saved.data ?? []).find(item => (source && item.source_url === source) || (item.title === job.title && (item.company ?? '') === (job.company ?? '')));
   };
-  async function save(job: JobSearchItem) {
+  async function save(job: JobSearchItem, card: boolean) {
     if (busy) return;
     setBusy(job.slug); setFailed(null);
     try {
       await sendJson(`/projects/${projectId}/jobs`, 'POST', { title: job.title.slice(0, 300), company: job.company?.slice(0, 300) || null, source_url: safeHttpUrl(job.source_url) ?? null, description: job.description_markdown.slice(0, 50000) || job.title });
       saved.reload();
-    } catch { setFailed(job.slug); }
+    } catch { setFailed({ slug: job.slug, card }); }
     setBusy(null);
   }
   return { loading: saved.status === 'loading', find, busy, failed, save };
@@ -270,10 +272,10 @@ function SaveJob({ job, c, projectId, saves, tSearch, card = false }: { job: Job
     {!card && saves.loading && <p id={checkingId} role="status" className="text-xs text-muted-foreground">{tSearch('controls.checkingSavedJob')}</p>}
     <Button type="button" variant="outline" size={card ? 'sm' : 'default'} className={card ? '' : 'h-auto whitespace-normal text-left'}
       aria-describedby={card ? `job-title-${job.slug}` : saves.loading ? checkingId : undefined}
-      disabled={Boolean(saves.busy) || saves.loading} onClick={() => void saves.save(job)}>
+      disabled={Boolean(saves.busy) || saves.loading} onClick={() => void saves.save(job, card)}>
       {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Bookmark className="size-4" aria-hidden="true" />}{saving ? c.saving : card ? c.saveShort : c.save}
     </Button>
-    {saves.failed === job.slug && <p role="alert" className="basis-full text-sm text-destructive">{c.saveError}</p>}
+    {saves.failed?.slug === job.slug && saves.failed.card === card && <p role="alert" className="basis-full text-sm text-destructive">{c.saveError}</p>}
   </>;
 }
 
@@ -631,7 +633,7 @@ export function SearchPage() {
           </span>}
           {job.skills.length > 0 && <span className="flex flex-wrap gap-1.5">{job.skills.slice(0, 4).map(s => <Badge key={s} variant="outline" className="break-words font-normal">{s}</Badge>)}</span>}
         </button>
-        {!sample && <div className="relative z-10 flex justify-end"><SaveJob job={job} c={c} projectId={projectId} saves={saves} tSearch={tSearch} card /></div>}
+        {!sample && <div className="relative z-10 flex flex-wrap justify-end"><SaveJob job={job} c={c} projectId={projectId} saves={saves} tSearch={tSearch} card /></div>}
         {smartActive && <ItemMenu label={c.menuLabel} className="absolute right-2 top-2 z-10" actions={[
           { label: c.hideJob, icon: <EyeOff className="size-4" aria-hidden="true" />, onSelect: () => void hide(job, 'job') },
           ...(job.company ? [{ label: c.hideCompany, icon: <Building2 className="size-4" aria-hidden="true" />, onSelect: () => void hide(job, 'company') }] : []),
@@ -809,7 +811,7 @@ export function SearchPage() {
         <DialogTitle>{c.hiddenTitle}</DialogTitle>
         <DialogDescription className="sr-only">{c.hiddenTitle}</DialogDescription>
         {dialogError && <p role="alert" className="text-sm text-destructive">{c.undoFailed}</p>}
-        {hiddenRes.status === 'loading' ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : (hiddenRes.data?.items ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.hiddenEmpty}</p>
+        {hiddenRes.status === 'loading' ? <BusyNote locale={locale} label={c.loading} /> : hiddenRes.status === 'error' ? <ErrorState onRetry={hiddenRes.reload} /> : (hiddenRes.data?.items ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.hiddenEmpty}</p>
           : <ul className="grid max-h-[60vh] gap-2 overflow-y-auto">{(hiddenRes.data?.items ?? []).map(h => <li key={h.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 text-sm">
             <span className="min-w-0 [overflow-wrap:anywhere]"><Badge variant="secondary" className="mr-2">{c.kindWord[h.kind]}</Badge>{h.label}</span>
             <Button type="button" size="sm" variant="outline" className="shrink-0 whitespace-nowrap" disabled={busyId !== null} onClick={() => void unhide(h.id, true)}>{c.unhide}</Button>

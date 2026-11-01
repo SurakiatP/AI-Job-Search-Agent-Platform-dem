@@ -347,3 +347,31 @@ test('F6 with email turned off the account page explains it instead of claiming 
   await expect(page.getByText('Email sending is not set up yet')).toBeVisible();
   await expect(page.getByText(/Link sent to/)).toHaveCount(0);
 });
+
+test('F5/F6 forgot and login errors link to the field; only wrong-input errors mark it invalid', async ({ page }) => {
+  await mockApi(page, true);
+  await page.route('**/v1/auth/password/forgot', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'rate_limited', message_key: 'errors.rate_limited', retryable: true, fields: { retry_after: '30' } }) }));
+  await page.route('**/v1/auth/login', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'rate_limited', message_key: 'errors.rate_limited', retryable: true, fields: { retry_after: '30' } }) }));
+  await page.goto('/forgot-password');
+  await page.getByLabel('Email').fill('synthetic@example.test');
+  await page.getByRole('button', { name: /Send|reset/i }).click();
+  await expect(page.getByRole('alert')).toHaveAttribute('id', 'forgot-error');
+  await expect(page.getByLabel('Email')).toHaveAttribute('aria-describedby', 'forgot-error');
+  await expect(page.getByLabel('Email')).not.toHaveAttribute('aria-invalid', 'true');
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('synthetic@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('whatever-password');
+  await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await expect(page.getByLabel('Email')).toHaveAttribute('aria-describedby', 'login-error');
+  await expect(page.getByLabel('Email')).not.toHaveAttribute('aria-invalid', 'true');
+});
+
+test('F5 the reset password mismatch error is linked to both fields', async ({ page }) => {
+  await mockApi(page, true);
+  await page.goto('/reset-password?token=abc');
+  await page.getByLabel('Password', { exact: true }).fill('long-enough-password');
+  await page.getByLabel('Confirm password').fill('different-password');
+  await page.getByRole('button', { name: /reset|change|save/i }).click();
+  await expect(page.getByLabel('Confirm password')).toHaveAttribute('aria-describedby', 'reset-error');
+  await expect(page.getByLabel('Confirm password')).toHaveAttribute('aria-invalid', 'true');
+});

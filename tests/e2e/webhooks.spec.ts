@@ -84,3 +84,16 @@ test('webhooks section fits 320px in Thai', async ({ page }) => {
   await page.screenshot({ path: '/tmp/jsp-webhook-overflow.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), JSON.stringify(overflow)).toBe(true);
 });
+
+test('F8 after a webhook is deleted focus moves to the address field above the list', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await hooks(page);
+  await page.goto('/app/settings?section=webhooks');
+  await page.getByLabel('Endpoint URL').fill('https://hooks.example.test/focus');
+  await page.getByLabel('Run completed').check();
+  await page.getByRole('button', { name: 'Add webhook' }).click();
+  await page.getByRole('button', { name: 'Delete https://hooks.example.test/focus' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /Delete/ }).click();
+  await expect(page.getByText('https://hooks.example.test/focus')).toHaveCount(0);
+  await expect(page.locator('#webhook-url')).toBeFocused();
+});

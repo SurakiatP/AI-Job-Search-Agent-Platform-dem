@@ -134,3 +134,28 @@ test('phone view: the view switch is a labelled group and the card menu is a 44p
   expect(box?.height).toBeGreaterThanOrEqual(44);
   expect(box?.width).toBeGreaterThanOrEqual(44);
 });
+
+test('F7 a failed move puts back only its own card, not a move that finished meanwhile', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await useSyntheticApplication(page);
+  const card = (id: string, title: string) => ({ job_revision_id: id, title, company: 'Example Co.', created_at: '2026-10-01T00:00:00Z', stage: 'saved', has_contact: false, last_activity_at: '2026-10-02T00:00:00Z' });
+  const slow = 'aaaaaaaa-0000-4000-8000-000000000001';
+  const fast = 'aaaaaaaa-0000-4000-8000-000000000002';
+  await page.route(`**/v1/projects/${projectId}/applications`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([card(slow, 'Slow job'), card(fast, 'Fast job')]) }));
+  await page.route(`**/v1/projects/${projectId}/jobs/${slow}/application-status`, async route => {
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    await new Promise(resolve => setTimeout(resolve, 600));
+    await route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+  });
+  await page.route(`**/v1/projects/${projectId}/jobs/${fast}/application-status`, route => route.request().method() === 'PATCH'
+    ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ job_revision_id: fast, application_status: 'applied' }) }) : route.fallback());
+  await page.goto(`/app/projects/${projectId}/applications?view=board`);
+  await page.getByRole('button', { name: 'Move to: Slow job' }).click();
+  await page.getByRole('menuitem', { name: 'Applied' }).click();
+  await page.getByRole('button', { name: 'Move to: Fast job' }).click();
+  await page.getByRole('menuitem', { name: 'Applied' }).click();
+  await expect(page.getByRole('alert')).toBeVisible({ timeout: 4000 });
+  await expect(page.getByRole('region', { name: /^Saved/ }).getByRole('link', { name: 'Slow job' })).toBeVisible();
+  await expect(page.getByRole('region', { name: /^Applied/ }).getByRole('link', { name: 'Fast job' })).toBeVisible();
+});
