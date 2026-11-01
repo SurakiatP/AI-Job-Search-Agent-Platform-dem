@@ -464,3 +464,15 @@ test('job cards and details show Thai province names in the Thai app and the sou
     if (hidden) await expect(card).not.toContainText(hidden);
   }
 });
+
+test('a Thai query shows the Thai-postings hint with real counts; an English query does not', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await installSearchFixture(page);
+  await page.goto(`/app/projects/${projectId}/search?q=${encodeURIComponent('วิเคราะห์ข้อมูล')}`);
+  const hint = page.getByTestId('thai-search-hint');
+  await expect(hint).toBeVisible();
+  await expect(hint).toContainText('21 of 124 in Thai');
+  await page.goto(`/app/projects/${projectId}/search?q=analyst`);
+  await expect(page.getByRole('heading', { name: 'Job search' })).toBeVisible();
+  await expect(page.getByTestId('thai-search-hint')).toHaveCount(0);
+});

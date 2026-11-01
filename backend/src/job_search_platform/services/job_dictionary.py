@@ -63,6 +63,21 @@ def _load_roles() -> list[tuple[str, re.Pattern[str], str]]:
     return roles
 
 
+def thai_role_synonyms() -> dict[str, list[str]]:
+    """Thai role alias -> [English canonical name] for the search index; also the alias without a leading นัก."""
+    out: dict[str, list[str]] = {}
+    for key, aliases in parse_dictionary((DATA / "roles.txt").read_text(encoding="utf-8")):
+        english = key.partition("|")[0].lower()
+        for alias in aliases:
+            if alias.isascii():
+                continue
+            rest = alias[3:] if alias.startswith("นัก") else ""
+            for k in (alias, rest):
+                if k and not k.isascii() and english not in out.setdefault(k, []):
+                    out[k].append(english)
+    return out
+
+
 def _build_province_names(text: str) -> dict[str, tuple[str, str]]:
     """code -> (English RTGS name, Thai name); the Thai name is the first Thai alias of the code's province line."""
     names: dict[str, tuple[str, str]] = {}

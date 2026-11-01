@@ -304,3 +304,30 @@ test('signup and forgot password say so when the server cannot send email', asyn
   await page.getByRole('button', { name: /reset|link/i }).click();
   await expect(page.getByRole('heading', { name: 'Email is not set up yet' })).toBeVisible();
 });
+
+async function signInToAccount(page: Page) {
+  await page.goto('/login?next=%2Fapp%2Faccount');
+  await page.getByLabel('Email').fill('synthetic@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('correct-password');
+  await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
+}
+
+test('F6 account page emails a password reset link to the account email', async ({ page }) => {
+  await mockApi(page, true);
+  const bodies: unknown[] = [];
+  await page.route('**/v1/auth/password/forgot', route => { bodies.push(route.request().postDataJSON()); return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email', mail_enabled: true }) }); });
+  await signInToAccount(page);
+  await page.getByRole('button', { name: 'Email me a password reset link' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Link sent to synthetic@example.test' })).toBeVisible();
+  expect(bodies).toEqual([{ email: 'synthetic@example.test' }]);
+});
+
+test('F6 with email turned off the account page explains it instead of claiming a link was sent', async ({ page }) => {
+  await mockApi(page, true);
+  await page.route('**/v1/auth/password/forgot', route => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email', mail_enabled: false }) }));
+  await signInToAccount(page);
+  await page.getByRole('button', { name: 'Email me a password reset link' }).click();
+  await expect(page.getByText('This server cannot send email yet')).toBeVisible();
+  await expect(page.getByText(/Link sent to/)).toHaveCount(0);
+});

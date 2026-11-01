@@ -141,6 +141,15 @@ def test_sync_upserts_dirty_and_clears_flag(sessions):
 
 
 @pytest.mark.integration
+def test_sync_on_existing_index_applies_settings(sessions):
+    meili = FakeMeili()
+    meili.indexes["jobs"] = {}
+    out = job_index.sync(sessions, meili, "jobs")
+    assert out["state"] == "ok"
+    assert meili.settings["jobs"] == job_index.SETTINGS
+
+
+@pytest.mark.integration
 def test_queued_deletes_are_sent_then_removed(sessions):
     meili = FakeMeili()
     _store(sessions, greenhouse=[_gh(1, "https://g/1")])

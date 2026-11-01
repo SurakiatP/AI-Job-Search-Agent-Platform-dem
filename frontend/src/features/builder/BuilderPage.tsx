@@ -59,6 +59,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
   const previewAgain = useRef(false);
   const working = useRef<Working | null>(null); // theme tokens being tried in the customiser, not saved yet
   const [pages, setPages] = useState(0);
+  const [customising, setCustomising] = useState(false); // the customiser has its own colour row
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -93,7 +94,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     previewTimer.current = window.setTimeout(() => void preview(), wait);
   }, [preview]);
   useEffect(() => { if (draft && !pdfUrl && !previewing && !previewError) void preview(); }, [draft, pdfUrl, previewing, previewError, preview]);
-  const tryTheme = useCallback((next: Working | null) => { working.current = next; schedulePreview(); }, [schedulePreview]);
+  const tryTheme = useCallback((next: Working | null) => { working.current = next; setCustomising(next !== null); schedulePreview(); }, [schedulePreview]);
   useEffect(() => () => { setPdfUrl(old => { if (old) URL.revokeObjectURL(old); return null; }); }, []);
 
   const persist = useCallback(async () => {
@@ -199,7 +200,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
       onPick={id => change({ ...draft, template_id: id })} onWorking={tryTheme} />
 
     <div className="grid gap-3 rounded-xl border bg-card p-4 lg:grid-cols-[auto_1fr] lg:items-end">
-      {!isCustom(draft.template_id) && <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.accent}</legend>
+      {!isCustom(draft.template_id) && !customising && <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.accent}</legend>
         <div className="flex flex-wrap gap-2">{ACCENTS.map(a => <button key={a.id} type="button" aria-label={c.accents[a.id]} aria-pressed={draft.accent === a.id} onClick={() => change({ ...draft, accent: a.id })}
           className="grid size-11 place-items-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground"><span className="size-7 rounded-full" style={{ background: a.hex }} /></button>)}</div>
       </fieldset>}

@@ -10,16 +10,25 @@ export const empty = () => ({
   references_on_request: false,
 });
 
-export type State = { draft: any; puts: any[]; previews: number; publishes: number; failPut: boolean; created: boolean; renames: any[]; pdf: string; times: Record<string, number[]> };
+const presetTokens = { accent: '#4338CA', font_pair: 'sans', size: 'normal', density: 'normal', heading_style: 'plain' };
+export const themeList = () => ({
+  presets: [['onyx', 'Onyx', true], ['kakuna', 'Kakuna', true], ['ditgar', 'Ditgar', false], ['lotus', 'Lotus', true], ['teak', 'Teak', true], ['saffron', 'Saffron', true]]
+    .map(([id, name, ats_safe]) => ({ id, layout: id, th: name, en: name, ats_safe, photo: false, tokens: presetTokens })),
+  custom: [],
+});
+
+export type State = { draft: any; puts: any[]; previews: number; publishes: number; failPut: boolean; created: boolean; renames: any[]; pdf: string; times: Record<string, number[]>; themePosts: number };
 
 export async function builderApi(page: Page, start: Partial<State> = {}) {
   const state: State = { draft: { id: 'd1', cv_id: cvId, document_id: null, name: 'CV ของฉัน', resume_data: empty(), template_id: 'onyx', accent: 'indigo', document_language: 'th', ats_safe: true, updated_at: '2026-10-19T00:00:00.000Z' },
-    puts: [], previews: 0, publishes: 0, failPut: false, created: false, renames: [], pdf: '%PDF-1.4\n1 0 obj << /Type /Page >> endobj\n%%EOF', times: { put: [], preview: [] }, ...start };
+    puts: [], previews: 0, publishes: 0, failPut: false, created: false, renames: [], pdf: '%PDF-1.4\n1 0 obj << /Type /Page >> endobj\n%%EOF', times: { put: [], preview: [] }, themePosts: 0, ...start };
   await page.route('**/v1/**', async route => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace('/v1', '');
     const json = (status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (path === `/projects/${projectId}/cvs/builder` && request.method() === 'POST') { state.created = true; return json(201, { id: cvId, name: 'CV ของฉัน', is_primary: true, created_at: '2026-10-19T00:00:00Z', latest_revision: null, revision_count: 0, in_use: false, has_builder_draft: true }); }
+    if (path === '/resume-themes' && request.method() === 'GET') return json(200, themeList());
+    if (path === '/resume-themes' && request.method() === 'POST') { state.themePosts += 1; return json(400, {}); }
     if (path === '/resume-templates') return json(200, { templates: [], accents: [], provinces: [{ id: 'TH-10', en: 'Bangkok', th: 'กรุงเทพมหานคร' }, { id: 'TH-50', en: 'Chiang Mai', th: 'เชียงใหม่' }] });
     if (path === `/projects/${projectId}/cvs/${cvId}` && request.method() === 'PATCH') { state.renames.push(request.postDataJSON()); return json(200, { id: cvId, name: request.postDataJSON().name }); }
     if (path === `/projects/${projectId}/cvs/${cvId}/draft`) {

@@ -8,10 +8,11 @@ import { Input } from '../../components/ui/input';
 import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog';
 import { PasswordInput } from '../../components/PasswordInput';
 import { Label } from '../../components/ui/label';
-import { apiRequest, chooseAvatarPreset, deleteAccount, logout, refreshOwnerSession, removeAvatar, resendVerification, sendDeletionCode, uploadAvatar, useAccount } from '../../lib/api';
+import { apiRequest, chooseAvatarPreset, deleteAccount, forgotPassword, logout, refreshOwnerSession, removeAvatar, resendVerification, sendDeletionCode, uploadAvatar, useAccount } from '../../lib/api';
 import { Avatar, AVATAR_PRESETS, PresetArt } from '../../components/Avatar';
 import { CodeInput } from '../../components/CodeInput';
 import { ApiError, type AccountAgent } from '../../lib/api-types';
+import { authCopy } from '../auth/copy';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import { UserCog } from 'lucide-react';
@@ -73,10 +74,22 @@ function AvatarSection() {
 }
 
 function EmailSection() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const account = useAccount();
   const [state, setState] = useState<'idle' | 'busy' | 'sent' | 'failed'>('idle');
+  const [reset, setReset] = useState<{ kind: 'idle' | 'busy' | 'sent' | 'off' | 'error'; text?: string }>({ kind: 'idle' });
   if (!account) return null;
+  const mailOff = authCopy[i18n.language.startsWith('th') ? 'th' : 'en'];
+  async function sendReset() {
+    if (!account) return;
+    setReset({ kind: 'busy' });
+    try {
+      const result = await forgotPassword(account.email);
+      setReset(result.mail_enabled === false ? { kind: 'off' } : { kind: 'sent', text: t('account.passwordResetSent', { email: account.email }) });
+    } catch (error) {
+      setReset({ kind: 'error', text: error instanceof ApiError && error.code === 'rate_limited' ? t('errors.rate_limited', { seconds: error.fields?.retry_after ?? '60' }) : t('errors.request_failed') });
+    }
+  }
   async function resend() {
     setState('busy');
     try { await resendVerification(); setState('sent'); } catch { setState('failed'); }
@@ -89,6 +102,16 @@ function EmailSection() {
       {!account.email_verified && <Button type="button" size="sm" variant="outline" disabled={state === 'busy' || state === 'sent'} onClick={() => void resend()}>{t('account.resend')}</Button>}
       <span role="status" className="text-sm text-muted-foreground">{state === 'sent' ? t('account.resent') : ''}</span>
       {state === 'failed' && <span role="alert" className="text-sm text-destructive">{t('errors.request_failed')}</span>}
+      <div className="grid w-full gap-2 border-t pt-3">
+        <p className="text-sm font-medium">{t('account.passwordLabel')}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" size="sm" variant="outline" busy={reset.kind === 'busy'} disabled={reset.kind === 'busy'} onClick={() => void sendReset()}>{t('account.passwordReset')}</Button>
+          <span className="text-sm text-muted-foreground">{t('account.passwordResetHint')}</span>
+        </div>
+        <div role={reset.kind === 'error' ? 'alert' : 'status'} className={reset.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>
+          {reset.kind === 'off' ? <>{mailOff.mailOffBody} {mailOff.mailOffNext}</> : reset.text}
+        </div>
+      </div>
     </CardContent>
   </Card>;
 }

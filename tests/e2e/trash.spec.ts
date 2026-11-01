@@ -41,7 +41,7 @@ test('empty trash: sidebar item has no count and the page says what lands here',
   await page.route(`**/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([])));
   await page.goto(`/app/projects/${projectId}/trash`);
   await expect(page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Trash', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByText('Trash is empty. Evaluations you delete land here and can be restored.')).toBeVisible();
+  await expect(page.getByText('No evaluations in the trash. Evaluations you delete land here and can be restored.')).toBeVisible();
 });
 
 test('evaluation and document pages have no trash buttons; old trash addresses open the project trash', async ({ page }) => {
@@ -63,4 +63,21 @@ test('evaluation and document pages have no trash buttons; old trash addresses o
   await page.goto(`/app/projects/${projectId}/sessions?view=trash`);
   await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/trash$`));
   await expect(page.getByText('Old job')).toBeVisible();
+});
+
+test('F2 with only a CV in the trash the CVs tab opens first; an explicit ?tab=evaluations stays', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const lone = { id: '66666666-6666-4666-8666-666666666666', name: 'Lone CV', is_primary: false, created_at: at, trashed_at: at, revision_count: 0, in_use: false, latest_revision: null };
+  await page.route(`**/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([])));
+  await page.route(`**/v1/projects/${projectId}/documents/trash`, route => route.fulfill(json([])));
+  await page.route(`**/v1/projects/${projectId}/cvs?view=trash`, route => route.fulfill(json([lone])));
+  await page.goto(`/app/projects/${projectId}/trash`);
+  await expect(page.getByRole('tab', { name: 'CVs 1' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText('Lone CV')).toBeVisible();
+  await expect(page.getByText('No evaluations in the trash.')).toHaveCount(0);
+
+  await page.goto(`/app/projects/${projectId}/trash?tab=evaluations`);
+  await expect(page.getByRole('tab', { name: 'Evaluations 0' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText('No evaluations in the trash. Evaluations you delete land here and can be restored.')).toBeVisible();
 });

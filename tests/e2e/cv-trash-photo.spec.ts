@@ -75,7 +75,7 @@ test('AC-CVT-04 empty CV trash says what lands there', async ({ page }) => {
   await useSyntheticApplication(page);
   await cvApi(page, { live: [], trash: [] });
   await page.goto(`/app/projects/${projectId}/trash?tab=cvs`);
-  await expect(page.getByText('Trash is empty. CVs you delete land here and can be restored.')).toBeVisible();
+  await expect(page.getByText('No CVs in the trash. CVs you delete land here and can be restored.')).toBeVisible();
 });
 
 const SECTIONS = ['experience', 'education', 'skills', 'projects', 'certifications', 'languages', 'awards', 'publications', 'volunteer', 'references', 'interests'];

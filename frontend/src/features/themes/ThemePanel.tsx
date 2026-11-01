@@ -50,6 +50,8 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const file = useRef<HTMLInputElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
+  const [nameMissing, setNameMissing] = useState(false);
 
   if (list.status === 'loading' && !list.data) return <p className="text-sm text-muted-foreground" role="status">{c.loading}</p>;
   if (!list.data) return <p className="text-sm text-destructive" role="alert">{c.loadFailed}</p>;
@@ -62,7 +64,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
     ? { layout: preset.layout, name: '', tokens: { ...preset.tokens, accent: preset.id in LEGACY ? hexOfAccent : preset.tokens.accent } }
     : { layout: mine?.layout ?? 'onyx', name: '', tokens: mine?.tokens ?? { accent: hexOfAccent, font_pair: 'sans', size: 'normal', density: 'normal', heading_style: 'plain' } };
 
-  const change = (next: Edit | null) => { setEdit(next); onWorking(next ? { layout: next.layout, tokens: next.tokens } : null); };
+  const change = (next: Edit | null) => { setEdit(next); setNameMissing(false); onWorking(next ? { layout: next.layout, tokens: next.tokens } : null); };
   const token = <K extends keyof Tokens>(key: K, value: Tokens[K]) => edit && change({ ...edit, tokens: { ...edit.tokens, [key]: value } });
   const pick = (id: string) => { setNote(null); setConfirming(false); change(null); onPick(id); };
 
@@ -78,12 +80,14 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
     setBusy(true); setNote(null);
     try { await action(); } catch (error) { setNote({ kind: 'error', text: explain(error) }); } finally { setBusy(false); }
   }
-  const saveTheme = () => run(async () => {
+  const saveTheme = () => {
+    if (edit && !edit.name.trim()) { setNameMissing(true); nameInput.current?.focus(); return; }
+    return run(async () => {
     if (!edit) return;
-    if (!edit.name.trim()) { setNote({ kind: 'error', text: c.needName }); return; }
     const saved = await sendJson<Custom>('/resume-themes', 'POST', { name: edit.name.trim(), layout: edit.layout, tokens: edit.tokens });
     list.reload(); change(null); onPick(customId(saved.id)); setNote({ kind: 'ok', text: c.saved });
-  });
+    });
+  };
   const importFile = (picked: File | undefined) => {
     if (!picked) return;
     if (picked.size > FILE_MAX_BYTES) { setNote({ kind: 'error', text: c.fileTooBig }); return; }
@@ -140,10 +144,10 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
             {ACCENTS.map(a => <button key={a.id} type="button" aria-label={bc.accents[a.id]} aria-pressed={edit.tokens.accent.toUpperCase() === a.hex.toUpperCase()} onClick={() => token('accent', a.hex)}
               className="grid size-11 place-items-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground"><span className="size-7 rounded-full" style={{ background: a.hex }} /></button>)}
             <Label htmlFor="theme-hex" className="sr-only">{c.hex}</Label>
-            <Input id="theme-hex" className="w-28 font-mono uppercase" value={edit.tokens.accent} maxLength={7} aria-invalid={colourBad}
+            <Input id="theme-hex" className="w-28 font-mono uppercase" value={edit.tokens.accent} maxLength={7} aria-invalid={colourBad} aria-describedby={colourBad && /^#[0-9a-fA-F]{6}$/.test(edit.tokens.accent) ? 'theme-hex-error' : undefined}
               onChange={e => token('accent', e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`)} />
           </div>
-          {colourBad && /^#[0-9a-fA-F]{6}$/.test(edit.tokens.accent) && <p className="text-sm text-destructive" role="alert">{c.contrast}</p>}
+          {colourBad && /^#[0-9a-fA-F]{6}$/.test(edit.tokens.accent) && <p id="theme-hex-error" className="text-sm text-destructive" role="alert">{c.contrast}</p>}
         </div>
         <Seg label={c.layout} value={edit.layout} options={LAYOUTS.map(l => [l, l.charAt(0).toUpperCase() + l.slice(1)] as [string, string])} onChange={v => edit && change({ ...edit, layout: v })} />
         <Seg label={c.font} value={edit.tokens.font_pair} options={[['sans', c.sans], ['serif', c.serif]]} onChange={v => token('font_pair', v)} />
@@ -154,7 +158,9 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
       <h3 className="text-sm font-medium"><span className="mr-2 text-primary">3</span>{c.share}</h3>
       <div className="flex flex-wrap items-end gap-2">
         <div className="grid gap-1.5"><Label htmlFor="theme-name">{c.name}</Label>
-          <Input id="theme-name" className="w-56" value={edit.name} maxLength={60} onChange={e => change({ ...edit, name: e.target.value })} /></div>
+          <Input id="theme-name" ref={nameInput} className="w-56" value={edit.name} maxLength={60} aria-invalid={nameMissing} aria-describedby={nameMissing ? 'theme-name-error' : undefined}
+            onChange={e => change({ ...edit, name: e.target.value })} />
+          {nameMissing && <p id="theme-name-error" className="text-sm text-destructive">{c.needName}</p>}</div>
         <Button size="sm" busy={busy} disabled={busy || colourBad} onClick={() => void saveTheme()}>{c.save}</Button>
         <Button size="sm" variant="ghost" disabled={busy} onClick={() => change(null)}>{c.cancel}</Button>
       </div>

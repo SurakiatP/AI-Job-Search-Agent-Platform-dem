@@ -63,6 +63,7 @@ const FILTER_KEYS = ['q', 'cities', 'work_mode', 'posted_within_days', 'category
 const copy = {
   th: {
     title: 'ค้นหางาน', subtitle: (n: string) => `งานในประเทศไทย ${n} ตำแหน่ง`, stats: (t: string, n: string, th: string) => `งานในไทย ${t} · ใหม่ 7 วัน ${n} · ประกาศภาษาไทย ${th}`,
+    thaiHint: (n?: number, t?: number) => `ประกาศส่วนใหญ่เป็นภาษาอังกฤษ${n != null && t != null ? ` (ภาษาไทย ${n} จาก ${t} รายการ)` : ''} คำค้นภาษาไทยพบเฉพาะประกาศภาษาไทยและชื่อตำแหน่งที่ระบบรู้จัก ลองค้นเป็นภาษาอังกฤษด้วย เช่น “Data Analyst”`,
     searchLabel: 'ค้นหาตำแหน่ง บริษัท หรือทักษะ', searchPlaceholder: 'เช่น Frontend, Data analyst หรือชื่อบริษัท',
     mode: 'รูปแบบการทำงาน', anyMode: 'ทุกแบบ', posted: 'ช่วงเวลาที่ลงประกาศ', anyPosted: 'ทุกช่วง',
     days: (n: number) => `${n} วันที่ผ่านมา`, city: 'จังหวัด/เมือง', anyCity: 'ทุกเมือง', categories: 'หมวดงาน',
@@ -94,6 +95,7 @@ const copy = {
   },
   en: {
     title: 'Job search', subtitle: (n: string) => `${n} jobs in Thailand`, stats: (t: string, n: string, th: string) => `Jobs in Thailand ${t} · New in 7 days ${n} · Thai postings ${th}`,
+    thaiHint: (n?: number, t?: number) => `Most postings are in English${n != null && t != null ? ` (${n} of ${t} in Thai)` : ''}. A Thai search finds Thai postings and job titles the platform knows; also try English, e.g. “Data Analyst”.`,
     searchLabel: 'Search title, company or skill', searchPlaceholder: 'e.g. Frontend, Data analyst or a company',
     mode: 'Work mode', anyMode: 'Any', posted: 'Posted within', anyPosted: 'Any time',
     days: (n: number) => `${n} days`, city: 'City', anyCity: 'All cities', categories: 'Categories',
@@ -541,6 +543,8 @@ export function SearchPage() {
     const top = (facetsRes.data?.categories ?? []).slice(0, 12);
     return category && !top.some(f => f.value === category) ? [{ value: category, count: 0 }, ...top] : top;
   }, [sample, facetsRes.data, category]);
+  const thaiHintLine = !sample && /[\u0E00-\u0E7F]/.test(q)
+    ? <p data-testid="thai-search-hint" className="text-sm text-muted-foreground">{c.thaiHint(facetsRes.data?.thai_postings, facetsRes.data?.total)}</p> : null;
   const grandTotal = sample ? sampleItems.length : facetsRes.data?.total;
 
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
@@ -760,6 +764,7 @@ export function SearchPage() {
         <span className="text-sm text-muted-foreground">{c.autoCats}</span>
         {ai.categories.map(slug => <Button key={slug} type="button" variant="outline" size="sm" className="h-auto" onClick={() => setFilter('category', slug)}>{catLabel(slug)}</Button>)}
       </div>}
+      {thaiHintLine}
       {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-3 py-2 text-sm">
         <span className="[overflow-wrap:anywhere]">{undo.message}</span>
         {undo.retry && <Button type="button" size="sm" variant="outline" onClick={() => void unhide(undo.id)}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
@@ -767,6 +772,7 @@ export function SearchPage() {
       {profiling ? <AgentSteps c={c} step={0} scored={0} total={0} /> : waiting ? loadingList : visible.length === 0 && smartActive && ranking && !q && !category && ai?.status === 'missing' ? null : visible.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
         <p className="font-medium">{c.none}</p>
         <p className="text-sm text-muted-foreground">{c.noneNext}</p>
+        {thaiHintLine}
         <Button variant="outline" size="sm" onClick={clear} disabled={!filtered}>{c.clear}</Button>
       </div> : showMobileDetail && selected ? <section className="grid min-w-0 gap-4" aria-label={selected.title}>
         <Button ref={detailBack} type="button" variant="outline" className="justify-self-start" onClick={() => {

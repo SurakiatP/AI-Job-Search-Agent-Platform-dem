@@ -1,4 +1,5 @@
 // One trash for the project: evaluations, documents and CVs in tabs, reusing each area's own trash view.
+import { useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,16 +19,22 @@ export function TrashPage() {
   const { t, i18n } = useTranslation();
   const locale: Locale = i18n.language.startsWith('th') ? 'th' : 'en';
   const [params, setParams] = useSearchParams();
-  const tab = (['documents', 'cvs'] as const).find(name => name === params.get('tab')) ?? 'evaluations';
   const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions?view=trash`);
   const documents = useResource<TrashedDocument[]>(`/projects/${projectId}/documents/trash`);
   const cvs = useResource<CVView[]>(`/projects/${projectId}/cvs?view=trash`);
+  // No ?tab=: open the first tab that has something in it (evaluations while any list is still loading).
+  const loaded = !!sessions.data && !!documents.data && !!cvs.data;
+  const firstFilled = !loaded ? 'evaluations' : sessions.data!.length ? 'evaluations' : documents.data!.length ? 'documents' : cvs.data!.length ? 'cvs' : 'evaluations';
+  // Decided once, so emptying the open tab does not make the page jump.
+  const picked = useRef<string | null>(null);
+  if (loaded && !picked.current) picked.current = firstFilled;
+  const tab = (['evaluations', 'documents', 'cvs'] as const).find(name => name === params.get('tab')) ?? picked.current ?? 'evaluations';
   const changed = (reload: () => void) => () => { reload(); notifyTrashChanged(); };
   const count = (n?: number) => <span className="ms-1.5 rounded-full bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">{n ?? 0}</span>;
   const tabClass = 'min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
   return <section className="grid min-w-0 gap-6">
     <PageHeader icon={Trash2} title={t('trash.title')} lede={t('trash.subtitle')} />
-    <Tabs value={tab} onValueChange={value => setParams(value === 'evaluations' ? {} : { tab: value }, { replace: true })} className="grid min-w-0 gap-4">
+    <Tabs value={tab} onValueChange={value => setParams({ tab: value }, { replace: true })} className="grid min-w-0 gap-4">
       <TabsList className="h-auto w-full justify-start gap-1 rounded-none border-b bg-transparent p-0">
         <TabsTrigger value="evaluations" className={tabClass}>{t('nav.evaluate')}{count(sessions.data?.length)}</TabsTrigger>
         <TabsTrigger value="documents" className={tabClass}>{t('nav.documents')}{count(documents.data?.length)}</TabsTrigger>

@@ -193,7 +193,7 @@
     "subtitle": "Deleted evaluations. Restore them or delete them permanently.",
     "link": "Trash ({{n}})",
     "back": "Back to evaluations",
-    "empty": "Trash is empty. Evaluations you delete land here and can be restored.",
+    "empty": "No evaluations in the trash. Evaluations you delete land here and can be restored.",
     "note": "A permanent delete cannot be undone. Documents the agent made stay in Documents.",
     "trashed": "Deleted",
     "restore": "Restore",

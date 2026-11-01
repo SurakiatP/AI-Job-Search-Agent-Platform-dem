@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { projectId, useSyntheticApplication } from '../fixtures/application';
+import { mergeResume } from '../../frontend/src/features/builder/sections';
 import { builderApi, cvId, empty } from '../fixtures/builder';
 
 test('TC-CVB-01 build a CV from nothing and save version 1', async ({ page }) => {
@@ -183,4 +184,60 @@ test('CR-02 the preview shows the page count and warns past two pages', async ({
   await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
   await expect(page.getByText('· 3 pages')).toBeVisible();
   await expect(page.getByRole('note').filter({ hasText: 'Most CVs work best at 1–2 pages' })).toBeVisible();
+});
+
+test('F7 two draft CVs with the same name show different created times in the profile list', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const draft = (id: string, created_at: string) => ({ id, name: 'My CV', is_primary: false, created_at, latest_revision: null, revision_count: 0, in_use: false, has_builder_draft: true });
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
+    draft('aaaaaaaa-0000-4000-8000-000000000001', '2026-10-19T09:00:00Z'), draft('aaaaaaaa-0000-4000-8000-000000000002', '2026-10-19T15:30:00Z')]) }));
+  await page.goto(`/app/projects/${projectId}/profile`);
+  const rows = page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: 'My CV' }) });
+  await expect(rows).toHaveCount(2);
+  const first = await rows.nth(0).getByText(/^Created /).textContent();
+  const second = await rows.nth(1).getByText(/^Created /).textContent();
+  expect(first).not.toBe(second);
+});
+
+test('F3 saving a theme without a name focuses the field and links the error to it', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const state = await builderApi(page);
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  await page.getByRole('button', { name: 'Customise this theme' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const name = page.locator('#theme-name');
+  await expect(name).toBeFocused();
+  await expect(name).toHaveAttribute('aria-invalid', 'true');
+  const described = await name.getAttribute('aria-describedby');
+  expect(described).toBeTruthy();
+  await expect(page.locator(`#${described}`)).toHaveText('Name the theme before saving');
+  expect(state.themePosts).toBe(0);
+  await name.fill('Mine');
+  await expect(name).toHaveAttribute('aria-invalid', 'false');
+});
+
+test('F5 customising a theme hides the older accent row; cancel brings it back', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await builderApi(page);
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  const oldRow = page.locator('fieldset').filter({ has: page.locator('legend', { hasText: 'Accent colour' }) });
+  await expect(oldRow).toHaveCount(1);
+  await page.getByRole('button', { name: 'Customise this theme' }).click();
+  await expect(oldRow).toHaveCount(0);
+  await expect(page.locator('#theme-hex')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(oldRow).toHaveCount(1);
+});
+
+test('F9 mergeResume skips an item already in the draft even with keys in another order', () => {
+  const draft: any = empty();
+  draft.sections.experience.items = [{ id: 'a', title: 'Analyst', company: 'Acme', start: '2024-01' }];
+  const add: any = empty();
+  add.sections.experience.items = [{ start: '2024-01', company: 'Acme', title: 'Analyst', id: 'b' }];
+  expect(mergeResume(draft, add).sections.experience.items).toHaveLength(1);
+  add.sections.experience.items.push({ id: 'c', title: 'Lead', company: 'Acme', start: '2025-01' });
+  expect(mergeResume(draft, add).sections.experience.items.map((i: any) => i.title)).toEqual(['Analyst', 'Lead']);
 });
