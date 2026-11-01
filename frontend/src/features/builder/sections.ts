@@ -72,7 +72,8 @@ export function mergeResume(draft: ResumeData, add: ResumeData): ResumeData {
   const out = structuredClone(draft);
   if (!out.summary.content && add.summary.content) out.summary.content = add.summary.content;
   for (const name of Object.keys(add.sections) as ListSection[]) {
-    const body = (item: Item) => JSON.stringify({ ...item, id: '' });
+    // The saved draft comes back from JSONB with its keys in another order, so compare with the keys sorted.
+    const body = (item: Item) => JSON.stringify({ ...item, id: '' }, (_k, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a < b ? -1 : 1)) : v);
     const have = new Set(out.sections[name].items.map(body));
     out.sections[name].items.push(...add.sections[name].items.filter(item => !have.has(body(item))));
     out.sections[name].items = out.sections[name].items.slice(0, 50);
