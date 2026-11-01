@@ -111,7 +111,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
   });
 
   const colourBad = edit ? !accentOk(edit.tokens.accent) : false;
-  return <section aria-labelledby="theme-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 rounded-xl border bg-card p-4 sm:p-5">
+  return <section aria-labelledby="theme-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 rounded-xl border bg-card p-5 sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h2 id="theme-title" className="flex items-center gap-2 text-lg font-semibold"><Palette className="size-5 text-primary" aria-hidden="true" />{c.title}</h2>
       <div className="flex flex-wrap gap-2">
@@ -162,7 +162,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
       </div>
       <h3 className="text-sm font-medium"><span className="mr-2 text-primary">3</span>{c.share}</h3>
       <div className="flex flex-wrap items-end gap-2">
-        <div className="grid gap-1.5"><Label htmlFor="theme-name">{c.name}</Label>
+        <div className="grid gap-2"><Label htmlFor="theme-name">{c.name}</Label>
           <Input id="theme-name" ref={nameInput} className="w-56" value={edit.name} maxLength={60} aria-invalid={nameMissing} aria-describedby={nameMissing ? 'theme-name-error' : undefined}
             onChange={e => change({ ...edit, name: e.target.value })} />
           {nameMissing && <p id="theme-name-error" className="text-sm text-destructive">{c.needName}</p>}</div>

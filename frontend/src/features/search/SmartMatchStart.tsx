@@ -28,7 +28,7 @@ export function SmartMatchStart({ locale, cvName, disabled, title, onStart }: { 
       <AiMark className="size-10" />
       <div className="min-w-0"><h2 id="smart-start-title" className="text-lg font-semibold">{c.title}</h2><p className="mt-0.5 max-w-2xl text-sm text-muted-foreground">{c.body}</p></div>
     </div>
-    <ol className="grid auto-rows-fr gap-2 sm:grid-cols-3">{c.steps.map((step, index) => { const Icon = icons[index]; return <li key={step} className="flex items-center gap-2.5 rounded-lg border bg-card/80 px-3 py-2.5 text-sm">
+    <ol className="grid auto-rows-fr gap-2 sm:grid-cols-3">{c.steps.map((step, index) => { const Icon = icons[index]; return <li key={step} className="flex items-center gap-2 rounded-lg border bg-card/80 px-3 py-2 text-sm">
       <span aria-hidden="true" data-stage={stages[index]} data-active="true" className="stage-chip !size-7 !rounded-full"><Icon className="size-3.5" /></span><span className="min-w-0 text-balance">{step}</span>
     </li>; })}</ol>
     <div className="grid content-start gap-1.5">

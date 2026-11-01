@@ -162,9 +162,11 @@ export function SessionPage() {
   const cvLine = paired && current.cv_name ? `CV: ${current.cv_name}${current.cv_revision != null ? ` · v${current.cv_revision}` : ''}` : null;
   const subline = [paired ? current.job_company : null, headline !== current.title ? current.title : null, cvLine].filter(Boolean).join(' · ');
   const tabClass = 'min-h-11 shrink-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
-  return <section className="flex min-w-0 flex-col gap-4">
+  return <section className="flex min-w-0 flex-col gap-6 lg:gap-8">
+    <div className="grid gap-1">
     <Breadcrumb label={c.title} items={[{ label: project.data?.name ?? t('pages.project'), to: `${base}/overview` }, { label: t('nav.evaluate'), to: `${base}/sessions` }, { label: current.title }]} />
     <header className="min-w-0"><h1 className="break-words text-2xl font-semibold">{headline}</h1>{subline && <p className="mt-1 break-words text-muted-foreground">{subline}</p>}</header>
+    </div>
     {paired ? <div className="grid gap-3 rounded-xl border border-primary/25 bg-accent/30 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
       <p className="text-sm font-semibold sm:col-span-2 lg:col-span-1">{t('pair.label')}</p>
       <div className="flex min-w-0 flex-wrap items-center gap-2"><FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="text-sm text-muted-foreground">{t('pair.cv')}</span><Link className="break-words font-medium text-primary hover:underline" to={`${base}/profile`} title={c.cvPage}>{current.cv_name} · v{current.cv_revision}</Link><CvPreviewButton projectId={projectId} fileId={current.cv_file_id} name={current.cv_name ?? 'CV'} revision={current.cv_revision} variant="ghost" className="h-8 px-2" /></div>
@@ -211,7 +213,7 @@ export function SessionPage() {
               </section>}
             </TabsContent>
             <TabsContent value="documents" forceMount className={`grid gap-4 ${tab === 'documents' ? '' : 'hidden'}`}>
-              <section className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5"><h2 className="text-lg font-semibold">{c.draft}</h2><p className="text-sm text-muted-foreground">{c.draftBody}</p><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button><Button type="button" className="min-h-11" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button></div></section>
+              <section className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6"><h2 className="text-lg font-semibold">{c.draft}</h2><p className="text-sm text-muted-foreground">{c.draftBody}</p><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button><Button type="button" className="min-h-11" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button></div></section>
               <ReportListCard kind="cvChanges" items={evalReport?.cv_changes} />
               <TailorCard projectId={projectId} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} run={sessionRuns.find(run => run.operation === 'tailor_cv') ?? null} onChanged={() => { reloadRun(); reloadRuns(); }} />
               <section className="grid gap-3"><h2 className="text-lg font-semibold">{c.docs}</h2>{drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <DocCard key={doc.id} c={c} base={base} projectId={projectId} doc={doc} busy={busy || gate.blocked} onRevise={text => startRun('draft_documents', text, doc.id)} />)}</section>

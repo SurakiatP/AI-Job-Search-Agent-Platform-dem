@@ -651,11 +651,15 @@ export function SearchPage() {
   const waiting = !sample && !awaiting && (status === 'loading' || (smartActive && cvs.status === 'loading'));
   const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < total;
 
-  return <section className="grid gap-3 sm:gap-6">
-    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <PageHeader icon={Search} title={c.title} lede={grandTotal != null ? (!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
-      ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))) : undefined} />
+  return <section className="grid gap-3 sm:gap-6 lg:gap-8">
+    <div className="grid gap-1">
+      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+      <PageHeader icon={Search} title={c.title} lede={grandTotal != null ? (!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
+        ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))) : undefined} />
+    </div>
 
+    <div className="grid gap-2 sm:gap-4">
+    <div className="grid gap-2">
     <div role="group" aria-label={c.modeLabel} className="segmented w-fit max-w-full">
       {([['search', c.modeSearch], ['match', c.modeMatch]] as const).map(([key, label]) => {
         const on = (key === 'match') === smart;
@@ -663,11 +667,12 @@ export function SearchPage() {
           className={`min-h-11 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? '' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>;
       })}
     </div>
-    <p className="-mt-2 text-sm text-muted-foreground sm:-mt-4">{tSearch(smart ? 'controls.modeHintMatch' : 'controls.modeHintSearch')}</p>
-    {smartActive && ai?.status !== 'unavailable' && <p className="-mt-3 text-xs text-muted-foreground">{c.privacy}</p>}
-    {smartActive && gate.blocked && gate.title && <p role="status" className="-mt-3 text-xs text-warning">{gate.title}</p>}
+    <p className="text-sm text-muted-foreground">{tSearch(smart ? 'controls.modeHintMatch' : 'controls.modeHintSearch')}</p>
+    {smartActive && ai?.status !== 'unavailable' && <p className="text-xs text-muted-foreground">{c.privacy}</p>}
+    {smartActive && gate.blocked && gate.title && <p role="status" className="text-xs text-warning">{gate.title}</p>}
+    </div>
 
-    {smartActive && usable.length > 0 && <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-3">
+    {smartActive && usable.length > 0 && <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
       <div className="grid min-w-0 gap-2 sm:w-72">
         <Label htmlFor="match-cv">{c.cvLabel}</Label>
         <select id="match-cv" className={selectClass} value={cv?.id ?? ''} onChange={e => setCvPick(e.target.value)}>
@@ -690,7 +695,7 @@ export function SearchPage() {
         <Label htmlFor="job-search">{c.searchLabel}</Label>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input id="job-search" type="search" className="pl-9" value={qInput} placeholder={c.searchPlaceholder} onChange={e => setQInput(e.target.value)} />
+          <Input id="job-search" type="search" className="pl-10" value={qInput} placeholder={c.searchPlaceholder} onChange={e => setQInput(e.target.value)} />
         </div>
       </div>
       <div className="grid min-w-0 gap-2">
@@ -743,6 +748,8 @@ export function SearchPage() {
       <span className="text-sm text-muted-foreground">{tSearch('controls.examplesLabel')}</span>
       {(tSearch('controls.examples', { returnObjects: true }) as unknown as string[]).map(example => <Button key={example} type="button" variant="outline" size="sm" className="h-auto min-h-10 rounded-full" onClick={() => { setQInput(example); setFilter('q', example); }}>{example}</Button>)}
     </div>}
+
+    </div>
 
     <SavedSearchesPanel projectId={projectId} params={params} onApply={changes => { setQInput(changes.q ?? ''); setMany(changes); }} />
 

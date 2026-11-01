@@ -38,7 +38,7 @@ function Requirements({ rows }: { rows: NonNullable<EvaluationReport['requiremen
       {shown.map((row, i) => {
         const Icon = TONE[row.match].icon;
         return <li key={`${row.requirement}-${i}`} className="grid gap-1.5 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:gap-4">
-          <span className={`inline-flex h-7 items-center gap-1.5 justify-self-start rounded-full px-2.5 text-xs font-semibold ${TONE[row.match].chip}`}>
+          <span className={`inline-flex h-7 items-center gap-1.5 justify-self-start rounded-full px-2 text-xs font-semibold ${TONE[row.match].chip}`}>
             <Icon className="size-3.5" aria-hidden="true" />{t(`report.match.${row.match}`)}
           </span>
           <div className="grid min-w-0 gap-0.5">
@@ -60,7 +60,7 @@ function Points({ title, items, icon }: { title: string; items?: string[]; icon:
   return <section aria-labelledby={id} className="grid content-start gap-2">
     <h3 id={id} className="flex items-center gap-2 text-base font-semibold">{icon}{title}</h3>
     <ul className="grid gap-1.5 text-sm leading-relaxed">
-      {items.map(item => <li key={item} className="flex gap-2"><span className="mt-2.5 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}
+      {items.map(item => <li key={item} className="flex gap-2"><span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}
     </ul>
   </section>;
 }
@@ -71,7 +71,7 @@ export function ReportListCard({ kind, items, title, hint }: { kind: 'interview'
   const id = useId();
   if (!items?.length) return null;
   const Icon = kind === 'interview' ? MessageCircleQuestion : PenLine;
-  return <section aria-labelledby={id} className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5">
+  return <section aria-labelledby={id} className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6">
     <div className="grid gap-1">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id={id} className="flex items-center gap-2 text-lg font-semibold"><Icon className="size-5 shrink-0 text-primary" aria-hidden="true" />{title ?? t(`report.${kind}`)}</h2>
@@ -79,7 +79,7 @@ export function ReportListCard({ kind, items, title, hint }: { kind: 'interview'
       </div>
       <p className="text-sm text-muted-foreground">{hint ?? t(`report.${kind}Hint`)}</p>
     </div>
-    <ol className="grid max-w-[75ch] gap-2.5">
+    <ol className="grid max-w-[75ch] gap-2">
       {items.map((item, i) => <li key={item} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2 leading-relaxed">
         <span className="mt-0.5 inline-flex size-6 items-center justify-center rounded-full bg-accent text-xs font-semibold tabular-nums text-accent-foreground" aria-hidden="true">{i + 1}</span>
         <span className="min-w-0 break-words">{item}</span>

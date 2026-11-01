@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 export const selectClass = 'flex min-h-11 lg:min-h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-base transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 
 export function Field({ id, label, hint, children, className }: { id: string; label: string; hint?: ReactNode; children: ReactNode; className?: string }) {
-  return <div className={cn('grid gap-1.5', className)}>
+  return <div className={cn('grid gap-2', className)}>
     <Label htmlFor={id}>{label}</Label>
     {children}
     {hint && <p id={`${id}-hint`} className="text-sm text-muted-foreground">{hint}</p>}
@@ -26,7 +26,7 @@ export function LoadingBlock({ label }: { label: string }) {
 
 export function SectionCard({ title, description, footer, onSubmit, children }: { title: string; description: string; footer?: ReactNode; onSubmit?: (event: FormEvent) => void; children: ReactNode }) {
   const body = <>
-    <CardContent className="grid gap-5">{children}</CardContent>
+    <CardContent className="grid gap-4">{children}</CardContent>
     {footer && <CardFooter className="flex-wrap justify-end gap-2">{footer}</CardFooter>}
   </>;
   return <Card>

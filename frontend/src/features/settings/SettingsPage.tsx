@@ -41,9 +41,11 @@ export function SettingsPage() {
   if (projects.status === 'loading') return <LoadingState />;
   if (projects.status === 'error') return <ErrorState onRetry={projects.reload} />;
 
-  return <section className="page-wrap grid gap-4">
-    <PageBack to="/app" history>{t('back', { defaultValue: 'Back' })}</PageBack>
-    <PageHeader icon={Settings} title={t('pages.settingsTitle', { defaultValue: 'Settings' })} lede={ts(`scope.${section}`)} />
+  return <section className="page-wrap grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
+      <PageBack to="/app" history>{t('back', { defaultValue: 'Back' })}</PageBack>
+      <PageHeader icon={Settings} title={t('pages.settingsTitle', { defaultValue: 'Settings' })} lede={ts(`scope.${section}`)} />
+    </div>
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
       <nav aria-label={ts('navLabel')} className="grid min-w-0 gap-4 lg:sticky lg:top-4">
         {groups.filter(group => visible.some(([id]) => (group.ids as readonly string[]).includes(id))).map(group => <div key={group.id} role="group" aria-labelledby={`settings-group-${group.id}`} className="grid min-w-0 gap-1">
@@ -65,7 +67,7 @@ export function SettingsPage() {
         </Link>
       </nav>
       <div className="grid min-w-0 gap-4">
-        {(section === 'preferences' || section === 'tools' || section === 'sharing' || section === 'webhooks') && <div className="grid gap-1.5 sm:max-w-xs">
+        {(section === 'preferences' || section === 'tools' || section === 'sharing' || section === 'webhooks') && <div className="grid gap-2 sm:max-w-xs">
           <Label htmlFor="settings-project">{ts('projectScope')}</Label>
           <select id="settings-project" className={selectClass} value={projectId} onChange={event => setParams(previous => { const next = new URLSearchParams(previous); next.set('project', event.target.value); return next; }, { replace: true })}>
             {!projectId && <option value="">{t('workspace.chooseProject')}</option>}

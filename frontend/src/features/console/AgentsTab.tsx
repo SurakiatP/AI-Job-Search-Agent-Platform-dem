@@ -62,12 +62,12 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
             </label>)}
             {caps.length === 0 && <p role="alert" className="text-xs text-destructive">{c.needCap}</p>}
           </fieldset>
-          <div className="grid max-w-xs gap-1.5">
+          <div className="grid max-w-xs gap-2">
             <label htmlFor="console-grant-name" className="text-sm font-medium">{c.grantName}</label>
             <Input id="console-grant-name" value={name} maxLength={80} onChange={e => setName(e.target.value)} autoComplete="off" aria-describedby="console-grant-name-hint" />
             <p id="console-grant-name-hint" className="text-xs text-muted-foreground">{c.grantNameHint}</p>
           </div>
-          <div className="grid max-w-xs gap-1.5">
+          <div className="grid max-w-xs gap-2">
             <label htmlFor="console-expiry" className="text-sm font-medium">{c.expiry}</label>
             <select id="console-expiry" value={hours} onChange={e => setHours(e.target.value)} className="min-h-10 rounded-md border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <option value="1">{c.h1}</option><option value="24">{c.h24}</option><option value="168">{c.d7}</option>

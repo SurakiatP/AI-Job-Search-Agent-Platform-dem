@@ -22,7 +22,7 @@ export function PracticeHubPage() {
   if (sets.status === 'error') return <ErrorState onRetry={sets.reload} />;
   const groups = new Map<string, ProjectPracticeSet[]>();
   for (const set of sets.data ?? []) groups.set(set.session_id, [...(groups.get(set.session_id) ?? []), set]);
-  return <section className="grid min-w-0 gap-6">
+  return <section className="grid min-w-0 gap-6 lg:gap-8">
     <PageHeader icon={Mic} title={c.hubTitle} lede={c.hubIntro} />
     {groups.size === 0 ? <div className="workspace-panel grid justify-items-start gap-3 p-6 sm:p-8">
       <p className="max-w-xl text-muted-foreground">{c.hubEmpty}</p>

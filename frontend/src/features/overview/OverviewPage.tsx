@@ -30,8 +30,8 @@ function ResourcePanel({ resource, children }: { resource: { status: string; rel
 
 function Section({ id, title, viewAll, className, children }: { id: string; title: string; viewAll?: { to: string; label: string }; className?: string; children: ReactNode }) {
   const { t } = useTranslation();
-  return <section aria-labelledby={id} className={`min-w-0 ${className ?? ''}`}>
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 id={id} className="text-xl font-semibold">{title}</h2>{viewAll && <Link className="text-sm hover:underline" to={viewAll.to}>{t('workspace.viewAll')}<span className="sr-only"> {viewAll.label}</span></Link>}</div>
+  return <section aria-labelledby={id} className={`grid min-w-0 gap-3 ${className ?? ''}`}>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 id={id} className="text-xl font-semibold">{title}</h2>{viewAll && <Link className="text-sm hover:underline" to={viewAll.to}>{t('workspace.viewAll')}<span className="sr-only"> {viewAll.label}</span></Link>}</div>
     <div className="workspace-panel">{children}</div>
   </section>;
 }
@@ -84,7 +84,7 @@ export function OverviewPage() {
       ? <EmptyLine title={c.noJobs} body={c.noJobsFirst}><Button asChild variant="outline"><Link to={`${base}/applications`}>{t('workspace.addJob')}</Link></Button></EmptyLine>
       : <ul className="divide-y">{savedFirst.slice(0, 6).map(job => {
         const evaluation = evaluations.get(job.id);
-        return <li key={job.id} className="min-w-0 p-5 sm:p-6">
+        return <li key={job.id} className="min-w-0 px-4 py-4 sm:px-5">
           <div className="flex items-start justify-between gap-3"><div className="min-w-0"><Link className="break-words text-base font-semibold text-foreground hover:text-primary hover:underline" to={`${base}/jobs/${job.id}`}>{job.title}</Link>{job.company && <p className="mt-1 break-words text-sm text-muted-foreground">{job.company}</p>}</div><StatusBadge status={job.application_status ?? 'saved'} locale={locale} /></div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             {evaluation?.session_id ? <Link className="inline-flex min-h-11 items-center gap-2 text-sm font-medium hover:underline lg:min-h-10" to={`${base}/sessions/${evaluation.session_id}`}>{t('workspace.viewEvaluation')}<ArrowRight size={15} aria-hidden="true" /></Link> :
@@ -98,18 +98,18 @@ export function OverviewPage() {
   const documentsSection = <Section id="documents-heading" title={t('workspace.docs')} viewAll={{ to: `${base}/documents`, label: t('workspace.documents') }}>
     <ResourcePanel resource={documents}>{docList.length === 0
       ? <EmptyLine title={t('workspace.noDocs')} body={t('workspace.noDocsBody')} />
-      : <ul className="divide-y">{docList.slice(0, 4).map(doc => <li key={doc.id} className="flex items-start gap-3 p-5"><FileText size={20} className="mt-1 shrink-0 text-muted-foreground" aria-hidden="true" /><div className="min-w-0 flex-1"><Link className="break-words font-medium hover:underline" to={`${base}/documents/${doc.id}`}>{doc.title}</Link><p className="mt-1 text-sm text-muted-foreground">{doc.latest_revision ? `${t('workspace.revision')} ${doc.latest_revision.revision}` : '—'}</p></div>{doc.partial && <Badge variant="warning">{t('workspace.partial')}</Badge>}</li>)}</ul>}</ResourcePanel>
+      : <ul className="divide-y">{docList.slice(0, 4).map(doc => <li key={doc.id} className="flex items-start gap-3 px-4 py-4 sm:px-5"><FileText size={20} className="mt-1 shrink-0 text-muted-foreground" aria-hidden="true" /><div className="min-w-0 flex-1"><Link className="break-words font-medium hover:underline" to={`${base}/documents/${doc.id}`}>{doc.title}</Link><p className="mt-1 text-sm text-muted-foreground">{doc.latest_revision ? `${t('workspace.revision')} ${doc.latest_revision.revision}` : '—'}</p></div>{doc.partial && <Badge variant="warning">{t('workspace.partial')}</Badge>}</li>)}</ul>}</ResourcePanel>
   </Section>;
 
   if (project.status === 'error' && !project.data) return <ErrorState onRetry={project.reload} />;
-  return <div className="grid min-w-0 gap-8">
+  return <div className="grid min-w-0 gap-6 lg:gap-8">
     <PageHeader icon={LayoutDashboard} title={project.data?.name ?? t('nav.overview')} lede={firstRun ? c.subtitleFirst : t('workspace.overviewSubtitle')}
       actions={!firstRun && <Button asChild variant="outline"><Link to={`${base}/search`}><Search size={17} aria-hidden="true" />{t('workspace.findJobs')}</Link></Button>} />
 
     <JourneyStrip base={base} />
 
-    {(hasAttention || approvals.status === 'error') && <section aria-labelledby="attention-heading" className="rounded-xl border border-warning/40 bg-card p-5 sm:p-6">
-      <div className="mb-3 flex items-center gap-3"><ListChecks size={21} className="text-warning" aria-hidden="true" /><h2 id="attention-heading" className="text-lg font-semibold">{t('workspace.attention')}</h2>{hasAttention && <Badge variant="warning">{attention.length + unmatchedApprovals.length}</Badge>}</div>
+    {(hasAttention || approvals.status === 'error') && <section aria-labelledby="attention-heading" className="grid gap-3 rounded-xl border border-warning/40 bg-card p-5 sm:p-6">
+      <div className="flex items-center gap-3"><ListChecks size={21} className="text-warning" aria-hidden="true" /><h2 id="attention-heading" className="text-lg font-semibold">{t('workspace.attention')}</h2>{hasAttention && <Badge variant="warning">{attention.length + unmatchedApprovals.length}</Badge>}</div>
       <ul className="divide-y">{attention.map(run => <li key={run.id}><Link to={runHref(run)} className="flex min-h-14 flex-wrap items-center justify-between gap-3 py-3">
         <div><span className="font-medium">{t(`workspace.operations.${run.operation}`)}</span><p className="text-sm text-muted-foreground">{t(run.status === 'needs_input' ? 'workspace.answer' : 'workspace.review')}</p></div><StatusBadge status={run.status} locale={locale} /><ArrowRight size={17} aria-hidden="true" />
       </Link></li>)}{unmatchedApprovals.map(approval => <li key={approval.id}><Link className="flex min-h-14 items-center justify-between gap-3 py-3" to={`${base}/console?tab=approvals`}><span>{t(`workspace.approvalActions.${approval.action}`)}</span><ArrowRight size={17} aria-hidden="true" /></Link></li>)}</ul>
@@ -117,7 +117,7 @@ export function OverviewPage() {
     </section>}
 
     {active.length > 0 && <Section id="running-heading" title={c.running}>
-      <ul className="divide-y">{active.slice(0, 5).map(run => <li key={run.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm" to={runHref(run)}><span className="flex items-center gap-2 font-medium"><Clock3 size={16} aria-hidden="true" />{t(`workspace.operations.${run.operation}`)}</span><StatusBadge status={run.status} locale={locale} /></Link></li>)}</ul>
+      <ul className="divide-y">{active.slice(0, 5).map(run => <li key={run.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm sm:px-5" to={runHref(run)}><span className="flex items-center gap-2 font-medium"><Clock3 size={16} aria-hidden="true" />{t(`workspace.operations.${run.operation}`)}</span><StatusBadge status={run.status} locale={locale} /></Link></li>)}</ul>
     </Section>}
 
     {firstRun ? <>
@@ -128,14 +128,14 @@ export function OverviewPage() {
       <Section id="evaluations-heading" title={c.evaluations}><EmptyLine title={c.noEvaluations} body={c.noEvaluationsFirst} /></Section>
       {jobsSection}
       {(documents.status === 'error' || docList.length > 0) && documentsSection}
-    </> : <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(240px,320px)]">
-      <div className="grid min-w-0 content-start gap-8">
+    </> : <div className="grid min-w-0 gap-6 lg:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(240px,320px)]">
+      <div className="grid min-w-0 content-start gap-6 lg:gap-8">
         <Section id="evaluations-heading" title={c.recentEvaluations} viewAll={{ to: `${base}/sessions`, label: c.evaluations }}>
           <ResourcePanel resource={runs}>{recent.length === 0 ? <EmptyLine title={c.noEvaluations} body={c.noEvaluationsReturning} /> :
             <ul className="divide-y">{recent.map(run => {
               const job = jobList.find(item => item.id === run.job_revision_id);
               const pair = sessions.data?.find(item => item.id === run.session_id);
-              return <li key={run.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 p-5" to={runHref(run)}>
+              return <li key={run.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5" to={runHref(run)}>
                 <div className="min-w-0"><span className="break-words font-semibold">{job?.title ?? pair?.job_title ?? t(`workspace.operations.${run.operation}`)}</span>
                   <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-muted-foreground">{job?.company && <span>{job.company}</span>}{pair?.cv_name && pair.cv_revision != null && <span className="inline-flex min-w-0 items-center gap-1 text-foreground/80"><FileText size={14} className="shrink-0" aria-hidden="true" /><span className="break-words">{c.usedCv(pair.cv_name, pair.cv_revision)}</span></span>}<SkillCount coverage={run.evaluation_result?.skill_coverage} locale={locale} /></p></div>
                 <span className="flex items-center gap-3">{run.evaluation_result?.score != null && <AiLabel className="max-sm:hidden" />}<FitScore score={run.evaluation_result?.score ?? null} locale={locale} /><ArrowRight size={17} aria-hidden="true" /></span>
@@ -144,9 +144,9 @@ export function OverviewPage() {
         </Section>
         {jobsSection}
       </div>
-      <div className="grid min-w-0 content-start gap-8">
+      <div className="grid min-w-0 content-start gap-6 lg:gap-8">
         <Section id="cv-heading" title={t('workspace.cvTitle')}>
-          <div className="p-5"><ResourcePanel resource={cvs}>{revision && cv ? <div className="grid min-w-0 gap-4">
+          <div className="p-5 sm:p-6"><ResourcePanel resource={cvs}>{revision && cv ? <div className="grid min-w-0 gap-4">
             <div className="flex items-start gap-3"><FileText size={23} className="mt-1 shrink-0 text-primary" aria-hidden="true" /><div className="min-w-0"><p className="break-words font-semibold">{cv.name}</p><p className="text-sm text-muted-foreground">{c.version(revision.revision)}</p></div></div>
             <p className="break-words text-sm text-muted-foreground">{revision.original_filename}</p>
             <p className="flex items-start gap-2 text-sm"><CheckCircle2 size={17} className="mt-1 shrink-0 text-success" aria-hidden="true" />{t(revision.skill_profile_ready ? 'workspace.cvReady' : 'workspace.cvUploaded')}</p>

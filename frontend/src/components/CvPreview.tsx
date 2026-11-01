@@ -63,7 +63,7 @@ export function CvPreviewButton({ projectId, fileId, name, revision, filename, m
   return <>
     <Button type="button" size={size} variant={variant} className={className} onClick={() => setOpen(true)}><Eye className="size-4" aria-hidden="true" />{c.open}</Button>
     <Dialog open={open} onOpenChange={setOpen}>
-      {open && <DialogContent className="flex h-[min(92dvh,1100px)] max-w-4xl flex-col gap-3 p-4 sm:p-5">
+      {open && <DialogContent className="flex h-[min(92dvh,1100px)] max-w-4xl flex-col gap-3 p-5 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <DialogTitle className="break-words">{name}</DialogTitle>

@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 
 export type { SidebarProject };
-const itemClass = 'flex min-h-11 lg:min-h-10 min-w-0 items-center gap-2.5 rounded-lg px-3 text-sm text-foreground transition-colors hover:bg-[color:var(--nav-hover)] data-[active=true]:bg-[color:var(--nav-active)] data-[active=true]:font-medium [overflow-wrap:anywhere]';
+const itemClass = 'flex min-h-11 lg:min-h-10 min-w-0 items-center gap-2 rounded-lg px-3 text-sm text-foreground transition-colors hover:bg-[color:var(--nav-hover)] data-[active=true]:bg-[color:var(--nav-active)] data-[active=true]:font-medium [overflow-wrap:anywhere]';
 
 const STAGE: Record<string, string> = { profile: 'cv', search: 'search', sessions: 'evaluate', practice: 'evaluate', documents: 'docs', applications: 'track' };
 

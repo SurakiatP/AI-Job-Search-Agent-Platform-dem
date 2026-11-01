@@ -99,7 +99,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, addition
         <ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </Button>
     </div>
-    {open && <div id="adv-filters" className="grid gap-5 rounded-xl border bg-card p-4">
+    {open && <div id="adv-filters" className="grid gap-4 rounded-xl border bg-card p-4">
       {GROUPS.map(g => {
         const counts = new Map((facets?.[g.key] ?? []).map(f => [f.value, f.count]));
         const selected = splitList(get(g.key));

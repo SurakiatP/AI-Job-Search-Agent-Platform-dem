@@ -18,7 +18,7 @@ const linkClass = 'rounded-sm font-medium text-primary underline-offset-4 hover:
 
 // One layout for all five pages: shared header, then a split panel (login, sign up) or a single centred card (recovery, verify).
 export function AuthLayout({ title, intro, side, icon, children }: { title: string; intro?: string; side?: ReactNode; icon?: ReactNode; children: ReactNode }) {
-  const body = <div className="grid content-center gap-5 p-6 sm:p-10">
+  const body = <div className="grid content-center gap-4 p-6 sm:p-10">
     <div className="grid gap-2">
       {icon}
       <h1 className="text-2xl font-semibold leading-snug [overflow-wrap:anywhere]">{title}</h1>
@@ -28,10 +28,10 @@ export function AuthLayout({ title, intro, side, icon, children }: { title: stri
   </div>;
   return <>
     <Header />
-    <main id="main-content" tabIndex={-1} className={`mx-auto w-full px-4 py-8 sm:py-14 ${side ? 'max-w-4xl' : 'max-w-md'}`}>
+    <main id="main-content" tabIndex={-1} className={`mx-auto w-full px-4 py-8 sm:py-12 ${side ? 'max-w-4xl' : 'max-w-md'}`}>
       <div className={side ? 'grid overflow-hidden rounded-xl border bg-card text-card-foreground md:grid-cols-2' : 'rounded-xl border bg-card text-card-foreground'}>
         {body}
-        {side && <aside className="grid content-center gap-5 border-t bg-muted p-6 sm:p-10 md:order-first md:border-t-0 md:border-r">{side}</aside>}
+        {side && <aside className="grid content-center gap-4 border-t bg-muted p-6 sm:p-10 md:order-first md:border-t-0 md:border-r">{side}</aside>}
       </div>
     </main>
   </>;
@@ -39,7 +39,7 @@ export function AuthLayout({ title, intro, side, icon, children }: { title: stri
 
 function Field({ id, label, hint, ...props }: { id: string; label: string; hint?: ReactNode } & React.ComponentProps<typeof Input>) {
   const described = [hint ? `${id}-hint` : '', props['aria-describedby'] ?? ''].filter(Boolean).join(' ') || undefined;
-  return <div className="grid gap-1.5">
+  return <div className="grid gap-2">
     <Label htmlFor={id}>{label}</Label>
     {props.type === 'password'
       ? <PasswordInput id={id} {...props} aria-describedby={described} />

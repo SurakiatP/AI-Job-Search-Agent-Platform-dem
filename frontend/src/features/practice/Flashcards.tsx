@@ -59,7 +59,7 @@ export function Flashcards({ cards, c, onRate, onCheck }: { cards: PracticeQuest
 
   if (done || !card) {
     const ids = learning.map(item => item.id);
-    return <section aria-labelledby="fc-done" className="grid justify-items-center gap-5 rounded-xl border bg-card px-5 py-10 text-center">
+    return <section aria-labelledby="fc-done" className="grid justify-items-center gap-4 rounded-xl border bg-card px-5 py-10 text-center">
       <span className="grid size-12 place-items-center rounded-full bg-success/15 text-success"><Check className="size-6" aria-hidden="true" /></span>
       <h3 id="fc-done" className="text-xl font-semibold">{c.roundDone}</h3>
       <dl className="flex flex-wrap justify-center gap-8 text-sm">
@@ -73,7 +73,7 @@ export function Flashcards({ cards, c, onRate, onCheck }: { cards: PracticeQuest
     </section>;
   }
 
-  return <div className="grid gap-5">
+  return <div className="grid gap-6">
     <div className="grid items-center gap-6 md:grid-cols-[6rem_minmax(0,1fr)_6rem]">
       {pile(c.learning, learning.length, 'learning')}
       <div ref={stage} tabIndex={-1} className="outline-none [perspective:1600px]"
@@ -90,15 +90,15 @@ export function Flashcards({ cards, c, onRate, onCheck }: { cards: PracticeQuest
           data-flipped={flipped} data-leaving={leaving ?? undefined}
           className="flashcard relative h-[22rem] cursor-pointer select-none sm:h-[24rem]">
           <div className="flashcard-inner relative size-full">
-            <div className="flashcard-face face-front absolute inset-0 grid grid-rows-[auto_1fr_auto] gap-3 rounded-2xl border bg-card p-5 shadow-[0_24px_48px_-28px_rgb(23_35_59/0.45)] sm:p-7" aria-hidden={flipped}>
-              <div className="flex items-start justify-between gap-3"><span className="inline-flex h-7 items-center rounded-full bg-accent px-2.5 text-xs font-semibold tabular-nums text-accent-foreground">{c.card(index + 1, deck.length)}</span><AiLabel /></div>
+            <div className="flashcard-face face-front absolute inset-0 grid grid-rows-[auto_1fr_auto] gap-3 rounded-2xl border bg-card p-5 shadow-[0_24px_48px_-28px_rgb(23_35_59/0.45)] sm:p-6" aria-hidden={flipped}>
+              <div className="flex items-start justify-between gap-3"><span className="inline-flex h-7 items-center rounded-full bg-accent px-2 text-xs font-semibold tabular-nums text-accent-foreground">{c.card(index + 1, deck.length)}</span><AiLabel /></div>
               <p className="self-center text-balance text-center text-xl font-semibold leading-relaxed sm:text-2xl">{card.prompt}</p>
               <p className="text-center text-xs text-muted-foreground">{c.why}: {card.why} · <span className="hidden sm:inline">{c.flipHint}</span><span className="sm:hidden">{c.flipHintTouch}</span></p>
             </div>
-            <div className="flashcard-face face-back absolute inset-0 grid grid-rows-[auto_1fr] gap-3 overflow-y-auto rounded-2xl border border-primary/30 bg-card p-5 shadow-[0_24px_48px_-28px_rgb(23_35_59/0.45)] sm:p-7" aria-hidden={!flipped}>
+            <div className="flashcard-face face-back absolute inset-0 grid grid-rows-[auto_1fr] gap-3 overflow-y-auto rounded-2xl border border-primary/30 bg-card p-5 shadow-[0_24px_48px_-28px_rgb(23_35_59/0.45)] sm:p-6" aria-hidden={!flipped}>
               <div className="flex items-start justify-between gap-3"><span className="text-xs font-semibold text-primary">{c.back2}</span><AiLabel /></div>
               <div className="grid content-start gap-4">
-                <ul className="grid gap-2 text-base leading-relaxed">{card.key_points.map(point => <li key={point} className="flex gap-2.5"><span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /><span className="min-w-0 break-words">{point}</span></li>)}</ul>
+                <ul className="grid gap-2 text-base leading-relaxed">{card.key_points.map(point => <li key={point} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /><span className="min-w-0 break-words">{point}</span></li>)}</ul>
                 {card.model_answer && <div className="grid gap-1 rounded-lg bg-secondary p-3 text-sm"><p className="font-medium">{c.example}</p><p className="leading-relaxed">{card.model_answer}</p></div>}
               </div>
             </div>

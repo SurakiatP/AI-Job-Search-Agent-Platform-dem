@@ -53,7 +53,7 @@ function RenameDialog({ cv, c, projectId, onClose, onDone }: { cv: CVView; c: ty
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}><DialogContent aria-describedby={undefined}>
     <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
       <DialogTitle>{c.renameTitle}</DialogTitle>
-      <label className="grid gap-1.5 text-sm font-medium">{c.name}<Input autoFocus maxLength={120} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
+      <label className="grid gap-2 text-sm font-medium">{c.name}<Input autoFocus maxLength={120} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
       {error && <p role="alert" className="text-sm text-destructive">{c.failed}</p>}
       <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{c.cancel}</Button></DialogClose><Button type="submit" disabled={busy || !value.trim()}>{c.save}</Button></div>
     </form>
@@ -161,16 +161,18 @@ export function ProfilePage() {
   const dropProps = { onDragOver: (event: React.DragEvent) => { event.preventDefault(); setDragging(true); }, onDragLeave: () => setDragging(false),
     onDrop: (event: React.DragEvent) => { event.preventDefault(); setDragging(false); if (!busy) void upload(event.dataTransfer.files[0], '/cvs'); } };
   return <section className="grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
     <PageBack to={`${base}/overview`}>{t('nav.overview')}</PageBack>
     <div className="grid">
       <PageHeader icon={UserRound} title={w('title')} lede={w('subtitle')} actions={<><Button className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button><BuildCvButton projectId={projectId} /></>} />
       <input ref={addInput} className="sr-only" tabIndex={-1} aria-label={c.add} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], '/cvs'); event.target.value = ''; }} />
       <input ref={versionInput} className="sr-only" tabIndex={-1} aria-label={c.upload} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], `/cvs/${versionTarget.current}/revisions`); event.target.value = ''; }} />
     </div>
+    </div>
     {busy && <p role="status" className="text-sm text-muted-foreground">{w('uploading')}</p>}
     {uploadError && <p className="text-sm text-destructive" role="alert">{t(uploadError)}</p>}
     {extractError && <p className="text-sm text-destructive" role="alert">{c.failed}</p>}
-    {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2.5 text-sm">
+    {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2 text-sm">
       <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words [overflow-wrap:anywhere] sm:basis-auto">{undoFailed ? c.undoFailed : c.moved(removed.name)}</span>
       <Button type="button" variant="ghost" size="sm" className="max-sm:ml-4" onClick={() => void undo(removed)}>{c.undo}</Button>
@@ -183,13 +185,13 @@ export function ProfilePage() {
         <TabsTrigger className="min-h-11 grow sm:grow-0" value="experience">{w('tabBank')}</TabsTrigger>
       </TabsList>
       <TabsContent value="library" className="grid gap-6">
-        {list.length === 0 ? <div {...dropProps} className={cn('grid justify-items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12', dragging && 'border-primary bg-accent')}>
+        {list.length === 0 ? <div {...dropProps} className={cn('grid justify-items-center gap-3 rounded-xl border-2 border-dashed p-6 text-center sm:p-12', dragging && 'border-primary bg-accent')}>
           <FileText className="size-10 text-muted-foreground" aria-hidden="true" />
           <div className="grid gap-1"><h2 className="text-lg font-semibold">{dragging ? w('dropActive') : w('dropTitle')}</h2><p className="mx-auto max-w-md text-sm text-muted-foreground">{w('firstUploadHelp')}</p></div>
           <div className="flex flex-wrap justify-center gap-2"><Button type="button" className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Upload className="size-4" aria-hidden="true" />{w('firstUpload')}</Button><BuildCvButton projectId={projectId} /></div>
           <p className="text-sm text-muted-foreground">{w('dropHere')} · {w('accepted')}</p>
         </div>
-          : <Card><CardContent className="grid gap-3 p-4 sm:p-5">
+          : <Card><CardContent className="grid gap-3 p-4 sm:px-5">
             <h2 id="profile-cvs-title" tabIndex={-1} className="text-lg font-semibold">{c.cvs}</h2>
             <div aria-hidden="true" className={cn('hidden gap-3 border-b px-1 pb-2 text-sm font-medium text-muted-foreground xl:grid', ROW_GRID)}><span>{w('colName')}</span><span>{w('colVersion')}</span><span>{w('colType')}</span><span className="text-end">{w('colActions')}</span></div>
             <ul className="grid divide-y">{list.map(cv => {
@@ -221,7 +223,7 @@ export function ProfilePage() {
             })}</ul>
             <p className="border-t pt-3 text-sm text-muted-foreground">{w('primaryNote')}</p>
           </CardContent></Card>}
-        <Card><CardContent className="grid gap-2 p-4 sm:p-5">
+        <Card><CardContent className="grid gap-2 p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0"><h2 className="text-lg font-semibold">{w('bankTitle')}</h2>
               {bank.data && <p className="text-sm"><span className="font-medium">{w('bankCount', { count: factCount })}</span> <span className="text-muted-foreground">{factCount ? w('bankFrom') : w('bankNone')}</span></p>}

@@ -40,13 +40,13 @@ export function ProjectPreferences({ projectId }: { projectId: string }) {
   return <Card>
     <CardHeader><CardTitle className="text-lg">{c.docSettings}</CardTitle></CardHeader>
     <CardContent className="grid gap-4">
-      <div className="grid gap-1.5"><label htmlFor="output-language" className="text-sm font-medium">{t('pages.outputLanguage', { defaultValue: 'Document language' })}</label>
+      <div className="grid gap-2"><label htmlFor="output-language" className="text-sm font-medium">{t('pages.outputLanguage', { defaultValue: 'Document language' })}</label>
         <select id="output-language" className={selectClass} value={language} onChange={event => setLanguageDraft(event.target.value)}><option value="th">ไทย</option><option value="en">English</option></select></div>
       <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-accent">
         <input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" checked={notifications} onChange={event => setNotificationsDraft(String(event.target.checked))} />
         <span className="min-w-0"><span className="block text-sm font-medium">{t('pages.notifications', { defaultValue: 'Notifications' })}</span><span className="block text-sm text-muted-foreground">{c.notifyHint}</span></span>
       </label>
-      <div className="grid gap-1.5"><label htmlFor="autopilot-limit" className="text-sm font-medium">{c.autoLabel}</label>
+      <div className="grid gap-2"><label htmlFor="autopilot-limit" className="text-sm font-medium">{c.autoLabel}</label>
         <Input id="autopilot-limit" inputMode="numeric" maxLength={2} value={limit} aria-invalid={!limitValid} aria-describedby="autopilot-hint" onChange={event => setLimitDraft(event.target.value.trim())} />
         <p id="autopilot-hint" className={limitValid ? 'text-sm text-muted-foreground' : 'text-sm text-destructive'}>{limitValid ? c.autoHint : c.autoInvalid}</p></div>
       {saveError && <p className="text-sm text-destructive" role="alert">{t('pages.loadError', { defaultValue: 'We could not load this information.' })}</p>}

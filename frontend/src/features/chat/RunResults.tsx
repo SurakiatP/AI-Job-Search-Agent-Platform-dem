@@ -57,7 +57,7 @@ function SkillsFound({ coverage }: { coverage: SkillCoverage }) {
 export function RelatedDocuments({ projectId, documents }: { projectId: string; documents: DocumentView[] }) {
   const { t } = useTranslation('sessionWorkspace');
   const id = useId();
-  return <section aria-labelledby={id} className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5">
+  return <section aria-labelledby={id} className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6">
     <h2 id={id} className="text-lg font-semibold">{t('result.related')}</h2>
     {documents.length === 0 ? <p className="text-sm text-muted-foreground">{t('result.relatedNone')}</p> : <ul className="grid divide-y">{documents.map(document => <li key={document.id} className="grid gap-1 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
       <div className="min-w-0">
@@ -86,11 +86,11 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
   const inTrashText = locale === 'th' ? 'อยู่ในถังขยะ' : 'In trash';
   const openTrash = locale === 'th' ? 'เปิดถังขยะ' : 'Open trash';
   const openDocument = t('result.openDoc');
-  return <section aria-labelledby={headingId} className="grid gap-4 rounded-xl border bg-card p-4 sm:p-5">
+  return <section aria-labelledby={headingId} className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6">
     <h2 id={headingId} className="text-lg font-semibold">{t('result.title')}</h2>
     {run.status !== 'completed' && <p role="status" className="text-sm text-muted-foreground">{locale === 'th' ? 'ผลลัพธ์ที่บันทึกไว้ · งานยังไม่เสร็จสมบูรณ์' : 'Preserved results · run is not complete'}</p>}
-    {evaluation && <div className="grid gap-5">
-      <div className="grid gap-5 md:grid-cols-2 md:gap-8">
+    {evaluation && <div className="grid gap-4">
+      <div className="grid gap-6 md:grid-cols-2 md:gap-8">
         <div className="grid min-w-0 content-start gap-2">
           <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"><AiMark size="sm" />{t('result.aiFit')}</p>
           <div className="flex flex-wrap items-center gap-3"><FitScore score={evaluation.score} size="lg" locale={locale} /><Badge variant={bandVariant[band]}>{t(`result.bands.${bandKey[band]}`)}</Badge></div>

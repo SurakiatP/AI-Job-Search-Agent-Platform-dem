@@ -38,7 +38,7 @@ export function BuildCvButton({ projectId, variant = 'outline', size }: { projec
       <DialogContent>
         <DialogTitle>{c.title}</DialogTitle>
         <DialogDescription>{c.body}</DialogDescription>
-        <div className="grid gap-1.5"><Label htmlFor="build-cv-name">{c.name}</Label><Input id="build-cv-name" value={name} maxLength={120} onChange={e => setName(e.target.value)} /></div>
+        <div className="grid gap-2"><Label htmlFor="build-cv-name">{c.name}</Label><Input id="build-cv-name" value={name} maxLength={120} onChange={e => setName(e.target.value)} /></div>
         <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={fromBank} onChange={e => setFromBank(e.target.checked)} />{c.fromBank}</label>
         {error && <p role="alert" className="text-sm text-destructive">{c.failed}</p>}
         <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>{c.cancel}</Button><Button busy={busy} onClick={() => void create()}>{c.create}</Button></div>

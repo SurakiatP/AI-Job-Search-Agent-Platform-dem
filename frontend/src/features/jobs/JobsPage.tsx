@@ -60,14 +60,16 @@ export function JobsPage() {
       setTitle(''); setCompany(''); setDescription(''); setSourceUrl(''); setOpen(false); result.reload();
     } catch { setError('save'); } finally { setBusy(false); }
   }
-  return <section className="grid gap-6">
-    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <PageHeader icon={Kanban} title={appT('pageTitle')}
-      lede={jobs.length > 0 && <>
-        <p>{appT('summary', { tracked: jobs.length, active: jobs.filter(job => ACTIVE_STAGES.includes(job.stage)).length, closed: jobs.filter(job => CLOSED_STAGES.includes(job.stage)).length })}</p>
-        <p className="mt-1 text-sm">{appT('recordingNote')}</p>
-      </>}
-      actions={<Button aria-expanded={showForm} aria-controls="add-job-form" onClick={() => setOpen(value => !value)}>{showForm ? appT('closeForm') : <><Plus className="size-4" aria-hidden="true" />{appT('addPosting')}</>}</Button>} />
+  return <section className="grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
+      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+      <PageHeader icon={Kanban} title={appT('pageTitle')}
+        lede={jobs.length > 0 && <>
+          <p>{appT('summary', { tracked: jobs.length, active: jobs.filter(job => ACTIVE_STAGES.includes(job.stage)).length, closed: jobs.filter(job => CLOSED_STAGES.includes(job.stage)).length })}</p>
+          <p className="mt-1 text-sm">{appT('recordingNote')}</p>
+        </>}
+        actions={<Button aria-expanded={showForm} aria-controls="add-job-form" onClick={() => setOpen(value => !value)}>{showForm ? appT('closeForm') : <><Plus className="size-4" aria-hidden="true" />{appT('addPosting')}</>}</Button>} />
+    </div>
     {showForm && <Card id="add-job-form">
       <CardHeader><CardTitle>{appT('addPostingTitle')}</CardTitle></CardHeader>
       <CardContent>
@@ -151,7 +153,7 @@ export function JobDetailPage() {
   const primaryCv = usableCvs.find(cv => cv.is_primary) ?? usableCvs[0];
   const score = evaluation?.evaluation_result?.score ?? null;
   const band = bandView[fitBand(score) as keyof typeof bandView];
-  return <article className="grid min-w-0 gap-x-8 gap-y-7 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:grid-rows-[auto_auto_auto_1fr]">
+  return <article className="grid min-w-0 gap-x-8 gap-y-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:grid-rows-[auto_auto_auto_1fr]">
     <header className="grid min-w-0 gap-3 border-b border-border pb-5 lg:col-span-2">
       <PageBack to={`${base}/applications`}>{t('back')}</PageBack>
       <div className="flex flex-wrap items-start justify-between gap-4">

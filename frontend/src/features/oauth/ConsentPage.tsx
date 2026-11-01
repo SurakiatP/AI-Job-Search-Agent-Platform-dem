@@ -81,7 +81,7 @@ function ConsentBody() {
       <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{t('oauth.origin', { host: data.client_id_host, redirect: hostOf(data.redirect_uri) })}</p>
     </CardHeader>
     {data.projects.length === 0 ? <CardContent className="grid justify-items-start gap-3"><p>{t('oauth.noProjects')}</p><Button asChild><a href="/app/projects/new">{t('oauth.createProject')}</a></Button></CardContent> : <>
-      <CardContent className="grid gap-5">
+      <CardContent className="grid gap-4">
         <Field id="oauth-project" label={t('oauth.project')}>
           <select id="oauth-project" className={selectClass} value={projectId} onChange={e => setProject(e.target.value)}>
             {data.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}

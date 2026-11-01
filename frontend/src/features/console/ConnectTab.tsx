@@ -16,8 +16,8 @@ function ClientPicker({ c, lang, list, local }: { c: Copy; lang: Lang; list: Cli
   const [id, setId] = useState(() => localStorage.getItem(PICK_KEY) ?? list[0].id);
   const client = list.find(item => item.id === id) ?? list[0];
   const pick = (value: string) => { setId(value); localStorage.setItem(PICK_KEY, value); };
-  return <div className="grid gap-5">
-    <div className="grid gap-1.5">
+  return <div className="grid gap-6">
+    <div className="grid gap-2">
       <label htmlFor="connect-client" className="text-sm font-medium">{c.pickClient}</label>
       <select id="connect-client" value={client.id} onChange={e => pick(e.target.value)} className="min-h-10 max-w-md rounded-md border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {list.map(item => <option key={item.id} value={item.id}>{item.vendor ? `${item.name} · ${item.vendor}` : item.name}</option>)}
@@ -50,7 +50,7 @@ function Block({ text, c, label, where }: { text: string; c: Copy; label: string
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return <Card><CardHeader><CardTitle className="flex items-center gap-3 text-base">
     <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-sm text-primary-foreground">{n}</span>{title}
-  </CardTitle></CardHeader><CardContent className="grid gap-5">{children}</CardContent></Card>;
+  </CardTitle></CardHeader><CardContent className="grid gap-4">{children}</CardContent></Card>;
 }
 
 export function ConnectTab({ c, lang, projectId, onIssue }: { c: Copy; lang: Lang; projectId: string; onIssue: () => void }) {

@@ -21,9 +21,11 @@ export function ConsolePage() {
   const [params, setParams] = useSearchParams();
   const raw = params.get('tab');
   const tab: Tab = TABS.includes(raw as Tab) ? (raw as Tab) : 'timeline';
-  return <div className="grid gap-6">
-    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <PageHeader icon={Bot} title={c.title} lede={c.subtitle} />
+  return <div className="grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
+      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+      <PageHeader icon={Bot} title={c.title} lede={c.subtitle} />
+    </div>
     <Tabs value={tab} onValueChange={value => setParams({ tab: value }, { replace: true })}>
       <TabsList className="max-w-full">{TABS.map(key => <TabsTrigger key={key} value={key}>{c.tabs[key]}</TabsTrigger>)}</TabsList>
       <TabsContent value="timeline"><TimelineTab projectId={projectId} locale={locale} c={c} /></TabsContent>

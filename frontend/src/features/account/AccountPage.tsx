@@ -210,8 +210,8 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
       <form className="grid gap-4" onSubmit={event => void submit(event)}>
         <DialogTitle>{t('account.deleteTitle')}</DialogTitle>
         <DialogDescription>{t('account.deleteBody')}</DialogDescription>
-        <div className="grid gap-1.5"><Label htmlFor="delete-password">{t('auth.password')}</Label><PasswordInput id="delete-password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
-        <div className="grid gap-1.5"><Label htmlFor="delete-email">{t('account.confirmEmail')}</Label><Input id="delete-email" type="email" autoComplete="off" placeholder={email} required value={confirm} onChange={e => setConfirm(e.target.value)} /></div>
+        <div className="grid gap-2"><Label htmlFor="delete-password">{t('auth.password')}</Label><PasswordInput id="delete-password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
+        <div className="grid gap-2"><Label htmlFor="delete-email">{t('account.confirmEmail')}</Label><Input id="delete-email" type="email" autoComplete="off" placeholder={email} required value={confirm} onChange={e => setConfirm(e.target.value)} /></div>
         <div className="grid gap-2 rounded-lg border p-3">
           {codeState !== 'sent' ? <p className="text-sm text-muted-foreground">{otp.first}</p> : <>
             <Label htmlFor="delete-code">{otp.label}</Label>
@@ -235,7 +235,7 @@ export function AccountPage() {
   const account = useAccount();
   const [deleting, setDeleting] = useState(false);
   if (!account) return <LoadingState />;
-  return <div className="mx-auto grid max-w-3xl gap-6">
+  return <div className="mx-auto grid max-w-3xl gap-6 lg:gap-8">
     <PageHeader icon={UserCog} title={t('account.title')} lede={t('account.description')} actions={<Button type="button" variant="outline" onClick={() => void logout()}>{t('auth.logout')}</Button>} />
     <EmailSection />
     <AvatarSection />

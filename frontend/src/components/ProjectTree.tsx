@@ -93,7 +93,7 @@ function ItemDialog({ state, onClose, onDone }: { state: NonNullable<DialogState
       <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
         <DialogTitle>{mode === 'rename' ? (isProject ? c.renameProject : c.renameSession) : (isProject ? c.deleteProject(target.name) : c.deleteSession(target.name))}</DialogTitle>
         {mode === 'rename'
-          ? <label className="grid gap-1.5 text-sm font-medium">{c.name}<Input autoFocus maxLength={200} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
+          ? <label className="grid gap-2 text-sm font-medium">{c.name}<Input autoFocus maxLength={200} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
           : <DialogDescription>{isProject ? c.deleteProjectBody : c.deleteSessionBody}</DialogDescription>}
         {error && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{error}</p>}
         <div className="flex flex-wrap justify-end gap-2">

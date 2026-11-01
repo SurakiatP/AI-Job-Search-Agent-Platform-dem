@@ -23,7 +23,7 @@ export function DocsPage() {
         ? <Button asChild size="sm"><Link to="/app/projects">{c.openApp}</Link></Button>
         : status !== 'loading' && <Button asChild size="sm"><Link to="/signup">{c.start}</Link></Button>}
     </>} />
-    <main className="mx-auto grid w-full max-w-5xl gap-12 px-4 py-10 sm:px-6 sm:py-14">
+    <main className="mx-auto grid w-full max-w-5xl gap-12 px-4 py-10 sm:px-6 sm:py-12">
       <section className="grid max-w-2xl gap-4">
         <span aria-hidden="true" className="grid size-12 place-items-center rounded-xl bg-accent text-accent-foreground"><Sparkles className="size-6" /></span>
         <h1 className="text-3xl font-semibold sm:text-4xl">{c.title}</h1>

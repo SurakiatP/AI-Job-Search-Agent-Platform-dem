@@ -36,7 +36,7 @@ export function DocsTopicPage() {
       {status === 'ready' && <Button asChild size="sm"><Link to="/app/projects">{c.openApp}</Link></Button>}
     </>} />
     <main data-stage={topic?.stage}>
-    <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
+    <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-12 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
       <nav aria-label={c.topics} className="mb-8 lg:sticky lg:top-20 lg:mb-0 lg:self-start">
         <ol className="flex gap-2 overflow-x-auto pb-2 lg:grid lg:gap-1 lg:overflow-visible lg:pb-0">
           {topics.map((item, position) => <li key={item.id} className="shrink-0">
@@ -90,7 +90,7 @@ export function DocsTopicPage() {
               </Wrapper>;
             })}
           </div>
-          <nav aria-label={c.pager} className="mt-14 grid gap-3 border-t pt-6 sm:grid-cols-2">
+          <nav aria-label={c.pager} className="mt-12 grid gap-3 border-t pt-6 sm:grid-cols-2">
             {previous ? <Link to={`/docs/${previous.id}`} className="flex items-center gap-2 rounded-lg border bg-card p-4 text-sm font-medium hover:bg-accent"><ArrowLeft className="size-4 shrink-0" aria-hidden="true" />{titleOf(previous.id)}</Link> : <span />}
             {next && <Link to={`/docs/${next.id}`} className="flex items-center justify-end gap-2 rounded-lg border bg-card p-4 text-right text-sm font-medium hover:bg-accent sm:col-start-2">{titleOf(next.id)}<ArrowRight className="size-4 shrink-0" aria-hidden="true" /></Link>}
           </nav>

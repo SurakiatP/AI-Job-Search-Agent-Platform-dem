@@ -32,7 +32,7 @@ export function TrashPage() {
   const changed = (reload: () => void) => () => { reload(); notifyTrashChanged(); };
   const count = (n?: number) => n === undefined ? null : <span className="ms-1.5 rounded-full bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">{n}</span>;
   const tabClass = 'min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
-  return <section className="grid min-w-0 gap-6">
+  return <section className="grid min-w-0 gap-6 lg:gap-8">
     <PageHeader icon={Trash2} title={t('trash.title')} lede={t('trash.subtitle')} />
     {!params.get('tab') && !settled ? <LoadingState /> : <Tabs value={tab} onValueChange={value => setParams({ tab: value }, { replace: true })} className="grid min-w-0 gap-4">
       <TabsList className="h-auto w-full justify-start gap-1 rounded-none border-b bg-transparent p-0">

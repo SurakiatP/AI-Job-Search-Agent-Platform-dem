@@ -72,9 +72,9 @@ export function SessionsPage() {
   const shown = filter === 'all' || !known ? rows : rows.filter(row => group(row.run) === filter);
   const jobVersion = (id?: string | null) => (jobs.data ?? []).find(job => job.id === id)?.revision;
   if (inTrash) return <Navigate to={trashHref} replace />;
-  return <section id="sessions-page" tabIndex={-1} className="grid min-w-0 gap-6 outline-none">
+  return <section id="sessions-page" tabIndex={-1} className="grid min-w-0 gap-6 outline-none lg:gap-8">
     <PageHeader icon={MessagesSquare} title={t('nav.evaluate')} lede={s('list.subtitle')} actions={rows.length > 0 && <NewSessionButton projectId={projectId}>{t('workspace.newEvaluation')}</NewSessionButton>} />
-    {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2.5 text-sm">
+    {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-3 text-sm">
       <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words sm:basis-auto">{undoFailed ? s('list.undoFailed') : s('list.moved', { title: removed.job_title ?? removed.title })}</span>
       <Button type="button" variant="ghost" size="sm" className="max-sm:ml-4" onClick={() => void undo(removed)}>{s('list.undo')}</Button>
@@ -92,7 +92,7 @@ export function SessionsPage() {
           const action = known ? nextAction(run, paired) : 'open';
           const version = jobVersion(session.job_revision_id);
           const titleId = `eval-${session.id}`;
-          return <li key={session.id} className={cn('relative grid min-w-0 items-center gap-3 p-4 sm:p-5 md:gap-4 md:px-6', columns)}>
+          return <li key={session.id} className={cn('relative grid min-w-0 items-center gap-3 p-4 sm:px-5 md:gap-4 md:px-6', columns)}>
             <div className="min-w-0 max-md:pr-10"><Link id={titleId} className="break-words font-semibold text-foreground hover:underline" to={`${base}/sessions/${session.id}`}>{session.job_title ?? session.title}</Link>{session.job_company && <p className="mt-0.5 break-words text-sm text-muted-foreground">{session.job_company}</p>}</div>
             <div className="grid min-w-0 gap-1 text-sm">
               <span className="text-xs text-muted-foreground md:hidden">{s('list.comparedUsing')}</span>

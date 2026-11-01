@@ -131,7 +131,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
         label: stageLabel[stage][locale], icon: <ArrowRight className="size-4" aria-hidden="true" />, onSelect: () => void move(card, stage),
       }))} />
     </div>
-    <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2">
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2">
       <StatusBadge status={card.stage} locale={locale} />
       <p className="text-xs text-muted-foreground">{updatedLabel(card.last_activity_at || card.created_at)}</p>
       {card.has_contact && <p className="text-xs text-muted-foreground">{t('hasContact')}</p>}
@@ -153,7 +153,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
       <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
         <div className="relative col-span-2 min-w-0 sm:w-72">
           <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input type="search" className="ps-9" aria-label={t('searchLabel')} placeholder={t('searchPlaceholder')} value={query} onChange={event => setQuery(event.target.value)} />
+          <Input type="search" className="ps-10" aria-label={t('searchLabel')} placeholder={t('searchPlaceholder')} value={query} onChange={event => setQuery(event.target.value)} />
         </div>
         <select className={cn(selectClass, 'sm:w-auto')} aria-label={t('stageFilter')} value={stageFilter} onChange={event => setStageFilter(event.target.value as ApplicationStage | '')}>
           <option value="">{t('allStages')}</option>
@@ -177,7 +177,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
       <p className="font-medium">{t('noMatches')}</p><p className="text-sm text-muted-foreground">{t('noMatchesNext')}</p>
       {filtering && <Button type="button" variant="outline" size="sm" onClick={() => { setQuery(''); setStageFilter(''); }}>{t('clearFilters')}</Button>}
     </div> : view === 'list' ? <section aria-label={t('listLabel')} className="min-w-0 rounded-xl border border-border bg-card px-4 md:px-5">
-      <div className={`hidden gap-x-5 border-b py-2.5 text-xs font-medium text-muted-foreground md:grid ${rowColumns}`}>
+      <div className={`hidden gap-x-5 border-b py-3 text-xs font-medium text-muted-foreground md:grid ${rowColumns}`}>
         <span>{t('opportunity')}</span><span>{t('stage')}</span><span>{t('nextStep')}</span><span>{t('lastActivity')}</span><span className="sr-only">{t('open')}</span>
       </div>
       <ul aria-label={t('listLabel')} className="min-w-0 divide-y">
@@ -188,13 +188,13 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
       <div className="grid min-w-0 gap-4 md:grid-flow-col md:auto-cols-[minmax(15rem,1fr)] md:overflow-x-auto md:pb-2">
         {ACTIVE_STAGES.map(stage => {
           const inStage = shown.filter(card => card.stage === stage);
-          return <section key={stage} aria-labelledby={`stage-${stage}`} {...zone(stage)} className={cn('grid min-w-0 content-start gap-2.5 rounded-xl bg-muted/70 p-2.5', zoneClass(stage))}>
+          return <section key={stage} aria-labelledby={`stage-${stage}`} {...zone(stage)} className={cn('grid min-w-0 content-start gap-2 rounded-xl bg-muted/70 p-2', zoneClass(stage))}>
             <h2 id={`stage-${stage}`} className="flex h-8 items-center gap-2 px-1.5 text-sm font-medium"><span className="stage-dot" data-app-stage={stage} aria-hidden="true" />{stageLabel[stage][locale]}<span className="ms-auto font-normal tabular-nums text-muted-foreground">{inStage.length}</span></h2>
             {inStage.length ? inStage.map(item) : <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">{dragId ? t('dropHere') : t('noApplications')}</p>}
           </section>;
         })}
       </div>
-      <section aria-labelledby="closed-stage-heading" className="min-w-0 rounded-xl bg-muted/70 p-2.5">
+      <section aria-labelledby="closed-stage-heading" className="min-w-0 rounded-xl bg-muted/70 p-2">
         <h2 id="closed-stage-heading"><button type="button" aria-expanded={closedOpen} onClick={() => setClosedOpen(value => !value)} className="flex min-h-11 w-full items-center lg:min-h-10 justify-between gap-2 text-start text-sm font-semibold">{t('closedStages')} ({closed.length})<span aria-hidden="true">{closedOpen ? '−' : '+'}</span></button></h2>
         {(closedOpen || dragId) && <div className="mt-3 grid gap-3">
           {dragId && <div className="grid gap-2 sm:grid-cols-2">{CLOSED_STAGES.map(stage => <div key={stage} {...zone(stage)} className={cn('rounded-lg border border-dashed px-3 py-4 text-center text-sm font-medium', zoneClass(stage))}>{t('dropTo', { stage: stageLabel[stage][locale] })}</div>)}</div>}

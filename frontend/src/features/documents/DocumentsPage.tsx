@@ -86,7 +86,7 @@ function DocumentEditor({ c, projectId, documentId, initial, onClose, onSaved }:
     }
   }
   const saving = phase === 'saving';
-  return <Card className="min-w-0"><CardContent className="grid gap-4 p-5 sm:p-8">
+  return <Card className="min-w-0"><CardContent className="grid gap-4 p-6 sm:p-8">
     <h2 className="font-semibold">{c.editor}</h2>
     <Tabs defaultValue="edit">
       <TabsList><TabsTrigger className="min-h-11" value="edit">{c.editTab}</TabsTrigger><TabsTrigger className="min-h-11" value="preview">{c.previewTab}</TabsTrigger></TabsList>
@@ -131,10 +131,12 @@ export function DocumentsPage() {
   const evaluateHref = sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : `${base}/sessions`;
   const title = t('pages.documentsTitle', { defaultValue: 'Documents' });
   // Same header block and rhythm as the populated page; the empty message sits in a card under it.
-  if (!documents.length && !undo) return <section className="grid gap-6">
-    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
-    <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-4 sm:p-5">
+  if (!documents.length && !undo) return <section className="grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
+      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+      <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
+    </div>
+    <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-5 sm:p-6">
       <h2 className="text-lg font-semibold">{w('emptyTitle')}</h2>
       <p className="text-sm text-muted-foreground">{w('emptyHelp')}</p>
       <Button asChild><Link to={evaluateHref}>{c.evaluate}</Link></Button>
@@ -147,9 +149,11 @@ export function DocumentsPage() {
     if (!undo) return;
     try { await restoreDocument(projectId, undo.id); setUndo(null); reloadAll(); } catch { setUndo({ id: undo.id, message: c.undoFailed }); }
   }
-  return <section className="grid gap-6">
-    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
+  return <section className="grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
+      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+      <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
+    </div>
     {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-4 py-2 text-sm">
       <span>{undo.message}</span>
       <span className="flex flex-wrap items-center gap-2">
@@ -269,7 +273,7 @@ export function DocumentDetailPage() {
     catch { setRevNote({ ok: false, text: c.promoteFailed }); } finally { setRevBusy(false); setConfirmPromote(false); }
   }
 
-  return <article className="grid gap-6">
+  return <article className="grid gap-6 lg:gap-8">
     <PageBack to={`${base}/documents`}>{t('nav.documents')}</PageBack>
     {isTrashed && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted px-4 py-3 text-sm">
       <span className="font-medium">{c.inTrash}</span>
@@ -284,7 +288,7 @@ export function DocumentDetailPage() {
       <div className="grid min-w-0 gap-2"><h1 className="break-words text-2xl font-semibold">{document.title}</h1>{document.source_run_id && <div data-testid="ai-document"><AiLabel check /></div>}</div></div>
     {editing && canEdit ? <DocumentEditor c={c} projectId={projectId} documentId={documentId} initial={preview} onClose={stopEditing} onSaved={() => { setPickedId(''); stopEditing(); docs.reload(); revisions.reload(); }} /> :
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-      <Card className="min-w-0"><CardContent className="p-5 sm:p-8">
+      <Card className="min-w-0"><CardContent className="p-6 sm:p-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{t('pages.documentContent', { defaultValue: 'Document content' })}</h2>
           {document.has_builder_draft && !isTrashed
             ? <Button asChild size="sm" className="min-h-11"><Link to={`/app/projects/${projectId}/documents/${document.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{w('editInBuilder')}</Link></Button>

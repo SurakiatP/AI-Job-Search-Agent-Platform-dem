@@ -283,7 +283,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
 }
 
 function TextField({ id, label, value, onChange, type = 'text', required = false, placeholder }: { id: string; label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; placeholder?: string }) {
-  return <div className="grid min-w-0 gap-1.5"><Label htmlFor={id}>{label}{required && <span aria-hidden="true" className="text-destructive"> *</span>}</Label>
+  return <div className="grid min-w-0 gap-2"><Label htmlFor={id}>{label}{required && <span aria-hidden="true" className="text-destructive"> *</span>}</Label>
     <Input id={id} type={type} value={value} required={required} placeholder={placeholder} maxLength={type === 'url' ? 500 : 200} onChange={e => onChange(e.target.value)} /></div>;
 }
 
@@ -313,7 +313,7 @@ function SectionEditor({ name, index, count, data, locale, update }: { name: Sec
     </div>
     <div id={bodyId} hidden={!open} className="grid gap-3 border-t px-4 py-3">
       {name === 'summary'
-        ? <div className="grid gap-1.5"><Label htmlFor="cvb-summary">{c.sections.summary}</Label>
+        ? <div className="grid gap-2"><Label htmlFor="cvb-summary">{c.sections.summary}</Label>
           <Textarea id="cvb-summary" rows={4} maxLength={1000} value={data.summary.content} placeholder={c.summaryPlaceholder} onChange={e => update(d => { d.summary.content = e.target.value; return d; })} /></div>
         : name === 'personal' ? <PersonalEditor c={c} data={data} update={update} />
         : <ItemsEditor name={name} data={data} locale={locale} update={update} />}
@@ -353,7 +353,7 @@ function FieldInput({ field, item, locale, prefix, onChange }: { field: Field; i
   if (field.kind === 'bool') return <label className="flex min-h-10 items-center gap-2 text-sm sm:self-end"><input id={id} type="checkbox" className="size-4 accent-primary" checked={Boolean(value)} onChange={e => onChange(e.target.checked)} />{label}</label>;
   if (field.kind === 'lines' || field.kind === 'textarea') {
     const text = field.kind === 'lines' ? ((value as string[]) ?? []).join('\n') : String(value ?? '');
-    return <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor={id}>{label}</Label>
+    return <div className="grid gap-2 sm:col-span-2"><Label htmlFor={id}>{label}</Label>
       <Textarea id={id} rows={field.kind === 'lines' ? 4 : 3} value={text} placeholder={placeholder}
         onChange={e => onChange(field.kind === 'lines' ? e.target.value.split('\n').slice(0, 20) : e.target.value)} /></div>;
   }
@@ -411,11 +411,11 @@ function AddressEditor({ c, locale, data, update }: { c: Copy; locale: Lang; dat
       <div className="sm:col-span-2"><TextField id="address-line" label={c.addressFields.line} value={a.line} onChange={v => set('line', v)} /></div>
       <TextField id="address-subdistrict" label={c.addressFields.subdistrict} value={a.subdistrict} onChange={v => set('subdistrict', v)} />
       <TextField id="address-district" label={c.addressFields.district} value={a.district} onChange={v => set('district', v)} />
-      <div className="grid min-w-0 gap-1.5"><Label htmlFor="address-province">{c.addressFields.province}</Label>
+      <div className="grid min-w-0 gap-2"><Label htmlFor="address-province">{c.addressFields.province}</Label>
         <select id="address-province" className="min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={a.province} onChange={e => set('province', e.target.value)}>
           <option value="">{c.chooseProvince}</option>{sorted.map(p => <option key={p.id} value={p.id}>{p[locale]}</option>)}
         </select></div>
-      <div className="grid min-w-0 gap-1.5"><Label htmlFor="address-postcode">{c.addressFields.postcode}</Label>
+      <div className="grid min-w-0 gap-2"><Label htmlFor="address-postcode">{c.addressFields.postcode}</Label>
         <Input id="address-postcode" inputMode="numeric" autoComplete="postal-code" value={a.postcode} onChange={e => set('postcode', e.target.value.replace(/\D/g, '').slice(0, 5))} /></div>
     </div>
     <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={data.basics.address_full}
