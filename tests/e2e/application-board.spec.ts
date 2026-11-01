@@ -122,3 +122,15 @@ test('job page fits 320px in Thai', async ({ page }) => {
   await expect(page.getByLabel('ขั้นตอน')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('phone view: the view switch is a labelled group and the card menu is a 44px target', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await boardWithState(page);
+  await page.goto(`/app/projects/${projectId}/applications?view=board`);
+  await expect(page.getByRole('group', { name: 'View' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Applications board' })).toBeVisible();
+  const box = await page.getByRole('button', { name: `Move to: ${longTitle}` }).boundingBox();
+  expect(box?.height).toBeGreaterThanOrEqual(44);
+  expect(box?.width).toBeGreaterThanOrEqual(44);
+});

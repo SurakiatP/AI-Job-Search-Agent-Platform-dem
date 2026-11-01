@@ -363,5 +363,5 @@ function PdfFrame({ url, title }: { url: string; title: string }) {
   const preview = useFilePreview(url, 'application/pdf');
   return preview.status === 'pdf'
     ? <iframe title={title} src={`${preview.url}#view=FitH&toolbar=0&navpanes=0`} className="size-full border-0" />
-    : <div className="grid size-full place-items-center text-sm text-gray-600">{preview.status === 'loading' ? '…' : '—'}</div>;
+    : <div className="grid size-full place-items-center text-sm text-muted-foreground">{preview.status === 'loading' ? '…' : '—'}</div>;
 }

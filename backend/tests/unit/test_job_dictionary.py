@@ -125,3 +125,10 @@ def test_online_marketer_is_not_seo_specialist():
     syn = jd.thai_role_synonyms()
     for k in ("นักการตลาดออนไลน์", "การตลาดออนไลน์"):
         assert "seo specialist" not in syn.get(k, [])
+
+
+def test_generic_thai_head_words_are_search_synonyms():
+    syn = jd.thai_role_synonyms()
+    for thai, english in (("นักวิเคราะห์", "analyst"), ("วิศวกร", "engineer"), ("นักพัฒนา", "developer"), ("ผู้จัดการ", "manager")):
+        assert english in syn[thai]
+        assert len(syn[thai]) == len(set(syn[thai]))

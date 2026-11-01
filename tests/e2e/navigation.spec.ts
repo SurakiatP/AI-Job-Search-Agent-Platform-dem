@@ -211,6 +211,15 @@ test('project server failures show a retry action instead of a missing-resource 
   await expect(page.getByRole('heading', { name: 'CV & experience', level: 1 })).toBeVisible();
 });
 
+test('overview with a failed project request shows a retry action', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page, { projectErrorOnce: true });
+  await page.goto(`/app/projects/${projectId}/overview`);
+  await expect(page.getByRole('alert')).toContainText('We could not load this information.');
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+});
+
 test('unknown project with a 404 response remains a missing-resource page', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);

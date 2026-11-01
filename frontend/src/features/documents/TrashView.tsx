@@ -61,8 +61,8 @@ export function TrashView({ projectId, items, typeLabel, onChanged }: { projectI
     setFailure(failed.length ? (th ? `ลบถาวรไม่สำเร็จ ${failed.length} รายการ (อาจมีคำขออนุมัติค้างอยู่): ${failed.join(', ')}` : `${failed.length} could not be deleted (an approval may be pending): ${failed.join(', ')}`) : '');
     setEmptying(false); onChanged();
   }
-  if (!items.length) return <p className="text-sm text-muted-foreground">{th ? 'ไม่มีเอกสารในถังขยะ เอกสารที่ย้ายมาไว้ที่นี่กู้คืนได้' : 'No documents in the trash. Documents you move here can be restored.'}</p>;
-  return <div className="grid gap-4">
+  if (!items.length) return <p id="documents-trash" tabIndex={-1} className="text-sm outline-none text-muted-foreground">{th ? 'ไม่มีเอกสารในถังขยะ เอกสารที่ย้ายมาไว้ที่นี่กู้คืนได้' : 'No documents in the trash. Documents you move here can be restored.'}</p>;
+  return <div id="documents-trash" tabIndex={-1} className="grid gap-4 outline-none">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm text-muted-foreground">{th ? 'เอกสารในถังขยะซ่อนอยู่จากผลลัพธ์ที่แชร์ กู้คืนหรือลบถาวรได้ที่นี่' : 'Trashed documents are hidden from shared results. Restore or delete them permanently here.'}</p>
       <Button type="button" variant="outline" size="sm" onClick={() => setEmptying(true)}><Trash2 className="size-4" aria-hidden="true" />{th ? 'ลบทั้งหมดถาวร' : 'Empty trash'}</Button>
@@ -77,10 +77,10 @@ export function TrashView({ projectId, items, typeLabel, onChanged }: { projectI
         <Button type="button" variant="destructive" size="sm" onClick={() => setTarget(item)}>{th ? 'ลบถาวร' : 'Delete permanently'}</Button>
       </div>
     </CardContent></Card></li>)}</ul>
-    {target && <ConfirmDeleteDialog confirmLabel={th ? 'ลบถาวร' : 'Delete permanently'} title={permanentTitle(th, target.title)} description={permanentDescription(th)}
+    {target && <ConfirmDeleteDialog returnFocus={() => document.getElementById('documents-trash')} confirmLabel={th ? 'ลบถาวร' : 'Delete permanently'} title={permanentTitle(th, target.title)} description={permanentDescription(th)}
       errors={{ document_in_use: inUseMessage(th, projectId) }} onConfirm={() => deletePermanently(projectId, target.id)}
       onDone={() => { setTarget(null); setFailure(''); onChanged(); }} onClose={() => setTarget(null)} />}
-    {emptying && <ConfirmDeleteDialog confirmLabel={th ? 'ลบทั้งหมดถาวร' : 'Empty trash'} title={th ? `ลบเอกสาร ${items.length} รายการถาวร?` : `Permanently delete ${items.length} documents?`} description={permanentDescription(th)}
+    {emptying && <ConfirmDeleteDialog confirmLabel={th ? 'ลบทั้งหมดถาวร' : 'Empty trash'} title={th ? `ลบเอกสาร ${items.length} รายการถาวร?` : `Permanently delete ${items.length === 1 ? 'the 1 document' : `${items.length} documents`}?`} description={permanentDescription(th)}
       onConfirm={emptyTrash} onDone={() => undefined} onClose={() => setEmptying(false)} />}
   </div>;
 }

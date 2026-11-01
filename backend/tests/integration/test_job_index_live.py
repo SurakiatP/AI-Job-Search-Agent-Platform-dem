@@ -69,3 +69,28 @@ def test_thai_query_finds_english_title_via_synonyms(live, migrated_engine):
             live.delete_index(index)
         except Exception:
             pass
+
+
+@pytest.mark.integration
+def test_thai_head_words_find_english_titles(live, migrated_engine):
+    sessions = sessionmaker(migrated_engine, expire_on_commit=False)
+    now = datetime(2026, 10, 14, tzinfo=timezone.utc)
+    titles_in = ["BI / Data Analyst", "Software Engineer", "Operations Manager", "Barista"]
+    rows = [map_posting("lever", "acme", {"id": f"h{i}", "text": t, "hostedUrl": f"https://jobs.lever.co/acme/h{i}",
+                                           "categories": {"location": "Bangkok"}, "createdAt": 1_790_899_200_000,
+                                           "company": "Acme"}) for i, t in enumerate(titles_in)]
+    with sessions() as db, db.begin():
+        job_store.apply_board(db, "lever", "acme", rows, now)
+    index = f"jobs_test_{uuid.uuid4().hex}"
+    try:
+        assert job_index.rebuild(sessions, live, index) == 4
+        titles = lambda q: [h["title"] for h in live.search(index, {"q": q, "limit": 5})["hits"]]  # noqa: E731
+        assert "BI / Data Analyst" in titles("นักวิเคราะห์")
+        assert "Software Engineer" in titles("วิศวกร")
+        assert "Operations Manager" in titles("ผู้จัดการ")
+        assert "BI / Data Analyst" in titles("วิเคราะห์ข้อมูล")
+    finally:
+        try:
+            live.delete_index(index)
+        except Exception:
+            pass

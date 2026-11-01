@@ -23,7 +23,7 @@ import { PageHeader } from '@/components/PageHeader';
 
 function ResourcePanel({ resource, children }: { resource: { status: string; reload: () => void; data?: unknown }; children: ReactNode }) {
   const { t } = useTranslation();
-  if (resource.status === 'error') return <ErrorState onRetry={resource.reload} />;
+  if (resource.status === 'error' && !resource.data) return <ErrorState onRetry={resource.reload} />;
   if (resource.status === 'loading' && !resource.data) return <div role="status" className="grid gap-4 p-5"><span className="sr-only">{t('pages.loading')}</span><Skeleton className="h-14" /><Skeleton className="h-14" /></div>;
   return <>{children}</>;
 }
@@ -87,7 +87,7 @@ export function OverviewPage() {
         return <li key={job.id} className="min-w-0 p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3"><div className="min-w-0"><Link className="break-words text-base font-semibold text-foreground hover:text-primary hover:underline" to={`${base}/jobs/${job.id}`}>{job.title}</Link>{job.company && <p className="mt-1 break-words text-sm text-muted-foreground">{job.company}</p>}</div><StatusBadge status={job.application_status ?? 'saved'} locale={locale} /></div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            {evaluation?.session_id ? <Link className="inline-flex min-h-10 items-center gap-2 text-sm font-medium hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{t('workspace.viewEvaluation')}<ArrowRight size={15} aria-hidden="true" /></Link> :
+            {evaluation?.session_id ? <Link className="inline-flex min-h-11 items-center gap-2 text-sm font-medium hover:underline lg:min-h-10" to={`${base}/sessions/${evaluation.session_id}`}>{t('workspace.viewEvaluation')}<ArrowRight size={15} aria-hidden="true" /></Link> :
               <NewSessionButton size="sm" variant="outline" projectId={projectId} job={{ savedId: job.id }}>{t('workspace.newEvaluation')}</NewSessionButton>}
             <JobRemoveMenu reveal projectId={projectId} jobId={job.id} title={job.title} onRemoved={jobs.reload} />
           </div>
@@ -101,6 +101,7 @@ export function OverviewPage() {
       : <ul className="divide-y">{docList.slice(0, 4).map(doc => <li key={doc.id} className="flex items-start gap-3 p-5"><FileText size={20} className="mt-1 shrink-0 text-muted-foreground" aria-hidden="true" /><div className="min-w-0 flex-1"><Link className="break-words font-medium hover:underline" to={`${base}/documents/${doc.id}`}>{doc.title}</Link><p className="mt-1 text-sm text-muted-foreground">{doc.latest_revision ? `${t('workspace.revision')} ${doc.latest_revision.revision}` : '—'}</p></div>{doc.partial && <Badge variant="warning">{t('workspace.partial')}</Badge>}</li>)}</ul>}</ResourcePanel>
   </Section>;
 
+  if (project.status === 'error' && !project.data) return <ErrorState onRetry={project.reload} />;
   return <div className="grid min-w-0 gap-8">
     <PageHeader icon={LayoutDashboard} title={project.data?.name ?? t('nav.overview')} lede={firstRun ? c.subtitleFirst : t('workspace.overviewSubtitle')}
       actions={!firstRun && <Button asChild variant="outline"><Link to={`${base}/search`}><Search size={17} aria-hidden="true" />{t('workspace.findJobs')}</Link></Button>} />
@@ -151,7 +152,7 @@ export function OverviewPage() {
             <p className="flex items-start gap-2 text-sm"><CheckCircle2 size={17} className="mt-1 shrink-0 text-success" aria-hidden="true" />{t(revision.skill_profile_ready ? 'workspace.cvReady' : 'workspace.cvUploaded')}</p>
             {revision.skill_profile_ready === false && <p className="text-sm text-muted-foreground">{t('workspace.cvPending')}</p>}
             <CvPreviewButton projectId={projectId} fileId={revision.file_id} name={cv.name} revision={revision.revision} filename={revision.original_filename} mimeType={revision.mime_type} />
-            <Link className="inline-flex min-h-10 items-center gap-2 text-sm font-medium hover:underline" to={`${base}/profile`}>{t('workspace.manageCv')}<ArrowRight size={15} aria-hidden="true" /></Link>
+            <Link className="inline-flex min-h-11 items-center gap-2 text-sm font-medium hover:underline lg:min-h-10" to={`${base}/profile`}>{t('workspace.manageCv')}<ArrowRight size={15} aria-hidden="true" /></Link>
           </div> : <div className="grid justify-items-start gap-3"><p className="text-sm text-muted-foreground">{t('workspace.chooseCv')}</p><Button asChild variant="outline"><Link to={`${base}/profile`}>{t('workspace.addCv')}</Link></Button></div>}</ResourcePanel></div>
         </Section>
         {documentsSection}

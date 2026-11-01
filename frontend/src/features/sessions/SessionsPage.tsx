@@ -72,7 +72,7 @@ export function SessionsPage() {
   const shown = filter === 'all' || !known ? rows : rows.filter(row => group(row.run) === filter);
   const jobVersion = (id?: string | null) => (jobs.data ?? []).find(job => job.id === id)?.revision;
   if (inTrash) return <Navigate to={trashHref} replace />;
-  return <section className="grid min-w-0 gap-6">
+  return <section id="sessions-page" tabIndex={-1} className="grid min-w-0 gap-6 outline-none">
     <PageHeader icon={MessagesSquare} title={t('nav.evaluate')} lede={s('list.subtitle')} actions={rows.length > 0 && <NewSessionButton projectId={projectId}>{t('workspace.newEvaluation')}</NewSessionButton>} />
     {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2.5 text-sm">
       <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -112,7 +112,7 @@ export function SessionsPage() {
         })}</ul>
       </div>
     </>}
-    {removing && <ConfirmDeleteDialog confirmLabel={s('list.delete.action')}
+    {removing && <ConfirmDeleteDialog confirmLabel={s('list.delete.action')} returnFocus={() => document.getElementById('sessions-page')}
       title={s('list.delete.title', { title: removing.job_title ?? removing.title })} description={s('list.delete.body')}
       errors={{ session_busy: s('list.delete.busy') }}
       onConfirm={() => apiRequest(`/projects/${projectId}/sessions/${removing.id}`, { method: 'DELETE' }).then(() => undefined)}

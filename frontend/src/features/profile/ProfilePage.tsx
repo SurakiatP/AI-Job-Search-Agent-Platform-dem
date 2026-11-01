@@ -140,7 +140,7 @@ export function ProfilePage() {
   }
   async function makePrimary(cv: CVView) {
     setUploadError(null);
-    try { await sendJson(`/projects/${projectId}/cvs/${cv.id}`, 'PATCH', { is_primary: true }); cvs.reload(); primaryRevisions.reload(); } catch { setUploadError('pages.loadError'); }
+    try { await sendJson(`/projects/${projectId}/cvs/${cv.id}`, 'PATCH', { is_primary: true }); cvs.reload(); primaryRevisions.reload(); } catch { setUploadError('pages.makePrimaryError'); }
   }
   async function undo(cv: CVView) {
     try { await apiRequest(`/projects/${projectId}/cvs/${cv.id}/restore`, { method: 'POST' }); setRemoved(null); cvs.reload(); primaryRevisions.reload(); notifyTrashChanged(); }
@@ -159,7 +159,7 @@ export function ProfilePage() {
   const factCount = bank.data?.items.length;
   const versionLabel = (n: number) => w('versionShort', { n });
   const dropProps = { onDragOver: (event: React.DragEvent) => { event.preventDefault(); setDragging(true); }, onDragLeave: () => setDragging(false),
-    onDrop: (event: React.DragEvent) => { event.preventDefault(); setDragging(false); void upload(event.dataTransfer.files[0], '/cvs'); } };
+    onDrop: (event: React.DragEvent) => { event.preventDefault(); setDragging(false); if (!busy) void upload(event.dataTransfer.files[0], '/cvs'); } };
   return <section className="grid gap-6 lg:gap-8">
     <PageBack to={`${base}/overview`}>{t('nav.overview')}</PageBack>
     <div className="grid">
@@ -202,8 +202,8 @@ export function ProfilePage() {
                   {!latest && !Number.isNaN(new Date(cv.created_at).getTime()) && <p className="mt-0.5 text-sm text-muted-foreground">{w('createdAt', { date: dateTime.format(new Date(cv.created_at)) })}</p>}
                   {cv.in_use && <p className="mt-0.5 text-xs text-muted-foreground">{c.inUse}</p>}
                 </div>
-                <p className="text-sm"><span className="text-muted-foreground xl:hidden">{w('colVersion')}: </span>{latest ? <>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>}</> : '—'}</p>
-                <p className="text-sm"><span className="text-muted-foreground xl:hidden">{w('colType')}: </span>{latest ? fileType(latest.original_filename) : '—'}</p>
+                <p className="text-sm"><span className="text-muted-foreground xl:sr-only">{w('colVersion')}: </span>{latest ? <>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>}</> : '—'}</p>
+                <p className="text-sm"><span className="text-muted-foreground xl:sr-only">{w('colType')}: </span>{latest ? fileType(latest.original_filename) : '—'}</p>
                 <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                   {latest && <CvPreviewButton projectId={projectId} fileId={latest.file_id} name={cv.name} revision={latest.revision} filename={latest.original_filename} mimeType={latest.mime_type} className="min-h-11" />}
                   {cv.has_builder_draft

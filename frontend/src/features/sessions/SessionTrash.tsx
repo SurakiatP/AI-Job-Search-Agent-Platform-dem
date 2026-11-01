@@ -36,7 +36,7 @@ export function SessionTrash({ projectId, locale, items, onChanged}: { projectId
     if (failed.length) throw new Error(failed.join(', '));
   }
 
-  return <div className="grid gap-4">
+  return <div id="session-trash" tabIndex={-1} className="grid gap-4 outline-none">
     {items.length === 0 ? <p className="text-muted-foreground">{s('trash.empty')}</p> : <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="max-w-2xl text-sm text-muted-foreground">{s('trash.note')}</p>
@@ -57,9 +57,9 @@ export function SessionTrash({ projectId, locale, items, onChanged}: { projectId
         </div>
       </li>)}</ul>
     </>}
-    {target && <ConfirmDeleteDialog
+    {target && <ConfirmDeleteDialog returnFocus={() => document.getElementById('session-trash')}
       confirmLabel={target === 'all' ? s('trash.emptyAll') : s('trash.purge')}
-      title={target === 'all' ? s('trash.emptyTitle', { n: items.length }) : s('trash.purgeTitle', { title: name(target) })}
+      title={target === 'all' ? s('trash.emptyTitle', { count: items.length }) : s('trash.purgeTitle', { title: name(target) })}
       description={s('trash.purgeBody')}
       errors={{ session_busy: s('list.delete.busy') }}
       onConfirm={() => target === 'all' ? emptyTrash() : purge(target.id)}

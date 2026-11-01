@@ -73,6 +73,10 @@ _NOT_SYNONYMS = frozenset({
 })
 
 
+# Generic Thai head words (owner approved), one-way Thai -> English, so a short query finds English titles.
+_HEAD_WORDS = {"นักวิเคราะห์": "analyst", "วิศวกร": "engineer", "นักพัฒนา": "developer", "ผู้จัดการ": "manager"}
+
+
 def thai_role_synonyms() -> dict[str, list[str]]:
     """Thai role alias -> [English canonical name] for the search index; also the alias without a leading นัก."""
     out: dict[str, list[str]] = {}
@@ -85,6 +89,9 @@ def thai_role_synonyms() -> dict[str, list[str]]:
             for k in (alias, rest):
                 if k and not k.isascii() and english not in out.setdefault(k, []):
                     out[k].append(english)
+    for thai, english in _HEAD_WORDS.items():
+        if english not in out.setdefault(thai, []):
+            out[thai].append(english)
     return out
 
 

@@ -17,6 +17,7 @@ import { ApiError, type AccountAgent } from '../../lib/api-types';
 import { authCopy } from '../auth/copy';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
+import { capabilityKey } from '../settings/ProjectSharing';
 import { UserCog } from 'lucide-react';
 import { PageHeader } from '../../components/PageHeader';
 
@@ -79,6 +80,7 @@ function EmailSection() {
   const { t, i18n } = useTranslation();
   const account = useAccount();
   const [state, setState] = useState<'idle' | 'busy' | 'sent' | 'failed'>('idle');
+  const [resendError, setResendError] = useState('');
   const [reset, setReset] = useState<{ kind: 'idle' | 'busy' | 'sent' | 'off' | 'error'; text?: string }>({ kind: 'idle' });
   if (!account) return null;
   const mailOff = authCopy[i18n.language.startsWith('th') ? 'th' : 'en'];
@@ -94,7 +96,10 @@ function EmailSection() {
   }
   async function resend() {
     setState('busy');
-    try { await resendVerification(); setState('sent'); } catch { setState('failed'); }
+    try { await resendVerification(); setState('sent'); } catch (error) {
+      setResendError(error instanceof ApiError && error.code === 'rate_limited' ? rateLimitText(t, error.fields?.retry_after) : t('errors.request_failed'));
+      setState('failed');
+    }
   }
   return <Card>
     <CardHeader><CardTitle className="text-lg">{t('account.emailSection')}</CardTitle></CardHeader>
@@ -103,7 +108,7 @@ function EmailSection() {
       <Badge variant={account.email_verified ? 'success' : 'secondary'}>{account.email_verified ? t('account.verifiedStatus') : t('account.unverifiedStatus')}</Badge>
       {!account.email_verified && <Button type="button" size="sm" variant="outline" disabled={state === 'busy' || state === 'sent'} onClick={() => void resend()}>{t('account.resend')}</Button>}
       <span role="status" className="text-sm text-muted-foreground">{state === 'sent' ? t('account.resent') : ''}</span>
-      {state === 'failed' && <span role="alert" className="text-sm text-destructive">{t('errors.request_failed')}</span>}
+      {state === 'failed' && <span role="alert" className="text-sm text-destructive">{resendError}</span>}
       <div className="grid w-full gap-2 border-t pt-3">
         <p className="text-sm font-medium">{t('account.passwordLabel')}</p>
         <div className="flex flex-wrap items-center gap-3">
@@ -129,7 +134,7 @@ function AgentsSection() {
   const all = agents.data ?? [];
   const active = all.filter(a => stateOf(a) === 'active');
   const inactive = all.filter(a => stateOf(a) !== 'active');
-  const appName = (a: AccountAgent) => a.label ?? t('account.untitledAgent');
+  const appName = (a: AccountAgent) => a.label?.trim() || t('account.untitledAgent');
   const item = (agent: AccountAgent) => {
     const state = stateOf(agent);
     return <li key={agent.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${state === 'active' ? '' : 'text-muted-foreground'}`}>
@@ -137,7 +142,7 @@ function AgentsSection() {
         <p className="break-words text-sm font-medium">{appName(agent)}</p>
         {agent.client_id_host && <p className="break-words text-sm text-muted-foreground">{t('account.oauthClient', { host: agent.client_id_host })}</p>}
         <p className="break-words text-sm">{t('account.project')}: {agent.project_name}</p>
-        <div className="flex flex-wrap gap-1.5">{agent.capabilities.map(cap => <Badge key={cap} variant="outline">{cap}</Badge>)}</div>
+        <div className="flex flex-wrap gap-1.5">{agent.capabilities.map(cap => <Badge key={cap} variant="outline">{capabilityKey[cap as keyof typeof capabilityKey] ? t(capabilityKey[cap as keyof typeof capabilityKey], { ns: 'settings' }) : cap}</Badge>)}</div>
         <p className="text-sm">{t('account.created')} <time dateTime={agent.created_at}>{fmt.format(new Date(agent.created_at))}</time> · {t('account.expires')} <time dateTime={agent.expires_at}>{fmt.format(new Date(agent.expires_at))}</time></p>
       </div>
       <div className="flex items-center gap-3">

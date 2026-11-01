@@ -62,7 +62,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
   const visibleCards = optimisticCards ?? cards;
   const dateFormat = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium' });
 
-  useEffect(() => { setOptimisticCards(null); }, [cards]);
+  useEffect(() => { if (inFlight.current === 0) setOptimisticCards(null); }, [cards]);
   useEffect(() => {
     if (!moved) return;
     const timer = window.setTimeout(() => setMoved(null), 10000);
@@ -128,7 +128,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
         <Link className="block break-words font-medium leading-snug text-foreground hover:text-primary hover:underline" to={`/app/projects/${projectId}/jobs/${card.job_revision_id}`}>{card.title}</Link>
         {card.company && <p className="mt-0.5 break-words text-sm text-muted-foreground">{card.company}</p>}
       </div>
-      <ItemMenu className="size-10 shrink-0" label={`${t('moveTo')}: ${card.title}`} actions={STAGES.filter(stage => stage !== card.stage).map(stage => ({
+      <ItemMenu className="size-11 shrink-0 lg:size-10" label={`${t('moveTo')}: ${card.title}`} actions={STAGES.filter(stage => stage !== card.stage).map(stage => ({
         label: stageLabel[stage][locale], icon: <ArrowRight className="size-4" aria-hidden="true" />, onSelect: () => void move(card, stage),
       }))} />
     </div>
@@ -147,7 +147,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
   const filtering = Boolean(needle || stageFilter);
   return <div className="grid min-w-0 gap-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="segmented" aria-label={t('listLabel')}>
+      <div role="group" className="segmented" aria-label={t('viewLabel')}>
         <Button type="button" size="sm" variant="ghost" aria-pressed={view === 'list'} onClick={() => selectView('list')}><List className="size-4" aria-hidden="true" />{t('listView')}</Button>
         <Button type="button" size="sm" variant="ghost" aria-pressed={view === 'board'} onClick={() => selectView('board')}><Columns3 className="size-4" aria-hidden="true" />{t('boardView')}</Button>
       </div>
@@ -170,7 +170,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
     <div role="status" className="min-h-0 text-sm">
       {moved && <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span>{t('movedNotice', { title: moved.card.title, stage: stageLabel[moved.card.stage][locale] })}</span>
-        <Button type="button" variant="link" size="sm" className="h-auto min-h-10 px-0" onClick={() => void move(moved.card, moved.from, true)}>{t('undo')}</Button>
+        <Button type="button" variant="link" size="sm" className="h-auto min-h-11 px-0 lg:min-h-10" onClick={() => void move(moved.card, moved.from, true)}>{t('undo')}</Button>
       </p>}
     </div>
 
@@ -179,12 +179,12 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
       {filtering && <Button type="button" variant="outline" size="sm" onClick={() => { setQuery(''); setStageFilter(''); }}>{t('clearFilters')}</Button>}
     </div> : view === 'list' ? <section aria-label={t('listLabel')} className="min-w-0 rounded-xl border border-border bg-card px-4 md:px-5">
       <div className={`hidden gap-x-5 border-b py-2.5 text-xs font-medium text-muted-foreground md:grid ${rowColumns}`}>
-        <span>{t('opportunity')}</span><span>{t('stage')}</span><span>{t('nextStep')}</span><span>{t('lastActivity')}</span><span className="sr-only">{t('boardView')}</span>
+        <span>{t('opportunity')}</span><span>{t('stage')}</span><span>{t('nextStep')}</span><span>{t('lastActivity')}</span><span className="sr-only">{t('open')}</span>
       </div>
       <ul aria-label={t('listLabel')} className="min-w-0 divide-y">
         {shown.map(card => <OpportunityRow key={card.job_revision_id} projectId={projectId} card={card} locale={locale} onMove={(row, stage) => void move(row, stage)} updatedLabel={updatedLabel} />)}
       </ul>
-    </section> : <div className="grid min-w-0 gap-4" aria-label={t('boardLabel')}>
+    </section> : <div role="group" className="grid min-w-0 gap-4" aria-label={t('boardLabel')}>
       <p className="text-xs text-muted-foreground max-md:hidden">{t('dragHint')}</p>
       <div className="grid min-w-0 gap-4 md:grid-flow-col md:auto-cols-[minmax(15rem,1fr)] md:overflow-x-auto md:pb-2">
         {ACTIVE_STAGES.map(stage => {
@@ -196,7 +196,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
         })}
       </div>
       <section aria-labelledby="closed-stage-heading" className="min-w-0 rounded-xl bg-muted/70 p-2.5">
-        <h2 id="closed-stage-heading"><button type="button" aria-expanded={closedOpen} onClick={() => setClosedOpen(value => !value)} className="flex min-h-10 w-full items-center justify-between gap-2 text-start text-sm font-semibold">{t('closedStages')} ({closed.length})<span aria-hidden="true">{closedOpen ? '−' : '+'}</span></button></h2>
+        <h2 id="closed-stage-heading"><button type="button" aria-expanded={closedOpen} onClick={() => setClosedOpen(value => !value)} className="flex min-h-11 w-full items-center lg:min-h-10 justify-between gap-2 text-start text-sm font-semibold">{t('closedStages')} ({closed.length})<span aria-hidden="true">{closedOpen ? '−' : '+'}</span></button></h2>
         {(closedOpen || dragId) && <div className="mt-3 grid gap-3">
           {dragId && <div className="grid gap-2 sm:grid-cols-2">{CLOSED_STAGES.map(stage => <div key={stage} {...zone(stage)} className={cn('rounded-lg border border-dashed px-3 py-4 text-center text-sm font-medium', zoneClass(stage))}>{t('dropTo', { stage: stageLabel[stage][locale] })}</div>)}</div>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{closed.map(item)}</div>

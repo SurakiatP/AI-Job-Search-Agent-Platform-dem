@@ -36,6 +36,8 @@ test('landing start leads to login; wrong then right password reaches the reques
   await page.getByLabel('Password', { exact: true }).fill('wrong');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('The email or password is not correct.');
+  await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('aria-describedby', 'login-error');
   await page.getByLabel('Password', { exact: true }).fill('correct-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
@@ -111,6 +113,8 @@ test('agents list shows given date and revoke calls the grant route', async ({ p
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByText('Synthetic agent')).toBeVisible();
   await expect(page.getByText('client.example.test')).toBeVisible();
+  await expect(page.getByText('Read generated results')).toBeVisible();
+  await expect(page.getByText('results:read', { exact: true })).toHaveCount(0);
   await expect(page.getByText(/Given\s+3 Oct 2026/)).toBeVisible();
   await page.getByRole('button', { name: 'Revoke', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Revoke access', exact: true }).click();

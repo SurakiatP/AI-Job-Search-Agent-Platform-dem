@@ -83,6 +83,7 @@
     "sharingDescription": "Project sharing controls will appear when owner access is connected.",
     "loading": "Loading…",
     "loadError": "We could not load this information.",
+    "makePrimaryError": "We could not set this CV as primary. Try again.",
     "retry": "Try again",
     "notFound": "We could not find that item.",
     "backProjects": "Back to projects",
@@ -333,7 +334,8 @@
       "purge": "Delete for good",
       "emptyAll": "Delete all for good",
       "purgeTitle": "Delete CV “{{name}}” for good?",
-      "emptyTitle": "Delete all {{n}} CVs in the trash for good?",
+      "emptyTitle_one": "Delete the 1 CV in the trash for good?",
+      "emptyTitle_other": "Delete all {{count}} CVs in the trash for good?",
       "inUse": "An AI task is still using this CV. Try again when it finishes.",
       "restoreFailed": "Could not restore “{{name}}”. Try again."
     },

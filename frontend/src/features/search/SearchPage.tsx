@@ -273,7 +273,7 @@ function SaveJob({ job, c, projectId, saves, tSearch, card = false }: { job: Job
       disabled={Boolean(saves.busy) || saves.loading} onClick={() => void saves.save(job)}>
       {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Bookmark className="size-4" aria-hidden="true" />}{saving ? c.saving : card ? c.saveShort : c.save}
     </Button>
-    {!card && saves.failed === job.slug && <p role="alert" className="basis-full text-sm text-destructive">{c.saveError}</p>}
+    {saves.failed === job.slug && <p role="alert" className="basis-full text-sm text-destructive">{c.saveError}</p>}
   </>;
 }
 
@@ -400,6 +400,8 @@ export function SearchPage() {
   const [rankFailed, setRankFailed] = useState(false);
   const [undo, setUndo] = useState<{ id: string; message: string; retry: boolean } | null>(null);
   const [hiddenOpen, setHiddenOpen] = useState(false);
+  const [dialogError, setDialogError] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const hiddenRes = useResource<{ items: HiddenItem[] }>(hiddenOpen ? `/projects/${projectId}/job-search/hidden` : null);
   const keyRef = useRef(filterKey);
   keyRef.current = filterKey;
@@ -503,10 +505,12 @@ export function SearchPage() {
     } catch { setUndo({ id: '', message: c.hideFailed, retry: false }); }
   }
   async function unhide(id: string, fromDialog = false) {
+    if (fromDialog) { if (busyId) return; setBusyId(id); setDialogError(false); }
     try {
       await apiRequest(`/projects/${projectId}/job-search/hidden/${id}`, { method: 'DELETE' });
       setUndo(null); setVersion(v => v + 1); if (fromDialog) hiddenRes.reload();
-    } catch { setUndo({ id, message: c.undoFailed, retry: false }); }
+    } catch { if (fromDialog) setDialogError(true); else setUndo({ id, message: c.undoFailed, retry: false }); }
+    finally { if (fromDialog) setBusyId(null); }
   }
 
   async function loadMore() {
@@ -636,7 +640,7 @@ export function SearchPage() {
     })}
   </ul>;
 
-  const loadingList = <div className="grid gap-3" role="status" aria-live="polite">
+  const loadingList = <div className="grid gap-3">
     <span className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />{c.loading}</span>
     {[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
   </div>;
@@ -721,7 +725,7 @@ export function SearchPage() {
         </Button>)}
       </div>}
     </AdvancedFilters>}
-    {activeFilterChips.length > 0 && <div className="grid gap-2" aria-label={tSearch('controls.activeFilters')}>
+    {activeFilterChips.length > 0 && <div role="group" className="grid gap-2" aria-label={tSearch('controls.activeFilters')}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">{tSearch('controls.activeFilters')} · {activeFilterChips.length}</p>
         <Button type="button" variant="link" className="h-auto p-0" onClick={clear}>{tSearch('controls.clearFilters')}</Button>
@@ -753,7 +757,7 @@ export function SearchPage() {
       <div className="flex flex-wrap gap-2"><Button asChild><Link to={`/app/projects/${projectId}/profile`}>{c.addCv}</Link></Button><BuildCvButton projectId={projectId} /></div>
     </div> : awaiting ? <SmartMatchStart locale={locale} cvName={cv ? `${cv.name} · v${cv.latest_revision?.revision}` : ''} disabled={gate.blocked} title={gate.title} onStart={() => setArmedFor(revisionId)} /> : <div className="grid gap-3">
       {sample && smart && <p className="text-sm text-muted-foreground">{c.sampleMatch}</p>}
-      {(sample || !waiting) && <p role="status" className="text-sm text-muted-foreground">{c.found(number.format(shownTotal))}{smartActive ? ` · ${c.poolNote(number.format(poolCount || items.length))}` : ''}</p>}
+      <p role="status" aria-live="polite" className={sample || !waiting ? 'text-sm text-muted-foreground' : 'sr-only'}>{sample || !waiting ? <>{c.found(number.format(shownTotal))}{smartActive ? ` · ${c.poolNote(number.format(poolCount || items.length))}` : ''}</> : c.loading}</p>
       {smartActive && ai?.status === 'unavailable' && <div className="grid gap-1 text-sm text-muted-foreground"><p className="flex flex-wrap items-center gap-x-2">{c.unavailable}</p><p className="text-xs">{tSearch('methods.keywordOnly')}</p></div>}
       {smartActive && ranking && <div className="grid gap-2"><AgentSteps c={c} step={items.length === 0 ? 1 : 2} scored={ai?.scored ?? 0} total={items.length} /><span className="text-xs text-muted-foreground">{tSearch('methods.keywordOnly')}</span></div>}
       {smartActive && !ranking && ai?.status === 'partial' && <p role="status" className="text-sm text-muted-foreground">{tSearch('controls.partialRank', { scored: ai.scored, total: items.length })}</p>}
@@ -800,14 +804,15 @@ export function SearchPage() {
       {smartActive && hiddenCount > 0 && <div><Button type="button" variant="link" className="h-auto p-0" onClick={() => setHiddenOpen(true)}>{c.hiddenLink(hiddenCount)}</Button></div>}
     </div>}
 
-    <Dialog open={hiddenOpen} onOpenChange={setHiddenOpen}>
+    <Dialog open={hiddenOpen} onOpenChange={open => { setHiddenOpen(open); setDialogError(false); }}>
       <DialogContent>
         <DialogTitle>{c.hiddenTitle}</DialogTitle>
         <DialogDescription className="sr-only">{c.hiddenTitle}</DialogDescription>
+        {dialogError && <p role="alert" className="text-sm text-destructive">{c.undoFailed}</p>}
         {hiddenRes.status === 'loading' ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : (hiddenRes.data?.items ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.hiddenEmpty}</p>
           : <ul className="grid max-h-[60vh] gap-2 overflow-y-auto">{(hiddenRes.data?.items ?? []).map(h => <li key={h.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 text-sm">
             <span className="min-w-0 [overflow-wrap:anywhere]"><Badge variant="secondary" className="mr-2">{c.kindWord[h.kind]}</Badge>{h.label}</span>
-            <Button type="button" size="sm" variant="outline" className="shrink-0 whitespace-nowrap" onClick={() => void unhide(h.id, true)}>{c.unhide}</Button>
+            <Button type="button" size="sm" variant="outline" className="shrink-0 whitespace-nowrap" disabled={busyId !== null} onClick={() => void unhide(h.id, true)}>{c.unhide}</Button>
           </li>)}</ul>}
       </DialogContent>
     </Dialog>

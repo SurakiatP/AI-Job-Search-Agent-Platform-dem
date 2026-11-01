@@ -38,11 +38,12 @@ export function AuthLayout({ title, intro, side, icon, children }: { title: stri
 }
 
 function Field({ id, label, hint, ...props }: { id: string; label: string; hint?: ReactNode } & React.ComponentProps<typeof Input>) {
+  const described = [hint ? `${id}-hint` : '', props['aria-describedby'] ?? ''].filter(Boolean).join(' ') || undefined;
   return <div className="grid gap-1.5">
     <Label htmlFor={id}>{label}</Label>
     {props.type === 'password'
-      ? <PasswordInput id={id} aria-describedby={hint ? `${id}-hint` : undefined} {...props} />
-      : <Input id={id} aria-describedby={hint ? `${id}-hint` : undefined} {...props} />}
+      ? <PasswordInput id={id} {...props} aria-describedby={described} />
+      : <Input id={id} {...props} aria-describedby={described} />}
     {hint && <div id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</div>}
   </div>;
 }
@@ -66,8 +67,8 @@ function PasswordRule({ length }: { length: number }) {
   return <p className={`flex items-center gap-1.5 ${ok ? 'text-success' : ''}`}><Icon className="size-3.5 shrink-0" aria-hidden="true" />{length > 128 ? c.passwordRuleLong : c.passwordRule}</p>;
 }
 
-function Alert({ children }: { children: ReactNode }) {
-  return children ? <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{children}</p> : null;
+function Alert({ id, children }: { id?: string; children: ReactNode }) {
+  return children ? <p id={id} role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{children}</p> : null;
 }
 
 // Only same-app paths may be targets, so a crafted ?next= cannot send people to another site.
@@ -119,9 +120,9 @@ export function LoginPage() {
     {params.get('notice') === 'password-reset' && <p role="status" className="text-sm text-success">{c.loginNotice}</p>}
     {params.get('notice') === 'verified' && <p role="status" className="text-sm text-success">{locale === 'th' ? 'ยืนยันอีเมลแล้ว เข้าสู่ระบบได้เลย' : 'Email verified. You can log in now.'}</p>}
     <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
-      <Field id="login-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} />
-      <Field id="login-password" label={t('auth.password')} type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} />
-      <Alert>{error}</Alert>
+      <Field id="login-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { 'aria-invalid': true, 'aria-describedby': 'login-error' } : {})} />
+      <Field id="login-password" label={t('auth.password')} type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} {...(error ? { 'aria-invalid': true, 'aria-describedby': 'login-error' } : {})} />
+      <Alert id="login-error">{error}</Alert>
       <Button type="submit" busy={busy} disabled={busy || !email || !password}>{busy ? t('auth.working') : t('auth.loginAction')}</Button>
     </form>
     <p className="text-sm"><Link className={linkClass} to="/forgot-password">{t('auth.forgotLink')}</Link></p>
@@ -159,9 +160,9 @@ export function SignupPage() {
     <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{c.sentTo} <span className="font-medium text-foreground">{email.trim()}</span></p>
     <form className="grid gap-3 rounded-lg border bg-card p-4" onSubmit={event => void verify.submit(event)} noValidate>
       <Label htmlFor="signup-code">{otp.label}</Label>
-      <CodeInput id="signup-code" value={code} onChange={setCode} aria-describedby="signup-code-hint" />
+      <CodeInput id="signup-code" value={code} onChange={setCode} aria-invalid={verify.error ? true : undefined} aria-describedby={verify.error ? 'signup-code-hint signup-code-error' : 'signup-code-hint'} />
       <p id="signup-code-hint" className="text-xs text-muted-foreground">{otp.hint}</p>
-      <Alert>{verify.error}</Alert>
+      <Alert id="signup-code-error">{verify.error}</Alert>
       <Button type="submit" busy={verify.busy} disabled={verify.busy || code.length !== 6} className="justify-self-start">{otp.action}</Button>
     </form>
     <p className="text-sm text-muted-foreground">{c.noMail}</p>
@@ -175,9 +176,9 @@ export function SignupPage() {
     </li>)}</ol>
   </SidePoints>}>
     <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
-      <Field id="signup-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} />
-      <Field id="signup-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} />
-      <Alert>{error}</Alert>
+      <Field id="signup-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { 'aria-invalid': true, 'aria-describedby': 'signup-error' } : {})} />
+      <Field id="signup-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} {...(error ? { 'aria-invalid': true, 'aria-describedby': 'signup-error' } : {})} />
+      <Alert id="signup-error">{error}</Alert>
       <Button type="submit" busy={busy} disabled={busy || !email || password.length < 10}>{busy ? t('auth.working') : t('auth.signupAction')}</Button>
       <p className="text-sm text-muted-foreground">{c.next}</p>
     </form>

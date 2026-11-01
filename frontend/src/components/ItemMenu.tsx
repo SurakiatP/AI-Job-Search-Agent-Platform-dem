@@ -10,7 +10,7 @@ export function ItemMenu({ label, actions, reveal = false, className }: { label:
   return <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <button type="button" aria-label={label} className={cn(
-        'grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring',
+        'grid size-11 shrink-0 lg:size-10 place-items-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring',
         reveal && 'opacity-0 focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100', className)}>
         <MoreHorizontal className="size-4" aria-hidden="true" />
       </button>
