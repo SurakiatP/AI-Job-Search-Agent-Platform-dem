@@ -1008,6 +1008,20 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '422': {description: theme_invalid}
         '502': {description: render_failed}
+  /projects/{project_id}/cvs/{cv_id}/draft/from-experience:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. The chosen experience items (1-200 ids of this project) as resume sections. Nothing is saved; the builder merges them into the draft.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false, required: [item_ids], properties: {item_ids: {type: array, minItems: 1, maxItems: 200, items: {type: string, format: uuid}}}}}}
+      responses:
+        '200': {description: "{resume_data}", content: {application/json: {schema: {type: object}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: validation}
   /projects/{project_id}/cvs/builder:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     post:

@@ -457,7 +457,7 @@ def with_sample(data: ResumeData, lang: str) -> tuple[ResumeData, list[str]]:
                                       start="2022-01", current=True, highlights=t["highlights"]),
              "education": Education(id=_sample_id("education"), institution=t["institution"], degree=t["degree"], area=t["area"],
                                     start="2016", end="2020"),
-             "skills": Skill(id=_sample_id("skills"), name=t["skill"], level=4, keywords=t["keywords"])}
+             "skills": Skill(id=_sample_id("skills"), name=t["skill"], keywords=t["keywords"])}
     for name, item in parts.items():
         section = getattr(s, name)
         if not section.items and not section.hidden:

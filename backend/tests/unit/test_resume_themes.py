@@ -193,3 +193,23 @@ def test_empty_cv_preview_renders_marked_sample_text(lang, note, name, tmp_path)
     (tmp_path / "p.pdf").write_bytes(pdf)
     text = subprocess.run([pdftotext, str(tmp_path / "p.pdf"), "-"], capture_output=True, text=True).stdout
     assert note in text and name in text
+
+
+# --- no skill-level graphics: a self-rated level can hurt the applicant, so no template draws one ---
+@pytest.mark.parametrize("template", ["onyx", "kakuna", "ditgar", "lotus", "teak", "saffron"])
+def test_skill_level_is_never_drawn(template, tmp_path):
+    if not _docker_ready():
+        pytest.skip("docker or agent image not ready")
+    from job_search_platform.integrations.hermes_runtime import HermesRuntime
+
+    def render(level):
+        data = rs.ResumeData.model_validate(english_short())
+        for skill in data.sections.skills.items:
+            skill.level = level
+        return asyncio.run(HermesRuntime(IMAGE_ID.read_text().strip()).render_typst(rs.render_bundle(data, template, "teal", "en")))
+
+    import re
+
+    stamp = lambda pdf: re.sub(rb"(CreationDate|ModDate)\s*\(?[^\n>]*|<x:xmpmeta.*?</x:xmpmeta>|/ID\s*\[[^\]]*\]", b"", pdf, flags=re.S)  # the PDF carries its render time and random ids
+    assert stamp(render(5)) == stamp(render(None))  # same PDF whatever the stored level
+    assert "level-dots" not in (Path(rs.__file__).parent.parent / "data/resume_templates/common.typ").read_text()

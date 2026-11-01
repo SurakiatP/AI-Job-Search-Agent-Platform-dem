@@ -9,12 +9,12 @@ type Copy = {
   basics: string; basicsFields: Record<'name' | 'headline' | 'email' | 'phone' | 'location', string>; links: string; network: string; url: string; addLink: string; removeLink: string;
   sections: Record<SectionName, string>; empty: string; moveUp: (s: string) => string; moveDown: (s: string) => string; show: (s: string) => string; hide: (s: string) => string;
   summaryPlaceholder: string; referencesNote: string; onRequest: string; itemLabel: (s: string, n: number) => string; up: string; down: string; remove: string; add: (s: string) => string;
-  noLevel: string; level: (n: number) => string; publish: string; publishTitle: string; publishBodyCv: string; publishBodyDoc: string; cancel: string;
+  publish: string; publishTitle: string; publishBodyCv: string; publishBodyDoc: string; cancel: string;
   publishedCv: (n: number) => string; publishedDoc: (n: number) => string; open: string; docNote: string;
   address: string; addressFields: Record<'line' | 'subdistrict' | 'district' | 'province' | 'postcode', string>; chooseProvince: string;
   addressFull: string; addressNote: string; personalFields: Record<'birth_date' | 'nationality' | 'military_status' | 'line_id' | 'driving_license' | 'expected_salary' | 'available_from', string>;
   personalPlaceholders: Partial<Record<'birth_date' | 'nationality' | 'military_status' | 'line_id' | 'driving_license' | 'expected_salary' | 'available_from', string>>;
-  personalNote: string; cvName: string; docName: string; renameFailed: string; pages: (n: number) => string; tooLong: string; sampleTitle: string; sampleBody: string;
+  personalNote: string; cvName: string; docName: string; renameFailed: string; pages: (n: number) => string; tooLong: string; sampleTitle: string; sampleBody: string; importHint: string;
   errors: { resume_incomplete: string; render_failed: string; draft_conflict: string; resume_invalid: string; document_busy: string; generic: string };
 };
 
@@ -40,7 +40,7 @@ export const copy: Record<'th' | 'en', Copy> = {
     summaryPlaceholder: 'นักวิเคราะห์ข้อมูลที่มีประสบการณ์ 4 ปี ถนัด SQL และ Python',
     referencesNote: 'ข้อมูลบุคคลอ้างอิงเป็นข้อมูลของผู้อื่น ระบบจะไม่ส่งให้ AI และไม่ใช้เป็นหลักฐาน', onRequest: 'แสดงว่า "มีให้เมื่อร้องขอ" แทนรายละเอียด',
     itemLabel: (s, n) => `${s} รายการที่ ${n}`, up: 'ขึ้น', down: 'ลง', remove: 'ลบ', add: s => `เพิ่ม${s}`,
-    noLevel: 'ไม่ระบุ', level: n => `${n} จาก 5`, publish: 'บันทึกเป็นเวอร์ชันใหม่', publishTitle: 'บันทึกเป็นเวอร์ชันใหม่ไหม',
+    publish: 'บันทึกเป็นเวอร์ชันใหม่', publishTitle: 'บันทึกเป็นเวอร์ชันใหม่ไหม',
     publishBodyCv: 'ระบบจะสร้าง CV ฉบับใหม่จากร่างนี้ ใช้ประเมินงานและปรับ CV ได้ทันที ข้อมูลในหัวข้อต่าง ๆ จะถูกเพิ่มลงคลังประสบการณ์',
     publishBodyDoc: 'ระบบจะสร้างฉบับใหม่ของเอกสารนี้ การแก้ไขนี้อยู่เฉพาะใน CV ที่ปรับแล้ว ไม่ถูกเพิ่มลงคลังประสบการณ์', cancel: 'ยกเลิก',
     publishedCv: n => `บันทึก CV ฉบับที่ ${n} แล้ว`, publishedDoc: n => `บันทึกเอกสารฉบับที่ ${n} แล้ว`, open: 'เปิดดู',
@@ -52,6 +52,7 @@ export const copy: Record<'th' | 'en', Copy> = {
     personalNote: 'ข้อมูลส่วนนี้ซ่อนจาก CV จนกว่าคุณจะกดแสดง และไม่ถูกส่งให้ AI บริษัทต่างชาติและระบบคัดกรองใบสมัครมักไม่ต้องการ',
     cvName: 'ชื่อ CV', docName: 'ชื่อเอกสาร', renameFailed: 'เปลี่ยนชื่อไม่สำเร็จ ลองอีกครั้ง', pages: n => `${n} หน้า`,
     tooLong: 'CV ส่วนใหญ่ควรยาว 1–2 หน้า ลองตัดงานเก่าที่ไม่เกี่ยวข้อง หรือรวม bullet ที่คล้ายกัน',
+    importHint: 'ดึงงาน การศึกษา และทักษะที่เก็บไว้ในคลังประสบการณ์มาใส่ CV เลือกได้เองและแก้ไขต่อได้',
     sampleTitle: 'พรีวิวนี้ใช้ข้อมูลตัวอย่างสมมติ', sampleBody: 'ส่วนที่แรเงาสีเหลืองในพรีวิวเป็นตัวอย่าง ไม่ถูกบันทึกหรือส่งออก ยังขาดข้อมูลของคุณในส่วนเหล่านี้:',
     errors: { resume_incomplete: 'ใส่ชื่อและข้อมูลอย่างน้อยหนึ่งหัวข้อก่อนบันทึก', render_failed: 'สร้าง PDF ไม่สำเร็จ ข้อมูลของคุณยังอยู่ ลองอีกครั้ง',
       draft_conflict: 'ร่างนี้ถูกแก้จากที่อื่น โหลดร่างล่าสุดแล้วลองอีกครั้ง', resume_invalid: 'ข้อมูลบางช่องไม่ถูกต้อง', document_busy: 'เอกสารนี้กำลังถูกประมวลผลอยู่ ลองอีกครั้งในอีกสักครู่', generic: 'บันทึกไม่สำเร็จ ลองอีกครั้ง' },
@@ -77,7 +78,7 @@ export const copy: Record<'th' | 'en', Copy> = {
     summaryPlaceholder: 'Data analyst with 4 years of experience in SQL and Python',
     referencesNote: 'References are other people’s details. They are never sent to AI or used as evidence.', onRequest: 'Show "Available on request" instead of details',
     itemLabel: (s, n) => `${s} item ${n}`, up: 'Up', down: 'Down', remove: 'Remove', add: s => `Add ${s.toLowerCase()}`,
-    noLevel: 'Not set', level: n => `${n} of 5`, publish: 'Save as new version', publishTitle: 'Save as a new version?',
+    publish: 'Save as new version', publishTitle: 'Save as a new version?',
     publishBodyCv: 'A new CV version is made from this draft and can be used for evaluations and tailoring at once. Its entries are added to your experience bank.',
     publishBodyDoc: 'A new version of this document is made. These edits stay in this tailored CV and are not added to your experience bank.', cancel: 'Cancel',
     publishedCv: n => `CV version ${n} saved.`, publishedDoc: n => `Document version ${n} saved.`, open: 'Open',
@@ -89,6 +90,7 @@ export const copy: Record<'th' | 'en', Copy> = {
     personalNote: 'Hidden from the CV until you show it, and never sent to AI. Foreign employers and applicant tracking systems often do not want it.',
     cvName: 'CV name', docName: 'Document name', renameFailed: 'Could not rename. Try again.', pages: n => (n === 1 ? '1 page' : `${n} pages`),
     tooLong: 'Most CVs work best at 1–2 pages. Drop older unrelated jobs or merge similar bullets.',
+    importHint: 'Bring jobs, education and skills from your experience bank into this CV. You choose what goes in and can edit it after.',
     sampleTitle: 'This preview uses invented sample content', sampleBody: 'Parts shaded yellow in the preview are samples; they are not saved or exported. Your own content is still missing in:',
     errors: { resume_incomplete: 'Add your name and at least one section before saving.', render_failed: 'The PDF could not be made. Your data is safe; try again.',
       draft_conflict: 'This draft changed elsewhere. Load the latest draft and try again.', resume_invalid: 'Some fields are not valid.', document_busy: 'This document is being processed. Try again shortly.', generic: 'Could not save. Try again.' },

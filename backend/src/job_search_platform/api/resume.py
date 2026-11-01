@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 from sqlalchemy import func, select
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, write_actor
@@ -294,6 +294,25 @@ async def theme_preview_cv_draft(project_id: UUID, cv_id: UUID, body: ThemePrevi
 async def theme_preview_document_draft(project_id: UUID, document_id: UUID, body: ThemePreview, actor=Depends(write_actor),
                                        services: Services = Depends(get_services)):
     return await _theme_preview("document", project_id, document_id, body, actor, services)
+
+
+class FromExperience(_Body):
+    item_ids: Annotated[list[UUID], Field(min_length=1, max_length=200)]
+
+
+@router.post(CV_DRAFT + "/from-experience")
+async def from_experience_cv_draft(project_id: UUID, cv_id: UUID, body: FromExperience, actor=Depends(write_actor),
+                                   services: Services = Depends(get_services)):
+    """The chosen experience-bank items as CV sections. Nothing is saved: the builder merges them into the draft, where the owner edits them."""
+    with services.sessions() as db:
+        _draft(db, actor, project_id, cv_id=cv_id)  # access first
+        ids = set(body.item_ids)
+        rows = db.scalars(select(ExperienceItem).where(ExperienceItem.project_id == project_id, ExperienceItem.id.in_(ids),
+                                                       ExperienceItem.removed_at.is_(None))
+                          .order_by(ExperienceItem.created_at, ExperienceItem.id)).all()
+        if len(rows) != len(ids):
+            raise ServiceError("not_found")
+        return {"resume_data": rs.from_bank(list(rows)).model_dump()}
 
 
 @router.post(CV_DRAFT + "/publish", status_code=201)

@@ -11,12 +11,13 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog';
 import { BusyNote } from '../../components/BusyNote';
-import { ACCENTS, FIELDS, PERSONAL_KEYS, emptyItem, normalize, type Draft, type Field, type Item, type Lang, type ListSection, type ResumeData, type SectionName } from './sections';
+import { ACCENTS, FIELDS, PERSONAL_KEYS, emptyItem, mergeResume, normalize, type Draft, type Field, type Item, type Lang, type ListSection, type ResumeData, type SectionName } from './sections';
 import { ThemePanel } from '../themes/ThemePanel';
 import { isCustom, type Working } from '../themes/themes';
 import { useResource } from '../projects/useResource';
 import { copy } from './copy';
 import { PhotoField } from './PhotoField';
+import { ImportExperience } from './ImportExperience';
 import { AiLabel } from '@/components/AiMark';
 
 type Kind = 'cv' | 'document';
@@ -189,6 +190,11 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     {published !== null && <div role="status" className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm">{kind === 'cv' ? c.publishedCv(published) : c.publishedDoc(published)} <Link className="font-medium text-primary underline" to={back}>{c.open}</Link></div>}
     {kind === 'document' && <p className="rounded-lg border bg-muted/40 p-3 text-sm">{c.docNote}</p>}
 
+    {kind === 'cv' && <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4">
+      <ImportExperience projectId={projectId} base={base} locale={locale} onAdd={add => data(d => mergeResume(d, add))} />
+      <p className="text-sm text-muted-foreground">{c.importHint}</p>
+    </div>}
+
     <ThemePanel templateId={draft.template_id} accent={draft.accent} hasPhoto={!!r.basics.photo} locale={locale}
       onPick={id => change({ ...draft, template_id: id })} onWorking={tryTheme} />
 
@@ -301,7 +307,6 @@ function ItemsEditor({ name, data, locale, update }: { name: ListSection; data: 
 }
 
 function FieldInput({ field, item, locale, prefix, onChange }: { field: Field; item: Item; locale: Lang; prefix: string; onChange: (value: unknown) => void }) {
-  const c = copy[locale];
   const id = `${prefix}-${field.key}`;
   const label = field[locale];
   const placeholder = field.placeholder?.[locale];
@@ -313,9 +318,6 @@ function FieldInput({ field, item, locale, prefix, onChange }: { field: Field; i
       <Textarea id={id} rows={field.kind === 'lines' ? 4 : 3} value={text} placeholder={placeholder}
         onChange={e => onChange(field.kind === 'lines' ? e.target.value.split('\n').slice(0, 20) : e.target.value)} /></div>;
   }
-  if (field.kind === 'level') return <div className="grid gap-1.5"><Label htmlFor={id}>{label}</Label>
-    <select id={id} className="min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={value == null ? '' : String(value)} onChange={e => onChange(e.target.value ? Number(e.target.value) : null)}>
-      <option value="">{c.noLevel}</option>{[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{c.level(n)}</option>)}</select></div>;
   if (field.kind === 'keywords') return <TextField id={id} label={label} value={((value as string[]) ?? []).join(', ')} onChange={v => onChange(v.split(',').map(s => s.trimStart()).slice(0, 20))} />;
   return <TextField id={id} label={label} value={String(value ?? '')} placeholder={placeholder} type={field.kind === 'month' ? 'month' : field.kind === 'url' ? 'url' : 'text'} onChange={onChange} />;
 }

@@ -52,10 +52,6 @@
   let kept = items.filter(filled)
   if kept.len() > 0 { list(spacing: 0.45em * dens, ..kept.map(h => [#h])) }
 }
-#let level-dots(level, color) = if level != none {
-  let dot(on) = box(width: 5pt, height: 5pt, radius: 1pt, fill: if on { color } else { none }, stroke: 0.6pt + color)
-  box(stack(dir: ltr, spacing: 2.5pt, ..range(5).map(i => dot(i < level))))
-}
 
 #let link-or(url, label) = if filled(url) { link(url)[#label] } else { label }
 
@@ -81,7 +77,7 @@
   } else if name == "references" {
     (strong(item.name), sub(join((item.relation, item.contact))))
   } else if name == "skills" {
-    ([#strong(item.name) #h(4pt) #level-dots(item.level, color)],
+    (strong(item.name),
      if item.keywords.filter(filled).len() > 0 { text(size: 9pt, fill: muted)[#join(item.keywords, sep: ", ")] })
   } else if name == "languages" {
     ([#strong(item.name)#if filled(item.level) [ — #item.level]],)
