@@ -30,7 +30,7 @@ export function SectionCard({ title, description, footer, onSubmit, children }: 
     {footer && <CardFooter className="flex-wrap justify-end gap-2">{footer}</CardFooter>}
   </>;
   return <Card>
-    <CardHeader><CardTitle role="heading" aria-level={2}>{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader>
+    <CardHeader><CardTitle>{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader>
     {onSubmit ? <form onSubmit={onSubmit} className="grid gap-0">{body}</form> : body}
   </Card>;
 }

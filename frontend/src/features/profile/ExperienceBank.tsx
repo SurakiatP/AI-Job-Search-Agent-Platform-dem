@@ -102,7 +102,7 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
   };
 
   return <section aria-labelledby="experience-bank-title" className="grid gap-4">
-    <div><h2 id="experience-bank-title" className="text-lg font-semibold">{c.title}</h2><p className="text-sm text-muted-foreground">{c.hint}</p></div>
+    <div><h2 id="experience-bank-title" tabIndex={-1} className="text-lg font-semibold">{c.title}</h2><p className="text-sm text-muted-foreground">{c.hint}</p></div>
     <div role="status" aria-live="polite" className="text-sm">
       {bank.data && !bank.data.provider_configured && <p className="flex flex-wrap items-center gap-2">{gatewayHelp.isAdmin ? c.noProvider : gatewayHelp.contactText} {gatewayHelp.isAdmin && <Link className="underline" to="/app/settings?section=gateway">{c.settings}</Link>}</p>}
       {extraction && active && <BusyNote announce={false} bar label={status === 'queued' ? c.queued : c.running} action={<Button size="sm" variant="outline" onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/agent-runs/${extraction.run_id}/cancel`, { method: 'POST' })).catch(() => undefined)}>{c.stop}</Button>} />}
@@ -139,7 +139,7 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
         </li>)}</ul>
       </div>)}
     </div>)}
-    {removing && <ConfirmDeleteDialog title={c.removeTitle} description={`${c.removeBody} “${removing.text}”`} confirmLabel={c.remove}
+    {removing && <ConfirmDeleteDialog title={c.removeTitle} description={`${c.removeBody} “${removing.text}”`} confirmLabel={c.remove} returnFocus={() => document.getElementById('experience-bank-title')}
       onConfirm={() => apiRequest(base + '/' + removing.id, { method: 'DELETE' }).then(() => undefined)}
       onDone={() => { setRemoving(null); bank.reload(); }} onClose={() => setRemoving(null)} />}
     <FactForm c={c} initial={blank} submitLabel={c.add} onSubmit={d => act(() => sendJson(base, 'POST', toBody(d)))} />

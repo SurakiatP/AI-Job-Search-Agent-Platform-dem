@@ -8,7 +8,7 @@ export function CardHeader({ className, ...props }: ComponentProps<'div'>) {
   return <div className={cn('flex flex-col gap-1.5 p-5 sm:p-6', className)} {...props} />;
 }
 export function CardTitle({ className, ...props }: ComponentProps<'h2'>) {
-  return <h2 className={cn('font-semibold leading-snug', className)} {...props} />;
+  return <h2 className={cn('text-lg font-semibold leading-snug', className)} {...props} />;
 }
 export function CardDescription({ className, ...props }: ComponentProps<'p'>) {
   return <p className={cn('text-sm text-muted-foreground', className)} {...props} />;

@@ -6,8 +6,8 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } fr
 
 // Destructive confirm. `errors` maps a 409 error code to inline copy; any other failure shows a generic retry message.
 // A 404 means the item is already gone, so it counts as success.
-export function ConfirmDeleteDialog({ title, description, confirmLabel, onConfirm, onDone, onClose, errors = {} }: {
-  title: string; description: string; confirmLabel: string; onConfirm: () => Promise<void>; onDone: () => void; onClose: () => void; errors?: Record<string, ReactNode>;
+export function ConfirmDeleteDialog({ title, description, confirmLabel, onConfirm, onDone, onClose, errors = {}, returnFocus }: {
+  title: string; description: string; confirmLabel: string; onConfirm: () => Promise<void>; onDone: () => void; onClose: () => void; errors?: Record<string, ReactNode>; returnFocus?: () => HTMLElement | null;
 }) {
   const th = useTranslation().i18n.language.startsWith('th');
   const [busy, setBusy] = useState(false);
@@ -22,7 +22,7 @@ export function ConfirmDeleteDialog({ title, description, confirmLabel, onConfir
     }
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
-    <DialogContent>
+    <DialogContent fallbackFocus={returnFocus}>
       <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>

@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 export const Dialog = Primitive.Root;
 export const DialogClose = Primitive.Close;
 
-export function DialogContent({ className, onOpenAutoFocus, onCloseAutoFocus, ...props }: ComponentProps<typeof Primitive.Content>) {
+// `fallbackFocus` names where focus lands when the element that opened the dialog is gone (e.g. a deleted row).
+export function DialogContent({ className, onOpenAutoFocus, onCloseAutoFocus, fallbackFocus, ...props }: ComponentProps<typeof Primitive.Content> & { fallbackFocus?: () => HTMLElement | null }) {
   const previousFocus = useRef<HTMLElement | null>(null);
   return <Primitive.Portal>
     <Primitive.Overlay className="drawer-overlay z-50" />
@@ -19,6 +20,9 @@ export function DialogContent({ className, onOpenAutoFocus, onCloseAutoFocus, ..
         if (!onCloseAutoFocus && !event.defaultPrevented && previousFocus.current?.isConnected) {
           event.preventDefault();
           previousFocus.current.focus();
+        } else if (!onCloseAutoFocus && !event.defaultPrevented && fallbackFocus) {
+          event.preventDefault();
+          fallbackFocus()?.focus();
         }
       }} />
   </Primitive.Portal>;

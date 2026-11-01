@@ -91,7 +91,7 @@ export function ProjectSharing({ projectId }: { projectId: string }) {
     </Dialog>
 
     <Card>
-      <CardHeader><CardTitle role="heading" aria-level={2}>{t('activeGrants')}</CardTitle><CardDescription>{t('activeGrantsHint')}</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{t('activeGrants')}</CardTitle><CardDescription>{t('activeGrantsHint')}</CardDescription></CardHeader>
       <CardContent className={grants.data ? 'pb-6' : ''}>
         {grants.status === 'loading' && <LoadingBlock label={t('loading')} />}
         {grants.status === 'error' && <Notice>{t('loadError')}</Notice>}

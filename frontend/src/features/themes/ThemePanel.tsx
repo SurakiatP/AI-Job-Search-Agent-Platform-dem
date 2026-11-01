@@ -31,7 +31,7 @@ function Card({ id, name, layout, tokens, selected, c, ats, photo, onPick }: {
   id: string; name: string; layout: string; tokens: Tokens; selected: boolean; c: Copy; ats: boolean; photo: boolean; onPick: (id: string) => void;
 }) {
   return <button type="button" aria-pressed={selected} onClick={() => onPick(id)}
-    className="group grid gap-2 rounded-lg border bg-card p-2 text-left transition-colors hover:border-[color:var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card aria-pressed:border-primary aria-pressed:ring-1 aria-pressed:ring-primary motion-reduce:transition-none">
+    className="group grid gap-2 rounded-lg border bg-card p-2 text-left transition-colors hover:border-[color:var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card aria-pressed:border-primary aria-pressed:ring-1 aria-pressed:ring-primary aria-pressed:focus-visible:ring-2 motion-reduce:transition-none">
     <span className="relative block aspect-[3/4] overflow-hidden rounded-sm border bg-white shadow-sm"><ThemeThumb layout={layout} tokens={tokens} />
       {selected && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground" aria-label={c.selected}><Check className="size-3.5" aria-hidden="true" /></span>}
     </span>
@@ -69,17 +69,21 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
   const token = <K extends keyof Tokens>(key: K, value: Tokens[K]) => edit && change({ ...edit, tokens: { ...edit.tokens, [key]: value } });
   const pick = (id: string) => { setNote(null); setConfirming(false); change(null); onPick(id); };
 
-  const explain = (error: unknown): string => {
+  const explain = (error: unknown, context: 'save' | 'import' = 'import'): string => {
     if (!(error instanceof ApiError)) return c.failed;
     if (error.code === 'theme_in_use') return c.inUse(String(error.fields?.used_by ?? '?'));
     if (error.code === 'theme_limit') return c.limit;
     if (error.code === 'duplicate') return c.taken;
-    if (error.code === 'theme_invalid') return c.badFile(String(error.fields?.rule ?? ''));
+    if (error.code === 'theme_invalid') {
+      const rule = String(error.fields?.rule ?? '');
+      if (context === 'import') return c.badFile(rule);
+      return rule === 'name' ? c.needName : rule === 'tokens.accent' ? c.contrast : c.failed;
+    }
     return c.failed;
   };
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<void>, context: 'save' | 'import' = 'import') {
     setBusy(true); setNote(null);
-    try { await action(); } catch (error) { setNote({ kind: 'error', text: explain(error) }); } finally { setBusy(false); }
+    try { await action(); } catch (error) { setNote({ kind: 'error', text: explain(error, context) }); } finally { setBusy(false); }
   }
   const saveTheme = () => {
     if (edit && !edit.name.trim()) { flushSync(() => setNameMissing(true)); nameInput.current?.focus(); return; }
@@ -87,7 +91,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
     if (!edit) return;
     const saved = await sendJson<Custom>('/resume-themes', 'POST', { name: edit.name.trim(), layout: edit.layout, tokens: edit.tokens });
     list.reload(); change(null); onPick(customId(saved.id)); setNote({ kind: 'ok', text: c.saved });
-    });
+    }, 'save');
   };
   const importFile = (picked: File | undefined) => {
     if (!picked) return;

@@ -118,4 +118,4 @@ def test_thai_role_synonyms_from_roles_one_way():
     # Classification-bucket aliases are not search synonyms (they would give wrong recall).
     assert not (jd._NOT_SYNONYMS & syn.keys())
     # The constant filters itself, so also pin the loose aliases that once mapped to another occupation.
-    assert not {"พนักงานการเงิน", "วิศวกรสนาม", "ผู้ประสานงานโครงการ", "เจ้าหน้าที่ประสานงาน", "นิติกร", "ผู้จัดการฝ่ายการเงิน"} & syn.keys()
+    assert not {"พนักงานการเงิน", "วิศวกรสนาม", "ผู้ประสานงานโครงการ", "เจ้าหน้าที่ประสานงาน", "นิติกร", "ผู้จัดการฝ่ายการเงิน", "เจ้าหน้าที่นิติกร", "พนักงานขับรถ", "คนขับรถ"} & syn.keys()

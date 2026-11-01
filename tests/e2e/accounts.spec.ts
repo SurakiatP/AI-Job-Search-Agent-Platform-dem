@@ -240,7 +240,7 @@ test('login explains a rate limit with the wait time', async ({ page }) => {
   await expect(page.getByRole('alert')).toContainText('Too many attempts. Try again in 42 seconds.');
 });
 
-for (const [retryAfter, text] of [['60', 'Try again in 60 seconds.'], ['121', 'Try again in 3 minutes.'], ['3412', 'Try again in 57 minutes.']] as const) {
+for (const [retryAfter, text] of [['1', 'Try again in 1 second.'], ['2', 'Try again in 2 seconds.'], ['60', 'Try again in 60 seconds.'], ['119', 'Try again in 119 seconds.'], ['120', 'Try again in 2 minutes.'], ['121', 'Try again in 3 minutes.'], ['3412', 'Try again in 57 minutes.']] as const) {
   test(`login rate limit of ${retryAfter} s reads as ${text}`, async ({ page }) => {
     await mockApi(page, true);
     await page.route('**/v1/auth/login', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'rate_limited', retryable: true, fields: { retry_after: retryAfter } }) }));
