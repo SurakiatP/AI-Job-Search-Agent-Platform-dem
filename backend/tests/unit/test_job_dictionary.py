@@ -116,4 +116,6 @@ def test_thai_role_synonyms_from_roles_one_way():
     assert all(not k.isascii() and v and all(x.isascii() and x == x.lower() for x in v) for k, v in syn.items())
     assert job_index.SETTINGS["synonyms"] == syn
     # Classification-bucket aliases are not search synonyms (they would give wrong recall).
-    assert not {"ช่างภาพ", "ที่ปรึกษาทางการเงิน", "ช่างเชื่อม", "ผู้จัดการฝ่ายขาย", "สถาปนิกซอฟต์แวร์", "บาริสต้า", "พนักงานบริการ", "มัณฑนากร", "นักออกแบบภายใน", "พนักงานนวด", "นักวิเคราะห์ความเสี่ยง", "เจ้าหน้าที่ดูแลลูกค้า"} & syn.keys()
+    assert not (jd._NOT_SYNONYMS & syn.keys())
+    # The constant filters itself, so also pin the loose aliases that once mapped to another occupation.
+    assert not {"พนักงานการเงิน", "วิศวกรสนาม", "ผู้ประสานงานโครงการ", "เจ้าหน้าที่ประสานงาน", "นิติกร", "ผู้จัดการฝ่ายการเงิน"} & syn.keys()

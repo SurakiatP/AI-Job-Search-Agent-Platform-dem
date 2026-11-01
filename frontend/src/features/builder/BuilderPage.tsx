@@ -19,6 +19,7 @@ import { copy } from './copy';
 import { PhotoField } from './PhotoField';
 import { ImportExperience } from './ImportExperience';
 import { AiLabel } from '@/components/AiMark';
+import { dateLocale } from '../../lib/locale';
 
 type Kind = 'cv' | 'document';
 type SaveState = 'saved' | 'saving' | 'dirty' | 'offline' | 'conflict' | 'invalid';
@@ -144,7 +145,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
   const r = draft.resume_data;
   const back = kind === 'cv' ? `/app/projects/${projectId}/profile` : `/app/projects/${projectId}/documents/${documentId}`;
 
-  const status = { saved: savedAt ? c.savedAt(savedAt.toLocaleTimeString(locale === 'th' ? 'th-TH' : 'en-GB', { hour: '2-digit', minute: '2-digit' })) : c.saved,
+  const status = { saved: savedAt ? c.savedAt(savedAt.toLocaleTimeString(dateLocale(locale), { hour: '2-digit', minute: '2-digit' })) : c.saved,
     saving: c.saving, dirty: c.saving, offline: c.offline, conflict: c.conflict, invalid: c.invalid(invalidPath) }[save];
 
   // Same rule as the server's sample fill (services/resume.py with_sample): empty core parts that are not hidden show sample content.

@@ -142,11 +142,11 @@ Each step of the search owns a hue: `stage-cv`, `stage-search`, `stage-evaluate`
 
 **Heading Font:** Noto Serif Thai 500 (with Georgia as load-failure fallback)  
 **Body Font:** Noto Sans Thai, Manrope, sans-serif  
-**Character:** Serif is for `h1` and for `h2` authored at 18px or larger (including dialog titles), always weight 500, letter-spacing 0. Markdown output (AI answers) stays sans. `h3`, body, controls and small headings (kanban column, sidebar labels, `CardTitle`) are Noto Sans Thai. Manrope is the English document fallback. Prompt is no longer used.
+**Character:** Serif is for `h1` and for `h2` authored at 18px or larger (including dialog titles), always weight 500, letter-spacing 0. Markdown output (AI answers) stays sans. `h3`, body, controls and small headings (kanban column, sidebar labels) are Noto Sans Thai. `CardTitle` is authored `text-lg` (18px), so it renders serif. Manrope is the English document fallback. Prompt is no longer used.
 
 ### Hierarchy
 
-- **Page title** (serif 500, 28px, 34px from 768px, 1.4): `PageHeader` h1.
+- **Page title** (serif 500, 24px, 34px from 768px, 1.35): `PageHeader` h1.
 - **Section title** (serif 500, 18–24px, 1.45): large `h2` and dialog titles. 18px is the serif floor, except the header wordmark.
 - **Body** (sans 400, 16px, 1.7): default interface and form text; inputs use 16px.
 - **Label** (sans 500, 14px, 1.6): buttons, navigation rows, tabs, labels.

@@ -10,6 +10,7 @@ import { useRunGate } from '@/lib/accountGate';
 import { apiRequest } from '@/lib/api';
 import type { Copy } from './copy';
 import { CopyButton, Empty, useNow, type Locale } from './shared';
+import { dateLocale } from '../../lib/locale';
 
 type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor' | 'jobs:search' | 'applications:apply' | 'applications:write';
 // Only job search can be granted to an outside agent for now; the backend still accepts the other scopes and old grants keep their labels.
@@ -46,7 +47,7 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
     catch { setFailed(true); } finally { setBusy(false); grants.reload(); }
   }
 
-  const fmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const fmt = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
   const state = (g: Grant) => g.revoked_at ? 'revoked' : Date.parse(g.expires_at) <= now ? 'expired' : 'active';
   return <div className="grid gap-6">
     {failed && <p role="alert" className="text-sm text-destructive">{c.opaction}</p>}

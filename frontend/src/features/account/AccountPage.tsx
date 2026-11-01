@@ -11,6 +11,8 @@ import { Label } from '../../components/ui/label';
 import { apiRequest, chooseAvatarPreset, deleteAccount, forgotPassword, logout, refreshOwnerSession, removeAvatar, resendVerification, sendDeletionCode, uploadAvatar, useAccount } from '../../lib/api';
 import { Avatar, AVATAR_PRESETS, PresetArt } from '../../components/Avatar';
 import { CodeInput } from '../../components/CodeInput';
+import { rateLimitText } from '../../lib/rateLimit';
+import { dateLocale } from '../../lib/locale';
 import { ApiError, type AccountAgent } from '../../lib/api-types';
 import { authCopy } from '../auth/copy';
 import { ErrorState, LoadingState } from '../projects/PageStates';
@@ -87,7 +89,7 @@ function EmailSection() {
       const result = await forgotPassword(account.email);
       setReset(result.mail_enabled === false ? { kind: 'off' } : { kind: 'sent', text: t('account.passwordResetSent', { email: account.email }) });
     } catch (error) {
-      setReset({ kind: 'error', text: error instanceof ApiError && error.code === 'rate_limited' ? t('errors.rate_limited_minutes', { minutes: Math.ceil(Number(error.fields?.retry_after ?? 60) / 60) }) : t('errors.request_failed') });
+      setReset({ kind: 'error', text: error instanceof ApiError && error.code === 'rate_limited' ? rateLimitText(t, error.fields?.retry_after) : t('errors.request_failed') });
     }
   }
   async function resend() {
@@ -122,7 +124,7 @@ function AgentsSection() {
   const { t: tu } = useTranslation('utilitiesWorkspace');
   const agents = useResource<AccountAgent[]>('/account/agents');
   const [revoking, setRevoking] = useState<AccountAgent | null>(null);
-  const fmt = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
+  const fmt = new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'medium', timeStyle: 'short' });
   const stateOf = (a: AccountAgent) => a.revoked_at ? 'revoked' : Date.parse(a.expires_at) <= Date.now() ? 'expired' : 'active';
   const all = agents.data ?? [];
   const active = all.filter(a => stateOf(a) === 'active');
@@ -181,7 +183,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
   async function requestCode() {
     setCodeState('sending'); setError('');
     try { await sendDeletionCode(); setCodeState('sent'); setCode(''); }
-    catch (caught) { setCodeState('idle'); setError(caught instanceof ApiError && caught.code === 'rate_limited' ? t('errors.rate_limited', { seconds: caught.fields?.retry_after ?? '60' }) : t('errors.request_failed')); }
+    catch (caught) { setCodeState('idle'); setError(caught instanceof ApiError && caught.code === 'rate_limited' ? rateLimitText(t, caught.fields?.retry_after) : t('errors.request_failed')); }
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -193,7 +195,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
       window.location.replace('/');
     } catch (caught) {
       const key = caught instanceof ApiError ? `errors.${caught.code}` : '';
-      setError(key && ['errors.invalid_credentials', 'errors.confirmation_mismatch', 'errors.rate_limited', 'errors.invalid_code'].includes(key) ? t(key, { seconds: caught instanceof ApiError ? caught.fields?.retry_after ?? '60' : '60' }) : t('errors.request_failed'));
+      setError(caught instanceof ApiError && caught.code === 'rate_limited' ? rateLimitText(t, caught.fields?.retry_after) : key && ['errors.invalid_credentials', 'errors.confirmation_mismatch', 'errors.invalid_code'].includes(key) ? t(key) : t('errors.request_failed'));
       setBusy(false);
     }
   }

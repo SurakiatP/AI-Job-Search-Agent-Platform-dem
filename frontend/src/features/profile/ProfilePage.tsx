@@ -23,6 +23,7 @@ import { ExperienceBank } from './ExperienceBank';
 import { sendJson, useResource } from '../projects/useResource';
 import { BuildCvButton } from '../builder/BuildCvButton';
 import { PageHeader } from '@/components/PageHeader';
+import { dateLocale } from '../../lib/locale';
 
 const copy = {
   th: { editBuilder: 'แก้ไขในตัวสร้าง', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ย้าย CV “${n}” ไปถังขยะ?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้ จนกว่าจะกู้คืนจากถังขยะ การประเมินที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', delConfirm: 'ย้ายไปถังขยะ', moved: (n: string) => `ย้าย “${n}” ไปถังขยะแล้ว`, undo: 'เลิกทำ', undoFailed: 'เลิกทำไม่สำเร็จ กู้คืนได้จากถังขยะ', openTrash: 'เปิดถังขยะ', dismiss: 'ปิด', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง' },
@@ -149,8 +150,8 @@ export function ProfilePage() {
     setExtractError(false);
     try { await apiRequest(`/async/projects/${projectId}/cvs/${cv.id}/experience-extractions`, { method: 'POST' }); bank.reload(); } catch { setExtractError(true); }
   }
-  const date = new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', { dateStyle: 'medium' });
-  const dateTime = new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+  const date = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium' });
+  const dateTime = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
   const base = `/app/projects/${projectId}`;
   const list = cvs.data ?? [];
   const primary = list.find(cv => cv.is_primary);

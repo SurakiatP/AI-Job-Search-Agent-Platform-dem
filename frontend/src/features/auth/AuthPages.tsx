@@ -11,6 +11,7 @@ import { Label } from '../../components/ui/label';
 import { forgotPassword, login, refreshOwnerSession, resendVerification, resetPassword, signup, useOwnerSession, verifyEmail, verifyEmailCode } from '../../lib/api';
 import { CodeInput } from '../../components/CodeInput';
 import { ApiError } from '../../lib/api-types';
+import { rateLimitText } from '../../lib/rateLimit';
 import { authCopy } from './copy';
 
 const linkClass = 'rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -50,7 +51,7 @@ function useErrorText() {
   const { t, i18n } = useTranslation();
   return (error: unknown): string => {
     if (!(error instanceof ApiError)) return t('errors.request_failed');
-    if (error.code === 'rate_limited') return t('errors.rate_limited', { seconds: error.fields?.retry_after ?? '60' });
+    if (error.code === 'rate_limited') return rateLimitText(t, error.fields?.retry_after);
     const key = `errors.${error.code}`;
     return i18n.exists(key) ? t(key) : t('errors.request_failed');
   };
@@ -225,7 +226,7 @@ export function VerifyEmailPage() {
       {signedIn ? <>
         <Button variant="outline" disabled={resend.status === 'busy' || resend.status === 'sent'} onClick={() => void requestNew()}>{c.sendNewLink}</Button>
         {resend.status === 'sent' && <p role="status" className="text-sm text-success">{c.newLinkSent}</p>}
-        {resend.status === 'failed' && <p className="text-sm text-destructive [overflow-wrap:anywhere]">{resend.message}</p>}
+        {resend.status === 'failed' && <Alert>{resend.message}</Alert>}
         <p className="text-sm"><Link className={linkClass} to="/app/projects">{c.toProjects}</Link></p>
       </> : <Button asChild variant="outline"><Link to="/login">{c.loginToRequest}</Link></Button>}
     </>}

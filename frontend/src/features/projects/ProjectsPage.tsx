@@ -8,6 +8,7 @@ import { ErrorState, LoadingState } from './PageStates';
 import { useProjectCopy } from './copy';
 import { ProjectActions } from './ProjectActions';
 import { PageHeader } from '@/components/PageHeader';
+import { dateLocale } from '../../lib/locale';
 
 type Project = { id: string; name: string; created_at?: string };
 
@@ -32,7 +33,7 @@ export function ProjectsPage() {
     <ul className="grid gap-3">{projects.map(project => <li key={project.id} className="workspace-panel flex flex-wrap items-center justify-between gap-x-4 gap-y-3 p-4 sm:p-5">
       <div className="min-w-0 flex-1 basis-56">
         <h2 className="text-lg font-semibold"><Link className="break-words text-foreground hover:text-primary hover:underline" to={`/app/projects/${project.id}/overview`}>{project.name}</Link></h2>
-        {project.created_at && <p className="mt-1 text-sm text-muted-foreground">{c.created(new Date(project.created_at).toLocaleDateString(locale, { dateStyle: 'medium' }))}</p>}
+        {project.created_at && <p className="mt-1 text-sm text-muted-foreground">{c.created(new Date(project.created_at).toLocaleDateString(dateLocale(locale), { dateStyle: 'medium' }))}</p>}
       </div>
       <div className="flex items-center gap-2">
         <Button asChild><Link to={`/app/projects/${project.id}/overview`} aria-label={c.openNamed(project.name)}>{c.open}<ArrowRight size={17} aria-hidden="true" /></Link></Button>

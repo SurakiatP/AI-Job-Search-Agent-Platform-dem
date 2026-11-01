@@ -9,17 +9,19 @@ import { apiRequest } from '../../lib/api';
 import { ApiError, type EmploymentType, type ExperienceItem, type ExperienceKind, type ExperienceView, type SkillGroup } from '../../lib/api-types';
 import { sendJson, type useResource } from '../projects/useResource';
 import { AiLabel } from '@/components/AiMark';
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { dateLocale } from '../../lib/locale';
 
 const KINDS: ExperienceKind[] = ['experience', 'education', 'skill', 'certification', 'project', 'other'];
 const SKILL_GROUPS: SkillGroup[] = ['technical', 'tools', 'soft', 'language', 'domain'];
 const EMPLOYMENT: EmploymentType[] = ['full_time', 'part_time', 'contract', 'internship', 'freelance'];
 const copy = {
-  th: { title: 'คลังประสบการณ์', hint: 'ข้อเท็จจริงจาก CV ของคุณ AI ใช้ได้เฉพาะข้อมูลในคลังนี้', fromCv: (n: string) => `จาก CV: ${n}`, mine: 'เพิ่มเอง', fact: 'ข้อเท็จจริง', kind: 'ประเภท', role: 'ตำแหน่ง', org: 'องค์กร', period: 'ช่วงเวลา', add: 'เพิ่มข้อเท็จจริง', remove: 'ลบ', edit: 'แก้ไข', save: 'บันทึก', cancel: 'ยกเลิก', extract: 'สกัดประสบการณ์จาก CV ด้วย AI อีกครั้ง', extractFirst: 'สกัดประสบการณ์จาก CV ด้วย AI', loadError: 'โหลดคลังประสบการณ์ไม่สำเร็จ', stop: 'หยุด', retry: 'ลองอีกครั้ง',
+  th: { title: 'คลังประสบการณ์', hint: 'ข้อเท็จจริงจาก CV ของคุณ AI ใช้ได้เฉพาะข้อมูลในคลังนี้', fromCv: (n: string) => `จาก CV: ${n}`, mine: 'เพิ่มเอง', fact: 'ข้อเท็จจริง', kind: 'ประเภท', role: 'ตำแหน่ง', org: 'องค์กร', period: 'ช่วงเวลา', add: 'เพิ่มข้อเท็จจริง', remove: 'ลบ', removeTitle: 'ลบข้อเท็จจริงนี้?', removeBody: 'AI จะไม่ใช้ข้อเท็จจริงนี้อีก ลบแล้วกู้คืนไม่ได้', edit: 'แก้ไข', save: 'บันทึก', cancel: 'ยกเลิก', extract: 'สกัดประสบการณ์จาก CV ด้วย AI อีกครั้ง', extractFirst: 'สกัดประสบการณ์จาก CV ด้วย AI', loadError: 'โหลดคลังประสบการณ์ไม่สำเร็จ', stop: 'หยุด', retry: 'ลองอีกครั้ง',
     queued: 'เอเจนต์รอคิวสกัดประสบการณ์จาก CV', running: 'เอเจนต์กำลังประมวลผล: สกัดประสบการณ์จาก CV', failed: 'สกัดประสบการณ์ไม่สำเร็จ', done: (s: { added: number; duplicates: number; rejected: number }) => `เพิ่ม ${s.added}, ซ้ำ ${s.duplicates}, ทิ้ง ${s.rejected} (ไม่พบใน CV)`,
     noProvider: 'ยังไม่ได้ตั้งค่า AI gateway ใส่ OPENROUTER_API_KEY แล้วดูที่ ตั้งค่า > เกตเวย์ AI', settings: 'ไปที่การตั้งค่า', empty: 'ยังไม่มีข้อเท็จจริง เพิ่มเองได้ด้านล่าง', duplicate: 'มีข้อเท็จจริงนี้อยู่แล้ว', full: 'คลังเต็มแล้ว (1,000 รายการ)', failedAction: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง', other: 'อื่น ๆ', more: 'รายละเอียดเพิ่มเติม', optional: ' (ไม่บังคับ)', employment: 'การจ้างงาน', location: 'สถานที่', start: 'เริ่ม', end: 'สิ้นสุด', current: 'ยังทำอยู่ที่นี่', present: 'ปัจจุบัน', industry: 'อุตสาหกรรม', duties: 'หน้าที่รับผิดชอบ', wins: 'ผลงานที่วัดได้', skills: 'ทักษะที่ใช้', years: (y: number) => `ประสบการณ์ทำงานรวม ${y} ปี`, none: 'ไม่ระบุตำแหน่ง', count: (n: number) => `${n} รายการ`, notSet: 'ไม่ระบุ',
     types: { full_time: 'เต็มเวลา', part_time: 'พาร์ตไทม์', contract: 'สัญญาจ้าง', internship: 'ฝึกงาน', freelance: 'ฟรีแลนซ์' } as Record<EmploymentType, string>,
     skillGroup: 'กลุ่มทักษะ', degree: 'วุฒิ / สาขา', institution: 'สถาบัน', ungrouped: 'ยังไม่จัดกลุ่ม', skillGroups: { technical: 'ทักษะทางเทคนิค', tools: 'เครื่องมือและเทคโนโลยี', soft: 'ซอฟต์สกิล', language: 'ภาษา', domain: 'ความรู้เฉพาะสายงาน' } as Record<SkillGroup, string>, kinds: { experience: 'ประสบการณ์ทำงาน', education: 'การศึกษา', skill: 'ทักษะ', certification: 'ใบรับรอง', project: 'โปรเจกต์', other: 'อื่น ๆ' } },
-  en: { title: 'Experience bank', hint: 'Facts from your CVs. AI may only use what is in this bank.', fromCv: (n: string) => `From CV: ${n}`, mine: 'Added by you', fact: 'Fact', kind: 'Type', role: 'Role', org: 'Organization', period: 'Period', add: 'Add fact', remove: 'Remove', edit: 'Edit', save: 'Save', cancel: 'Cancel', extract: 'Extract experience from CV with AI again', extractFirst: 'Extract experience from CV with AI', loadError: 'Could not load the experience bank.', stop: 'Stop', retry: 'Retry',
+  en: { title: 'Experience bank', hint: 'Facts from your CVs. AI may only use what is in this bank.', fromCv: (n: string) => `From CV: ${n}`, mine: 'Added by you', fact: 'Fact', kind: 'Type', role: 'Role', org: 'Organization', period: 'Period', add: 'Add fact', remove: 'Remove', removeTitle: 'Remove this fact?', removeBody: 'AI will no longer use this fact. This cannot be undone.', edit: 'Edit', save: 'Save', cancel: 'Cancel', extract: 'Extract experience from CV with AI again', extractFirst: 'Extract experience from CV with AI', loadError: 'Could not load the experience bank.', stop: 'Stop', retry: 'Retry',
     queued: 'The agent is queued to extract experience from your CV', running: 'The agent is processing: extracting experience from your CV', failed: 'Extraction did not finish', done: (s: { added: number; duplicates: number; rejected: number }) => `Added ${s.added}, duplicates ${s.duplicates}, dropped ${s.rejected} (not found in the CV)`,
     noProvider: 'The AI gateway is not configured. Set OPENROUTER_API_KEY, then see Settings > AI gateway.', settings: 'Go to Settings', empty: 'No facts yet. You can add one below.', duplicate: 'This fact is already in the bank', full: 'The bank is full (1,000 facts)', failedAction: 'That did not work. Try again.', other: 'Other', more: 'More details', optional: ' (optional)', employment: 'Employment', location: 'Location', start: 'Start', end: 'End', current: 'I still work here', present: 'Present', industry: 'Industry', duties: 'Responsibilities', wins: 'Measurable achievements', skills: 'Skills used', years: (y: number) => `${y} years of work experience in total`, none: 'No role stated', count: (n: number) => `${n} ${n === 1 ? 'fact' : 'facts'}`, notSet: 'Not set',
     types: { full_time: 'Full time', part_time: 'Part time', contract: 'Contract', internship: 'Internship', freelance: 'Freelance' } as Record<EmploymentType, string>,
@@ -67,7 +69,7 @@ const toBody = (d: Draft) => {
   const t = (v: string) => v.trim() || null;
   return { kind: d.kind, skill_group: d.kind === 'skill' ? d.skill_group || null : null, text: d.text.trim(), role: t(d.role), organization: t(d.organization), period: t(d.period), employment_type: d.employment_type || null, location: t(d.location), start_date: d.start_date || null, end_date: d.is_current ? null : d.end_date || null, is_current: d.is_current, industry: t(d.industry), responsibilities: t(d.responsibilities), achievements: t(d.achievements), skills_used: t(d.skills_used) };
 };
-const month = (v: string, locale: 'th' | 'en') => new Date(v + '-01T00:00:00').toLocaleDateString(locale === 'th' ? 'th-TH' : 'en-GB', { month: 'short', year: 'numeric' });
+const month = (v: string, locale: 'th' | 'en') => new Date(v + '-01T00:00:00').toLocaleDateString(dateLocale(locale), { month: 'short', year: 'numeric' });
 const when = (i: ExperienceItem, c: Copy, locale: 'th' | 'en') => i.start_date || i.is_current ? [i.start_date ? month(i.start_date, locale) : '', i.is_current ? c.present : i.end_date ? month(i.end_date, locale) : ''].filter(Boolean).join(' – ') : i.period;
 
 export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { projectId: string; locale: 'th' | 'en'; primaryCvId: string | null; bank: ReturnType<typeof useResource<ExperienceView>> }) {
@@ -75,6 +77,7 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
   const gatewayHelp = useGatewayHelp(locale);
   const gate = useRunGate();
   const [editing, setEditing] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<ExperienceItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const status = bank.data?.extraction?.status;
   const active = status === 'queued' || status === 'running';
@@ -131,11 +134,14 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
                   {item.source === 'cv' && <AiLabel kind="extracted" className="mt-1.5" />}
                 </div>
                 <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => setEditing(item.id)} aria-label={c.edit + ': ' + item.text}>{c.edit}</Button>
-                  <Button size="sm" variant="ghost" className="text-destructive" aria-label={c.remove + ': ' + item.text} onClick={() => void act(() => apiRequest(base + '/' + item.id, { method: 'DELETE' })).catch(() => undefined)}>{c.remove}</Button></div>
+                  <Button size="sm" variant="ghost" className="text-destructive" aria-label={c.remove + ': ' + item.text} onClick={() => setRemoving(item)}>{c.remove}</Button></div>
               </div>}
         </li>)}</ul>
       </div>)}
     </div>)}
+    {removing && <ConfirmDeleteDialog title={c.removeTitle} description={`${c.removeBody} “${removing.text}”`} confirmLabel={c.remove}
+      onConfirm={() => apiRequest(base + '/' + removing.id, { method: 'DELETE' }).then(() => undefined)}
+      onDone={() => { setRemoving(null); bank.reload(); }} onClose={() => setRemoving(null)} />}
     <FactForm c={c} initial={blank} submitLabel={c.add} onSubmit={d => act(() => sendJson(base, 'POST', toBody(d)))} />
     {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}><Sparkles className="size-4" aria-hidden="true" />{extraction ? c.extract : c.extractFirst}</Button></div>}
   </section>;

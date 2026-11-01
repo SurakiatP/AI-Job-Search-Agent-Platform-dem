@@ -42,7 +42,7 @@ test('experience bank groups facts, adds and removes, and shows extraction resul
   await section.getByLabel('Type').selectOption('skill');
   await section.getByRole('button', { name: 'Add fact' }).click();
   await expect(section.getByText('Python')).toBeVisible();
-  await section.getByRole('button', { name: 'Remove: Ran BigQuery' }).click();
+  await section.getByRole('button', { name: 'Remove: Ran BigQuery' }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(section.getByText('Ran BigQuery')).toHaveCount(0);
 });
 

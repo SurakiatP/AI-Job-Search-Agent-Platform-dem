@@ -9,6 +9,7 @@ import { apiRequest } from '../../lib/api';
 import { ApiError, type WebhookDeliveryView, type WebhookEvent, type WebhookView } from '../../lib/api-types';
 import { sendJson, useResource } from '../projects/useResource';
 import { Field, LoadingBlock, Notice, SectionCard } from './Field';
+import { dateLocale } from '../../lib/locale';
 
 const EVENTS: WebhookEvent[] = ['run.waiting_approval', 'run.needs_input', 'run.completed', 'run.failed', 'run.cancelled', 'digest.ready'];
 
@@ -56,7 +57,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
   const [copyState, setCopyState] = useState<'' | 'ok' | 'fail'>('');
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<WebhookView | null>(null);
-  const when = new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-US', { dateStyle: 'short', timeStyle: 'short' });
+  const when = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'short', timeStyle: 'short' });
 
   async function run(action: () => Promise<unknown>) {
     if (busy) return;

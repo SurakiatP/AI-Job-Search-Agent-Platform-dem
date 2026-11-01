@@ -10,6 +10,7 @@ import type { ApplicationDetailView, ApplicationEventView, ApplicationStage } fr
 import { STAGES, stageLabel } from '../../lib/applicationStages';
 import { selectClass } from '../settings/Field';
 import { sendJson, useResource } from '../projects/useResource';
+import { dateLocale } from '../../lib/locale';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -51,7 +52,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
       case 'applied_via_approval': return t('appliedViaApproval');
     }
   };
-  const when = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const when = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
 
   if (!data) return result.status === 'error' ? <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{t('loadDetailError')}<Button variant="outline" size="sm" onClick={result.reload}>{t('retry')}</Button></p> : null;
   return <section aria-labelledby="application-tracking-title" aria-busy={busy} className={cn('grid min-w-0 content-start gap-6', className)}>

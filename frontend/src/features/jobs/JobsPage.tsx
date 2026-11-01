@@ -72,11 +72,11 @@ export function JobsPage() {
       <CardHeader><CardTitle>{appT('addPostingTitle')}</CardTitle></CardHeader>
       <CardContent>
         <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void save(); }}>
-          <div className="grid gap-2"><Label htmlFor="job-title">{t('workflow.jobTitle')}</Label><Input id="job-title" value={title} maxLength={300} onChange={event => setTitle(event.target.value)} required /></div>
+          <div className="grid gap-2"><Label htmlFor="job-title">{t('workflow.jobTitle')}</Label><Input id="job-title" value={title} maxLength={300} aria-invalid={error === 'missing' && !title.trim()} aria-describedby={error === 'missing' ? 'job-error' : undefined} onChange={event => { setTitle(event.target.value); if (error === 'missing') setError(null); }} required /></div>
           <div className="grid gap-2"><Label htmlFor="job-company">{t('workflow.company')}</Label><Input id="job-company" value={company} maxLength={300} onChange={event => setCompany(event.target.value)} /></div>
           <div className="grid gap-2"><Label htmlFor="job-source-url">{t('workflow.sourceUrl')}</Label><Input id="job-source-url" type="text" inputMode="url" aria-invalid={error === 'source'} value={sourceUrl} maxLength={2048} onChange={event => { setSourceUrl(event.target.value); if (error === 'source') setError(null); }} /></div>
-          <div className="grid gap-2"><Label htmlFor="job-description">{t('workflow.posting')}</Label><Textarea id="job-description" rows={8} maxLength={50000} value={description} onChange={event => setDescription(event.target.value)} required /></div>
-          {error && <p role="alert" className="text-sm text-destructive">{appT(error === 'source' ? 'invalidSource' : error === 'missing' ? 'missingFields' : 'savePostingError')}</p>}
+          <div className="grid gap-2"><Label htmlFor="job-description">{t('workflow.posting')}</Label><Textarea id="job-description" rows={8} maxLength={50000} value={description} aria-invalid={error === 'missing' && !description.trim()} aria-describedby={error === 'missing' ? 'job-error' : undefined} onChange={event => { setDescription(event.target.value); if (error === 'missing') setError(null); }} required /></div>
+          {error && <p id="job-error" role="alert" className="text-sm text-destructive">{appT(error === 'source' ? 'invalidSource' : error === 'missing' ? 'missingFields' : 'savePostingError')}</p>}
           <div><Button type="submit" busy={busy} disabled={busy}>{appT('savePosting')}</Button></div>
         </form>
       </CardContent>

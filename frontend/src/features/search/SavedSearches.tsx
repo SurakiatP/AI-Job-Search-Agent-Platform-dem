@@ -12,6 +12,7 @@ import { ApiError, type DigestFrequency, type SavedSearchFilters, type SavedSear
 import { selectClass } from '../settings/Field';
 import { sendJson, useResource } from '../projects/useResource';
 import { splitList } from './AdvancedFilters';
+import { dateLocale } from '../../lib/locale';
 
 const LIST_KEYS = ['seniority', 'employment_type', 'company_type', 'skills'] as const;
 
@@ -89,7 +90,7 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
   const [deleting, setDeleting] = useState<SavedSearchView | null>(null);
   const items = list.data?.items ?? [];
   const status = list.data?.status;
-  const when = new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' });
+  const when = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' });
 
   async function run(action: () => Promise<unknown>, ok?: string): Promise<boolean> {
     if (busy) return false;

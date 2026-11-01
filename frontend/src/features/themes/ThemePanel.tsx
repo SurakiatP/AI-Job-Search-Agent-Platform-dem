@@ -31,7 +31,7 @@ function Card({ id, name, layout, tokens, selected, c, ats, photo, onPick }: {
   id: string; name: string; layout: string; tokens: Tokens; selected: boolean; c: Copy; ats: boolean; photo: boolean; onPick: (id: string) => void;
 }) {
   return <button type="button" aria-pressed={selected} onClick={() => onPick(id)}
-    className="group grid gap-2 rounded-lg border bg-card p-2 text-left transition-colors hover:border-[color:var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-primary aria-pressed:ring-1 aria-pressed:ring-primary motion-reduce:transition-none">
+    className="group grid gap-2 rounded-lg border bg-card p-2 text-left transition-colors hover:border-[color:var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card aria-pressed:border-primary aria-pressed:ring-1 aria-pressed:ring-primary motion-reduce:transition-none">
     <span className="relative block aspect-[3/4] overflow-hidden rounded-sm border bg-white shadow-sm"><ThemeThumb layout={layout} tokens={tokens} />
       {selected && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground" aria-label={c.selected}><Check className="size-3.5" aria-hidden="true" /></span>}
     </span>
@@ -55,7 +55,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
   const [nameMissing, setNameMissing] = useState(false);
 
   if (list.status === 'loading' && !list.data) return <p className="text-sm text-muted-foreground" role="status">{c.loading}</p>;
-  if (!list.data) return <p className="text-sm text-destructive" role="alert">{c.loadFailed}</p>;
+  if (!list.data) return <div className="flex flex-wrap items-center gap-2 text-sm text-destructive" role="alert">{c.loadFailed}<Button size="sm" variant="outline" onClick={list.reload}>{c.retry}</Button></div>;
   const { presets, custom } = list.data;
   const preset = presets.find(p => p.id === templateId);
   const mine = custom.find(t => customId(t.id) === templateId);
@@ -109,7 +109,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
   const colourBad = edit ? !accentOk(edit.tokens.accent) : false;
   return <section aria-labelledby="theme-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 rounded-xl border bg-card p-4 sm:p-5">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h2 id="theme-title" className="flex items-center gap-2 text-base font-semibold"><Palette className="size-5 text-primary" aria-hidden="true" />{c.title}</h2>
+      <h2 id="theme-title" className="flex items-center gap-2 text-lg font-semibold"><Palette className="size-5 text-primary" aria-hidden="true" />{c.title}</h2>
       <div className="flex flex-wrap gap-2">
         {!edit && chosen && <Button size="sm" variant="outline" onClick={() => change(seed())}>{c.customize}</Button>}
         <Button size="sm" variant="outline" disabled={busy} onClick={() => file.current?.click()}><Upload className="size-4" aria-hidden="true" />{c.import}</Button>
@@ -145,10 +145,10 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
             {ACCENTS.map(a => <button key={a.id} type="button" aria-label={bc.accents[a.id]} aria-pressed={edit.tokens.accent.toUpperCase() === a.hex.toUpperCase()} onClick={() => token('accent', a.hex)}
               className="grid size-11 place-items-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground"><span className="size-7 rounded-full" style={{ background: a.hex }} /></button>)}
             <Label htmlFor="theme-hex" className="sr-only">{c.hex}</Label>
-            <Input id="theme-hex" className="w-28 font-mono uppercase" value={edit.tokens.accent} maxLength={7} aria-invalid={colourBad} aria-describedby={colourBad && /^#[0-9a-fA-F]{6}$/.test(edit.tokens.accent) ? 'theme-hex-error' : undefined}
+            <Input id="theme-hex" className="w-28 font-mono uppercase" value={edit.tokens.accent} maxLength={7} aria-invalid={colourBad} aria-describedby={colourBad ? 'theme-hex-error' : undefined}
               onChange={e => token('accent', e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`)} />
           </div>
-          {colourBad && /^#[0-9a-fA-F]{6}$/.test(edit.tokens.accent) && <p id="theme-hex-error" className="text-sm text-destructive" role="alert">{c.contrast}</p>}
+          {colourBad && <p id="theme-hex-error" className="text-sm text-destructive" role="alert">{/^#[0-9a-fA-F]{6}$/.test(edit.tokens.accent) ? c.contrast : c.badHex}</p>}
         </div>
         <Seg label={c.layout} value={edit.layout} options={LAYOUTS.map(l => [l, l.charAt(0).toUpperCase() + l.slice(1)] as [string, string])} onChange={v => edit && change({ ...edit, layout: v })} />
         <Seg label={c.font} value={edit.tokens.font_pair} options={[['sans', c.sans], ['serif', c.serif]]} onChange={v => token('font_pair', v)} />

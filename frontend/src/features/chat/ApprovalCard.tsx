@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import type { ApprovalView, Locale } from '../../lib/api-types';
 import { Button } from '@/components/ui/button';
+import { dateLocale } from '../../lib/locale';
 
 export function ApprovalCard({ approval, locale, busy, onDecision, onRefresh }: {
   approval: ApprovalView | null;
@@ -28,7 +29,7 @@ export function ApprovalCard({ approval, locale, busy, onDecision, onRefresh }: 
     </div>
     <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-1">
       <dt className="text-muted-foreground">{t.target}</dt><dd className="break-all">{target}</dd>
-      <dt className="text-muted-foreground">{t.expires}</dt><dd><time dateTime={approval.expires_at}>{new Date(approval.expires_at).toLocaleString(locale)}</time></dd>
+      <dt className="text-muted-foreground">{t.expires}</dt><dd><time dateTime={approval.expires_at}>{new Date(approval.expires_at).toLocaleString(dateLocale(locale))}</time></dd>
     </dl>
     {expired ? <div className="grid justify-items-start gap-3"><p role="status" className="text-sm">{t.expired}</p><Button type="button" onClick={onRefresh}>{t.refresh}</Button></div> : <>
       <label className="flex min-h-11 items-start gap-2 text-sm"><input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" checked={confirmation} onChange={event => setConfirmedIdentity(event.target.checked ? identity : '')} /> <span className="min-w-0 break-words">{t.confirm}</span></label>

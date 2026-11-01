@@ -111,7 +111,7 @@ test('agents list shows given date and revoke calls the grant route', async ({ p
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByText('Synthetic agent')).toBeVisible();
   await expect(page.getByText('client.example.test')).toBeVisible();
-  await expect(page.getByText(/Given\s+Oct 3, 2026/)).toBeVisible();
+  await expect(page.getByText(/Given\s+3 Oct 2026/)).toBeVisible();
   await page.getByRole('button', { name: 'Revoke', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Revoke access', exact: true }).click();
   await expect.poll(() => revoked).toBe(`DELETE /v1/projects/${projectId}/grants/${grantId}`);
@@ -239,6 +239,18 @@ test('login explains a rate limit with the wait time', async ({ page }) => {
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Too many attempts. Try again in 42 seconds.');
 });
+
+for (const [retryAfter, text] of [['60', 'Try again in 60 seconds.'], ['121', 'Try again in 3 minutes.'], ['3412', 'Try again in 57 minutes.']] as const) {
+  test(`login rate limit of ${retryAfter} s reads as ${text}`, async ({ page }) => {
+    await mockApi(page, true);
+    await page.route('**/v1/auth/login', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'rate_limited', retryable: true, fields: { retry_after: retryAfter } }) }));
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('synthetic@example.test');
+    await page.getByLabel('Password', { exact: true }).fill('whatever-password');
+    await page.getByRole('button', { name: 'Log in', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText(text);
+  });
+}
 
 test('an expired reset link offers a new one; a good reset returns to login with a notice', async ({ page }) => {
   await mockApi(page, true);

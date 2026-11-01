@@ -79,10 +79,10 @@ export function StepPanel({ index }: { index: number }) {
           <ul className="flex gap-2">{['#3730A3', '#1D4ED8', '#115E59', '#166534', '#9F1239', '#334155'].map((h, i) => <li key={h} aria-hidden="true" className={cn('size-6 rounded-full', i === 2 && 'ring-2 ring-ring ring-offset-2 ring-offset-card')} style={{ background: h }} />)}</ul></div>
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Check className="size-4 text-success" aria-hidden="true" />{pn.build.saved}</p>
       </div>
-      <div className="grid gap-2 rounded-lg border bg-background p-3 shadow-sm">
-        <span className="text-xs text-muted-foreground">{pn.build.preview}</span>
-        <div className="grid gap-1 border-b-2 pb-2" style={{ borderColor: '#115E59' }}><span className="text-sm font-semibold">{pn.build.name}</span><span className="text-xs text-muted-foreground">{pn.build.headline}</span></div>
-        {pn.build.sections.map(s => <div key={s} className="grid gap-1"><span className="text-xs font-semibold" style={{ color: '#115E59' }}>{s}</span><span className="h-1.5 w-full rounded-full bg-muted" /><span className="h-1.5 w-4/5 rounded-full bg-muted" /></div>)}
+      <div className="grid gap-2 rounded-lg border bg-white p-3 text-slate-900 shadow-sm">
+        <span className="text-xs text-slate-600">{pn.build.preview}</span>
+        <div className="grid gap-1 border-b-2 pb-2" style={{ borderColor: '#115E59' }}><span className="text-sm font-semibold">{pn.build.name}</span><span className="text-xs text-slate-600">{pn.build.headline}</span></div>
+        {pn.build.sections.map(s => <div key={s} className="grid gap-1"><span className="text-xs font-semibold" style={{ color: '#115E59' }}>{s}</span><span className="h-1.5 w-full rounded-full bg-slate-200" /><span className="h-1.5 w-4/5 rounded-full bg-slate-200" /></div>)}
       </div>
     </div>
   </Shell>;

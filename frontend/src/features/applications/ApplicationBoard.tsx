@@ -11,6 +11,7 @@ import { ACTIVE_STAGES, CLOSED_STAGES, STAGES, stageLabel } from '../../lib/appl
 import { cn } from '@/lib/utils';
 import { selectClass } from '../settings/Field';
 import { sendJson } from '../projects/useResource';
+import { dateLocale } from '../../lib/locale';
 
 const rowColumns = 'md:grid-cols-[minmax(0,1.8fr)_11rem_minmax(0,1.2fr)_8rem_1.5rem]';
 const nextStepKey: Record<ApplicationStage, string> = {
@@ -59,7 +60,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
   const [overStage, setOverStage] = useState<ApplicationStage | null>(null);
   const inFlight = useRef(0);
   const visibleCards = optimisticCards ?? cards;
-  const dateFormat = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
+  const dateFormat = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium' });
 
   useEffect(() => { setOptimisticCards(null); }, [cards]);
   useEffect(() => {

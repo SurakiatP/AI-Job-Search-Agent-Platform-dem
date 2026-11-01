@@ -23,15 +23,14 @@ export function TrashPage() {
   const documents = useResource<TrashedDocument[]>(`/projects/${projectId}/documents/trash`);
   const cvs = useResource<CVView[]>(`/projects/${projectId}/cvs?view=trash`);
   // No ?tab=: open the first tab that has something in it (evaluations while any list is still loading).
-  const loaded = !!sessions.data && !!documents.data && !!cvs.data;
-  const firstFilled = !loaded ? 'evaluations' : sessions.data!.length ? 'evaluations' : documents.data!.length ? 'documents' : cvs.data!.length ? 'cvs' : 'evaluations';
-  // Decided once, so emptying the open tab does not make the page jump.
-  const picked = useRef<string | null>(null);
-  if (loaded && !picked.current) picked.current = firstFilled;
   const settled = [sessions, documents, cvs].every(r => r.status !== 'loading' || r.data);
+  const firstFilled = sessions.data?.length ? 'evaluations' : documents.data?.length ? 'documents' : cvs.data?.length ? 'cvs' : 'evaluations';
+  // Decided once the lists have loaded or failed, so a later retry or emptying the open tab does not make the page jump.
+  const picked = useRef<string | null>(null);
+  if (settled && !picked.current) picked.current = firstFilled;
   const tab = (['evaluations', 'documents', 'cvs'] as const).find(name => name === params.get('tab')) ?? picked.current ?? 'evaluations';
   const changed = (reload: () => void) => () => { reload(); notifyTrashChanged(); };
-  const count = (n?: number) => <span className="ms-1.5 rounded-full bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">{n ?? 0}</span>;
+  const count = (n?: number) => n === undefined ? null : <span className="ms-1.5 rounded-full bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">{n}</span>;
   const tabClass = 'min-h-11 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
   return <section className="grid min-w-0 gap-6">
     <PageHeader icon={Trash2} title={t('trash.title')} lede={t('trash.subtitle')} />

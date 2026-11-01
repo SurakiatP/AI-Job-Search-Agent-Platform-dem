@@ -24,6 +24,7 @@ import { deletePermanently, inUseMessage, permanentDescription, permanentTitle, 
 import { useFilePreview } from '../../components/CvPreview';
 import { notifyTrashChanged } from '@/lib/trash';
 import { PageHeader } from '@/components/PageHeader';
+import { dateLocale } from '../../lib/locale';
 
 type DocumentItem = { id: string; has_builder_draft?: boolean; document_type: 'cv' | 'cover_letter' | 'application_message' | 'other'; title: string; content_markdown?: string | null; output_language?: 'th' | 'en' | null; source_run_id?: string | null; partial?: boolean; trashed_at?: string | null; latest_revision?: { id: string; revision: number } | null };
 type DocumentRevision = { document_id: string; id?: string; revision?: number; created_at?: string; source_cv_revision_id?: string | null; source_job_revision_id?: string | null; file_id?: string | null; content_markdown?: string | null; origin?: 'agent' | 'manual' };
@@ -233,7 +234,7 @@ export function DocumentDetailPage() {
   const viewed = versions.find(revision => revision.id && revision.id === pickedId) ?? latestRevision;
   const historical = viewed !== undefined && viewed !== latestRevision;
   const preview = (viewed === latestRevision ? document.content_markdown ?? latestRevision?.content_markdown : viewed?.content_markdown) ?? null;
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
+  const date = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium' });
   const Icon = typeIcon[document.document_type];
   const numbered = versions.map((revision, index) => ({ revision, number: revision.revision ?? index + 1, index }));
   const newestFirst = [...numbered].sort((a, b) => b.number - a.number);

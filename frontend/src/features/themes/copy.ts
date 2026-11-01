@@ -1,3 +1,11 @@
+const ruleTh: Record<string, string> = {
+  file_size: 'ไฟล์ใหญ่เกิน 4 KB', not_json: 'ไฟล์นี้ไม่ใช่ไฟล์ธีม เลือกไฟล์ที่ส่งออกจากแอปนี้', not_object: 'ไฟล์นี้ไม่ใช่ไฟล์ธีม เลือกไฟล์ที่ส่งออกจากแอปนี้',
+  name: 'ชื่อธีมในไฟล์ใช้ไม่ได้', layout: 'เลย์เอาต์ในไฟล์ใช้ไม่ได้', 'tokens.accent': 'สีเน้นในไฟล์ใช้ไม่ได้ หรืออ่านยากบนพื้นขาว',
+};
+const ruleEn: Record<string, string> = {
+  file_size: 'The file is larger than 4 KB', not_json: 'This is not a theme file. Pick one exported from this app.', not_object: 'This is not a theme file. Pick one exported from this app.',
+  name: 'The theme name in the file cannot be used', layout: 'The layout in the file cannot be used', 'tokens.accent': 'The accent colour in the file cannot be used or is hard to read on white',
+};
 export const themeCopy = {
   th: {
     title: 'ธีมเรซูเม่', pick: 'เลือกธีม', presets: 'ธีมสำเร็จรูป', mine: 'ธีมของฉัน', noneYet: 'ยังไม่มีธีมของคุณ ปรับแต่งธีมแล้วบันทึกไว้ใช้ซ้ำได้',
@@ -9,7 +17,7 @@ export const themeCopy = {
     atsOk: 'อ่านตามลำดับได้', atsNo: 'อาจอ่านสลับลำดับ', withPhoto: 'มีรูป', contrast: 'สีนี้อ่านยากบนพื้นขาว เลือกสีที่เข้มกว่านี้', unsaved: 'ตัวอย่างนี้ยังไม่ได้บันทึก',
     saved: 'บันทึกธีมแล้ว', imported: 'นำเข้าธีมแล้ว', needName: 'ตั้งชื่อธีมก่อนบันทึก', failed: 'ทำรายการไม่สำเร็จ ลองใหม่อีกครั้ง',
     inUse: (n: string) => `ลบไม่ได้ ธีมนี้ถูกใช้อยู่ใน ${n} เรซูเม่`, limit: 'มีธีมของคุณครบ 20 แบบแล้ว ลบอันที่ไม่ใช้ก่อน', taken: 'มีธีมชื่อนี้อยู่แล้ว',
-    badFile: (rule: string) => `ไฟล์ธีมใช้ไม่ได้ ตรวจที่: ${rule}`, fileTooBig: 'ไฟล์ใหญ่เกิน 4 KB', loading: 'กำลังโหลดธีม', loadFailed: 'โหลดธีมไม่สำเร็จ',
+    badFile: (rule: string) => ruleTh[rule] ?? 'ไฟล์ธีมใช้ไม่ได้ ตรวจว่าเป็นไฟล์ที่ส่งออกจากแอปนี้', fileTooBig: 'ไฟล์ใหญ่เกิน 4 KB', loading: 'กำลังโหลดธีม', loadFailed: 'โหลดธีมไม่สำเร็จ', retry: 'ลองอีกครั้ง', badHex: 'ใส่รหัสสีแบบ #1D4ED8',
     selected: 'เลือกอยู่', accentRow: 'สีเน้น',
   },
   en: {
@@ -22,7 +30,7 @@ export const themeCopy = {
     atsOk: 'Reads in order', atsNo: 'May read out of order', withPhoto: 'Photo', contrast: 'This colour is hard to read on white. Pick a darker one.', unsaved: 'This preview is not saved yet',
     saved: 'Theme saved', imported: 'Theme imported', needName: 'Name the theme before saving', failed: 'Could not complete that. Try again.',
     inUse: (n: string) => `Cannot delete: ${n} resume(s) use this theme`, limit: 'You have 20 themes already. Delete one you do not use.', taken: 'A theme with that name exists',
-    badFile: (rule: string) => `This theme file cannot be used. Check: ${rule}`, fileTooBig: 'The file is larger than 4 KB', loading: 'Loading themes', loadFailed: 'Could not load themes',
+    badFile: (rule: string) => ruleEn[rule] ?? 'This theme file cannot be used. Check that it was exported from this app.', fileTooBig: 'The file is larger than 4 KB', loading: 'Loading themes', loadFailed: 'Could not load themes', retry: 'Try again', badHex: 'Enter a colour like #1D4ED8',
     selected: 'Selected', accentRow: 'Accent',
   },
 } as const;
