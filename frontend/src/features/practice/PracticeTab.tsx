@@ -72,7 +72,7 @@ export function PracticeTab({ projectId, sessionId, locale, prep }: { projectId:
 
 export function Progress({ value, max, label, className }: { value: number; max: number; label: string; className?: string }) {
   return <div className={cn('flex items-center gap-3 text-sm text-muted-foreground', className)}>
-    <span className="h-1.5 w-32 shrink-0 overflow-hidden rounded-full bg-secondary" aria-hidden="true"><span className="block h-full rounded-full bg-primary transition-[width] duration-300 ease-out" style={{ width: `${max ? (100 * value) / max : 0}%` }} /></span>
+    <span className="h-1.5 w-32 shrink-0 overflow-hidden rounded-full bg-secondary" aria-hidden="true"><span className="block h-full rounded-full bg-primary transition-[width] duration-(--dur-slow) ease-out" style={{ width: `${max ? (100 * value) / max : 0}%` }} /></span>
     <span className="tabular-nums">{label}</span>
   </div>;
 }

@@ -167,7 +167,7 @@ test('CR-02 Thai address fields and personal details, hidden until shown', async
   await expect.poll(() => state.puts.at(-1)?.resume_data.basics.address).toMatchObject({ district: 'บางนา', province: 'TH-10', postcode: '10260' });
   expect(state.puts.at(-1).resume_data.basics.address_full).toBe(false);
   expect(state.puts.at(-1).resume_data.personal_hidden).toBe(true);
-  await page.locator('summary').filter({ hasText: 'ข้อมูลส่วนตัว' }).click();
+  await page.getByRole('button', { name: /^ข้อมูลส่วนตัว/ }).click();
   await expect(page.getByText(/ไม่ถูกส่งให้ AI/)).toBeVisible();
   await page.getByLabel('สัญชาติ').fill('ไทย');
   await page.getByRole('button', { name: 'แสดงข้อมูลส่วนตัวใน CV' }).click();

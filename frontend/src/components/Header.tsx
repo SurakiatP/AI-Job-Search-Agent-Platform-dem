@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { House, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -24,11 +24,12 @@ export function HomeLink({ onClick, compact = false }: { onClick?: () => void; c
 export function HomeIconLink() {
   const { i18n } = useTranslation();
   const label = i18n.language.startsWith('th') ? 'หน้าแรก' : 'Home';
-  return <span className="group relative inline-flex">
-    <Link to="/" aria-label={label} className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+  const [off, setOff] = useState(false);
+  return <span className="group relative inline-flex" data-tip-off={off || undefined} onKeyDown={e => { if (e.key === 'Escape') setOff(true); }} onPointerLeave={() => setOff(false)} onBlur={() => setOff(false)}>
+    <Link to="/" aria-label={label} className="inline-flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <House size={18} aria-hidden="true" />
     </Link>
-    <span role="tooltip" className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background shadow group-hover:flex group-focus-within:flex">{label}</span>
+    <span role="tooltip" className="tip pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background shadow">{label}</span>
   </span>;
 }
 
@@ -37,7 +38,7 @@ export function LanguageSwitch() {
   const { locale, setLocale } = useLocale();
   return <div className="inline-flex gap-0.5 rounded-lg bg-muted p-0.5" role="group" aria-label={t('language')}>
     {([['th', 'ไทย'], ['en', 'EN']] as const).map(([value, label]) => (
-      <Button key={value} variant="ghost" size="sm" className="min-w-10 min-h-9" aria-pressed={locale === value} onClick={() => setLocale(value)}>{label}</Button>
+      <Button key={value} variant="ghost" size="sm" className="min-w-10 min-h-10" aria-pressed={locale === value} onClick={() => setLocale(value)}>{label}</Button>
     ))}
   </div>;
 }

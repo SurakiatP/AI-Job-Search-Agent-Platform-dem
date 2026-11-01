@@ -9,7 +9,7 @@ export function DialogContent({ className, onOpenAutoFocus, onCloseAutoFocus, ..
   const previousFocus = useRef<HTMLElement | null>(null);
   return <Primitive.Portal>
     <Primitive.Overlay className="drawer-overlay z-50" />
-    <Primitive.Content className={cn('fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border bg-card p-6 text-card-foreground shadow-lg', className)} {...props}
+    <Primitive.Content className={cn('dialog-surface fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border bg-card p-6 text-card-foreground shadow-lg max-h-[calc(100dvh-2rem)] overflow-y-auto', className)} {...props}
       onOpenAutoFocus={event => {
         previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         onOpenAutoFocus?.(event);

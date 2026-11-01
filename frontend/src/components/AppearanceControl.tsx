@@ -15,7 +15,7 @@ export function AppearanceControl({ compact = false }: { compact?: boolean }) {
   }
   return <div className="inline-flex gap-0.5 rounded-lg bg-muted p-0.5" role="group" aria-label={t('appearance')}>
     {options.map(([value, Icon]) => (
-      <Button key={value} variant="ghost" size="icon" className="size-9 min-h-9" aria-label={t(value)} title={t(value)} aria-pressed={theme === value} onClick={() => setTheme(value)}><Icon aria-hidden="true" size={16} /></Button>
+      <Button key={value} variant="ghost" size="icon" className="size-10 min-h-10" aria-label={t(value)} title={t(value)} aria-pressed={theme === value} onClick={() => setTheme(value)}><Icon aria-hidden="true" size={16} /></Button>
     ))}
   </div>;
 }

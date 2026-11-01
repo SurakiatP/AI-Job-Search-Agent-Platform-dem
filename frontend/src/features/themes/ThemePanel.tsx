@@ -10,17 +10,18 @@ import { sendJson, useResource } from '../projects/useResource';
 import { ACCENTS } from '../builder/sections';
 import { ThemeThumb } from './ThemeThumb';
 import { themeCopy } from './copy';
+import { copy as builderCopy } from '../builder/copy';
 import { FILE_MAX_BYTES, LAYOUTS, accentOk, customId, type Custom, type Preset, type ThemeList, type Tokens, type Working } from './themes';
 
 type Copy = (typeof themeCopy)['en'] | (typeof themeCopy)['th'];
 type Edit = Working & { name: string };
 
 function Seg<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
-  return <div role="radiogroup" aria-label={label} className="grid gap-1.5">
+  return <div role="group" aria-label={label} className="grid gap-1.5">
     <span className="text-sm font-medium">{label}</span>
     <div className="inline-flex flex-wrap gap-1 rounded-lg bg-secondary p-1">
-      {options.map(([key, text]) => <button key={key} type="button" role="radio" aria-checked={value === key} onClick={() => onChange(key)}
-        className="min-h-11 rounded-md px-3 text-sm text-secondary-foreground transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-checked:bg-primary aria-checked:text-primary-foreground motion-reduce:transition-none">{text}</button>)}
+      {options.map(([key, text]) => <button key={key} type="button" aria-pressed={value === key} onClick={() => onChange(key)}
+        className="min-h-11 rounded-md px-3 text-sm text-secondary-foreground transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-primary aria-pressed:text-primary-foreground motion-reduce:transition-none">{text}</button>)}
     </div>
   </div>;
 }
@@ -28,9 +29,9 @@ function Seg<T extends string>({ label, value, options, onChange }: { label: str
 function Card({ id, name, layout, tokens, selected, c, ats, photo, onPick }: {
   id: string; name: string; layout: string; tokens: Tokens; selected: boolean; c: Copy; ats: boolean; photo: boolean; onPick: (id: string) => void;
 }) {
-  return <button type="button" role="radio" aria-checked={selected} onClick={() => onPick(id)}
-    className="group grid gap-2 rounded-xl border bg-card p-2 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-checked:border-primary aria-checked:ring-2 aria-checked:ring-primary motion-reduce:transition-none">
-    <span className="relative block aspect-[3/4] overflow-hidden rounded-lg border bg-white shadow-sm"><ThemeThumb layout={layout} tokens={tokens} />
+  return <button type="button" aria-pressed={selected} onClick={() => onPick(id)}
+    className="group grid gap-2 rounded-xl border bg-card p-2 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-primary aria-pressed:ring-2 aria-pressed:ring-primary motion-reduce:transition-none">
+    <span className="relative block aspect-[3/4] overflow-hidden rounded-sm border bg-white shadow-sm"><ThemeThumb layout={layout} tokens={tokens} />
       {selected && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground" aria-label={c.selected}><Check className="size-3.5" aria-hidden="true" /></span>}
     </span>
     <span className="grid gap-0.5 px-1 pb-1"><span className="truncate text-sm font-medium">{name}</span>
@@ -42,6 +43,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
   templateId: string; accent: string; hasPhoto: boolean; locale: 'th' | 'en'; onPick: (id: string) => void; onWorking: (w: Working | null) => void;
 }) {
   const c = themeCopy[locale];
+  const bc = builderCopy[locale];
   const list = useResource<ThemeList>('/resume-themes');
   const [edit, setEdit] = useState<Edit | null>(null);
   const [note, setNote] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
@@ -113,14 +115,14 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
 
     <div className="grid gap-2"><h3 className="text-sm font-medium"><span className="mr-2 text-primary">1</span>{c.pick}</h3>
       <p className="text-xs text-muted-foreground">{c.presets}</p>
-      <div role="radiogroup" aria-label={c.presets} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div role="group" aria-label={c.presets} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {presets.map((p: Preset) => <Card key={p.id} id={p.id} name={locale === 'th' ? p.th : p.en} layout={p.layout}
           tokens={p.id in LEGACY ? { ...p.tokens, accent: templateId === p.id ? hexOfAccent : p.tokens.accent } : p.tokens}
           selected={templateId === p.id} c={c} ats={p.ats_safe} photo={p.photo} onPick={pick} />)}
       </div>
       <p className="mt-2 text-xs text-muted-foreground">{c.mine}</p>
       {custom.length === 0 ? <p className="text-sm text-muted-foreground">{c.noneYet}</p> :
-        <div role="radiogroup" aria-label={c.mine} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div role="group" aria-label={c.mine} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {custom.map(t => <Card key={t.id} id={customId(t.id)} name={t.name} layout={t.layout} tokens={t.tokens} selected={templateId === customId(t.id)}
             c={c} ats={t.ats_safe} photo={t.photo} onPick={pick} />)}
         </div>}
@@ -135,7 +137,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
       <div className="grid gap-4 md:grid-cols-2 [&>*]:min-w-0">
         <div className="grid gap-1.5"><span className="text-sm font-medium">{c.colour}</span>
           <div className="flex flex-wrap items-center gap-2">
-            {ACCENTS.map(a => <button key={a.id} type="button" aria-label={a.hex} aria-pressed={edit.tokens.accent.toUpperCase() === a.hex.toUpperCase()} onClick={() => token('accent', a.hex)}
+            {ACCENTS.map(a => <button key={a.id} type="button" aria-label={bc.accents[a.id]} aria-pressed={edit.tokens.accent.toUpperCase() === a.hex.toUpperCase()} onClick={() => token('accent', a.hex)}
               className="grid size-11 place-items-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground"><span className="size-7 rounded-full" style={{ background: a.hex }} /></button>)}
             <Label htmlFor="theme-hex" className="sr-only">{c.hex}</Label>
             <Input id="theme-hex" className="w-28 font-mono uppercase" value={edit.tokens.accent} maxLength={7} aria-invalid={colourBad}

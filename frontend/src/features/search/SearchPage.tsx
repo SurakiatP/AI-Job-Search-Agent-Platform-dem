@@ -226,7 +226,7 @@ function AgentSteps({ c, step, scored, total }: { c: Copy; step: 0 | 1 | 2; scor
     <p className="flex items-center gap-2 font-medium"><AiSpinner size="sm" />{c.agentWorking}</p>
     <ol className="grid gap-1.5">{labels.map((label, i) => <li key={i} aria-current={i === step ? 'step' : undefined}
       className={`flex items-center gap-2 ${i < step ? 'text-muted-foreground' : i === step ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-      <span aria-hidden="true" className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] ${i <= step ? 'bg-[var(--stage-search)] text-card' : 'border'} ${i === step ? 'motion-safe:animate-pulse' : ''}`}>{i < step ? '✓' : i + 1}</span>
+      <span aria-hidden="true" className={`grid size-5 shrink-0 place-items-center rounded-full text-xs ${i <= step ? 'bg-[var(--stage-search)] text-card' : 'border'} ${i === step ? 'motion-safe:animate-pulse' : ''}`}>{i < step ? '✓' : i + 1}</span>
       <span>{label}</span>
     </li>)}</ol>
   </div>;

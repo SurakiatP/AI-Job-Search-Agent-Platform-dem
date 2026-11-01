@@ -13,6 +13,7 @@
 :root {
   --radius: 0.75rem;
   --shadow-xs: 0 1px 2px rgb(27 37 80 / 0.06), 0 2px 8px -2px rgb(27 37 80 / 0.06);
+  --overlay: color-mix(in srgb, var(--foreground) 40%, transparent);
   --background: #F3F4EF;
   --foreground: #1B2550;
   --card: #FFFFFF;
@@ -53,6 +54,7 @@
   color-scheme: light;
 }
 :root[data-theme='dark'] {
+  --overlay: color-mix(in srgb, var(--background) 72%, transparent);
   --background: #131D42;
   --foreground: #EEF2FF;
   --card: #1B2756;
@@ -80,6 +82,12 @@
 }
 
 @theme inline {
+  --shadow-sm: 0 1px 3px 0 rgb(27 37 80 / 0.1), 0 1px 2px -1px rgb(27 37 80 / 0.1);
+  --shadow: 0 1px 3px 0 rgb(27 37 80 / 0.1), 0 1px 2px -1px rgb(27 37 80 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(27 37 80 / 0.1), 0 2px 4px -2px rgb(27 37 80 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(27 37 80 / 0.12), 0 4px 6px -4px rgb(27 37 80 / 0.1);
+  --default-transition-duration: var(--dur-fast);
+  --default-transition-timing-function: var(--ease-out);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -124,7 +132,7 @@
   button, a { touch-action: manipulation; }
   a { color: var(--primary); }
   button { cursor: pointer; }
-  h1 { font-size: 26px; line-height: 1.4; font-weight: 600; }
+  h1 { font-size: 24px; line-height: 1.4; font-weight: 600; }
   input, textarea, select { font-size: 16px; }
   textarea { resize: vertical; min-height: 130px; }
   fieldset { min-inline-size: 0; }
@@ -133,12 +141,28 @@
 
 @keyframes page-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .page-enter { animation: page-enter var(--dur-base) var(--ease-out) both; }
+/* Overlay surfaces (transitions.dev #05/#06/#07, durations clamped to DESIGN.md 150–240ms). */
+@keyframes surface-in { from { opacity: 0; scale: var(--surface-scale, 0.96); } }
+@keyframes surface-out { to { opacity: 0; scale: var(--surface-scale, 0.96); } }
+@keyframes overlay-in { from { opacity: 0; } }
+@keyframes overlay-out { to { opacity: 0; } }
+@keyframes drawer-in { from { translate: -100% 0; } }
+@keyframes drawer-out { to { translate: -100% 0; } }
+.drawer-overlay[data-state='open'] { animation: overlay-in var(--dur-slow) var(--ease-out); }
+.drawer-overlay[data-state='closed'] { animation: overlay-out var(--dur-fast) var(--ease-out); }
+.dialog-surface[data-state='open'] { animation: surface-in var(--dur-slow) var(--ease-out); }
+.dialog-surface[data-state='closed'] { animation: surface-out var(--dur-fast) var(--ease-out); }
+.menu-surface { transform-origin: var(--radix-dropdown-menu-content-transform-origin); }
+.menu-surface[data-state='open'] { --surface-scale: 0.97; animation: surface-in var(--dur-slow) var(--ease-out); }
+.menu-surface[data-state='closed'] { --surface-scale: 0.99; animation: surface-out var(--dur-fast) var(--ease-out); }
+.mobile-drawer[data-state='open'] { animation: drawer-in var(--dur-slow) var(--ease-out); }
+.mobile-drawer[data-state='closed'] { animation: drawer-out var(--dur-fast) var(--ease-out); }
 @keyframes ring-fill { from { stroke-dashoffset: var(--ring-circumference, 400); } }
 .fit-ring { animation: ring-fill var(--dur-slow) var(--ease-out) both; }
 /* Sidebar names: fade instead of ellipsis, slide on row hover/focus (ChatGPT-style). */
 .scrolling-name { display: block; overflow: hidden; white-space: nowrap; }
 .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
-.scrolling-name-text { display: inline-block; transition: transform 0.2s var(--ease-out); }
+.scrolling-name-text { display: inline-block; transition: transform var(--dur-base) var(--ease-out); }
 .group:hover .scrolling-name[data-overflow='true'], .group:focus-within .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, transparent, #000 28px); }
 .group:hover .scrolling-name-text, .group:focus-within .scrolling-name-text { transform: translateX(var(--name-shift)); transition: transform var(--name-duration, 2s) linear 0.4s; }
 /* Journey stage tile: icon chip tinted by the step's hue; fills when the page is active. */
@@ -176,7 +200,7 @@ main[data-stage] h1::before { content: ''; display: block; width: 36px; height: 
   .document-english { font-family: var(--font-document); font-size: 16px; line-height: 1.9; }
 
   /* legacy link-styled buttons (Link className="button button-primary") */
-  .button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 40px; gap: 8px; padding: 8px 16px; border: 1px solid transparent; border-radius: 22px; font-size: 14px; line-height: 1.7; font-weight: 500; text-decoration: none; transition: background-color var(--dur-fast), color var(--dur-fast); }
+  .button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 40px; gap: 8px; padding: 8px 16px; border: 1px solid transparent; border-radius: 22px; font-size: 14px; line-height: 1.7; font-weight: 500; text-decoration: none; transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
   .button-primary { background: var(--primary); color: var(--primary-foreground); }
   .button-primary:hover { background: color-mix(in oklch, var(--primary) 90%, transparent); }
   .button-secondary { background: var(--card); border-color: var(--input); color: var(--foreground); }
@@ -189,7 +213,7 @@ main[data-stage] h1::before { content: ''; display: block; width: 36px; height: 
   .appearance-control { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 24px; }
   .empty-state { max-width: 640px; margin: 50px auto; }
   .empty-state p { margin-top: 12px; }
-  .drawer-overlay { position: fixed; inset: 0; background: oklch(0 0 0 / 0.4); z-index: 10; }
+  .drawer-overlay { position: fixed; inset: 0; background: var(--overlay); z-index: 10; }
   .mobile-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(300px, 90vw); background: var(--sidebar); z-index: 11; overflow-y: auto; }
   .drawer-heading { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 0 20px; }
   .drawer-heading h2 { font-size: 18px; font-weight: 600; }
@@ -220,7 +244,7 @@ input, textarea { caret-color: var(--primary); }
 }
 
 /* CR-IVP-01 flashcards: 3D flip, then the card slides toward the pile it was sorted into. */
-.flashcard { transition: transform 220ms var(--ease-out), opacity 220ms var(--ease-out); }
+.flashcard { transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out); }
 .flashcard-inner { transform-style: preserve-3d; transition: transform 460ms var(--ease-out); }
 .flashcard[data-flipped='true'] .flashcard-inner { transform: rotateY(180deg); }
 .flashcard-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
@@ -261,3 +285,14 @@ input, textarea { caret-color: var(--primary); }
 .manual-body th, .manual-body td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
 .manual-body video, .manual-body img { display: block; width: 100%; height: auto; margin: 1.25rem 0 0.4rem; border: 1px solid var(--border); border-radius: 0.75rem; box-shadow: var(--shadow-xs); }
 .manual-body p:has(> img) + p > em:only-child { display: block; margin-bottom: 1rem; font-size: 0.85rem; color: var(--muted-foreground); font-style: normal; }
+/* Native disclosures grow instead of snapping (transitions.dev #21); browsers without interpolate-size keep the instant toggle. */
+@supports (interpolate-size: allow-keywords) {
+  details { interpolate-size: allow-keywords; }
+  details::details-content { block-size: 0; overflow-y: clip; overflow-clip-margin: 4px; transition: block-size var(--dur-slow) var(--ease-out), content-visibility var(--dur-slow) allow-discrete; }
+  details[open]::details-content { block-size: auto; }
+}
+/* Icon tooltips: short delay in on hover, instant out (transitions.dev #17). */
+.tip { display: flex; opacity: 0; visibility: hidden; }
+@media (hover: hover) { .group:hover > .tip { opacity: 1; visibility: visible; transition: opacity var(--dur-fast) var(--ease-out) 300ms, visibility 0s 300ms; } }
+.group:focus-within > .tip { opacity: 1; visibility: visible; }
+.group[data-tip-off] > .tip { opacity: 0; visibility: hidden; }

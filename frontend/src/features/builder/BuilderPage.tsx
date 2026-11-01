@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { ArrowDown, ArrowLeft, ArrowUp, Eye, EyeOff, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useLocale } from '../../app/providers';
@@ -204,7 +204,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
           className="grid size-11 place-items-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground"><span className="size-7 rounded-full" style={{ background: a.hex }} /></button>)}</div>
       </fieldset>}
       <div className="grid gap-2 lg:w-56"><Label htmlFor="cvb-lang">{c.docLanguage}</Label>
-        <select id="cvb-lang" className="min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={draft.document_language} onChange={e => change({ ...draft, document_language: e.target.value as Lang })}>
+        <select id="cvb-lang" className="min-h-11 rounded-md border border-input bg-card px-3 text-sm" value={draft.document_language} onChange={e => change({ ...draft, document_language: e.target.value as Lang })}>
           <option value="th">ไทย</option><option value="en">English</option></select></div>
     </div>
 
@@ -263,23 +263,27 @@ function SectionEditor({ name, index, count, data, locale, update }: { name: Sec
     return d;
   });
   const filled = name === 'summary' ? Boolean(data.summary.content) : name === 'personal' ? PERSONAL_KEYS.some(k => data.personal[k]) : data.sections[name].items.length > 0;
-  return <details className="group rounded-xl border bg-card" open={filled || name === 'summary' || name === 'experience'}>
-    <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2">
-      <span className={`font-semibold ${hidden ? 'text-muted-foreground line-through' : ''}`}>{c.sections[name]}{!filled && <span className="ml-2 text-xs font-normal text-muted-foreground">{c.empty}</span>}</span>
-      <span className="flex items-center gap-1" onClick={e => e.preventDefault()}>
+  const [open, setOpen] = useState(filled || name === 'summary' || name === 'experience');
+  const bodyId = useId();
+  return <div className="rounded-xl border bg-card">
+    <div className="flex min-h-12 items-center justify-between gap-2 px-4">
+      <button type="button" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen(v => !v)} className="min-h-12 min-w-0 flex-1 rounded-md py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span className={`font-semibold ${hidden ? 'text-muted-foreground line-through' : ''}`}>{c.sections[name]}{!filled && <span className="ml-2 text-xs font-normal text-muted-foreground">{c.empty}</span>}</span>
+      </button>
+      <span className="flex items-center gap-1">
         <Button variant="ghost" size="icon" aria-label={c.moveUp(c.sections[name])} disabled={index === 0} onClick={() => move(-1)}><ArrowUp className="size-4" aria-hidden="true" /></Button>
         <Button variant="ghost" size="icon" aria-label={c.moveDown(c.sections[name])} disabled={index === count - 1} onClick={() => move(1)}><ArrowDown className="size-4" aria-hidden="true" /></Button>
         <Button variant="ghost" size="icon" aria-pressed={hidden} aria-label={hidden ? c.show(c.sections[name]) : c.hide(c.sections[name])} onClick={toggle}>{hidden ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}</Button>
       </span>
-    </summary>
-    <div className="grid gap-3 border-t px-4 py-3">
+    </div>
+    <div id={bodyId} hidden={!open} className="grid gap-3 border-t px-4 py-3">
       {name === 'summary'
         ? <div className="grid gap-1.5"><Label htmlFor="cvb-summary">{c.sections.summary}</Label>
           <Textarea id="cvb-summary" rows={4} maxLength={1000} value={data.summary.content} placeholder={c.summaryPlaceholder} onChange={e => update(d => { d.summary.content = e.target.value; return d; })} /></div>
         : name === 'personal' ? <PersonalEditor c={c} data={data} update={update} />
         : <ItemsEditor name={name} data={data} locale={locale} update={update} />}
     </div>
-  </details>;
+  </div>;
 }
 
 function ItemsEditor({ name, data, locale, update }: { name: ListSection; data: ResumeData; locale: Lang; update: (fn: (d: ResumeData) => ResumeData) => void }) {
