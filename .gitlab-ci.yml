@@ -206,3 +206,67 @@ reindex-jobs:
   environment:
     name: production
     action: access
+
+# Read-only AI check, run it by hand after a deploy. Runs inside the running app container (jobsearch-web) and
+# prints PASS/FAIL per step; never prints a key. Step 1: host Docker socket. 2: agent image + runtime file.
+# 3: agent image can start and sees a folder under HOME at the same path (the runtime relies on that).
+# 4: LiteLLM answers and lists ai-analyze. 5: one tiny real model call (costs a few tokens on OpenRouter).
+test-ai:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  script:
+    - |
+      set -u
+      docker exec -i jobsearch-web /app/backend/.venv/bin/python - <<'PY'
+      import json, os, pathlib, subprocess, sys, urllib.request
+      failed = []
+      def step(name, fn):
+          try:
+              print(f"PASS {name}: {fn()}")
+          except Exception as e:
+              failed.append(name)
+              print(f"FAIL {name}: {type(e).__name__}: {str(e)[:300]}")
+      def run(*a):
+          r = subprocess.run(a, capture_output=True, text=True, timeout=120)
+          if r.returncode:
+              raise RuntimeError((r.stderr or r.stdout).strip()[-300:])
+          return r.stdout.strip()
+      cfg = pathlib.Path.home() / ".cache/job-search-platform/hermes-runtime.json"
+      def socket(): return "docker server " + run("docker", "version", "--format", "{{.Server.Version}}")
+      def runtime():
+          image = json.loads(cfg.read_text())["image"]
+          run("docker", "image", "inspect", image, "--format", "{{.Id}}")
+          return image
+      def agent_start():
+          image = json.loads(cfg.read_text())["image"]
+          d = pathlib.Path.home() / ".cache/job-search-platform/test-ai"
+          d.mkdir(parents=True, exist_ok=True); (d / "m").write_text("ok")
+          return run("docker", "run", "--rm", "--entrypoint", "cat", "-v", f"{d}:/w:ro", image, "/w/m")
+      base, key = os.environ["LITELLM_BASE_URL"], os.environ["LITELLM_API_KEY"]
+      def call(path, body=None):
+          req = urllib.request.Request(base + path, data=body and json.dumps(body).encode(),
+              headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
+          return json.load(urllib.request.urlopen(req, timeout=90))
+      def models():
+          ids = [m["id"] for m in call("/v1/models")["data"]]
+          model = os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze"
+          assert model in ids, f"{model} not in {ids}"
+          return ids
+      def chat():
+          r = call("/v1/chat/completions", {"model": os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze",
+              "messages": [{"role": "user", "content": "Reply with the single word: pong"}], "max_tokens": 200})
+          return repr(r["choices"][0]["message"]["content"])[:80]
+      for n, f in (("1 docker socket", socket), ("2 agent image", runtime), ("3 agent start + path", agent_start),
+                   ("4 litellm models", models), ("5 model call", chat)):
+          step(n, f)
+      sys.exit(1 if failed else 0)
+      PY
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
