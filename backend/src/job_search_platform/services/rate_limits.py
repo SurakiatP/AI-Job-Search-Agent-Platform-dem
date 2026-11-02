@@ -14,10 +14,10 @@ from job_search_platform.services.errors import ServiceError
 LIMITS: dict[str, tuple[int, int]] = {
     "signup_ip": (5, 3600),
     "login_ip": (10, 900),  # failed logins per IP
-    "login_email": (10, 900),  # failed logins per email and IP, so one IP cannot lock an owner out elsewhere
-    # Per-IP keys use request.client.host. Behind a shared proxy address (container deploy, SEC-B02 trusted-proxy
-    # setting not done) every client looks like one IP, so the per-IP limits are loose and the all-IP email backstop
-    # is kept low enough (30 per 15 min) to cap guessing per account without a trusted client address.
+    "login_email": (10, 900),  # failed logins per email and IP, so one IP cannot lock an owner out from other IPs
+    # Per-IP keys use request.client.host. Behind a shared proxy address (container deploy) every client looks like
+    # one IP, so until SEC-B02 (trusted proxy setting) is done every per-IP bucket (login_ip 10/15 min, forgot_ip
+    # 100/h, signup_ip, ...) is effectively site-wide: enough failed logins from anyone lock all logins for 15 min.
     "login_email_any": (30, 900),  # failed logins per email from all IPs: a backstop against wide spraying
     "resend_email": (3, 3600),
     "otp_attempt": (5, 600),  # wrong or right: at most 5 tries per 10 minutes for one account and purpose
@@ -40,7 +40,7 @@ LIMITS: dict[str, tuple[int, int]] = {
 RETENTION = timedelta(hours=24)
 
 
-def check(db: Session, bucket: str, key: str, *, now: datetime | None = None, lock: bool = False) -> bytes:
+def check(db: Session, bucket: str, key: str, *, now: datetime | None = None, lock: bool = True) -> bytes:
     """Raise rate_limited when the bucket is full, without recording a hit. Returns the key hash."""
     limit, window = LIMITS[bucket]
     now = now or datetime.now(timezone.utc)
@@ -60,7 +60,7 @@ def check(db: Session, bucket: str, key: str, *, now: datetime | None = None, lo
 def hit(db: Session, bucket: str, key: str, *, now: datetime | None = None) -> int:
     """Record one hit (returns its event id) or raise rate_limited. Callers commit; rejected hits are not recorded."""
     now = now or datetime.now(timezone.utc)
-    key_hash = check(db, bucket, key, now=now, lock=True)
+    key_hash = check(db, bucket, key, now=now)
     event = RateLimitEvent(bucket=bucket, key_hash=key_hash, created_at=now)
     db.add(event)
     db.flush()

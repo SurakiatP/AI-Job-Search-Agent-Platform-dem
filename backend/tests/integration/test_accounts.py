@@ -245,6 +245,20 @@ def test_forgot_password_limit_is_per_email_and_ip(accounts, mailer):
 
 
 
+def test_forgot_password_rejection_keeps_earlier_buckets_untouched(accounts, mailer):
+    signed_up(accounts, mailer)
+    for n in range(15):  # fill forgot_email_any from other IPs
+        accounts.forgot_password("alice@example.test", f"10.0.0.{n}")
+    def counts():
+        with accounts.sessions() as db:
+            return {b: db.scalar(select(func.count()).select_from(RateLimitEvent).where(RateLimitEvent.bucket == b))
+                    for b in ("forgot_ip", "forgot_email")}
+    before = counts()
+    with pytest.raises(ServiceError) as err:
+        accounts.forgot_password("alice@example.test", "7.7.7.7")
+    assert err.value.code == "rate_limited" and counts() == before
+
+
 RESOURCE = "http://127.0.0.1:8766/mcp"
 CB = "http://127.0.0.1:33418/callback"
 
@@ -318,3 +332,19 @@ async def test_grant_expiry_is_capped_at_ninety_days(migrated_engine):
     _, handle = await _oauth_request(oauth)
     with pytest.raises(ServiceError, match="invalid_grant"):  # the consent path has the same cap
         oauth.approve(actor, handle, p.id, frozenset({"results:read"}), datetime.now(timezone.utc) + timedelta(days=91))
+
+
+@pytest.mark.asyncio
+async def test_grant_cap_allows_a_little_client_clock_slack(migrated_engine):
+    from helpers import owner
+    from job_search_platform.services.contracts import GrantIssueRequest
+    from job_search_platform.services.grants import Grants
+    factory = sessionmaker(migrated_engine, expire_on_commit=False)
+    with factory.begin() as db:
+        actor = owner(db)
+        p = project(db, owner=actor)
+    ahead = datetime.now(timezone.utc) + timedelta(days=90, minutes=1)  # consent page clock a minute fast
+    await Grants(factory).issue(actor, p.id, GrantIssueRequest(capabilities=frozenset({"results:read"}), expires_at=ahead))
+    oauth = _oauth(factory)
+    _, handle = await _oauth_request(oauth)
+    oauth.approve(actor, handle, p.id, frozenset({"results:read"}), datetime.now(timezone.utc) + timedelta(days=90, minutes=1))

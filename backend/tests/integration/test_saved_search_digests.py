@@ -409,3 +409,16 @@ def test_email_only_search_with_a_dead_mailer_is_still_retried(ctx):
     _due(sessions, sid)
     asyncio.run(service.run_due(NOW))
     assert _seen(sessions, sid) == set()
+
+
+@pytest.mark.integration
+def test_failed_email_with_unusable_push_is_retried_after_backoff(ctx):
+    sessions, _, _, source, actor, pid, sid = ctx
+    service = ss.SavedSearches(sessions, _FailingMailer(), public_origin=ORIGIN, search=source)
+    with sessions.begin() as db:  # push is on but the project has no endpoints: nothing can be delivered
+        db.execute(update(SavedSearch).where(SavedSearch.id == sid).values(push_enabled=True, digest_enabled=True))
+    _due(sessions, sid)
+    asyncio.run(service.run_due(NOW))
+    assert _seen(sessions, sid) == set()
+    with sessions() as db:
+        assert db.get(SavedSearch, sid).next_run_at == NOW + ss.RETRY_BACKOFF

@@ -100,3 +100,14 @@ def test_owner_revives_a_removed_cv_fact_over_http(api_context):
     mine = client.post(url, headers=headers, json={"kind": "skill", "text": "Other"}).json()["id"]
     reverted = client.put(f"{url}/{mine}", headers=headers, json={"kind": "skill", "text": "Built Airflow"})
     assert reverted.status_code == 200 and reverted.json()["source"] == "owner"
+
+
+def test_put_with_end_before_start_answers_422_validation_error(api_context):
+    csrf = _owner(api_context)
+    pid = _project(api_context, csrf)
+    client, headers = api_context.client, _write_headers(csrf)
+    url = f"{PREFIX}/{pid}/experience"
+    created = client.post(url, headers=headers, json={"kind": "skill", "text": "Python"}).json()
+    bad = client.put(f"{url}/{created['id']}", headers=headers,
+                     json={"kind": "skill", "text": "Python", "start_date": "2024-05", "end_date": "2023-01"})
+    assert bad.status_code == 422 and bad.json()["code"] == "validation_error", bad.text

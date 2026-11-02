@@ -563,7 +563,7 @@ paths:
         Owner-only. Item text is immutable: a text change inserts a new item and soft-removes this one (new id);
         a context-only change (kind, role, organization, period) updates in place. If the new text equals a soft-removed fact
         of this project, that fact is revived as an owner fact (same id; any CV link is cleared) instead of a 409. 422
-        end_before_start when end_date is before start_date.
+        validation_error (no fields) when end_date is before start_date.
       security: [{ownerSession: []}]
       requestBody:
         required: true
@@ -818,7 +818,7 @@ paths:
       responses: {'200': {description: CVs, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/CVView'}}}}}}
     post:
       tags: [files]
-      description: Owner-only multipart upload creating a CV. Name defaults to the filename stem; the project's first CV becomes primary. 429 rate_limited after 20 uploads per hour per user.
+      description: Owner-only multipart upload creating a CV. Name defaults to the filename stem; the project's first CV becomes primary. 429 rate_limited after 20 upload attempts per hour per user (every attempt counts, not only successes).
       requestBody:
         required: true
         content:
@@ -827,7 +827,7 @@ paths:
               type: object
               required: [file]
               properties: {file: {type: string, format: binary}, name: {type: string, maxLength: 120}}
-      responses: {'201': {description: Created CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}}
+      responses: {'201': {description: Created CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}, '429': {$ref: '#/components/responses/RateLimited'}}
   /projects/{project_id}/sessions/{session_id}/practice-sets:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -1078,12 +1078,13 @@ paths:
       tags: [files]
       description: >-
         Owner-only "save as new version": renders the draft and creates a CV revision (PDF file, resume_data, resume_style) in one transaction; for a CV also the CV text (no references) and the owner facts of this CV in the experience bank.
-        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 429 rate_limited after 20 publishes per hour per user; 502 render_failed writes nothing.
+        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 429 rate_limited after 20 publish attempts per hour per user (every attempt counts, not only successes); 502 render_failed writes nothing.
       responses:
         '201': {description: New revision}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: draft_conflict or document_busy}
         '422': {description: resume_incomplete}
+        '429': {$ref: '#/components/responses/RateLimited'}
         '502': {description: render_failed}
   /projects/{project_id}/documents/{document_id}/draft:
     parameters:
@@ -1128,12 +1129,13 @@ paths:
       tags: [files]
       description: >-
         Owner-only "save as new version": renders the draft and creates a document revision in one transaction.
-        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 429 rate_limited after 20 publishes per hour per user; 502 render_failed writes nothing.
+        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 429 rate_limited after 20 publish attempts per hour per user (every attempt counts, not only successes); 502 render_failed writes nothing.
       responses:
         '201': {description: New revision}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: draft_conflict or document_busy}
         '422': {description: resume_incomplete}
+        '429': {$ref: '#/components/responses/RateLimited'}
         '502': {description: render_failed}
   /projects/{project_id}/cvs/{cv_id}:
     parameters:
@@ -1446,7 +1448,7 @@ paths:
   /auth/login:
     post:
       tags: [auth]
-      description: Public. Sets the jsp_owner_session cookie. 401 invalid_credentials is identical for unknown email, wrong password and disabled user. 429 rate_limited. Attempts are counted up front and a successful login takes its hits back, so effectively only failed attempts count, at 10 per 15 minutes per IP, 10 per 15 minutes per email and IP, and 30 per 15 minutes per email across all IPs. The all-IP limit can return 429 even for a correct password.
+      description: Public. Sets the jsp_owner_session cookie. 401 invalid_credentials is identical for unknown email, wrong password and disabled user. 429 rate_limited. Attempts are counted up front and a successful login takes its hits back, so effectively only failed attempts count, at 10 per 15 minutes per IP, 10 per 15 minutes per email and IP, and 30 per 15 minutes per email across all IPs. Any full bucket returns 429 even for a correct password, because hits are recorded before the password is checked.
       security: []
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}}
       responses:
@@ -1977,7 +1979,7 @@ components:
       properties:
         project_id: {type: string, format: uuid}
         capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
-        expires_at: {type: string, format: date-time, description: 'At most 90 days ahead.'}
+        expires_at: {type: string, format: date-time, description: 'At most 90 days ahead, plus 5 minutes of clock slack.'}
     OAuthRedirectView:
       type: object
       additionalProperties: false
@@ -2600,7 +2602,7 @@ components:
       required: [capabilities, expires_at]
       properties:
         capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
-        expires_at: {type: string, format: date-time, description: 'At most 90 days ahead; later gives invalid_grant.'}
+        expires_at: {type: string, format: date-time, description: 'At most 90 days ahead, plus 5 minutes of clock slack; later gives invalid_grant.'}
         label: {type: [string, 'null'], minLength: 1, maxLength: 80, description: Optional name shown as the run requester; trimmed.}
     GrantIssuedView:
       type: object

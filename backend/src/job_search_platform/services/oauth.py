@@ -19,7 +19,7 @@ from sqlalchemy import select, update
 from job_search_platform.db.models import Grant, OAuthAuthorization, OAuthClient, Project
 from job_search_platform.db.models import OAuthToken as OAuthTokenRow
 from job_search_platform.services import webhooks
-from job_search_platform.services.authorization import GRANT_CAPABILITIES, MAX_GRANT_TTL
+from job_search_platform.services.authorization import GRANT_CAPABILITIES, GRANT_CLOCK_SLACK, MAX_GRANT_TTL
 from job_search_platform.services.authorization import authorize as authorize_access
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import token_hash
@@ -346,7 +346,7 @@ class OAuth:
 
     def approve(self, actor, handle: str, project_id, capabilities: frozenset[str], expires_at: datetime) -> str:
         if (not capabilities or not capabilities <= GRANT_CAPABILITIES
-                or expires_at.tzinfo is None or expires_at <= _now() or expires_at > _now() + MAX_GRANT_TTL):
+                or expires_at.tzinfo is None or expires_at <= _now() or expires_at > _now() + MAX_GRANT_TTL + GRANT_CLOCK_SLACK):
             raise ServiceError("invalid_grant")
         with self.sessions.begin() as db:
             authorize_access(db, actor, project_id, "manage", "grant")

@@ -297,9 +297,10 @@ class Accounts:
             email = normalize_email(email)
         except ServiceError:
             return  # same silent answer as an unknown email
-        self._rate_limit("forgot_ip", ip)
-        self._rate_limit("forgot_email", f"{email}|{ip}")
-        self._rate_limit("forgot_email_any", email)
+        with self.sessions.begin() as db:  # all or nothing, like _login_attempt: a rejected request uses no bucket
+            rate_limits.hit(db, "forgot_ip", ip)
+            rate_limits.hit(db, "forgot_email", f"{email}|{ip}")
+            rate_limits.hit(db, "forgot_email_any", email)
         mail = None
         with self.sessions.begin() as db:
             user = db.scalar(select(User).where(User.email == email))

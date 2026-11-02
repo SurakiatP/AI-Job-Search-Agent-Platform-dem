@@ -319,7 +319,9 @@ class SavedSearches:
                         except telegram.DeliveryFailed:
                             if not (mailed or queued):  # another channel got it out: do not resend it
                                 raise _SendFailed from None
-                    if not (mailed or queued or chat):  # push/chat-only with no receiver: keep items unseen
+                    if not (mailed or queued or chat):  # nothing delivered: keep items unseen
+                        if row.digest_enabled:
+                            raise _SendFailed  # email failed and no other channel could take over: retry in an hour
                         row.next_run_at = next_slot(now, row.frequency)
                         return row_id, 0
                     db.execute(pg_insert(SavedSearchSeen).values(

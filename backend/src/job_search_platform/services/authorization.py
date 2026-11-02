@@ -15,6 +15,7 @@ from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
 
 GRANT_CAPABILITIES = frozenset(get_args(Capability))
 MAX_GRANT_TTL = timedelta(days=90)  # longest an agent grant or OAuth approval may live
+GRANT_CLOCK_SLACK = timedelta(minutes=5)  # the consent page computes expiry from the browser clock
 RESULT_RESOURCES = frozenset({"run", "event", "result", "generated_document"})
 GRANT_WORK_RESOURCES = frozenset(skill.id for skill in SKILLS if skill.kind == "task")
 GRANT_READ_RESOURCES = frozenset(skill.id for skill in SKILLS if skill.kind == "direct")
