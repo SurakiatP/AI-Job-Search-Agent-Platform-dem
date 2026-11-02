@@ -112,3 +112,30 @@ create-test-users:
   environment:
     name: production
     action: access
+
+# Read-only diagnosis: prints container states and the last log lines of every container of this project
+# into the job log. Never prints .env or a full `docker inspect` (that would show environment values).
+# Set LOG_LINES when running the job to change the number of lines (default 80).
+show-logs:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  variables:
+    LOG_LINES: "80"
+  script:
+    - |
+      set -eu
+      docker ps -a --filter "name=jobsearch" --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+      for c in $(docker ps -a --filter "name=jobsearch" --format '{{.Names}}'); do
+        echo "===== $c ====="
+        docker inspect --format 'state={{.State.Status}} exit={{.State.ExitCode}} restarts={{.RestartCount}} oom={{.State.OOMKilled}}' "$c"
+        docker logs --tail "$LOG_LINES" "$c" 2>&1 || true
+      done
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
