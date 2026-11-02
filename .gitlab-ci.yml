@@ -188,3 +188,21 @@ ingest-jobs:
   environment:
     name: production
     action: access
+
+# Builds the Meilisearch index from the postings already in the database (quick, no calls to the job boards).
+# Use it when ingest-jobs was stopped before it reached its last step, or after changing the index settings.
+reindex-jobs:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  resource_group: production
+  script:
+    - docker exec jobsearch-web /app/backend/.venv/bin/python /app/scripts/ingest_jobs.py reindex
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
