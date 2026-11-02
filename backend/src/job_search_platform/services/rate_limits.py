@@ -40,13 +40,13 @@ LIMITS: dict[str, tuple[int, int]] = {
 RETENTION = timedelta(hours=24)
 
 
-def check(db: Session, bucket: str, key: str, *, now: datetime | None = None, lock: bool = True) -> bytes:
+def check(db: Session, bucket: str, key: str, *, now: datetime | None = None) -> bytes:
     """Raise rate_limited when the bucket is full, without recording a hit. Returns the key hash."""
     limit, window = LIMITS[bucket]
     now = now or datetime.now(timezone.utc)
     key_hash = hashlib.sha256(key.encode()).digest()
-    if lock:  # serialise concurrent hits on the same bucket/key until the transaction ends
-        db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": bucket + key_hash.hex()})
+    # serialise concurrent hits on the same bucket/key until the transaction ends
+    db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": bucket + key_hash.hex()})
     count, oldest = db.execute(
         select(func.count(), func.min(RateLimitEvent.created_at)).where(
             RateLimitEvent.bucket == bucket, RateLimitEvent.key_hash == key_hash,

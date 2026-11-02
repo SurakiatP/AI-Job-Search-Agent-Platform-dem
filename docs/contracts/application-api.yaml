@@ -537,7 +537,7 @@ paths:
       tags: [files]
       description: >-
         Owner-only. Adds one fact (source owner). 409 duplicate when the normalised text already exists as a live fact in this
-        project (a removed fact with the same text is revived); 409 bank_full at 1,000 live items. 422 when
+        project (a removed fact with the same text is revived); 409 bank_full at 1,000 live items. 422 validation_error (no fields) when
         end_date is before start_date.
       security: [{ownerSession: []}]
       requestBody:
@@ -818,7 +818,7 @@ paths:
       responses: {'200': {description: CVs, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/CVView'}}}}}}
     post:
       tags: [files]
-      description: Owner-only multipart upload creating a CV. Name defaults to the filename stem; the project's first CV becomes primary. 429 rate_limited after 20 upload attempts per hour per user (every attempt counts, not only successes).
+      description: Owner-only multipart upload creating a CV. Name defaults to the filename stem; the project's first CV becomes primary. 429 rate_limited after 20 upload attempts per hour per user (every authorized attempt counts, not only successes; requests refused earlier for size, type or authorization are not counted).
       requestBody:
         required: true
         content:
@@ -1077,8 +1077,8 @@ paths:
     post:
       tags: [files]
       description: >-
-        Owner-only "save as new version": renders the draft and creates a CV revision (PDF file, resume_data, resume_style) in one transaction; for a CV also the CV text (no references) and the owner facts of this CV in the experience bank.
-        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 429 rate_limited after 20 publish attempts per hour per user (every attempt counts, not only successes); 502 render_failed writes nothing.
+        Owner-only "save as new version": renders the draft and creates a CV revision (PDF file, resume_data, resume_style) in one transaction; for a CV also the CV text (no references) and the owner facts of this CV in the experience bank. A fact listed by two builder CVs becomes owner-managed and stays until the owner removes it.
+        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 429 rate_limited after 20 publish attempts per hour per user (every authorized attempt counts, not only successes; requests refused earlier for size, type or authorization are not counted); 502 render_failed writes nothing.
       responses:
         '201': {description: New revision}
         '404': {$ref: '#/components/responses/NotFound'}
@@ -1129,7 +1129,7 @@ paths:
       tags: [files]
       description: >-
         Owner-only "save as new version": renders the draft and creates a document revision in one transaction.
-        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 429 rate_limited after 20 publish attempts per hour per user (every attempt counts, not only successes); 502 render_failed writes nothing.
+        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 429 rate_limited after 20 publish attempts per hour per user (every authorized attempt counts, not only successes; requests refused earlier for size, type or authorization are not counted); 502 render_failed writes nothing.
       responses:
         '201': {description: New revision}
         '404': {$ref: '#/components/responses/NotFound'}

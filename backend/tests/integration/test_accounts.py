@@ -259,6 +259,21 @@ def test_forgot_password_rejection_keeps_earlier_buckets_untouched(accounts, mai
     assert err.value.code == "rate_limited" and counts() == before
 
 
+def test_login_rejection_keeps_earlier_buckets_untouched(accounts, mailer):
+    signed_up(accounts, mailer)
+    for n in range(30):  # fill login_email_any from other IPs
+        with pytest.raises(ServiceError):
+            accounts.login("alice@example.test", "wrong-password", f"10.0.{n}.1")
+    def counts():
+        with accounts.sessions() as db:
+            return {b: db.scalar(select(func.count()).select_from(RateLimitEvent).where(RateLimitEvent.bucket == b))
+                    for b in ("login_ip", "login_email")}
+    before = counts()
+    with pytest.raises(ServiceError) as err:
+        accounts.login("alice@example.test", "wrong-password", "7.7.7.7")
+    assert err.value.code == "rate_limited" and counts() == before
+
+
 RESOURCE = "http://127.0.0.1:8766/mcp"
 CB = "http://127.0.0.1:33418/callback"
 

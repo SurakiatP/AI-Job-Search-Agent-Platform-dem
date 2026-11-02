@@ -409,6 +409,8 @@ def test_email_only_search_with_a_dead_mailer_is_still_retried(ctx):
     _due(sessions, sid)
     asyncio.run(service.run_due(NOW))
     assert _seen(sessions, sid) == set()
+    with sessions() as db:
+        assert db.get(SavedSearch, sid).next_run_at == NOW + ss.RETRY_BACKOFF
 
 
 @pytest.mark.integration
