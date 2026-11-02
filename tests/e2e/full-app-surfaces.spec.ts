@@ -92,9 +92,49 @@ test('landing tour is compact and remains keyboard navigable', async ({ page }) 
   expect((await tour.boundingBox())!.height).toBeLessThan(1200);
   const first = tour.getByRole('tab').first();
   await first.focus();
-  await page.keyboard.press('ArrowRight');
+  await expect(tour.getByRole('tablist')).toHaveAttribute('aria-orientation', 'vertical');
+  await page.keyboard.press('ArrowDown');
   await expect(tour.getByRole('tab').nth(1)).toBeFocused();
   await expect(tour.getByRole('tab').nth(1)).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('ArrowUp');
+  await expect(tour.getByRole('tab').nth(0)).toBeFocused();
+  await expect(tour.getByRole('tab').nth(0)).toHaveAttribute('aria-selected', 'true');
+});
+
+test('landing skip link targets the main region and moves focus there', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useAccessFixture(page, true);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await page.keyboard.press('Tab');
+  const skip = page.getByRole('link', { name: 'Skip to content' });
+  await expect(skip).toBeFocused();
+  await expect(skip).toHaveAttribute('href', '#main');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main#main')).toBeFocused();
+});
+
+test('landing FAQ has six questions that open, and the footer links to real pages', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useAccessFixture(page, true);
+  await page.goto('/');
+  const faq = page.locator('#faq');
+  await expect(faq.getByRole('heading', { name: 'Questions worth asking first' })).toBeVisible();
+  const items = faq.locator('details');
+  await expect(items).toHaveCount(6);
+  await expect(items.locator('summary')).toHaveText([
+    'Does the app submit applications for me?', 'Where does my CV go?', 'What does a score of 4.2 out of 5 mean?',
+    'If I upload a new CV, do old evaluations change?', 'Can I start without a CV file?', 'Can I connect the AI assistant I already use?',
+  ]);
+  await items.first().locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(items.first()).toHaveAttribute('open', '');
+  await expect(items.first()).toContainText('No. You apply yourself');
+  const footer = page.getByRole('navigation', { name: 'Footer links' });
+  await expect(footer.getByRole('link')).toHaveText(['How it works', 'Data & connections', 'Docs']);
+  await expect(footer.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '/how-it-works');
+  await expect(footer.getByRole('link', { name: 'Data & connections' })).toHaveAttribute('href', '/data');
+  await expect(footer.getByRole('link', { name: 'Docs' })).toHaveAttribute('href', '/docs');
 });
 test('landing data section: two readable cards with ticks and a three-part approval flow', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
@@ -102,14 +142,14 @@ test('landing data section: two readable cards with ticks and a three-part appro
   await page.goto('/');
   const mine = page.getByRole('region', { name: 'Your workspace and AI' });
   await expect(mine.locator('svg.landing-tick')).toHaveCount(4);
-  const flow = page.getByRole('list', { name: 'How an outside agent asks' });
+  const flow = page.getByRole('list', { name: 'How a connected assistant asks' });
   await expect(flow.getByRole('listitem')).toHaveCount(3);
   await expect(flow.getByRole('listitem').nth(2)).toContainText('Approve');
   await expect(flow.getByRole('listitem').nth(2)).toContainText('Reject');
 });
 const featureTabs = {
   en: ['Add CV', 'Build CV', 'Search', 'Evaluate', 'Interview practice', 'Draft', 'Track', 'Job alerts', 'Connect'],
-  th: ['ใส่ CV', 'สร้าง CV', 'ค้นหางาน', 'ประเมิน', 'ซ้อมสัมภาษณ์', 'ร่างเอกสาร', 'ติดตามสมัคร', 'แจ้งเตือนงาน', 'เชื่อม agent'],
+  th: ['ใส่ CV', 'สร้าง CV', 'ค้นหางาน', 'ประเมิน', 'ซ้อมสัมภาษณ์', 'ร่างเอกสาร', 'ติดตามสมัคร', 'แจ้งเตือนงาน', 'เชื่อมผู้ช่วย'],
 };
 const featureSlugs = ['add-cv', 'build-cv', 'search', 'evaluate', 'practice', 'draft', 'track', 'alerts', 'connect'];
 
@@ -139,8 +179,8 @@ test('landing demo is labelled illustrative and states what the app will not do'
   await page.goto('/');
   await expect(page.getByText('Illustrative demo · Sample data').first()).toBeVisible();
   const demo = page.getByRole('region', { name: 'Illustrative demo · Sample data' });
-  await expect(demo.getByRole('heading', { name: 'Senior Data Analyst' })).toBeVisible();
-  await expect(demo.getByText('Step 3 of 5')).toBeVisible();
+  await expect(demo.getByText('Senior Data Analyst', { exact: true })).toBeVisible();
+  await expect(demo.getByText('Step 4 of 5')).toBeVisible();
   const steps = demo.getByRole('list', { name: 'Journey of this job' }).getByRole('listitem');
   await expect(steps).toHaveCount(5);
   await expect(steps.nth(2)).toContainText('Fit evaluation');
@@ -150,8 +190,12 @@ test('landing demo is labelled illustrative and states what the app will not do'
   await expect(steps.nth(3)).toHaveAttribute('aria-current', 'step');
   await expect(steps.nth(3)).toContainText('Waiting for you to review the CV changes');
   await expect(steps.nth(4)).toContainText('You apply yourself');
-  await expect(page.getByText('You need a CV file (PDF, DOCX or text).')).toBeVisible();
-  await expect(page.getByText('AI features need a configured AI provider.')).toBeVisible();
+  await expect(page.getByText('Upload a CV file (PDF, DOCX or text) or build one in the app with a form.')).toBeVisible();
+  await expect(page.getByText('AI features work once your administrator has set up AI.')).toBeVisible();
+  // honesty: no false CV requirement, no approval sample for drafting (the product never asks for that)
+  await expect(page.getByText(/You need a CV file/i)).toHaveCount(0);
+  await expect(page.getByText(/Approval needed: draft documents/i)).toHaveCount(0);
+  await expect(page.getByText('Approval needed: Record this job as applied · Full-stack Engineer')).toBeVisible();
   await expect(page.getByText('No automatic submission.')).toBeVisible();
   await expect(page.getByRole('main').getByRole('link', { name: 'Create account', exact: true }).first()).toHaveAttribute('href', '/signup');
 });
@@ -212,8 +256,10 @@ test('landing hero puts AI first and lists what stays in the visitor\'s control 
   const promises = page.getByRole('list', { name: 'What stays in your control' }).first();
   await expect(promises.getByRole('listitem')).toHaveText(['You review everything before it is used', 'You apply yourself; the app never submits', 'Each project keeps its own data']);
   await expect(promises.locator('svg.landing-tick')).toHaveCount(3);
-  const closing = page.getByRole('region', { name: 'Ready to apply with precision?' });
-  await expect(closing.getByRole('list', { name: 'What stays in your control' }).getByRole('listitem')).toHaveCount(3);
+  // The closing repeats the hero's one action, not its promise list.
+  const closing = page.getByRole('region', { name: 'Start with one CV and one job' });
+  await expect(closing.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/signup');
+  await expect(page.getByRole('list', { name: 'What stays in your control' })).toHaveCount(1);
 });
 
 test('landing demo plays a short sequence: ticks draw in and the last step settles; reduced motion shows the end state at once', async ({ page }) => {

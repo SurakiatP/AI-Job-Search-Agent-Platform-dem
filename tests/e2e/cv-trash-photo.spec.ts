@@ -1,3 +1,4 @@
+import { themeList } from '../fixtures/builder';
 import { expect, test, type Page } from '@playwright/test';
 import { projectId, useSyntheticApplication } from '../fixtures/application';
 
@@ -75,7 +76,7 @@ test('AC-CVT-04 empty CV trash says what lands there', async ({ page }) => {
   await useSyntheticApplication(page);
   await cvApi(page, { live: [], trash: [] });
   await page.goto(`/app/projects/${projectId}/trash?tab=cvs`);
-  await expect(page.getByText('Trash is empty. CVs you delete land here and can be restored.')).toBeVisible();
+  await expect(page.getByText('No CVs in the trash. CVs you delete land here and can be restored.')).toBeVisible();
 });
 
 const SECTIONS = ['experience', 'education', 'skills', 'projects', 'certifications', 'languages', 'awards', 'publications', 'volunteer', 'references', 'interests'];
@@ -98,6 +99,7 @@ test('AC-CVP-04 add a photo, see which templates print it, then remove it', asyn
     const request = route.request();
     const path = new URL(request.url()).pathname.replace('/v1', '');
     if (path === '/resume-templates') return route.fulfill(json({ templates: [], accents: [], provinces: [] }));
+    if (path === '/resume-themes') return route.fulfill(json(themeList()));
     if (path === `/projects/${projectId}/cvs/${builderCv}/draft`) {
       if (request.method() === 'GET') return route.fulfill(json(draft));
       const body = request.postDataJSON();
@@ -115,13 +117,14 @@ test('AC-CVP-04 add a photo, see which templates print it, then remove it', asyn
   });
   await page.goto(`/app/projects/${projectId}/cvs/${builderCv}/builder`);
   for (const name of ['Lotus', 'Teak', 'Saffron']) await expect(page.getByRole('button', { name: new RegExp(`^${name}`) })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Lotus.*Photo/ })).toBeVisible();
   await expect(page.getByText('JPG or PNG, up to 2 MB. Shown by the Lotus, Teak and Saffron templates.')).toBeVisible();
 
   await page.getByLabel('Add photo').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: PNG });
   await expect(page.getByRole('img', { name: 'Your CV photo' })).toBeVisible();
   await expect.poll(() => puts.at(-1)?.resume_data.basics.photo).toBe(photoId);
   expect(uploads[0]).toContain('multipart/form-data');
-  await expect(page.getByText('This template does not show a photo. Pick Lotus, Teak or Saffron to include it.')).toBeVisible();
+  await expect(page.getByText('This theme does not show a photo. Pick one with a photo to include it.')).toBeVisible();
 
   await page.getByRole('button', { name: /^Lotus/ }).click();
   await expect.poll(() => puts.at(-1)?.template_id).toBe('lotus');
@@ -151,4 +154,16 @@ test('AC-CVP-02 a photo that is too large or not an image is refused before uplo
   await page.getByLabel('Add photo').setInputFiles({ name: 'big.jpg', mimeType: 'image/jpeg', buffer: Buffer.alloc(2 * 1024 * 1024 + 1) });
   await expect(page.getByRole('alert').filter({ hasText: 'The photo is larger than 2 MB.' })).toBeVisible();
   expect(uploads).toBe(0);
+});
+
+test('F4 emptying the CV trash blames an AI task only when one is really using a CV', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await cvApi(page, { live: [], trash: [cv({ is_primary: false, trashed_at: at })] });
+  await page.route(`**/v1/projects/${projectId}/cvs/${cvId}/permanent`, route => route.fulfill(json({}, 500)));
+  await page.goto(`/app/projects/${projectId}/trash?tab=cvs`);
+  await page.getByRole('button', { name: 'Delete all for good' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete all for good' }).click();
+  await expect(page.getByRole('dialog').getByText('That did not work. Try again.')).toBeVisible();
+  await expect(page.getByText('An AI task is still using this CV')).toHaveCount(0);
 });

@@ -96,6 +96,62 @@ test('source failure can switch to clearly labelled sample results', async ({ pa
   await expect(page.getByRole('button', { name: 'Back to live data' })).toBeVisible();
 });
 
+test('a card that holds its own content keeps its top padding on a wide screen', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ code: 'job_source_unavailable', message_key: 'service.unavailable', retryable: true }) }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.goto(`/app/projects/${projectId}/search`);
+  const heading = page.getByRole('heading', { name: "Couldn't load jobs" });
+  await expect(heading).toBeVisible();
+  const gap = await heading.evaluate(el => el.getBoundingClientRect().top - el.closest('[role="alert"]')!.getBoundingClientRect().top);
+  expect(gap).toBeGreaterThanOrEqual(16);
+});
+
+test('sample data offers no Save or Evaluate and writes nothing to the project', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const writes: string[] = [];
+  page.on('request', request => { if (request.method() === 'POST' && /\/projects\/[^/]+\/jobs/.test(request.url())) writes.push(request.url()); });
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/facets')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [] }) });
+    return route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ code: 'job_source_unavailable', message_key: 'service.unavailable', retryable: true }) });
+  });
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.goto(`/app/projects/${projectId}/search`);
+  await page.getByRole('button', { name: 'View sample data' }).click();
+  const first = page.locator('[data-job-slug]').first();
+  await expect(first).toBeVisible();
+  await first.click();
+  await expect(page.getByText('Sample data cannot be saved or evaluated. This works on real postings only.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^(save|save job)$|^evaluate/i })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /evaluate/i })).toHaveCount(0);
+  expect(writes).toEqual([]);
+});
+
+test('load more stops at the 1000-result limit instead of asking for a page the service refuses', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/facets')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [] }) });
+    const offset = Number(url.searchParams.get('offset') ?? 0);
+    if (offset > 1000) return route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ code: 'validation_error', message_key: 'errors.validation_error', retryable: false }) });
+    const items = Array.from({ length: 500 }, (_, i) => ({ ...searchItems[0], slug: `job-${offset + i}`, title: `Role ${offset + i}` }));
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items, total: 5000, limit: 20, offset }) });
+  });
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.goto(`/app/projects/${projectId}/search`);
+  const more = page.getByRole('button', { name: 'Load more' });
+  await expect(more).toBeVisible();
+  for (let i = 0; i < 3; i++) await more.click({ timeout: 10000 }).catch(() => undefined);
+  await expect(more).toHaveCount(0);
+  await expect(page.getByRole('alert').filter({ hasText: "Couldn't load jobs" })).toHaveCount(0);
+  await expect(page.getByText(/first 1,000 results/)).toBeVisible();
+});
+
 test('a load-more error keeps the successful results visible', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
@@ -463,4 +519,55 @@ test('job cards and details show Thai province names in the Thai app and the sou
     await expect(card).toContainText(shown);
     if (hidden) await expect(card).not.toContainText(hidden);
   }
+});
+
+test('a Thai query shows the Thai-postings hint with real counts; an English query does not', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await installSearchFixture(page);
+  await page.goto(`/app/projects/${projectId}/search?q=${encodeURIComponent('วิเคราะห์ข้อมูล')}`);
+  const hint = page.getByTestId('thai-search-hint');
+  await expect(hint).toBeVisible();
+  await expect(hint).toContainText('21 of 124 in Thai');
+  await page.goto(`/app/projects/${projectId}/search?q=analyst`);
+  await expect(page.getByRole('heading', { name: 'Job search' })).toBeVisible();
+  await expect(page.getByTestId('thai-search-hint')).toHaveCount(0);
+});
+
+test('a Thai query with no results shows the Thai-postings hint exactly once', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await installSearchFixture(page, []);
+  await page.goto(`/app/projects/${projectId}/search?q=${encodeURIComponent('วิเคราะห์ข้อมูล')}`);
+  await expect(page.getByTestId('thai-search-hint')).toHaveCount(1);
+});
+
+test('F3 a hidden-items list that fails to load offers a retry instead of claiming nothing is hidden', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const ai = { status: 'partial', categories: null, scored: 1 };
+  const rankedItem = { ...searchItems[0], match: { score_percent: 67, matched: ['SQL', 'Python'], missing: ['Looker'], required_count: 3 }, ai_match: { fit_percent: 72, band: 4, uncertain: true, seniority: 'meets', hard_blocker: false, skills_evidenced: ['SQL'], must_missing: [], nice_missing: ['Looker'], evidence: { SQL: 'Built SQL dashboards for 40 analysts' } }, highlight: { matched: { SQL: 'SQL' }, missing: {} } };
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'cv-data', name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', revision_count: 1, in_use: false, latest_revision: { id: 'cv-rev-1', revision: 3, created_at: '2026-10-14T00:00:00Z', original_filename: 'data.pdf', mime_type: 'application/pdf', size_bytes: 12000, file_id: 'cv-file-1' } }]) }));
+  await page.route(`**/v1/projects/${projectId}/job-search/match**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [rankedItem, { ...searchItems[1], slug: 'partial-unscored', match: null, ai_match: null }], total: 124, limit: 100, offset: 0, pool: 2, hidden_count: 1, ai }) }));
+  await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/job\-search\/match\/runs|\/v1\/async\/projects\/${projectId}\/smart\-matches)(?:\\?.*)?$`), route => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'rank-run-1' }) }));
+  await page.route(`**/v1/projects/${projectId}/runs/rank-run-1`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'rank-run-1', status: 'completed' }) }));
+  let hiddenFails = 1;
+  await page.route(`**/v1/projects/${projectId}/job-search/hidden**`, route => hiddenFails-- > 0 ? route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }) : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [{ id: 'hidden-1', kind: 'job', label: 'Previously hidden analyst role', created_at: '2026-10-01T00:00:00Z' }] }) }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.goto(`/app/projects/${projectId}/search?mode=match`);
+  await page.getByRole('button', { name: /^Start Smart match/ }).click();
+  await page.getByRole('button', { name: 'Hidden (1)' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('We could not load this information.')).toBeVisible();
+  await expect(dialog.getByText('Nothing is hidden', { exact: false })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Try again' }).click();
+  await expect(dialog.getByText('Previously hidden analyst role')).toBeVisible();
+});
+
+test('F2 a failed save is announced once, next to the button that was used', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.route(`**/v1/projects/${projectId}/jobs`, route => route.request().method() === 'POST' ? route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }) : route.fallback());
+  await page.goto(`/app/projects/${projectId}/search`);
+  await page.getByRole('button', { name: 'Save job' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Could not save this job' })).toHaveCount(1);
 });

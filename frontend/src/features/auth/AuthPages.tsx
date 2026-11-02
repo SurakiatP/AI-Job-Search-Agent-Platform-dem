@@ -11,13 +11,14 @@ import { Label } from '../../components/ui/label';
 import { forgotPassword, login, refreshOwnerSession, resendVerification, resetPassword, signup, useOwnerSession, verifyEmail, verifyEmailCode } from '../../lib/api';
 import { CodeInput } from '../../components/CodeInput';
 import { ApiError } from '../../lib/api-types';
+import { rateLimitText } from '../../lib/rateLimit';
 import { authCopy } from './copy';
 
 const linkClass = 'rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 // One layout for all five pages: shared header, then a split panel (login, sign up) or a single centred card (recovery, verify).
 export function AuthLayout({ title, intro, side, icon, children }: { title: string; intro?: string; side?: ReactNode; icon?: ReactNode; children: ReactNode }) {
-  const body = <div className="grid content-center gap-5 p-6 sm:p-10">
+  const body = <div className="grid content-center gap-4 p-6 sm:p-10">
     <div className="grid gap-2">
       {icon}
       <h1 className="text-2xl font-semibold leading-snug [overflow-wrap:anywhere]">{title}</h1>
@@ -27,21 +28,22 @@ export function AuthLayout({ title, intro, side, icon, children }: { title: stri
   </div>;
   return <>
     <Header />
-    <main id="main-content" tabIndex={-1} className={`mx-auto w-full px-4 py-8 sm:py-14 ${side ? 'max-w-4xl' : 'max-w-md'}`}>
+    <main id="main-content" tabIndex={-1} className={`mx-auto w-full px-4 py-8 sm:py-12 ${side ? 'max-w-4xl' : 'max-w-md'}`}>
       <div className={side ? 'grid overflow-hidden rounded-xl border bg-card text-card-foreground md:grid-cols-2' : 'rounded-xl border bg-card text-card-foreground'}>
         {body}
-        {side && <aside className="grid content-center gap-5 border-t bg-muted p-6 sm:p-10 md:order-first md:border-t-0 md:border-r">{side}</aside>}
+        {side && <aside className="grid content-center gap-4 border-t bg-muted p-6 sm:p-10 md:order-first md:border-t-0 md:border-r">{side}</aside>}
       </div>
     </main>
   </>;
 }
 
 function Field({ id, label, hint, ...props }: { id: string; label: string; hint?: ReactNode } & React.ComponentProps<typeof Input>) {
-  return <div className="grid gap-1.5">
+  const described = [hint ? `${id}-hint` : '', props['aria-describedby'] ?? ''].filter(Boolean).join(' ') || undefined;
+  return <div className="grid gap-2">
     <Label htmlFor={id}>{label}</Label>
     {props.type === 'password'
-      ? <PasswordInput id={id} aria-describedby={hint ? `${id}-hint` : undefined} {...props} />
-      : <Input id={id} aria-describedby={hint ? `${id}-hint` : undefined} {...props} />}
+      ? <PasswordInput id={id} {...props} aria-describedby={described} />
+      : <Input id={id} {...props} aria-describedby={described} />}
     {hint && <div id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</div>}
   </div>;
 }
@@ -50,7 +52,7 @@ function useErrorText() {
   const { t, i18n } = useTranslation();
   return (error: unknown): string => {
     if (!(error instanceof ApiError)) return t('errors.request_failed');
-    if (error.code === 'rate_limited') return t('errors.rate_limited', { seconds: error.fields?.retry_after ?? '60' });
+    if (error.code === 'rate_limited') return rateLimitText(t, error.fields?.retry_after);
     const key = `errors.${error.code}`;
     return i18n.exists(key) ? t(key) : t('errors.request_failed');
   };
@@ -65,8 +67,8 @@ function PasswordRule({ length }: { length: number }) {
   return <p className={`flex items-center gap-1.5 ${ok ? 'text-success' : ''}`}><Icon className="size-3.5 shrink-0" aria-hidden="true" />{length > 128 ? c.passwordRuleLong : c.passwordRule}</p>;
 }
 
-function Alert({ children }: { children: ReactNode }) {
-  return children ? <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{children}</p> : null;
+function Alert({ id, children }: { id?: string; children: ReactNode }) {
+  return children ? <p id={id} role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{children}</p> : null;
 }
 
 // Only same-app paths may be targets, so a crafted ?next= cannot send people to another site.
@@ -78,13 +80,14 @@ function useSubmit(action: () => Promise<void>) {
   const errorText = useErrorText();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [fieldError, setFieldError] = useState(false); // the failure is about what was typed, not rate limits or the network
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
-    setBusy(true); setError('');
-    try { await action(); } catch (caught) { setError(errorText(caught)); } finally { setBusy(false); }
+    setBusy(true); setError(''); setFieldError(false);
+    try { await action(); } catch (caught) { setError(errorText(caught)); setFieldError(caught instanceof ApiError && ['invalid_credentials', 'weak_password', 'invalid_email'].includes(caught.code)); } finally { setBusy(false); }
   }
-  return { busy, error, setError, submit };
+  return { busy, error, fieldError, setError: (message: string) => { setError(message); setFieldError(Boolean(message)); }, submit };
 }
 
 // One-use tokens come from the emailed link; read once and drop them from the address bar and history.
@@ -110,7 +113,7 @@ export function LoginPage() {
   const next = safeNext(params.get('next'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { busy, error, submit } = useSubmit(() => login(email.trim(), password));
+  const { busy, error, fieldError, submit } = useSubmit(() => login(email.trim(), password));
   if (session.status === 'ready') return <Navigate to={next} replace />;
   return <AuthLayout title={c.loginTitle} intro={t('auth.loginIntro')} side={<SidePoints title={c.loginSide.title}>
     <ul className="grid gap-2 text-muted-foreground">{c.loginSide.points.map(point => <li key={point}>{point}</li>)}</ul>
@@ -118,9 +121,9 @@ export function LoginPage() {
     {params.get('notice') === 'password-reset' && <p role="status" className="text-sm text-success">{c.loginNotice}</p>}
     {params.get('notice') === 'verified' && <p role="status" className="text-sm text-success">{locale === 'th' ? 'ยืนยันอีเมลแล้ว เข้าสู่ระบบได้เลย' : 'Email verified. You can log in now.'}</p>}
     <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
-      <Field id="login-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} />
-      <Field id="login-password" label={t('auth.password')} type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} />
-      <Alert>{error}</Alert>
+      <Field id="login-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'login-error' } : {})} />
+      <Field id="login-password" label={t('auth.password')} type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'login-error' } : {})} />
+      <Alert id="login-error">{error}</Alert>
       <Button type="submit" busy={busy} disabled={busy || !email || !password}>{busy ? t('auth.working') : t('auth.loginAction')}</Button>
     </form>
     <p className="text-sm"><Link className={linkClass} to="/forgot-password">{t('auth.forgotLink')}</Link></p>
@@ -147,7 +150,7 @@ export function SignupPage() {
   const [mailOff, setMailOff] = useState(false);
   const [code, setCode] = useState('');
   const navigate = useNavigate();
-  const { busy, error, submit } = useSubmit(async () => { const r = await signup(email.trim(), password, locale); setMailOff(r.mail_enabled === false); setSent(true); });
+  const { busy, error, fieldError, submit } = useSubmit(async () => { const r = await signup(email.trim(), password, locale); setMailOff(r.mail_enabled === false); setSent(true); });
   const verify = useSubmit(async () => { await verifyEmailCode(email.trim(), code); navigate('/login?notice=verified', { replace: true }); });
   const otp = locale === 'th'
     ? { label: 'รหัส 6 หลักจากอีเมล', hint: 'กรอกรหัสที่เราส่งให้ หรือกดลิงก์ในอีเมลก็ได้ รหัสหมดอายุใน 10 นาที', action: 'ยืนยันอีเมล' }
@@ -158,9 +161,9 @@ export function SignupPage() {
     <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{c.sentTo} <span className="font-medium text-foreground">{email.trim()}</span></p>
     <form className="grid gap-3 rounded-lg border bg-card p-4" onSubmit={event => void verify.submit(event)} noValidate>
       <Label htmlFor="signup-code">{otp.label}</Label>
-      <CodeInput id="signup-code" value={code} onChange={setCode} aria-describedby="signup-code-hint" />
+      <CodeInput id="signup-code" value={code} onChange={setCode} aria-invalid={verify.error ? true : undefined} aria-describedby={verify.error ? 'signup-code-hint signup-code-error' : 'signup-code-hint'} />
       <p id="signup-code-hint" className="text-xs text-muted-foreground">{otp.hint}</p>
-      <Alert>{verify.error}</Alert>
+      <Alert id="signup-code-error">{verify.error}</Alert>
       <Button type="submit" busy={verify.busy} disabled={verify.busy || code.length !== 6} className="justify-self-start">{otp.action}</Button>
     </form>
     <p className="text-sm text-muted-foreground">{c.noMail}</p>
@@ -174,9 +177,9 @@ export function SignupPage() {
     </li>)}</ol>
   </SidePoints>}>
     <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
-      <Field id="signup-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} />
-      <Field id="signup-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} />
-      <Alert>{error}</Alert>
+      <Field id="signup-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'signup-error' } : {})} />
+      <Field id="signup-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'signup-error' } : {})} />
+      <Alert id="signup-error">{error}</Alert>
       <Button type="submit" busy={busy} disabled={busy || !email || password.length < 10}>{busy ? t('auth.working') : t('auth.signupAction')}</Button>
       <p className="text-sm text-muted-foreground">{c.next}</p>
     </form>
@@ -225,7 +228,7 @@ export function VerifyEmailPage() {
       {signedIn ? <>
         <Button variant="outline" disabled={resend.status === 'busy' || resend.status === 'sent'} onClick={() => void requestNew()}>{c.sendNewLink}</Button>
         {resend.status === 'sent' && <p role="status" className="text-sm text-success">{c.newLinkSent}</p>}
-        {resend.status === 'failed' && <p className="text-sm text-destructive [overflow-wrap:anywhere]">{resend.message}</p>}
+        {resend.status === 'failed' && <Alert>{resend.message}</Alert>}
         <p className="text-sm"><Link className={linkClass} to="/app/projects">{c.toProjects}</Link></p>
       </> : <Button asChild variant="outline"><Link to="/login">{c.loginToRequest}</Link></Button>}
     </>}
@@ -239,16 +242,16 @@ export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [mailOff, setMailOff] = useState(false);
-  const { busy, error, submit } = useSubmit(async () => { const r = await forgotPassword(email.trim()); setMailOff(r.mail_enabled === false); setSent(true); });
+  const { busy, error, fieldError, submit } = useSubmit(async () => { const r = await forgotPassword(email.trim()); setMailOff(r.mail_enabled === false); setSent(true); });
   if (sent && mailOff) return <MailOffNotice c={c} onBack={() => setSent(false)} />;
   return <AuthLayout title={sent ? t('auth.checkEmailTitle') : t('auth.forgotTitle')} intro={sent ? t('auth.checkEmailBody') : t('auth.forgotIntro')} icon={sent ? <MailCheck className="size-8 text-primary" aria-hidden="true" /> : undefined}>
     {!sent && <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
-      <Field id="forgot-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} />
-      <Alert>{error}</Alert>
+      <Field id="forgot-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'forgot-error' } : {})} />
+      <Alert id="forgot-error">{error}</Alert>
       <Button type="submit" busy={busy} disabled={busy || !email}>{busy ? t('auth.working') : t('auth.forgotAction')}</Button>
     </form>}
     {sent && <Button variant="outline" onClick={() => setSent(false)}>{c.differentEmail}</Button>}
-    <p className="text-sm"><Link className={`${linkClass} inline-flex items-center gap-1`} to="/login"><ArrowLeft className="size-4" aria-hidden="true" />{t('auth.backToLogin')}</Link></p>
+    <p className="text-sm"><Link className={`${linkClass} inline-flex min-h-11 items-center gap-1 lg:min-h-10`} to="/login"><ArrowLeft className="size-4" aria-hidden="true" />{t('auth.backToLogin')}</Link></p>
   </AuthLayout>;
 }
 
@@ -261,7 +264,7 @@ export function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [expired, setExpired] = useState(false);
-  const { busy, error, setError, submit } = useSubmit(async () => {
+  const { busy, error, fieldError, setError, submit } = useSubmit(async () => {
     if (!token) return;
     if (password !== confirm) { setError(t('auth.mismatch')); return; }
     try { await resetPassword(token, password); }
@@ -273,11 +276,12 @@ export function ResetPasswordPage() {
     <Button asChild><Link to="/forgot-password">{t('auth.requestNew')}</Link></Button>
     <p className="text-sm"><Link className={linkClass} to="/login">{t('auth.backToLogin')}</Link></p>
   </AuthLayout>;
+  const resetLink = error ? { ...(fieldError ? { 'aria-invalid': true as const } : {}), 'aria-describedby': 'reset-error' } : {};
   return <AuthLayout title={t('auth.resetTitle')}>
     <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
-      <Field id="reset-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} />
-      <Field id="reset-confirm" label={t('auth.confirmPassword')} type="password" autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)} />
-      <Alert>{error}</Alert>
+      <Field id="reset-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} {...resetLink} />
+      <Field id="reset-confirm" label={t('auth.confirmPassword')} type="password" autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)} {...resetLink} />
+      <Alert id="reset-error">{error}</Alert>
       <Button type="submit" busy={busy} disabled={busy || password.length < 10}>{busy ? t('auth.working') : t('auth.resetAction')}</Button>
     </form>
   </AuthLayout>;

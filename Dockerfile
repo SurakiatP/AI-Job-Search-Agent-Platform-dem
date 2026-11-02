@@ -11,8 +11,9 @@ RUN npm run build
 FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.12.2 /uv /uvx /bin/
 # docker-cli + git: the agent runtime builds and starts its tool containers through the host Docker socket.
+# procps: the run supervisor reads a process start time with `ps` (without it every agent run fails with FileNotFoundError).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends docker-cli git ca-certificates curl \
+ && apt-get install -y --no-install-recommends docker-cli git ca-certificates curl procps \
  && rm -rf /var/lib/apt/lists/*
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_LINK_MODE=copy
 WORKDIR /app

@@ -6,6 +6,8 @@ import functools
 import json
 import logging
 import re
+import sys
+import traceback
 import asyncio
 import hashlib
 from datetime import datetime, timezone
@@ -1367,6 +1369,8 @@ class RunExecutor:
     async def _finish_after_stop(
         self, run: Run, lease_owner: str, status: str, message_key: str | None
     ) -> None:
+        if status == "failed":
+            _log_failure(run)
         try:
             await asyncio.to_thread(
                 self.queue.finish,
@@ -1377,6 +1381,21 @@ class RunExecutor:
             )
         except ServiceError:
             return
+
+
+def _log_failure(run: Run) -> None:
+    """Leave the cause of a failed run in the log: error type, code and where it was raised, never the message
+    (provider errors can carry URLs or keys). Called from inside the except block that handles the failure."""
+    kind, exc, tb = sys.exc_info()
+    if kind is None:
+        return
+    frames = traceback.extract_tb(tb)
+    where = f"{Path(frames[-1].filename).name}:{frames[-1].lineno} {frames[-1].name}" if frames else "unknown"
+    path = f" missing={exc.filename!r}" if isinstance(exc, OSError) and exc.filename else ""  # a path or program name, never a message
+    chain = " <- ".join(f"{Path(f.filename).name}:{f.lineno}" for f in reversed(frames[-5:]))
+    logging.getLogger(__name__).error(
+        "run_failed operation=%s run_id=%s error=%s code=%s at=%s%s via=%s",
+        run.operation, run.id, kind.__name__, getattr(exc, "code", None), where, path, chain)
 
 
 def _safe_message(code: str) -> str:

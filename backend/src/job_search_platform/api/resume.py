@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 from sqlalchemy import func, select
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, write_actor
@@ -18,6 +18,8 @@ from job_search_platform.db.models import (CV, CVRevision, CVRevisionText, Docum
                                            Project, ResumeDraft, Run, StoredFile)
 from job_search_platform.services import rate_limits
 from job_search_platform.services import resume as rs
+from job_search_platform.services import resume_theme_store as store
+from job_search_platform.services import resume_themes as rt
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.experience import MAX_ITEMS, text_hash
@@ -37,7 +39,7 @@ class BuilderCreate(_Body):
 
 class DraftUpdate(_Body):
     resume_data: dict[str, Any]
-    template_id: Literal["onyx", "kakuna", "ditgar", "lotus", "teak", "saffron"]
+    template_id: str  # a preset id or "custom:<theme uuid>"; checked against the owner's themes when saved
     accent: Literal["indigo", "blue", "teal", "green", "rose", "slate"]
     document_language: Literal["th", "en"]
     updated_at: datetime
@@ -58,12 +60,12 @@ def parse_resume(raw: dict[str, Any]) -> rs.ResumeData:
         raise ServiceError("resume_invalid", fields={"path": location[:200]}) from None
 
 
-def _view(db, draft: ResumeDraft) -> dict[str, Any]:
+def _view(db, draft: ResumeDraft, actor_id: UUID) -> dict[str, Any]:
     name = db.scalar(select(CV.name).where(CV.id == draft.cv_id)) if draft.cv_id else \
         db.scalar(select(Document.title).where(Document.id == draft.document_id))
     return {"id": draft.id, "cv_id": draft.cv_id, "document_id": draft.document_id, "name": name, "resume_data": draft.resume_data,
             "template_id": draft.template_id, "accent": draft.accent, "document_language": draft.document_language,
-            "ats_safe": rs.TEMPLATES[draft.template_id], "updated_at": draft.updated_at}
+            "ats_safe": rt.flags(store.layout_of(db, actor_id, draft.template_id))[0], "updated_at": draft.updated_at}
 
 
 def _draft(db, actor, project_id: UUID, *, cv_id: UUID | None = None, document_id: UUID | None = None,
@@ -82,10 +84,12 @@ def _draft(db, actor, project_id: UUID, *, cv_id: UUID | None = None, document_i
     return draft
 
 
-async def _render(services: Services, project_id: UUID, draft_data: rs.ResumeData, template: str, accent: str, lang: str) -> bytes:
-    photo = await rs.load_photo(services.sessions, services.files.object_store, project_id, draft_data, template)
+async def _render(services: Services, project_id: UUID, draft_data: rs.ResumeData, layout: str, accent: str, lang: str,
+                  tokens: dict | None = None, sample: list[str] | None = None) -> bytes:
+    """`layout` is the template file; `tokens` come from a custom or non-original preset theme (SPEC-RTH)."""
+    photo = await rs.load_photo(services.sessions, services.files.object_store, project_id, draft_data, layout)
     try:
-        return await services.runtime.render_typst(rs.render_bundle(draft_data, template, accent, lang, photo))
+        return await services.runtime.render_typst(rs.render_bundle(draft_data, layout, accent, lang, photo, tokens, sample or ()))
     except ServiceError:
         raise
     except Exception:  # sandbox, docker or compile failure: the draft stays as it is
@@ -96,7 +100,8 @@ async def _render(services: Services, project_id: UUID, draft_data: rs.ResumeDat
 async def resume_templates(actor=Depends(owner_actor)):
     from job_search_platform.services.job_dictionary import PROVINCE_NAMES
 
-    return {"templates": [{"id": key, "ats_safe": safe, "photo": key in rs.PHOTO_TEMPLATES} for key, safe in rs.TEMPLATES.items()],
+    return {"templates": [{"id": key, "ats_safe": rt.flags(p.layout)[0], "photo": rt.flags(p.layout)[1], "th": p.th, "en": p.en}
+                          for key, p in rt.PRESETS.items()],
             "accents": [{"id": key, "hex": value} for key, value in rs.ACCENTS.items()],
             "provinces": [{"id": code, "en": en, "th": th} for code, (en, th) in PROVINCE_NAMES.items()]}
 
@@ -131,7 +136,7 @@ def _key(kind: str, owner_id: UUID) -> dict[str, UUID]:
 
 async def _get(kind, project_id, owner_id, actor, services):
     with services.sessions() as db:
-        return _view(db, _draft(db, actor, project_id, **_key(kind, owner_id)))
+        return _view(db, _draft(db, actor, project_id, **_key(kind, owner_id)), actor.user_id)
 
 
 async def _put(kind, project_id, owner_id, body: DraftUpdate, actor, services):
@@ -143,20 +148,51 @@ async def _put(kind, project_id, owner_id, body: DraftUpdate, actor, services):
             raise ServiceError("draft_conflict")
         if data.basics.photo and _photo_row(db, project_id, UUID(data.basics.photo)) is None:
             raise ServiceError("resume_invalid", fields={"path": "basics.photo"})
+        if body.accent not in rs.ACCENTS or not store.valid_style_id(body.template_id):
+            raise ServiceError("resume_invalid", fields={"path": "template_id"})
+        store.resolve(db, actor.user_id, body.template_id, body.accent)  # a custom id must be one of the owner's themes
         draft.resume_data, draft.template_id, draft.accent = data.model_dump(), body.template_id, body.accent
         draft.document_language, draft.updated_at = body.document_language, datetime.now(timezone.utc)
         db.flush()
-        return _view(db, draft)
+        return _view(db, draft, actor.user_id)
 
 
 async def _preview(kind, project_id, owner_id, actor, services):
     with services.sessions.begin() as db:
         draft = _draft(db, actor, project_id, **_key(kind, owner_id))
         rate_limits.hit(db, "resume_preview", str(actor.user_id))
-        data, options = parse_resume(draft.resume_data), (draft.template_id, draft.accent, draft.document_language)
+        data = parse_resume(draft.resume_data)
+        layout, tokens = store.resolve(db, actor.user_id, draft.template_id, draft.accent)
+        data, sampled = rs.with_sample(data, draft.document_language)  # preview only: empty core parts show marked sample content
+        options = (layout, draft.accent, draft.document_language, tokens, sampled)
     pdf = await _render(services, project_id, data, *options)
+    return _pdf(pdf)
+
+
+def _pdf(pdf: bytes) -> Response:
     return Response(pdf, media_type="application/pdf", headers={
         "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Content-Disposition": "inline; filename=preview.pdf"})
+
+
+class ThemePreview(_Body):
+    layout: str
+    tokens: dict[str, Any]
+
+
+async def _theme_preview(kind, project_id, owner_id, body: ThemePreview, actor, services):
+    """Preview the saved draft with tokens that are not saved yet (the theme builder); invalid tokens render nothing."""
+    with services.sessions.begin() as db:
+        draft = _draft(db, actor, project_id, **_key(kind, owner_id))  # access first: another owner gets 404, not a validation error
+        try:
+            if body.layout not in rs.TEMPLATES:
+                raise rt.ThemeError("layout")
+            tokens = rt.validate_tokens(body.tokens).model_dump()
+        except rt.ThemeError as error:
+            raise ServiceError("theme_invalid", fields={"rule": error.rule}) from None
+        rate_limits.hit(db, "resume_preview", str(actor.user_id))
+        data, lang = parse_resume(draft.resume_data), draft.document_language
+        data, sampled = rs.with_sample(data, lang)
+    return _pdf(await _render(services, project_id, data, body.layout, "indigo", lang, tokens, sampled))
 
 
 async def _publish(kind, project_id, owner_id, actor, services):
@@ -164,9 +200,12 @@ async def _publish(kind, project_id, owner_id, actor, services):
         draft = _draft(db, actor, project_id, **_key(kind, owner_id), action="write")
         data, stamp = parse_resume(draft.resume_data), draft.updated_at
         options = (draft.template_id, draft.accent, draft.document_language)
+        layout, tokens = store.resolve(db, actor.user_id, draft.template_id, draft.accent)
+    with services.sessions.begin() as db:  # own transaction: the hit counts even when the publish fails later
+        rate_limits.hit(db, "resume_publish", str(actor.user_id))
     if not data.basics.name or rs.is_empty(data):
         raise ServiceError("resume_incomplete")
-    pdf = await _render(services, project_id, data, *options)
+    pdf = await _render(services, project_id, data, layout, options[1], options[2], tokens)
     file_id = await _store_pdf(services, actor, project_id, pdf, data.basics.name)
     if kind == "cv":
         return _publish_cv(services, actor, project_id, owner_id, file_id, data, options, stamp)
@@ -245,6 +284,37 @@ async def put_cv_draft(project_id: UUID, cv_id: UUID, body: DraftUpdate, actor=D
 @router.post(CV_DRAFT + "/preview")
 async def preview_cv_draft(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
     return await _preview("cv", project_id, cv_id, actor, services)
+
+
+@router.post(CV_DRAFT + "/theme-preview")
+async def theme_preview_cv_draft(project_id: UUID, cv_id: UUID, body: ThemePreview, actor=Depends(write_actor),
+                                 services: Services = Depends(get_services)):
+    return await _theme_preview("cv", project_id, cv_id, body, actor, services)
+
+
+@router.post(DOC_DRAFT + "/theme-preview")
+async def theme_preview_document_draft(project_id: UUID, document_id: UUID, body: ThemePreview, actor=Depends(write_actor),
+                                       services: Services = Depends(get_services)):
+    return await _theme_preview("document", project_id, document_id, body, actor, services)
+
+
+class FromExperience(_Body):
+    item_ids: Annotated[list[UUID], Field(min_length=1, max_length=200)]
+
+
+@router.post(CV_DRAFT + "/from-experience")
+async def from_experience_cv_draft(project_id: UUID, cv_id: UUID, body: FromExperience, actor=Depends(write_actor),
+                                   services: Services = Depends(get_services)):
+    """The chosen experience-bank items as CV sections. Nothing is saved: the builder merges them into the draft, where the owner edits them."""
+    with services.sessions() as db:
+        _draft(db, actor, project_id, cv_id=cv_id)  # access first
+        ids = set(body.item_ids)
+        rows = db.scalars(select(ExperienceItem).where(ExperienceItem.project_id == project_id, ExperienceItem.id.in_(ids),
+                                                       ExperienceItem.removed_at.is_(None))
+                          .order_by(ExperienceItem.created_at, ExperienceItem.id)).all()
+        if len(rows) != len(ids):
+            raise ServiceError("not_found")
+        return {"resume_data": rs.from_bank(list(rows)).model_dump()}
 
 
 @router.post(CV_DRAFT + "/publish", status_code=201)
@@ -370,6 +440,8 @@ def sync_bank(db, project_id: UUID, cv_id: UUID, facts: list[dict]) -> None:
     for digest, fact in wanted.items():
         row = existing.get(digest)
         if row is not None and row.removed_at is None:
+            if row.builder_cv_id not in (None, cv_id):
+                row.builder_cv_id = None  # two builder CVs list it: neither may remove it alone
             continue
         if live >= MAX_ITEMS:
             raise ServiceError("bank_full")

@@ -106,3 +106,29 @@ def test_generic_aliases_do_not_misclassify(title, role):
 
 def test_new_thai_skill_aliases_found():
     assert jd.skills_of("ต้องใช้ เอสคิวแอล และ คูเบอร์เนทีส") == ["sql", "kubernetes"]
+
+
+def test_thai_role_synonyms_from_roles_one_way():
+    from job_search_platform.services import job_index
+    syn = jd.thai_role_synonyms()
+    assert syn["นักวิเคราะห์ข้อมูล"] == ["data analyst"]
+    assert "data analyst" in syn["วิเคราะห์ข้อมูล"]
+    assert all(not k.isascii() and v and all(x.isascii() and x == x.lower() for x in v) for k, v in syn.items())
+    assert job_index.SETTINGS["synonyms"] == syn
+    # Classification-bucket aliases are not search synonyms (they would give wrong recall).
+    assert not (jd._NOT_SYNONYMS & syn.keys())
+    # The constant filters itself, so also pin the loose aliases that once mapped to another occupation.
+    assert not {"พนักงานการเงิน", "วิศวกรสนาม", "ผู้ประสานงานโครงการ", "เจ้าหน้าที่ประสานงาน", "นิติกร", "ผู้จัดการฝ่ายการเงิน", "เจ้าหน้าที่นิติกร", "พนักงานขับรถ", "คนขับรถ"} & syn.keys()
+
+
+def test_online_marketer_is_not_seo_specialist():
+    syn = jd.thai_role_synonyms()
+    for k in ("นักการตลาดออนไลน์", "การตลาดออนไลน์"):
+        assert "seo specialist" not in syn.get(k, [])
+
+
+def test_generic_thai_head_words_are_search_synonyms():
+    syn = jd.thai_role_synonyms()
+    for thai, english in (("นักวิเคราะห์", "analyst"), ("วิศวกร", "engineer"), ("นักพัฒนา", "developer"), ("ผู้จัดการ", "manager")):
+        assert english in syn[thai]
+        assert len(syn[thai]) == len(set(syn[thai]))

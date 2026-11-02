@@ -9,7 +9,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import sessionmaker
 from uuid import UUID, uuid4
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from helpers import grant as make_grant
 from helpers import project as make_project
@@ -173,7 +173,7 @@ def test_grant_cannot_set_the_limit(api_context):
     csrf, pid, *_ = _ready_pack(ctx)
     token = ctx.client.post(f"{PREFIX}/{pid}/grants", headers=_write_headers(csrf), json={
         "capabilities": ["results:read", "applications:apply", "documents:draft"],
-        "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     saved = dict(ctx.client.cookies)
     ctx.client.cookies.clear()
     try:

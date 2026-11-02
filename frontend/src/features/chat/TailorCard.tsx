@@ -48,7 +48,7 @@ export function TailorCard({ projectId, sessionId, locale, outputLanguage, busy,
   }
   const toggle = (id: number, on: boolean) => setPicked(current => on ? [...new Set([...current, id])] : current.filter(item => item !== id));
 
-  return <section aria-labelledby={`tailor-${sessionId}`} className="grid gap-4 rounded-xl border bg-card p-4 sm:p-5">
+  return <section aria-labelledby={`tailor-${sessionId}`} className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6">
     <h2 id={`tailor-${sessionId}`} className="flex items-center gap-2 text-lg font-semibold"><AiMark />{c.title}</h2>
     <p className="text-sm text-muted-foreground">{c.body}</p>
     <fieldset className="grid gap-2" disabled={busy || working}>
@@ -57,7 +57,7 @@ export function TailorCard({ projectId, sessionId, locale, outputLanguage, busy,
         <input type="radio" name={`tailor-mode-${sessionId}`} className="mt-1 size-4 shrink-0 accent-primary" value={value} checked={mode === value} onChange={() => setMode(value)} />
         <span className="min-w-0"><span className="font-medium">{c[value]}</span><span className="block text-muted-foreground">{c[`${value}Hint` as const]}</span></span></label>)}
     </fieldset>
-    {mode === 'interactive' && <div className="grid gap-1.5">
+    {mode === 'interactive' && <div className="grid gap-2">
       <label htmlFor={`tailor-wish-${sessionId}`} className="text-sm font-medium">{c.wishLabel}</label>
       <textarea id={`tailor-wish-${sessionId}`} value={wish} maxLength={1000} rows={3} disabled={busy || working} onChange={event => setWish(event.target.value)} aria-describedby={`tailor-wish-hint-${sessionId}`} className="min-h-20 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
       <p id={`tailor-wish-hint-${sessionId}`} className="text-xs text-muted-foreground">{c.wishHint}</p>

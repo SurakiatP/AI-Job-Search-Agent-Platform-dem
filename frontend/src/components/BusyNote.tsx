@@ -27,7 +27,7 @@ export function BusyNote({ label, detail, bar = false, announce = true, action, 
   const { i18n } = useTranslation();
   const seconds = useElapsed();
   const thai = locale ? locale === 'th' : (i18n?.language ?? 'th').startsWith('th');
-  return <div {...(announce ? { role: 'status', 'aria-live': 'polite' as const } : { 'aria-hidden': true })} className={cn('grid min-w-0 gap-2 rounded-lg border border-primary/25 bg-accent/50 px-3 py-2.5 text-sm', className)}>
+  return <div {...(announce ? { role: 'status', 'aria-live': 'polite' as const } : { 'aria-hidden': true })} className={cn('grid min-w-0 gap-2 rounded-lg border border-primary/25 bg-accent/50 px-3 py-2 text-sm', className)}>
     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
       <AiSpinner />
       <span className="min-w-0 break-words font-medium">{label}</span>

@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export const prefersReducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -15,18 +15,6 @@ export function useSeen<T extends HTMLElement>(threshold = 0.25) {
     return () => io.disconnect();
   }, [seen, threshold]);
   return [ref, seen] as const;
-}
-
-/** Sets data-seen="true" once the element enters the viewport (immediately with reduced motion). */
-export function Reveal({ className, children, ...props }: ComponentProps<'div'>) {
-  const [ref, seen] = useSeen<HTMLDivElement>();
-  return <div ref={ref} data-seen={seen} className={className} {...props}>{children}</div>;
-}
-
-/** A list whose items rise in one after another when it scrolls into view. Items get --i for the delay. */
-export function Stagger({ as = 'ul', className, children, ...props }: { as?: 'ul' | 'ol'; className?: string; children: ReactNode[] } & Omit<ComponentProps<'ul'>, 'children'>) {
-  const [ref, seen] = useSeen<HTMLUListElement>(0.2);
-  return createElement(as, { ref, 'data-seen': seen, className: `landing-stagger ${className ?? ''}`, ...props }, children);
 }
 
 /** A drawn check mark (one stroke weight, rounded caps). `draw` lets the demo animate it in. */

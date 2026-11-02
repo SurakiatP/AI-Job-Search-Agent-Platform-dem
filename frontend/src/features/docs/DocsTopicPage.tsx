@@ -36,7 +36,7 @@ export function DocsTopicPage() {
       {status === 'ready' && <Button asChild size="sm"><Link to="/app/projects">{c.openApp}</Link></Button>}
     </>} />
     <main data-stage={topic?.stage}>
-    <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-14 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
+    <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-12 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
       <nav aria-label={c.topics} className="mb-8 lg:sticky lg:top-20 lg:mb-0 lg:self-start">
         <ol className="flex gap-2 overflow-x-auto pb-2 lg:grid lg:gap-1 lg:overflow-visible lg:pb-0">
           {topics.map((item, position) => <li key={item.id} className="shrink-0">
@@ -45,7 +45,7 @@ export function DocsTopicPage() {
               <span className="tabular-nums text-xs opacity-70">{position + 1}</span><span className="flex-1">{c.list[position].title}</span>
               {item.id === slug && page && <ChevronDown className="hidden size-4 shrink-0 self-center lg:block" aria-hidden="true" />}
             </Link>
-            {item.id === slug && page && <nav aria-label={c.onThisPage} className="ml-[1.35rem] mt-1 hidden border-l-2 border-[var(--stage,var(--primary))]/30 pl-2 lg:block">
+            {item.id === slug && page && <nav aria-label={c.onThisPage} className="ml-5 mt-1 hidden border-l-2 border-[var(--stage,var(--primary))]/30 pl-2 lg:block">
               <ul className="grid gap-0.5">
                 {page.sections.map((section, sectionIndex) => <li key={section.heading}>
                   <a href={`#section-${sectionIndex + 1}`} className="block rounded-md px-3 py-1.5 text-sm leading-snug text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>
@@ -59,12 +59,12 @@ export function DocsTopicPage() {
       <article className="min-w-0">
         {page === undefined && <p className="text-muted-foreground">{c.loading}</p>}
         {page === null && <div className="grid gap-4">
-          <h1 className="text-3xl font-semibold leading-tight">{c.notFound}</h1>
+          <h1 className="text-3xl font-semibold">{c.notFound}</h1>
           <Link to="/docs" className="text-primary underline underline-offset-4">{c.backToGuide}</Link>
         </div>}
         {page && topic && <>
           <p className="mb-2 text-sm font-medium text-[var(--stage,var(--primary))]">{c.topicOf(index + 1, topics.length)}</p>
-          <h1 className="mb-8 text-3xl font-semibold leading-tight sm:text-4xl">{page.title}</h1>
+          <h1 className="mb-8 text-3xl font-semibold sm:text-4xl">{page.title}</h1>
           <nav aria-label={c.onThisPage} className="mb-8 flex flex-wrap gap-2 lg:hidden">
             {page.sections.map((section, position) => <a key={section.heading} href={`#section-${position + 1}`}
               className="rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>)}
@@ -90,7 +90,7 @@ export function DocsTopicPage() {
               </Wrapper>;
             })}
           </div>
-          <nav aria-label={c.pager} className="mt-14 grid gap-3 border-t pt-6 sm:grid-cols-2">
+          <nav aria-label={c.pager} className="mt-12 grid gap-3 border-t pt-6 sm:grid-cols-2">
             {previous ? <Link to={`/docs/${previous.id}`} className="flex items-center gap-2 rounded-lg border bg-card p-4 text-sm font-medium hover:bg-accent"><ArrowLeft className="size-4 shrink-0" aria-hidden="true" />{titleOf(previous.id)}</Link> : <span />}
             {next && <Link to={`/docs/${next.id}`} className="flex items-center justify-end gap-2 rounded-lg border bg-card p-4 text-right text-sm font-medium hover:bg-accent sm:col-start-2">{titleOf(next.id)}<ArrowRight className="size-4 shrink-0" aria-hidden="true" /></Link>}
           </nav>

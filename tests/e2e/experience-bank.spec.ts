@@ -42,8 +42,9 @@ test('experience bank groups facts, adds and removes, and shows extraction resul
   await section.getByLabel('Type').selectOption('skill');
   await section.getByRole('button', { name: 'Add fact' }).click();
   await expect(section.getByText('Python')).toBeVisible();
-  await section.getByRole('button', { name: 'Remove: Ran BigQuery' }).click();
+  await section.getByRole('button', { name: 'Remove: Ran BigQuery' }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(section.getByText('Ran BigQuery')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Experience bank' })).toBeFocused();
 });
 
 test('experience bank empty states and Thai at 320px', async ({ page }) => {
@@ -192,4 +193,18 @@ test('education uses degree and institution labels in the form and list', async 
   await expect(section.getByLabel('Organization')).toHaveCount(0);
   await expect(section.getByText('Degree / major: Computer Science')).toBeVisible();
   await expect(section.getByText('Institution: Chulalongkorn University')).toBeVisible();
+});
+
+test('experience bank lists, offers and groups the five builder-only kinds', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const extra: [string, string, string][] = [['language', 'English — fluent', 'Languages'], ['award', 'Best Paper: NLP', 'Awards'], ['publication', 'Graph Search Survey', 'Publications'], ['volunteer', 'Code club mentor', 'Volunteering'], ['interest', 'Chess', 'Interests']];
+  await bank(page, { items: extra.map(([kind, text], i) => ({ ...fact(`k${i}`, text), kind, role: null, organization: null, period: null })), provider_configured: true, extraction: null });
+  await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
+  const section = page.getByRole('region', { name: 'Experience bank' });
+  for (const [, text, heading] of extra) {
+    await expect(section.getByText(text)).toBeVisible();
+    await expect(section.getByRole('heading', { name: new RegExp(`^${heading}`) })).toBeVisible();
+  }
+  await expect(section.getByLabel('Type').locator('option')).toHaveCount(11);
 });

@@ -3,6 +3,7 @@ import { Ban, Bot, Check, FileCheck2, Pause, Play, RotateCcw, ShieldCheck, Spark
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import type { Locale, RunEvent, RunStatus } from '../../lib/api-types';
+import { dateLocale } from '../../lib/locale';
 
 type Tone = 'done' | 'warn' | 'bad';
 type Step = { key: string; icon: ComponentType<{ className?: string }>; label: string; detail?: string; at: string; tone: Tone };
@@ -77,7 +78,7 @@ export function RunSteps({ events, locale, status }: { events: RunEvent[]; local
   const steps = buildSteps(events, locale);
   if (!steps.length) return null;
   const working = status === 'queued' || status === 'running';
-  const time = new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const time = new Intl.DateTimeFormat(dateLocale(locale), { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   return <ol aria-label={text[locale].progress} className="grid">
     {steps.map((step, index) => {
       const current = working && index === steps.length - 1;

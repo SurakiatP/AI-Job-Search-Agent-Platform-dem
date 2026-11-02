@@ -4,5 +4,8 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { AppProviders } from './app/providers';
 import { AppRoutes } from './app/router';
+import { installValidationText } from './lib/validity';
+
+installValidationText();
 
 createRoot(document.getElementById('root')!).render(<StrictMode><AppProviders><BrowserRouter><AppRoutes /></BrowserRouter></AppProviders></StrictMode>);

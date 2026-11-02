@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from job_search_platform.db.models import JobIndexDelete, JobPosting
 from job_search_platform.integrations.meili import MeiliError
-from job_search_platform.services.job_dictionary import province_code
+from job_search_platform.services.job_dictionary import province_code, thai_role_synonyms
 
 SETTINGS = {
     "searchableAttributes": ["title", "company", "skills", "category", "location", "description_markdown"],
@@ -20,6 +20,7 @@ SETTINGS = {
                              "locales": ["tha", "eng"]}],
     "pagination": {"maxTotalHits": 10000},
     "faceting": {"maxValuesPerFacet": 100},
+    "synonyms": thai_role_synonyms(),
 }
 
 
@@ -69,6 +70,7 @@ def sync(sessions, client, index, *, budget_s=300, batch=1000) -> dict:
         if not client.index_exists(index):
             rebuild(sessions, client, index, batch=batch)
             return {**out, "state": "rebuilt"}
+        client.wait(client.update_settings(index, SETTINGS))
         with sessions() as db:
             queued = [str(i) for i in db.scalars(select(JobIndexDelete.posting_id).order_by(JobIndexDelete.posting_id))]
         for i in range(0, len(queued), batch):

@@ -147,3 +147,18 @@ test('unavailable CV details preserve the report and offer recovery without gues
   await expect(page.getByTestId('evaluation-provenance').getByRole('button', { name: 'Retry' })).toBeVisible();
   await expect(page.getByTestId('evaluation-provenance')).not.toContainText('Healthcare Analytics');
 });
+
+test('F4 browser validation bubbles use the app language, not the browser language', async ({ page }) => {
+  const fixture = await useApplicationsWorkspaceFixture(page);
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await page.goto(`/app/projects/${fixture.projectId}/applications`);
+  await page.getByRole('button', { name: 'เพิ่มประกาศงาน' }).first().click();
+  const title = page.locator('#job-title');
+  await page.locator('form').filter({ has: title }).evaluate(form => (form as HTMLFormElement).requestSubmit());
+  expect(await title.evaluate(el => (el as HTMLInputElement).validationMessage)).toBe('กรุณากรอกช่องนี้');
+  await title.fill('Analytics Lead');
+  expect(await title.evaluate(el => (el as HTMLInputElement).validationMessage)).toBe('');
+  await page.evaluate(() => { document.documentElement.lang = 'en'; });
+  await page.locator('#job-description').evaluate(el => (el as HTMLTextAreaElement).form!.requestSubmit());
+  expect(await page.locator('#job-description').evaluate(el => (el as HTMLTextAreaElement).validationMessage)).toBe('Please fill in this field.');
+});

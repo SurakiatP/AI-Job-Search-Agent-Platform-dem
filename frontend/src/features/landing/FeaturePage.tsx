@@ -40,7 +40,7 @@ export function FeaturePage() {
 
       <section className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-12">
         <div className="grid content-start gap-4">
-          <h1 className="text-3xl font-semibold leading-tight [text-wrap:balance] sm:text-4xl">{page.title}</h1>
+          <h1 className="text-3xl font-semibold [text-wrap:balance] sm:text-4xl">{page.title}</h1>
           <p className="max-w-prose text-base leading-relaxed text-muted-foreground sm:text-lg">{page.lead}</p>
           <div className="flex flex-wrap gap-3 pt-1">{cta}<Button asChild size="lg" variant="outline"><Link to="/docs">{u.docs}</Link></Button></div>
         </div>
@@ -66,13 +66,13 @@ export function FeaturePage() {
         <ul className="grid gap-2 text-sm">
           {page.good.map(text => <li key={text} className="flex items-start gap-2"><Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" /><span>{text}</span></li>)}
         </ul>
-        <p className="flex items-start gap-2.5 border-t pt-4 text-sm text-muted-foreground"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3" /></span><span>{page.note}</span></p>
+        <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3" /></span><span>{page.note}</span></p>
       </section>
 
       <section aria-labelledby="more-title" className="grid gap-4">
         <h2 id="more-title" className="text-lg font-semibold">{u.others}</h2>
         <ul className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {featureSlugs.map((s, i) => <li key={s}><Link to={`/features/${s}`} aria-current={i === index ? 'page' : undefined} className="block min-h-11 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent aria-[current=page]:border-primary aria-[current=page]:bg-accent">{c.steps[i].tab}</Link></li>)}
+          {featureSlugs.map((s, i) => <li key={s}><Link to={`/features/${s}`} aria-current={i === index ? 'page' : undefined} className="block min-h-11 rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-accent aria-[current=page]:border-primary aria-[current=page]:bg-accent">{c.steps[i].tab}</Link></li>)}
         </ul>
         <div className="flex flex-wrap justify-between gap-3">
           {prev ? <Button asChild variant="ghost"><Link to={`/features/${prev}`}><ArrowLeft className="size-4" aria-hidden="true" />{u.prev}: {c.steps[index - 1].tab}</Link></Button> : <span />}

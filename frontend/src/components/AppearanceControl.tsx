@@ -13,9 +13,9 @@ export function AppearanceControl({ compact = false }: { compact?: boolean }) {
     const next = options[(options.findIndex(([value]) => value === theme) + 1) % options.length][0] as Theme;
     return <Button variant="ghost" size="icon" aria-label={`${t('appearance')}: ${t(theme)}`} title={t(next)} onClick={() => setTheme(next)}><Icon aria-hidden="true" size={18} /></Button>;
   }
-  return <div className="inline-flex gap-0.5 rounded-lg bg-muted p-0.5" role="group" aria-label={t('appearance')}>
+  return <div className="segmented" role="group" aria-label={t('appearance')}>
     {options.map(([value, Icon]) => (
-      <Button key={value} variant="ghost" size="icon" className="size-9 min-h-9" aria-label={t(value)} title={t(value)} aria-pressed={theme === value} onClick={() => setTheme(value)}><Icon aria-hidden="true" size={16} /></Button>
+      <Button key={value} variant="ghost" size="icon" aria-label={t(value)} title={t(value)} aria-pressed={theme === value} onClick={() => setTheme(value)}><Icon aria-hidden="true" size={16} /></Button>
     ))}
   </div>;
 }

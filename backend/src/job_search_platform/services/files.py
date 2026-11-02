@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from job_search_platform.db.models import CV, CVRevision, Document, DocumentRevision, Project, Run, RunArtifact, StoredFile
 from job_search_platform.integrations.hermes_runtime import PARSE_ERRORS, RuntimeErrorCode
 from job_search_platform.integrations.object_store import ObjectMissing, ObjectTooLarge
+from job_search_platform.services import rate_limits
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import Actor, FileView
 from job_search_platform.services.errors import ServiceError
@@ -67,6 +68,8 @@ class Files:
             _require_project(db, project_id)
             if cv_id is not None and kind == "cv_original":
                 _live_cv(db, project_id, cv_id)
+            if kind == "cv_original" and actor.user_id is not None:  # each upload stores up to 20 MB and starts the parser
+                rate_limits.hit(db, "cv_upload", str(actor.user_id))
 
         body = await _read_limited(stream)
         actual_mime = _sniff_mime(body)

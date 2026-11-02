@@ -74,23 +74,26 @@ The deploy follows the customer's `websearch` template: one published port, data
 | Setting | Value |
 |---|---|
 | Data folder (`DATA_PATH`) | `/home/search/Thoughtmind/jobsearch/data` |
+| Runner tag | `ai4thai-gpu1` |
+| Published as | `0.0.0.0:10360:8000` |
 | Published port (`PORT`) | `10360` |
 | Domain | `https://jobsearch.aiforthai.in.th` |
 | Image tag | `1.0.0-<pipeline number>`, for example `1.0.0-1` |
 
+**Before the first deploy** the platform team creates the data folder and four sub-folders (the compose file does not create them): `postgres`, `minio`, `meili`, `litellm-db` under `DATA_PATH`. MinIO and Meilisearch run as unprivileged users, so those two folders must be writable by them (mode 777 worked in a rehearsal). The app creates `home` and `private` itself; if `private` already exists it must be mode 700, or the app stops with `maintenance_private_directory_permissions`.
+
 **Steps**
 
-1. In GitLab go to **Settings → CI/CD → Variables** and add these as *protected* and *masked*:
-   `POSTGRES_USER`, `POSTGRES_PASSWORD`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` (at least 8 characters), `MEILI_MASTER_KEY`, `LITELLM_MASTER_KEY` (starts with `sk-`), `LITELLM_SALT_KEY`, `LITELLM_DB_PASSWORD`, `OPENROUTER_API_KEY`.
-   Optional: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_STARTTLS`, `TELEGRAM_BOT_TOKEN`.
-2. Make sure the code is on `main` (merge `develop` into `main`).
-3. Open the pipeline and run the manual **deploy** job. It builds `jobsearch-app:1.0.0-<n>` and starts everything with `docker compose`.
+1. In GitLab go to **Settings → CI/CD → Variables → Add variable**: key `ENV_FILE`, type **File**, **Protected**, environment scope `production`, "Expand variable reference" off. The value is a `.env` file: `COMPOSE_PROJECT_NAME`, `DATA_PATH`, `PORT`, `APP_PUBLIC_ORIGIN`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` (at least 8 characters), `MEILI_MASTER_KEY`, `LITELLM_MASTER_KEY` (starts with `sk-`), `LITELLM_SALT_KEY`, `LITELLM_DB_PASSWORD`, `OPENROUTER_API_KEY`; optional `SMTP_*`, `TELEGRAM_BOT_TOKEN`, `AI_*` (template in `.env.example`). Make `main` a protected branch so the deploy job can read it.
+2. Merge `develop` into `main`.
+3. The pipeline runs the tests, then the `deploy` job deploys automatically: it copies `ENV_FILE` to `.env` and runs `docker compose config`, `build --pull`, `up -d --remove-orphans` and `ps`. It builds `jobsearch-app:1.0.0-<n>`.
 4. The first start takes several minutes: the app prepares its agent tools once. Watch it with `docker logs -f jobsearch-web`.
 5. Open the domain and sign in. To stop the stack, run the manual **down** job.
 
 **Good to know**
 
 - The app container mounts `/var/run/docker.sock` so the agent runtime can start its tool containers. The platform team must allow this on the runner.
+- Every deploy runs a one-shot `litellm-seed` service that adds the `ai-analyze` model to LiteLLM (needs `OPENROUTER_API_KEY`; without it the model is skipped and AI calls fail). `AI_REASONING_*`, `AI_MODEL_*` and `AI_ANALYZE_UPSTREAM_MODEL` in `ENV_FILE` reach the app and LiteLLM.
 - Data lives under `DATA_PATH` (`postgres`, `minio`, `meili`, `litellm-db`, `private`, `home`). Back up that folder.
 - The deploy has not yet been run end to end on the customer platform. Report any problem from the first run.
 

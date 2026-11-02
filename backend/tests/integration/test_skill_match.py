@@ -1,6 +1,7 @@
 """CV skill profile + job-search match: endpoints, ordering, isolation and migration 0013."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 import time
 from uuid import UUID, uuid4
 
@@ -83,7 +84,7 @@ def test_match_is_project_scoped_owner_only_and_reports_source_errors(api_contex
     assert client.get(f"{PREFIX}/{pid}/job-search/match?cv_revision_id={rev}&pool=101").status_code == 422
 
     token = client.post(f"{PREFIX}/{pid}/grants", headers=_write_headers(csrf), json={
-        "capabilities": ["results:read"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+        "capabilities": ["results:read"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     saved = dict(client.cookies)
     client.cookies.clear()
     try:

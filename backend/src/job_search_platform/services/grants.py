@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from job_search_platform.db.models import Grant, OAuthToken, Project
 from job_search_platform.db.repositories import Repositories
-from job_search_platform.services.authorization import authorize, GRANT_CAPABILITIES
+from job_search_platform.services.authorization import authorize, GRANT_CAPABILITIES, GRANT_CLOCK_SLACK, MAX_GRANT_TTL
 from job_search_platform.services.contracts import Actor, GrantIssuedView, GrantView
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.quota import require_verified_owner
@@ -31,7 +31,8 @@ class Grants:
     async def issue(self, actor, project_id, request):
         now = datetime.now(timezone.utc)
         if (not request.capabilities or not request.capabilities <= GRANT_CAPABILITIES
-                or request.expires_at.tzinfo is None or request.expires_at <= now):
+                or request.expires_at.tzinfo is None or request.expires_at <= now
+                or request.expires_at > now + MAX_GRANT_TTL + GRANT_CLOCK_SLACK):
             raise ServiceError("invalid_grant")
         def issue():
             token = "jspg_" + secrets.token_urlsafe(32)

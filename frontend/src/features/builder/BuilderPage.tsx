@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { AlertTriangle, ArrowDown, ArrowLeft, ArrowUp, Eye, EyeOff, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { PageBack } from '@/components/PageBack';
+import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { apiRequest } from '../../lib/api';
 import { ApiError } from '../../lib/api-types';
@@ -11,15 +12,19 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog';
 import { BusyNote } from '../../components/BusyNote';
-import { ACCENTS, FIELDS, PERSONAL_KEYS, PHOTO_TEMPLATES, TWO_COLUMN, emptyItem, normalize, type Draft, type Field, type Item, type Lang, type ListSection, type ResumeData, type SectionName, type TemplateId } from './sections';
+import { ACCENTS, FIELDS, PERSONAL_KEYS, emptyItem, mergeResume, normalize, type Draft, type Field, type Item, type Lang, type ListSection, type ResumeData, type SectionName } from './sections';
+import { ThemePanel } from '../themes/ThemePanel';
+import { isCustom, type Working } from '../themes/themes';
 import { useResource } from '../projects/useResource';
 import { copy } from './copy';
 import { PhotoField } from './PhotoField';
+import { ImportExperience } from './ImportExperience';
 import { AiLabel } from '@/components/AiMark';
+import { dateLocale } from '../../lib/locale';
 
 type Kind = 'cv' | 'document';
+type SaveResult = 'saved' | 'dirty' | 'draft_conflict' | 'resume_invalid' | 'offline';
 type SaveState = 'saved' | 'saving' | 'dirty' | 'offline' | 'conflict' | 'invalid';
-const TEMPLATES: TemplateId[] = ['onyx', 'kakuna', 'ditgar', 'lotus', 'teak', 'saffron'];
 // Save shortly after typing stops; preview right after each save, at most once per PREVIEW_GAP_MS
 // (the server allows 20 previews a minute).
 const SAVE_DELAY_MS = 400;
@@ -51,11 +56,15 @@ export function BuilderPage({ kind }: { kind: Kind }) {
   const latest = useRef<Draft | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   const previewTimer = useRef<number | undefined>(undefined);
-  const inFlight = useRef(false);
+  const flight = useRef<Promise<unknown> | null>(null); // the save in progress, if any
+  const pending = useRef(false); // edits not yet saved
+  const mounted = useRef(true);
   const lastPreview = useRef(0);
   const previewBusy = useRef(false);
   const previewAgain = useRef(false);
+  const working = useRef<Working | null>(null); // theme tokens being tried in the customiser, not saved yet
   const [pages, setPages] = useState(0);
+  const [customising, setCustomising] = useState(false); // the customiser has its own colour row
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -63,9 +72,11 @@ export function BuilderPage({ kind }: { kind: Kind }) {
       const value = await apiRequest<Draft>(base);
       const loaded = { ...value, resume_data: normalize(value.resume_data) };
       latest.current = loaded; setDraft(loaded); setSave('saved');
+    } catch { setLoadError(true); return; }
+    try {
       const kept = localStorage.getItem(stashKey);
       if (kept) { const old = JSON.parse(kept) as Draft; setStash({ ...old, resume_data: normalize(old.resume_data) }); }
-    } catch { setLoadError(true); }
+    } catch { try { localStorage.removeItem(stashKey); } catch { /* storage blocked */ } }
   }, [base, stashKey]);
   useEffect(() => { void load(); }, [load]);
 
@@ -74,7 +85,8 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     previewBusy.current = true; lastPreview.current = Date.now();
     setPreviewing(true); setPreviewError(false);
     try {
-      const blob = await apiRequest<Blob>(`${base}/preview`, { method: 'POST' });
+      const trying = working.current;
+      const blob = await apiRequest<Blob>(trying ? `${base}/theme-preview` : `${base}/preview`, trying ? { method: 'POST', body: JSON.stringify(trying) } : { method: 'POST' });
       setPages(await pageCount(blob));
       setPdfUrl(old => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(blob); });
     } catch { setPreviewError(true); }
@@ -89,42 +101,71 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     previewTimer.current = window.setTimeout(() => void preview(), wait);
   }, [preview]);
   useEffect(() => { if (draft && !pdfUrl && !previewing && !previewError) void preview(); }, [draft, pdfUrl, previewing, previewError, preview]);
+  const tryTheme = useCallback((next: Working | null) => { working.current = next; setCustomising(next !== null); schedulePreview(); }, [schedulePreview]);
   useEffect(() => () => { setPdfUrl(old => { if (old) URL.revokeObjectURL(old); return null; }); }, []);
 
-  const persist = useCallback(async () => {
+  const persist = useCallback(async (): Promise<SaveResult> => {
+    while (flight.current) await flight.current;
     const current = latest.current;
-    if (!current || inFlight.current) return;
-    inFlight.current = true; setSave('saving');
-    try {
-      const saved = await sendJson<Draft>(base, 'PUT', { resume_data: current.resume_data, template_id: current.template_id, accent: current.accent, document_language: current.document_language, updated_at: current.updated_at });
-      const unchanged = latest.current === current;
-      latest.current = { ...(unchanged ? saved : latest.current!), updated_at: saved.updated_at };
-      setDraft(latest.current);
-      localStorage.removeItem(stashKey);
-      setSavedAt(new Date()); setSave(unchanged ? 'saved' : 'dirty');
-      if (!unchanged) saveTimer.current = window.setTimeout(() => void persist(), 300);
-      schedulePreview();
-    } catch (error) {
-      if (error instanceof ApiError && error.code === 'draft_conflict') setSave('conflict');
-      else if (error instanceof ApiError && error.code === 'resume_invalid') { setSave('invalid'); setInvalidPath(String(error.fields?.path ?? '')); }
-      else { setSave('offline'); localStorage.setItem(stashKey, JSON.stringify(current)); }
-    } finally { inFlight.current = false; }
+    if (!current) return 'offline';
+    if (!pending.current) return 'saved';
+    pending.current = false;
+    const run = (async (): Promise<SaveResult> => {
+      setSave('saving');
+      try {
+        const saved = await sendJson<Draft>(base, 'PUT', { resume_data: current.resume_data, template_id: current.template_id, accent: current.accent, document_language: current.document_language, updated_at: current.updated_at });
+        const unchanged = latest.current === current;
+        latest.current = { ...(unchanged ? saved : latest.current!), updated_at: saved.updated_at };
+        setDraft(latest.current);
+        try { localStorage.removeItem(stashKey); } catch { /* storage blocked */ }
+        setSavedAt(new Date()); setSave(unchanged ? 'saved' : 'dirty');
+        if (!unchanged) saveTimer.current = window.setTimeout(() => void persist(), 300);
+        if (mounted.current) schedulePreview();
+        return unchanged ? 'saved' : 'dirty';
+      } catch (error) {
+        pending.current = true;
+        if (error instanceof ApiError && error.code === 'draft_conflict') { setSave('conflict'); return 'draft_conflict'; }
+        if (error instanceof ApiError && error.code === 'resume_invalid') { setSave('invalid'); setInvalidPath(String(error.fields?.path ?? '')); return 'resume_invalid'; }
+        setSave('offline');
+        try { localStorage.setItem(stashKey, JSON.stringify(current)); } catch { /* storage full or blocked */ }
+        return 'offline';
+      }
+    })();
+    flight.current = run;
+    try { return await run; } finally { flight.current = null; }
   }, [base, schedulePreview, stashKey]);
+  const persistNow = useRef(persist);
+  persistNow.current = persist;
 
   const change = useCallback((next: Draft) => {
-    latest.current = next; setDraft(next); setSave('dirty');
+    latest.current = next; pending.current = true; setDraft(next); setSave('dirty');
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => void persist(), SAVE_DELAY_MS);
   }, [persist]);
-  useEffect(() => () => { window.clearTimeout(saveTimer.current); window.clearTimeout(previewTimer.current); }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      window.clearTimeout(saveTimer.current); window.clearTimeout(previewTimer.current);
+      if (pending.current) void persistNow.current(); // leaving within the save delay must not drop the last edits
+    };
+  }, []);
+  useEffect(() => {
+    if (save === 'saved') return;
+    const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [save]);
 
-  const data = (fn: (d: ResumeData) => ResumeData) => draft && change({ ...draft, resume_data: fn(structuredClone(draft.resume_data)) });
+  const data = (fn: (d: ResumeData) => ResumeData) => { const d = latest.current; if (d) change({ ...d, resume_data: fn(structuredClone(d.resume_data)) }); };
 
   async function publish() {
     setPublishing(true); setPublishError('');
     try {
       window.clearTimeout(saveTimer.current);
-      if (save !== 'saved') await persist();
+      let result = await persist();
+      if (result === 'dirty') result = await persist();
+      if (result !== 'saved') { setPublishError(c.errors[result as keyof typeof c.errors] ?? c.errors.generic); return; }
       const revision = await apiRequest<{ revision: number }>(`${base}/publish`, { method: 'POST' });
       setPublished(revision.revision); setConfirm(false);
     } catch (error) {
@@ -138,26 +179,34 @@ export function BuilderPage({ kind }: { kind: Kind }) {
   const r = draft.resume_data;
   const back = kind === 'cv' ? `/app/projects/${projectId}/profile` : `/app/projects/${projectId}/documents/${documentId}`;
 
-  const status = { saved: savedAt ? c.savedAt(savedAt.toLocaleTimeString(locale === 'th' ? 'th-TH' : 'en-GB', { hour: '2-digit', minute: '2-digit' })) : c.saved,
+  const status = { saved: savedAt ? c.savedAt(savedAt.toLocaleTimeString(dateLocale(locale), { hour: '2-digit', minute: '2-digit' })) : c.saved,
     saving: c.saving, dirty: c.saving, offline: c.offline, conflict: c.conflict, invalid: c.invalid(invalidPath) }[save];
 
+  // Same rule as the server's sample fill (services/resume.py with_sample): empty core parts that are not hidden show sample content.
+  const sampled = [!r.basics.name && c.basics, !r.summary.content && !r.summary_hidden && c.sections.summary,
+    ...(['experience', 'education', 'skills'] as const).filter(n => !r.sections[n].items.length && !r.sections[n].hidden).map(n => c.sections[n])].filter(Boolean) as string[];
   const previewPane = <section aria-label={c.preview} className="grid min-h-0 content-start gap-2">
     <div className="flex items-center justify-between gap-2">
       <h2 className="text-sm font-semibold">{c.preview}{pages > 0 && <span className="ml-2 font-normal text-muted-foreground">· {c.pages(pages)}</span>}</h2>
       <Button size="sm" variant="outline" busy={previewing} onClick={() => void preview()}><RefreshCw className="size-4" aria-hidden="true" />{c.updatePreview}</Button>
     </div>
     {previewError && <p role="alert" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-sm">{c.previewFailed}</p>}
+    {sampled.length > 0 && <div role="note" className="grid gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+      <p className="font-semibold">{c.sampleTitle}</p>
+      <p>{c.sampleBody}</p>
+      <ul className="flex flex-wrap gap-2">{sampled.map(s => <li key={s} className="rounded-full border border-warning/50 bg-warning/20 px-3 py-1 font-medium">{s}</li>)}</ul>
+    </div>}
     {pages > 2 && <p role="note" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-sm">{c.tooLong}</p>}
-    <div className="relative overflow-hidden rounded-lg border bg-white" style={{ aspectRatio: '1 / 1.414' }}>
-      {pdfUrl ? <iframe title={c.preview} src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`} className="size-full border-0" /> : <div className="grid size-full place-items-center p-4 text-sm text-gray-600">{c.loading}</div>}
-      {previewing && pdfUrl && <div className="absolute right-2 top-2 rounded bg-black/70 px-2 py-1 text-xs text-white">{c.rendering}</div>}
-    </div>
+    <div className="rounded-xl bg-muted p-4 sm:p-6"><div className="relative overflow-hidden rounded-lg border bg-white shadow-md" style={{ aspectRatio: '1 / 1.414' }}>
+      {pdfUrl ? <iframe title={c.preview} src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`} className="absolute -left-4 -top-1.5 h-[calc(100%+2.5rem)] w-[calc(100%+2rem)] max-w-none border-0" /> : <div className="grid size-full place-items-center p-4 text-sm text-muted-foreground">{c.loading}</div>}
+      {previewing && pdfUrl && <div className="absolute right-2 top-2 rounded bg-primary px-2 py-1 text-xs text-primary-foreground">{c.rendering}</div>}
+    </div></div>
   </section>;
 
-  return <div className="mx-auto grid w-full max-w-[1400px] gap-4 p-4 sm:p-6">
+  return <div className="grid gap-6 lg:gap-8">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="grid gap-1">
-        <Link to={back} className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />{kind === 'cv' ? c.backCv : c.backDoc}</Link>
+        <PageBack to={back}>{kind === 'cv' ? c.backCv : c.backDoc}</PageBack>
         <h1 className="text-2xl font-semibold">{kind === 'cv' ? c.title : c.titleDoc}</h1>
         <NameEditor key={draft.name ?? ''} c={c} label={kind === 'cv' ? c.cvName : c.docName} initial={draft.name ?? ''}
           url={kind === 'cv' ? `/projects/${projectId}/cvs/${ownerId}` : `/projects/${projectId}/documents/${ownerId}`}
@@ -177,24 +226,26 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     {published !== null && <div role="status" className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm">{kind === 'cv' ? c.publishedCv(published) : c.publishedDoc(published)} <Link className="font-medium text-primary underline" to={back}>{c.open}</Link></div>}
     {kind === 'document' && <p className="rounded-lg border bg-muted/40 p-3 text-sm">{c.docNote}</p>}
 
-    <div className="grid gap-3 rounded-xl border bg-card p-4 lg:grid-cols-[auto_auto_1fr] lg:items-end">
-      <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.template}</legend>
-        <div className="flex flex-wrap gap-2">{TEMPLATES.map(t => <Button key={t} size="sm" variant={draft.template_id === t ? 'default' : 'outline'} aria-pressed={draft.template_id === t} onClick={() => change({ ...draft, template_id: t })}>
-          {c.templates[t]}{PHOTO_TEMPLATES.includes(t) && <span className="text-xs font-normal opacity-75">· {c.withPhoto}</span>}</Button>)}</div>
-      </fieldset>
-      <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.accent}</legend>
+    {kind === 'cv' && <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4">
+      <ImportExperience projectId={projectId} base={base} locale={locale} onAdd={add => data(d => mergeResume(d, add))} />
+      <p className="text-sm text-muted-foreground">{c.importHint}</p>
+    </div>}
+
+    <ThemePanel templateId={draft.template_id} accent={draft.accent} hasPhoto={!!r.basics.photo} locale={locale}
+      onPick={id => change({ ...draft, template_id: id })} onWorking={tryTheme} />
+
+    <div className="grid gap-3 rounded-xl border bg-card p-4 lg:grid-cols-[auto_1fr] lg:items-end">
+      {!isCustom(draft.template_id) && !customising && <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.accent}</legend>
         <div className="flex flex-wrap gap-2">{ACCENTS.map(a => <button key={a.id} type="button" aria-label={c.accents[a.id]} aria-pressed={draft.accent === a.id} onClick={() => change({ ...draft, accent: a.id })}
           className="grid size-11 place-items-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground"><span className="size-7 rounded-full" style={{ background: a.hex }} /></button>)}</div>
-      </fieldset>
+      </fieldset>}
       <div className="grid gap-2 lg:w-56"><Label htmlFor="cvb-lang">{c.docLanguage}</Label>
-        <select id="cvb-lang" className="min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={draft.document_language} onChange={e => change({ ...draft, document_language: e.target.value as Lang })}>
+        <select id="cvb-lang" className="min-h-11 rounded-md border border-input bg-card px-3 text-sm" value={draft.document_language} onChange={e => change({ ...draft, document_language: e.target.value as Lang })}>
           <option value="th">ไทย</option><option value="en">English</option></select></div>
-      {r.basics.photo && !PHOTO_TEMPLATES.includes(draft.template_id) && <p className="flex items-start gap-2 text-sm text-muted-foreground lg:col-span-3"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />{c.photoHidden}</p>}
-      {TWO_COLUMN.includes(draft.template_id) && <p className="flex items-start gap-2 text-sm text-muted-foreground lg:col-span-3"><AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />{c.atsWarning}</p>}
     </div>
 
-    <div className="flex gap-2 lg:hidden" role="tablist">
-      {(['edit', 'preview'] as const).map(t => <Button key={t} role="tab" aria-selected={tab === t} variant={tab === t ? 'default' : 'outline'} className="flex-1" onClick={() => setTab(t)}>{t === 'edit' ? c.edit : c.preview}</Button>)}
+    <div className="flex gap-2 lg:hidden">
+      {(['edit', 'preview'] as const).map(t => <Button key={t} aria-pressed={tab === t} variant={tab === t ? 'default' : 'outline'} className="flex-1" onClick={() => setTab(t)}>{t === 'edit' ? c.edit : c.preview}</Button>)}
     </div>
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
       <div className={`grid content-start gap-3 ${tab === 'edit' ? '' : 'hidden lg:grid'}`}>
@@ -233,7 +284,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
 }
 
 function TextField({ id, label, value, onChange, type = 'text', required = false, placeholder }: { id: string; label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; placeholder?: string }) {
-  return <div className="grid min-w-0 gap-1.5"><Label htmlFor={id}>{label}{required && <span aria-hidden="true" className="text-destructive"> *</span>}</Label>
+  return <div className="grid min-w-0 gap-2"><Label htmlFor={id}>{label}{required && <span aria-hidden="true" className="text-destructive"> *</span>}</Label>
     <Input id={id} type={type} value={value} required={required} placeholder={placeholder} maxLength={type === 'url' ? 500 : 200} onChange={e => onChange(e.target.value)} /></div>;
 }
 
@@ -248,23 +299,27 @@ function SectionEditor({ name, index, count, data, locale, update }: { name: Sec
     return d;
   });
   const filled = name === 'summary' ? Boolean(data.summary.content) : name === 'personal' ? PERSONAL_KEYS.some(k => data.personal[k]) : data.sections[name].items.length > 0;
-  return <details className="group rounded-xl border bg-card" open={filled || name === 'summary' || name === 'experience'}>
-    <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2">
-      <span className={`font-semibold ${hidden ? 'text-muted-foreground line-through' : ''}`}>{c.sections[name]}{!filled && <span className="ml-2 text-xs font-normal text-muted-foreground">{c.empty}</span>}</span>
-      <span className="flex items-center gap-1" onClick={e => e.preventDefault()}>
+  const [open, setOpen] = useState(filled || name === 'summary' || name === 'experience');
+  const bodyId = useId();
+  return <div className="rounded-xl border bg-card">
+    <div className="flex min-h-12 items-center justify-between gap-2 px-4">
+      <button type="button" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen(v => !v)} className="min-h-12 min-w-0 flex-1 rounded-md py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span className={`font-semibold ${hidden ? 'text-muted-foreground line-through' : ''}`}>{c.sections[name]}{!filled && <span className="ml-2 text-xs font-normal text-muted-foreground">{c.empty}</span>}</span>
+      </button>
+      <span className="flex items-center gap-1">
         <Button variant="ghost" size="icon" aria-label={c.moveUp(c.sections[name])} disabled={index === 0} onClick={() => move(-1)}><ArrowUp className="size-4" aria-hidden="true" /></Button>
         <Button variant="ghost" size="icon" aria-label={c.moveDown(c.sections[name])} disabled={index === count - 1} onClick={() => move(1)}><ArrowDown className="size-4" aria-hidden="true" /></Button>
         <Button variant="ghost" size="icon" aria-pressed={hidden} aria-label={hidden ? c.show(c.sections[name]) : c.hide(c.sections[name])} onClick={toggle}>{hidden ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}</Button>
       </span>
-    </summary>
-    <div className="grid gap-3 border-t px-4 py-3">
+    </div>
+    <div id={bodyId} hidden={!open} className="grid gap-3 border-t px-4 py-3">
       {name === 'summary'
-        ? <div className="grid gap-1.5"><Label htmlFor="cvb-summary">{c.sections.summary}</Label>
+        ? <div className="grid gap-2"><Label htmlFor="cvb-summary">{c.sections.summary}</Label>
           <Textarea id="cvb-summary" rows={4} maxLength={1000} value={data.summary.content} placeholder={c.summaryPlaceholder} onChange={e => update(d => { d.summary.content = e.target.value; return d; })} /></div>
         : name === 'personal' ? <PersonalEditor c={c} data={data} update={update} />
         : <ItemsEditor name={name} data={data} locale={locale} update={update} />}
     </div>
-  </details>;
+  </div>;
 }
 
 function ItemsEditor({ name, data, locale, update }: { name: ListSection; data: ResumeData; locale: Lang; update: (fn: (d: ResumeData) => ResumeData) => void }) {
@@ -273,7 +328,7 @@ function ItemsEditor({ name, data, locale, update }: { name: ListSection; data: 
   return <>
     {name === 'references' && <div className="grid gap-2 rounded-lg bg-muted/40 p-3 text-sm">
       <p>{c.referencesNote}</p>
-      <label className="flex min-h-10 items-center gap-2"><input type="checkbox" className="size-4 accent-primary" checked={data.references_on_request} onChange={e => update(d => { d.references_on_request = e.target.checked; return d; })} />{c.onRequest}</label>
+      <label className="flex min-h-11 lg:min-h-10 items-center gap-2"><input type="checkbox" className="size-4 accent-primary" checked={data.references_on_request} onChange={e => update(d => { d.references_on_request = e.target.checked; return d; })} />{c.onRequest}</label>
     </div>}
     {items.map((item, i) => <fieldset key={item.id} className="grid gap-3 rounded-lg border p-3">
       <legend className="sr-only">{c.itemLabel(c.sections[name], i + 1)}</legend>
@@ -292,23 +347,27 @@ function ItemsEditor({ name, data, locale, update }: { name: ListSection; data: 
 }
 
 function FieldInput({ field, item, locale, prefix, onChange }: { field: Field; item: Item; locale: Lang; prefix: string; onChange: (value: unknown) => void }) {
-  const c = copy[locale];
   const id = `${prefix}-${field.key}`;
   const label = field[locale];
   const placeholder = field.placeholder?.[locale];
   const value = item[field.key];
-  if (field.kind === 'bool') return <label className="flex min-h-10 items-center gap-2 text-sm sm:self-end"><input id={id} type="checkbox" className="size-4 accent-primary" checked={Boolean(value)} onChange={e => onChange(e.target.checked)} />{label}</label>;
+  if (field.kind === 'bool') return <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm sm:self-end"><input id={id} type="checkbox" className="size-4 accent-primary" checked={Boolean(value)} onChange={e => onChange(e.target.checked)} />{label}</label>;
   if (field.kind === 'lines' || field.kind === 'textarea') {
     const text = field.kind === 'lines' ? ((value as string[]) ?? []).join('\n') : String(value ?? '');
-    return <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor={id}>{label}</Label>
+    return <div className="grid gap-2 sm:col-span-2"><Label htmlFor={id}>{label}</Label>
       <Textarea id={id} rows={field.kind === 'lines' ? 4 : 3} value={text} placeholder={placeholder}
         onChange={e => onChange(field.kind === 'lines' ? e.target.value.split('\n').slice(0, 20) : e.target.value)} /></div>;
   }
-  if (field.kind === 'level') return <div className="grid gap-1.5"><Label htmlFor={id}>{label}</Label>
-    <select id={id} className="min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={value == null ? '' : String(value)} onChange={e => onChange(e.target.value ? Number(e.target.value) : null)}>
-      <option value="">{c.noLevel}</option>{[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{c.level(n)}</option>)}</select></div>;
-  if (field.kind === 'keywords') return <TextField id={id} label={label} value={((value as string[]) ?? []).join(', ')} onChange={v => onChange(v.split(',').map(s => s.trimStart()).slice(0, 20))} />;
+  if (field.kind === 'keywords') return <KeywordsInput id={id} label={label} value={(value as string[]) ?? []} onChange={onChange} />;
   return <TextField id={id} label={label} value={String(value ?? '')} placeholder={placeholder} type={field.kind === 'month' ? 'month' : field.kind === 'url' ? 'url' : 'text'} onChange={onChange} />;
+}
+
+const parseKeywords = (text: string) => text.split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);
+/** Keeps the raw text so a comma can be typed and deleted; the list is parsed from it. */
+function KeywordsInput({ id, label, value, onChange }: { id: string; label: string; value: string[]; onChange: (value: unknown) => void }) {
+  const [raw, setRaw] = useState(value.join(', '));
+  if (parseKeywords(raw).join('\u0000') !== value.join('\u0000')) setRaw(value.join(', ')); // changed from outside (restore, import)
+  return <TextField id={id} label={label} value={raw} onChange={v => { setRaw(v); onChange(parseKeywords(v)); }} />;
 }
 
 type Copy = (typeof copy)['en'];
@@ -319,20 +378,25 @@ function NameEditor({ c, label, initial, url, field, max }: { c: Copy; label: st
   const [value, setValue] = useState(initial);
   const [saved, setSaved] = useState(initial);
   const [failed, setFailed] = useState(false);
+  const skip = useRef(false);
+  const sending = useRef<string | null>(null);
   async function commit() {
+    if (skip.current) { skip.current = false; return; }
     const next = value.trim();
     if (!next || next === saved) { setValue(saved); return; }
+    if (sending.current === next) return;
+    sending.current = next;
     try { await sendJson(url, 'PATCH', { [field]: next }); setSaved(next); setValue(next); setFailed(false); }
-    catch { setFailed(true); }
+    catch { setFailed(true); } finally { sending.current = null; }
   }
   return <div className="grid gap-1">
     <label htmlFor="cvb-name" className="sr-only">{label}</label>
     <input id="cvb-name" value={value} maxLength={max} onChange={e => setValue(e.target.value)} onBlur={() => void commit()}
       onKeyDown={e => {
         if (e.key === 'Enter') e.currentTarget.blur();
-        if (e.key === 'Escape') { const input = e.currentTarget; setValue(saved); requestAnimationFrame(() => input.blur()); }
+        if (e.key === 'Escape') { skip.current = true; setValue(saved); e.currentTarget.blur(); }
       }}
-      className="-mx-1 w-full max-w-md rounded-md border border-transparent bg-transparent px-1 py-0.5 text-base text-muted-foreground hover:border-input focus-visible:border-input focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      /* optical: the input padding is pulled back so the text lines up with the title above */ className="-mx-1 w-full max-w-md rounded-md border border-transparent bg-transparent px-1 py-0.5 text-base text-muted-foreground hover:border-input focus-visible:border-input focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
     {failed && <p role="alert" className="text-sm text-destructive">{c.renameFailed}</p>}
   </div>;
 }
@@ -348,14 +412,14 @@ function AddressEditor({ c, locale, data, update }: { c: Copy; locale: Lang; dat
       <div className="sm:col-span-2"><TextField id="address-line" label={c.addressFields.line} value={a.line} onChange={v => set('line', v)} /></div>
       <TextField id="address-subdistrict" label={c.addressFields.subdistrict} value={a.subdistrict} onChange={v => set('subdistrict', v)} />
       <TextField id="address-district" label={c.addressFields.district} value={a.district} onChange={v => set('district', v)} />
-      <div className="grid min-w-0 gap-1.5"><Label htmlFor="address-province">{c.addressFields.province}</Label>
-        <select id="address-province" className="min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={a.province} onChange={e => set('province', e.target.value)}>
+      <div className="grid min-w-0 gap-2"><Label htmlFor="address-province">{c.addressFields.province}</Label>
+        <select id="address-province" className="min-h-11 lg:min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={a.province} onChange={e => set('province', e.target.value)}>
           <option value="">{c.chooseProvince}</option>{sorted.map(p => <option key={p.id} value={p.id}>{p[locale]}</option>)}
         </select></div>
-      <div className="grid min-w-0 gap-1.5"><Label htmlFor="address-postcode">{c.addressFields.postcode}</Label>
+      <div className="grid min-w-0 gap-2"><Label htmlFor="address-postcode">{c.addressFields.postcode}</Label>
         <Input id="address-postcode" inputMode="numeric" autoComplete="postal-code" value={a.postcode} onChange={e => set('postcode', e.target.value.replace(/\D/g, '').slice(0, 5))} /></div>
     </div>
-    <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={data.basics.address_full}
+    <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={data.basics.address_full}
       onChange={e => update(d => { d.basics.address_full = e.target.checked; return d; })} />{c.addressFull}</label>
     <p className="text-xs text-muted-foreground">{c.addressNote}</p>
   </fieldset>;

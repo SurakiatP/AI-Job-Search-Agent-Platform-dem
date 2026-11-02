@@ -24,14 +24,19 @@ export function CvTrash({ projectId, locale, items, onChanged }: { projectId: st
   const purge = (id: string) => apiRequest(`${api}/${id}/permanent`, { method: 'DELETE' }).then(() => undefined);
   async function emptyTrash() {
     const failed: string[] = [];
+    let inUse = false;
     for (const item of items) {
-      try { await purge(item.id); } catch (caught) { if (!(caught instanceof ApiError && caught.status === 404)) failed.push(item.name); }
+      try { await purge(item.id); } catch (caught) {
+        if (caught instanceof ApiError && caught.status === 404) continue;
+        failed.push(item.name);
+        inUse ||= caught instanceof ApiError && caught.code === 'cv_in_use';
+      }
     }
     onChanged();
-    if (failed.length) throw new ApiError(409, { code: 'cv_in_use', message_key: '', retryable: false });
+    if (failed.length) throw inUse ? new ApiError(409, { code: 'cv_in_use', message_key: '', retryable: false }) : new Error(failed.join(', '));
   }
 
-  return <div className="grid gap-4">
+  return <div id="cv-trash" tabIndex={-1} className="grid gap-4 outline-none">
     {items.length === 0 ? <p className="text-muted-foreground">{t('trash.cv.empty')}</p> : <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="max-w-2xl text-sm text-muted-foreground">{t('trash.cv.note')}</p>
@@ -52,9 +57,9 @@ export function CvTrash({ projectId, locale, items, onChanged }: { projectId: st
         </div>
       </li>)}</ul>
     </>}
-    {target && <ConfirmDeleteDialog
+    {target && <ConfirmDeleteDialog returnFocus={() => document.getElementById('cv-trash')}
       confirmLabel={target === 'all' ? t('trash.cv.emptyAll') : t('trash.cv.purge')}
-      title={target === 'all' ? t('trash.cv.emptyTitle', { n: items.length }) : t('trash.cv.purgeTitle', { name: target.name })}
+      title={target === 'all' ? t('trash.cv.emptyTitle', { count: items.length }) : t('trash.cv.purgeTitle', { name: target.name })}
       description={t('trash.cv.note')}
       errors={{ cv_in_use: t('trash.cv.inUse') }}
       onConfirm={() => target === 'all' ? emptyTrash() : purge(target.id)}

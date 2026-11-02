@@ -56,3 +56,12 @@ def test_found_in_does_not_split_numbers_at_separators():
     assert _found_in(normalize("3.5 years of Python"), cv)
     assert _found_in(normalize("1,000 users"), cv)
     assert _found_in(normalize("2022"), cv) and _found_in(normalize("2023"), cv)
+
+
+def test_contract_rejects_end_before_start():
+    from pydantic import ValidationError
+    from job_search_platform.services.contracts import ExperienceItemCreate
+    with pytest.raises(ValidationError):
+        ExperienceItemCreate(kind="experience", text="x", start_date="2024-05", end_date="2020-01")
+    assert ExperienceItemCreate(kind="experience", text="x", start_date="2020-01", end_date="2020-01")
+    assert ExperienceItemCreate(kind="experience", text="x", start_date="2024-05", is_current=True)

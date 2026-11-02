@@ -36,9 +36,9 @@ export function NewProjectPage() {
     } catch (caught) { setFailed(caught instanceof ApiError && caught.status === 409 ? 'taken' : 'uncertain'); }
     finally { pending.current = false; setSaving(false); }
   }
-  return <section className="mx-auto grid w-full max-w-2xl gap-6"><PageBack to="/app/projects">{t('pages.backProjects')}</PageBack><h1>{t('pages.newProject')}</h1>
-    <form className="workspace-panel grid gap-5 p-5 sm:p-6" onSubmit={event => { event.preventDefault(); void submit(); }} noValidate>
-      <div className="grid gap-1.5">
+  return <section className="mx-auto grid w-full max-w-2xl gap-6 lg:gap-8"><PageBack to="/app/projects">{t('pages.backProjects')}</PageBack><h1>{t('pages.newProject')}</h1>
+    <form className="workspace-panel grid gap-4 p-5 sm:p-6" onSubmit={event => { event.preventDefault(); void submit(); }} noValidate>
+      <div className="grid gap-2">
         <label className="text-sm font-medium" htmlFor="project-name">{t('pages.projectName')}</label>
         <Input id="project-name" autoComplete="off" value={name} onChange={event => { setName(event.target.value); if (failed === 'taken') setFailed(null); }} aria-invalid={!!error} aria-describedby={error ? 'project-name-error project-name-hint' : 'project-name-hint'} />
         <p id="project-name-hint" className="text-sm text-muted-foreground">{c.nameHint(name.length)}</p>

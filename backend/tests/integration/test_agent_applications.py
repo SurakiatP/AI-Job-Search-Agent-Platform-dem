@@ -484,7 +484,7 @@ def test_promote_is_owner_only_and_approval_post_needs_a_run(api_context):
     ctx = api_context
     csrf, pid, sid, seeded, cv_id = _promote_setup(ctx)
     token = ctx.client.post(f"/v1/projects/{pid}/grants", headers=_write_headers(csrf), json={
-        "capabilities": ["documents:draft"], "expires_at": "2099-01-01T00:00:00+00:00"}).json()["token"]
+        "capabilities": ["documents:draft"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     body = {"revision_id": str(seeded.revision), "expected_cv_revision_id": str(cv_id)}
     saved = dict(ctx.client.cookies)
     ctx.client.cookies.clear()

@@ -2,7 +2,7 @@
 export type Lang = 'th' | 'en';
 export type SectionName = 'summary' | 'personal' | 'experience' | 'education' | 'skills' | 'projects' | 'certifications' | 'languages'
   | 'awards' | 'publications' | 'volunteer' | 'references' | 'interests';
-export type FieldKind = 'text' | 'month' | 'url' | 'textarea' | 'lines' | 'level' | 'bool' | 'keywords';
+export type FieldKind = 'text' | 'month' | 'url' | 'textarea' | 'lines' | 'bool' | 'keywords';
 export type Field = { key: string; kind: FieldKind; th: string; en: string; placeholder?: { th: string; en: string } };
 export type Item = Record<string, unknown> & { id: string };
 export type ListSection = Exclude<SectionName, 'summary' | 'personal'>;
@@ -16,7 +16,7 @@ export type ResumeData = {
   order: SectionName[]; references_on_request: boolean;
 };
 export type Draft = { id: string; cv_id: string | null; document_id: string | null; name?: string; resume_data: ResumeData; template_id: TemplateId; accent: AccentId; document_language: Lang; ats_safe: boolean; updated_at: string };
-export type TemplateId = 'onyx' | 'kakuna' | 'ditgar' | 'lotus' | 'teak' | 'saffron';
+export type TemplateId = string; // a preset id or 'custom:<theme uuid>' (SPEC-RTH)
 // CR-CVT-01: only these templates print the photo; the two-column ones may confuse ATS.
 export const PHOTO_TEMPLATES: TemplateId[] = ['lotus', 'teak', 'saffron'];
 export const TWO_COLUMN: TemplateId[] = ['ditgar', 'teak'];
@@ -39,7 +39,7 @@ export const FIELDS: Record<ListSection, Field[]> = {
     f('current', 'bool', 'ยังทำงานอยู่', 'I work here now'), HIGHLIGHTS],
   education: [f('institution', 'text', 'สถาบัน', 'Institution'), f('degree', 'text', 'วุฒิ', 'Degree'),
     f('area', 'text', 'สาขา', 'Field of study'), f('grade', 'text', 'เกรด', 'Grade'), START, END],
-  skills: [f('name', 'text', 'ทักษะ', 'Skill', { th: 'SQL', en: 'SQL' }), f('level', 'level', 'ระดับ (ไม่บังคับ)', 'Level (optional)'),
+  skills: [f('name', 'text', 'ทักษะ', 'Skill', { th: 'SQL', en: 'SQL' }),
     f('keywords', 'keywords', 'คำสำคัญ (คั่นด้วยจุลภาค)', 'Keywords (comma separated)')],
   projects: [f('name', 'text', 'ชื่อโครงการ', 'Project name'), f('role', 'text', 'บทบาท', 'Role'), f('url', 'url', 'ลิงก์', 'Link'), START, END, HIGHLIGHTS],
   certifications: [f('name', 'text', 'ชื่อใบรับรอง', 'Certificate'), f('issuer', 'text', 'ผู้ออก', 'Issuer'), f('date', 'month', 'วันที่ได้รับ', 'Date'), f('url', 'url', 'ลิงก์', 'Link')],
@@ -53,7 +53,7 @@ export const FIELDS: Record<ListSection, Field[]> = {
 
 export function emptyItem(section: ListSection): Item {
   const item: Item = { id: crypto.randomUUID() };
-  for (const field of FIELDS[section]) item[field.key] = field.kind === 'lines' || field.kind === 'keywords' ? [] : field.kind === 'bool' ? false : field.kind === 'level' ? null : '';
+  for (const field of FIELDS[section]) item[field.key] = field.kind === 'lines' || field.kind === 'keywords' ? [] : field.kind === 'bool' ? false : '';
   return item;
 }
 
@@ -65,4 +65,18 @@ export function normalize(data: ResumeData): ResumeData {
   const order = data.order.includes('personal') ? data.order : [data.order[0], 'personal' as const, ...data.order.slice(1)];
   return { ...data, basics: { ...data.basics, address, address_full: data.basics.address_full ?? false }, personal,
     personal_hidden: data.personal_hidden ?? true, order };
+}
+
+// Merge sections picked from the experience bank into a draft: new items go to the end, copies of items already there are skipped.
+export function mergeResume(draft: ResumeData, add: ResumeData): ResumeData {
+  const out = structuredClone(draft);
+  if (!out.summary.content && add.summary.content) out.summary.content = add.summary.content;
+  for (const name of Object.keys(add.sections) as ListSection[]) {
+    // The saved draft comes back from JSONB with its keys in another order, so compare with the keys sorted.
+    const body = (item: Item) => JSON.stringify({ ...item, id: '' }, (_k, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a < b ? -1 : 1)) : v);
+    const have = new Set(out.sections[name].items.map(body));
+    out.sections[name].items.push(...add.sections[name].items.filter(item => !have.has(body(item))));
+    out.sections[name].items = out.sections[name].items.slice(0, 50);
+  }
+  return out;
 }

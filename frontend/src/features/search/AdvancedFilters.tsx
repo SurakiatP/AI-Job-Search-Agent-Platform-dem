@@ -64,7 +64,7 @@ export function Presets({ locale, get, setMany }: { locale: 'th' | 'en'; get: (k
     {PRESETS.map(p => {
       const entries = Object.entries(p.params);
       const on = entries.every(([k, v]) => splitList(get(k)).sort().join(',') === v.split(',').sort().join(','));
-      return <Button key={p.id} type="button" variant={on ? 'default' : 'outline'} size="sm" className="min-h-9 whitespace-nowrap rounded-full" aria-pressed={on}
+      return <Button key={p.id} type="button" variant={on ? 'default' : 'outline'} size="sm" className="whitespace-nowrap rounded-full" aria-pressed={on}
         onClick={() => setMany(Object.fromEntries(entries.map(([k, v]) => [k, on ? '' : v])))}>{c.preset[p.id]}</Button>;
     })}
   </div>;
@@ -89,17 +89,17 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, addition
     setMany({ skills: [...skills, s].join(',') }); setSkillInput('');
   };
   const suggestions = (facets?.skills ?? []).filter(f => !skills.includes(f.value) && SKILL_RE.test(f.value)).slice(0, 10);
-  const chipClass = 'min-h-9 h-auto whitespace-normal rounded-full text-left';
+  const chipClass = 'h-auto whitespace-normal rounded-full text-left';
 
   return <div className="grid gap-3">
     <div>
-      <Button type="button" variant="outline" className="min-h-10 gap-2 whitespace-nowrap" aria-expanded={open} aria-controls="adv-filters" onClick={() => setOpen(o => !o)}>
+      <Button type="button" variant="outline" className="min-h-11 lg:min-h-10 gap-2 whitespace-nowrap" aria-expanded={open} aria-controls="adv-filters" onClick={() => setOpen(o => !o)}>
         {c.more}
         {count > 0 && <Badge variant="secondary" aria-label={`${c.badLabel}: ${count}`}>{count}</Badge>}
         <ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </Button>
     </div>
-    {open && <div id="adv-filters" className="grid gap-5 rounded-xl border bg-card p-4">
+    {open && <div id="adv-filters" className="grid gap-4 rounded-xl border bg-card p-4">
       {GROUPS.map(g => {
         const counts = new Map((facets?.[g.key] ?? []).map(f => [f.value, f.count]));
         const selected = splitList(get(g.key));
@@ -132,13 +132,13 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, addition
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex min-h-10 items-center gap-2 text-sm">
+        <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
           <input type="checkbox" className="size-5 accent-primary" checked={get('posting_language') === 'th'} onChange={e => setMany({ posting_language: e.target.checked ? 'th' : '' })} />
           {c.thai}
         </label>
         <div className="grid gap-2">
           <Label htmlFor="adv-salary">{c.salary}</Label>
-          <select id="adv-salary" className="min-h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <select id="adv-salary" className="min-h-11 lg:min-h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={get('salary_min')} onChange={e => setMany({ salary_min: e.target.value })}>
             <option value="">{c.anySalary}</option>
             {SALARIES.map(n => <option key={n} value={String(n)}>{c.baht(number.format(n))}</option>)}

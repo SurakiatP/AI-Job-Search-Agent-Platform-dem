@@ -33,8 +33,8 @@ export function GettingStarted({ base, cv, job }: Props) {
         const finished = done[index];
         const blocked = index === 2 && !finished;
         return <li key={step.title} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4 gap-y-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-          <span data-stage={STEP_STAGE[index]} data-active={finished || next === index} className={cn('stage-tile !size-9 !rounded-full text-sm font-semibold', !finished && next !== index && 'opacity-70')}>
-            {finished ? <><CheckCircle2 size={20} aria-hidden="true" /><span className="sr-only">{c.stepDone}</span></> : index + 1}
+          <span data-stage={STEP_STAGE[index]} data-active={finished || next === index} className={cn('stage-chip !size-6 !rounded-full text-xs font-medium tabular-nums', !finished && next !== index && 'opacity-70')}>
+            {finished ? <><CheckCircle2 size={14} aria-hidden="true" /><span className="sr-only">{c.stepDone}</span></> : index + 1}
           </span>
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold">{step.title}{next === index && <Badge variant="secondary">{c.nextStep}</Badge>}</p>
@@ -59,6 +59,6 @@ export function HelpPanel({ hasCv }: { hasCv: boolean }) {
   return <section aria-labelledby="help-heading" className="workspace-panel self-start p-5 sm:p-6">
     <h2 id="help-heading" className="flex items-center gap-3 text-xl font-semibold"><Compass size={24} className="text-primary" aria-hidden="true" />{c.helpTitle}</h2>
     <ul className="mt-4 grid gap-4">{tips.map(tip => <li key={tip.title} className="border-t pt-4 first:border-t-0 first:pt-0"><p className="font-semibold">{tip.title}</p><p className="mt-1 text-sm text-muted-foreground">{tip.body}</p></li>)}</ul>
-    {hasCv && <Button variant="ghost" size="sm" className="mt-3 -ms-3" onClick={() => { savePreference(helpKey, 'dismissed'); setState('dismissed'); }}>{c.dismissHelp}</Button>}
+    {/* optical: the ghost button text lines up with the text above */}{hasCv && <Button variant="ghost" size="sm" className="mt-3 -ms-3" onClick={() => { savePreference(helpKey, 'dismissed'); setState('dismissed'); }}>{c.dismissHelp}</Button>}
   </section>;
 }

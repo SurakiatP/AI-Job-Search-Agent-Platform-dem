@@ -455,7 +455,7 @@ test('SCR-03 evaluation trash: restore, restore blocked by a newer pair, delete 
 
   await page.getByRole('button', { name: 'Empty trash' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Empty trash' }).click();
-  await expect(page.getByText('Trash is empty.')).toBeVisible();
+  await expect(page.getByText('No evaluations in the trash.')).toBeVisible();
   expect(calls).toEqual(['POST restore a1', 'POST restore b2', 'DELETE permanent c3', 'DELETE permanent b2']);
   await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Evaluations', exact: true }).click();
   await expect(row('Old job')).toHaveCount(1);

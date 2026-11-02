@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Download, File, FileUser, Info, Mail, MessageSquareText, Pencil, RotateCcw, type LucideIcon } from 'lucide-react';
+import { Download, File, FileText, FileUser, Info, Mail, MessageSquareText, Pencil, RotateCcw, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,8 @@ import { DocumentDeleteMenu } from './DocumentDeleteMenu';
 import { deletePermanently, inUseMessage, permanentDescription, permanentTitle, restoreDocument } from './TrashView';
 import { useFilePreview } from '../../components/CvPreview';
 import { notifyTrashChanged } from '@/lib/trash';
+import { PageHeader } from '@/components/PageHeader';
+import { dateLocale } from '../../lib/locale';
 
 type DocumentItem = { id: string; has_builder_draft?: boolean; document_type: 'cv' | 'cover_letter' | 'application_message' | 'other'; title: string; content_markdown?: string | null; output_language?: 'th' | 'en' | null; source_run_id?: string | null; partial?: boolean; trashed_at?: string | null; latest_revision?: { id: string; revision: number } | null };
 type DocumentRevision = { document_id: string; id?: string; revision?: number; created_at?: string; source_cv_revision_id?: string | null; source_job_revision_id?: string | null; file_id?: string | null; content_markdown?: string | null; origin?: 'agent' | 'manual' };
@@ -84,7 +86,7 @@ function DocumentEditor({ c, projectId, documentId, initial, onClose, onSaved }:
     }
   }
   const saving = phase === 'saving';
-  return <Card className="min-w-0"><CardContent className="grid gap-4 p-5 sm:p-8">
+  return <Card className="min-w-0"><CardContent className="grid gap-4 p-6 sm:p-8">
     <h2 className="font-semibold">{c.editor}</h2>
     <Tabs defaultValue="edit">
       <TabsList><TabsTrigger className="min-h-11" value="edit">{c.editTab}</TabsTrigger><TabsTrigger className="min-h-11" value="preview">{c.previewTab}</TabsTrigger></TabsList>
@@ -129,10 +131,12 @@ export function DocumentsPage() {
   const evaluateHref = sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : `${base}/sessions`;
   const title = t('pages.documentsTitle', { defaultValue: 'Documents' });
   // Same header block and rhythm as the populated page; the empty message sits in a card under it.
-  if (!documents.length && !undo) return <section className="grid gap-6">
-    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{title}</h1><p className="text-sm text-muted-foreground">{w('subtitle')}</p></div>
-    <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-4 sm:p-5">
+  if (!documents.length && !undo) return <section className="grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
+      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+      <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
+    </div>
+    <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-5 sm:p-6">
       <h2 className="text-lg font-semibold">{w('emptyTitle')}</h2>
       <p className="text-sm text-muted-foreground">{w('emptyHelp')}</p>
       <Button asChild><Link to={evaluateHref}>{c.evaluate}</Link></Button>
@@ -140,19 +144,21 @@ export function DocumentsPage() {
   </section>;
   const chips: [DocType | 'all', string][] = [['all', c.all], ['cv', documentTypeLabel('cv', t)], ['cover_letter', documentTypeLabel('cover_letter', t)], ['application_message', documentTypeLabel('application_message', t)], ['other', documentTypeLabel('other', t)]];
   const visible = filter === 'all' ? documents : documents.filter(document => document.document_type === filter);
-  const chipClass = (active: boolean) => cn('min-h-10 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring', active && 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90');
+  const chipClass = (active: boolean) => cn('min-h-11 lg:min-h-10 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring', active && 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90');
   async function undoTrash() {
     if (!undo) return;
     try { await restoreDocument(projectId, undo.id); setUndo(null); reloadAll(); } catch { setUndo({ id: undo.id, message: c.undoFailed }); }
   }
-  return <section className="grid gap-6">
-    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{title}</h1><p className="text-sm text-muted-foreground">{w('subtitle')}</p></div>
+  return <section className="grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
+      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+      <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
+    </div>
     {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-4 py-2 text-sm">
       <span>{undo.message}</span>
       <span className="flex flex-wrap items-center gap-2">
         {undo.id && <Button type="button" size="sm" variant="outline" onClick={() => { void undoTrash(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
-        <Link className="inline-flex min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=documents`}>{c.openTrash}</Link>
+        <Link className="inline-flex min-h-11 lg:min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=documents`}>{c.openTrash}</Link>
       </span>
     </div>}
     <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <button key={value} type="button" aria-pressed={filter === value}
@@ -232,7 +238,7 @@ export function DocumentDetailPage() {
   const viewed = versions.find(revision => revision.id && revision.id === pickedId) ?? latestRevision;
   const historical = viewed !== undefined && viewed !== latestRevision;
   const preview = (viewed === latestRevision ? document.content_markdown ?? latestRevision?.content_markdown : viewed?.content_markdown) ?? null;
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
+  const date = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium' });
   const Icon = typeIcon[document.document_type];
   const numbered = versions.map((revision, index) => ({ revision, number: revision.revision ?? index + 1, index }));
   const newestFirst = [...numbered].sort((a, b) => b.number - a.number);
@@ -267,7 +273,7 @@ export function DocumentDetailPage() {
     catch { setRevNote({ ok: false, text: c.promoteFailed }); } finally { setRevBusy(false); setConfirmPromote(false); }
   }
 
-  return <article className="grid gap-6">
+  return <article className="grid gap-6 lg:gap-8">
     <PageBack to={`${base}/documents`}>{t('nav.documents')}</PageBack>
     {isTrashed && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted px-4 py-3 text-sm">
       <span className="font-medium">{c.inTrash}</span>
@@ -282,20 +288,20 @@ export function DocumentDetailPage() {
       <div className="grid min-w-0 gap-2"><h1 className="break-words text-2xl font-semibold">{document.title}</h1>{document.source_run_id && <div data-testid="ai-document"><AiLabel check /></div>}</div></div>
     {editing && canEdit ? <DocumentEditor c={c} projectId={projectId} documentId={documentId} initial={preview} onClose={stopEditing} onSaved={() => { setPickedId(''); stopEditing(); docs.reload(); revisions.reload(); }} /> :
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-      <Card className="min-w-0"><CardContent className="p-5 sm:p-8">
+      <Card className="min-w-0"><CardContent className="p-6 sm:p-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{t('pages.documentContent', { defaultValue: 'Document content' })}</h2>
           {document.has_builder_draft && !isTrashed
             ? <Button asChild size="sm" className="min-h-11"><Link to={`/app/projects/${projectId}/documents/${document.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{w('editInBuilder')}</Link></Button>
             : canEdit && <Button type="button" size="sm" className="min-h-11" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{historical ? w('editFromThis') : w('editCurrent')}</Button>}
           {document.document_type === 'cv' && !document.has_builder_draft && <p className="w-full text-xs text-muted-foreground">{w('templateHint')}</p>}
           {versions.length > 1 && <label className="flex items-center gap-2 text-sm"><span className="text-muted-foreground">{w('colVersion')}</span>
-            <select className="min-h-9 rounded-md border border-input bg-card px-2 text-sm" value={viewed?.id ?? ''} onChange={event => setPickedId(event.target.value)}>
+            <select className="min-h-11 lg:min-h-10 rounded-md border border-input bg-card px-2 text-sm" value={viewed?.id ?? ''} onChange={event => setPickedId(event.target.value)}>
               {newestFirst.map(({ revision, number }) => <option key={revision.id ?? number} value={revision.id ?? ''}>{number}{revision === latestRevision ? ` · ${c.current}` : ''}{revision.origin === 'manual' ? ` · ${c.manual}` : ''}</option>)}</select></label>}</div>
         {historical && <div role="status" data-testid="historical-banner" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm"><span className="flex items-start gap-2"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />{w('historicalBanner', { n: viewedNumber })}</span>
           <Button type="button" size="sm" variant="outline" className="min-h-11" onClick={() => setPickedId('')}>{w('backToCurrent')}</Button></div>}
-        {document.has_builder_draft && viewed?.file_id && <div className="mb-4 overflow-hidden rounded-lg border bg-white" style={{ aspectRatio: '1 / 1.414' }}>
+        {document.has_builder_draft && viewed?.file_id && <div className="mb-4 rounded-xl bg-muted p-4 sm:p-6"><div className="overflow-hidden rounded-lg border bg-white shadow-md" style={{ aspectRatio: '1 / 1.414' }}>
           <PdfFrame url={downloadUrl(projectId, viewed.file_id)} title={w('templatePreview')} />
-        </div>}
+        </div></div>}
         <div ref={contentRef} className={document.has_builder_draft ? 'sr-only' : undefined}><Markdown className={cn('max-w-[68ch]', document.output_language === 'en' && 'document-english')} data-testid="document-content">{preview ?? t('pages.docPreviewUnavailable', { defaultValue: 'A text preview is unavailable. Download the authorized file to review this revision.' })}</Markdown></div>
         {preview && <CopyButton className="mt-4" source={contentRef} markdown={preview} />}
       </CardContent></Card>
@@ -361,5 +367,5 @@ function PdfFrame({ url, title }: { url: string; title: string }) {
   const preview = useFilePreview(url, 'application/pdf');
   return preview.status === 'pdf'
     ? <iframe title={title} src={`${preview.url}#view=FitH&toolbar=0&navpanes=0`} className="size-full border-0" />
-    : <div className="grid size-full place-items-center text-sm text-gray-600">{preview.status === 'loading' ? '…' : '—'}</div>;
+    : <div className="grid size-full place-items-center text-sm text-muted-foreground">{preview.status === 'loading' ? '…' : '—'}</div>;
 }

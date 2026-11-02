@@ -1,0 +1,36 @@
+const ruleTh: Record<string, string> = {
+  file_size: 'ไฟล์ใหญ่เกิน 4 KB', not_json: 'ไฟล์นี้ไม่ใช่ไฟล์ธีม เลือกไฟล์ที่ส่งออกจากแอปนี้', not_object: 'ไฟล์นี้ไม่ใช่ไฟล์ธีม เลือกไฟล์ที่ส่งออกจากแอปนี้',
+  name: 'ชื่อธีมในไฟล์ใช้ไม่ได้', layout: 'เลย์เอาต์ในไฟล์ใช้ไม่ได้', 'tokens.accent': 'สีเน้นในไฟล์ใช้ไม่ได้ หรืออ่านยากบนพื้นขาว',
+};
+const ruleEn: Record<string, string> = {
+  file_size: 'The file is larger than 4 KB', not_json: 'This is not a theme file. Pick one exported from this app.', not_object: 'This is not a theme file. Pick one exported from this app.',
+  name: 'The theme name in the file cannot be used', layout: 'The layout in the file cannot be used', 'tokens.accent': 'The accent colour in the file cannot be used or is hard to read on white',
+};
+export const themeCopy = {
+  th: {
+    title: 'ธีมเรซูเม่', pick: 'เลือกธีม', presets: 'ธีมสำเร็จรูป', mine: 'ธีมของฉัน', noneYet: 'ยังไม่มีธีมของคุณ ปรับแต่งธีมแล้วบันทึกไว้ใช้ซ้ำได้',
+    customize: 'ปรับแต่งธีมนี้', adjust: 'ปรับแต่ง', cancel: 'ยกเลิก', colour: 'สีเน้น', hex: 'รหัสสี', font: 'ตัวอักษร', size: 'ขนาด',
+    density: 'ระยะห่าง', headings: 'หัวข้อ', layout: 'เลย์เอาต์', sans: 'ไม่มีเชิง', serif: 'มีเชิง', small: 'เล็ก', normal: 'ปกติ', large: 'ใหญ่',
+    compact: 'แน่น', relaxed: 'โปร่ง', plain: 'เรียบ', rule: 'เส้นใต้', band: 'แถบสี', share: 'บันทึกและแชร์', name: 'ชื่อธีม',
+    save: 'บันทึกเป็นธีมของฉัน', export: 'ส่งออกไฟล์', import: 'นำเข้าไฟล์', remove: 'ลบธีม', confirmRemove: 'ยืนยันลบ',
+    ats: 'ธีมนี้ไม่เรียงอ่านตามลำดับ ระบบรับสมัครงานบางระบบอาจอ่านข้อมูลสลับกัน', noPhoto: 'ธีมนี้ไม่แสดงรูป เลือกธีมที่มีรูปถ้าต้องการใส่รูป',
+    atsOk: 'อ่านตามลำดับได้', atsNo: 'อาจอ่านสลับลำดับ', withPhoto: 'มีรูป', contrast: 'สีนี้อ่านยากบนพื้นขาว เลือกสีที่เข้มกว่านี้', unsaved: 'ตัวอย่างนี้ยังไม่ได้บันทึก',
+    saved: 'บันทึกธีมแล้ว', imported: 'นำเข้าธีมแล้ว', needName: 'ตั้งชื่อธีมก่อนบันทึก', failed: 'ทำรายการไม่สำเร็จ ลองใหม่อีกครั้ง',
+    inUse: (n: string) => `ลบไม่ได้ ธีมนี้ถูกใช้อยู่ใน ${n} เรซูเม่`, limit: 'มีธีมของคุณครบ 20 แบบแล้ว ลบอันที่ไม่ใช้ก่อน', taken: 'มีธีมชื่อนี้อยู่แล้ว',
+    badFile: (rule: string) => ruleTh[rule] ?? 'ไฟล์ธีมใช้ไม่ได้ ตรวจว่าเป็นไฟล์ที่ส่งออกจากแอปนี้', fileTooBig: 'ไฟล์ใหญ่เกิน 4 KB', loading: 'กำลังโหลดธีม', loadFailed: 'โหลดธีมไม่สำเร็จ', retry: 'ลองอีกครั้ง', badHex: 'ใส่รหัสสีแบบ #1D4ED8',
+    selected: 'เลือกอยู่', accentRow: 'สีเน้น',
+  },
+  en: {
+    title: 'Resume theme', pick: 'Choose a theme', presets: 'Ready-made themes', mine: 'My themes', noneYet: 'No themes of your own yet. Adjust a theme and save it to reuse it.',
+    customize: 'Customise this theme', adjust: 'Customise', cancel: 'Cancel', colour: 'Accent colour', hex: 'Colour code', font: 'Typeface', size: 'Size',
+    density: 'Spacing', headings: 'Headings', layout: 'Layout', sans: 'Sans', serif: 'Serif', small: 'Small', normal: 'Normal', large: 'Large',
+    compact: 'Tight', relaxed: 'Airy', plain: 'Plain', rule: 'Underline', band: 'Band', share: 'Save and share', name: 'Theme name',
+    save: 'Save as my theme', export: 'Export file', import: 'Import file', remove: 'Delete theme', confirmRemove: 'Confirm delete',
+    ats: 'This theme does not read in order; some application systems may mix up the fields.', noPhoto: 'This theme does not show a photo. Pick one with a photo to include it.',
+    atsOk: 'Reads in order', atsNo: 'May read out of order', withPhoto: 'Photo', contrast: 'This colour is hard to read on white. Pick a darker one.', unsaved: 'This preview is not saved yet',
+    saved: 'Theme saved', imported: 'Theme imported', needName: 'Name the theme before saving', failed: 'Could not complete that. Try again.',
+    inUse: (n: string) => `Cannot delete: ${n} resume(s) use this theme`, limit: 'You have 20 themes already. Delete one you do not use.', taken: 'A theme with that name exists',
+    badFile: (rule: string) => ruleEn[rule] ?? 'This theme file cannot be used. Check that it was exported from this app.', fileTooBig: 'The file is larger than 4 KB', loading: 'Loading themes', loadFailed: 'Could not load themes', retry: 'Try again', badHex: 'Enter a colour like #1D4ED8',
+    selected: 'Selected', accentRow: 'Accent',
+  },
+} as const;

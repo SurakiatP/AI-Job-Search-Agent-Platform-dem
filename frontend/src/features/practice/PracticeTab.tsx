@@ -33,12 +33,12 @@ export function PracticeTab({ projectId, sessionId, locale, prep }: { projectId:
   const act = async (fn: () => Promise<unknown>) => { setFailure(''); try { await fn(); reload(); } catch { setFailure(c.failedAction); } };
 
   return <div className="grid gap-4">
-    <section aria-labelledby={`${sessionId}-practice`} className="grid gap-4 rounded-xl border bg-card p-4 sm:p-5">
+    <section aria-labelledby={`${sessionId}-practice`} className="grid gap-4 rounded-xl border bg-card p-4 sm:px-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid max-w-2xl gap-1"><h2 id={`${sessionId}-practice`} className="text-lg font-semibold">{c.title}</h2><p className="text-sm text-muted-foreground">{c.intro}</p></div>
         {list.length > 0 && <Button type="button" className="min-h-11" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{c.newSet}</Button>}
       </div>
-      {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-background px-4 py-2.5 text-sm">
+      {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-background px-4 py-2 text-sm">
         <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words sm:basis-auto">{c.deleted(removed.name)}</span>
         <Button type="button" variant="ghost" size="sm" className="max-sm:ml-4" onClick={() => void act(async () => { await apiRequest(`${setPath(removed.id)}/restore`, { method: 'POST' }); setRemoved(null); })}>{c.undo}</Button>
@@ -48,13 +48,13 @@ export function PracticeTab({ projectId, sessionId, locale, prep }: { projectId:
       {sets.status === 'loading' && !sets.data ? <BusyNote label="…" /> : list.length === 0 ? <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-5">
         <h3 className="font-semibold">{c.emptyTitle}</h3><p className="max-w-xl text-sm text-muted-foreground">{c.emptyBody}</p>
         <Button type="button" className="min-h-11" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{c.newSet}</Button>
-      </div> : <ul className="grid divide-y rounded-lg border">{list.map(set => <li key={set.id} className="grid min-w-0 gap-2.5 px-4 py-3">
+      </div> : <ul className="grid divide-y rounded-lg border">{list.map(set => <li key={set.id} className="grid min-w-0 gap-2 px-4 py-3">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
           <div className="grid min-w-0 gap-0.5">
             <Link to={`/app/projects/${projectId}/sessions/${sessionId}/practice/${set.id}`} className="w-fit break-words font-semibold text-foreground hover:text-primary hover:underline [overflow-wrap:anywhere]">{set.name}</Link>
             <p className="text-sm text-muted-foreground">{c.levels[set.level]} · {set.sections.map(s => c.sections[s.id]).join(', ')}</p>
           </div>
-          <ItemMenu className="-me-1.5 -mt-0.5" label={c.options(set.name)} actions={[
+          {/* optical: pulls the icon button into the card corner */}<ItemMenu className="-me-1.5 -mt-0.5" label={c.options(set.name)} actions={[
             { label: c.rename, icon: <Pencil className="size-4" aria-hidden="true" />, onSelect: () => setRenaming(set) },
             { label: c.del, icon: <Trash2 className="size-4" aria-hidden="true" />, destructive: true, onSelect: () => void act(async () => { await apiRequest(setPath(set.id), { method: 'DELETE' }); setRemoved(set); }) },
           ]} />
@@ -72,7 +72,7 @@ export function PracticeTab({ projectId, sessionId, locale, prep }: { projectId:
 
 export function Progress({ value, max, label, className }: { value: number; max: number; label: string; className?: string }) {
   return <div className={cn('flex items-center gap-3 text-sm text-muted-foreground', className)}>
-    <span className="h-1.5 w-32 shrink-0 overflow-hidden rounded-full bg-secondary" aria-hidden="true"><span className="block h-full rounded-full bg-primary transition-[width] duration-300 ease-out" style={{ width: `${max ? (100 * value) / max : 0}%` }} /></span>
+    <span className="h-1.5 w-32 shrink-0 overflow-hidden rounded-full bg-secondary" aria-hidden="true"><span className="block h-full rounded-full bg-primary transition-[width] duration-(--dur-slow) ease-out" style={{ width: `${max ? (100 * value) / max : 0}%` }} /></span>
     <span className="tabular-nums">{label}</span>
   </div>;
 }
@@ -104,26 +104,26 @@ function CreateDialog({ c, api, projectId, sessionId, locale, defaultName, onClo
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
     <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
-      <form className="grid gap-5" onSubmit={event => void submit(event)}>
+      <form className="grid gap-4" onSubmit={event => void submit(event)}>
         <div className="grid gap-1"><DialogTitle>{c.newSet}</DialogTitle><DialogDescription>{c.intro}</DialogDescription></div>
         <div className="grid gap-2"><Label htmlFor={`${id}-name`}>{c.name}</Label><Input id={`${id}-name`} value={name} maxLength={120} onChange={event => setName(event.target.value)} /></div>
         <fieldset className="grid gap-2"><legend className="mb-2 text-sm font-medium">{c.level}</legend>
           <div className="flex flex-wrap gap-1 rounded-lg bg-secondary p-1">{(['entry', 'mid', 'senior'] as const).map(value => <label key={value} className="relative flex-1">
             <input type="radio" name={`${id}-level`} value={value} checked={level === value} onChange={() => setLevel(value)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
-            <span className="flex min-h-10 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">{c.levels[value]}</span>
+            <span className="flex min-h-11 lg:min-h-10 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">{c.levels[value]}</span>
           </label>)}</div>
         </fieldset>
         <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.questionLanguage}</legend>
           <p className="text-xs text-muted-foreground">{c.questionLanguageHint}</p>
           <div className="flex flex-wrap gap-1 rounded-lg bg-secondary p-1">{(['th', 'en'] as const).map(value => <label key={value} className="relative flex-1">
             <input type="radio" name={`${id}-language`} value={value} checked={language === value} onChange={() => setLanguage(value)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
-            <span className="flex min-h-10 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">{value === 'th' ? 'ไทย' : 'English'}</span>
+            <span className="flex min-h-11 lg:min-h-10 cursor-pointer items-center justify-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring">{value === 'th' ? 'ไทย' : 'English'}</span>
           </label>)}</div>
         </fieldset>
         <fieldset className="grid gap-2"><legend className="mb-2 text-sm font-medium">{c.sectionsLegend}</legend>
           <ul className="grid divide-y rounded-lg border">{SECTION_ORDER.map(section => {
             const on = Boolean(counts[section]);
-            return <li key={section} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5">
+            return <li key={section} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3">
               <input id={`${id}-${section}`} type="checkbox" className="size-4 accent-[var(--primary)]" checked={on} aria-describedby={`${id}-${section}-hint`}
                 onChange={event => setCounts(current => ({ ...current, [section]: event.target.checked ? DEFAULTS[section] ?? 2 : 0 }))} />
               <label htmlFor={`${id}-${section}`} className="grid min-w-0 cursor-pointer gap-0.5"><span className="text-sm font-medium">{c.sections[section]}</span><span id={`${id}-${section}-hint`} className="text-xs text-muted-foreground">{c.sectionHints[section]}</span></label>

@@ -78,7 +78,8 @@ export function PracticeSetPage() {
   const goNext = () => { if (current && index + 1 < current.questions.length) setIndex(index + 1); else if (rounds[position + 1]) select(rounds[position + 1].id); };
   const goPrev = () => { if (index > 0) setIndex(index - 1); else if (rounds[position - 1]) { const prev = rounds[position - 1]; select(prev.id, Math.max(0, prev.questions.length - 1)); } };
 
-  return <section className="grid min-w-0 gap-5">
+  return <section className="grid min-w-0 gap-6 lg:gap-8">
+    <div className="grid gap-1">
     <Breadcrumb label={c.title} items={[{ label: project.data?.name ?? '…', to: `${base}/overview` }, { label: t('nav.evaluate'), to: `${base}/sessions` },
       { label: s?.job_title ?? s?.title ?? c.back, to: sessionHref }, { label: set.name }]} />
     <header className="flex flex-wrap items-end justify-between gap-4">
@@ -90,12 +91,13 @@ export function PracticeSetPage() {
         <Button type="button" variant="outline" className="min-h-11" onClick={() => setRenaming(true)}><Pencil className="size-4" aria-hidden="true" />{c.rename}</Button>
       </div>
     </header>
+    </div>
     {failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}
 
     {set.status !== 'ready' ? <div className="grid justify-items-start gap-3 rounded-xl border bg-card p-6">
       {set.status === 'generating' ? <><BusyNote bar label={c.generating} /><p className="text-sm text-muted-foreground">{c.generatingBody}</p></>
         : <><p className="font-medium text-destructive">{c.failed}</p><Button type="button" variant="outline" onClick={() => void apiRequest(`${path}/retry`, { method: 'POST' }).then(reload).catch(() => setFailure(c.failedAction))}><RotateCcw className="size-4" aria-hidden="true" />{c.retry}</Button></>}
-    </div> : <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[21rem_minmax(0,1fr)]">
+    </div> : <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[21rem_minmax(0,1fr)]">
       <div className="grid gap-3 lg:sticky lg:top-4">
         <button type="button" className="flex min-h-11 items-center justify-between gap-3 rounded-xl border bg-card px-4 text-sm font-medium lg:hidden" aria-expanded={sheetOpen} onClick={() => setSheetOpen(open => !open)}>
           <span className="min-w-0 truncate">{current ? (current.id === 'summary' ? c.summaryRound : current.id === 'reverse' ? c.reverse : c.sections[current.id]) : c.rounds} · <span className="tabular-nums text-muted-foreground">{c.readyOf(readyCount, total)}</span></span>
@@ -127,7 +129,7 @@ function RunSheet({ c, rounds, current, index, readyCount, total, reverseCount, 
   c: PracticeCopy; rounds: Round[]; current?: Round['id']; index: number; readyCount: number; total: number; reverseCount: number;
   className?: string; onSelect: (id: Round['id'], at?: number) => void;
 }) {
-  return <nav aria-label={c.rounds} className={cn('gap-4 rounded-xl border bg-card p-4 sm:p-5', className)}>
+  return <nav aria-label={c.rounds} className={cn('gap-4 rounded-xl border bg-card p-5 sm:p-6', className)}>
     <div className="flex items-baseline justify-between gap-3"><h2 className="text-base font-semibold">{c.rounds}</h2><span className="text-sm tabular-nums text-muted-foreground">{c.readyOf(readyCount, total)}</span></div>
     <ol className="grid">{rounds.map((round, n) => {
       const extra = round.id === 'reverse' || round.id === 'summary';
@@ -139,8 +141,8 @@ function RunSheet({ c, rounds, current, index, readyCount, total, reverseCount, 
       const sub = round.id === 'summary' ? c.summarySub : round.id === 'reverse' ? c.questions(count) : round.id === 'technical' ? `${c.cards(count)} · ${c.knownOf(finished, count)}` : c.readyOf(finished, count);
       const minutes = round.id === 'summary' ? null : round.id === 'reverse' ? 3 : Math.max(1, Math.round(count * MINUTES[round.id]));
       return <li key={round.id} className="relative grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 pb-4 last:pb-0">
-        {n < rounds.length - 1 && <span aria-hidden="true" className={cn('absolute bottom-0 left-[1.0625rem] top-9 w-0.5 rounded-full transition-colors duration-500', complete ? 'bg-primary' : 'bg-border')} />}
-        <span aria-hidden="true" className={cn('relative z-10 grid size-9 place-items-center rounded-full border-2 text-sm font-semibold tabular-nums transition-colors duration-300',
+        {n < rounds.length - 1 && <span aria-hidden="true" className={cn('absolute bottom-0 left-[1.0625rem] top-9 w-0.5 rounded-full transition-colors duration-(--dur-slow)', complete ? 'bg-primary' : 'bg-border')} />}
+        <span aria-hidden="true" className={cn('relative z-10 grid size-9 place-items-center rounded-full border-2 text-sm font-semibold tabular-nums transition-colors duration-(--dur-slow)',
           complete ? 'border-primary bg-primary text-primary-foreground' : active ? 'border-primary bg-card text-primary ring-4 ring-accent' : 'border-border bg-card text-muted-foreground')}>
           {complete ? <Check className="size-4" /> : n + 1}
         </span>
@@ -191,7 +193,7 @@ function WrittenQuestion({ c, projectId, question, facts, roundLabel, counter, o
     try { await sendJson<PracticeAttempt>(`/projects/${projectId}/practice-questions/${question.id}/attempts`, 'POST', { answer: answer.trim() }); onAttempt(); }
     catch { setError(c.failedAction); } finally { setSaving(false); }
   }
-  return <article className="grid gap-5 rounded-xl border bg-card p-5 sm:p-7" aria-labelledby={`${id}-q`}>
+  return <article className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6" aria-labelledby={`${id}-q`}>
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2">
       <h2 id={`${id}-q`} className="max-w-[34em] text-balance text-xl font-semibold leading-snug sm:text-2xl">{question.prompt}</h2>
       <AiLabel className="mt-1" />
@@ -258,7 +260,7 @@ function Points({ title, items, open = false }: { title: string; items: string[]
 }
 
 function ReverseRound({ c, items }: { c: PracticeCopy; items: string[] }) {
-  return <section aria-labelledby="reverse-q" className="grid gap-4 rounded-xl border bg-card p-5 sm:p-7">
+  return <section aria-labelledby="reverse-q" className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2"><h2 id="reverse-q" className="text-xl font-semibold">{c.reverse}</h2><AiLabel /></div>
     <p className="text-sm text-muted-foreground">{c.reverseHint}</p>
     <ol className="grid max-w-[70ch] gap-3">{items.map((item, i) => <li key={item} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2 leading-relaxed">

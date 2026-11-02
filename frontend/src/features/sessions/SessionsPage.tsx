@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Briefcase, FileText, Trash2, X } from 'lucide-react';
+import { ArrowRight, Briefcase, FileText, MessagesSquare, Trash2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -15,6 +15,7 @@ import { relativeTime } from '../console/shared';
 import { useResource } from '../projects/useResource';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { notifyTrashChanged } from '@/lib/trash';
+import { PageHeader } from '@/components/PageHeader';
 
 type Filter = 'all' | 'attention' | 'progress' | 'done' | 'stopped' | 'notStarted';
 const FILTERS: Filter[] = ['all', 'attention', 'progress', 'done', 'stopped', 'notStarted'];
@@ -71,13 +72,13 @@ export function SessionsPage() {
   const shown = filter === 'all' || !known ? rows : rows.filter(row => group(row.run) === filter);
   const jobVersion = (id?: string | null) => (jobs.data ?? []).find(job => job.id === id)?.revision;
   if (inTrash) return <Navigate to={trashHref} replace />;
-  return <section className="grid min-w-0 gap-6">
-    <header className="workspace-page-header"><div><h1>{t('nav.evaluate')}</h1><p className="mt-2 max-w-2xl text-muted-foreground">{s('list.subtitle')}</p></div><div className="flex flex-wrap items-center gap-2">{rows.length > 0 && <NewSessionButton projectId={projectId}>{t('workspace.newEvaluation')}</NewSessionButton>}</div></header>
-    {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2.5 text-sm">
+  return <section id="sessions-page" tabIndex={-1} className="grid min-w-0 gap-6 outline-none lg:gap-8">
+    <PageHeader icon={MessagesSquare} title={t('nav.evaluate')} lede={s('list.subtitle')} actions={rows.length > 0 && <NewSessionButton projectId={projectId}>{t('workspace.newEvaluation')}</NewSessionButton>} />
+    {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-3 text-sm">
       <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words sm:basis-auto">{undoFailed ? s('list.undoFailed') : s('list.moved', { title: removed.job_title ?? removed.title })}</span>
       <Button type="button" variant="ghost" size="sm" className="max-sm:ml-4" onClick={() => void undo(removed)}>{s('list.undo')}</Button>
-      <Link className="inline-flex min-h-10 items-center font-medium text-primary hover:underline" to={trashHref}>{s('list.openTrash')}</Link>
+      <Link className="inline-flex min-h-11 lg:min-h-10 items-center font-medium text-primary hover:underline" to={trashHref}>{s('list.openTrash')}</Link>
       <Button type="button" variant="ghost" size="icon" className="max-sm:ml-auto" aria-label={s('list.dismiss')} onClick={() => setRemoved(null)}><X className="size-4" aria-hidden="true" /></Button>
     </div>}
     {sessions.status === 'loading' && !sessions.data ? <LoadingState /> : sessions.status === 'error' ? <ErrorState onRetry={sessions.reload} /> :
@@ -91,7 +92,7 @@ export function SessionsPage() {
           const action = known ? nextAction(run, paired) : 'open';
           const version = jobVersion(session.job_revision_id);
           const titleId = `eval-${session.id}`;
-          return <li key={session.id} className={cn('relative grid min-w-0 items-center gap-3 p-4 sm:p-5 md:gap-4 md:px-6', columns)}>
+          return <li key={session.id} className={cn('relative grid min-w-0 items-center gap-3 p-4 sm:px-5 md:gap-4 md:px-6', columns)}>
             <div className="min-w-0 max-md:pr-10"><Link id={titleId} className="break-words font-semibold text-foreground hover:underline" to={`${base}/sessions/${session.id}`}>{session.job_title ?? session.title}</Link>{session.job_company && <p className="mt-0.5 break-words text-sm text-muted-foreground">{session.job_company}</p>}</div>
             <div className="grid min-w-0 gap-1 text-sm">
               <span className="text-xs text-muted-foreground md:hidden">{s('list.comparedUsing')}</span>
@@ -111,7 +112,7 @@ export function SessionsPage() {
         })}</ul>
       </div>
     </>}
-    {removing && <ConfirmDeleteDialog confirmLabel={s('list.delete.action')}
+    {removing && <ConfirmDeleteDialog confirmLabel={s('list.delete.action')} returnFocus={() => document.getElementById('sessions-page')}
       title={s('list.delete.title', { title: removing.job_title ?? removing.title })} description={s('list.delete.body')}
       errors={{ session_busy: s('list.delete.busy') }}
       onConfirm={() => apiRequest(`/projects/${projectId}/sessions/${removing.id}`, { method: 'DELETE' }).then(() => undefined)}

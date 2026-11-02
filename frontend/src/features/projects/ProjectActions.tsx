@@ -27,7 +27,7 @@ function RenameDialog({ id, name, onClose, onDone }: { id: string; name: string;
     <DialogContent aria-describedby={undefined}>
       <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
         <DialogTitle>{c.renameTitle}</DialogTitle>
-        <label className="grid gap-1.5 text-sm font-medium">{c.name}<Input autoFocus maxLength={200} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
+        <label className="grid gap-2 text-sm font-medium">{c.name}<Input autoFocus maxLength={200} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
         {error && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{error}</p>}
         <div className="flex flex-wrap justify-end gap-2">
           <DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{c.cancel}</Button></DialogClose>

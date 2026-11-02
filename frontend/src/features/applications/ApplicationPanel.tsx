@@ -10,8 +10,9 @@ import type { ApplicationDetailView, ApplicationEventView, ApplicationStage } fr
 import { STAGES, stageLabel } from '../../lib/applicationStages';
 import { selectClass } from '../settings/Field';
 import { sendJson, useResource } from '../projects/useResource';
+import { dateLocale } from '../../lib/locale';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Date().toLocaleDateString('sv-SE');
 
 export function mailtoHref(email: string, jobTitle: string): string {
   const [local, domain] = email.split('@');
@@ -29,6 +30,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
   const [composer, setComposer] = useState<'note' | 'email' | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const [contactSaved, setContactSaved] = useState(false);
   const data = result.data;
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
 
   async function run(action: () => Promise<unknown>, after?: () => void) {
     if (busy) return;
-    setBusy(true); setError(false);
+    setBusy(true); setError(false); setContactSaved(false);
     try { await action(); after?.(); result.reload(); } catch { setError(true); } finally { setBusy(false); }
   }
   const blank = (value: string) => value.trim() || null;
@@ -47,11 +49,15 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
       case 'stage_changed': return `${stageLabel[p.from as ApplicationStage]?.[locale] ?? String(p.from)} → ${stageLabel[p.to as ApplicationStage]?.[locale] ?? String(p.to)}`;
       case 'note': return p.text ?? '';
       case 'contact_updated': return [t('contactUpdated'), p.name, p.email].filter(Boolean).join(' · ');
-      case 'email_logged': return `${t(p.direction === 'sent' ? 'sentEmail' : 'receivedEmail')}: ${p.subject} (${p.occurred_on})${p.note ? ` — ${p.note}` : ''}`;
+      case 'email_logged': {
+        const day = new Date(`${p.occurred_on}T00:00:00`);
+        return `${t(p.direction === 'sent' ? 'sentEmail' : 'receivedEmail')}: ${p.subject} (${Number.isNaN(day.getTime()) ? p.occurred_on : day.toLocaleDateString(dateLocale(locale), { dateStyle: 'medium' })})${p.note ? ` — ${p.note}` : ''}`;
+      }
       case 'applied_via_approval': return t('appliedViaApproval');
+      default: return '';
     }
   };
-  const when = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const when = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
 
   if (!data) return result.status === 'error' ? <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{t('loadDetailError')}<Button variant="outline" size="sm" onClick={result.reload}>{t('retry')}</Button></p> : null;
   return <section aria-labelledby="application-tracking-title" aria-busy={busy} className={cn('grid min-w-0 content-start gap-6', className)}>
@@ -66,13 +72,14 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
       </select>
     </div>
 
-    <form className="grid gap-3 border-t border-border pt-5" onSubmit={event => { event.preventDefault(); void run(() => sendJson(`${path}/application/contact`, 'PUT', { name: blank(contact.name), email: blank(contact.email), role: blank(contact.role) })); }}>
+    <form className="grid gap-3 border-t border-border pt-5" onSubmit={event => { event.preventDefault(); void run(() => sendJson(`${path}/application/contact`, 'PUT', { name: blank(contact.name), email: blank(contact.email), role: blank(contact.role) }), () => setContactSaved(true)); }}>
       <h3 className="text-sm font-semibold">{t('contact')}</h3>
       <div className="grid gap-2"><Label htmlFor="contact-name">{t('name')}</Label><Input id="contact-name" maxLength={200} value={contact.name} onChange={e => setContact({ ...contact, name: e.target.value })} /></div>
       <div className="grid gap-2"><Label htmlFor="contact-email">{t('email')}</Label><Input id="contact-email" type="email" maxLength={320} value={contact.email} onChange={e => setContact({ ...contact, email: e.target.value })} /></div>
       <div className="grid gap-2"><Label htmlFor="contact-role">{t('role')}</Label><Input id="contact-role" maxLength={200} value={contact.role} onChange={e => setContact({ ...contact, role: e.target.value })} /></div>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" variant="outline" busy={busy} disabled={busy}>{t('saveContact')}</Button>
+        <span role="status" className="text-sm text-success">{contactSaved ? t('contactSaved') : ''}</span>
         {data.contact.email && <Button asChild variant="ghost"><a href={mailtoHref(data.contact.email, jobTitle)}><Mail className="size-4" aria-hidden="true" />{t('writeEmail')}</a></Button>}
       </div>
       {data.contact.email && <p className="text-xs text-muted-foreground">{t('writeEmailHelp')}</p>}

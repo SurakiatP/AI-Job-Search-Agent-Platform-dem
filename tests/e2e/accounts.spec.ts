@@ -36,6 +36,8 @@ test('landing start leads to login; wrong then right password reaches the reques
   await page.getByLabel('Password', { exact: true }).fill('wrong');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('The email or password is not correct.');
+  await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('aria-describedby', 'login-error');
   await page.getByLabel('Password', { exact: true }).fill('correct-password');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
@@ -111,7 +113,9 @@ test('agents list shows given date and revoke calls the grant route', async ({ p
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await expect(page.getByText('Synthetic agent')).toBeVisible();
   await expect(page.getByText('client.example.test')).toBeVisible();
-  await expect(page.getByText(/Given\s+Oct 3, 2026/)).toBeVisible();
+  await expect(page.getByText('Read generated results')).toBeVisible();
+  await expect(page.getByText('results:read', { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/Given\s+3 Oct 2026/)).toBeVisible();
   await page.getByRole('button', { name: 'Revoke', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Revoke access', exact: true }).click();
   await expect.poll(() => revoked).toBe(`DELETE /v1/projects/${projectId}/grants/${grantId}`);
@@ -240,6 +244,18 @@ test('login explains a rate limit with the wait time', async ({ page }) => {
   await expect(page.getByRole('alert')).toContainText('Too many attempts. Try again in 42 seconds.');
 });
 
+for (const [retryAfter, text] of [['1', 'Try again in 1 second.'], ['2', 'Try again in 2 seconds.'], ['60', 'Try again in 60 seconds.'], ['119', 'Try again in 119 seconds.'], ['120', 'Try again in 2 minutes.'], ['121', 'Try again in 3 minutes.'], ['3412', 'Try again in 57 minutes.']] as const) {
+  test(`login rate limit of ${retryAfter} s reads as ${text}`, async ({ page }) => {
+    await mockApi(page, true);
+    await page.route('**/v1/auth/login', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'rate_limited', retryable: true, fields: { retry_after: retryAfter } }) }));
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('synthetic@example.test');
+    await page.getByLabel('Password', { exact: true }).fill('whatever-password');
+    await page.getByRole('button', { name: 'Log in', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText(text);
+  });
+}
+
 test('an expired reset link offers a new one; a good reset returns to login with a notice', async ({ page }) => {
   await mockApi(page, true);
   let used = false;
@@ -287,7 +303,7 @@ test('a failed verify link offers a new link only when signed in', async ({ page
   expect(resent).toBe(true);
 });
 
-test('signup and forgot password say so when the server cannot send email', async ({ page }) => {
+test('signup and forgot password say so when email sending is not set up', async ({ page }) => {
   await mockApi(page, true);
   const off = (route: import('@playwright/test').Route) => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email', mail_enabled: false }) });
   await page.route('**/v1/auth/signup', off);
@@ -303,4 +319,59 @@ test('signup and forgot password say so when the server cannot send email', asyn
   await page.getByLabel('Email').fill('new@example.test');
   await page.getByRole('button', { name: /reset|link/i }).click();
   await expect(page.getByRole('heading', { name: 'Email is not set up yet' })).toBeVisible();
+});
+
+async function signInToAccount(page: Page) {
+  await page.goto('/login?next=%2Fapp%2Faccount');
+  await page.getByLabel('Email').fill('synthetic@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('correct-password');
+  await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
+}
+
+test('F6 account page emails a password reset link to the account email', async ({ page }) => {
+  await mockApi(page, true);
+  const bodies: unknown[] = [];
+  await page.route('**/v1/auth/password/forgot', route => { bodies.push(route.request().postDataJSON()); return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email', mail_enabled: true }) }); });
+  await signInToAccount(page);
+  await page.getByRole('button', { name: 'Email me a password reset link' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Link sent to synthetic@example.test' })).toBeVisible();
+  expect(bodies).toEqual([{ email: 'synthetic@example.test' }]);
+});
+
+test('F6 with email turned off the account page explains it instead of claiming a link was sent', async ({ page }) => {
+  await mockApi(page, true);
+  await page.route('**/v1/auth/password/forgot', route => route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ status: 'check_email', mail_enabled: false }) }));
+  await signInToAccount(page);
+  await page.getByRole('button', { name: 'Email me a password reset link' }).click();
+  await expect(page.getByText('Email sending is not set up yet')).toBeVisible();
+  await expect(page.getByText(/Link sent to/)).toHaveCount(0);
+});
+
+test('F5/F6 forgot and login errors link to the field; only wrong-input errors mark it invalid', async ({ page }) => {
+  await mockApi(page, true);
+  await page.route('**/v1/auth/password/forgot', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'rate_limited', message_key: 'errors.rate_limited', retryable: true, fields: { retry_after: '30' } }) }));
+  await page.route('**/v1/auth/login', route => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'rate_limited', message_key: 'errors.rate_limited', retryable: true, fields: { retry_after: '30' } }) }));
+  await page.goto('/forgot-password');
+  await page.getByLabel('Email').fill('synthetic@example.test');
+  await page.getByRole('button', { name: /Send|reset/i }).click();
+  await expect(page.getByRole('alert')).toHaveAttribute('id', 'forgot-error');
+  await expect(page.getByLabel('Email')).toHaveAttribute('aria-describedby', 'forgot-error');
+  await expect(page.getByLabel('Email')).not.toHaveAttribute('aria-invalid', 'true');
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('synthetic@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('whatever-password');
+  await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await expect(page.getByLabel('Email')).toHaveAttribute('aria-describedby', 'login-error');
+  await expect(page.getByLabel('Email')).not.toHaveAttribute('aria-invalid', 'true');
+});
+
+test('F5 the reset password mismatch error is linked to both fields', async ({ page }) => {
+  await mockApi(page, true);
+  await page.goto('/reset-password?token=abc');
+  await page.getByLabel('Password', { exact: true }).fill('long-enough-password');
+  await page.getByLabel('Confirm password').fill('different-password');
+  await page.getByRole('button', { name: /reset|change|save/i }).click();
+  await expect(page.getByLabel('Confirm password')).toHaveAttribute('aria-describedby', 'reset-error');
+  await expect(page.getByLabel('Confirm password')).toHaveAttribute('aria-invalid', 'true');
 });

@@ -10,6 +10,7 @@ import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import type { Copy } from './copy';
 import { Empty, relativeTime, useNow, type Locale } from './shared';
+import { dateLocale } from '../../lib/locale';
 
 const ACTIVE: RunStatus[] = ['queued', 'running', 'waiting_approval'];
 const GROUPS = [
@@ -111,7 +112,7 @@ export function TimelineTab({ projectId, locale, c }: { projectId: string; local
   if (runs.status === 'loading' && !runs.data) return <LoadingState />;
   const all = [...(runs.data ?? [])].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   if (all.length === 0) return <Empty title={c.noRuns} next={c.noRunsNext} />;
-  const medium = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const medium = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
   const idle = !all.some(run => run.status === 'queued' || run.status === 'running');
 
   function row(run: RunView, primary: boolean) {
@@ -141,7 +142,7 @@ export function TimelineTab({ projectId, locale, c }: { projectId: string; local
               : run.status === 'failed' || run.status === 'interrupted' ? <FailureReason projectId={projectId} run={run} c={c} /> : note}
           </p>
           {finished && run.status !== 'cancelled' && <div>
-            <Button type="button" variant="ghost" size="sm" className="-ms-3 text-muted-foreground" aria-expanded={open === run.id} onClick={() => setOpen(open === run.id ? null : run.id)}>{open === run.id ? c.hideDetails : c.details}</Button>
+            {/* optical: the ghost button text lines up with the row text */}<Button type="button" variant="ghost" size="sm" className="-ms-3 text-muted-foreground" aria-expanded={open === run.id} onClick={() => setOpen(open === run.id ? null : run.id)}>{open === run.id ? c.hideDetails : c.details}</Button>
             {open === run.id && <div className="rounded-lg bg-muted/40 p-3"><RunDetails projectId={projectId} run={run} c={c} /></div>}
           </div>}
         </div>

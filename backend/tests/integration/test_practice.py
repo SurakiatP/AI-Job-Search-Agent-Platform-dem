@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import UUID
 
@@ -220,7 +220,7 @@ def test_ac_ivp_04_owner_only_and_project_scoped(api_context):
     assert ctx.client.patch(f"{PREFIX}/{other}/practice-sets/{view['id']}", json={"name": "x"},
                             headers=_write_headers(csrf)).status_code == 404
     token = ctx.client.post(f"{PREFIX}/{pid}/grants", headers=_write_headers(csrf), json={
-        "capabilities": ["results:read", "documents:draft"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+        "capabilities": ["results:read", "documents:draft"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     ctx.client.cookies.clear()
     for method, url in (("GET", f"{PREFIX}/{pid}/practice-sets/{view['id']}"),
                         ("GET", f"{PREFIX}/{pid}/sessions/{session['id']}/practice-sets"),

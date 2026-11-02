@@ -28,7 +28,7 @@ export function FeedbackPanel({ c, feedback, answer, previous, onAsk, onRetry, o
     <TriangleAlert className="size-4" aria-hidden="true" />{c.gradeFailed}
     <Button type="button" size="sm" variant="outline" onClick={onRetry}><RotateCcw className="size-4" aria-hidden="true" />{c.askAgain}</Button></p>;
   const found = new Set(feedback.star.map(span => span.part));
-  return <section aria-labelledby={id} className="grid gap-5 rounded-xl border border-primary/25 bg-background/60 p-4 sm:p-5">
+  return <section aria-labelledby={id} className="grid gap-4 rounded-xl border border-primary/25 bg-background/60 p-5 sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 id={id} className="text-base font-semibold">{c.feedbackTitle}</h3><AiLabel /></div>
     {feedback.summary && <p className="max-w-[70ch] leading-relaxed">{feedback.summary}</p>}
     <ul className="grid gap-3 sm:grid-cols-2">{DIMS.map(dim => {
@@ -88,7 +88,7 @@ export function SummaryRound({ c, report, sections, onWrite }: { c: PracticeCopy
       : <ul className="grid gap-1.5 text-sm leading-relaxed">{items.map(item => <li key={item} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}</ul>}
   </div>;
   const tone = { ready: 'text-success', almost: 'text-warning', not_yet: 'text-muted-foreground' } as const;
-  return <section aria-labelledby={id} className="grid gap-5 rounded-xl border bg-card p-5 sm:p-7">
+  return <section aria-labelledby={id} className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="grid max-w-2xl gap-1"><h2 id={id} className="text-xl font-semibold">{c.summaryRound}</h2><p className="text-sm text-muted-foreground">{c.summaryHint}</p></div>
       {done && <AiLabel />}

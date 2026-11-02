@@ -42,7 +42,7 @@ from job_search_platform.services.contracts import (
 from job_search_platform.services import applications, experience, job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
-from job_search_platform.services.runs import actor_scope
+from job_search_platform.services.runs import OWNER_ONLY_OPERATIONS, actor_scope
 from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
 from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.services.accounts import require_admin
@@ -52,7 +52,7 @@ router = APIRouter()
 health_router = APIRouter()
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 SAFE_FIELDS = frozenset({
-    "path",
+    "path", "rule", "used_by",
     "name", "locale", "output_language", "notifications_enabled", "title", "company",
     "source_url", "description", "content", "filename", "file", "mime_type", "kind",
     "session_id", "operation", "cv_revision_id", "job_revision_id", "idempotency_key",
@@ -83,7 +83,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "invalid_token": 400, "invalid_code": 400, "invalid_image": 422, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
         "saved_search_limit": 409, "invalid_webhook_url": 422, "webhook_limit": 409, "delivery_not_dead": 409, "saved_search_name_taken": 409, "mail_unavailable": 503,
         "telegram_disabled": 404, "telegram_not_linked": 409, "telegram_unavailable": 503,
-        "draft_conflict": 409, "resume_invalid": 422, "resume_incomplete": 422, "render_failed": 502,
+        "draft_conflict": 409, "theme_invalid": 422, "theme_in_use": 409, "theme_limit": 409, "resume_invalid": 422, "resume_incomplete": 422, "render_failed": 502,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
     body = {
@@ -1192,11 +1192,11 @@ async def download_file(project_id: UUID, file_id: UUID, actor=Depends(run_actor
 @router.get("/projects/{project_id}/runs", response_model=list[RunView])
 async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Services = Depends(get_services)):
     with services.sessions() as db:
-        authorize(db, actor, project_id, "read", "run")
+        authorize(db, actor, project_id, "results:read", "run")  # the scope agent tokens carry; sessions ignore the action
         query = select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())
         query = query.where(Run.operation.not_in(("profile_cv", "match_jobs", "extract_experience")))
         if actor.kind != "user":
-            query = query.where(Run.operation != "export_document")
+            query = query.where(Run.operation.not_in(OWNER_ONLY_OPERATIONS))
     return await asyncio.to_thread(services.runs.list_views, actor, project_id, query)
 
 

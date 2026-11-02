@@ -7,6 +7,12 @@
 #let sans = ("Open Sans", "Noto Sans Thai")
 #let serif = ("Libertinus Serif", "Noto Serif Thai")
 
+// SPEC-RTH theme tokens. Each has a default equal to the original look, so templates without tokens render as before.
+#let tok(key, default) = theme.at(key, default: default)
+#let body-font = if tok("font_pair", "sans") == "serif" { serif } else { sans }
+#let body-size = (small: 9.2pt, normal: 9.8pt, large: 10.6pt).at(tok("size", "normal"))
+#let dens = (compact: 0.8, normal: 1.0, relaxed: 1.25).at(tok("density", "normal"))
+
 #let filled(s) = type(s) == str and s.trim() != ""
 #let join(parts, sep: " · ") = {
   let kept = parts.filter(filled)
@@ -44,11 +50,7 @@
 #let sub(value) = if filled(value) { text(fill: muted)[#value] }
 #let bullets(items) = {
   let kept = items.filter(filled)
-  if kept.len() > 0 { list(spacing: 0.45em, ..kept.map(h => [#h])) }
-}
-#let level-dots(level, color) = if level != none {
-  let dot(on) = box(width: 5pt, height: 5pt, radius: 1pt, fill: if on { color } else { none }, stroke: 0.6pt + color)
-  box(stack(dir: ltr, spacing: 2.5pt, ..range(5).map(i => dot(i < level))))
+  if kept.len() > 0 { list(spacing: 0.45em * dens, ..kept.map(h => [#h])) }
 }
 
 #let link-or(url, label) = if filled(url) { link(url)[#label] } else { label }
@@ -75,18 +77,18 @@
   } else if name == "references" {
     (strong(item.name), sub(join((item.relation, item.contact))))
   } else if name == "skills" {
-    ([#strong(item.name) #h(4pt) #level-dots(item.level, color)],
+    (strong(item.name),
      if item.keywords.filter(filled).len() > 0 { text(size: 9pt, fill: muted)[#join(item.keywords, sep: ", ")] })
   } else if name == "languages" {
     ([#strong(item.name)#if filled(item.level) [ — #item.level]],)
   } else {
     ([#item.name],)
   }
-  stack(spacing: 4pt, ..parts.filter(p => p != none))
+  stack(spacing: 4pt * dens, ..parts.filter(p => p != none))
 }
 
 // Section body; templates choose how headings look and how many skill columns fit.
-#let body(name, skill-columns: 2, color: accent) = {
+#let body-raw(name, skill-columns: 2, color: accent) = {
   if name == "personal" {
     grid(columns: (auto, 1fr), column-gutter: 12pt, row-gutter: 5pt,
       ..theme.personal.map(r => (text(fill: muted)[#r.at(0)], [#r.at(1)])).flatten())
@@ -101,9 +103,22 @@
     } else if name == "skills" {
       grid(columns: (1fr,) * skill-columns, column-gutter: 12pt, row-gutter: 8pt, ..items.map(i => entry(name, i, color: color)))
     } else {
-      stack(spacing: 9pt, ..items.map(i => block(breakable: entry-breakable(i), width: 100%, entry(name, i, color: color))))
+      stack(spacing: 9pt * dens, ..items.map(i => block(breakable: entry-breakable(i), width: 100%, entry(name, i, color: color))))
     }
   }
+}
+
+// Preview of an unfinished CV: parts filled with invented content get an amber tint, a bar and a note (never on real CVs).
+#let sample-parts = theme.at("sample", default: (parts: (), note: "")).parts
+#let body(name, ..args) = {
+  let inner = body-raw(name, ..args)
+  if name in sample-parts {
+    block(width: 100%, fill: rgb("#FEF3C7"), stroke: (left: 2.5pt + rgb("#B45309")), radius: 2pt, inset: (x: 7pt, y: 5pt), {
+      text(size: 7.5pt, weight: "bold", fill: rgb("#92400E"))[#theme.sample.note]
+      v(3pt)
+      inner
+    })
+  } else { inner }
 }
 
 // The owner's photo (CR-CVT-01), only in photo templates. 3:4 portrait, or a circle cut from its upper part.
@@ -115,7 +130,16 @@
 }
 
 // A heading never sits alone at the bottom of a page: it sticks to what follows it.
-#let heading-block(content) = block(sticky: true, below: 6pt, width: 100%, content)
+// `heading_style`: plain (as before), rule (accent line under it) or band (10% accent tint behind it).
+#let heading-block(content) = {
+  let style = tok("heading_style", "plain")
+  let inner = if style == "band" {
+    block(width: 100%, fill: color.mix((white, 90%), (accent, 10%), space: rgb), inset: (x: 5pt, y: 3pt), radius: 2pt, content)
+  } else if style == "rule" {
+    stack(spacing: 3pt, content, line(length: 100%, stroke: 0.6pt + accent))
+  } else { content }
+  block(sticky: true, below: 6pt * dens, width: 100%, inner)
+}
 
 // From page 2: the owner's name and "Page n/total", so loose printed pages can be matched up.
 #let page-footer = context {
@@ -128,8 +152,8 @@
 
 #let setup(doc) = {
   set document(title: data.basics.name)
-  set text(font: sans, size: 9.8pt, lang: theme.lang, fill: rgb("#111827"))
-  set par(leading: 0.72em, justify: false)
+  set text(font: body-font, size: body-size, lang: theme.lang, fill: rgb("#111827"))
+  set par(leading: 0.72em * dens, justify: false)
   set list(indent: 2pt, body-indent: 6pt, marker: text(fill: accent)[•])
   show link: it => text(fill: accent, it)
   doc

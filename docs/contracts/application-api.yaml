@@ -536,8 +536,9 @@ paths:
     post:
       tags: [files]
       description: >-
-        Owner-only. Adds one fact (source owner). 409 duplicate when the normalised text already exists in this
-        project (removed facts included); 409 bank_full at 1,000 live items.
+        Owner-only. Adds one fact (source owner). 409 duplicate when the normalised text already exists as a live fact in this
+        project (a removed fact with the same text is revived); 409 bank_full at 1,000 live items. 422 validation_error (no fields) when
+        end_date is before start_date.
       security: [{ownerSession: []}]
       requestBody:
         required: true
@@ -560,7 +561,9 @@ paths:
       tags: [files]
       description: >-
         Owner-only. Item text is immutable: a text change inserts a new item and soft-removes this one (new id);
-        a context-only change (kind, role, organization, period) updates in place.
+        a context-only change (kind, role, organization, period) updates in place. If the new text equals a soft-removed fact
+        of this project, that fact is revived as an owner fact (same id; any CV link is cleared) instead of a 409. 422
+        validation_error (no fields) when end_date is before start_date.
       security: [{ownerSession: []}]
       requestBody:
         required: true
@@ -815,7 +818,7 @@ paths:
       responses: {'200': {description: CVs, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/CVView'}}}}}}
     post:
       tags: [files]
-      description: Owner-only multipart upload creating a CV. Name defaults to the filename stem; the project's first CV becomes primary.
+      description: Owner-only multipart upload creating a CV. Name defaults to the filename stem; the project's first CV becomes primary. 429 rate_limited after 20 upload attempts per hour per user (every authorized attempt counts, not only successes; requests refused earlier for size, type or authorization are not counted).
       requestBody:
         required: true
         content:
@@ -824,7 +827,7 @@ paths:
               type: object
               required: [file]
               properties: {file: {type: string, format: binary}, name: {type: string, maxLength: 120}}
-      responses: {'201': {description: Created CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}}
+      responses: {'201': {description: Created CV, content: {application/json: {schema: {$ref: '#/components/schemas/CVView'}}}}, '429': {$ref: '#/components/responses/RateLimited'}}
   /projects/{project_id}/sessions/{session_id}/practice-sets:
     parameters:
       - {$ref: '#/components/parameters/project_id'}
@@ -934,6 +937,94 @@ paths:
       description: Owner-only list of CV builder templates (id, ats_safe, photo = prints basics.photo), the 6 accent colours (id, hex) and the 77 Thai provinces (id TH-nn, en, th) for the address province field.
       responses:
         '200': {description: Templates and accents}
+  /resume-themes:
+    get:
+      tags: [files]
+      description: Owner-only. Lists the 12 preset themes and the owner's custom themes (id, name, layout, tokens, ats_safe, photo). SPEC-RTH.
+      responses:
+        '200': {description: Presets and custom themes}
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Saves a custom theme from name, layout and tokens (accent, font_pair, size, density, heading_style).
+        422 theme_invalid (fields.rule names the failing field); 409 duplicate (name taken) or theme_limit (20 per owner).
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        '201': {description: Saved theme}
+  /resume-themes/import:
+    post:
+      tags: [files]
+      description: >-
+        Owner-only. Imports a theme file (JSON, at most 4096 bytes, format jsp-resume-theme version 1). The whole file is validated first;
+        422 theme_invalid with fields.rule saves nothing. A taken name gets a numeric suffix.
+      requestBody:
+        required: true
+        content: {multipart/form-data: {schema: {type: object, properties: {file: {type: string, format: binary}}, required: [file]}}}
+      responses:
+        '201': {description: Imported theme}
+  /resume-themes/{theme_id}/export:
+    parameters: [{name: theme_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      tags: [files]
+      description: Owner-only. Downloads the theme as a JSON file (theme data only, no owner or CV data). 404 for another owner's theme.
+      responses:
+        '200': {description: Theme file, content: {application/json: {schema: {type: object}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /resume-themes/{theme_id}:
+    parameters: [{name: theme_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    delete:
+      tags: [files]
+      description: Owner-only. Deletes a custom theme. 409 theme_in_use (fields.used_by) while a draft or published version uses it.
+      responses:
+        '204': {description: Deleted}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: theme_in_use}
+  /projects/{project_id}/cvs/{cv_id}/draft/theme-preview:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. Renders the saved draft with theme tokens that are not saved yet and returns a PDF (not stored). 422 theme_invalid renders nothing; 502 render_failed.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ThemePreview'}}}
+      responses:
+        '200': {description: PDF, content: {application/pdf: {schema: {type: string, format: binary}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: theme_invalid}
+        '502': {description: render_failed}
+  /projects/{project_id}/documents/{document_id}/draft/theme-preview:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: document_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. Same as the CV theme preview, for a tailored document draft.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ThemePreview'}}}
+      responses:
+        '200': {description: PDF, content: {application/pdf: {schema: {type: string, format: binary}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: theme_invalid}
+        '502': {description: render_failed}
+  /projects/{project_id}/cvs/{cv_id}/draft/from-experience:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - {name: cv_id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      tags: [files]
+      description: Owner-only. The chosen experience items (1-200 ids of this project) as resume sections. Nothing is saved; the builder merges them into the draft.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/FromExperience'}}}
+      responses:
+        '200': {description: "{resume_data}", content: {application/json: {schema: {type: object}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: validation}
   /projects/{project_id}/cvs/builder:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     post:
@@ -986,13 +1077,14 @@ paths:
     post:
       tags: [files]
       description: >-
-        Owner-only "save as new version": renders the draft and creates a CV revision (PDF file, resume_data, resume_style) in one transaction; for a CV also the CV text (no references) and the owner facts of this CV in the experience bank.
-        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 502 render_failed writes nothing.
+        Owner-only "save as new version": renders the draft and creates a CV revision (PDF file, resume_data, resume_style) in one transaction; for a CV also the CV text (no references) and the owner facts of this CV in the experience bank. A fact listed by two builder CVs becomes owner-managed and stays until the owner removes it.
+        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 429 rate_limited after 20 publish attempts per hour per user (every authorized attempt counts, not only successes; requests refused earlier for size, type or authorization are not counted); 502 render_failed writes nothing.
       responses:
         '201': {description: New revision}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: draft_conflict or document_busy}
         '422': {description: resume_incomplete}
+        '429': {$ref: '#/components/responses/RateLimited'}
         '502': {description: render_failed}
   /projects/{project_id}/documents/{document_id}/draft:
     parameters:
@@ -1037,12 +1129,13 @@ paths:
       tags: [files]
       description: >-
         Owner-only "save as new version": renders the draft and creates a document revision in one transaction.
-        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 502 render_failed writes nothing.
+        422 resume_incomplete without a name or any content; 409 draft_conflict when the draft changed during rendering; 429 rate_limited after 20 publish attempts per hour per user (every authorized attempt counts, not only successes; requests refused earlier for size, type or authorization are not counted); 502 render_failed writes nothing.
       responses:
         '201': {description: New revision}
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: draft_conflict or document_busy}
         '422': {description: resume_incomplete}
+        '429': {$ref: '#/components/responses/RateLimited'}
         '502': {description: render_failed}
   /projects/{project_id}/cvs/{cv_id}:
     parameters:
@@ -1168,7 +1261,7 @@ paths:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
       tags: [runs]
-      description: Owner list, or grant-visible results filtered to permitted result views.
+      description: Owner list, or grant-visible results (scope results:read) filtered to permitted result views; owner-only runs (export, CV profile, matching, extraction, practice) are never listed for grants.
       security: [{ownerSession: []}, {projectGrant: []}]
       responses: {'200': {description: Runs}}
   /projects/{project_id}/runs/{run_id}:
@@ -1355,7 +1448,7 @@ paths:
   /auth/login:
     post:
       tags: [auth]
-      description: Public. Sets the jsp_owner_session cookie. 401 invalid_credentials is identical for unknown email, wrong password and disabled user.
+      description: Public. Sets the jsp_owner_session cookie. 401 invalid_credentials is identical for unknown email, wrong password and disabled user. 429 rate_limited. Attempts are counted up front and a successful login takes its hits back, so effectively only failed attempts count, at 10 per 15 minutes per IP, 10 per 15 minutes per email and IP, and 30 per 15 minutes per email across all IPs. Any full bucket returns 429 even for a correct password, because hits are recorded before the password is checked.
       security: []
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}}
       responses:
@@ -1378,7 +1471,7 @@ paths:
   /auth/password/forgot:
     post:
       tags: [auth]
-      description: Public. Always 202 check_email. 429 rate_limited per email.
+      description: Public. Always 202 check_email. 429 rate_limited per email and IP (3 per hour), per email across all IPs (15 per hour) and per IP (100 per hour), so a 429 can also hit a request that would otherwise be answered 202.
       security: []
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ForgotPasswordRequest'}}}}
       responses:
@@ -1387,7 +1480,7 @@ paths:
   /auth/password/reset:
     post:
       tags: [auth]
-      description: Public. Sets the password and revokes all sessions; does not log in. 400 invalid_token, 422 weak_password.
+      description: Public. Sets the password and revokes all sessions, agent grants and OAuth tokens; does not log in. 400 invalid_token, 422 weak_password.
       security: []
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResetPasswordRequest'}}}}
       responses:
@@ -1886,7 +1979,7 @@ components:
       properties:
         project_id: {type: string, format: uuid}
         capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
-        expires_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time, description: 'At most 90 days ahead, plus 5 minutes of clock slack.'}
     OAuthRedirectView:
       type: object
       additionalProperties: false
@@ -2268,10 +2361,23 @@ components:
       required: [resume_data, template_id, accent, document_language, updated_at]
       properties:
         resume_data: {type: object, additionalProperties: true}
-        template_id: {type: string, enum: [onyx, kakuna, ditgar, lotus, teak, saffron]}
+        template_id: {type: string, description: 'A preset id (onyx, kakuna, ditgar, lotus, teak, saffron, paper, compact, banner, classic, portrait, studio) or custom:<theme uuid>.'}
         accent: {type: string, enum: [indigo, blue, teal, green, rose, slate]}
         document_language: {type: string, enum: [th, en]}
         updated_at: {type: string, format: date-time}
+    FromExperience:
+      type: object
+      additionalProperties: false
+      required: [item_ids]
+      properties:
+        item_ids: {type: array, minItems: 1, maxItems: 200, items: {type: string, format: uuid}}
+    ThemePreview:
+      type: object
+      additionalProperties: false
+      required: [layout, tokens]
+      properties:
+        layout: {type: string}
+        tokens: {type: object, additionalProperties: true}
     CVUpdate:
       type: object
       additionalProperties: false
@@ -2496,7 +2602,7 @@ components:
       required: [capabilities, expires_at]
       properties:
         capabilities: {type: array, uniqueItems: true, items: {type: string, enum: ['results:read', 'jobs:evaluate', 'documents:draft', 'cv:tailor', 'jobs:search', 'applications:apply', 'applications:write']}}
-        expires_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time, description: 'At most 90 days ahead, plus 5 minutes of clock slack; later gives invalid_grant.'}
         label: {type: [string, 'null'], minLength: 1, maxLength: 80, description: Optional name shown as the run requester; trimmed.}
     GrantIssuedView:
       type: object

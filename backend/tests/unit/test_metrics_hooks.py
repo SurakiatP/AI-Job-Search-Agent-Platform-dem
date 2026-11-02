@@ -99,3 +99,25 @@ def test_executor_metrics_never_raise_when_db_fails():
     before = _value("jsp_runs_total", operation="evaluate", outcome="error")
     asyncio.run(_executor(_Sessions(fail=True))._record_metrics(run, time.monotonic()))
     assert _value("jsp_runs_total", operation="evaluate", outcome="error") == before + 1
+
+
+def test_failed_run_logs_the_cause_without_the_error_text(caplog):
+    """A run that fails must leave its error type and place in the log, never the message (it may hold secrets)."""
+    executor = RunExecutor.__new__(RunExecutor)
+    finished = []
+    executor.queue = SimpleNamespace(finish=lambda *a, **k: finished.append((a, k)))
+    run = SimpleNamespace(id=uuid.uuid4(), operation="profile_cv")
+
+    async def go():
+        try:
+            raise ConnectionError("https://gateway.example.test/v1?key=sk-synthetic-secret")
+        except ConnectionError:
+            await executor._finish_after_stop(run, "lease", "failed", "errors.execution_failed")
+
+    with caplog.at_level("ERROR", logger="job_search_platform.workers.executor"):
+        asyncio.run(go())
+    text = " ".join(r.getMessage() for r in caplog.records)
+    assert "run_failed" in text and "profile_cv" in text and "ConnectionError" in text
+    assert "test_metrics_hooks.py" in text  # where it was raised
+    assert "sk-synthetic-secret" not in text and "gateway.example.test" not in text
+    assert finished  # the run is still finished as before

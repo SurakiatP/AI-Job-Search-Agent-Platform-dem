@@ -15,13 +15,13 @@ import { BuildCvButton } from '../builder/BuildCvButton';
 export type InlineJobDraft = { title: string; company?: string | null; description: string; source_url?: string | null };
 export type SessionJob = { savedId?: string; inline?: InlineJobDraft };
 
-const selectClass = 'flex min-h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
+const selectClass = 'flex min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-base transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 const copy = {
   th: { title: 'เริ่มเซสชันใหม่', desc: 'จับคู่ CV หนึ่งฉบับกับประกาศงานหนึ่งรายการ ระบบจะเริ่มประเมินความเหมาะสมให้ทันที', cv: 'CV', job: 'ประกาศงาน', saved: 'ใบสมัคร', paste: 'วางประกาศงานใหม่', pick: 'เลือกงาน', jtitle: 'ตำแหน่งงาน', company: 'บริษัท (ไม่บังคับ)', url: 'ลิงก์ต้นทาง (ไม่บังคับ)', jdesc: 'รายละเอียดงาน', start: 'เริ่มเซสชัน', starting: 'กำลังสร้าง…', cancel: 'ยกเลิก', noCv: 'ยังไม่มี CV', noCvBody: 'เพิ่ม CV ก่อนจึงจะเริ่มเซสชันได้', addCv: 'ไปหน้า CV', exists: 'มีเซสชันสำหรับ CV เวอร์ชันนี้กับงานนี้อยู่แล้ว', open: 'เปิดเซสชันที่มีอยู่', provider: 'ยังไม่ได้ตั้งค่า AI gateway ใส่ OPENROUTER_API_KEY แล้วดูที่ ตั้งค่า > เกตเวย์ AI', settings: 'ไปที่การตั้งค่า', failed: 'สร้างเซสชันไม่สำเร็จ ลองอีกครั้ง', notFound: 'ไม่พบ CV หรืองานที่เลือก ลองโหลดหน้าใหม่', loadFailed: 'โหลดข้อมูลไม่สำเร็จ', loading: 'กำลังโหลด…' },
   en: { title: 'New session', desc: 'Pair one CV with one job posting. The fit evaluation starts right away.', cv: 'CV', job: 'Job posting', saved: 'Application', paste: 'Paste a new job', pick: 'Choose a job', jtitle: 'Job title', company: 'Company (optional)', url: 'Source link (optional)', jdesc: 'Job description', start: 'Start session', starting: 'Creating…', cancel: 'Cancel', noCv: 'No CV yet', noCvBody: 'Add a CV before starting a session.', addCv: 'Go to CV page', exists: 'A session for this CV version and job already exists.', open: 'Open existing session', provider: 'The AI gateway is not configured. Set OPENROUTER_API_KEY, then see Settings > AI gateway.', settings: 'Open settings', failed: 'Could not create the session. Try again.', notFound: 'The CV or job was not found. Reload the page and try again.', loadFailed: 'Could not load data', loading: 'Loading…' },
 };
 
-function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="grid gap-1.5 text-sm font-medium">{label}{children}</label>; }
+function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="grid gap-2 text-sm font-medium">{label}{children}</label>; }
 
 export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectId: string; job?: SessionJob; cvName?: string; onClose: () => void }) {
   const { t, i18n } = useTranslation();
@@ -71,7 +71,7 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
         : <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
           <Field label={c.cv}><select className={selectClass} value={cv?.id ?? ''} onChange={event => setCvPick(event.target.value)} disabled={busy}>
             {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}</option>)}</select></Field>
-          {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="ghost" className="-mt-2 justify-self-start" />}
+          {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="ghost" className="justify-self-start" />}
           <fieldset className="grid gap-3" disabled={busy}>
             <legend className="mb-1.5 text-sm font-medium">{c.job}</legend>
             {saved.length > 0 && <div className="flex flex-wrap gap-2" role="group">

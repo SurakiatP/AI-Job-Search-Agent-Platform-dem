@@ -9,6 +9,7 @@ import { apiRequest } from '../../lib/api';
 import { ApiError, type WebhookDeliveryView, type WebhookEvent, type WebhookView } from '../../lib/api-types';
 import { sendJson, useResource } from '../projects/useResource';
 import { Field, LoadingBlock, Notice, SectionCard } from './Field';
+import { dateLocale } from '../../lib/locale';
 
 const EVENTS: WebhookEvent[] = ['run.waiting_approval', 'run.needs_input', 'run.completed', 'run.failed', 'run.cancelled', 'digest.ready'];
 
@@ -24,7 +25,7 @@ const copy = {
     status: { pending: 'รอส่ง', delivered: 'ส่งแล้ว', dead: 'ล้มเหลว' }, cols: ['เหตุการณ์', 'สถานะ', 'HTTP', 'ครั้ง', 'เวลา', 'การทำงาน'],
     copy: 'คัดลอก', copied: 'คัดลอกแล้ว', copyFail: 'คัดลอกไม่สำเร็จ ลองเลือกข้อความแล้วคัดลอกเอง', loadError: 'โหลดข้อมูลไม่สำเร็จ', retry: 'ลองอีกครั้ง',
     labels: { 'run.waiting_approval': 'รออนุมัติ', 'run.needs_input': 'รอข้อมูล', 'run.completed': 'งานเสร็จ', 'run.failed': 'งานล้มเหลว', 'run.cancelled': 'งานถูกยกเลิก', 'digest.ready': 'สรุปงานใหม่พร้อม' } as Record<WebhookEvent, string>,
-    errors: { invalid_webhook_url: 'URL ต้องเป็น https และชี้ไปยังเซิร์ฟเวอร์สาธารณะ', webhook_limit: 'เพิ่มได้สูงสุด 5 webhook ต่อโปรเจกต์', delivery_not_dead: 'ส่งใหม่ได้เฉพาะรายการที่ล้มเหลว' } as Record<string, string>,
+    errors: { invalid_webhook_url: 'URL ต้องขึ้นต้นด้วย https และเปิดได้จากอินเทอร์เน็ต', webhook_limit: 'เพิ่มได้สูงสุด 5 webhook ต่อโปรเจกต์', delivery_not_dead: 'ส่งใหม่ได้เฉพาะรายการที่ล้มเหลว' } as Record<string, string>,
     error: 'ทำรายการไม่สำเร็จ ลองอีกครั้ง',
   },
   en: {
@@ -38,7 +39,7 @@ const copy = {
     status: { pending: 'Pending', delivered: 'Delivered', dead: 'Failed' }, cols: ['Event', 'Status', 'HTTP', 'Attempts', 'Time', 'Actions'],
     copy: 'Copy', copied: 'Copied', copyFail: 'Could not copy. Select the text and copy it yourself.', loadError: 'Could not load this information.', retry: 'Try again',
     labels: { 'run.waiting_approval': 'Waiting for approval', 'run.needs_input': 'Needs input', 'run.completed': 'Run completed', 'run.failed': 'Run failed', 'run.cancelled': 'Run cancelled', 'digest.ready': 'Digest ready' } as Record<WebhookEvent, string>,
-    errors: { invalid_webhook_url: 'The URL must use https and point to a public server.', webhook_limit: 'You can add up to 5 webhooks per project.', delivery_not_dead: 'Only failed deliveries can be redelivered.' } as Record<string, string>,
+    errors: { invalid_webhook_url: 'Use an https address that can be reached from the internet.', webhook_limit: 'You can add up to 5 webhooks per project.', delivery_not_dead: 'Only failed deliveries can be redelivered.' } as Record<string, string>,
     error: 'Something went wrong. Try again.',
   },
 };
@@ -56,7 +57,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
   const [copyState, setCopyState] = useState<'' | 'ok' | 'fail'>('');
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<WebhookView | null>(null);
-  const when = new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-US', { dateStyle: 'short', timeStyle: 'short' });
+  const when = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'short', timeStyle: 'short' });
 
   async function run(action: () => Promise<unknown>) {
     if (busy) return;
@@ -82,7 +83,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
       <code className="break-all rounded bg-muted p-2 text-sm">{secret}</code>
       <p className="text-sm text-warning">{c.secretOnce}</p>
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" className="min-h-10" onClick={() => void copySecret()}>{copyState === 'ok' ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}{c.copy}</Button>
+        <Button variant="outline" className="min-h-11 lg:min-h-10" onClick={() => void copySecret()}>{copyState === 'ok' ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}{c.copy}</Button>
         <Button variant="outline" onClick={() => { setSecret(null); setCopyState(''); }}>{c.secretDone}</Button>
         <span role="status" className={`text-sm ${copyState === 'fail' ? 'text-destructive' : 'text-success'}`}>{copyState === 'ok' ? c.copied : copyState === 'fail' ? c.copyFail : ''}</span>
       </div>
@@ -92,7 +93,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
         <Input id="webhook-url" type="url" inputMode="url" maxLength={2048} value={url} onChange={event => setUrl(event.target.value)} required />
       </Field>
       <fieldset className="grid gap-1"><legend className="mb-1 text-sm font-medium">{c.events}</legend>
-        <div className="grid gap-1 sm:grid-cols-2">{EVENTS.map(event => <label key={event} className="flex min-h-10 items-center gap-2 text-sm">
+        <div className="grid gap-1 sm:grid-cols-2">{EVENTS.map(event => <label key={event} className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
           <input type="checkbox" className="size-4 shrink-0 accent-primary" checked={events.includes(event)} onChange={e => setEvents(prev => e.target.checked ? [...prev, event] : prev.filter(x => x !== event))} />{c.labels[event]}
         </label>)}</div>
       </fieldset>
@@ -132,7 +133,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
           </tr>)}</tbody>
         </table></div>}
     </div>
-    {deleting && <ConfirmDeleteDialog title={c.deleteTitle(deleting.url)} description={c.deleteBody} confirmLabel={c.deleteConfirm}
+    {deleting && <ConfirmDeleteDialog title={c.deleteTitle(deleting.url)} description={c.deleteBody} confirmLabel={c.deleteConfirm} returnFocus={() => document.getElementById('webhook-url')}
       onConfirm={() => apiRequest(`${base}/${deleting.id}`, { method: 'DELETE' }).then(() => undefined)}
       onDone={() => { setDeleting(null); hooks.reload(); deliveries.reload(); }} onClose={() => setDeleting(null)} />}
   </SectionCard>;

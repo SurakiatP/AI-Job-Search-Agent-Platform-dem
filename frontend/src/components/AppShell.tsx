@@ -27,14 +27,16 @@ export function AppShell({ children, projects, projectId, sessionId, onReload }:
   const sidebarProps = { projects, projectId, sessionId, onReload };
   return <>
     <a href="#main-content" className="skip-link">{t('skipToContent')}</a>
-    <div className={open ? 'min-h-dvh lg:grid lg:grid-cols-[248px_minmax(0,1fr)]' : 'min-h-dvh lg:grid lg:grid-cols-[64px_minmax(0,1fr)]'}>
+    <div className={open ? 'min-h-dvh lg:grid lg:grid-cols-[248px_minmax(0,1fr)] lg:bg-sidebar' : 'min-h-dvh lg:grid lg:grid-cols-[64px_minmax(0,1fr)] lg:bg-sidebar'}>
       {open
-        ? <aside className="sticky top-0 hidden h-dvh min-w-0 flex-col overflow-y-auto border-r bg-sidebar lg:flex"><ProjectSidebar {...sidebarProps} toggle={<SidebarToggle open onToggle={toggle} />} /></aside>
-        : <aside className="sticky top-0 hidden h-dvh flex-col items-center gap-3 border-r bg-sidebar py-4 lg:flex"><SidebarToggle open={false} onToggle={toggle} /><HomeIconLink /></aside>}
-      <div className="min-w-0">
+        ? <aside className="sticky top-0 hidden h-dvh min-w-0 flex-col overflow-y-auto bg-sidebar lg:flex"><ProjectSidebar {...sidebarProps} toggle={<SidebarToggle open onToggle={toggle} />} /></aside>
+        : <aside className="sticky top-0 hidden h-dvh flex-col items-center gap-3 bg-sidebar py-4 lg:flex"><SidebarToggle open={false} onToggle={toggle} /><HomeIconLink /></aside>}
+      <div className="min-w-0 lg:p-2 lg:ps-0">
         <div className="lg:hidden"><Header menu={<MobileDrawer>{close => <ProjectSidebar {...sidebarProps} onNavigate={close} />}</MobileDrawer>} /></div>
+        <div className="min-w-0 lg:min-h-[calc(100dvh-16px)] lg:overflow-clip lg:rounded-xl lg:border lg:bg-background">
         <VerifyBanner />
         <main id="main-content" data-stage={stage} className="mx-auto w-full min-w-0 max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 xl:px-10 xl:py-10" tabIndex={-1}><div key={pathname} className="page-enter">{children}</div></main>
+        </div>
       </div>
     </div>
   </>;

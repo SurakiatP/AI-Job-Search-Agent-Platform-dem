@@ -1,6 +1,7 @@
 # Production deploy on the customer platform. Same shape as 10service/websearch:
 # bind mounts under ${DATA_PATH} (no docker volumes), one published port, external network ai4thai_net.
-# Required variables come from GitLab CI/CD (see README "Deploy on GitLab").
+# Every value comes from the GitLab file variable ENV_FILE, copied to .env by the pipeline (README "Deploy on GitLab").
+# The folders under ${DATA_PATH} must exist before the first deploy (create_host_path is off on purpose).
 
 services:
   postgres:
@@ -11,7 +12,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     volumes:
-      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/postgres:/var/lib/postgresql/data"
+      - type: bind
+        source: "${DATA_PATH:?DATA_PATH is required}/postgres"
+        target: /var/lib/postgresql/data
+        bind:
+          create_host_path: false
     networks: [app_net]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d jobsearch_platform_core02"]
@@ -27,7 +32,11 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
     volumes:
-      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/minio:/data"
+      - type: bind
+        source: "${DATA_PATH}/minio"
+        target: /data
+        bind:
+          create_host_path: false
     networks: [app_net]
 
   meilisearch:
@@ -39,7 +48,11 @@ services:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?Set MEILI_MASTER_KEY}
       MEILI_DB_PATH: /meili_data/data.ms
     volumes:
-      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/meili:/meili_data"
+      - type: bind
+        source: "${DATA_PATH}/meili"
+        target: /meili_data
+        bind:
+          create_host_path: false
     networks: [app_net]
 
   litellm-db:
@@ -50,7 +63,11 @@ services:
       POSTGRES_USER: litellm
       POSTGRES_PASSWORD: ${LITELLM_DB_PASSWORD:?Set LITELLM_DB_PASSWORD}
     volumes:
-      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/litellm-db:/var/lib/postgresql/data"
+      - type: bind
+        source: "${DATA_PATH}/litellm-db"
+        target: /var/lib/postgresql/data
+        bind:
+          create_host_path: false
     networks: [app_net]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
@@ -59,7 +76,9 @@ services:
       retries: 10
 
   litellm:
-    image: ghcr.io/berriai/litellm-database:1.104.2@sha256:5a9ff0fd7177372f2ccd8949cb121f67e281f4d13d026af51f9c096c0626f50a
+    image: jobsearch-litellm:${IMAGE_TAG:-1.0.0-0}
+    build:
+      context: ./infra/litellm
     restart: unless-stopped
     depends_on:
       litellm-db:
@@ -71,8 +90,25 @@ services:
       LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?Set LITELLM_SALT_KEY}
       DATABASE_URL: postgresql://litellm:${LITELLM_DB_PASSWORD}@litellm-db:5432/litellm
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY}
-    volumes:
-      - ./infra/litellm/config.yaml:/app/config.yaml:ro
+    networks: [app_net]
+
+  litellm-seed:
+    # One-shot on every deploy: adds the ai-analyze model to LiteLLM (idempotent). The app talks to LiteLLM with the master key.
+    image: jobsearch-litellm:${IMAGE_TAG:-1.0.0-0}
+    restart: "no"
+    depends_on:
+      litellm:
+        condition: service_started
+    entrypoint:
+      - sh
+      - -c
+      - umask 077 && printf '%s' "$$LITELLM_MASTER_KEY" > /tmp/master-key && exec python /seed/seed.py /tmp/app-key
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY}
+      LITELLM_MASTER_KEY_FILE: /tmp/master-key
+      LITELLM_URL: http://litellm:4000
+      OPENROUTER_KEY_PRESENT: ${OPENROUTER_API_KEY:+1}
+      AI_ANALYZE_UPSTREAM_MODEL: ${AI_ANALYZE_UPSTREAM_MODEL:-openrouter/openai/gpt-6-luna}
     networks: [app_net]
 
   app:
@@ -87,15 +123,15 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
-      litellm:
-        condition: service_started
+      litellm-seed:
+        condition: service_completed_successfully
     ports:
-      - "${PORT:-10360}:8000"
+      - "0.0.0.0:${PORT:?PORT is required}:8000"
     environment:
       # HOME and DATA_PATH are the same path inside and outside the container: the agent runtime hands
       # workspace paths to the host Docker, which must find them at the same location.
-      HOME: ${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/home
-      CORE02_PRIVATE_DIR: ${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}/private
+      HOME: ${DATA_PATH}/home
+      CORE02_PRIVATE_DIR: ${DATA_PATH}/private
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
@@ -116,9 +152,63 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # Thinking effort and model per AI task (empty = default); see .env.example
+      AI_REASONING_EVALUATE_JOB: ${AI_REASONING_EVALUATE_JOB:-}
+      AI_MODEL_EVALUATE_JOB: ${AI_MODEL_EVALUATE_JOB:-}
+      AI_REASONING_DRAFT_DOCUMENTS: ${AI_REASONING_DRAFT_DOCUMENTS:-}
+      AI_MODEL_DRAFT_DOCUMENTS: ${AI_MODEL_DRAFT_DOCUMENTS:-}
+      AI_REASONING_EXTRACT_EXPERIENCE: ${AI_REASONING_EXTRACT_EXPERIENCE:-}
+      AI_MODEL_EXTRACT_EXPERIENCE: ${AI_MODEL_EXTRACT_EXPERIENCE:-}
+      AI_REASONING_TAILOR_CV: ${AI_REASONING_TAILOR_CV:-}
+      AI_MODEL_TAILOR_CV: ${AI_MODEL_TAILOR_CV:-}
+      AI_REASONING_APPLY_PREPARE: ${AI_REASONING_APPLY_PREPARE:-}
+      AI_MODEL_APPLY_PREPARE: ${AI_MODEL_APPLY_PREPARE:-}
+      AI_REASONING_INTERVIEW_GENERATE: ${AI_REASONING_INTERVIEW_GENERATE:-}
+      AI_MODEL_INTERVIEW_GENERATE: ${AI_MODEL_INTERVIEW_GENERATE:-}
+      AI_REASONING_INTERVIEW_GRADE: ${AI_REASONING_INTERVIEW_GRADE:-}
+      AI_MODEL_INTERVIEW_GRADE: ${AI_MODEL_INTERVIEW_GRADE:-}
+      AI_REASONING_INTERVIEW_REPORT: ${AI_REASONING_INTERVIEW_REPORT:-}
+      AI_MODEL_INTERVIEW_REPORT: ${AI_MODEL_INTERVIEW_REPORT:-}
     volumes:
-      - "${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}:${DATA_PATH:-/home/search/Thoughtmind/jobsearch/data}"
+      - type: bind
+        source: "${DATA_PATH}"
+        target: "${DATA_PATH}"
+        bind:
+          create_host_path: false
       - /var/run/docker.sock:/var/run/docker.sock
+    networks: [app_net, ai4thai_net]
+
+  # Hourly job ingest (ADR-017 uses a systemd timer; this host has none, so a loop does the same).
+  # Credentials come from the private files the app container writes at start, so no secret is added here.
+  # A failed pass is logged and retried next hour; the database lock keeps it from overlapping a manual ingest-jobs run.
+  ingest:
+    image: jobsearch-app:${IMAGE_TAG:-1.0.0-0}
+    container_name: jobsearch-ingest
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - 'while true; do /app/backend/.venv/bin/python /app/scripts/ingest_jobs.py run || echo "ingest pass failed (exit $$?)"; sleep "$${INGEST_INTERVAL_SECONDS:-3600}"; done'
+    # the image's HEALTHCHECK probes the web port, which this loop does not serve
+    healthcheck:
+      disable: true
+    environment:
+      HOME: ${DATA_PATH}/home
+      CORE02_PRIVATE_DIR: ${DATA_PATH}/private
+      JSP_POSTGRES_HOST: postgres
+      JSP_POSTGRES_PORT: "5432"
+      MEILI_URL: http://meilisearch:7700
+      INGEST_INTERVAL_SECONDS: ${INGEST_INTERVAL_SECONDS:-3600}
+    volumes:
+      - type: bind
+        source: "${DATA_PATH}"
+        target: "${DATA_PATH}"
+        read_only: true
+        bind:
+          create_host_path: false
     networks: [app_net, ai4thai_net]
 
 networks:

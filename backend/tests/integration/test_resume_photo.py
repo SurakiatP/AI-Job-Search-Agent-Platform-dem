@@ -52,7 +52,8 @@ def test_ac_cvp_01_photo_reaches_photo_templates_only(ctx):
     assert ctx.render.calls[-1]["photo.png"] == PNG
 
     listing = {t["id"]: t for t in ctx.client.get("/v1/resume-templates").json()["templates"]}
-    assert {k: (t["ats_safe"], t["photo"]) for k, t in listing.items()} == {
+    assert len(listing) == 12  # SPEC-RTH: six more presets; the original six keep their flags
+    assert {k: (t["ats_safe"], t["photo"]) for k, t in list(listing.items())[:6]} == {
         "onyx": (True, False), "kakuna": (True, False), "ditgar": (False, False),
         "lotus": (True, True), "teak": (False, True), "saffron": (True, True)}
 

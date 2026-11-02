@@ -131,3 +131,73 @@ def test_context_fields_kept_only_when_in_the_cv(db_session):
     stored = {i.text: (i.role, i.organization, i.period) for i in experience.list_items(db_session, p.id)}
     assert stored["Ran BigQuery"] == ("Data Engineer", None, None)
     assert stored["Built Airflow pipelines that cut load time by 40%"] == (None, "SCB", "2022-2024")
+
+
+def test_owner_can_readd_a_removed_fact(db_session):
+    p, _ = _revision(db_session)
+    first = experience.add_item(db_session, p.id, kind="other", text="Led a team of 5")
+    experience.remove_item(db_session, p.id, first.id)
+    again = experience.add_item(db_session, p.id, kind="skill", text="led a team of 5", role="Lead")
+    assert again.id == first.id and again.removed_at is None and again.kind == "skill" and again.role == "Lead"
+    assert [i.id for i in experience.list_items(db_session, p.id)] == [first.id]
+
+
+def test_edit_can_be_reverted_to_the_removed_text(db_session):
+    p, _ = _revision(db_session)
+    a = experience.add_item(db_session, p.id, kind="skill", text="A")
+    b = experience.replace_item(db_session, p.id, a.id, kind="skill", text="B")
+    back = experience.replace_item(db_session, p.id, b.id, kind="skill", text="A")
+    assert back.id == a.id and back.removed_at is None
+    assert db_session.get(ExperienceItem, b.id).removed_at is not None
+    assert [i.id for i in experience.list_items(db_session, p.id)] == [a.id]
+
+
+def _removed_cv_fact(db):
+    p, revision = _revision(db)
+    experience.store_extracted(db, p.id, revision.id, CV, [_item("Ran BigQuery")])
+    item = experience.list_items(db, p.id)[0]
+    assert item.source == "cv" and item.source_cv_revision_id == revision.id
+    item.builder_cv_id = primary_cv(db, p.id).id
+    experience.remove_item(db, p.id, item.id)
+    db.flush()
+    return p, item
+
+
+def test_owner_can_revive_a_removed_cv_fact(db_session):
+    p, item = _removed_cv_fact(db_session)
+    again = experience.add_item(db_session, p.id, kind="skill", text="Ran BigQuery")
+    db_session.flush()  # the owner/revision check constraint must hold
+    assert again.id == item.id and again.source == "owner"
+    assert again.source_cv_revision_id is None and again.builder_cv_id is None and again.removed_at is None
+
+
+def test_edit_revert_revives_a_removed_cv_fact(db_session):
+    p, item = _removed_cv_fact(db_session)
+    other = experience.add_item(db_session, p.id, kind="skill", text="Other")
+    back = experience.replace_item(db_session, p.id, other.id, kind="skill", text="Ran BigQuery")
+    db_session.flush()
+    assert back.id == item.id and back.source == "owner" and back.source_cv_revision_id is None
+
+
+def test_readding_a_live_fact_is_still_a_duplicate(db_session):
+    p, _ = _revision(db_session)
+    experience.add_item(db_session, p.id, kind="skill", text="Python")
+    with pytest.raises(ServiceError) as dup:
+        experience.add_item(db_session, p.id, kind="skill", text="Python")
+    assert dup.value.code == "duplicate"
+
+
+def test_republishing_one_builder_cv_keeps_a_fact_another_builder_cv_uses(db_session):
+    from uuid import uuid4
+    from sqlalchemy import insert
+    from job_search_platform.api.resume import sync_bank
+    from job_search_platform.db.models import CV
+    p, _ = _revision(db_session)
+    a, b = uuid4(), uuid4()
+    for cv_id in (a, b):
+        db_session.execute(insert(CV).values(id=cv_id, project_id=p.id, name=f"cv-{cv_id}", is_primary=False))
+    fact = {"kind": "skill", "text": "Python", "role": None, "organization": None, "period": None}
+    sync_bank(db_session, p.id, a, [fact])
+    sync_bank(db_session, p.id, b, [fact])
+    sync_bank(db_session, p.id, a, [])  # A drops Python, B still lists it
+    assert [i.text for i in experience.list_items(db_session, p.id)] == ["Python"]

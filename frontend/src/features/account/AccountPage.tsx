@@ -8,12 +8,18 @@ import { Input } from '../../components/ui/input';
 import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog';
 import { PasswordInput } from '../../components/PasswordInput';
 import { Label } from '../../components/ui/label';
-import { apiRequest, chooseAvatarPreset, deleteAccount, logout, refreshOwnerSession, removeAvatar, resendVerification, sendDeletionCode, uploadAvatar, useAccount } from '../../lib/api';
+import { apiRequest, chooseAvatarPreset, deleteAccount, forgotPassword, logout, refreshOwnerSession, removeAvatar, resendVerification, sendDeletionCode, uploadAvatar, useAccount } from '../../lib/api';
 import { Avatar, AVATAR_PRESETS, PresetArt } from '../../components/Avatar';
 import { CodeInput } from '../../components/CodeInput';
+import { rateLimitText } from '../../lib/rateLimit';
+import { dateLocale } from '../../lib/locale';
 import { ApiError, type AccountAgent } from '../../lib/api-types';
+import { authCopy } from '../auth/copy';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
+import { capabilityKey } from '../settings/ProjectSharing';
+import { UserCog } from 'lucide-react';
+import { PageHeader } from '../../components/PageHeader';
 
 const avatarCopy = {
   th: { title: 'รูปโปรไฟล์', hint: 'แสดงที่มุมขวาบนทุกหน้า ถ้าไม่ใส่รูป จะใช้ตัวอักษรแรกของอีเมล หรือเลือกรูปสำเร็จรูปด้านล่าง', upload: 'อัปโหลดรูป', remove: 'ลบรูปที่อัปโหลด', choose: 'หรือเลือกรูปสำเร็จรูป', rule: 'PNG, JPEG หรือ WebP ขนาดไม่เกิน 256 KB',
@@ -71,13 +77,29 @@ function AvatarSection() {
 }
 
 function EmailSection() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const account = useAccount();
   const [state, setState] = useState<'idle' | 'busy' | 'sent' | 'failed'>('idle');
+  const [resendError, setResendError] = useState('');
+  const [reset, setReset] = useState<{ kind: 'idle' | 'busy' | 'sent' | 'off' | 'error'; text?: string }>({ kind: 'idle' });
   if (!account) return null;
+  const mailOff = authCopy[i18n.language.startsWith('th') ? 'th' : 'en'];
+  async function sendReset() {
+    if (!account) return;
+    setReset({ kind: 'busy' });
+    try {
+      const result = await forgotPassword(account.email);
+      setReset(result.mail_enabled === false ? { kind: 'off' } : { kind: 'sent', text: t('account.passwordResetSent', { email: account.email }) });
+    } catch (error) {
+      setReset({ kind: 'error', text: error instanceof ApiError && error.code === 'rate_limited' ? rateLimitText(t, error.fields?.retry_after) : t('errors.request_failed') });
+    }
+  }
   async function resend() {
     setState('busy');
-    try { await resendVerification(); setState('sent'); } catch { setState('failed'); }
+    try { await resendVerification(); setState('sent'); } catch (error) {
+      setResendError(error instanceof ApiError && error.code === 'rate_limited' ? rateLimitText(t, error.fields?.retry_after) : t('errors.request_failed'));
+      setState('failed');
+    }
   }
   return <Card>
     <CardHeader><CardTitle className="text-lg">{t('account.emailSection')}</CardTitle></CardHeader>
@@ -86,7 +108,18 @@ function EmailSection() {
       <Badge variant={account.email_verified ? 'success' : 'secondary'}>{account.email_verified ? t('account.verifiedStatus') : t('account.unverifiedStatus')}</Badge>
       {!account.email_verified && <Button type="button" size="sm" variant="outline" disabled={state === 'busy' || state === 'sent'} onClick={() => void resend()}>{t('account.resend')}</Button>}
       <span role="status" className="text-sm text-muted-foreground">{state === 'sent' ? t('account.resent') : ''}</span>
-      {state === 'failed' && <span role="alert" className="text-sm text-destructive">{t('errors.request_failed')}</span>}
+      {state === 'failed' && <span role="alert" className="text-sm text-destructive">{resendError}</span>}
+      <div className="grid w-full gap-2 border-t pt-3">
+        <p className="text-sm font-medium">{t('account.passwordLabel')}</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" size="sm" variant="outline" busy={reset.kind === 'busy'} disabled={reset.kind === 'busy' || reset.kind === 'sent'} onClick={() => void sendReset()}>{t('account.passwordReset')}</Button>
+          <span className="text-sm text-muted-foreground">{t('account.passwordResetHint')}</span>
+        </div>
+        <div role="status" className="text-sm text-muted-foreground">
+          {reset.kind === 'off' ? <>{mailOff.mailOffBody} {mailOff.mailOffNext}</> : reset.kind === 'sent' ? reset.text : null}
+        </div>
+        {reset.kind === 'error' && <p role="alert" className="text-sm text-destructive">{reset.text}</p>}
+      </div>
     </CardContent>
   </Card>;
 }
@@ -96,12 +129,12 @@ function AgentsSection() {
   const { t: tu } = useTranslation('utilitiesWorkspace');
   const agents = useResource<AccountAgent[]>('/account/agents');
   const [revoking, setRevoking] = useState<AccountAgent | null>(null);
-  const fmt = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
+  const fmt = new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'medium', timeStyle: 'short' });
   const stateOf = (a: AccountAgent) => a.revoked_at ? 'revoked' : Date.parse(a.expires_at) <= Date.now() ? 'expired' : 'active';
   const all = agents.data ?? [];
   const active = all.filter(a => stateOf(a) === 'active');
   const inactive = all.filter(a => stateOf(a) !== 'active');
-  const appName = (a: AccountAgent) => a.label ?? t('account.untitledAgent');
+  const appName = (a: AccountAgent) => a.label?.trim() || t('account.untitledAgent');
   const item = (agent: AccountAgent) => {
     const state = stateOf(agent);
     return <li key={agent.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${state === 'active' ? '' : 'text-muted-foreground'}`}>
@@ -109,7 +142,7 @@ function AgentsSection() {
         <p className="break-words text-sm font-medium">{appName(agent)}</p>
         {agent.client_id_host && <p className="break-words text-sm text-muted-foreground">{t('account.oauthClient', { host: agent.client_id_host })}</p>}
         <p className="break-words text-sm">{t('account.project')}: {agent.project_name}</p>
-        <div className="flex flex-wrap gap-1.5">{agent.capabilities.map(cap => <Badge key={cap} variant="outline">{cap}</Badge>)}</div>
+        <div className="flex flex-wrap gap-1.5">{agent.capabilities.map(cap => <Badge key={cap} variant="outline">{capabilityKey[cap as keyof typeof capabilityKey] ? t(capabilityKey[cap as keyof typeof capabilityKey], { ns: 'settings' }) : cap}</Badge>)}</div>
         <p className="text-sm">{t('account.created')} <time dateTime={agent.created_at}>{fmt.format(new Date(agent.created_at))}</time> · {t('account.expires')} <time dateTime={agent.expires_at}>{fmt.format(new Date(agent.expires_at))}</time></p>
       </div>
       <div className="flex items-center gap-3">
@@ -119,7 +152,7 @@ function AgentsSection() {
     </li>;
   };
   return <section aria-labelledby="account-agents" className="grid gap-3">
-    <div className="grid gap-1"><h2 id="account-agents" className="text-lg font-semibold">{t('account.agentsSection')}</h2><p className="text-sm text-muted-foreground">{t('account.agentsIntro')}</p></div>
+    <div className="grid gap-1"><h2 id="account-agents" tabIndex={-1} className="text-lg font-semibold">{t('account.agentsSection')}</h2><p className="text-sm text-muted-foreground">{t('account.agentsIntro')}</p></div>
     {agents.status === 'error' ? <ErrorState onRetry={agents.reload} />
       : agents.status === 'loading' && !agents.data ? <LoadingState />
       : all.length === 0 ? <div className="grid gap-1 rounded-xl border border-dashed bg-card p-6"><p className="font-medium">{t('account.noAgents')}</p><p className="text-sm text-muted-foreground">{t('account.noAgentsNext')}</p></div>
@@ -135,6 +168,7 @@ function AgentsSection() {
       description={tu('account.revokeBody', { app: appName(revoking), project: revoking.project_name })}
       confirmLabel={tu('account.revokeConfirm')}
       onConfirm={() => apiRequest<void>(`/projects/${encodeURIComponent(revoking.project_id)}/grants/${encodeURIComponent(revoking.id)}`, { method: 'DELETE' })}
+      returnFocus={() => document.getElementById('account-agents')}
       onDone={() => { setRevoking(null); agents.reload(); }}
       onClose={() => setRevoking(null)} />}
   </section>;
@@ -155,7 +189,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
   async function requestCode() {
     setCodeState('sending'); setError('');
     try { await sendDeletionCode(); setCodeState('sent'); setCode(''); }
-    catch (caught) { setCodeState('idle'); setError(caught instanceof ApiError && caught.code === 'rate_limited' ? t('errors.rate_limited', { seconds: caught.fields?.retry_after ?? '60' }) : t('errors.request_failed')); }
+    catch (caught) { setCodeState('idle'); setError(caught instanceof ApiError && caught.code === 'rate_limited' ? rateLimitText(t, caught.fields?.retry_after) : t('errors.request_failed')); }
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -167,7 +201,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
       window.location.replace('/');
     } catch (caught) {
       const key = caught instanceof ApiError ? `errors.${caught.code}` : '';
-      setError(key && ['errors.invalid_credentials', 'errors.confirmation_mismatch', 'errors.rate_limited', 'errors.invalid_code'].includes(key) ? t(key, { seconds: caught instanceof ApiError ? caught.fields?.retry_after ?? '60' : '60' }) : t('errors.request_failed'));
+      setError(caught instanceof ApiError && caught.code === 'rate_limited' ? rateLimitText(t, caught.fields?.retry_after) : key && ['errors.invalid_credentials', 'errors.confirmation_mismatch', 'errors.invalid_code'].includes(key) ? t(key) : t('errors.request_failed'));
       setBusy(false);
     }
   }
@@ -176,8 +210,8 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
       <form className="grid gap-4" onSubmit={event => void submit(event)}>
         <DialogTitle>{t('account.deleteTitle')}</DialogTitle>
         <DialogDescription>{t('account.deleteBody')}</DialogDescription>
-        <div className="grid gap-1.5"><Label htmlFor="delete-password">{t('auth.password')}</Label><PasswordInput id="delete-password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
-        <div className="grid gap-1.5"><Label htmlFor="delete-email">{t('account.confirmEmail')}</Label><Input id="delete-email" type="email" autoComplete="off" placeholder={email} required value={confirm} onChange={e => setConfirm(e.target.value)} /></div>
+        <div className="grid gap-2"><Label htmlFor="delete-password">{t('auth.password')}</Label><PasswordInput id="delete-password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
+        <div className="grid gap-2"><Label htmlFor="delete-email">{t('account.confirmEmail')}</Label><Input id="delete-email" type="email" autoComplete="off" placeholder={email} required value={confirm} onChange={e => setConfirm(e.target.value)} /></div>
         <div className="grid gap-2 rounded-lg border p-3">
           {codeState !== 'sent' ? <p className="text-sm text-muted-foreground">{otp.first}</p> : <>
             <Label htmlFor="delete-code">{otp.label}</Label>
@@ -201,11 +235,8 @@ export function AccountPage() {
   const account = useAccount();
   const [deleting, setDeleting] = useState(false);
   if (!account) return <LoadingState />;
-  return <div className="mx-auto grid max-w-3xl gap-6">
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="grid gap-1"><h1 className="text-2xl font-semibold leading-snug">{t('account.title')}</h1><p className="text-sm text-muted-foreground">{t('account.description')}</p></div>
-      <Button type="button" variant="outline" onClick={() => void logout()}>{t('auth.logout')}</Button>
-    </div>
+  return <div className="mx-auto grid max-w-3xl gap-6 lg:gap-8">
+    <PageHeader icon={UserCog} title={t('account.title')} lede={t('account.description')} actions={<Button type="button" variant="outline" onClick={() => void logout()}>{t('auth.logout')}</Button>} />
     <EmailSection />
     <AvatarSection />
     <AgentsSection />

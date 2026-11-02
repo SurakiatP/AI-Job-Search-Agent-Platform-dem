@@ -145,6 +145,23 @@ def _insert(db: Session, project_id: UUID, *, kind: str, text: str, source: str,
     return db.scalar(statement)
 
 
+def _insert_owner(db: Session, project_id: UUID, *, kind: str, text: str, **fields) -> ExperienceItem:
+    """Owner write: a new row, or the soft-removed row of the same text revived (same id keeps old citations valid)."""
+    item_id = _insert(db, project_id, kind=kind, text=text, source="owner", source_cv_revision_id=None, **fields)
+    if item_id is not None:
+        return db.get(ExperienceItem, item_id)
+    row = db.scalar(select(ExperienceItem).where(
+        ExperienceItem.project_id == project_id, ExperienceItem.text_hash == text_hash(text)).with_for_update())
+    if row is None or row.removed_at is None:
+        raise ServiceError("duplicate")
+    row.removed_at = None
+    row.kind, row.text, row.source = kind, text.strip(), "owner"
+    row.source_cv_revision_id = row.builder_cv_id = None  # an owner fact belongs to no CV (db check)
+    for name, value in _context(fields, kind).items():
+        setattr(row, name, value)
+    return row
+
+
 def _lock_project(db: Session, project_id: UUID) -> None:
     """Serialize bank writes per project so the live-item cap cannot be raced."""
     if db.scalar(select(Project.id).where(Project.id == project_id).with_for_update()) is None:
@@ -213,10 +230,7 @@ def add_item(db: Session, project_id: UUID, *, kind: str, text: str, **fields) -
     _lock_project(db, project_id)
     if _live_count(db, project_id) >= MAX_ITEMS:
         raise ServiceError("bank_full")
-    item_id = _insert(db, project_id, kind=kind, text=text, source="owner", source_cv_revision_id=None, **fields)
-    if item_id is None:
-        raise ServiceError("duplicate")
-    return db.get(ExperienceItem, item_id)
+    return _insert_owner(db, project_id, kind=kind, text=text, **fields)
 
 
 def _live(db: Session, project_id: UUID, item_id: UUID) -> ExperienceItem:
@@ -237,11 +251,9 @@ def replace_item(db: Session, project_id: UUID, item_id: UUID, *, kind: str, tex
         for name, value in _context(fields, kind).items():
             setattr(old, name, value)
         return old
-    item_id = _insert(db, project_id, kind=kind, text=text, source="owner", source_cv_revision_id=None, **fields)
-    if item_id is None:
-        raise ServiceError("duplicate")
+    new = _insert_owner(db, project_id, kind=kind, text=text, **fields)
     old.removed_at = datetime.now(timezone.utc)
-    return db.get(ExperienceItem, item_id)
+    return new
 
 
 def remove_item(db: Session, project_id: UUID, item_id: UUID) -> None:
@@ -284,6 +296,7 @@ def years_of_experience(db: Session, project_id: UUID, today: tuple[int, int] | 
 
     spans = sorted((month(i.start_date), month(f"{now[0]}-{now[1]:02d}") if i.is_current else month(i.end_date or i.start_date))
                    for i in list_items(db, project_id) if i.kind == "experience" and i.start_date)
+    spans = [(start, end) for start, end in spans if end >= start]  # an inverted span (old data) counts for nothing
     total, reach = 0, None
     for start, end in spans:
         if reach is None or start > reach:

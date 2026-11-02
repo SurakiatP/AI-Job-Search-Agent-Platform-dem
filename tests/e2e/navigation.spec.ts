@@ -68,7 +68,7 @@ test('every page supports direct links, back/forward, locale changes and respons
   await page.goBack();
   await page.getByRole('button', { name: 'EN', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Let AI match your CV', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'How to start' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Three steps to start' })).toBeVisible();
   await expect(page.getByRole('banner').getByRole('link', { name: 'Open app', exact: true })).toBeVisible();
   await page.getByRole('banner').getByRole('link', { name: 'Open app' }).click();
   await expect(page).toHaveURL(/\/app\/projects/);
@@ -209,6 +209,15 @@ test('project server failures show a retry action instead of a missing-resource 
   await expect(page.getByRole('alert')).toContainText('We could not load this information.');
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByRole('heading', { name: 'CV & experience', level: 1 })).toBeVisible();
+});
+
+test('overview with a failed project request shows a retry action', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page, { projectErrorOnce: true });
+  await page.goto(`/app/projects/${projectId}/overview`);
+  await expect(page.getByRole('alert')).toContainText('We could not load this information.');
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 });
 
 test('unknown project with a 404 response remains a missing-resource page', async ({ page }) => {

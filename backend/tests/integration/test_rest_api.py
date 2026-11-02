@@ -306,7 +306,7 @@ def test_upload_download_private_minio_and_grant_cannot_read_raw_cv(api_context)
     assert downloaded.headers["cache-control"] == "no-store"
     assert downloaded.headers["x-content-type-options"] == "nosniff"
 
-    expires = "2099-01-01T00:00:00Z"
+    expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
     grant = client.post(f"/v1/projects/{project_id}/grants",
                         json={"capabilities": ["results:read"], "expires_at": expires},
                         headers=_write_headers(csrf))
@@ -399,7 +399,7 @@ def test_owner_removes_job_softly_hides_it_and_blocks_new_runs_but_old_runs_stay
     assert client.delete(f"/v1/projects/{other_pid}/jobs/{keep}", headers=headers).status_code == 404
 
     token = client.post(f"/v1/projects/{pid}/grants", headers=headers, json={
-        "capabilities": ["results:read", "jobs:evaluate"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+        "capabilities": ["results:read", "jobs:evaluate"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     client.cookies.clear()
     denied = client.delete(f"/v1/projects/{pid}/jobs/{keep}", headers={"Authorization": f"Bearer {token}"})
     assert denied.status_code in (401, 403)
@@ -502,7 +502,7 @@ def test_owner_permanently_deletes_trashed_document_rows_files_and_objects_while
     assert _object_exists(api_context, survivor.key)
 
     token = client.post(f"/v1/projects/{pid}/grants", headers=headers, json={
-        "capabilities": ["results:read", "documents:draft"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+        "capabilities": ["results:read", "documents:draft"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     client.cookies.clear()
     for suffix in ("", "/permanent"):
         denied = client.delete(f"/v1/projects/{pid}/documents/{survivor.document}{suffix}",
@@ -642,7 +642,7 @@ def test_trashed_document_is_hidden_from_grants_but_not_the_owner(api_context):
     run_id = _seed_completed_run(api_context, pid, sid, key="grant-run")
     seeded = _seed_document(api_context, pid, "grant.pdf", run_id=run_id)
     token = client.post(f"/v1/projects/{pid}/grants", headers=headers, json={
-        "capabilities": ["results:read"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+        "capabilities": ["results:read"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     base = f"/v1/projects/{pid}"
     bearer = {"Authorization": f"Bearer {token}"}
     services = client.app.state.services
@@ -742,7 +742,7 @@ def test_provider_routes_are_gone_and_gateway_status_is_admin_only(api_context, 
     assert "sk-test-gateway" not in owner_view.text
     pid, _ = _removal_project(api_context, csrf)
     token = client.post(f"/v1/projects/{pid}/grants", headers=headers, json={
-        "capabilities": ["results:read", "jobs:evaluate"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+        "capabilities": ["results:read", "jobs:evaluate"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     client.cookies.clear()
     assert client.get("/v1/gateway", headers={"Authorization": f"Bearer {token}"}).status_code in (401, 403)
 

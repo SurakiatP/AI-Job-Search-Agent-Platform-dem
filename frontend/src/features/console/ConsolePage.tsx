@@ -7,6 +7,8 @@ import { ApprovalsTab } from './ApprovalsTab';
 import { ConnectTab } from './ConnectTab';
 import { TimelineTab } from './TimelineTab';
 import { copy } from './copy';
+import { Bot } from 'lucide-react';
+import { PageHeader } from '@/components/PageHeader';
 
 const TABS = ['timeline', 'approvals', 'agents', 'connect'] as const;
 type Tab = (typeof TABS)[number];
@@ -19,9 +21,11 @@ export function ConsolePage() {
   const [params, setParams] = useSearchParams();
   const raw = params.get('tab');
   const tab: Tab = TABS.includes(raw as Tab) ? (raw as Tab) : 'timeline';
-  return <div className="grid gap-6">
-    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{c.title}</h1><p className="text-sm text-muted-foreground">{c.subtitle}</p></div>
+  return <div className="grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
+      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+      <PageHeader icon={Bot} title={c.title} lede={c.subtitle} />
+    </div>
     <Tabs value={tab} onValueChange={value => setParams({ tab: value }, { replace: true })}>
       <TabsList className="max-w-full">{TABS.map(key => <TabsTrigger key={key} value={key}>{c.tabs[key]}</TabsTrigger>)}</TabsList>
       <TabsContent value="timeline"><TimelineTab projectId={projectId} locale={locale} c={c} /></TabsContent>

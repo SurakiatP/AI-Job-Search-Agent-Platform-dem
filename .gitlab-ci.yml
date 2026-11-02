@@ -1,23 +1,16 @@
-# Same layout as 10service/websearch: docker:dind image, runner tag ai4thai-gpu1, deploy is a manual job on main.
-# Secrets are protected GitLab CI/CD variables (README "Deploy on GitLab"); none are stored here.
-image: docker:latest
-
-services:
-  - docker:dind
-
+# Deploy follows the platform team's guide (gitlab-ci-dind-deployment-guide): runner tag ai4thai-gpu1,
+# automatic deploy on push to main, every value from the file variable ENV_FILE (Settings -> CI/CD -> Variables).
+# ENV_FILE: type File, Protected, environment scope production, "Expand variable reference" off. None is stored here.
 variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
-  # Host directory for the persistent data (bind mounts, no docker volumes)
-  DATA_PATH: "/home/search/Thoughtmind/jobsearch/data"
-  # Published port of the web app (the platform proxies jobsearch.aiforthai.in.th to it)
-  PORT: "10360"
-  # Image tag: 1.0.0-<pipeline number>, e.g. 1.0.0-1
-  IMAGE_TAG: "1.0.0-${CI_PIPELINE_IID}"
 
 stages:
   - test
   - deploy
+
+services:
+  - docker:29.9.2-dind
 
 unit-tests:
   stage: test
@@ -34,35 +27,301 @@ unit-tests:
 
 compose-config:
   stage: test
+  image: docker:29.9.2-cli
+  services: []
   tags:
     - ai4thai-gpu1
   script:
     - |
-      POSTGRES_USER=u POSTGRES_PASSWORD=p MINIO_ROOT_USER=m MINIO_ROOT_PASSWORD=mmmmmmmm \
+      DATA_PATH=/data/x PORT=1 POSTGRES_USER=u POSTGRES_PASSWORD=p MINIO_ROOT_USER=m MINIO_ROOT_PASSWORD=mmmmmmmm \
       MEILI_MASTER_KEY=k LITELLM_MASTER_KEY=k LITELLM_SALT_KEY=k LITELLM_DB_PASSWORD=d \
       OPENROUTER_API_KEY=o docker compose config -q
 
 deploy:
   stage: deploy
+  image: docker:29.9.2-cli
   tags:
     - ai4thai-gpu1
+  resource_group: production
+  variables:
+    # Image tag 1.0.0-<pipeline number>, e.g. 1.0.0-1
+    IMAGE_TAG: "1.0.0-${CI_PIPELINE_IID}"
   before_script:
     - docker info
+    - docker compose version
+    - |
+      set -eu
+      umask 077
+      test -s "$ENV_FILE"
+      cp "$ENV_FILE" .env
+      chmod 600 .env
   script:
-    - echo "Deploying jobsearch-app:${IMAGE_TAG} on port ${PORT}"
-    - mkdir -p "${DATA_PATH}"
-    - docker compose -p jobsearch up -d --build --remove-orphans
-    - docker image ls jobsearch-app --format '{{.Repository}}:{{.Tag}}'
-  when: manual
-  only:
-    - main
+    - docker compose --env-file .env -f docker-compose.yml config --quiet
+    - docker compose --env-file .env -f docker-compose.yml build --pull
+    - docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans
+    - docker compose --env-file .env -f docker-compose.yml ps
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  environment:
+    name: production
+    url: https://jobsearch.aiforthai.in.th
 
 down:
   stage: deploy
+  image: docker:29.9.2-cli
+  tags:
+    - ai4thai-gpu1
+  resource_group: production
+  before_script:
+    - |
+      set -eu
+      umask 077
+      test -s "$ENV_FILE"
+      cp "$ENV_FILE" .env
+      chmod 600 .env
+  script:
+    - docker compose --env-file .env -f docker-compose.yml down
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
+
+# Creates the test accounts (already verified, no email needed) inside the running app container.
+# TEST_USERS: GitLab file variable (Protected, scope production), one account per line: "<email> <password>".
+# Passwords need at least 10 characters. Never printed. Run it after the first successful deploy.
+create-test-users:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  resource_group: production
+  script:
+    - |
+      set -eu
+      test -s "$TEST_USERS"
+      while read -r email password; do
+        [ -n "$email" ] || continue
+        printf '%s\n' "$password" | docker exec -i jobsearch-web /app/backend/.venv/bin/python /app/scripts/accounts.py create-user --email "$email" || echo "skipped $email (exists or rejected)"
+      done < "$TEST_USERS"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
+
+# Read-only diagnosis: prints container states and the last log lines of every container of this project
+# into the job log. Never prints .env or a full `docker inspect` (that would show environment values).
+# Set LOG_LINES when running the job to change the number of lines (default 80).
+show-logs:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  variables:
+    LOG_LINES: "80"
+  script:
+    - |
+      set -eu
+      docker ps -a --filter "name=jobsearch" --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+      for c in $(docker ps -a --filter "name=jobsearch" --format '{{.Names}}'); do
+        echo "===== $c ====="
+        docker inspect --format 'state={{.State.Status}} exit={{.State.ExitCode}} restarts={{.RestartCount}} oom={{.State.OOMKilled}}' "$c"
+        docker logs --tail "$LOG_LINES" "$c" 2>&1 || true
+      done
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
+
+# One-off fix: the minio image runs as uid 65532 and cannot write its data folder.
+# Changes the owner of ${DATA_PATH}/minio only (agreed with the platform team); nothing else is touched.
+# Uses the postgres image the deploy already pulled, so no new image is needed. DATA_PATH is read from ENV_FILE, never printed.
+fix-minio-permission:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  resource_group: production
+  script:
+    - |
+      set -eu
+      test -s "$ENV_FILE"
+      DATA_PATH=$(grep -m1 '^DATA_PATH=' "$ENV_FILE" | cut -d= -f2- | tr -d "\"'")
+      test -n "$DATA_PATH"
+      docker run --rm --user 0 --entrypoint chown -v "$DATA_PATH/minio:/data" postgres:17-alpine -R 65532:65532 /data
+      docker run --rm --user 0 --entrypoint ls -v "$DATA_PATH/minio:/data" postgres:17-alpine -lnd /data
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
+
+# Fills the job index: fetches postings from the job boards and builds the Meilisearch index, inside the running app container.
+# Without it the search page has no `jobs` index and answers 502. Prints only a JSON count line, never environment values.
+# Run it once after the first deploy; later runs refresh the index. Set ACTION to reindex or status to run those instead (default: run).
+ingest-jobs:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  resource_group: production
+  variables:
+    ACTION: "run"
+  script:
+    - |
+      set -eu
+      case "$ACTION" in run|reindex|status|index-settings) ;; *) echo "ACTION must be run, reindex, status or index-settings"; exit 2 ;; esac
+      docker exec jobsearch-web /app/backend/.venv/bin/python /app/scripts/ingest_jobs.py "$ACTION"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
+
+# Builds the Meilisearch index from the postings already in the database (quick, no calls to the job boards).
+# Use it when ingest-jobs was stopped before it reached its last step, or after changing the index settings.
+reindex-jobs:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  resource_group: production
+  script:
+    - docker exec jobsearch-web /app/backend/.venv/bin/python /app/scripts/ingest_jobs.py reindex
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
+
+# Read-only AI check, run it by hand after a deploy. Runs inside the running app container (jobsearch-web) and
+# prints PASS/FAIL per step; never prints a key. Step 6: the agent's own Python (needed to start any agent run) can be executed. Step 1: host Docker socket. 2: agent image + runtime file.
+# 3: agent image can start and sees a folder under HOME at the same path (the runtime relies on that).
+# 4: LiteLLM answers and lists ai-analyze. 5: one tiny real model call (costs a few tokens on OpenRouter).
+test-ai:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
   tags:
     - ai4thai-gpu1
   script:
-    - docker compose -p jobsearch down
-  when: manual
-  only:
-    - main
+    - |
+      set -u
+      docker exec -i jobsearch-web /app/backend/.venv/bin/python - <<'PY'
+      import json, os, pathlib, subprocess, sys, urllib.request
+      failed = []
+      def step(name, fn):
+          try:
+              print(f"PASS {name}: {fn()}")
+          except Exception as e:
+              failed.append(name)
+              print(f"FAIL {name}: {type(e).__name__}: {str(e)[:300]}")
+      def run(*a):
+          r = subprocess.run(a, capture_output=True, text=True, timeout=120)
+          if r.returncode:
+              raise RuntimeError((r.stderr or r.stdout).strip()[-300:])
+          return r.stdout.strip()
+      cfg = pathlib.Path.home() / ".cache/job-search-platform/hermes-runtime.json"
+      def socket(): return "docker server " + run("docker", "version", "--format", "{{.Server.Version}}")
+      def runtime():
+          image = json.loads(cfg.read_text())["image"]
+          run("docker", "image", "inspect", image, "--format", "{{.Id}}")
+          return image
+      def agent_start():
+          image = json.loads(cfg.read_text())["image"]
+          d = pathlib.Path.home() / ".cache/job-search-platform/test-ai"
+          d.mkdir(parents=True, exist_ok=True); (d / "m").write_text("ok")
+          return run("docker", "run", "--rm", "--entrypoint", "cat", "-v", f"{d}:/w:ro", image, "/w/m")
+      def agent_python():
+          py = pathlib.Path(json.loads(cfg.read_text())["environment"]) / ".venv/bin/python"
+          info = f"{py} -> {os.path.realpath(py)} (HOME={pathlib.Path.home()})"
+          if not py.exists():
+              raise RuntimeError("missing: " + info)
+          return info + " " + run(str(py), "--version")
+      def agent_runtime():
+          import asyncio, traceback, uuid
+          sys.path.insert(0, "/app/backend/src")
+          from job_search_platform.integrations.hermes_runtime import HermesRuntime
+          rt = HermesRuntime(json.loads(cfg.read_text())["image"])
+          rt.workspace_root.mkdir(parents=True, exist_ok=True)
+          ws = rt.workspace_root / ("test-ai-" + uuid.uuid4().hex[:8])
+          ws.mkdir(mode=0o700)
+          async def go():
+              pid = uuid.uuid4()
+              try:
+                  await rt.start_project(pid, ws)
+                  return "native bridge started"
+              finally:
+                  if pid in rt.projects:
+                      await rt.stop(pid)
+          try:
+              return asyncio.run(go())
+          except Exception as e:
+              tb = traceback.extract_tb(e.__traceback__)[-4:]
+              raise RuntimeError(f"{type(e).__name__}: {e} | " + " <- ".join(f"{pathlib.Path(f.filename).name}:{f.lineno}" for f in reversed(tb)))
+          finally:
+              try: ws.rmdir()
+              except OSError: pass
+      def agent_parse():
+          import asyncio, shutil, uuid
+          sys.path.insert(0, "/app/backend/src")
+          from job_search_platform.integrations.hermes_runtime import HermesRuntime
+          rt = HermesRuntime(json.loads(cfg.read_text())["image"])
+          ws = rt.workspace_root / ("test-ai-" + uuid.uuid4().hex[:8])
+          (ws / "inputs").mkdir(parents=True, mode=0o700)
+          (ws / "inputs" / "cv.txt").write_text("Test CV. Skills: Python, SQL.")
+          async def go():
+              pid = uuid.uuid4()
+              await rt.start_project(pid, ws)
+              try:
+                  async def allow(_c, _n): return True
+                  rt.projects[pid].tool_gate = allow
+                  return "parsed " + str(len((await rt.parse_input(pid, "inputs/cv.txt")).text)) + " chars"
+              finally:
+                  await rt.stop(pid)
+          try:
+              return asyncio.run(go())
+          except Exception as e:
+              fn = getattr(e, "filename", None)
+              raise RuntimeError(f"{type(e).__name__} code={getattr(e, 'code', None)} missing={fn!r}")
+          finally:
+              shutil.rmtree(ws, ignore_errors=True)
+      base, key = os.environ["LITELLM_BASE_URL"], os.environ["LITELLM_API_KEY"]
+      def call(path, body=None):
+          req = urllib.request.Request(base + path, data=body and json.dumps(body).encode(),
+              headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
+          return json.load(urllib.request.urlopen(req, timeout=90))
+      def models():
+          ids = [m["id"] for m in call("/v1/models")["data"]]
+          model = os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze"
+          assert model in ids, f"{model} not in {ids}"
+          return ids
+      def chat():
+          r = call("/v1/chat/completions", {"model": os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze",
+              "messages": [{"role": "user", "content": "Reply with the single word: pong"}], "max_tokens": 200})
+          return repr(r["choices"][0]["message"]["content"])[:80]
+      for n, f in (("1 docker socket", socket), ("2 agent image", runtime), ("3 agent start + path", agent_start),
+                   ("4 litellm models", models), ("5 model call", chat),
+                   ("6 agent python", agent_python), ("7 agent runtime start", agent_runtime), ("8 agent parse file", agent_parse)):
+          step(n, f)
+      sys.exit(1 if failed else 0)
+      PY
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access

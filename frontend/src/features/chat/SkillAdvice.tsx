@@ -35,7 +35,7 @@ export function SkillAdvice({ projectId, locale, coverage }: { projectId: string
   const items = bank.data?.items ?? [];
   const backed = missing.map(skill => ({ skill, count: items.filter(item => mentions(`${item.text} ${item.role ?? ''}`, skill)).length }));
   const canAdd = backed.filter(entry => entry.count > 0), cannot = backed.filter(entry => entry.count === 0);
-  return <section aria-labelledby={`advice-${projectId}`} className="grid gap-4 rounded-xl border bg-card p-4 sm:p-5">
+  return <section aria-labelledby={`advice-${projectId}`} className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6">
     <div className="flex items-start gap-3">
       <AiMark />
       <div className="min-w-0"><h2 id={`advice-${projectId}`} className="text-lg font-semibold">{c.title}</h2><p className="text-sm text-muted-foreground">{c.intro}</p></div>

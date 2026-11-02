@@ -2,52 +2,64 @@
 name: AI Job Search Agent Platform
 description: Bilingual job-search workspaces with clear project and revision context.
 colors:
-  background: "#F6F7FB"
-  foreground: "#17233B"
+  background: "#F3F4EF"
+  foreground: "#1B2550"
   card: "#FFFFFF"
-  primary: "#4F46E5"
+  primary: "#2B45C4"
   primary-foreground: "#FFFFFF"
-  secondary: "#EEF1F8"
-  secondary-foreground: "#17233B"
-  muted: "#EEF1F8"
-  muted-foreground: "#53627A"
-  accent: "#E5E5FC"
-  accent-foreground: "#3730A3"
+  secondary: "#E9EAE2"
+  secondary-foreground: "#1B2550"
+  muted: "#E9EAE2"
+  muted-foreground: "#585E70"
+  accent: "#E4E7F4"
+  accent-foreground: "#1B2550"
   destructive: "#AF263E"
   success: "#166445"
   warning: "#805319"
-  border: "#DCE1EB"
-  input: "#828EA5"
-  ring: "#4F46E5"
-  sidebar: "#E8EBFA"
-  dark-background: "#111522"
-  dark-foreground: "#EDF1FA"
-  dark-card: "#1A2030"
-  dark-primary: "#ABA7FF"
-  dark-primary-foreground: "#171B2B"
-  dark-secondary: "#232B3D"
-  dark-secondary-foreground: "#EDF1FA"
-  dark-muted: "#232B3D"
-  dark-muted-foreground: "#AEBBD0"
-  dark-accent: "#303659"
-  dark-accent-foreground: "#E0DFFF"
+  border: "#DCDDD3"
+  border-strong: "#C9CBC0"
+  input: "#858993"
+  ring: "#2B45C4"
+  sidebar: "#EAEBE3"
+  stage-cv: "#0F766E"
+  stage-search: "#2563EB"
+  stage-evaluate: "#7C3AED"
+  stage-docs: "#C2410C"
+  stage-track: "#15803D"
+  dark-background: "#131D42"
+  dark-foreground: "#EEF2FF"
+  dark-card: "#1B2756"
+  dark-primary: "#9DB4FF"
+  dark-primary-foreground: "#0F1738"
+  dark-secondary: "#243266"
+  dark-secondary-foreground: "#EEF2FF"
+  dark-muted: "#243266"
+  dark-muted-foreground: "#B4C0E6"
+  dark-accent: "#2E3F7E"
+  dark-accent-foreground: "#EEF2FF"
   dark-destructive: "#FF9AAA"
   dark-success: "#79D5AA"
   dark-warning: "#EBC27D"
-  dark-border: "#354057"
-  dark-input: "#7C8AA5"
-  dark-ring: "#ABA7FF"
-  dark-sidebar: "#202642"
+  dark-border: "#34447F"
+  dark-border-strong: "#46579A"
+  dark-input: "#7F8FC4"
+  dark-ring: "#9DB4FF"
+  dark-sidebar: "#16224D"
+  dark-stage-cv: "#5EEAD4"
+  dark-stage-search: "#7FA8FF"
+  dark-stage-evaluate: "#B79CFF"
+  dark-stage-docs: "#FFA36B"
+  dark-stage-track: "#6FE09A"
 typography:
   display:
-    fontFamily: "Noto Serif Thai, serif"
-    fontSize: "clamp(27px, 4vw, 42px)"
+    fontFamily: "Noto Serif Thai, Georgia, serif"
+    fontSize: "34px"
     fontWeight: 500
-    lineHeight: 1.5
+    lineHeight: 1.4
   headline:
-    fontFamily: "Noto Sans Thai, Manrope, sans-serif"
+    fontFamily: "Noto Serif Thai, Georgia, serif"
     fontSize: "24px"
-    fontWeight: 600
+    fontWeight: 500
     lineHeight: 1.45
   body:
     fontFamily: "Noto Sans Thai, Manrope, sans-serif"
@@ -58,49 +70,58 @@ typography:
     fontFamily: "Noto Sans Thai, Manrope, sans-serif"
     fontSize: "14px"
     fontWeight: 500
-    lineHeight: 1.7
+    lineHeight: 1.6
 rounded:
-  sm: "calc(var(--radius) - 4px)"
-  md: "calc(var(--radius) - 2px)"
-  lg: "var(--radius)"
-  xl: "calc(var(--radius) + 4px)"
+  sm: "4px"
+  md: "6px"
+  lg: "8px"
+  xl: "12px"
 spacing:
   xs: "4px"
   sm: "8px"
   md: "16px"
   lg: "24px"
   xl: "40px"
+  stack-tight: "4px"
+  stack: "8px"
+  section: "12px"
+  group: "16px"
+  card: "20px (24px from 640px)"
+  region: "24px (32px from 1024px)"
+  landing-section: "64-96px"
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.primary-foreground}"
-    rounded: "{rounded.md}"
-    height: "44px"
+    rounded: "{rounded.lg}"
+    height: "44px (40px from lg)"
   button-outline:
     backgroundColor: "{colors.card}"
     textColor: "{colors.foreground}"
-    rounded: "{rounded.md}"
-    height: "44px"
+    rounded: "{rounded.lg}"
+    height: "44px (40px from lg)"
   input:
     backgroundColor: "{colors.card}"
     textColor: "{colors.foreground}"
-    rounded: "{rounded.md}"
-    height: "44px"
+    rounded: "{rounded.lg}"
+    height: "44px (40px from lg)"
 ---
 # Design System: AI Job Search Agent Platform
 
 ## Overview
 
-**Creative North Star: "Collection Index"**
+**Creative North Star: "Quiet Ledger"**
 
-The shipped application uses a cool, quiet work surface with an indigo project rail and a compact information hierarchy. Its signature is the readable pairing of a CV revision with a job revision: source context stays near the task that uses it. Thai and English share the same sans-serif workhorse stack, while written labels accompany semantic status colours.
+The application is a warm paper-toned work surface with a royal-blue action colour and a navy ink. The sidebar colour doubles as the window frame; on wide screens the page sits in one rounded panel on that frame. Cards are white and flat with a hairline border. Page titles are set in a Thai serif; everything else is Noto Sans Thai. Its signature is still the readable pairing of a CV revision with a job revision: source context stays near the task that uses it. Written labels always accompany semantic status colours.
 
-The system is evidenced in `frontend/src/styles.css`, shared UI primitives, and the application shell and workspace pages. The public landing page uses its own serif headline treatment within this system. This record describes visual implementation; product behavior and API contracts remain in their engineering specifications.
+Inspired by visual character only; no code or assets from AGPL-licensed Dossier.
+
+The system is evidenced in `frontend/src/styles.css`, shared UI primitives, and the application shell and workspace pages. This record describes visual implementation; product behavior and API contracts remain in their engineering specifications.
 
 **Key Characteristics:**
-- Cool neutral canvas, white work surfaces, and restrained indigo emphasis.
-- Bilingual sans-serif reading with generous body leading.
-- Flat bordered panels, aligned rows, and explicit revision context.
+- Warm neutral canvas, white hairline surfaces, restrained royal-blue emphasis. No black or near-black anywhere; ink is navy.
+- Serif page titles, sans-serif reading with generous Thai body leading.
+- Inset work panel, segmented controls, status dots, divided rows.
 
 ## Colors
 
@@ -108,11 +129,15 @@ The light and dark themes use semantic CSS variables so components keep the same
 
 ### Primary
 
-Index indigo (`primary`) marks primary actions, links, and focus. `accent` and `accent-foreground` mark selected navigation and selected surfaces. In dark mode, use the matching `dark-` values.
+Royal blue (`primary`) marks primary actions, links, and focus. `accent` marks selected surfaces and notices; the active sidebar row uses `--nav-active`, a 10% blue tint over `sidebar`. Row hover uses `--nav-hover`, a 5% navy tint. In dark mode, use the matching `dark-` values.
 
 ### Neutral
 
-`background` is the cool workspace canvas; `card` is the main work surface; `sidebar` distinguishes project navigation. `foreground` carries primary reading text, `muted-foreground` secondary information, and `border` panel and row separation. `input` provides a stronger control stroke than the general divider.
+`background` is the warm page; `card` is the work surface (white); `sidebar` is both the navigation colour and the frame around the page panel. `foreground` (navy) carries reading text, `muted-foreground` secondary information, `border` panel and row separation, and `border-strong` the hairline of outline buttons and active segments. `input` is the stronger stroke inputs need for a 3:1 boundary.
+
+### Journey stages
+
+Each step of the search owns a hue: `stage-cv`, `stage-search`, `stage-evaluate`, `stage-docs`, `stage-track`. A page sets `--stage` on `main`; the page-title icon, the active sidebar icon and `.stage-chip` read it. `.stage-dot` marks application status beside its written label (saved and withdrawn muted, applied primary, responded evaluate, interview cv, offer warning, hired success, rejected destructive).
 
 ### Status
 
@@ -122,41 +147,91 @@ Index indigo (`primary`) marks primary actions, links, and focus. `accent` and `
 
 ## Typography
 
-**Display Font:** Noto Serif Thai, serif (used by the public landing headline)  
+**Heading Font:** Noto Serif Thai 500 (with Georgia as load-failure fallback)  
 **Body Font:** Noto Sans Thai, Manrope, sans-serif  
-**Character:** Noto Sans Thai leads for both Thai and Latin interface text. The bundled 400, 500, and 600 weights cover body, medium labels, and semibold headings. Manrope is the English document fallback; Noto Serif Thai is reserved for the landing headline.
+**Character:** Serif is for `h1` and for `h2` authored at 18px or larger (including dialog titles), always weight 500, letter-spacing 0. Markdown output (AI answers) stays sans. `h3`, body, controls and small headings (kanban column, sidebar labels) are Noto Sans Thai. `CardTitle` is authored `text-lg` (18px), so it renders serif. Manrope is the English document fallback. Prompt is no longer used.
 
 ### Hierarchy
 
-- **Display** (500, responsive 27–42px, 1.5): public landing headline.
-- **Headline** (600, 24px; 28px from 768px, 1.45): global page `h1`.
-- **Title** (600, commonly 18–20px): section and panel headings as used by pages.
-- **Body** (400, 16px, 1.7): default interface and form text.
-- **Label** (500, commonly 12–14px): controls, navigation, and compact metadata.
+- **Page title** (serif 500, 24px, 34px from 768px, 1.35): `PageHeader` h1.
+- **Section title** (serif 500, 18–24px, 1.45): large `h2` and dialog titles. 18px is the serif floor, except the header wordmark.
+- **Body** (sans 400, 16px, 1.7): default interface and form text; inputs use 16px.
+- **Label** (sans 500, 14px, 1.6): buttons, navigation rows, tabs, labels.
+- **Micro** (sans 500, 12px): sidebar group labels, table headers, counts.
 
-Chat text uses 1.9 line-height; English documents use Manrope first at 16px/1.9. Explicit component utilities can override these defaults. Inputs use 16px text. Headings and user-provided revision names can wrap rather than widen their container.
+Chat text uses 1.9 line-height; English documents use Manrope first at 16px/1.9. Headings and user-provided revision names wrap rather than widen their container.
 
-**The Bilingual Reading Rule.** Keep Thai body leading generous and preserve the source language of jobs, CVs, and generated documents when the interface language changes.
+**The Bilingual Reading Rule.** Keep Thai body leading generous (never under 1.35 for headings) and preserve the source language of jobs, CVs, and generated documents when the interface language changes.
 
 ## Layout
 
-The desktop shell uses a 248px project rail from the 1024px `lg` breakpoint; narrower layouts use the labelled mobile drawer. Page headers place actions beside the heading when space allows and stack below 640px. Workspace pages use 16px narrow-screen gutters, growing to 24px and 40px at wider breakpoints. Keep flex and grid children shrinkable with `min-width: 0`; allow long names and identifiers to wrap.
+From the 1024px `lg` breakpoint the shell has a 248px project rail on the `sidebar` colour, and the page sits in one rounded inset panel (`background`, 1px border, 12px radius, 8px gap to the frame). Below `lg` there is no frame and a labelled mobile drawer replaces the rail. Sidebar group labels are visible; rows are plain outline icons, and the active row takes the `--nav-active` fill and its stage-hue icon. Page headers (`PageHeader`) place actions beside the title when space allows and stack below 640px. Keep flex and grid children shrinkable with `min-width: 0`; allow long names to wrap.
 
-Use compact spacing within control groups and wider 24–40px gaps between page regions. Search pairs a result list with an inspector on wide screens and becomes a single detail flow on narrow screens. Keep the selected CV/job revision pair and current task close together. Horizontal scrolling belongs inside genuinely wide data regions, not around the full page.
+Use compact spacing within control groups. Page regions are 24px apart below `lg` and 32px from `lg` (`gap-6 lg:gap-8`); a back link sits 4px above its title. Search pairs a result list with an inspector on wide screens. Horizontal scrolling belongs inside genuinely wide data regions.
+
+## Spacing
+
+The scale is a named set of Tailwind classes, not CSS variables. Allowed steps (px): 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96 (`0.5 1 2 3 4 5 6 8 10 12 16 20 24`). The landing page uses the same set without 20.
+
+| Name | Value | Classes | Where |
+|---|---|---|---|
+| page-pad | 16/24/40 × 24/32/40 | `px-4 py-6 sm:px-6 sm:py-8 xl:px-10 xl:py-10` | `AppShell` main |
+| region-gap | 24, 32 from `lg` | page root `grid gap-6 lg:gap-8` | every page root |
+| back-to-title | 4 | `grid gap-1` around `PageBack` + `PageHeader` | pages with a back link |
+| section-gap | 12 | `grid gap-3` | a heading and its panel |
+| card-pad | 20, 24 from `sm` | `p-5 sm:p-6` | panels, forms, detail cards |
+| card-pad-roomy | 24, 32 from `sm` | `p-6 sm:p-8` | empty states, the one card on a centred page |
+| item-pad | 16 | `p-4` | repeated items: result cards, kanban cards |
+| inset-pad | 12 | `p-3`, `rounded-lg` | a tile inside a card |
+| stack-tight | 4 | `gap-1` | title and meta line |
+| stack | 8 | `gap-2` | chips, button groups, label to control |
+| group | 16 | `gap-4` | blocks inside a card, field to field |
+| group-loose | 24 | `gap-6` | columns and groups inside a region |
+| form | 8 / 16 / 24 | field `grid gap-2`; form `grid gap-4`; actions `flex flex-wrap gap-2 pt-2` | label to control / field to field / last field to actions |
+| toolbar | 8 | `flex flex-wrap items-center gap-2` | filter rows, header actions |
+| list-row | 12×16, 12×20 from `sm` | `px-4 py-3 sm:px-5` with `min-h-14` (one line); `px-4 py-4 sm:px-5` (two lines) | divided lists |
+| table-cell | 8×12 | `px-3 py-2` | data tables |
+| landing-section | 64 to 96 | `mt-16 sm:mt-20`, `mt-16 sm:mt-24`, `mt-20 sm:mt-24` | landing sections, varied on purpose |
+
+Banned: the steps `2.5`, `7`, `9`, `11`, `14`; arbitrary `[..]` spacing; negative margins used for rhythm (an optical nudge on an icon button carries an `// optical:` comment). Gate, expected empty:
+
+```
+cd frontend/src && grep -rnE "(^|[ \"'])(sm:|md:|lg:|xl:)?(-?m[tbxylrse]?|p[tbxylrse]?|gap(-[xy])?)-(2\.5|7|9|11|14)([ \"']|$)" --include='*.tsx' . ; grep -rnE "(^|[ \"'])-m[tb]-[0-9]" --include='*.tsx' .
+```
 
 ## Elevation & Depth
 
-Work surfaces are primarily flat, separated by borders rather than decorative shadows. Dialogs use their existing overlay treatment to focus a decision. The stylesheet retains a subtle legacy shadow token; it is not a general card treatment. Motion is brief state feedback (150–240ms) with the shared easing curve, and reduced-motion preferences collapse transitions and animations.
+Surfaces are flat: white on the warm page with a 1px hairline and almost no shadow (`shadow-sm` is a 1px navy hairline). Shadows remain only on overlays (menus, dialogs, drawer) and on the document "paper" previews, all in navy, never black. Motion is brief state feedback (150-240ms) with the shared easing curve; reduced-motion preferences collapse transitions and animations.
 
 ## Shapes
 
-The shared radius base is 12px. Controls use the medium radius (10px); shared workspace panels use 12px; cards use the extra-large radius (16px). Use these component roles without wrapping every section in a card. Badges and some selected navigation may use component-specific rounding.
+The base radius is 8px, giving sm 4, md 6, lg 8, xl 12 and 2xl 12. Controls are 8px, cards, panels and dialogs 12px, badges 6px. Pills (`rounded-full`) remain only for avatars, dots, counts and AI prompt-suggestion chips. Tab lists are segmented tracks with 8px radius, never pills.
 
 ## Components
 
+### Landing (Persuade surface)
+
+The public page persuades; the app operates. Section order: skip link, hero, three steps, static tagline, tour, data and control, FAQ, closing, footer. The page has one primary action (create account, or open app when signed in), repeated unchanged in the hero and the closing card; the only other hero action is a text link. The tagline is a static two-tone statement between hairlines (muted first line, foreground second), with no scroll animation. The tour is a vertical index (Up and Down keys) beside one panel, never a pill strip and never a card inside a card. Objections are answered in a FAQ ledger of native `details` rows. The one authored motion is the hero demo card, played once on `--ease-out`; reduced motion shows its end state. No icon tiles, no pills outside the list above, no shadows on page cards, no gradient text. Proof comes only from true product facts and real UI states: no statistics, testimonials, logos, user counts, prices, awards or odds. Footer links go only to pages that exist.
+
 ### Buttons
 
-Use `components/ui/button.tsx`; `components/Button.tsx` is its compatibility adapter. The default and large sizes are at least 44px tall, icon buttons are 44px square, and small buttons retain a 40px minimum. Primary buttons use the primary pair; outline buttons use the card surface and input border; ghost buttons gain the selected surface on interaction. Preserve the visible focus ring and disabled state.
+Use `components/ui/button.tsx`; `components/Button.tsx` is its compatibility adapter. Control height is 44px below `lg` and 40px from `lg`; icon buttons are square at the same size with an 8px radius. Default is solid primary; outline is a card surface with the `border-strong` hairline; ghost shows the `--nav-hover` tint. A pressed outline button shows `accent` fill plus a primary border. Preserve the visible focus ring and disabled state.
+
+### Segmented control
+
+`.segmented` is a muted track holding buttons or tabs; the active one (`aria-pressed="true"` or `data-state="active"`) is a `card` segment with a `border-strong` hairline. Used for view switches, mode switches, theme and language switches and `TabsList`. Settings keeps underline tabs in navy.
+
+### Page title block
+
+`components/PageHeader.tsx`: an outline icon in the page's stage hue, the serif title, a muted lede (16px, max 42rem) and actions on the right. Existing back links stay above it.
+
+### Status dot and stage chip
+
+`.stage-dot` (8px) sits beside a written status label. `.stage-chip` (36px) is the tinted stage icon tile in journey and getting-started steps; active is solid stage colour. Step indicators use a 24px circle: done is filled with a check, the current step is filled with its stage colour like a done step plus a "next" badge, upcoming steps are dimmed.
+
+### Kanban and lists
+
+Board columns are `muted` trays with a status dot, label and count; cards are white with a hairline above the meta row. Lists are one bordered card with divided rows and a 12px muted column header. Drop zones are dashed.
 
 ### Inputs / Forms
 
@@ -164,7 +239,7 @@ Use the shared Input, Select, and Textarea primitives. Inputs have a card backgr
 
 ### Cards / Badges / Status
 
-Cards use a bordered card surface. Badges carry short written status and semantic colour. Announce meaningful asynchronous updates through the existing status regions. A progress indicator must reflect an actual value.
+Cards use a bordered card surface with 12px radius and no shadow. Badges are 6px-radius chips with written status and semantic colour; the default badge is a 10% primary tint. Announce meaningful asynchronous updates through the existing status regions. A progress indicator must reflect an actual value.
 
 ### Working and waiting states
 
@@ -194,6 +269,7 @@ Keep task destinations grouped under the active project, with the project switch
 ### Don't:
 - Invent scores, progress, freshness, or delivery confirmations.
 - Replace the next action with decorative KPI cards.
-- Add gradients, excessive nested cards, or unnecessary animation.
+- Add stage-coloured gradients, excessive nested cards, or unnecessary animation.
 - Name backend services, data sources or providers in user-facing copy.
-- Treat the landing page's serif headline as the workspace heading font.
+- Use serif below 18px (the 14px header wordmark is the one exception), or on Markdown output.
+- Use black or near-black for any colour, shadow or button.

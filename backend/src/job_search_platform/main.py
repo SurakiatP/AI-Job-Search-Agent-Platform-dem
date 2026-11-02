@@ -32,6 +32,7 @@ from job_search_platform.api.mcp_tasks import mcp_request_state_key
 from job_search_platform.api.oauth import router as oauth_router
 from job_search_platform.api.rest import _http_error, health_router, router as rest_router
 from job_search_platform.api.resume import router as resume_router
+from job_search_platform.api.resume_themes import router as resume_themes_router
 from job_search_platform.api.practice import router as practice_router
 from job_search_platform.api.sse import router as sse_router
 from job_search_platform.db.session import make_engine
@@ -308,7 +309,7 @@ def create_app(
                   servers=[{"url": API_PREFIX}], lifespan=lifespan,
                   telemetry={"auto_configure": False})
     # /v1/... answers at once; /v1/async/... starts background work and answers 202 with a run to poll.
-    for router in (rest_router, accounts_router, resume_router, practice_router, oauth_router, sse_router):
+    for router in (rest_router, accounts_router, resume_router, resume_themes_router, practice_router, oauth_router, sse_router):
         app.include_router(router, prefix=API_PREFIX)
     app.include_router(health_router)
 
@@ -401,6 +402,7 @@ def create_app(
             ("/projects/{project_id}/cvs", {"name": {"type": "string", "maxLength": 120}}),
             ("/projects/{project_id}/cvs/{cv_id}/revisions", {}),
             ("/projects/{project_id}/resume-photos", {}),
+            ("/resume-themes/import", {}),
         ):
             cv_upload = schema["paths"].get(upload_path, {}).get("post", {})
             if cv_upload:

@@ -63,6 +63,38 @@ def _load_roles() -> list[tuple[str, re.Pattern[str], str]]:
     return roles
 
 
+# Loose aliases kept in roles.txt only to classify titles. As search synonyms they would map to a different occupation.
+_NOT_SYNONYMS = frozenset({
+    "ช่างภาพ", "ที่ปรึกษาทางการเงิน", "ช่างเชื่อม", "ผู้จัดการฝ่ายขาย", "สถาปนิกซอฟต์แวร์", "บาริสต้า", "พนักงานบริการ",
+    "มัณฑนากร", "นักออกแบบภายใน", "ออกแบบภายใน", "พนักงานนวด",
+    "นักวิเคราะห์ความเสี่ยง", "วิเคราะห์ความเสี่ยง", "เจ้าหน้าที่ดูแลลูกค้า",
+    "พนักงานการเงิน", "วิศวกรสนาม", "ผู้ประสานงานโครงการ", "เจ้าหน้าที่ประสานงาน", "นิติกร", "ผู้จัดการฝ่ายการเงิน",
+    "เจ้าหน้าที่นิติกร", "พนักงานขับรถ", "คนขับรถ",
+})
+
+
+# Generic Thai head words (owner approved), one-way Thai -> English, so a short query finds English titles.
+_HEAD_WORDS = {"นักวิเคราะห์": "analyst", "วิศวกร": "engineer", "นักพัฒนา": "developer", "ผู้จัดการ": "manager"}
+
+
+def thai_role_synonyms() -> dict[str, list[str]]:
+    """Thai role alias -> [English canonical name] for the search index; also the alias without a leading นัก."""
+    out: dict[str, list[str]] = {}
+    for key, aliases in parse_dictionary((DATA / "roles.txt").read_text(encoding="utf-8")):
+        english = key.partition("|")[0].lower()
+        for alias in aliases:
+            if alias.isascii() or alias in _NOT_SYNONYMS:
+                continue
+            rest = alias[3:] if alias.startswith("นัก") else ""
+            for k in (alias, rest):
+                if k and not k.isascii() and english not in out.setdefault(k, []):
+                    out[k].append(english)
+    for thai, english in _HEAD_WORDS.items():
+        if english not in out.setdefault(thai, []):
+            out[thai].append(english)
+    return out
+
+
 def _build_province_names(text: str) -> dict[str, tuple[str, str]]:
     """code -> (English RTGS name, Thai name); the Thai name is the first Thai alias of the code's province line."""
     names: dict[str, tuple[str, str]] = {}

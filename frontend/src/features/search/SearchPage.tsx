@@ -9,6 +9,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BusyNote } from '@/components/BusyNote';
+import { ErrorState } from '../projects/PageStates';
 import { Spinner } from '@/components/ui/spinner';
 import { AiSpinner } from '@/components/AiMark';
 import { SmartMatchStart } from './SmartMatchStart';
@@ -27,6 +29,7 @@ import { categoryLabel } from './categories';
 import { SavedSearchesPanel } from './SavedSearches';
 import { ADV_KEYS, AdvancedFilters, advValueLabel, Presets, splitList, type Facet } from './AdvancedFilters';
 import { BuildCvButton } from '../builder/BuildCvButton';
+import { PageHeader } from '@/components/PageHeader';
 
 type JobSearchItem = {
   slug: string; title: string; company: string | null; location: string | null; cities: string[];
@@ -62,6 +65,7 @@ const FILTER_KEYS = ['q', 'cities', 'work_mode', 'posted_within_days', 'category
 const copy = {
   th: {
     title: 'ค้นหางาน', subtitle: (n: string) => `งานในประเทศไทย ${n} ตำแหน่ง`, stats: (t: string, n: string, th: string) => `งานในไทย ${t} · ใหม่ 7 วัน ${n} · ประกาศภาษาไทย ${th}`,
+    thaiHint: (n?: number, t?: number) => `ประกาศส่วนใหญ่เป็นภาษาอังกฤษ${n != null && t != null ? ` (ภาษาไทย ${n} จาก ${t} รายการ)` : ''} คำค้นภาษาไทยพบเฉพาะประกาศภาษาไทยและชื่อตำแหน่งที่ระบบรู้จัก ลองค้นเป็นภาษาอังกฤษด้วย เช่น “Data Analyst”`,
     searchLabel: 'ค้นหาตำแหน่ง บริษัท หรือทักษะ', searchPlaceholder: 'เช่น Frontend, Data analyst หรือชื่อบริษัท',
     mode: 'รูปแบบการทำงาน', anyMode: 'ทุกแบบ', posted: 'ช่วงเวลาที่ลงประกาศ', anyPosted: 'ทุกช่วง',
     days: (n: number) => `${n} วันที่ผ่านมา`, city: 'จังหวัด/เมือง', anyCity: 'ทุกเมือง', categories: 'หมวดงาน',
@@ -69,7 +73,7 @@ const copy = {
     found: (n: string) => `พบ ${n} ตำแหน่ง`, age: (n: number) => (n <= 0 ? 'ลงประกาศวันนี้' : `ลงประกาศ ${n} วันที่แล้ว`),
     stale: 'ประกาศเก่า · อาจปิดรับแล้ว',
     ghost: { old: (n: number) => `ลงประกาศมา ${n} วันแล้ว`, source_flagged: 'แหล่งงานระบุว่าประกาศนี้อาจไม่เป็นปัจจุบัน', unlisted: 'ไม่พบประกาศนี้ในแหล่งงานตอนตรวจครั้งล่าสุด' }, evaluate: 'ประเมินงานนี้', save: 'บันทึกงาน', saveShort: 'บันทึก', saved: 'บันทึกแล้ว', saving: 'กำลังบันทึก…',
-    original: 'เปิดประกาศต้นฉบับ', saveError: 'บันทึกงานไม่สำเร็จ ลองอีกครั้ง', loadMore: 'โหลดเพิ่ม', loading: 'กำลังโหลด…',
+    original: 'เปิดประกาศต้นฉบับ', saveError: 'บันทึกงานไม่สำเร็จ ลองอีกครั้ง', loadMore: 'โหลดเพิ่ม', capNote: 'แสดงสูงสุด 1,000 รายการแรก ใช้คำค้นหรือตัวกรองเพื่อจำกัดผลให้แคบลง', loading: 'กำลังโหลด…',
     none: 'ไม่พบตำแหน่งที่ตรงกับตัวกรอง', noneNext: 'ลองเปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูทั้งหมด', clear: 'ล้างตัวกรอง',
     errTitle: 'โหลดรายการงานไม่สำเร็จ', errBody: 'บริการอาจไม่พร้อมใช้งานชั่วคราว ลองใหม่อีกครั้ง หรือดูข้อมูลตัวอย่างเพื่อสำรวจหน้านี้',
     retry: 'ลองอีกครั้ง', viewSample: 'ดูข้อมูลตัวอย่าง', backLive: 'กลับไปข้อมูลจริง',
@@ -81,7 +85,7 @@ const copy = {
     poolNote: (n: string) => `จัดอันดับจาก ${n} ตำแหน่งล่าสุดที่ตรงกับตัวกรอง`,
     matchBadge: (p: number, m: number, n: number) => `ตรงกับ CV ${p}% · ${m}/${n} ทักษะ`, noSkills: 'ข้อมูลทักษะไม่พอ',
     matchedSkills: 'ทักษะที่ตรงกับ CV', missingSkills: 'ทักษะที่ยังขาด', noneMatched: 'ไม่มี', matchNote: 'คำนวณจากคำสำคัญในประกาศและ CV โดยไม่ใช้ AI',
-    sampleMatch: 'Smart match ใช้กับข้อมูลตัวอย่างไม่ได้ จึงแสดงรายการโดยไม่มีคะแนน', loadMorePool: 'โหลดเพิ่ม',
+    sampleSave: 'ข้อมูลตัวอย่างบันทึกหรือประเมินไม่ได้ ใช้ได้กับประกาศงานจริงเท่านั้น', sampleMatch: 'Smart match ใช้กับข้อมูลตัวอย่างไม่ได้ จึงแสดงรายการโดยไม่มีคะแนน', loadMorePool: 'โหลดเพิ่ม',
     bands: { 5: 'เหมาะมาก', 4: 'เหมาะ', 3: 'พอได้', 2: 'น้อย', 1: 'ไม่เหมาะ' } as Record<number, string>, ats: (p: number) => `ทักษะที่พบ ${p}%`,
     unsure: 'ไม่แน่ใจ', blocker: 'ขาดคุณสมบัติบังคับ', seniorityLabel: 'ระดับประสบการณ์', seniority: { far_below: 'ต่ำกว่ามาก', below: 'ต่ำกว่าเล็กน้อย', meets: 'ตรง', above: 'สูงกว่า' } as Record<string, string>,
     evidenced: 'มีหลักฐานใน CV', mustMissing: 'ขาด (บังคับ)', niceMissing: 'ขาด (มีก็ดี)', inCv: '(มีใน CV)', notInCv: '(ขาด)',
@@ -93,6 +97,7 @@ const copy = {
   },
   en: {
     title: 'Job search', subtitle: (n: string) => `${n} jobs in Thailand`, stats: (t: string, n: string, th: string) => `Jobs in Thailand ${t} · New in 7 days ${n} · Thai postings ${th}`,
+    thaiHint: (n?: number, t?: number) => `Most postings are in English${n != null && t != null ? ` (${n} of ${t} in Thai)` : ''}. A Thai search finds Thai postings and job titles the platform knows; also try English, e.g. “Data Analyst”.`,
     searchLabel: 'Search title, company or skill', searchPlaceholder: 'e.g. Frontend, Data analyst or a company',
     mode: 'Work mode', anyMode: 'Any', posted: 'Posted within', anyPosted: 'Any time',
     days: (n: number) => `${n} days`, city: 'City', anyCity: 'All cities', categories: 'Categories',
@@ -100,7 +105,7 @@ const copy = {
     found: (n: string) => `${n} ${n === '1' ? 'job' : 'jobs'} found`, age: (n: number) => (n <= 0 ? 'Posted today' : `${n} ${n === 1 ? 'day' : 'days'} ago`),
     stale: 'Stale listing',
     ghost: { old: (n: number) => `Posted ${n} days ago`, source_flagged: 'The source marks this listing as possibly out of date', unlisted: 'Not found on the source at the last check' }, evaluate: 'Evaluate this job', save: 'Save job', saveShort: 'Save', saved: 'Saved', saving: 'Saving…',
-    original: 'Open original posting', saveError: 'Could not save this job. Try again.', loadMore: 'Load more', loading: 'Loading…',
+    original: 'Open original posting', saveError: 'Could not save this job. Try again.', loadMore: 'Load more', capNote: 'Showing the first 1,000 results. Use a keyword or filters to narrow them down.', loading: 'Loading…',
     none: 'No jobs match these filters', noneNext: 'Change the search or clear the filters to see everything.', clear: 'Clear filters',
     errTitle: "Couldn't load jobs", errBody: 'The service may be temporarily unavailable. Try again, or view sample data to explore this page.',
     retry: 'Retry', viewSample: 'View sample data', backLive: 'Back to live data',
@@ -112,7 +117,7 @@ const copy = {
     poolNote: (n: string) => `Ranked from the ${n} latest jobs matching your filters`,
     matchBadge: (p: number, m: number, n: number) => `${p}% CV match · ${m}/${n} skills`, noSkills: 'Not enough skill data',
     matchedSkills: 'Skills matching your CV', missingSkills: 'Skills missing from your CV', noneMatched: 'None', matchNote: 'Calculated from keywords in the posting and your CV, without AI',
-    sampleMatch: 'Smart match does not work on sample data, so jobs are shown without scores', loadMorePool: 'Load more',
+    sampleSave: 'Sample data cannot be saved or evaluated. This works on real postings only.', sampleMatch: 'Smart match does not work on sample data, so jobs are shown without scores', loadMorePool: 'Load more',
     bands: { 5: 'Great fit', 4: 'Good fit', 3: 'Fair', 2: 'Weak', 1: 'Poor fit' } as Record<number, string>, ats: (p: number) => `Skills found ${p}%`,
     unsure: 'Unsure', blocker: 'Missing a must-have', seniorityLabel: 'Seniority', seniority: { far_below: 'Well below', below: 'Slightly below', meets: 'Meets', above: 'Above' } as Record<string, string>,
     evidenced: 'Evidenced in your CV', mustMissing: 'Missing (must-have)', niceMissing: 'Missing (nice-to-have)', inCv: '(in your CV)', notInCv: '(missing)',
@@ -143,7 +148,7 @@ function useWide() {
   return wide;
 }
 
-const selectClass = 'min-h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+const selectClass = 'min-h-11 lg:min-h-10 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 function MatchBadge({ match, c }: { match: Match | null | undefined; c: Copy }) {
   if (!match) return <Badge variant="secondary">{c.noSkills}</Badge>;
@@ -226,7 +231,7 @@ function AgentSteps({ c, step, scored, total }: { c: Copy; step: 0 | 1 | 2; scor
     <p className="flex items-center gap-2 font-medium"><AiSpinner size="sm" />{c.agentWorking}</p>
     <ol className="grid gap-1.5">{labels.map((label, i) => <li key={i} aria-current={i === step ? 'step' : undefined}
       className={`flex items-center gap-2 ${i < step ? 'text-muted-foreground' : i === step ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-      <span aria-hidden="true" className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] ${i <= step ? 'bg-[var(--stage-search)] text-card' : 'border'} ${i === step ? 'motion-safe:animate-pulse' : ''}`}>{i < step ? '✓' : i + 1}</span>
+      <span aria-hidden="true" className={`grid size-6 shrink-0 place-items-center rounded-full text-xs tabular-nums ${i < step ? 'bg-[var(--stage-search)] text-card' : i === step ? 'border-[1.5px] border-foreground font-medium text-foreground' : 'border border-[color:var(--border-strong)]'} ${i === step ? 'motion-safe:animate-pulse' : ''}`}>{i < step ? '✓' : i + 1}</span>
       <span>{label}</span>
     </li>)}</ol>
   </div>;
@@ -238,18 +243,18 @@ type SavedJob = { id: string; title: string; company?: string | null; source_url
 function useSavedJobs(projectId: string) {
   const saved = useResource<SavedJob[]>(`/projects/${projectId}/jobs`);
   const [busy, setBusy] = useState<string | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failed, setFailed] = useState<{ slug: string; card: boolean } | null>(null);
   const find = (job: JobSearchItem) => {
     const source = safeHttpUrl(job.source_url);
     return (saved.data ?? []).find(item => (source && item.source_url === source) || (item.title === job.title && (item.company ?? '') === (job.company ?? '')));
   };
-  async function save(job: JobSearchItem) {
+  async function save(job: JobSearchItem, card: boolean) {
     if (busy) return;
     setBusy(job.slug); setFailed(null);
     try {
       await sendJson(`/projects/${projectId}/jobs`, 'POST', { title: job.title.slice(0, 300), company: job.company?.slice(0, 300) || null, source_url: safeHttpUrl(job.source_url) ?? null, description: job.description_markdown.slice(0, 50000) || job.title });
       saved.reload();
-    } catch { setFailed(job.slug); }
+    } catch { setFailed({ slug: job.slug, card }); }
     setBusy(null);
   }
   return { loading: saved.status === 'loading', find, busy, failed, save };
@@ -260,21 +265,21 @@ function SaveJob({ job, c, projectId, saves, tSearch, card = false }: { job: Job
   const existing = saves.find(job);
   const saving = saves.busy === job.slug;
   if (existing) return card
-    ? <span className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-muted px-3 text-sm text-muted-foreground"><BookmarkCheck className="size-4 text-primary" aria-hidden="true" />{c.saved}</span>
+    ? <span className="inline-flex min-h-11 lg:min-h-10 items-center gap-1.5 rounded-md bg-muted px-3 text-sm text-muted-foreground"><BookmarkCheck className="size-4 text-primary" aria-hidden="true" />{c.saved}</span>
     : <Button asChild variant="outline" className="h-auto whitespace-normal text-left"><Link to={`/app/projects/${projectId}/jobs/${existing.id}`}><BookmarkCheck className="size-4 text-primary" aria-hidden="true" />{c.saved}</Link></Button>;
   const checkingId = `save-job-status-${job.slug}${card ? '-card' : ''}`;
   return <>
     {!card && saves.loading && <p id={checkingId} role="status" className="text-xs text-muted-foreground">{tSearch('controls.checkingSavedJob')}</p>}
     <Button type="button" variant="outline" size={card ? 'sm' : 'default'} className={card ? '' : 'h-auto whitespace-normal text-left'}
       aria-describedby={card ? `job-title-${job.slug}` : saves.loading ? checkingId : undefined}
-      disabled={Boolean(saves.busy) || saves.loading} onClick={() => void saves.save(job)}>
+      disabled={Boolean(saves.busy) || saves.loading} onClick={() => void saves.save(job, card)}>
       {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Bookmark className="size-4" aria-hidden="true" />}{saving ? c.saving : card ? c.saveShort : c.save}
     </Button>
-    {!card && saves.failed === job.slug && <p role="alert" className="basis-full text-sm text-destructive">{c.saveError}</p>}
+    {saves.failed?.slug === job.slug && saves.failed.card === card && <p role="alert" className="basis-full text-sm text-destructive">{c.saveError}</p>}
   </>;
 }
 
-function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, saves, ranking }: { job: JobSearchItem; c: Copy; projectId: string; scored: boolean; place: string | null; tSearch: T; cv?: { name: string; revision: number }; saves: SavedJobs; ranking: boolean }) {
+function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, saves, ranking, sample = false }: { sample?: boolean; job: JobSearchItem; c: Copy; projectId: string; scored: boolean; place: string | null; tSearch: T; cv?: { name: string; revision: number }; saves: SavedJobs; ranking: boolean }) {
   const source = safeHttpUrl(job.source_url);
   const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
   const cvLabel = cv ? `${cv.name} · v${cv.revision}` : null;
@@ -285,12 +290,14 @@ function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, s
       {placeText && <p className="flex items-start gap-1 break-words text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{placeText}{modeLabel ? ` · ${modeLabel}` : ''}</span></p>}
     </div>
     <div className="grid gap-2">
+      {sample ? <p className="text-sm text-muted-foreground">{c.sampleSave}</p> : <>
       <NewSessionButton projectId={projectId} cvName={cv?.name} className="h-auto w-full whitespace-normal text-center" job={{ inline: { title: job.title, company: job.company, description: job.description_markdown.slice(0, 50000), source_url: source } }}>
         {cvLabel ? tSearch('controls.evaluateWith', { cv: cvLabel }) : c.evaluate}
       </NewSessionButton>
       {cvLabel && <p className="text-xs text-muted-foreground">{tSearch('controls.evalNote', { cv: cvLabel })}</p>}
+      </>}
       <div className="flex flex-wrap items-center gap-2">
-        <SaveJob key={job.slug} job={job} c={c} projectId={projectId} saves={saves} tSearch={tSearch} />
+        {!sample && <SaveJob key={job.slug} job={job} c={c} projectId={projectId} saves={saves} tSearch={tSearch} />}
         {source && <Button asChild variant="link" className="h-auto min-h-11 whitespace-normal text-left">
           <a href={source} target="_blank" rel="noreferrer">{c.original}<ExternalLink className="size-4" aria-hidden="true" /></a>
         </Button>}
@@ -395,6 +402,8 @@ export function SearchPage() {
   const [rankFailed, setRankFailed] = useState(false);
   const [undo, setUndo] = useState<{ id: string; message: string; retry: boolean } | null>(null);
   const [hiddenOpen, setHiddenOpen] = useState(false);
+  const [dialogError, setDialogError] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const hiddenRes = useResource<{ items: HiddenItem[] }>(hiddenOpen ? `/projects/${projectId}/job-search/hidden` : null);
   const keyRef = useRef(filterKey);
   keyRef.current = filterKey;
@@ -498,10 +507,12 @@ export function SearchPage() {
     } catch { setUndo({ id: '', message: c.hideFailed, retry: false }); }
   }
   async function unhide(id: string, fromDialog = false) {
+    if (fromDialog) { if (busyId) return; setBusyId(id); setDialogError(false); }
     try {
       await apiRequest(`/projects/${projectId}/job-search/hidden/${id}`, { method: 'DELETE' });
       setUndo(null); setVersion(v => v + 1); if (fromDialog) hiddenRes.reload();
-    } catch { setUndo({ id, message: c.undoFailed, retry: false }); }
+    } catch { if (fromDialog) setDialogError(true); else setUndo({ id, message: c.undoFailed, retry: false }); }
+    finally { if (fromDialog) setBusyId(null); }
   }
 
   async function loadMore() {
@@ -540,6 +551,8 @@ export function SearchPage() {
     const top = (facetsRes.data?.categories ?? []).slice(0, 12);
     return category && !top.some(f => f.value === category) ? [{ value: category, count: 0 }, ...top] : top;
   }, [sample, facetsRes.data, category]);
+  const thaiHintLine = !sample && /[\u0E00-\u0E7F]/.test(q)
+    ? <p data-testid="thai-search-hint" className="text-sm text-muted-foreground">{c.thaiHint(facetsRes.data?.thai_postings, facetsRes.data?.total)}</p> : null;
   const grandTotal = sample ? sampleItems.length : facetsRes.data?.total;
 
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
@@ -555,7 +568,7 @@ export function SearchPage() {
   const placeOf = (job: JobSearchItem) => { const names = locale === 'th' ? (job.cities ?? []).map(v => provinceTh.get(v)).filter(Boolean) : []; return names.length ? names.join(', ') : job.location; };
   const saves = useSavedJobs(projectId);
   const detailCv = cv?.latest_revision ? { name: cv.name, revision: cv.latest_revision.revision } : undefined;
-  const detail = (job: JobSearchItem) => <JobDetail job={job} place={placeOf(job)} c={c} projectId={projectId} scored={smartActive} tSearch={tSearch} cv={smartActive ? detailCv : undefined} saves={saves} ranking={ranking} />;
+  const detail = (job: JobSearchItem) => <JobDetail job={job} place={placeOf(job)} c={c} projectId={projectId} scored={smartActive} tSearch={tSearch} cv={smartActive ? detailCv : undefined} saves={saves} ranking={ranking} sample={sample} />;
 
   const activeFilterChips: { key: string; label: string }[] = [];
   if (q) activeFilterChips.push({ key: 'q', label: tSearch('controls.queryValue', { value: q }) });
@@ -620,7 +633,7 @@ export function SearchPage() {
           </span>}
           {job.skills.length > 0 && <span className="flex flex-wrap gap-1.5">{job.skills.slice(0, 4).map(s => <Badge key={s} variant="outline" className="break-words font-normal">{s}</Badge>)}</span>}
         </button>
-        <div className="relative z-10 flex justify-end"><SaveJob job={job} c={c} projectId={projectId} saves={saves} tSearch={tSearch} card /></div>
+        {!sample && <div className="relative z-10 flex flex-wrap justify-end"><SaveJob job={job} c={c} projectId={projectId} saves={saves} tSearch={tSearch} card /></div>}
         {smartActive && <ItemMenu label={c.menuLabel} className="absolute right-2 top-2 z-10" actions={[
           { label: c.hideJob, icon: <EyeOff className="size-4" aria-hidden="true" />, onSelect: () => void hide(job, 'job') },
           ...(job.company ? [{ label: c.hideCompany, icon: <Building2 className="size-4" aria-hidden="true" />, onSelect: () => void hide(job, 'company') }] : []),
@@ -629,35 +642,38 @@ export function SearchPage() {
     })}
   </ul>;
 
-  const loadingList = <div className="grid gap-3" role="status" aria-live="polite">
+  const loadingList = <div className="grid gap-3">
     <span className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />{c.loading}</span>
     {[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
   </div>;
 
   const failed = (!sample && status === 'error') || (smartActive && cvs.status === 'error');
   const waiting = !sample && !awaiting && (status === 'loading' || (smartActive && cvs.status === 'loading'));
-  const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < total;
+  const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < Math.min(total, 1001);  // the service serves offsets up to 1000
+  const capped = !sample && !smartActive && total > 1000 && !hasMore;
 
-  return <section className="grid gap-4 sm:gap-6">
-    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+  return <section className="grid gap-3 sm:gap-6 lg:gap-8">
     <div className="grid gap-1">
-      <h1 className="min-w-0 break-words text-2xl font-semibold">{c.title}</h1>
-      {grandTotal != null && <p className="text-sm text-muted-foreground">{!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
-        ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))}</p>}
+      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+      <PageHeader icon={Search} title={c.title} lede={grandTotal != null ? (!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
+        ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))) : undefined} />
     </div>
 
-    <div role="group" aria-label={c.modeLabel} className="inline-flex w-fit max-w-full rounded-lg border bg-muted p-1">
+    <div className="grid gap-2 sm:gap-5">
+    <div className="grid gap-2 sm:gap-3">
+    <div role="group" aria-label={c.modeLabel} className="segmented w-fit max-w-full">
       {([['search', c.modeSearch], ['match', c.modeMatch]] as const).map(([key, label]) => {
         const on = (key === 'match') === smart;
         return <button key={key} type="button" aria-pressed={on} onClick={() => setSearchMode(key)}
-          className={`min-h-11 rounded-md px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>;
+          className={`min-h-11 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? '' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>;
       })}
     </div>
-    <p className="-mt-4 text-sm text-muted-foreground">{tSearch(smart ? 'controls.modeHintMatch' : 'controls.modeHintSearch')}</p>
-    {smartActive && ai?.status !== 'unavailable' && <p className="-mt-3 text-xs text-muted-foreground">{c.privacy}</p>}
-    {smartActive && gate.blocked && gate.title && <p role="status" className="-mt-3 text-xs text-warning">{gate.title}</p>}
+    <p className="text-sm text-muted-foreground">{tSearch(smart ? 'controls.modeHintMatch' : 'controls.modeHintSearch')}</p>
+    {smartActive && ai?.status !== 'unavailable' && <p className="text-xs text-muted-foreground">{c.privacy}</p>}
+    {smartActive && gate.blocked && gate.title && <p role="status" className="text-xs text-warning">{gate.title}</p>}
+    </div>
 
-    {smartActive && usable.length > 0 && <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-3">
+    {smartActive && usable.length > 0 && <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
       <div className="grid min-w-0 gap-2 sm:w-72">
         <Label htmlFor="match-cv">{c.cvLabel}</Label>
         <select id="match-cv" className={selectClass} value={cv?.id ?? ''} onChange={e => setCvPick(e.target.value)}>
@@ -680,7 +696,7 @@ export function SearchPage() {
         <Label htmlFor="job-search">{c.searchLabel}</Label>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input id="job-search" type="search" className="pl-9" value={qInput} placeholder={c.searchPlaceholder} onChange={e => setQInput(e.target.value)} />
+          <Input id="job-search" type="search" className="pl-10" value={qInput} placeholder={c.searchPlaceholder} onChange={e => setQInput(e.target.value)} />
         </div>
       </div>
       <div className="grid min-w-0 gap-2">
@@ -711,19 +727,19 @@ export function SearchPage() {
       <Presets locale={locale} get={get} setMany={setMany} />
       {categories.length > 0 && <div role="group" aria-label={c.categories} className="flex flex-wrap gap-2">
         <h3 className="w-full text-sm font-semibold">{c.categories}</h3>
-        {categories.map(f => <Button key={f.value} type="button" variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal rounded-full text-left" aria-pressed={category === f.value}
+        {categories.map(f => <Button key={f.value} type="button" variant="outline" size="sm" className="h-auto whitespace-normal text-left" aria-pressed={category === f.value}
           onClick={() => setFilter('category', category === f.value ? '' : f.value)}>
           {catLabel(f.value)}{f.count ? <span className="text-muted-foreground">{number.format(f.count)}</span> : null}
         </Button>)}
       </div>}
     </AdvancedFilters>}
-    {activeFilterChips.length > 0 && <div className="grid gap-2" aria-label={tSearch('controls.activeFilters')}>
+    {activeFilterChips.length > 0 && <div role="group" className="grid gap-2" aria-label={tSearch('controls.activeFilters')}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">{tSearch('controls.activeFilters')} · {activeFilterChips.length}</p>
         <Button type="button" variant="link" className="h-auto p-0" onClick={clear}>{tSearch('controls.clearFilters')}</Button>
       </div>
       <div className="flex flex-wrap gap-2">
-        {activeFilterChips.map(chip => <Button key={`${chip.key}:${chip.label}`} type="button" variant="secondary" size="sm" className="h-auto min-h-9 max-w-full whitespace-normal text-left" aria-label={tSearch('controls.removeFilter', { label: chip.label })} onClick={() => removeFilter(chip.key)}>
+        {activeFilterChips.map(chip => <Button key={`${chip.key}:${chip.label}`} type="button" variant="secondary" size="sm" className="h-auto max-w-full whitespace-normal text-left" aria-label={tSearch('controls.removeFilter', { label: chip.label })} onClick={() => removeFilter(chip.key)}>
           <span className="break-words">{chip.label}</span><X className="size-3.5 shrink-0" aria-hidden="true" />
         </Button>)}
       </div>
@@ -731,12 +747,14 @@ export function SearchPage() {
 
     {!sample && !filtered && <div className="flex flex-wrap items-center gap-2">
       <span className="text-sm text-muted-foreground">{tSearch('controls.examplesLabel')}</span>
-      {(tSearch('controls.examples', { returnObjects: true }) as unknown as string[]).map(example => <Button key={example} type="button" variant="outline" size="sm" className="h-auto min-h-10 rounded-full" onClick={() => { setQInput(example); setFilter('q', example); }}>{example}</Button>)}
+      {(tSearch('controls.examples', { returnObjects: true }) as unknown as string[]).map(example => <Button key={example} type="button" variant="outline" size="sm" className="h-auto min-h-11 lg:min-h-10 rounded-full" onClick={() => { setQInput(example); setFilter('q', example); }}>{example}</Button>)}
     </div>}
+
+    </div>
 
     <SavedSearchesPanel projectId={projectId} params={params} onApply={changes => { setQInput(changes.q ?? ''); setMany(changes); }} />
 
-    {failed ? <Card role="alert"><CardContent className="grid gap-3 p-6">
+    {failed ? <Card role="alert"><CardContent className="grid gap-4 p-6">
       <h2 className="break-words font-semibold">{profileFailed ? c.analyzeError : c.errTitle}</h2>
       <p className="text-sm text-muted-foreground">{c.errBody}</p>
       <div className="flex flex-wrap gap-2">
@@ -749,7 +767,7 @@ export function SearchPage() {
       <div className="flex flex-wrap gap-2"><Button asChild><Link to={`/app/projects/${projectId}/profile`}>{c.addCv}</Link></Button><BuildCvButton projectId={projectId} /></div>
     </div> : awaiting ? <SmartMatchStart locale={locale} cvName={cv ? `${cv.name} · v${cv.latest_revision?.revision}` : ''} disabled={gate.blocked} title={gate.title} onStart={() => setArmedFor(revisionId)} /> : <div className="grid gap-3">
       {sample && smart && <p className="text-sm text-muted-foreground">{c.sampleMatch}</p>}
-      {(sample || !waiting) && <p role="status" className="text-sm text-muted-foreground">{c.found(number.format(shownTotal))}{smartActive ? ` · ${c.poolNote(number.format(poolCount || items.length))}` : ''}</p>}
+      <p role="status" aria-live="polite" className={sample || !waiting ? 'text-sm text-muted-foreground' : 'sr-only'}>{sample || !waiting ? <>{c.found(number.format(shownTotal))}{smartActive ? ` · ${c.poolNote(number.format(poolCount || items.length))}` : ''}</> : c.loading}</p>
       {smartActive && ai?.status === 'unavailable' && <div className="grid gap-1 text-sm text-muted-foreground"><p className="flex flex-wrap items-center gap-x-2">{c.unavailable}</p><p className="text-xs">{tSearch('methods.keywordOnly')}</p></div>}
       {smartActive && ranking && <div className="grid gap-2"><AgentSteps c={c} step={items.length === 0 ? 1 : 2} scored={ai?.scored ?? 0} total={items.length} /><span className="text-xs text-muted-foreground">{tSearch('methods.keywordOnly')}</span></div>}
       {smartActive && !ranking && ai?.status === 'partial' && <p role="status" className="text-sm text-muted-foreground">{tSearch('controls.partialRank', { scored: ai.scored, total: items.length })}</p>}
@@ -760,8 +778,9 @@ export function SearchPage() {
       </div>}
       {smartActive && !category && !q && ai?.categories && ai.categories.length > 0 && <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">{c.autoCats}</span>
-        {ai.categories.map(slug => <Button key={slug} type="button" variant="outline" size="sm" className="h-auto min-h-9 rounded-full" onClick={() => setFilter('category', slug)}>{catLabel(slug)}</Button>)}
+        {ai.categories.map(slug => <Button key={slug} type="button" variant="outline" size="sm" className="h-auto" onClick={() => setFilter('category', slug)}>{catLabel(slug)}</Button>)}
       </div>}
+      {thaiHintLine}
       {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-3 py-2 text-sm">
         <span className="[overflow-wrap:anywhere]">{undo.message}</span>
         {undo.retry && <Button type="button" size="sm" variant="outline" onClick={() => void unhide(undo.id)}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
@@ -783,6 +802,7 @@ export function SearchPage() {
       </section> : <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
         <div className="grid min-w-0 gap-3 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-1">
           {list}
+          {capped && <p role="status" className="text-sm text-muted-foreground">{c.capNote}</p>}
           {!sample && hasMore && <div className="grid justify-items-start gap-2">
             {moreError && <p role="alert" className="text-sm text-destructive">{c.errTitle}</p>}
             <Button variant="outline" disabled={loadingMore} aria-busy={loadingMore} onClick={() => void loadMore()}>
@@ -795,14 +815,15 @@ export function SearchPage() {
       {smartActive && hiddenCount > 0 && <div><Button type="button" variant="link" className="h-auto p-0" onClick={() => setHiddenOpen(true)}>{c.hiddenLink(hiddenCount)}</Button></div>}
     </div>}
 
-    <Dialog open={hiddenOpen} onOpenChange={setHiddenOpen}>
+    <Dialog open={hiddenOpen} onOpenChange={open => { setHiddenOpen(open); setDialogError(false); }}>
       <DialogContent>
         <DialogTitle>{c.hiddenTitle}</DialogTitle>
         <DialogDescription className="sr-only">{c.hiddenTitle}</DialogDescription>
-        {hiddenRes.status === 'loading' ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : (hiddenRes.data?.items ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.hiddenEmpty}</p>
+        {dialogError && <p role="alert" className="text-sm text-destructive">{c.undoFailed}</p>}
+        {hiddenRes.status === 'loading' ? <BusyNote locale={locale} label={c.loading} /> : hiddenRes.status === 'error' ? <ErrorState onRetry={hiddenRes.reload} /> : (hiddenRes.data?.items ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.hiddenEmpty}</p>
           : <ul className="grid max-h-[60vh] gap-2 overflow-y-auto">{(hiddenRes.data?.items ?? []).map(h => <li key={h.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 text-sm">
             <span className="min-w-0 [overflow-wrap:anywhere]"><Badge variant="secondary" className="mr-2">{c.kindWord[h.kind]}</Badge>{h.label}</span>
-            <Button type="button" size="sm" variant="outline" className="shrink-0 whitespace-nowrap" onClick={() => void unhide(h.id, true)}>{c.unhide}</Button>
+            <Button type="button" size="sm" variant="outline" className="shrink-0 whitespace-nowrap" disabled={busyId !== null} onClick={() => void unhide(h.id, true)}>{c.unhide}</Button>
           </li>)}</ul>}
       </DialogContent>
     </Dialog>

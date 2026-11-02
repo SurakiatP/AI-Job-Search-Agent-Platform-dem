@@ -39,3 +39,10 @@ def test_fact_records_keep_only_job_relevant_facts_and_add_years(db_session):
     records = experience.fact_records(db_session, p.id, job_text="We need Airflow and Python skills", limit=2)
     assert [r["text"] for r in records] == ["Built Airflow pipelines", "Python"]
     assert experience.profile_summary(db_session, p.id, today=(2025, 1)) == "Years of experience: 1.1"
+
+
+def test_years_ignore_an_inverted_span(db_session):
+    p = project(db_session)
+    _add(db_session, p.id, "A", start_date="2020-01", end_date="2021-12")
+    _add(db_session, p.id, "B", start_date="2023-01", end_date="2022-01")  # end before start (old rows may hold it)
+    assert experience.years_of_experience(db_session, p.id, today=(2025, 1)) == 2.0

@@ -10,11 +10,12 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { apiRequest } from '../../lib/api';
 import { useResource } from '../projects/useResource';
 import { Field, LoadingBlock, Notice, SectionCard, selectClass } from './Field';
+import { dateLocale } from '../../lib/locale';
 
 type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor' | 'jobs:search' | 'applications:apply' | 'applications:write';
 type Grant = { id: string; label?: string | null; project_id: string; capabilities: Capability[]; expires_at: string; revoked_at: string | null };
 type IssuedGrant = Grant & { token: string };
-const capabilityKey: Record<Capability, string> = { 'results:read': 'capability.resultsRead', 'jobs:evaluate': 'capability.jobsEvaluate', 'documents:draft': 'capability.documentsDraft', 'cv:tailor': 'capability.cvTailor', 'jobs:search': 'capability.jobsSearch', 'applications:apply': 'capability.applicationsApply', 'applications:write': 'capability.applicationsWrite' };
+export const capabilityKey: Record<Capability, string> = { 'results:read': 'capability.resultsRead', 'jobs:evaluate': 'capability.jobsEvaluate', 'documents:draft': 'capability.documentsDraft', 'cv:tailor': 'capability.cvTailor', 'jobs:search': 'capability.jobsSearch', 'applications:apply': 'capability.applicationsApply', 'applications:write': 'capability.applicationsWrite' };
 
 export function ProjectSharing({ projectId }: { projectId: string }) {
   const gate = useRunGate();
@@ -90,7 +91,7 @@ export function ProjectSharing({ projectId }: { projectId: string }) {
     </Dialog>
 
     <Card>
-      <CardHeader><CardTitle role="heading" aria-level={2}>{t('activeGrants')}</CardTitle><CardDescription>{t('activeGrantsHint')}</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{t('activeGrants')}</CardTitle><CardDescription>{t('activeGrantsHint')}</CardDescription></CardHeader>
       <CardContent className={grants.data ? 'pb-6' : ''}>
         {grants.status === 'loading' && <LoadingBlock label={t('loading')} />}
         {grants.status === 'error' && <Notice>{t('loadError')}</Notice>}
@@ -99,7 +100,7 @@ export function ProjectSharing({ projectId }: { projectId: string }) {
           <div className="min-w-0 flex-1">
             {grant.label && <p className="break-words text-sm font-semibold">{grant.label}</p>}
             <p className="break-words text-sm font-medium">{grant.capabilities.map(capability => t(capabilityKey[capability])).join(', ')}</p>
-            <p className="text-sm text-muted-foreground">{grant.revoked_at ? t('revoked') : active(grant) ? t('expires', { date: new Date(grant.expires_at).toLocaleString(i18n.language) }) : t('expired')}</p>
+            <p className="text-sm text-muted-foreground">{grant.revoked_at ? t('revoked') : active(grant) ? t('expires', { date: new Date(grant.expires_at).toLocaleString(dateLocale(i18n.language)) }) : t('expired')}</p>
           </div>
           {active(grant) && <Button variant="outline" size="sm" disabled={busy} onClick={() => void revoke(grant.id)}>{t('revoke')}</Button>}
         </li>)}</ul>}

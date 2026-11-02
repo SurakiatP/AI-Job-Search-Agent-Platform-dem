@@ -21,7 +21,7 @@ export function WorkflowPanel({ locale, sessionRuns, run, events, cancellationPe
   const { t } = useTranslation('sessionWorkspace');
   // Runs are newest first; the first run of an operation is its latest.
   const latest = (operation: RunOperation) => sessionRuns.find(item => item.operation === operation);
-  return <aside aria-labelledby="workflow-heading" className={cn('grid min-w-0 content-start gap-4 rounded-xl border bg-card p-4 sm:p-5', className)}>
+  return <aside aria-labelledby="workflow-heading" className={cn('grid min-w-0 content-start gap-4 rounded-xl border bg-card p-5 sm:p-6', className)}>
     <h2 id="workflow-heading" className="text-lg font-semibold">{t('panel.title')}</h2>
     <ol className="grid gap-3" aria-label={t('panel.steps')}>
       {STEPS.map(operation => {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useDraft } from '../../app/drafts';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, ExternalLink, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, Kanban, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { JobRemoveMenu } from './JobRemoveMenu';
 import { NewSessionButton } from '../sessions/NewSessionDialog';
 import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 import { AiLabel } from '@/components/AiMark';
+import { PageHeader } from '@/components/PageHeader';
 
 export function JobsPage() {
   const { t } = useTranslation();
@@ -37,14 +38,15 @@ export function JobsPage() {
   const [company, setCompany] = useDraft(projectId, 'new-job', 'company');
   const [sourceUrl, setSourceUrl] = useDraft(projectId, 'new-job', 'source_url');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<'save' | 'source' | null>(null);
+  const [error, setError] = useState<'save' | 'source' | 'missing' | null>(null);
   const [open, setOpen] = useState(() => Boolean(title || description || company || sourceUrl));
   if (result.status === 'loading' && !result.data) return <LoadingState />;
   if (result.status === 'error' && !result.data) return <ErrorState onRetry={result.reload} />;
   const jobs = result.data ?? [];
   const showForm = open;
   async function save() {
-    if (busy || !title.trim() || !description.trim()) return;
+    if (busy) return;
+    if (!title.trim() || !description.trim()) { setError('missing'); return; }
     const safeSource = sourceUrl.trim() ? safeHttpUrl(sourceUrl.trim()) : null;
     if (sourceUrl.trim() && !safeSource) {
       setError('source');
@@ -58,25 +60,25 @@ export function JobsPage() {
       setTitle(''); setCompany(''); setDescription(''); setSourceUrl(''); setOpen(false); result.reload();
     } catch { setError('save'); } finally { setBusy(false); }
   }
-  return <section className="grid gap-6">
-    <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <div className="min-w-0">
-        <h1 className="break-words text-2xl font-semibold">{appT('pageTitle')}</h1>
-        {jobs.length > 0 && <p className="mt-1 text-base text-muted-foreground">{appT('summary', { tracked: jobs.length, active: jobs.filter(job => ACTIVE_STAGES.includes(job.stage)).length, closed: jobs.filter(job => CLOSED_STAGES.includes(job.stage)).length })}</p>}
-        {jobs.length > 0 && <p className="mt-1 text-sm text-muted-foreground">{appT('recordingNote')}</p>}
-      </div>
-      <Button aria-expanded={showForm} aria-controls="add-job-form" onClick={() => setOpen(value => !value)}>{showForm ? appT('closeForm') : <><Plus className="size-4" aria-hidden="true" />{appT('addPosting')}</>}</Button>
+  return <section className="grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
+      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
+      <PageHeader icon={Kanban} title={appT('pageTitle')}
+        lede={jobs.length > 0 && <>
+          <p>{appT('summary', { tracked: jobs.length, active: jobs.filter(job => ACTIVE_STAGES.includes(job.stage)).length, closed: jobs.filter(job => CLOSED_STAGES.includes(job.stage)).length })}</p>
+          <p className="mt-1 text-sm">{appT('recordingNote')}</p>
+        </>}
+        actions={<Button aria-expanded={showForm} aria-controls="add-job-form" onClick={() => setOpen(value => !value)}>{showForm ? appT('closeForm') : <><Plus className="size-4" aria-hidden="true" />{appT('addPosting')}</>}</Button>} />
     </div>
     {showForm && <Card id="add-job-form">
       <CardHeader><CardTitle>{appT('addPostingTitle')}</CardTitle></CardHeader>
       <CardContent>
         <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void save(); }}>
-          <div className="grid gap-2"><Label htmlFor="job-title">{t('workflow.jobTitle')}</Label><Input id="job-title" value={title} maxLength={300} onChange={event => setTitle(event.target.value)} required /></div>
+          <div className="grid gap-2"><Label htmlFor="job-title">{t('workflow.jobTitle')}</Label><Input id="job-title" value={title} maxLength={300} aria-invalid={error === 'missing' && !title.trim()} aria-describedby={error === 'missing' ? 'job-error' : undefined} onChange={event => { setTitle(event.target.value); if (error === 'missing') setError(null); }} required /></div>
           <div className="grid gap-2"><Label htmlFor="job-company">{t('workflow.company')}</Label><Input id="job-company" value={company} maxLength={300} onChange={event => setCompany(event.target.value)} /></div>
           <div className="grid gap-2"><Label htmlFor="job-source-url">{t('workflow.sourceUrl')}</Label><Input id="job-source-url" type="text" inputMode="url" aria-invalid={error === 'source'} value={sourceUrl} maxLength={2048} onChange={event => { setSourceUrl(event.target.value); if (error === 'source') setError(null); }} /></div>
-          <div className="grid gap-2"><Label htmlFor="job-description">{t('workflow.posting')}</Label><Textarea id="job-description" rows={8} maxLength={50000} value={description} onChange={event => setDescription(event.target.value)} required /></div>
-          {error && <p role="alert" className="text-sm text-destructive">{appT(error === 'source' ? 'invalidSource' : 'savePostingError')}</p>}
+          <div className="grid gap-2"><Label htmlFor="job-description">{t('workflow.posting')}</Label><Textarea id="job-description" rows={8} maxLength={50000} value={description} aria-invalid={error === 'missing' && !description.trim()} aria-describedby={error === 'missing' ? 'job-error' : undefined} onChange={event => { setDescription(event.target.value); if (error === 'missing') setError(null); }} required /></div>
+          {error && <p id="job-error" role="alert" className="text-sm text-destructive">{appT(error === 'source' ? 'invalidSource' : error === 'missing' ? 'missingFields' : 'savePostingError')}</p>}
           <div><Button type="submit" busy={busy} disabled={busy}>{appT('savePosting')}</Button></div>
         </form>
       </CardContent>
@@ -151,7 +153,7 @@ export function JobDetailPage() {
   const primaryCv = usableCvs.find(cv => cv.is_primary) ?? usableCvs[0];
   const score = evaluation?.evaluation_result?.score ?? null;
   const band = bandView[fitBand(score) as keyof typeof bandView];
-  return <article className="grid min-w-0 gap-x-8 gap-y-7 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:grid-rows-[auto_auto_auto_1fr]">
+  return <article className="grid min-w-0 gap-x-8 gap-y-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:grid-rows-[auto_auto_auto_1fr]">
     <header className="grid min-w-0 gap-3 border-b border-border pb-5 lg:col-span-2">
       <PageBack to={`${base}/applications`}>{t('back')}</PageBack>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -159,7 +161,7 @@ export function JobDetailPage() {
           <h1 className="break-words text-2xl font-semibold">{job.title || t('untitled')}</h1>
           {job.company && <p className="mt-1 break-words text-base text-muted-foreground">{job.company}</p>}
           <p className="mt-1 text-sm text-muted-foreground">{t('revision', { revision: job.revision })}</p>
-          {source && <a className="mt-2 inline-flex min-h-10 items-center gap-1 text-sm text-primary hover:underline" href={source} target="_blank" rel="noreferrer">{t('source')}<ExternalLink className="size-4" aria-hidden="true" /></a>}
+          {source && <a className="mt-2 inline-flex min-h-11 lg:min-h-10 items-center gap-1 text-sm text-primary hover:underline" href={source} target="_blank" rel="noreferrer">{t('source')}<ExternalLink className="size-4" aria-hidden="true" /></a>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={job.application_status ?? 'saved'} locale={locale} />
@@ -177,7 +179,7 @@ export function JobDetailPage() {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <FitScore size="lg" score={score} locale={locale} />
           {band && <Badge variant={band.variant}>{t(band.key)}</Badge>}
-          <Link className="min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{t('evaluationSession')}</Link>
+          <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{t('evaluationSession')}</Link>
         </div>
         <div data-testid="evaluation-provenance" className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
           <span>{t('revision', { revision: job.revision })}</span>
@@ -186,11 +188,11 @@ export function JobDetailPage() {
             : hasExactPair && pair?.cv_revision_id
               ? <>{t('sourceCVId')} <span className="break-all">{pair.cv_revision_id}</span></>
               : t('sourceCVUnavailable')}</span>
-          {evaluationSession.status === 'error' && <button type="button" className="min-h-10 text-primary underline underline-offset-4" onClick={evaluationSession.reload}>{t('retry')}</button>}
+          {evaluationSession.status === 'error' && <button type="button" className="min-h-11 lg:min-h-10 text-primary underline underline-offset-4" onClick={evaluationSession.reload}>{t('retry')}</button>}
         </div>
         {evaluation.evaluation_result.skill_coverage && <SkillsFound coverage={evaluation.evaluation_result.skill_coverage} />}
         <details open>
-          <summary className="min-h-10 cursor-pointer content-center font-medium"><span className="inline-flex flex-wrap items-center gap-2">{t('latestEvaluation')}<AiLabel /></span></summary>
+          <summary className="min-h-11 lg:min-h-10 cursor-pointer content-center font-medium"><span className="inline-flex flex-wrap items-center gap-2">{t('latestEvaluation')}<AiLabel /></span></summary>
           <Markdown className="mt-2" data-testid="evaluation-report">{evaluation.evaluation_result.report_markdown}</Markdown>
         </details>
       </> : <div className="flex flex-col items-start gap-2">
@@ -208,7 +210,7 @@ export function JobDetailPage() {
           <Link className="break-words font-medium text-primary hover:underline" to={`${base}/documents/${doc.id}`}>{doc.title}</Link>
           {doc.latest_revision && <span className="text-sm text-muted-foreground">{t('documentRevision', { revision: doc.latest_revision.revision })}</span>}
         </li>)}</ul>}
-      <Link className="min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/documents`}>{t('allDocuments')}</Link>
+      <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/documents`}>{t('allDocuments')}</Link>
     </section>
 
     <JobDescription text={job.description ?? ''} />

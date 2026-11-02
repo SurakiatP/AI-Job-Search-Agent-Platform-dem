@@ -1,6 +1,7 @@
 """Smart match API: Jev scores, bands, highlights, hidden filters and the start-run route."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 import time
 from uuid import UUID, uuid4
 
@@ -143,7 +144,7 @@ def test_hide_company_job_unhide_and_authorization(api_context, monkeypatch):
     assert client.delete(f"{url}/{first.json()['id']}".replace(pid, other), headers=headers).status_code == 404
 
     token = client.post(f"{PREFIX}/{pid}/grants", headers=headers, json={
-        "capabilities": ["results:read"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+        "capabilities": ["results:read"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     saved = dict(client.cookies)
     client.cookies.clear()
     try:

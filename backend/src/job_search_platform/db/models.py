@@ -771,7 +771,7 @@ class ResumeDraft(Base):
     cv_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, unique=True)
     document_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, unique=True)
     resume_data: Mapped[dict] = mapped_column(JSON, nullable=False)
-    template_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    template_id: Mapped[str] = mapped_column(String(48), nullable=False)  # preset id or "custom:<theme uuid>"
     accent: Mapped[str] = mapped_column(String(20), nullable=False)
     document_language: Mapped[str] = mapped_column(String(2), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -779,9 +779,22 @@ class ResumeDraft(Base):
         ForeignKeyConstraint(["project_id", "cv_id"], ["cvs.project_id", "cvs.id"], ondelete="CASCADE"),
         ForeignKeyConstraint(["project_id", "document_id"], ["documents.project_id", "documents.id"], ondelete="CASCADE"),
         CheckConstraint("(cv_id IS NULL) <> (document_id IS NULL)", name="ck_resume_drafts_owner"),
-        CheckConstraint("template_id IN ('onyx','kakuna','ditgar','lotus','teak','saffron')", name="ck_resume_drafts_template"),
+        CheckConstraint("template_id IN ('onyx','kakuna','ditgar','lotus','teak','saffron','paper','compact','banner','classic',"
+                        "'portrait','studio') OR template_id LIKE 'custom:%'", name="ck_resume_drafts_template"),
         CheckConstraint("document_language IN ('th','en')", name="ck_resume_drafts_language"),
     )
+
+
+class ResumeTheme(Base):
+    """An owner's custom resume theme (SPEC-RTH): a layout id plus validated tokens, never Typst code. Immutable once saved."""
+    __tablename__ = "resume_themes"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    owner_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name: Mapped[str] = mapped_column(String(60), nullable=False)
+    layout: Mapped[str] = mapped_column(String(20), nullable=False)
+    tokens: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (UniqueConstraint("owner_id", "name", name="uq_resume_themes_owner_name"),)
 
 
 PRACTICE_SECTIONS = ("intro", "behavioral", "situational", "technical", "cv_deep_dive", "gaps", "company", "logistics")

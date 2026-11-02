@@ -409,15 +409,86 @@ async def load_photo(db_factory, object_store, project_id, data: ResumeData, tem
     return body if photo_type(body) else None
 
 
-def render_bundle(data: ResumeData, template: str, accent: str, lang: str, photo: bytes | None = None) -> dict[str, bytes]:
-    """Files for one Typst compile: user data only as JSON, read by the template with json() and printed as text."""
-    if template not in TEMPLATES or accent not in ACCENTS or lang not in LABELS:
+# Preview only (never saved or published): the core parts a CV still lacks are filled with invented content and marked in the PDF.
+_SAMPLE = {
+    "th": {"name": "ชื่อ นามสกุล", "headline": "ตำแหน่งที่ต้องการสมัคร", "email": "you@example.com", "phone": "08x-xxx-xxxx",
+           "summary": "ตัวอย่างสรุปโปรไฟล์ 2–3 ประโยค: บอกว่าคุณเป็นใคร ทำงานด้านไหนมากี่ปี และเก่งเรื่องอะไรที่ตรงกับงานที่สมัคร",
+           "position": "ตำแหน่งงานล่าสุด", "company": "ชื่อบริษัท", "location": "กรุงเทพฯ",
+           "highlights": ["ตัวอย่างผลงาน: ทำอะไร ได้ผลอย่างไร มีตัวเลขสนับสนุน", "ตัวอย่างผลงานอีกข้อที่เกี่ยวกับงานที่สมัคร"],
+           "institution": "ชื่อสถานศึกษา", "degree": "ปริญญาตรี", "area": "สาขาวิชา", "skill": "ทักษะหลัก",
+           "keywords": ["ตัวอย่างทักษะ 1", "ตัวอย่างทักษะ 2", "ตัวอย่างทักษะ 3"],
+           "note": "ตัวอย่าง: ยังไม่มีข้อมูลของคุณในส่วนนี้ ข้อความนี้จะไม่ถูกบันทึกหรือส่งออก"},
+    "en": {"name": "Your Name", "headline": "Role you are applying for", "email": "you@example.com", "phone": "000-000-0000",
+           "summary": "Sample summary, 2-3 sentences: who you are, how many years in which field, and what you do best for the job you want.",
+           "position": "Most recent job title", "company": "Company name", "location": "City",
+           "highlights": ["Sample achievement: what you did and the result, with a number", "Another sample achievement that fits the job"],
+           "institution": "School name", "degree": "Bachelor's degree", "area": "Field of study", "skill": "Main skill",
+           "keywords": ["Sample skill 1", "Sample skill 2", "Sample skill 3"],
+           "note": "Sample: nothing from you here yet. This text is not saved or exported."},
+}
+SAMPLE_PARTS = ("basics", "summary", "experience", "education", "skills")
+
+
+def _sample_id(name: str) -> str:
+    from uuid import uuid5, NAMESPACE_URL
+
+    return str(uuid5(NAMESPACE_URL, f"jsp-resume-sample/{name}"))
+
+
+def sample_note(lang: str) -> str:
+    return _SAMPLE[lang]["note"]
+
+
+def with_sample(data: ResumeData, lang: str) -> tuple[ResumeData, list[str]]:
+    """Copy of `data` with invented content in each empty core part; returns the copy and the parts that were filled.
+    A part the owner hid stays hidden."""
+    t, data, sampled = _SAMPLE[lang], data.model_copy(deep=True), []
+    if not data.basics.name:
+        b = data.basics
+        b.name, b.headline = t["name"], b.headline or t["headline"]
+        if not (b.email or b.phone):
+            b.email, b.phone = t["email"], t["phone"]
+        sampled.append("basics")
+    if not data.summary.content and not data.summary_hidden:
+        data.summary.content = t["summary"]
+        sampled.append("summary")
+    s = data.sections
+    parts = {"experience": Experience(id=_sample_id("experience"), company=t["company"], position=t["position"], location=t["location"],
+                                      start="2022-01", current=True, highlights=t["highlights"]),
+             "education": Education(id=_sample_id("education"), institution=t["institution"], degree=t["degree"], area=t["area"],
+                                    start="2016", end="2020"),
+             "skills": Skill(id=_sample_id("skills"), name=t["skill"], keywords=t["keywords"])}
+    for name, item in parts.items():
+        section = getattr(s, name)
+        if not section.items and not section.hidden:
+            section.items = [item]
+            sampled.append(name)
+    return data, sampled
+
+
+def render_bundle(data: ResumeData, template: str, accent: str, lang: str, photo: bytes | None = None,
+                  tokens: dict | None = None, sample: list[str] | tuple[str, ...] = ()) -> dict[str, bytes]:
+    """Files for one Typst compile: user data only as JSON, read by the template with json() and printed as text.
+    `tokens` (SPEC-RTH) are validated theme values; only the ones that differ from today's defaults reach theme.json."""
+    if template not in TEMPLATES or lang not in LABELS or (tokens is None and accent not in ACCENTS):
         raise ValueError("render_options")
+    extra: dict = {}
+    if tokens is not None:
+        from job_search_platform.services import resume_themes as rt
+
+        try:
+            checked = rt.validate_tokens(tokens)
+        except rt.ThemeError:
+            raise ValueError("render_options") from None
+        defaults = rt.TokensModel.model_fields
+        extra = {k: v for k, v in checked.model_dump().items() if k != "accent" and v != defaults[k].default}
     payload = data.model_dump()
     if data.references_on_request:
         payload["sections"]["references"]["items"] = []
-    theme = {"accent": ACCENTS[accent], "lang": lang, "references_on_request": data.references_on_request,
-             "address": address_text(data, lang), "personal": personal_rows(data, lang), "photo": None}
+    theme = {"accent": ACCENTS[accent] if tokens is None else checked.accent, "lang": lang, "references_on_request": data.references_on_request,
+             "address": address_text(data, lang), "personal": personal_rows(data, lang), "photo": None, **extra}
+    if sample:  # only previews of unfinished CVs; real CVs keep the exact old bundle
+        theme["sample"] = {"parts": list(sample), "note": sample_note(lang)}
     kind = photo_type(photo) if photo and template in PHOTO_TEMPLATES else None
     files = {"resume.json": json.dumps(payload, ensure_ascii=False).encode(),
              "labels.json": json.dumps(LABELS[lang], ensure_ascii=False).encode(),

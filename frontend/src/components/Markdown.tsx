@@ -28,7 +28,7 @@ const components: Components = {
 };
 
 export function Markdown({ children, className, ...props }: { children: string; className?: string; 'data-testid'?: string }) {
-  return <div className={cn('min-w-0 break-words leading-relaxed', className)} {...props}>
+  return <div data-markdown="" className={cn('min-w-0 break-words leading-relaxed', className)} {...props}>
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={components} disallowedElements={['img']}>{children}</ReactMarkdown>
   </div>;
 }

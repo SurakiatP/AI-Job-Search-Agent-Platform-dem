@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CvPreviewButton } from '@/components/CvPreview';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles, UserRound, X } from 'lucide-react';
 import { notifyTrashChanged } from '@/lib/trash';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,8 @@ import { ApiError, type CVRevisionInfo, type CVView, type ExperienceView } from 
 import { ExperienceBank } from './ExperienceBank';
 import { sendJson, useResource } from '../projects/useResource';
 import { BuildCvButton } from '../builder/BuildCvButton';
+import { PageHeader } from '@/components/PageHeader';
+import { dateLocale } from '../../lib/locale';
 
 const copy = {
   th: { editBuilder: 'แก้ไขในตัวสร้าง', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ย้าย CV “${n}” ไปถังขยะ?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้ จนกว่าจะกู้คืนจากถังขยะ การประเมินที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', delConfirm: 'ย้ายไปถังขยะ', moved: (n: string) => `ย้าย “${n}” ไปถังขยะแล้ว`, undo: 'เลิกทำ', undoFailed: 'เลิกทำไม่สำเร็จ กู้คืนได้จากถังขยะ', openTrash: 'เปิดถังขยะ', dismiss: 'ปิด', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง' },
@@ -51,7 +53,7 @@ function RenameDialog({ cv, c, projectId, onClose, onDone }: { cv: CVView; c: ty
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}><DialogContent aria-describedby={undefined}>
     <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
       <DialogTitle>{c.renameTitle}</DialogTitle>
-      <label className="grid gap-1.5 text-sm font-medium">{c.name}<Input autoFocus maxLength={120} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
+      <label className="grid gap-2 text-sm font-medium">{c.name}<Input autoFocus maxLength={120} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
       {error && <p role="alert" className="text-sm text-destructive">{c.failed}</p>}
       <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{c.cancel}</Button></DialogClose><Button type="submit" disabled={busy || !value.trim()}>{c.save}</Button></div>
     </form>
@@ -138,7 +140,7 @@ export function ProfilePage() {
   }
   async function makePrimary(cv: CVView) {
     setUploadError(null);
-    try { await sendJson(`/projects/${projectId}/cvs/${cv.id}`, 'PATCH', { is_primary: true }); cvs.reload(); primaryRevisions.reload(); } catch { setUploadError('pages.loadError'); }
+    try { await sendJson(`/projects/${projectId}/cvs/${cv.id}`, 'PATCH', { is_primary: true }); cvs.reload(); primaryRevisions.reload(); } catch { setUploadError('pages.makePrimaryError'); }
   }
   async function undo(cv: CVView) {
     try { await apiRequest(`/projects/${projectId}/cvs/${cv.id}/restore`, { method: 'POST' }); setRemoved(null); cvs.reload(); primaryRevisions.reload(); notifyTrashChanged(); }
@@ -148,7 +150,8 @@ export function ProfilePage() {
     setExtractError(false);
     try { await apiRequest(`/async/projects/${projectId}/cvs/${cv.id}/experience-extractions`, { method: 'POST' }); bank.reload(); } catch { setExtractError(true); }
   }
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' });
+  const date = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium' });
+  const dateTime = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
   const base = `/app/projects/${projectId}`;
   const list = cvs.data ?? [];
   const primary = list.find(cv => cv.is_primary);
@@ -156,23 +159,24 @@ export function ProfilePage() {
   const factCount = bank.data?.items.length;
   const versionLabel = (n: number) => w('versionShort', { n });
   const dropProps = { onDragOver: (event: React.DragEvent) => { event.preventDefault(); setDragging(true); }, onDragLeave: () => setDragging(false),
-    onDrop: (event: React.DragEvent) => { event.preventDefault(); setDragging(false); void upload(event.dataTransfer.files[0], '/cvs'); } };
+    onDrop: (event: React.DragEvent) => { event.preventDefault(); setDragging(false); if (!busy) void upload(event.dataTransfer.files[0], '/cvs'); } };
   return <section className="grid gap-6 lg:gap-8">
+    <div className="grid gap-1">
     <PageBack to={`${base}/overview`}>{t('nav.overview')}</PageBack>
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div className="min-w-0"><h1 className="break-words text-2xl font-semibold">{w('title')}</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">{w('subtitle')}</p></div>
-      <div className="flex flex-wrap gap-2"><Button className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button><BuildCvButton projectId={projectId} /></div>
+    <div className="grid">
+      <PageHeader icon={UserRound} title={w('title')} lede={w('subtitle')} actions={<><Button className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button><BuildCvButton projectId={projectId} /></>} />
       <input ref={addInput} className="sr-only" tabIndex={-1} aria-label={c.add} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], '/cvs'); event.target.value = ''; }} />
       <input ref={versionInput} className="sr-only" tabIndex={-1} aria-label={c.upload} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], `/cvs/${versionTarget.current}/revisions`); event.target.value = ''; }} />
+    </div>
     </div>
     {busy && <p role="status" className="text-sm text-muted-foreground">{w('uploading')}</p>}
     {uploadError && <p className="text-sm text-destructive" role="alert">{t(uploadError)}</p>}
     {extractError && <p className="text-sm text-destructive" role="alert">{c.failed}</p>}
-    {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2.5 text-sm">
+    {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2 text-sm">
       <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words [overflow-wrap:anywhere] sm:basis-auto">{undoFailed ? c.undoFailed : c.moved(removed.name)}</span>
       <Button type="button" variant="ghost" size="sm" className="max-sm:ml-4" onClick={() => void undo(removed)}>{c.undo}</Button>
-      <Link className="inline-flex min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=cvs`}>{c.openTrash}</Link>
+      <Link className="inline-flex min-h-11 lg:min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=cvs`}>{c.openTrash}</Link>
       <Button type="button" variant="ghost" size="icon" className="max-sm:ml-auto" aria-label={c.dismiss} onClick={() => setRemoved(null)}><X className="size-4" aria-hidden="true" /></Button>
     </div>}
     <Tabs value={tab} onValueChange={showTab}>
@@ -181,14 +185,14 @@ export function ProfilePage() {
         <TabsTrigger className="min-h-11 grow sm:grow-0" value="experience">{w('tabBank')}</TabsTrigger>
       </TabsList>
       <TabsContent value="library" className="grid gap-6">
-        {list.length === 0 ? <div {...dropProps} className={cn('grid justify-items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center sm:p-12', dragging && 'border-primary bg-accent')}>
+        {list.length === 0 ? <div {...dropProps} className={cn('grid justify-items-center gap-3 rounded-xl border-2 border-dashed p-6 text-center sm:p-12', dragging && 'border-primary bg-accent')}>
           <FileText className="size-10 text-muted-foreground" aria-hidden="true" />
           <div className="grid gap-1"><h2 className="text-lg font-semibold">{dragging ? w('dropActive') : w('dropTitle')}</h2><p className="mx-auto max-w-md text-sm text-muted-foreground">{w('firstUploadHelp')}</p></div>
           <div className="flex flex-wrap justify-center gap-2"><Button type="button" className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Upload className="size-4" aria-hidden="true" />{w('firstUpload')}</Button><BuildCvButton projectId={projectId} /></div>
           <p className="text-sm text-muted-foreground">{w('dropHere')} · {w('accepted')}</p>
         </div>
-          : <Card><CardContent className="grid gap-3 p-4 sm:p-5">
-            <h2 className="text-lg font-semibold">{c.cvs}</h2>
+          : <Card><CardContent className="grid gap-3 p-4 sm:px-5">
+            <h2 id="profile-cvs-title" tabIndex={-1} className="text-lg font-semibold">{c.cvs}</h2>
             <div aria-hidden="true" className={cn('hidden gap-3 border-b px-1 pb-2 text-sm font-medium text-muted-foreground xl:grid', ROW_GRID)}><span>{w('colName')}</span><span>{w('colVersion')}</span><span>{w('colType')}</span><span className="text-end">{w('colActions')}</span></div>
             <ul className="grid divide-y">{list.map(cv => {
               const latest = cv.latest_revision;
@@ -196,11 +200,12 @@ export function ProfilePage() {
               return <li key={cv.id} className={cn('grid gap-3 px-1 py-4', ROW_GRID, 'xl:items-center')}>
                 <div className="min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="min-w-0 break-words font-semibold [overflow-wrap:anywhere]">{cv.name}</h3>{cv.is_primary && <Badge variant="success"><Star className="me-1 size-3" aria-hidden="true" />{c.primary}</Badge>}</div>
-                  {latest && <p className="mt-0.5 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{latest.original_filename} · {date.format(new Date(latest.created_at))} · {formatSize(latest.size_bytes)}</p>}
+                  {latest && <p className="mt-0.5 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{latest.original_filename} · {dateTime.format(new Date(latest.created_at))} · {formatSize(latest.size_bytes)}</p>}
+                  {!latest && !Number.isNaN(new Date(cv.created_at).getTime()) && <p className="mt-0.5 text-sm text-muted-foreground">{w('createdAt', { date: dateTime.format(new Date(cv.created_at)) })}</p>}
                   {cv.in_use && <p className="mt-0.5 text-xs text-muted-foreground">{c.inUse}</p>}
                 </div>
-                <p className="text-sm"><span className="text-muted-foreground xl:hidden">{w('colVersion')}: </span>{latest ? <>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>}</> : '—'}</p>
-                <p className="text-sm"><span className="text-muted-foreground xl:hidden">{w('colType')}: </span>{latest ? fileType(latest.original_filename) : '—'}</p>
+                <p className="text-sm"><span className="text-muted-foreground xl:sr-only">{w('colVersion')}: </span>{latest ? <>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>}</> : '—'}</p>
+                <p className="text-sm"><span className="text-muted-foreground xl:sr-only">{w('colType')}: </span>{latest ? fileType(latest.original_filename) : '—'}</p>
                 <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                   {latest && <CvPreviewButton projectId={projectId} fileId={latest.file_id} name={cv.name} revision={latest.revision} filename={latest.original_filename} mimeType={latest.mime_type} className="min-h-11" />}
                   {cv.has_builder_draft
@@ -218,7 +223,7 @@ export function ProfilePage() {
             })}</ul>
             <p className="border-t pt-3 text-sm text-muted-foreground">{w('primaryNote')}</p>
           </CardContent></Card>}
-        <Card><CardContent className="grid gap-2 p-4 sm:p-5">
+        <Card><CardContent className="grid gap-2 p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0"><h2 className="text-lg font-semibold">{w('bankTitle')}</h2>
               {bank.data && <p className="text-sm"><span className="font-medium">{w('bankCount', { count: factCount })}</span> <span className="text-muted-foreground">{factCount ? w('bankFrom') : w('bankNone')}</span></p>}
@@ -236,6 +241,6 @@ export function ProfilePage() {
     {rename && <RenameDialog key={rename.id} cv={rename} c={c} projectId={projectId} onClose={() => setRename(null)} onDone={() => { setRename(null); cvs.reload(); }} />}
     {remove && <ConfirmDeleteDialog title={c.delTitle(remove.name)} description={c.delBody} confirmLabel={c.delConfirm}
       onConfirm={() => apiRequest(`/projects/${projectId}/cvs/${remove.id}`, { method: 'DELETE' }).then(() => undefined)}
-      onDone={() => { setRemoved(remove); setUndoFailed(false); setRemove(null); cvs.reload(); primaryRevisions.reload(); notifyTrashChanged(); }} onClose={() => setRemove(null)} />}
+      returnFocus={() => document.getElementById('profile-cvs-title')} onDone={() => { setRemoved(remove); setUndoFailed(false); setRemove(null); cvs.reload(); primaryRevisions.reload(); notifyTrashChanged(); }} onClose={() => setRemove(null)} />}
   </section>;
 }
