@@ -251,6 +251,30 @@ test-ai:
           if not py.exists():
               raise RuntimeError("missing: " + info)
           return info + " " + run(str(py), "--version")
+      def agent_runtime():
+          import asyncio, traceback, uuid
+          sys.path.insert(0, "/app/backend/src")
+          from job_search_platform.integrations.hermes_runtime import HermesRuntime
+          rt = HermesRuntime(json.loads(cfg.read_text())["image"])
+          rt.workspace_root.mkdir(parents=True, exist_ok=True)
+          ws = rt.workspace_root / ("test-ai-" + uuid.uuid4().hex[:8])
+          ws.mkdir(mode=0o700)
+          async def go():
+              pid = uuid.uuid4()
+              try:
+                  await rt.start_project(pid, ws)
+                  return "native bridge started"
+              finally:
+                  if pid in rt.projects:
+                      await rt.stop(pid)
+          try:
+              return asyncio.run(go())
+          except Exception as e:
+              tb = traceback.extract_tb(e.__traceback__)[-4:]
+              raise RuntimeError(f"{type(e).__name__}: {e} | " + " <- ".join(f"{pathlib.Path(f.filename).name}:{f.lineno}" for f in reversed(tb)))
+          finally:
+              try: ws.rmdir()
+              except OSError: pass
       base, key = os.environ["LITELLM_BASE_URL"], os.environ["LITELLM_API_KEY"]
       def call(path, body=None):
           req = urllib.request.Request(base + path, data=body and json.dumps(body).encode(),
@@ -267,7 +291,7 @@ test-ai:
           return repr(r["choices"][0]["message"]["content"])[:80]
       for n, f in (("1 docker socket", socket), ("2 agent image", runtime), ("3 agent start + path", agent_start),
                    ("4 litellm models", models), ("5 model call", chat),
-                   ("6 agent python", agent_python)):
+                   ("6 agent python", agent_python), ("7 agent runtime start", agent_runtime)):
           step(n, f)
       sys.exit(1 if failed else 0)
       PY
