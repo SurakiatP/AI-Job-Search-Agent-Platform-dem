@@ -164,3 +164,27 @@ fix-minio-permission:
   environment:
     name: production
     action: access
+
+# Fills the job index: fetches postings from the job boards and builds the Meilisearch index, inside the running app container.
+# Without it the search page has no `jobs` index and answers 502. Prints only a JSON count line, never environment values.
+# Run it once after the first deploy; later runs refresh the index. Set ACTION to reindex or status to run those instead (default: run).
+ingest-jobs:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  resource_group: production
+  variables:
+    ACTION: "run"
+  script:
+    - |
+      set -eu
+      case "$ACTION" in run|reindex|status|index-settings) ;; *) echo "ACTION must be run, reindex, status or index-settings"; exit 2 ;; esac
+      docker exec jobsearch-web /app/backend/.venv/bin/python /app/scripts/ingest_jobs.py "$ACTION"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
