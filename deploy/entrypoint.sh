@@ -19,5 +19,12 @@ if [ ! -f "$HOME/.cache/job-search-platform/hermes-runtime.json" ]; then
   echo "preparing agent runtime (first start, takes several minutes)"
   /app/backend/.venv/bin/python /app/infra/hermes/setup.py --acquire --build
 fi
+# The agent's own Python lives in DATA_PATH too; if it stops running (profile_cv fails with FileNotFoundError),
+# rebuild just that environment (the tool image is kept). A failure here must not keep the web app down.
+ENVPY="$HOME/.cache/job-search-platform/hermes-environment/.venv/bin/python"
+if ! "$ENVPY" -c pass 2>/dev/null; then
+  echo "agent python not runnable, rebuilding the agent environment"
+  /app/backend/.venv/bin/python /app/infra/hermes/setup.py --acquire || echo "agent environment rebuild failed"
+fi
 exec /app/backend/.venv/bin/python /app/scripts/run_local.py --host 0.0.0.0 --port 8000 \
   --frontend-dist /app/frontend/dist
