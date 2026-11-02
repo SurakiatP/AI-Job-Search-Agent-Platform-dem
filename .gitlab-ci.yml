@@ -139,3 +139,28 @@ show-logs:
   environment:
     name: production
     action: access
+
+# One-off fix: the minio image runs as uid 65532 and cannot write its data folder.
+# Changes the owner of ${DATA_PATH}/minio only (agreed with the platform team); nothing else is touched.
+# Uses the postgres image the deploy already pulled, so no new image is needed. DATA_PATH is read from ENV_FILE, never printed.
+fix-minio-permission:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  resource_group: production
+  script:
+    - |
+      set -eu
+      test -s "$ENV_FILE"
+      DATA_PATH=$(grep -m1 '^DATA_PATH=' "$ENV_FILE" | cut -d= -f2- | tr -d "\"'")
+      test -n "$DATA_PATH"
+      docker run --rm --user 0 --entrypoint chown -v "$DATA_PATH/minio:/data" postgres:17-alpine -R 65532:65532 /data
+      docker run --rm --user 0 --entrypoint ls -v "$DATA_PATH/minio:/data" postgres:17-alpine -lnd /data
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
