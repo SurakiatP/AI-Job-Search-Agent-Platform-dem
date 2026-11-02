@@ -275,6 +275,30 @@ test-ai:
           finally:
               try: ws.rmdir()
               except OSError: pass
+      def agent_parse():
+          import asyncio, shutil, uuid
+          sys.path.insert(0, "/app/backend/src")
+          from job_search_platform.integrations.hermes_runtime import HermesRuntime
+          rt = HermesRuntime(json.loads(cfg.read_text())["image"])
+          ws = rt.workspace_root / ("test-ai-" + uuid.uuid4().hex[:8])
+          (ws / "inputs").mkdir(parents=True, mode=0o700)
+          (ws / "inputs" / "cv.txt").write_text("Test CV. Skills: Python, SQL.")
+          async def go():
+              pid = uuid.uuid4()
+              await rt.start_project(pid, ws)
+              try:
+                  async def allow(_c, _n): return True
+                  rt.projects[pid].tool_gate = allow
+                  return "parsed " + str(len((await rt.parse_input(pid, "inputs/cv.txt")).text)) + " chars"
+              finally:
+                  await rt.stop(pid)
+          try:
+              return asyncio.run(go())
+          except Exception as e:
+              fn = getattr(e, "filename", None)
+              raise RuntimeError(f"{type(e).__name__} code={getattr(e, 'code', None)} missing={fn!r}")
+          finally:
+              shutil.rmtree(ws, ignore_errors=True)
       base, key = os.environ["LITELLM_BASE_URL"], os.environ["LITELLM_API_KEY"]
       def call(path, body=None):
           req = urllib.request.Request(base + path, data=body and json.dumps(body).encode(),
@@ -291,7 +315,7 @@ test-ai:
           return repr(r["choices"][0]["message"]["content"])[:80]
       for n, f in (("1 docker socket", socket), ("2 agent image", runtime), ("3 agent start + path", agent_start),
                    ("4 litellm models", models), ("5 model call", chat),
-                   ("6 agent python", agent_python), ("7 agent runtime start", agent_runtime)):
+                   ("6 agent python", agent_python), ("7 agent runtime start", agent_runtime), ("8 agent parse file", agent_parse)):
           step(n, f)
       sys.exit(1 if failed else 0)
       PY

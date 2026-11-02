@@ -1391,9 +1391,11 @@ def _log_failure(run: Run) -> None:
         return
     frames = traceback.extract_tb(tb)
     where = f"{Path(frames[-1].filename).name}:{frames[-1].lineno} {frames[-1].name}" if frames else "unknown"
+    path = f" missing={exc.filename!r}" if isinstance(exc, OSError) and exc.filename else ""  # a path or program name, never a message
+    chain = " <- ".join(f"{Path(f.filename).name}:{f.lineno}" for f in reversed(frames[-5:]))
     logging.getLogger(__name__).error(
-        "run_failed operation=%s run_id=%s error=%s code=%s at=%s",
-        run.operation, run.id, kind.__name__, getattr(exc, "code", None), where)
+        "run_failed operation=%s run_id=%s error=%s code=%s at=%s%s via=%s",
+        run.operation, run.id, kind.__name__, getattr(exc, "code", None), where, path, chain)
 
 
 def _safe_message(code: str) -> str:
