@@ -73,7 +73,7 @@ const copy = {
     found: (n: string) => `พบ ${n} ตำแหน่ง`, age: (n: number) => (n <= 0 ? 'ลงประกาศวันนี้' : `ลงประกาศ ${n} วันที่แล้ว`),
     stale: 'ประกาศเก่า · อาจปิดรับแล้ว',
     ghost: { old: (n: number) => `ลงประกาศมา ${n} วันแล้ว`, source_flagged: 'แหล่งงานระบุว่าประกาศนี้อาจไม่เป็นปัจจุบัน', unlisted: 'ไม่พบประกาศนี้ในแหล่งงานตอนตรวจครั้งล่าสุด' }, evaluate: 'ประเมินงานนี้', save: 'บันทึกงาน', saveShort: 'บันทึก', saved: 'บันทึกแล้ว', saving: 'กำลังบันทึก…',
-    original: 'เปิดประกาศต้นฉบับ', saveError: 'บันทึกงานไม่สำเร็จ ลองอีกครั้ง', loadMore: 'โหลดเพิ่ม', loading: 'กำลังโหลด…',
+    original: 'เปิดประกาศต้นฉบับ', saveError: 'บันทึกงานไม่สำเร็จ ลองอีกครั้ง', loadMore: 'โหลดเพิ่ม', capNote: 'แสดงสูงสุด 1,000 รายการแรก ใช้คำค้นหรือตัวกรองเพื่อจำกัดผลให้แคบลง', loading: 'กำลังโหลด…',
     none: 'ไม่พบตำแหน่งที่ตรงกับตัวกรอง', noneNext: 'ลองเปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูทั้งหมด', clear: 'ล้างตัวกรอง',
     errTitle: 'โหลดรายการงานไม่สำเร็จ', errBody: 'บริการอาจไม่พร้อมใช้งานชั่วคราว ลองใหม่อีกครั้ง หรือดูข้อมูลตัวอย่างเพื่อสำรวจหน้านี้',
     retry: 'ลองอีกครั้ง', viewSample: 'ดูข้อมูลตัวอย่าง', backLive: 'กลับไปข้อมูลจริง',
@@ -105,7 +105,7 @@ const copy = {
     found: (n: string) => `${n} ${n === '1' ? 'job' : 'jobs'} found`, age: (n: number) => (n <= 0 ? 'Posted today' : `${n} ${n === 1 ? 'day' : 'days'} ago`),
     stale: 'Stale listing',
     ghost: { old: (n: number) => `Posted ${n} days ago`, source_flagged: 'The source marks this listing as possibly out of date', unlisted: 'Not found on the source at the last check' }, evaluate: 'Evaluate this job', save: 'Save job', saveShort: 'Save', saved: 'Saved', saving: 'Saving…',
-    original: 'Open original posting', saveError: 'Could not save this job. Try again.', loadMore: 'Load more', loading: 'Loading…',
+    original: 'Open original posting', saveError: 'Could not save this job. Try again.', loadMore: 'Load more', capNote: 'Showing the first 1,000 results. Use a keyword or filters to narrow them down.', loading: 'Loading…',
     none: 'No jobs match these filters', noneNext: 'Change the search or clear the filters to see everything.', clear: 'Clear filters',
     errTitle: "Couldn't load jobs", errBody: 'The service may be temporarily unavailable. Try again, or view sample data to explore this page.',
     retry: 'Retry', viewSample: 'View sample data', backLive: 'Back to live data',
@@ -649,7 +649,8 @@ export function SearchPage() {
 
   const failed = (!sample && status === 'error') || (smartActive && cvs.status === 'error');
   const waiting = !sample && !awaiting && (status === 'loading' || (smartActive && cvs.status === 'loading'));
-  const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < total;
+  const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < Math.min(total, 1001);  // the service serves offsets up to 1000
+  const capped = !sample && !smartActive && total > 1000 && !hasMore;
 
   return <section className="grid gap-5 sm:gap-6 lg:gap-8">
     <div className="grid gap-1">
@@ -801,6 +802,7 @@ export function SearchPage() {
       </section> : <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
         <div className="grid min-w-0 gap-3 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-1">
           {list}
+          {capped && <p role="status" className="text-sm text-muted-foreground">{c.capNote}</p>}
           {!sample && hasMore && <div className="grid justify-items-start gap-2">
             {moreError && <p role="alert" className="text-sm text-destructive">{c.errTitle}</p>}
             <Button variant="outline" disabled={loadingMore} aria-busy={loadingMore} onClick={() => void loadMore()}>

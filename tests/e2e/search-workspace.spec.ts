@@ -118,6 +118,27 @@ test('sample data offers no Save or Evaluate and writes nothing to the project',
   expect(writes).toEqual([]);
 });
 
+test('load more stops at the 1000-result limit instead of asking for a page the service refuses', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/facets')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ total: 0, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [] }) });
+    const offset = Number(url.searchParams.get('offset') ?? 0);
+    if (offset > 1000) return route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ code: 'validation_error', message_key: 'errors.validation_error', retryable: false }) });
+    const items = Array.from({ length: 500 }, (_, i) => ({ ...searchItems[0], slug: `job-${offset + i}`, title: `Role ${offset + i}` }));
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items, total: 5000, limit: 20, offset }) });
+  });
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.goto(`/app/projects/${projectId}/search`);
+  const more = page.getByRole('button', { name: 'Load more' });
+  await expect(more).toBeVisible();
+  for (let i = 0; i < 3; i++) await more.click({ timeout: 10000 }).catch(() => undefined);
+  await expect(more).toHaveCount(0);
+  await expect(page.getByRole('alert').filter({ hasText: "Couldn't load jobs" })).toHaveCount(0);
+  await expect(page.getByText(/first 1,000 results/)).toBeVisible();
+});
+
 test('a load-more error keeps the successful results visible', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
