@@ -96,6 +96,19 @@ test('source failure can switch to clearly labelled sample results', async ({ pa
   await expect(page.getByRole('button', { name: 'Back to live data' })).toBeVisible();
 });
 
+test('a card that holds its own content keeps its top padding on a wide screen', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await page.route(`**/v1/projects/${projectId}/job-search**`, route => route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ code: 'job_source_unavailable', message_key: 'service.unavailable', retryable: true }) }));
+  await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
+  await page.goto(`/app/projects/${projectId}/search`);
+  const heading = page.getByRole('heading', { name: "Couldn't load jobs" });
+  await expect(heading).toBeVisible();
+  const gap = await heading.evaluate(el => el.getBoundingClientRect().top - el.closest('[role="alert"]')!.getBoundingClientRect().top);
+  expect(gap).toBeGreaterThanOrEqual(16);
+});
+
 test('sample data offers no Save or Evaluate and writes nothing to the project', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);

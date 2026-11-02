@@ -652,15 +652,15 @@ export function SearchPage() {
   const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < Math.min(total, 1001);  // the service serves offsets up to 1000
   const capped = !sample && !smartActive && total > 1000 && !hasMore;
 
-  return <section className="grid gap-5 sm:gap-6 lg:gap-8">
+  return <section className="grid gap-3 sm:gap-6 lg:gap-8">
     <div className="grid gap-1">
       <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
       <PageHeader icon={Search} title={c.title} lede={grandTotal != null ? (!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
         ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))) : undefined} />
     </div>
 
-    <div className="grid gap-4 sm:gap-5">
-    <div className="grid gap-3">
+    <div className="grid gap-2 sm:gap-5">
+    <div className="grid gap-2 sm:gap-3">
     <div role="group" aria-label={c.modeLabel} className="segmented w-fit max-w-full">
       {([['search', c.modeSearch], ['match', c.modeMatch]] as const).map(([key, label]) => {
         const on = (key === 'match') === smart;
