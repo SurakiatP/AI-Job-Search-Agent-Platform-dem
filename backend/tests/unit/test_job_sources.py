@@ -113,6 +113,24 @@ def test_meili_down_is_job_source_unavailable(monkeypatch):
         job_sources.job_facets(now=NOW)
 
 
+def test_missing_index_is_an_empty_list_and_is_not_cached(monkeypatch):
+    job_sources._cache.clear()
+    answers = iter([MeiliError("status_404"), result(HIT, total=1)])
+
+    class Client:
+        def search(self, index, payload):
+            answer = next(answers)
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+
+    monkeypatch.setattr(job_sources.meili, "client", lambda: Client())
+    empty = job_sources.search_jobs(now=NOW)
+    assert empty["items"] == [] and empty["total"] == 0
+    # the index appears later (first ingest finished): the empty answer must not stay cached for five minutes
+    assert job_sources.search_jobs(now=NOW)["total"] == 1
+
+
 def test_search_caches_and_passes_offset_limit_and_estimated_total(monkeypatch):
     calls = serve(monkeypatch, lambda p: result(HIT, total=79))
     kw = dict(q=" react ", cities=["Bangkok"], work_mode="remote", posted_within_days=7, category="frontend",

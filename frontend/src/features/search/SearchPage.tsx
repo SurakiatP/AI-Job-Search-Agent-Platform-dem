@@ -651,15 +651,15 @@ export function SearchPage() {
   const waiting = !sample && !awaiting && (status === 'loading' || (smartActive && cvs.status === 'loading'));
   const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < total;
 
-  return <section className="grid gap-3 sm:gap-6 lg:gap-8">
+  return <section className="grid gap-5 sm:gap-6 lg:gap-8">
     <div className="grid gap-1">
       <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
       <PageHeader icon={Search} title={c.title} lede={grandTotal != null ? (!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
         ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))) : undefined} />
     </div>
 
-    <div className="grid gap-2 sm:gap-4">
-    <div className="grid gap-2">
+    <div className="grid gap-4 sm:gap-5">
+    <div className="grid gap-3">
     <div role="group" aria-label={c.modeLabel} className="segmented w-fit max-w-full">
       {([['search', c.modeSearch], ['match', c.modeMatch]] as const).map(([key, label]) => {
         const on = (key === 'match') === smart;
@@ -753,7 +753,7 @@ export function SearchPage() {
 
     <SavedSearchesPanel projectId={projectId} params={params} onApply={changes => { setQInput(changes.q ?? ''); setMany(changes); }} />
 
-    {failed ? <Card role="alert"><CardContent className="grid gap-3 p-6">
+    {failed ? <Card role="alert"><CardContent className="grid gap-4 p-6">
       <h2 className="break-words font-semibold">{profileFailed ? c.analyzeError : c.errTitle}</h2>
       <p className="text-sm text-muted-foreground">{c.errBody}</p>
       <div className="flex flex-wrap gap-2">

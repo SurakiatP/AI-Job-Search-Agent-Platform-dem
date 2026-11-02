@@ -23,11 +23,18 @@ RETRIEVE = ["slug", "title", "company", "location", "cities", "work_mode", "skil
 FACETS = ["category", "provinces", "seniority", "employment_type", "company_type", "skills", "posting_language"]
 
 
+NO_INDEX = {"hits": [], "estimatedTotalHits": 0, "facetDistribution": {}}
+
+
 def _search(payload: dict) -> dict:
     """The only Meilisearch call; failures become safe, retryable ServiceErrors."""
     try:
         return meili.client().search(config.meili_index(), payload)
-    except (meili.MeiliError, OSError, ValueError):
+    except meili.MeiliError as exc:
+        if str(exc) == "status_404":  # the index is created by the first ingest; until then there are simply no jobs
+            return NO_INDEX
+        raise ServiceError("job_source_unavailable", retryable=True) from None
+    except (OSError, ValueError):
         raise ServiceError("job_source_unavailable", retryable=True) from None
 
 
@@ -44,6 +51,8 @@ def _cached(payload: dict) -> dict:
             _cache.move_to_end(key)
             return hit[1]
     data = _search(payload)
+    if data is NO_INDEX:  # do not remember "no index": it must show jobs as soon as the first ingest finishes
+        return data
     with _lock:
         _cache[key] = (now, data)
         _cache.move_to_end(key)
