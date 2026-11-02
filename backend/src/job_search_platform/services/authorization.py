@@ -1,7 +1,7 @@
 """Persisted, fail-closed authorization shared by every transport."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import get_args
 from uuid import UUID
 
@@ -14,6 +14,7 @@ from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
 
 GRANT_CAPABILITIES = frozenset(get_args(Capability))
+MAX_GRANT_TTL = timedelta(days=90)  # longest an agent grant or OAuth approval may live
 RESULT_RESOURCES = frozenset({"run", "event", "result", "generated_document"})
 GRANT_WORK_RESOURCES = frozenset(skill.id for skill in SKILLS if skill.kind == "task")
 GRANT_READ_RESOURCES = frozenset(skill.id for skill in SKILLS if skill.kind == "direct")

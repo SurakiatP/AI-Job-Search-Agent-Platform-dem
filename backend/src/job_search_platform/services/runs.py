@@ -54,6 +54,8 @@ MAX_QUEUED_PER_PROJECT = 10
 MAX_EXTERNAL_SUBMISSIONS_PER_HOUR = 20
 MAX_ACTIVE_SECONDS = 15 * 60
 MAX_TOOL_CALLS = 30
+OWNER_ONLY_OPERATIONS = frozenset({"export_document", "profile_cv", "match_jobs", "extract_experience",
+                                   "interview_generate", "interview_grade", "interview_report"})
 EVENT_TYPES = frozenset(
     {
         "run_queued",
@@ -1038,8 +1040,8 @@ class RunService:
         run = db.scalar(
             select(Run).where(Run.project_id == project_id, Run.id == run_id)
         )
-        # Manual-edit export runs are owner-only; grants (REST, MCP, A2A) never see them.
-        if run is None or (actor is not None and actor.kind != "user" and run.operation in {"export_document", "profile_cv", "match_jobs", "extract_experience"}):
+        # Owner-only runs (manual-edit export, CV profile, matching, experience extraction, practice) are never visible to grants (REST, MCP, A2A).
+        if run is None or (actor is not None and actor.kind != "user" and run.operation in OWNER_ONLY_OPERATIONS):
             raise ServiceError("not_found")
         return run
 

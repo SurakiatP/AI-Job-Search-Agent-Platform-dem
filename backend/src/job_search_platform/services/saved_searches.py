@@ -62,6 +62,7 @@ def _view(row: SavedSearch) -> SavedSearchView:
 
 DIGEST_DAYS = 7
 DIGEST_LIMIT = 20
+DIGEST_FETCH = 100  # look at this many matches, drop the seen ones, then keep DIGEST_LIMIT
 SEEN_RETENTION = timedelta(days=90)
 DUE_BATCH = 20
 TELEGRAM_MAX = 4096
@@ -243,7 +244,7 @@ class SavedSearches:
             row.digest_enabled = False
 
     def collect(self, db, row: SavedSearch, *, exclude_seen: bool = True) -> list[dict]:
-        page = self.search(**row.filters, posted_within_days=DIGEST_DAYS, limit=DIGEST_LIMIT, offset=0)
+        page = self.search(**row.filters, posted_within_days=DIGEST_DAYS, limit=DIGEST_FETCH, offset=0)
         seen = set(db.scalars(select(SavedSearchSeen.slug).where(SavedSearchSeen.saved_search_id == row.id))) \
             if exclude_seen else set()
         items, slugs = [], set()
@@ -264,6 +265,7 @@ class SavedSearches:
             logger.warning("mail_disabled", extra={"kind": "digest"})
             raise _SendFailed
         token, digest = _new_token()
+        before = row.prev_unsubscribe_token_hash, row.unsubscribe_token_hash
         if preview:
             row.prev_unsubscribe_token_hash = digest
         else:
@@ -275,6 +277,7 @@ class SavedSearches:
             self.mailer.send(Mail(account.email, subject, text))
         except Exception:  # noqa: BLE001 - delivery failure must not record the digest as sent
             logger.warning("digest_send_failed", extra={"saved_search_id": str(row.id)})
+            row.prev_unsubscribe_token_hash, row.unsubscribe_token_hash = before  # the unsent link must not push out a mailed one
             raise _SendFailed from None
 
     def _run_one(self, now: datetime, done: set) -> tuple[UUID, int] | None:
@@ -299,8 +302,14 @@ class SavedSearches:
                     logger.warning("digest_source_failed", extra={"saved_search_id": str(row_id)})
                     raise _RowFailed from None
                 if items:
+                    mailed = False
                     if row.digest_enabled:
-                        self._mail(account, row, items)
+                        try:
+                            self._mail(account, row, items)
+                            mailed = True
+                        except _SendFailed:
+                            if not (row.push_enabled or row.telegram_enabled):
+                                raise  # email is the only channel: retry the whole row
                     queued = webhooks.enqueue_digest(db, row.project_id, row.id, row.name, items, now) if row.push_enabled else 0
                     chat = False
                     if row.telegram_enabled and self.telegram is not None:
@@ -308,9 +317,9 @@ class SavedSearches:
                         try:
                             chat = self.telegram.deliver(db, account.id, telegram_text(account.locale, row.name, items, app_link))
                         except telegram.DeliveryFailed:
-                            if not (row.digest_enabled or queued):  # another channel got it out: do not resend it
+                            if not (mailed or queued):  # another channel got it out: do not resend it
                                 raise _SendFailed from None
-                    if not (row.digest_enabled or queued or chat):  # push/chat-only with no receiver: keep items unseen
+                    if not (mailed or queued or chat):  # push/chat-only with no receiver: keep items unseen
                         row.next_run_at = next_slot(now, row.frequency)
                         return row_id, 0
                     db.execute(pg_insert(SavedSearchSeen).values(

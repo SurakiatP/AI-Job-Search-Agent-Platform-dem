@@ -87,6 +87,12 @@ class ExperienceItemCreate(DTO):
     skills_used: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None = None
     skill_group: Literal["technical", "tools", "soft", "language", "domain"] | None = None
 
+    @model_validator(mode="after")
+    def dates_in_order(self):
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError("end_before_start")
+        return self
+
 
 class ApplyQuestion(DTO):
     """One form question, supplied by the owner or agent. Untrusted data: the system never fetches forms."""

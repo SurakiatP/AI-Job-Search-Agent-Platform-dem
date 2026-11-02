@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 import pytest
@@ -119,7 +119,7 @@ def test_grant_is_rechecked_during_live_stream_and_disconnect_does_not_cancel_ru
     project_id = project["id"]
     issued = client.post(
         f"/v1/projects/{project_id}/grants",
-        json={"capabilities": ["jobs:evaluate", "results:read"], "expires_at": "2099-01-01T00:00:00Z"},
+        json={"capabilities": ["jobs:evaluate", "results:read"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()},
         headers=_write_headers(csrf),
     )
     assert issued.status_code == 201

@@ -21,7 +21,7 @@ from sqlalchemy import delete, select, update
 from botocore.exceptions import ClientError
 from sqlalchemy.exc import IntegrityError
 
-from job_search_platform.db.models import Grant, Project, Run, StoredFile, User, UserToken
+from job_search_platform.db.models import Grant, Project, RateLimitEvent, Run, StoredFile, User, UserToken
 from job_search_platform.integrations.mailer import Mail
 from job_search_platform.integrations.object_store import _is_missing
 from job_search_platform.services import rate_limits
@@ -256,14 +256,25 @@ class Accounts:
         self._send(*mail)
 
     # -- login / logout --------------------------------------------------------------------------
+    def _login_attempt(self, ip: str, email: str | None) -> list[int]:
+        """Count this attempt up front under the bucket locks, so a parallel burst cannot pass the limit."""
+        with self.sessions.begin() as db:
+            ids = [rate_limits.hit(db, "login_ip", ip)]
+            if email is not None:
+                ids.append(rate_limits.hit(db, "login_email", f"{email}|{ip}"))
+                ids.append(rate_limits.hit(db, "login_email_any", email))
+            return ids
+
     def login(self, email: str, password: str, ip: str) -> OwnerExchange:
-        self._rate_limit("login_ip", ip)
+        # Failed attempts count (a success takes its hits back), and the email bucket is per IP: one client cannot
+        # lock an owner out everywhere. The all-IP email bucket can still block a correct password.
         try:
             email = normalize_email(email)
         except ServiceError:
+            self._login_attempt(ip, None)
             verify_dummy(password)
             raise ServiceError("invalid_credentials")
-        self._rate_limit("login_email", email)
+        hits = self._login_attempt(ip, email)
         with self.sessions() as db:
             user = db.scalar(select(User).where(User.email == email))
             stored = user.password_hash if user is not None else None
@@ -271,21 +282,24 @@ class Accounts:
             user_id = user.id if user is not None else None
         if stored is None:
             verify_dummy(password)
-        valid = stored is not None and verify_password(password, stored)
-        if not (usable and valid):
+        if not (usable and stored is not None and verify_password(password, stored)):
             raise ServiceError("invalid_credentials")
+        with self.sessions.begin() as db:
+            db.execute(delete(RateLimitEvent).where(RateLimitEvent.id.in_(hits)))
         return self.owner_sessions.create(user_id)
 
     def logout(self, cookie: str) -> None:
         self.owner_sessions.revoke(cookie)
 
     # -- password reset --------------------------------------------------------------------------
-    def forgot_password(self, email: str) -> None:
+    def forgot_password(self, email: str, ip: str = "unknown") -> None:
         try:
             email = normalize_email(email)
         except ServiceError:
             return  # same silent answer as an unknown email
-        self._rate_limit("forgot_email", email)
+        self._rate_limit("forgot_ip", ip)
+        self._rate_limit("forgot_email", f"{email}|{ip}")
+        self._rate_limit("forgot_email_any", email)
         mail = None
         with self.sessions.begin() as db:
             user = db.scalar(select(User).where(User.email == email))
@@ -303,6 +317,10 @@ class Accounts:
             now = datetime.now(timezone.utc)
             user.password_hash = new_hash
             OwnerSessions.revoke_all(db, user.id, now)
+            # Agent grants (and with them their OAuth tokens) issued from a taken-over session must not survive recovery.
+            db.execute(update(Grant).where(
+                Grant.project_id.in_(select(Project.id).where(Project.user_id == user.id)),
+                Grant.revoked_at.is_(None)).values(revoked_at=now))
 
     # -- account ---------------------------------------------------------------------------------
     def account(self, user_id: UUID) -> dict:

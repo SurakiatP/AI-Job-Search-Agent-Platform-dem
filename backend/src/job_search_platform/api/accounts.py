@@ -227,8 +227,8 @@ async def logout(request: Request, actor=Depends(write_actor), services: Service
 
 
 @router.post("/auth/password/forgot", status_code=202, response_model=CheckEmailView)
-async def forgot_password(body: ForgotPasswordRequest, services: Services = Depends(get_services)):
-    await asyncio.to_thread(services.accounts.forgot_password, body.email)
+async def forgot_password(body: ForgotPasswordRequest, request: Request, services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.forgot_password, body.email, _ip(request))
     return _check_email(services)
 
 

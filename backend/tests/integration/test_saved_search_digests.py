@@ -72,7 +72,7 @@ def test_sends_unseen_once_then_advances(ctx):
     assert mail.subject == "งานใหม่ 2 ตำแหน่ง: Data"
     assert "https://jobs.example.test/a" in mail.text and f"{ORIGIN}/digest/unsubscribe?token=" in mail.text
     assert f"{ORIGIN}/app/projects/{pid}/search?" in mail.text and "skills=sql" in mail.text
-    assert source.calls[0]["posted_within_days"] == 7 and source.calls[0]["limit"] == 20
+    assert source.calls[0]["posted_within_days"] == 7 and source.calls[0]["limit"] == ss.DIGEST_FETCH
     assert _seen(sessions, sid) == {"a", "b"}
     with sessions() as db:
         row = db.get(SavedSearch, sid)
@@ -346,3 +346,66 @@ def test_failed_preview_does_not_consume_rate_limit(ctx):
     with pytest.raises(ServiceError) as caught:
         service.preview(actor, pid, sid)
     assert caught.value.code == "rate_limited"
+
+
+class _WindowSource(_Source):
+    """Honours ``limit`` like the real index does."""
+
+    def __call__(self, **kwargs):
+        self.calls.append(kwargs)
+        return {"items": self.items[:kwargs["limit"]], "total": len(self.items), "limit": kwargs["limit"], "offset": 0}
+
+
+@pytest.mark.integration
+def test_digest_reaches_past_the_first_twenty_when_those_are_seen(ctx):
+    sessions, _, mailer, _, actor, pid, sid = ctx
+    source = _WindowSource([_item(f"j{i:02d}") for i in range(25)])
+    service = ss.SavedSearches(sessions, mailer, public_origin=ORIGIN, search=source)
+    _due(sessions, sid)
+    assert asyncio.run(service.run_due(NOW)) == 1
+    assert _seen(sessions, sid) == {f"j{i:02d}" for i in range(20)}
+    _due(sessions, sid)
+    assert asyncio.run(service.run_due(NOW + timedelta(days=1))) == 1
+    assert _seen(sessions, sid) == {f"j{i:02d}" for i in range(25)}
+    assert "https://jobs.example.test/j24" in mailer.sent[-1].text
+
+
+class _FailingMailer:
+    def send(self, mail):
+        raise RuntimeError("smtp down")
+
+
+class _Chat:
+    def __init__(self):
+        self.sent = []
+
+    def deliver(self, db, account_id, text):
+        self.sent.append(text)
+        return True
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("mailer", [None, _FailingMailer()], ids=["no_smtp", "smtp_down"])
+def test_a_dead_email_channel_does_not_stop_telegram(ctx, mailer):
+    sessions, _, _, source, actor, pid, sid = ctx
+    chat = _Chat()
+    service = ss.SavedSearches(sessions, mailer, public_origin=ORIGIN, search=source, telegram=chat)
+    with sessions.begin() as db:
+        db.execute(update(SavedSearch).where(SavedSearch.id == sid).values(telegram_enabled=True, digest_enabled=True))
+        before = db.get(SavedSearch, sid).unsubscribe_token_hash
+    _due(sessions, sid)
+    assert asyncio.run(service.run_due(NOW)) == 1
+    assert len(chat.sent) == 1 and _seen(sessions, sid) == {"a", "b"}
+    with sessions() as db:
+        assert db.get(SavedSearch, sid).last_sent_at == NOW
+        if mailer is not None:  # the link that was never mailed must not replace the one the owner holds
+            assert db.get(SavedSearch, sid).unsubscribe_token_hash == before
+
+
+@pytest.mark.integration
+def test_email_only_search_with_a_dead_mailer_is_still_retried(ctx):
+    sessions, _, _, source, actor, pid, sid = ctx
+    service = ss.SavedSearches(sessions, _FailingMailer(), public_origin=ORIGIN, search=source)
+    _due(sessions, sid)
+    asyncio.run(service.run_due(NOW))
+    assert _seen(sessions, sid) == set()

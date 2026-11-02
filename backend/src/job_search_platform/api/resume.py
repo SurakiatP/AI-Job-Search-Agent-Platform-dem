@@ -201,6 +201,8 @@ async def _publish(kind, project_id, owner_id, actor, services):
         data, stamp = parse_resume(draft.resume_data), draft.updated_at
         options = (draft.template_id, draft.accent, draft.document_language)
         layout, tokens = store.resolve(db, actor.user_id, draft.template_id, draft.accent)
+    with services.sessions.begin() as db:  # own transaction: the hit counts even when the publish fails later
+        rate_limits.hit(db, "resume_publish", str(actor.user_id))
     if not data.basics.name or rs.is_empty(data):
         raise ServiceError("resume_incomplete")
     pdf = await _render(services, project_id, data, layout, options[1], options[2], tokens)
@@ -438,6 +440,8 @@ def sync_bank(db, project_id: UUID, cv_id: UUID, facts: list[dict]) -> None:
     for digest, fact in wanted.items():
         row = existing.get(digest)
         if row is not None and row.removed_at is None:
+            if row.builder_cv_id not in (None, cv_id):
+                row.builder_cv_id = None  # two builder CVs list it: neither may remove it alone
             continue
         if live >= MAX_ITEMS:
             raise ServiceError("bank_full")

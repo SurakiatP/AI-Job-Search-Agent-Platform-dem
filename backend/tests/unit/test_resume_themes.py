@@ -213,3 +213,7 @@ def test_skill_level_is_never_drawn(template, tmp_path):
     stamp = lambda pdf: re.sub(rb"(CreationDate|ModDate)\s*\(?[^\n>]*|<x:xmpmeta.*?</x:xmpmeta>|/ID\s*\[[^\]]*\]", b"", pdf, flags=re.S)  # the PDF carries its render time and random ids
     assert stamp(render(5)) == stamp(render(None))  # same PDF whatever the stored level
     assert "level-dots" not in (Path(rs.__file__).parent.parent / "data/resume_templates/common.typ").read_text()
+
+
+def test_import_accepts_a_utf8_bom():
+    assert rt.validate_file(b"\xef\xbb\xbf" + _file()) == rt.validate_file(_file())

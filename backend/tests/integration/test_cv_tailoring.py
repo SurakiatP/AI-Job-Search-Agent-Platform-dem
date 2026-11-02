@@ -1,6 +1,7 @@
 """CV tailoring runs (autopilot/interactive), apply and restore, with a scripted fake runtime."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 import asyncio
 import json
 import os
@@ -270,7 +271,7 @@ def test_grant_cannot_apply_or_restore(api_context):
     ctx = api_context
     csrf, pid, *_ = _setup(ctx, [])
     token = ctx.client.post(f"{PREFIX}/{pid}/grants", headers=_write_headers(csrf), json={
-        "capabilities": ["results:read", "cv:tailor"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+        "capabilities": ["results:read", "cv:tailor"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     ctx.client.cookies.clear()
     bearer = {"Authorization": f"Bearer {token}"}
     apply = ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{uuid4()}/cv-tailoring/apply", headers=bearer, json={"proposal_ids": [0]})

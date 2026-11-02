@@ -194,3 +194,17 @@ test('education uses degree and institution labels in the form and list', async 
   await expect(section.getByText('Degree / major: Computer Science')).toBeVisible();
   await expect(section.getByText('Institution: Chulalongkorn University')).toBeVisible();
 });
+
+test('experience bank lists, offers and groups the five builder-only kinds', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  const extra: [string, string, string][] = [['language', 'English — fluent', 'Languages'], ['award', 'Best Paper: NLP', 'Awards'], ['publication', 'Graph Search Survey', 'Publications'], ['volunteer', 'Code club mentor', 'Volunteering'], ['interest', 'Chess', 'Interests']];
+  await bank(page, { items: extra.map(([kind, text], i) => ({ ...fact(`k${i}`, text), kind, role: null, organization: null, period: null })), provider_configured: true, extraction: null });
+  await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
+  const section = page.getByRole('region', { name: 'Experience bank' });
+  for (const [, text, heading] of extra) {
+    await expect(section.getByText(text)).toBeVisible();
+    await expect(section.getByRole('heading', { name: new RegExp(`^${heading}`) })).toBeVisible();
+  }
+  await expect(section.getByLabel('Type').locator('option')).toHaveCount(11);
+});

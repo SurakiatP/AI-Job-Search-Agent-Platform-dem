@@ -42,7 +42,7 @@ from job_search_platform.services.contracts import (
 from job_search_platform.services import applications, experience, job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
-from job_search_platform.services.runs import actor_scope
+from job_search_platform.services.runs import OWNER_ONLY_OPERATIONS, actor_scope
 from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
 from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.services.accounts import require_admin
@@ -1192,11 +1192,11 @@ async def download_file(project_id: UUID, file_id: UUID, actor=Depends(run_actor
 @router.get("/projects/{project_id}/runs", response_model=list[RunView])
 async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Services = Depends(get_services)):
     with services.sessions() as db:
-        authorize(db, actor, project_id, "read", "run")
+        authorize(db, actor, project_id, "results:read", "run")  # the scope agent tokens carry; sessions ignore the action
         query = select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())
         query = query.where(Run.operation.not_in(("profile_cv", "match_jobs", "extract_experience")))
         if actor.kind != "user":
-            query = query.where(Run.operation != "export_document")
+            query = query.where(Run.operation.not_in(OWNER_ONLY_OPERATIONS))
     return await asyncio.to_thread(services.runs.list_views, actor, project_id, query)
 
 

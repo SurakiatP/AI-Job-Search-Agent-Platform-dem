@@ -92,7 +92,7 @@ def validate_file(raw: bytes) -> ThemeFile:
     if len(raw) > FILE_MAX_BYTES:
         raise ThemeError("file_size")
     try:
-        body = json.loads(raw.decode("utf-8"))
+        body = json.loads(raw.decode("utf-8-sig"))
     except ValueError:
         raise ThemeError("not_json") from None
     if not isinstance(body, dict):

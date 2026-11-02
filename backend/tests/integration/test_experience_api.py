@@ -1,6 +1,7 @@
 """Experience bank API: owner CRUD, upload-triggered extraction and grant isolation."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 import pytest
@@ -50,7 +51,7 @@ def test_grant_cannot_reach_bank(api_context):
     cv_id = _upload(api_context, csrf, pid).json()["id"]
     item = client.post(f"{PREFIX}/{pid}/experience", headers=headers, json={"kind": "skill", "text": "Go"}).json()
     token = client.post(f"{PREFIX}/{pid}/grants", headers=headers, json={
-        "capabilities": ["results:read", "jobs:evaluate", "documents:draft"], "expires_at": "2099-01-01T00:00:00Z"}).json()["token"]
+        "capabilities": ["results:read", "jobs:evaluate", "documents:draft"], "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}).json()["token"]
     saved = dict(client.cookies)
     client.cookies.clear()
     try:
@@ -75,3 +76,27 @@ def test_no_gateway_key_skips_queue_and_reports_it(api_context, no_gateway_key):
     assert _upload(api_context, csrf, pid).status_code == 201
     view = api_context.client.get(f"{PREFIX}/{pid}/experience").json()
     assert view["provider_configured"] is False and view["extraction"] is None
+
+
+@pytest.mark.integration
+def test_owner_revives_a_removed_cv_fact_over_http(api_context):
+    from job_search_platform.db.models import CVRevision, ExperienceItem
+    from job_search_platform.services import experience
+    csrf = _owner(api_context)
+    pid = _project(api_context, csrf)
+    client, headers = api_context.client, _write_headers(csrf)
+    cv_id = _upload(api_context, csrf, pid).json()["id"]
+    with api_context.sessions.begin() as db:
+        rev = CVRevision(project_id=UUID(pid), cv_id=UUID(cv_id), revision=99)
+        db.add(rev)
+        db.flush()
+        for text in ("Ran BigQuery", "Built Airflow"):
+            experience._insert(db, UUID(pid), kind="skill", text=text, source="cv", source_cv_revision_id=rev.id)
+            item = db.scalar(select(ExperienceItem).where(ExperienceItem.text == text))
+            item.removed_at = datetime.now(timezone.utc)
+    url = f"{PREFIX}/{pid}/experience"
+    posted = client.post(url, headers=headers, json={"kind": "skill", "text": "ran bigquery"})
+    assert posted.status_code == 201 and posted.json()["source"] == "owner" and posted.json()["source_cv_id"] is None
+    mine = client.post(url, headers=headers, json={"kind": "skill", "text": "Other"}).json()["id"]
+    reverted = client.put(f"{url}/{mine}", headers=headers, json={"kind": "skill", "text": "Built Airflow"})
+    assert reverted.status_code == 200 and reverted.json()["source"] == "owner"
