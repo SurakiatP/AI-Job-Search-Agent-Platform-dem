@@ -634,23 +634,11 @@ export function SearchPage() {
 
     <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
     <div className="grid min-w-0 gap-3 sm:gap-5">
-    {!sample && <AdvancedFilters locale={locale} get={get} setMany={setMany} facets={facetsRes.data ?? undefined} number={number} additionalCount={(category ? 1 : 0) + (posted ? 1 : 0)}>
-      <div className="grid min-w-0 gap-2">
-        <Label htmlFor="job-posted">{c.posted}</Label>
-        <Select id="job-posted" value={posted} disabled={sample} onChange={e => setFilter('posted_within_days', e.target.value)}>
-          <option value="">{c.anyPosted}</option>
-          {[7, 14, 30].map(d => <option key={d} value={String(d)}>{c.days(d)}</option>)}
-        </Select>
-      </div>
+    {!sample && <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+      <AdvancedFilters locale={locale} get={get} setMany={setMany} facets={facetsRes.data ?? undefined} number={number} categories={categories} catLabel={catLabel}
+        labels={{ categories: c.categories, posted: c.posted, anyPosted: c.anyPosted, days: c.days }} />
       <Presets locale={locale} get={get} setMany={setMany} />
-      {categories.length > 0 && <div role="group" aria-label={c.categories} className="flex flex-wrap gap-2">
-        <h3 className="w-full text-sm font-semibold">{c.categories}</h3>
-        {categories.map(f => <Button key={f.value} type="button" variant="outline" size="sm" className="h-auto whitespace-normal text-left" aria-pressed={category === f.value}
-          onClick={() => setFilter('category', category === f.value ? '' : f.value)}>
-          {catLabel(f.value)}{f.count ? <span className="text-muted-foreground">{number.format(f.count)}</span> : null}
-        </Button>)}
-      </div>}
-    </AdvancedFilters>}
+    </div>}
     {activeFilterChips.length > 0 && <div role="group" className="flex flex-wrap items-center gap-2" aria-label={tSearch('controls.activeFilters')}>
       {activeFilterChips.map(chip => <Button key={`${chip.key}:${chip.label}`} type="button" variant="secondary" size="sm" className="h-auto max-w-full whitespace-normal text-left" aria-label={tSearch('controls.removeFilter', { label: chip.label })} onClick={() => removeFilter(chip.key)}>
         <span className="break-words">{chip.label}</span><X className="size-3.5 shrink-0" aria-hidden="true" />

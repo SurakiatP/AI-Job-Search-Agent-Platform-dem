@@ -501,6 +501,7 @@ test('the filter panel fits a phone in both languages and every control stays re
     await page.getByRole('button', { name: /^(More filters|ตัวกรองเพิ่มเติม)/ }).click();
     await expect(page.locator('#adv-filters')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.locator('#adv-filters nav').getByRole('button', { name: /Pay|เงินเดือน/ }).click();
     for (const target of [page.locator('#adv-filters button').first(), page.locator('#adv-salary'), page.locator('#job-city'), page.locator('#job-mode')]) {
       const box = await target.boundingBox();
       expect(box!.height).toBeGreaterThanOrEqual(36);
