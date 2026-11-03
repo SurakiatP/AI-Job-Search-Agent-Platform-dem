@@ -14,7 +14,7 @@ from botocore.config import Config
 from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from helpers import grant, owner, project, provider_config, revisions, session
+from helpers import fake_ocr_gateway, grant, owner, project, provider_config, revisions, session
 from job_search_platform.db.models import (
     CVRevision,
     Document,
@@ -139,13 +139,15 @@ async def test_upload_uses_a_dedicated_real_native_parse_runtime(publication_con
     files.parser = parser
     body = Path(__file__).resolve().parents[1] / "fixtures" / "synthetic_cv.txt"
 
-    uploaded = await files.upload(
-        actor,
-        project_id,
-        _bytes(body.read_bytes()),
-        "text/plain",
-        "synthetic-cv.txt",
-    )
+    with fake_ocr_gateway(body.read_text(encoding="utf-8")) as gateway:  # uploads are read by OCR of rendered pages
+        files.gateway = lambda: gateway
+        uploaded = await files.upload(
+            actor,
+            project_id,
+            _bytes(body.read_bytes()),
+            "text/plain",
+            "synthetic-cv.txt",
+        )
 
     assert uploaded.publication_state == "published"
     assert uploaded.kind == "cv_original"

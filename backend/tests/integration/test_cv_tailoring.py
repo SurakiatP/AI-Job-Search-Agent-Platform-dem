@@ -92,6 +92,9 @@ def _setup(ctx, script):
     pid = _project(ctx, csrf)
     cv = _upload(ctx, csrf, pid).json()
     cancel_queued_extract_runs(ctx.sessions)
+    # Uploads cache the OCR-read text (CVRevisionText); runs reuse it, so seed the scripted CV text there.
+    with ctx.sessions.begin() as db:
+        db.query(CVRevisionText).update({CVRevisionText.text: CV_TEXT})
     session = _session(ctx, csrf, pid, cv["latest_revision"]["id"], job=JOB).json()
     ctx.client.post(f"/v1/async/projects/{pid}/agent-runs/{session['evaluation_run_id']}/cancel", headers=_write_headers(csrf))
     facts = {}
@@ -326,10 +329,8 @@ def test_full_starting_coverage_skips_rounds(api_context):
     csrf, pid, session, facts, _ = _setup(ctx, [])
     runtime = _Runtime(ctx.tmp_path / "ws", [[_edit("Wrote Python services", facts["py"])]])
 
-    async def covered(project_id, path):
-        return SimpleNamespace(text="Skills: Python, Docker, Kubernetes, Terraform")
-
-    runtime.parse_input = covered
+    with ctx.sessions.begin() as db:
+        db.query(CVRevisionText).update({CVRevisionText.text: "Skills: Python, Docker, Kubernetes, Terraform"})
     auto = _tailor(ctx, csrf, pid, session, "f1").json()["id"]
     _execute_next(ctx, runtime)
     run = _run(ctx, auto)

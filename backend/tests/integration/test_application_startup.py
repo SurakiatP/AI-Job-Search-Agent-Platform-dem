@@ -219,6 +219,11 @@ async def test_failed_native_shutdown_attempts_runtime_cleanup_and_keeps_target_
 async def test_actual_built_frontend_with_production_rest_upload_and_session_restore(production_factory, monkeypatch, tmp_path, unused_tcp_port):
     import os
     factory, _ = production_factory
+    from helpers import fake_ocr_gateway
+    ocr = fake_ocr_gateway("Synthetic Candidate\nData analyst. SQL and Python, three years. Bangkok.")  # uploads are read by OCR
+    gateway = ocr.__enter__()
+    monkeypatch.setenv("LITELLM_BASE_URL", gateway.base_url)
+    monkeypatch.setenv("LITELLM_API_KEY", gateway.api_key)
     origin = f"http://127.0.0.1:{unused_tcp_port}"
     monkeypatch.setenv("APP_PUBLIC_ORIGIN", origin)
     app = main.create_app(service_factory=factory, frontend_dist=main.ROOT / "frontend" / "dist")
@@ -250,5 +255,6 @@ async def test_actual_built_frontend_with_production_rest_upload_and_session_res
         output, _ = await asyncio.wait_for(process.communicate(), 180)
         assert process.returncode == 0, output.decode()
     finally:
+        ocr.__exit__(None, None, None)
         server.should_exit = True
         await task

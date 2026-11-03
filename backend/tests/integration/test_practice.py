@@ -167,7 +167,7 @@ def test_ac_ivp_10_practice_has_its_own_daily_quota(api_context, monkeypatch):
     csrf, pid, session, facts, _ = _setup(ctx, [])
     with ctx.sessions() as db:
         main_runs = db.scalar(select(func.count()).select_from(Run))
-    assert main_runs >= 2  # the session's evaluation and the CV extraction
+    assert main_runs >= 1  # the session's evaluation; extraction now runs only on the user's button
     monkeypatch.setenv("USER_DAILY_RUN_QUOTA", "0")
     monkeypatch.setenv("USER_DAILY_PRACTICE_QUOTA", "1")
     assert _create(ctx, csrf, pid, session["id"]).status_code == 201  # main runs do not count here

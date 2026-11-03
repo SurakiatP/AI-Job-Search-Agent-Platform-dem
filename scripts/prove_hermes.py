@@ -82,7 +82,7 @@ async def prove(image: str | None = None):
             (first.workspace / "inputs" / "synthetic_cv.txt").write_text(
                 (ROOT / "backend/tests/fixtures/synthetic_cv.txt").read_text())
             parsed = await runtime.parse_input(first.project_id, "inputs/synthetic_cv.txt")
-            assert parsed.kind == "text" and "ดร.มะลิ" in parsed.text
+            assert parsed.kind == "text" and not parsed.text and parsed.pages  # every upload is read by OCR from rendered pages
             protected = await tool("write_file", path="/workspace/inputs/synthetic_cv.txt", content="MALICIOUS")
             assert protected.get("error"), protected
             staging = first.workspace / "staging"
@@ -99,7 +99,7 @@ async def prove(image: str | None = None):
                     assert artifact.is_file() and artifact.stat().st_size > 100
                     shutil.copyfile(artifact, first.workspace / "inputs" / artifact.name)
                     parsed = await runtime.parse_input(first.project_id, f"inputs/{artifact.name}")
-                    assert parsed.kind == format and heading.casefold() in parsed.text.casefold(), (format, locale, parsed.text)
+                    assert parsed.kind == format and not parsed.text and parsed.pages, (format, locale, parsed)  # the host OCRs the pages
                     thai_font_embedded = False
                     if format == "pdf" and locale == "th":
                         assert b"/FontFile2" in artifact.read_bytes() and b"/ToUnicode" in artifact.read_bytes()
@@ -130,7 +130,7 @@ async def prove(image: str | None = None):
             pdf.extend(f"trailer\n<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode())
             (first.workspace / "inputs/scanned.pdf").write_bytes(pdf)
             scanned = await runtime.parse_input(first.project_id, "inputs/scanned.pdf")
-            assert scanned.needs_vision == "scanned_pdf" and not scanned.text, scanned  # host runs the OCR step
+            assert scanned.kind == "pdf" and not scanned.text and scanned.pages, scanned  # host runs the OCR step
             unsupported = await tool("skill_view", name="../../other-project")
             assert unsupported.get("error") == "unsupported_tool"
             escaped = await tool("terminal", command="true", _host_local=True)

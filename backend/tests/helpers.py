@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import secrets
+from contextlib import contextmanager
 
 from sqlalchemy import select
 from datetime import datetime, timedelta, timezone
@@ -136,3 +138,33 @@ def completed_extract_run(db, project_id):
     db.add(run)
     db.flush()
     return run.id
+
+
+@contextmanager
+def fake_ocr_gateway(text: str):
+    """A local OpenAI-compatible chat-completions server that answers every page image with `text`."""
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from threading import Thread
+
+    from job_search_platform.integrations.gateway import GatewaySettings
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            body = json.dumps({"choices": [{"finish_reason": "stop", "message": {"content": text}}]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        yield GatewaySettings(f"http://127.0.0.1:{server.server_port}", "test-key", "ai-analyze", "typesafe/jev-1.13")
+    finally:
+        server.shutdown()
+        server.server_close()

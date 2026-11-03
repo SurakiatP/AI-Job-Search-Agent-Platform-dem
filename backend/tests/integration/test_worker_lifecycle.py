@@ -18,9 +18,10 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from helpers import owner, project, provider_config, revisions, run_request, session, primary_cv
+from helpers import fake_ocr_gateway, owner, project, provider_config, revisions, run_request, session, primary_cv
 from job_search_platform.db.models import CVRevision, JobRevision, Run, StoredFile
 from job_search_platform.integrations.hermes_runtime import HermesRuntime, RuntimeErrorCode
+from job_search_platform.services.ocr import with_vision_text
 from job_search_platform.services.runs import RunService
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.workers.queue import PostgresRunQueue
@@ -258,6 +259,9 @@ async def test_native_tool_budget_is_reserved_before_the_actual_side_effect(db_s
         inputs = workspace / "inputs"
         (inputs / "cv.txt").write_text("SYNTHETIC_CV_INPUT: Thai and English profile", encoding="utf-8")
         parsed = await runtime.parse_input(db_project.id, "inputs/cv.txt")
+        assert parsed.pages and not parsed.text  # the sandbox only renders pages; the host reads them by OCR
+        with fake_ocr_gateway("SYNTHETIC_CV_INPUT: Thai and English profile") as gateway:
+            parsed = await with_vision_text(parsed, workspace, lambda: gateway)
         assert "SYNTHETIC_CV_INPUT" in parsed.text
         assert len(reserved_calls) == 1
         with sessions() as db:
