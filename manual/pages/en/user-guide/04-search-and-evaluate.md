@@ -35,7 +35,7 @@ There are 2 ways.
 1. Go to {{ui:"Job search"}}. It is in the left menu of the project.
 2. Select the {{ui:"Smart match"}} mode.
 3. Select {{ui:"CV to match against"}}.
-4. Set the filters you want.
+4. Set the filters you want. Location and work mode are on the search bar. Click {{ui:"More filters"}} to open the full filter window (role, employment, skills, pay, language), then click {{ui:"Show results"}}.
 5. Click {{ui:"Start Smart match"}}.
 6. Wait until the agent has ranked the jobs. While it works, the screen shows "Reading your CV" and "Shortlisting jobs".
 7. Open a job to see the reasons and the matching and missing skills.

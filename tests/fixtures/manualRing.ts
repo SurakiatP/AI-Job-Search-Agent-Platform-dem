@@ -4,11 +4,22 @@ import type { Locator, Page } from '@playwright/test';
 
 // Draws numbered orange rings over elements that are already on screen (never scrolls, so rings cannot drift), for the manual pictures and clips (never used by real tests).
 export async function ring(page: Page, targets: Locator[]) {
+  const height = page.viewportSize()?.height ?? 800;
+  // The taller redesigned pages can push a target below the fold. Scroll once so that ALL targets are centred together
+  // (they share one picture); scrolling per target would push the earlier ones out, and boxes are measured only afterwards.
+  const measured = [];
+  for (const target of targets) { await target.first().waitFor(); measured.push(await target.first().boundingBox()); }
+  if (measured.some(box => !box || box.y < 0 || box.y + box.height > height)) {
+    const scrollY = await page.evaluate(() => window.scrollY);
+    const tops = measured.map(box => box!.y + scrollY), bottoms = measured.map(box => box!.y + box!.height + scrollY);
+    const top = Math.min(...tops), span = Math.max(...bottoms) - top;
+    if (span <= height - 40) { await page.evaluate(y => window.scrollTo(0, y), Math.max(0, top - (height - span) / 2)); await page.waitForTimeout(250); }
+    else { await targets[0].first().evaluate(el => el.scrollIntoView({ block: 'center' })); await page.waitForTimeout(200); }
+  }
   const boxes = [];
   for (const target of targets) {
-    await target.first().waitFor();
     const box = await target.first().boundingBox();
-    if (!box || box.y < 0 || box.y + box.height > (page.viewportSize()?.height ?? 800)) throw new Error('highlight target is outside the picture');
+    if (!box || box.y < 0 || box.y + box.height > height) throw new Error('highlight target is outside the picture');
     boxes.push(box);
   }
   await page.evaluate(list => {
