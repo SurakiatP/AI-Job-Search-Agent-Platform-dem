@@ -27,31 +27,31 @@ colors:
   stage-evaluate: "#287A74"
   stage-docs: "#287A74"
   stage-track: "#287A74"
-  dark-background: "#0E2B29"
-  dark-foreground: "#E9F7F4"
-  dark-card: "#17403D"
-  dark-primary: "#7DCFC4"
-  dark-primary-foreground: "#0B2623"
-  dark-secondary: "#1F4A46"
-  dark-secondary-foreground: "#E9F7F4"
-  dark-muted: "#1F4A46"
-  dark-muted-foreground: "#A8CCC7"
-  dark-accent: "#1D4A45"
-  dark-accent-foreground: "#E9F7F4"
+  dark-background: "#151F1E"
+  dark-foreground: "#D9E4E1"
+  dark-card: "#1D2A29"
+  dark-primary: "#86C9BF"
+  dark-primary-foreground: "#10231F"
+  dark-secondary: "#253533"
+  dark-secondary-foreground: "#D9E4E1"
+  dark-muted: "#253533"
+  dark-muted-foreground: "#9CB0AC"
+  dark-accent: "#233B38"
+  dark-accent-foreground: "#D9E4E1"
   dark-destructive: "#FF9AAA"
   dark-success: "#79D5AA"
   dark-warning: "#EBC27D"
-  dark-border: "#2D5C57"
-  dark-border-strong: "#3C7A73"
-  dark-input: "#6FA9A3"
-  dark-ring: "#7DCFC4"
-  dark-sidebar: "#123532"
-  dark-surface-tint: "#143A37"
-  dark-stage-cv: "#7DCFC4"
-  dark-stage-search: "#7DCFC4"
-  dark-stage-evaluate: "#7DCFC4"
-  dark-stage-docs: "#7DCFC4"
-  dark-stage-track: "#7DCFC4"
+  dark-border: "#2D3F3D"
+  dark-border-strong: "#3D5452"
+  dark-input: "#6E8582"
+  dark-ring: "#86C9BF"
+  dark-sidebar: "#111A19"
+  dark-surface-tint: "#192524"
+  dark-stage-cv: "#86C9BF"
+  dark-stage-search: "#86C9BF"
+  dark-stage-evaluate: "#86C9BF"
+  dark-stage-docs: "#86C9BF"
+  dark-stage-track: "#86C9BF"
 typography:
   display:
     fontFamily: "Noto Serif Thai, Georgia, serif"
@@ -114,7 +114,7 @@ components:
 
 **Creative North Star: "Quiet Ledger"**
 
-Teal is action and AI. The page is a warm neutral ground with white hairline cards framed by a tinted sidebar; dark mode is a deep teal ground. Page titles are Thai serif, everything else Noto Sans Thai. Its signature is the pairing of CV revision and job revision: source context stays near the task that uses it. Written labels always accompany semantic status colours.
+Teal is action and AI. The page is a warm neutral ground with white hairline cards framed by a tinted sidebar; dark mode is a soft grey-green ground (low saturation, text 11:1 not 14:1, to avoid glare). Page titles are Thai serif, everything else Noto Sans Thai. Its signature is the pairing of CV revision and job revision: source context stays near the task that uses it. Written labels always accompany semantic status colours.
 
 Inspired by visual character only; no code or assets from AGPL-licensed Dossier.
 
