@@ -102,3 +102,19 @@ def test_practice_v2_does_not_punish_gaps_or_logistics():
            {"section": "logistics", "prompt": "When can you start?", "why": "w", "key_points": ["a"], "model_answer": None, "evidence_ids": []}]
     raw = json.dumps({"questions": qs, "reverse_questions": ["a", "b", "c"]})
     assert sc("practice", raw, case) > 95
+
+
+def test_ocr():
+    cases = D["cases"]["ocr"]
+    th = next(c for c in cases if c["lang"] == "th")
+    en = next(c for c in cases if c["lang"] == "en")
+    s = rb.SCORERS["ocr"]
+    assert s(th["text"], th, None, None)[0] > 99
+    md = "\n".join("- " + line if i % 2 else line for i, line in enumerate(th["text"].split("\n")))
+    assert s(md, th, None, None)[0] > 95  # bullets/markdown are not errors
+    stripped = "".join(ch for ch in th["text"] if ch not in rb.build_ocr.MARKS)
+    bad, details = s(stripped, th, None, None)
+    assert bad < 85 and details["marks"] == 0  # lost tone marks and vowels are punished
+    assert s("garbage", th, None, None)[0] < 20 and s("", th, None, None)[0] == 0
+    assert s(en["text"], en, None, None)[1]["marks"] is None and s(en["text"], en, None, None)[0] > 99
+    assert s(en["text"].replace(en["facts"][1], "000-000-0000"), en, None, None)[1]["facts"] < 1
