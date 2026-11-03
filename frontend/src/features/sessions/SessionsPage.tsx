@@ -16,10 +16,12 @@ import { useResource } from '../projects/useResource';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { notifyTrashChanged } from '@/lib/trash';
 import { PageHeader } from '@/components/PageHeader';
+import { FitScore } from '@/components/FitScore';
+import { AiLabel } from '@/components/AiMark';
 
 type Filter = 'all' | 'attention' | 'progress' | 'done' | 'stopped' | 'notStarted';
 const FILTERS: Filter[] = ['all', 'attention', 'progress', 'done', 'stopped', 'notStarted'];
-const columns = 'md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,11rem)_auto]';
+const columns = 'md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,11rem)_auto]';
 
 // Group by the latest run of the session; `null` means no run yet.
 function group(run: RunView | null): Filter {
@@ -67,7 +69,10 @@ export function SessionsPage() {
   // Without the run list we cannot tell the state, so rows fall back to a plain "Open" and filters hide.
   const known = runs.status !== 'error' && runs.data !== undefined;
   const latestRun = (id: string) => known ? [...(runs.data ?? [])].filter(run => run.session_id === id).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0] ?? null : null;
-  const rows = list.map(session => ({ session, run: latestRun(session.id), paired: Boolean(session.cv_revision_id && session.job_revision_id) }));
+  // The score comes from the newest finished evaluation of the session; the runs list already carries it.
+  const scoreOf = (id: string) => known ? [...(runs.data ?? [])].filter(run => run.session_id === id && run.status === 'completed' && run.evaluation_result?.score != null)
+    .sort((x, y) => Date.parse(y.created_at) - Date.parse(x.created_at))[0]?.evaluation_result?.score ?? null : null;
+  const rows = list.map(session => ({ session, run: latestRun(session.id), score: scoreOf(session.id), paired: Boolean(session.cv_revision_id && session.job_revision_id) }));
   const counts = Object.fromEntries(FILTERS.map(key => [key, key === 'all' ? rows.length : rows.filter(row => group(row.run) === key).length])) as Record<Filter, number>;
   const shown = filter === 'all' || !known ? rows : rows.filter(row => group(row.run) === filter);
   const jobVersion = (id?: string | null) => (jobs.data ?? []).find(job => job.id === id)?.revision;
@@ -88,7 +93,7 @@ export function SessionsPage() {
       </div>}
       <div className="workspace-panel overflow-hidden">
         <div className={cn('hidden gap-4 border-b px-6 py-3 text-sm font-medium text-muted-foreground md:grid', columns)} aria-hidden="true"><span>{s('list.opportunity')}</span><span>{s('list.comparedUsing')}</span><span>{s('list.latest')}</span><span>{s('list.next')}</span><span className="w-11" /></div>
-        <ul className="divide-y">{shown.map(({ session, run, paired }) => {
+        <ul className="divide-y">{shown.map(({ session, run, score, paired }) => {
           const action = known ? nextAction(run, paired) : 'open';
           const version = jobVersion(session.job_revision_id);
           const titleId = `eval-${session.id}`;
@@ -102,6 +107,7 @@ export function SessionsPage() {
               </> : <span className="text-muted-foreground">{s('list.notPaired')}</span>}
             </div>
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              {score != null && <><FitScore score={score} locale={locale} /><AiLabel /></>}
               {known && (run ? <StatusBadge status={run.status} locale={locale} /> : paired ? <Badge variant="outline" className="text-muted-foreground">{s('list.notEvaluated')}</Badge> : null)}
               {run && <span className="text-xs text-muted-foreground"><time dateTime={run.created_at}>{relativeTime(run.created_at, Date.now(), locale)}</time></span>}
             </div>
