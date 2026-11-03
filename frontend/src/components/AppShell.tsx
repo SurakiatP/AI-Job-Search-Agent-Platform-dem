@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
-import { HomeIconLink, HomeLink } from './Header';
+import { HomeIconLink, HomeLink, LanguageToggle } from './Header';
 import { AccountMenu } from './AccountMenu';
 import { BottomNav } from './BottomNav';
 import { RunIndicator } from './RunIndicator';
@@ -36,7 +36,7 @@ export function AppShell({ children, projects, projectId, sessionId, onReload }:
       <div className="min-w-0 lg:p-2 lg:ps-0">
         <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-2 border-b bg-background/90 px-4 py-2 backdrop-blur lg:hidden">
           {projectId ? <ProjectSwitcher {...sidebarProps} compact /> : <HomeLink />}
-          <div className="flex shrink-0 items-center gap-2"><RunIndicator projectId={projectId} compact /><AccountMenu projectId={projectId} /></div>
+          <div className="flex shrink-0 items-center gap-2"><RunIndicator projectId={projectId} compact /><LanguageToggle /><AccountMenu projectId={projectId} /></div>
         </header>
         <div className="min-w-0 lg:min-h-[calc(100dvh-16px)] lg:overflow-clip lg:rounded-xl lg:border lg:bg-background">
         <VerifyBanner />

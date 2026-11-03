@@ -43,6 +43,15 @@ export function LanguageSwitch() {
   </div>;
 }
 
+/** One button that always shows the language you would switch to; kept visible because owners switch often. */
+export function LanguageToggle() {
+  const { t } = useTranslation();
+  const { locale, setLocale } = useLocale();
+  const next = locale === 'th' ? 'en' : 'th';
+  return <Button variant="ghost" size="sm" className="min-w-11 shrink-0 font-medium" lang={next}
+    aria-label={`${t('language')}: ${next === 'en' ? 'English' : 'ไทย'}`} onClick={() => setLocale(next)}>{next === 'en' ? 'EN' : 'ไทย'}</Button>;
+}
+
 export function Header({ menu, nav, actions }: { menu?: ReactNode; nav?: ReactNode; actions?: ReactNode }) {
   const { t } = useTranslation();
   const session = useOwnerSession();

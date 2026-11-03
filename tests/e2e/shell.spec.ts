@@ -78,9 +78,12 @@ test('320px shell keeps the account menu reachable and returns keyboard focus', 
   await expect(menu).toBeInViewport();
   await menu.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('menuitem', { name: /ภาษาของหน้าจอ/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /ตั้งค่า|Settings/ }).first()).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(menu).toBeFocused();
+  // Language is not in the menu any more: the owner asked for it to stay visible in the header (checked once the menu is closed,
+  // because an open modal menu hides the rest of the page from the accessibility tree).
+  await expect(page.getByRole('button', { name: /^ภาษาของหน้าจอ:/ }).filter({ visible: true }).first()).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await toggleLanguage(page);
   await expect(page.getByRole('heading', { name: 'Shell verification' })).toBeVisible();

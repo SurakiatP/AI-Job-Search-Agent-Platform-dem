@@ -1,7 +1,6 @@
-import { Bot, Languages, LogOut, Mic, Monitor, Moon, Settings, Sun, Trash2, UserCog } from 'lucide-react';
+import { Bot, LogOut, Mic, Monitor, Moon, Settings, Sun, Trash2, UserCog } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { useLocale } from '../app/providers';
 import { useTheme, type Theme } from '../app/theme';
 import { logout, useAccount } from '../lib/api';
 import { useTrashCount } from '../lib/useTrashCount';
@@ -10,11 +9,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 const themes = [['light', Sun], ['dark', Moon], ['system', Monitor]] as const;
 
-// One avatar button holds everything that is not a daily destination: account, tools, trash, theme, language.
+// One avatar button holds everything that is not a daily destination: account, tools, trash and theme. Language stays visible beside it (LanguageToggle).
 export function AccountMenu({ projectId, wide = false }: { projectId?: string; wide?: boolean }) {
   const { t } = useTranslation();
   const account = useAccount();
-  const { locale, setLocale } = useLocale();
   const { theme, setTheme } = useTheme();
   const trash = useTrashCount(projectId);
   const base = projectId ? `/app/projects/${projectId}` : null;
@@ -37,7 +35,6 @@ export function AccountMenu({ projectId, wide = false }: { projectId?: string; w
       </>}
       <div role="separator" className="my-1 h-px bg-border" />
       <DropdownMenuItem onSelect={event => { event.preventDefault(); setTheme(nextTheme); }}><ThemeIcon aria-hidden="true" />{t('appearance')}<span className="ms-auto text-xs text-muted-foreground">{t(theme)}</span></DropdownMenuItem>
-      <DropdownMenuItem onSelect={event => { event.preventDefault(); setLocale(locale === 'th' ? 'en' : 'th'); }}><Languages aria-hidden="true" />{t('language')}<span className="ms-auto text-xs text-muted-foreground">{locale === 'th' ? 'ไทย' : 'EN'}</span></DropdownMenuItem>
       <div role="separator" className="my-1 h-px bg-border" />
       <DropdownMenuItem onSelect={() => void logout()}><LogOut aria-hidden="true" />{t('auth.logout')}</DropdownMenuItem>
     </DropdownMenuContent>

@@ -235,8 +235,8 @@ export function SessionPage() {
         {primary && status === 'needs_input' && operation === 'tailor_cv' && <p className="text-xs text-muted-foreground">{t('panel.reviewHint')}</p>}
       </section>
       <Tabs value={tab} onValueChange={setTab} className="grid min-w-0 gap-4">
-        <div className="border-b">
-          <TabsList aria-label={c.title} className="h-auto min-w-0 max-w-full justify-start rounded-none max-sm:overflow-x-auto border-b-0 bg-transparent p-0">
+        <div className="min-w-0 border-b">
+          <TabsList aria-label={c.title} className="h-auto min-w-0 max-w-full justify-start rounded-none max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[scrollbar-width:none] border-b-0 bg-transparent p-0">
             <TabsTrigger value="evaluation" className={tabClass}>{t('tabs.evaluation')}{dot(runDot(evalRun))}</TabsTrigger>
             <TabsTrigger value="documents" className={tabClass}>{t('tabs.documents')}{dot(runDot(sessionRuns.find(run => run.operation === 'draft_documents') ?? sessionRuns.find(run => run.operation === 'tailor_cv')))}</TabsTrigger>
             <TabsTrigger value="answers" className={tabClass}>{t('tabs.answers')}{dot(runDot(sessionRuns.find(run => run.operation === 'apply_prepare')))}</TabsTrigger>
