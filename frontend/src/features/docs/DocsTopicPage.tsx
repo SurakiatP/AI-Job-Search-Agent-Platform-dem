@@ -13,6 +13,8 @@ import { docsCopy } from './copy';
 
 export function DocsTopicPage() {
   const { topic: slug } = useParams();
+  const [open, setOpen] = useState(true);
+  useEffect(() => setOpen(true), [slug]);
   const { locale } = useLocale();
   const c = docsCopy[locale];
   const status = useOwnerSession().status;
@@ -40,18 +42,25 @@ export function DocsTopicPage() {
       <nav aria-label={c.topics} className="mb-8 lg:sticky lg:top-20 lg:mb-0 lg:self-start">
         <ol className="flex gap-2 overflow-x-auto pb-2 lg:grid lg:gap-1 lg:overflow-visible lg:pb-0">
           {topics.map((item, position) => <li key={item.id} className="shrink-0">
-            <Link to={`/docs/${item.id}`} aria-current={item.id === slug ? 'page' : undefined}
-              className="flex items-baseline gap-2 rounded-lg px-3 py-2 text-sm leading-snug text-muted-foreground hover:bg-accent hover:text-accent-foreground aria-[current=page]:bg-accent aria-[current=page]:font-semibold aria-[current=page]:text-accent-foreground">
-              <span className="tabular-nums text-xs opacity-70">{position + 1}</span><span className="flex-1">{c.list[position].title}</span>
-              {item.id === slug && page && <ChevronDown className="hidden size-4 shrink-0 self-center lg:block" aria-hidden="true" />}
-            </Link>
-            {item.id === slug && page && <nav aria-label={c.onThisPage} className="ml-5 mt-1 hidden border-l-2 border-[var(--stage,var(--primary))]/30 pl-2 lg:block">
-              <ul className="grid gap-0.5">
-                {page.sections.map((section, sectionIndex) => <li key={section.heading}>
-                  <a href={`#section-${sectionIndex + 1}`} className="block rounded-md px-3 py-2 text-sm leading-snug text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>
-                </li>)}
-              </ul>
-            </nav>}
+            <div className="flex items-center rounded-lg aria-[current=page]:bg-accent" aria-current={item.id === slug ? 'page' : undefined}>
+              <Link to={`/docs/${item.id}`} aria-current={item.id === slug ? 'page' : undefined}
+                className="flex min-h-11 flex-1 items-baseline gap-2 rounded-lg px-3 py-2 text-sm leading-snug text-muted-foreground hover:bg-accent hover:text-accent-foreground aria-[current=page]:font-semibold aria-[current=page]:text-accent-foreground lg:min-h-10">
+                <span className="tabular-nums text-xs opacity-70">{position + 1}</span><span className="flex-1">{c.list[position].title}</span>
+              </Link>
+              {item.id === slug && page && <button type="button" aria-expanded={open} aria-controls="docs-sections" aria-label={`${c.onThisPage}: ${open ? c.collapse : c.expand}`} onClick={() => setOpen(value => !value)}
+                className="me-1 hidden size-10 shrink-0 items-center justify-center rounded-full text-accent-foreground hover:bg-primary/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex">
+                <ChevronDown className={`size-5 transition-transform duration-500 ease-[var(--ease-standard)] ${open ? '' : '-rotate-90'}`} aria-hidden="true" />
+              </button>}
+            </div>
+            {item.id === slug && page && <div id="docs-sections" className={`docs-sections hidden lg:grid ${open ? 'is-open' : ''}`}>
+              <nav aria-label={c.onThisPage} inert={!open} className="ml-5 mt-1 min-h-0 overflow-hidden border-l-2 border-[var(--stage,var(--primary))]/30 pl-2">
+                <ul className="grid gap-0.5">
+                  {page.sections.map((section, sectionIndex) => <li key={section.heading}>
+                    <a href={`#section-${sectionIndex + 1}`} className="block rounded-md px-3 py-2 text-sm leading-snug text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>
+                  </li>)}
+                </ul>
+              </nav>
+            </div>}
           </li>)}
         </ol>
       </nav>
