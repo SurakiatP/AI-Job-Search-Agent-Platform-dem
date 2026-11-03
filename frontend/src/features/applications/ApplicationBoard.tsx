@@ -48,7 +48,7 @@ function OpportunityRow({ projectId, card, locale, onMove, updatedLabel }: {
       </span>
     </div>
     <p className="col-span-2 text-sm text-muted-foreground md:col-span-1 md:col-start-4 md:row-start-1"><span className="md:hidden">{t('nextStep')}: </span>{t(nextStepKey[card.stage])}</p>
-    <p className="col-span-2 text-xs text-muted-foreground md:col-span-1 md:col-start-5 md:row-start-1">{updatedLabel(card.last_activity_at || card.created_at)}</p>
+    <p className="col-span-2 whitespace-nowrap text-xs text-muted-foreground md:col-span-1 md:col-start-5 md:row-start-1">{updatedLabel(card.last_activity_at || card.created_at)}</p>
   </li>;
 }
 

@@ -70,7 +70,7 @@ export function JobsPage() {
           <p>{appT('summary', { tracked: jobs.length, active: jobs.filter(job => ACTIVE_STAGES.includes(job.stage)).length, closed: jobs.filter(job => CLOSED_STAGES.includes(job.stage)).length })}</p>
           <p className="mt-1 text-sm">{appT('recordingNote')}</p>
         </>}
-        actions={<Button aria-expanded={showForm} aria-controls="add-job-form" onClick={() => setOpen(value => !value)}>{showForm ? appT('closeForm') : <><Plus className="size-4" aria-hidden="true" />{appT('addPosting')}</>}</Button>} />
+        actions={<Button variant={showForm ? 'outline' : 'default'} aria-expanded={showForm} aria-controls="add-job-form" onClick={() => setOpen(value => !value)}>{showForm ? appT('closeForm') : <><Plus className="size-4" aria-hidden="true" />{appT('addPosting')}</>}</Button>} />
     </div>
     {showForm && <Card id="add-job-form">
       <CardHeader><CardTitle>{appT('addPostingTitle')}</CardTitle></CardHeader>
@@ -156,7 +156,7 @@ export function JobDetailPage() {
   const score = evaluation?.evaluation_result?.score ?? null;
   const band = bandView[fitBand(score) as keyof typeof bandView];
   const card = 'grid min-w-0 content-start gap-4 rounded-lg border border-border bg-card p-5 sm:p-6';
-  return <article className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-8 lg:grid-rows-[auto_auto_auto_1fr]">
+  return <article className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-8 lg:grid-rows-[auto_auto_auto_1fr]">
     <header className="grid min-w-0 gap-3 lg:col-span-2">
       <PageBack to={`${base}/applications`}>{t('back')}</PageBack>
       <div className="flex flex-wrap items-start justify-between gap-4">

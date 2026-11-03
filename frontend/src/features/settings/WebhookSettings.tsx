@@ -91,7 +91,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
     </Alert>}
     <form className="grid gap-4" onSubmit={event => { event.preventDefault(); if (url.trim() && events.length) void add(); }}>
       <Field id="webhook-url" label={c.url} hint={c.urlHint}>
-        <Input id="webhook-url" type="url" inputMode="url" maxLength={2048} value={url} onChange={event => setUrl(event.target.value)} required />
+        <Input id="webhook-url" placeholder="https://" type="url" inputMode="url" maxLength={2048} value={url} onChange={event => setUrl(event.target.value)} required />
       </Field>
       <fieldset className="grid gap-1"><legend className="mb-1 text-sm font-medium">{c.events}</legend>
         <div className="grid gap-1 sm:grid-cols-2">{EVENTS.map(event => <label key={event} className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
