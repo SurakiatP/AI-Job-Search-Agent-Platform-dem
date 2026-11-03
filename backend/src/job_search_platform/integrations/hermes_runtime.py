@@ -83,6 +83,8 @@ class ParsedInput:
     kind: Literal["text", "pdf", "docx"]
     sha256: str
     pages: tuple[str, ...] = ()  # sandbox page pictures (staging/page-N.png|jpg) the host sends to the vision model; text is empty until then
+    preview: str = ""  # DOCX only: staging/preview.pdf, the sandbox's rendered PDF kept as the CV preview
+    preview_pdf: bytes | None = None  # filled by ocr.with_vision_text from the file above
 
 @dataclass
 class ProjectRuntime:
@@ -318,7 +320,10 @@ class HermesRuntime:
                 or response.get("kind") not in ("text", "pdf", "docx")
                 or not isinstance(response.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", response["sha256"])):
             raise RuntimeErrorCode("native_response_invalid")
-        return ParsedInput("", response["kind"], response["sha256"], tuple(pages))
+        preview = response.get("preview", "")
+        if preview not in ("", "staging/preview.pdf"):
+            raise RuntimeErrorCode("native_response_invalid")
+        return ParsedInput("", response["kind"], response["sha256"], tuple(pages), preview)
 
     async def export_document(self, project_id: UUID, format: Literal["pdf", "docx"],
                               source: str, output: str, engine: str = "chromium") -> str:

@@ -18,6 +18,7 @@ MAX_PAGES = 10
 MAX_EDGE_PX = 1800
 DPI = 120
 MAX_PNG_BYTES = 3 * 1024 * 1024  # the host rejects pages over 4 MB; a bigger PNG falls back to JPEG for that page
+MAX_PREVIEW_BYTES = 10 * 1024 * 1024  # the host drops a bigger preview PDF; the upload itself still works
 MAX_TEXT_BYTES = 300_000  # ~ more than 10 printed pages of text; stops chromium from printing hundreds of pages
 STAGING = Path("/workspace/staging")
 CSS = """@page { size: A4; margin: 14mm; }
@@ -52,8 +53,8 @@ def _page_info(pdf: Path) -> list[tuple[float, float]]:
 
 
 def render_pdf(pdf: Path) -> list[str]:
-    for old in STAGING.glob("page-*"):
-        old.unlink()
+    for old in (*STAGING.glob("page-*"), STAGING / "preview.pdf"):
+        old.unlink(missing_ok=True)
     names = []
     for number, (width, height) in enumerate(_page_info(pdf), 1):
         dpi = max(30, min(DPI, int(MAX_EDGE_PX * 72 / max(width, height, 1))))  # long edge stays <= MAX_EDGE_PX
@@ -132,10 +133,14 @@ def parse(path: Path) -> dict:
         html_to_pdf(f"<pre>{html.escape(text)}</pre>", pdf)
     try:
         pages = render_pdf(pdf)
+        result = {"pages": pages, "kind": kind, "sha256": digest}
+        if kind == "docx" and pdf.stat().st_size <= MAX_PREVIEW_BYTES:  # the rendered PDF becomes the CV preview; the host reads and deletes it
+            pdf.replace(STAGING / "preview.pdf")
+            result["preview"] = "staging/preview.pdf"
     finally:
         if pdf != path:
             pdf.unlink(missing_ok=True)
-    return {"pages": pages, "kind": kind, "sha256": digest}
+    return result
 
 
 if __name__ == "__main__":

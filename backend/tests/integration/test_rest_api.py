@@ -69,6 +69,10 @@ class _Parser:
 
     async def parse_input(self, project_id, relative_path: str) -> ParsedInput:
         body = (self.projects[project_id].workspace / relative_path).read_bytes()
+        if body.startswith(b"PK\x03\x04"):  # a DOCX: the sandbox also hands back the PDF it rendered
+            return ParsedInput("Synthetic DOCX text", "docx", hashlib.sha256(body).hexdigest(), preview_pdf=b"%PDF-1.4\nsynthetic preview")
+        if body.startswith(b"%PDF-"):
+            return ParsedInput("Synthetic PDF text", "pdf", hashlib.sha256(body).hexdigest())
         return ParsedInput(body.decode("utf-8"), "text", hashlib.sha256(body).hexdigest())
 
 
@@ -386,6 +390,55 @@ def test_upload_download_private_minio_and_grant_cannot_read_raw_cv(api_context)
     denied = client.get(f"/v1/projects/{project_id}/files/{file_id}/download",
                         headers={"Authorization": f"Bearer {token}"})
     assert denied.status_code == 403
+
+
+DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+def _upload_cv(context, csrf, name, body, mime):
+    project_id = context.client.post("/v1/projects", json={"name": "Preview project"}, headers=_write_headers(csrf)).json()["id"]
+    workspace = context.tmp_path / "parse" / project_id
+    (workspace / "inputs").mkdir(parents=True)
+    context.parser.projects[UUID(project_id)] = SimpleNamespace(workspace=workspace)
+    upload = context.client.post(f"/v1/projects/{project_id}/cv", files={"file": (name, body, mime)}, headers=_write_headers(csrf))
+    assert upload.status_code == 201, upload.text
+    with context.sessions() as db:
+        file_id = db.scalar(select(CVRevision.file_id).where(CVRevision.project_id == UUID(project_id)))
+        key = db.scalar(select(StoredFile.storage_key).where(StoredFile.id == file_id))
+    return project_id, file_id, key
+
+
+@pytest.mark.integration
+def test_preview_shows_the_file_itself_for_txt_pdf_and_docx(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    pid, fid, _ = _upload_cv(api_context, csrf, "cv.txt", b"Synthetic plain CV", "text/plain")
+    shown = client.get(f"/v1/projects/{pid}/files/{fid}/preview")
+    assert (shown.status_code, shown.content) == (200, b"Synthetic plain CV")
+    assert shown.headers["content-type"].startswith("text/plain") and shown.headers["content-disposition"] == "inline"
+    assert shown.headers["cache-control"] == "no-store" and shown.headers["x-content-type-options"] == "nosniff"
+
+    pdf = b"%PDF-1.4\nsynthetic original"
+    pid, fid, _ = _upload_cv(api_context, csrf, "cv.pdf", pdf, "application/pdf")
+    shown = client.get(f"/v1/projects/{pid}/files/{fid}/preview")
+    assert (shown.status_code, shown.content, shown.headers["content-type"]) == (200, pdf, "application/pdf")
+
+    pid, fid, key = _upload_cv(api_context, csrf, "cv.docx", b"PK\x03\x04synthetic docx", DOCX)
+    shown = client.get(f"/v1/projects/{pid}/files/{fid}/preview")
+    assert (shown.status_code, shown.headers["content-type"]) == (200, "application/pdf")
+    assert shown.content.startswith(b"%PDF-") and b"synthetic preview" in shown.content
+    assert client.get(f"/v1/projects/{pid}/files/{fid}/download").content == b"PK\x03\x04synthetic docx"  # the original is untouched
+
+    api_context.s3.delete_object(Bucket=api_context.bucket, Key=key + ".preview")  # uploaded before previews were kept
+    gone = client.get(f"/v1/projects/{pid}/files/{fid}/preview")
+    assert (gone.status_code, gone.json()["code"]) == (404, "preview_unavailable")
+
+    expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+    token = client.post(f"/v1/projects/{pid}/grants", json={"capabilities": ["results:read"], "expires_at": expires},
+                        headers=_write_headers(csrf)).json()["token"]
+    client.cookies.clear()
+    assert client.get(f"/v1/projects/{pid}/files/{fid}/preview", headers={"Authorization": f"Bearer {token}"}).status_code == 403
+    assert client.get(f"/v1/projects/{pid}/files/{fid}/preview").status_code == 401
 
 
 @pytest.mark.integration
