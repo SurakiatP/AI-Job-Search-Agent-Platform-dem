@@ -815,12 +815,12 @@ class RunService:
             append_event(db, run, "run_queued", {"status": "queued"}, now=now)
             return self._authorized_view(db, actor, run)
 
-    async def submit_extract(self, actor: Actor, project_id: UUID, cv_id: UUID, *, automatic: bool = False, revision_id: UUID | None = None) -> RunView | None:
-        """Owner-only: queue LLM extraction of the CV's latest revision into the experience bank.
-        Automatic (upload) triggers skip revisions already extracted; None then."""
-        return await asyncio.to_thread(self._submit_extract_sync, actor, project_id, cv_id, automatic, revision_id)
+    async def submit_extract(self, actor: Actor, project_id: UUID, cv_id: UUID, *, revision_id: UUID | None = None) -> RunView:
+        """Owner-only: queue LLM extraction of a CV revision into the experience bank.
+        Only the owner's explicit \"Extract CV\" request may call this: nothing in the system starts extraction on its own."""
+        return await asyncio.to_thread(self._submit_extract_sync, actor, project_id, cv_id, revision_id)
 
-    def _submit_extract_sync(self, actor: Actor, project_id: UUID, cv_id: UUID, automatic: bool, revision_id: UUID | None = None) -> RunView | None:
+    def _submit_extract_sync(self, actor: Actor, project_id: UUID, cv_id: UUID, revision_id: UUID | None = None) -> RunView:
         if actor.kind != "user":
             raise ServiceError("forbidden")
         now = datetime.now(timezone.utc)
@@ -844,8 +844,6 @@ class RunService:
             active = next((run for run in existing if run.status != "completed"), None)
             if active is not None:
                 return self._authorized_view(db, actor, active)
-            if automatic and existing:
-                return None
             queued = db.scalar(select(func.count()).select_from(Run).where(
                 Run.project_id == project_id, Run.status == "queued")) or 0
             if queued >= MAX_QUEUED_PER_PROJECT:

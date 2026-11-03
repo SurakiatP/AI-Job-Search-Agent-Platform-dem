@@ -37,15 +37,14 @@ def _arrange(db_session):
 
 
 @pytest.mark.asyncio
-async def test_submit_extract_dedups_skips_completed_and_hides_from_grants(db_session):
+async def test_submit_extract_dedups_active_run_and_allows_rerun_after_completion(db_session):
     p, actor, cv, revision, sessions = _arrange(db_session)
     service = RunService(sessions)
-    first = await service.submit_extract(actor, p.id, cv.id, automatic=True)
+    first = await service.submit_extract(actor, p.id, cv.id)
     assert first.operation == "extract_experience"
     assert (await service.submit_extract(actor, p.id, cv.id)).id == first.id
     with sessions.begin() as db:
         db.get(Run, first.id).status = "completed"
-    assert await service.submit_extract(actor, p.id, cv.id, automatic=True) is None
     again = await service.submit_extract(actor, p.id, cv.id)
     assert again is not None and again.id != first.id
 
