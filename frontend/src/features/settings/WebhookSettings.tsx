@@ -19,6 +19,7 @@ const copy = {
     title: 'Webhook', description: 'รับการแจ้งเตือนแบบ push ที่ลงลายเซ็น HMAC เมื่องานของเอเจนต์เปลี่ยนสถานะหรือมีสรุปงานใหม่',
     url: 'URL ปลายทาง', urlHint: 'ต้องเป็น https', events: 'เหตุการณ์', add: 'เพิ่ม webhook', loading: 'กำลังโหลด webhook',
     secretTitle: 'secret สำหรับตรวจลายเซ็น', secretOnce: 'secret นี้แสดงเพียงครั้งเดียว คัดลอกเก็บไว้ตอนนี้', secretDone: 'บันทึกแล้ว',
+    devNote: 'สำหรับนักพัฒนา: วิธีตรวจลายเซ็น',
     verify: 'ตรวจลายเซ็น: คำนวณ HMAC-SHA256(secret, "<t>.<body>") แล้วเทียบกับค่า v1 ใน header X-JSP-Signature',
     empty: 'ยังไม่มี webhook', deliveries: 'การส่งล่าสุด', noDeliveries: 'ยังไม่มีการส่ง',
     test: (u: string) => `ส่งทดสอบไปที่ ${u}`, enabled: (u: string) => `เปิดใช้: ${u}`, remove: (u: string) => `ลบ ${u}`,
@@ -33,6 +34,7 @@ const copy = {
     title: 'Webhooks', description: 'Receive HMAC-signed push notifications when agent tasks change state or a digest is ready.',
     url: 'Endpoint URL', urlHint: 'Must be https.', events: 'Events', add: 'Add webhook', loading: 'Loading webhooks',
     secretTitle: 'Signing secret', secretOnce: 'This secret is shown only once. Copy it now.', secretDone: 'Done, I saved it',
+    devNote: 'For developers: how to verify the signature',
     verify: 'Verify a request: compute HMAC-SHA256(secret, "<t>.<body>") and compare it with v1 in the X-JSP-Signature header.',
     empty: 'No webhooks yet', deliveries: 'Recent deliveries', noDeliveries: 'No deliveries yet',
     test: (u: string) => `Send test to ${u}`, enabled: (u: string) => `Enabled: ${u}`, remove: (u: string) => `Delete ${u}`,
@@ -101,7 +103,7 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
       {message && <Notice ok={message.ok}>{message.text}</Notice>}
       <div><Button type="submit" busy={busy} disabled={busy || !url.trim() || !events.length}>{c.add}</Button></div>
     </form>
-    <p className="text-sm text-muted-foreground">{c.verify}</p>
+    <details className="text-sm text-muted-foreground"><summary className="min-h-11 cursor-pointer content-center lg:min-h-10">{c.devNote}</summary><p className="pb-2">{c.verify}</p></details>
     {hooks.status === 'error' ? <div className="flex flex-wrap items-center gap-2"><Notice>{c.loadError}</Notice><Button variant="outline" onClick={hooks.reload}>{c.retry}</Button></div> :
     (hooks.data ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{c.empty}</p> :
       <ul className="grid gap-2">{(hooks.data ?? []).map(hook => <li key={hook.id} className="grid min-w-0 gap-2 rounded-md bg-muted/40 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">

@@ -403,3 +403,6 @@ input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: n
 .docs-sections { grid-template-rows: 0fr; transition: grid-template-rows 500ms var(--ease-standard), opacity 500ms var(--ease-standard); opacity: 0; }
 .docs-sections.is-open { grid-template-rows: 1fr; opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .docs-sections, .docs-sections.is-open { transition: none; } }
+
+/* A native select always shows a value, so its label stays floated on the border. */
+.mui-field.mui-select > .mui-label { top: 0; background: var(--card); transform: translateY(-50%) scale(0.875); max-width: calc((100% - 24px) / 0.875); }

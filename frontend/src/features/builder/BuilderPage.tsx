@@ -240,9 +240,10 @@ export function BuilderPage({ kind }: { kind: Kind }) {
         <div className="flex flex-wrap gap-2">{ACCENTS.map(a => <button key={a.id} type="button" aria-label={c.accents[a.id]} aria-pressed={draft.accent === a.id} onClick={() => change({ ...draft, accent: a.id })}
           className="grid size-11 place-items-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground"><span className="size-7 rounded-full" style={{ background: a.hex }} /></button>)}</div>
       </fieldset>}
-      <div className="grid gap-2 lg:w-56"><Label htmlFor="cvb-lang">{c.docLanguage}</Label>
+      <div className="mui-field mui-select lg:w-56">
         <Select id="cvb-lang" value={draft.document_language} onChange={e => change({ ...draft, document_language: e.target.value as Lang })}>
-          <option value="th">ไทย</option><option value="en">English</option></Select></div>
+          <option value="th">ไทย</option><option value="en">English</option></Select>
+        <Label htmlFor="cvb-lang" className="mui-label">{c.docLanguage}</Label></div>
     </div>
 
     <div className="flex gap-2 lg:hidden">

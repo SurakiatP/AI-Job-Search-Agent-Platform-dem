@@ -65,12 +65,12 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
     <div className="grid gap-1"><h2 id="application-tracking-title" className="text-lg font-semibold">{t('applicationTracking')}</h2><p className="text-sm text-muted-foreground">{t('recordingNote')}</p></div>
     {error && <Alert severity="error">{t('saveError')}</Alert>}
 
-    <div className="grid gap-2">
-      <Label htmlFor="application-stage">{t('stage')}</Label>
+    <div className="mui-field mui-select">
       <Select id="application-stage" value={data.stage} disabled={busy}
         onChange={event => void run(() => sendJson(`${path}/application-status`, 'PATCH', { application_status: event.target.value }), onStageChanged)}>
         {STAGES.map(stage => <option key={stage} value={stage}>{stageLabel[stage][locale]}</option>)}
       </Select>
+      <Label htmlFor="application-stage" className="mui-label">{t('stage')}</Label>
     </div>
 
     <form className="grid gap-3 border-t border-border pt-5" onSubmit={event => { event.preventDefault(); void run(() => sendJson(`${path}/application/contact`, 'PUT', { name: blank(contact.name), email: blank(contact.email), role: blank(contact.role) }), () => setContactSaved(true)); }}>
