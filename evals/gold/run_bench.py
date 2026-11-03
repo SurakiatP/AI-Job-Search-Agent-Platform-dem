@@ -9,6 +9,8 @@ Temporary aliases `gold-<slug>` are created in LiteLLM and removed at the end.
 Scoring is deterministic (no judge model): see the scorer for each task. Quality is 0-100.
 """
 import argparse
+import hashlib
+import subprocess
 import json
 import os
 import re
@@ -28,12 +30,19 @@ from job_search_platform.services import applications, experience, practice, tai
 from job_search_platform.services.evidence import claims  # noqa: E402
 from job_search_platform.workers.executor import RunExecutor  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).parent))
+import build_ocr  # noqa: E402
+
 DATA = Path(__file__).parent / "data" / "gold.v1.json"
 HOLDOUT = Path(__file__).parent / "data" / "gold.holdout.v1.json"
 CURRENT_MODE = "low"
 SAVE_TEXT = False  # set by --save-text: keep the raw model reply in the results file
-MODES = {"default": None, "low": {"effort": "low"}, "off": {"enabled": False}, "none": {"effort": "none"}, "minimal": {"effort": "minimal"}}
-TASKS = ["evaluate", "draft", "extract", "tailor", "apply", "practice"]
+MODES = {"app": None, "default": None, "low": {"effort": "low"}, "off": {"enabled": False}, "none": {"effort": "none"}, "minimal": {"effort": "minimal"}}
+TASKS = ["evaluate", "draft", "extract", "tailor", "apply", "practice", "ocr"]
+# --reasoning app: per-task effort from the app's own env (AI_REASONING_<OPERATION>, services' reasoning_effort()).
+APP_OPS = {"evaluate": "evaluate_job", "draft": "draft_documents", "extract": "extract_experience", "tailor": "tailor_cv",
+           "apply": "apply_prepare", "practice": "interview_generate", "ocr": "document_ocr"}
+APP_OCR_MAX_TOKENS, APP_OCR_TIMEOUT = 8192, 90  # services/ocr.py
 BASE = (os.environ.get("LITELLM_BASE_URL") or "http://127.0.0.1:54000").rstrip("/")
 PRIVATE = Path(os.environ.get("CORE02_PRIVATE_DIR") or Path.home() / ".cache/job-search-platform/core02-runtime-20261003")
 KEYFILE = Path(os.environ.get("LITELLM_MASTER_KEY_FILE") or PRIVATE / "litellm-master-key")
@@ -60,13 +69,33 @@ def parse_json(raw):
     return None
 
 
+def reasoning_body(mode, task):
+    """The `reasoning` request field for a task. `app` mirrors the app: none -> {"enabled": false}, default/unset -> model default."""
+    if mode != "app":
+        return MODES[mode]
+    from job_search_platform.integrations.hermes_runtime import reasoning_effort
+    effort = reasoning_effort(os.environ, APP_OPS[task])
+    if effort is None and task == "practice":
+        effort = "low"  # infra/hermes/native_bridge.py default for interview operations
+    return {"enabled": False} if effort == "none" else {"effort": effort} if effort and effort != "default" else None
+
+
 def lang_name(persona):
     return "Thai"  # the app's default output language; CVs are Thai or English
 
 
 # ---- prompt builders (the app's own code) ---------------------------------------------------------------------
 def build_prompt(task, case, data):
-    persona = next(p for p in data["personas"] if p["id"] == case["persona"])
+    if task == "ocr":  # one page image as a data URI, the app's own transcribe prompt (services/ocr.py), no system message
+        import base64
+        uri = "data:image/jpeg;base64," + base64.b64encode(build_ocr.render(case).read_bytes()).decode()
+        try:
+            from job_search_platform.services import ocr as app_ocr
+            prompt = app_ocr.PROMPT
+        except ImportError:  # older checkout
+            prompt = build_ocr.PROMPT
+        return [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": uri}}], None
+    persona = next((p for p in data["personas"] if p["id"] == case.get("persona")), None)
     job = next((j for j in data["jobs"] if j["id"] == case.get("job")), None)
     if task == "extract":
         return experience.extraction_prompt(persona["cv"])
@@ -270,7 +299,7 @@ def score_practice(raw, case, persona, job, rewrite=None):
 
 
 SCORERS = {"extract": score_extract, "evaluate": score_evaluate, "draft": score_draft, "tailor": score_tailor,
-           "apply": score_apply, "practice": score_practice}
+           "apply": score_apply, "practice": score_practice, "ocr": build_ocr.score_ocr}
 
 
 # ---- LiteLLM client -------------------------------------------------------------------------------------------
@@ -281,10 +310,10 @@ def api(method, path, body=None, key=None, timeout=30):
         return json.loads(r.read() or b"{}")
 
 
-def call(alias, system, prompt, key, max_tokens, reasoning=None):
+def call(alias, system, prompt, key, max_tokens, reasoning=None, timeout=180):
     """One streamed chat completion. Returns timing, text and token usage."""
     body = {"model": alias, "stream": True, "stream_options": {"include_usage": True}, "max_tokens": max_tokens,
-            "temperature": 0, "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]}
+            "temperature": 0, "messages": ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]}
     if reasoning:
         body["reasoning"] = reasoning  # OpenRouter field, passed through LiteLLM
     t0 = time.perf_counter()
@@ -292,8 +321,10 @@ def call(alias, system, prompt, key, max_tokens, reasoning=None):
     text, usage, finish = [], None, None
     req = urllib.request.Request(BASE + "/v1/chat/completions", method="POST", data=json.dumps(body).encode(),
                                  headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=600) as r:
+    with urllib.request.urlopen(req, timeout=timeout) as r:
         for line in r:
+            if time.perf_counter() - t0 > timeout:  # SSE keep-alives defeat the socket timeout, so enforce a total deadline
+                raise TimeoutError(f"no complete reply within {timeout}s")
             line = line.decode("utf-8", "replace").strip()
             if not line.startswith("data:") or "[DONE]" in line:
                 continue
@@ -323,7 +354,7 @@ def prices(models):
                 "cache": float(listed[m]["pricing"].get("input_cache_read") or listed[m]["pricing"]["prompt"]) * 1e6} for m in models}
 
 
-def rewrite_step(alias, out, case, persona, key, price):
+def rewrite_step(alias, out, case, persona, key, reasoning):
     """What the app does after a practice reply: one rewrite call for answers the gate dropped. {} when none."""
     from uuid import UUID
     voc = {norm(v) for v in persona["orgs"] + persona["titles"]}
@@ -336,32 +367,79 @@ def rewrite_step(alias, out, case, persona, key, price):
         return {}
     prompt, system = practice.rewrite_prompt(rejected, persona["facts"])
     try:
-        return call(alias, system, prompt, key, 8000, MODES[CURRENT_MODE])
+        return call(alias, system, prompt, key, 8000, reasoning)
     except (urllib.error.URLError, OSError, ValueError):
         return {}
+
+
+REPAIR_SHAPES = {"evaluate": '{"score": 1-5 or null, "report": {"verdict", "summary", "requirements", "strengths", "risks", "interview_prep", "cv_changes"}}',
+                 "extract": '{"items": [{"kind", "text", ...}]}'}  # strings copied from workers/executor.py
+
+
+def app_parse(task, text):
+    from job_search_platform.workers import executor
+    try:
+        (executor.parse_evaluation_result if task == "evaluate" else experience.parse_experience_items)(text or "")
+        return True
+    except ValueError:
+        return False
+
+
+def app_mirror(task, out, result, alias, key, reasoning):
+    """What the app does after the model reply. evaluate/extract: one repair round (executor.repair_prompt) when the shape is
+    invalid; `app_parse_ok` = parsed first time or after the repair. The repaired reply is the one scored. ocr: finish=length is a failure."""
+    if task == "ocr" and out.get("finish") == "length":
+        result["app_failed"] = "ocr_truncated"
+    if task not in REPAIR_SHAPES:
+        return out
+    from job_search_platform.workers.executor import repair_prompt
+    ok = app_parse(task, out["text"])
+    result["app_parse_ok"], result["repaired"] = ok, False
+    if ok:
+        return out
+    result["repaired"] = True
+    try:
+        fix = call(alias, "Answer JSON only. Do not use tools.", repair_prompt(REPAIR_SHAPES[task], out["text"]), key, 16000, reasoning)
+    except (urllib.error.URLError, OSError, ValueError):
+        return out
+    out = dict(out)
+    for k in ("total_s", "prompt_tokens", "completion_tokens", "reasoning_tokens", "cached_tokens"):
+        out[k] = (out.get(k) or 0) + (fix.get(k) or 0)
+    out["finish"] = fix["finish"]
+    result["repair_text"] = fix["text"]
+    if app_parse(task, fix["text"]):
+        result["app_parse_ok"] = True
+        out["text"] = fix["text"]
+    return out
 
 
 def worker(model, alias, jobs, data, key, price, max_tokens, sink, lock, log, mode):
     for task, case in jobs:
         prompt, system = build_prompt(task, case, data)
-        persona = next(p for p in data["personas"] if p["id"] == case["persona"])
+        persona = next((p for p in data["personas"] if p["id"] == case.get("persona")), None)
         job = next((j for j in data["jobs"] if j["id"] == case.get("job")), None)
         result = {"model": model, "task": task, "case": case["id"]}
         global CURRENT_MODE
         CURRENT_MODE = mode
         for attempt in (1, 2):
             try:
-                out = call(alias, system, prompt, key, max_tokens, MODES[mode])
+                if task == "ocr":  # the app's max_tokens / timeout (older benches: 4096 / 120)
+                    ocr_limits = (APP_OCR_MAX_TOKENS, APP_OCR_TIMEOUT) if mode == "app" else (4096, 120)
+                    out = call(alias, system, prompt, key, ocr_limits[0], reasoning_body(mode, task), ocr_limits[1])
+                else:
+                    out = call(alias, system, prompt, key, max_tokens, reasoning_body(mode, task), 180)
                 break
             except (urllib.error.URLError, OSError, ValueError) as exc:
                 out = {"error": type(exc).__name__ + ": " + str(exc)[:120], "total_s": None}
                 time.sleep(3)
-        result.update({k: v for k, v in out.items() if k != "text"})
         if SAVE_TEXT:
             result["text"] = out.get("text")
+        if "error" not in out and mode == "app":
+            out = app_mirror(task, out, result, alias, key, reasoning_body(mode, task))
+        result.update({k: v for k, v in out.items() if k != "text"})
         if "error" not in out:
             if task == "practice":
-                rw = rewrite_step(alias, out, case, persona, key, price)
+                rw = rewrite_step(alias, out, case, persona, key, reasoning_body(mode, task))
                 out["total_s"] += rw.get("total_s", 0)
                 out["completion_tokens"] = (out.get("completion_tokens") or 0) + (rw.get("completion_tokens") or 0)
                 out["prompt_tokens"] = (out.get("prompt_tokens") or 0) + (rw.get("prompt_tokens") or 0)
@@ -378,6 +456,8 @@ def worker(model, alias, jobs, data, key, price, max_tokens, sink, lock, log, mo
                                         + (out["completion_tokens"] or 0) * price["out"]) / 1e6})
             if out["finish"] == "length":
                 result["truncated"] = True
+            if result.get("app_failed"):  # the app discards a cut-off OCR page
+                result["quality"] = 0.0
         else:
             result["quality"] = 0.0
         with lock:
@@ -411,7 +491,8 @@ def run(args):
                 call(aliases[m], "Reply OK", "OK", key, 200)
             except Exception:
                 pass
-        threads = [threading.Thread(target=worker, args=(m, aliases[m], jobs, data, key, price[m], args.max_tokens, sink, lock, log, args.reasoning)) for m in models]
+        threads = [threading.Thread(target=worker, args=(m, aliases[m], jobs[w::args.workers], data, key, price[m], args.max_tokens, sink, lock, log, args.reasoning))
+                   for m in models for w in range(args.workers)]
         [t.start() for t in threads]
         [t.join() for t in threads]
     finally:
@@ -421,7 +502,13 @@ def run(args):
             except Exception as exc:
                 print("cleanup failed for", a, type(exc).__name__)
     out = Path(args.out_dir) / f"{args.tag}.json"
-    out.write_text(json.dumps({"tag": args.tag, "models": models, "prices_per_mtok": price, "max_tokens": args.max_tokens, "reasoning": args.reasoning,
+    src = Path(os.environ.get("BENCH_BACKEND_SRC") or ROOT / "backend" / "src")
+    sha = lambda *files: hashlib.sha256(b"".join(f.read_bytes() for f in files)).hexdigest()[:12]
+    git = subprocess.run(["git", "-C", str(src), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    header = {"date": time.strftime("%Y-%m-%d %H:%M"), "backend_src": str(src), "backend_commit": git, "mode": args.reasoning,
+              "scorer_version": sha(Path(__file__), Path(__file__).with_name("build_ocr.py")),
+              "dataset_sha256_12": sha(HOLDOUT if args.dataset == "holdout" else DATA)}
+    out.write_text(json.dumps({"tag": args.tag, **header, "models": models, "prices_per_mtok": price, "max_tokens": args.max_tokens, "reasoning": args.reasoning,
                                "dataset": "gold.holdout.v1" if args.dataset == "holdout" else "gold.v1", "results": sink}, ensure_ascii=False, indent=1))
     print("wrote", out)
     report(out)
@@ -437,9 +524,11 @@ def report(path):
     rows = d["results"]
     models = d["models"]
     lines = [f"# Gold benchmark {d['tag']} (dataset {d['dataset']}, max_tokens {d['max_tokens']})", "",
-             "Quality 0-100 (deterministic scorers), time = total seconds per call (p50 / p90), cost = list-price USD per call.", ""]
+             "Quality 0-100 (deterministic scorers), time = total seconds per call (p50 / p95), cost = list-price USD per call.", ""]
     for task in sorted({r["task"] for r in rows}, key=TASKS.index):
-        lines += [f"## {task}", "", "| model | quality | time p50 | time p90 | cost/call | think tok | cache hit | errors | truncated |", "|---|---|---|---|---|---|---|---|---|"]
+        app = any("app_parse_ok" in r for r in rows if r["task"] == task)  # only app-mode evaluate/extract rows have it
+        lines += [f"## {task}", "", "| model | quality | time p50 | time p95 | cost/call | think tok | cache hit | errors | truncated |" + (" app_parse_ok |" if app else ""),
+                  "|---|---|---|---|---|---|---|---|---|" + ("---|" if app else "")]
         for m in models:
             rs = [r for r in rows if r["task"] == task and r["model"] == m]
             if not rs:
@@ -447,10 +536,11 @@ def report(path):
             q = statistics.mean(r["quality"] for r in rs)
             ts = [r["total_s"] for r in rs if r.get("total_s")]
             cost = statistics.mean(r.get("cost_usd", 0) for r in rs)
-            lines.append(f"| {m} | {q:.1f} | {pct(ts, .5):.1f}s | {pct(ts, .9):.1f}s | ${cost:.5f} | "
+            lines.append(f"| {m} | {q:.1f} | {pct(ts, .5):.1f}s | {pct(ts, .95):.1f}s | ${cost:.5f} | "
                          f"{statistics.mean((r.get('reasoning_tokens') or 0) for r in rs):.0f} | "
                          f"{sum((r.get('cached_tokens') or 0) for r in rs) / max(sum((r.get('prompt_tokens') or 0) for r in rs), 1):.0%} | "
-                         f"{sum('error' in r for r in rs)} | {sum(bool(r.get('truncated')) for r in rs)} |")
+                         f"{sum('error' in r for r in rs)} | {sum(bool(r.get('truncated')) for r in rs)} |"
+                         + (f" {sum(bool(r.get('app_parse_ok')) for r in rs)}/{len(rs)} |" if app else ""))
         lines.append("")
     lines += ["## Overall (mean over tasks)", "", "| model | quality | time p50 | cost/call |", "|---|---|---|---|"]
     for m in models:
@@ -472,9 +562,10 @@ def main():
     r.add_argument("--tasks", nargs="+", default=TASKS, choices=TASKS)
     r.add_argument("--samples", type=int, default=10)
     r.add_argument("--max-tokens", type=int, default=16000)
+    r.add_argument("--workers", type=int, default=1, help="parallel requests per model (latency is per request, so unaffected)")
     r.add_argument("--save-text", action="store_true")
     r.add_argument("--dataset", choices=["dev", "holdout"], default="dev")
-    r.add_argument("--reasoning", choices=list(MODES), default="low")
+    r.add_argument("--reasoning", choices=list(MODES), default="low", help="app = per-task effort from the AI_REASONING_<OPERATION> env, app OCR limits, one repair round for evaluate/extract")
     r.add_argument("--tag", default=time.strftime("%Y-%m-%d"))
     r.add_argument("--out-dir", default=str(Path(__file__).parent / "results"))
     rs = sub.add_parser("rescore", help="recompute quality of a results file (saved with --save-text) with the current scorers")
@@ -492,10 +583,13 @@ def main():
             if "text" not in r:
                 continue
             case = next(c for c in data["cases"][r["task"]] if c["id"] == r["case"])
-            persona = next(p for p in data["personas"] if p["id"] == case["persona"])
+            persona = next((p for p in data["personas"] if p["id"] == case.get("persona")), None)
             job = next((j for j in data["jobs"] if j["id"] == case.get("job")), None)
             extra = (r.get("rewrite_text"),) if r["task"] == "practice" else ()
-            score, details = SCORERS[r["task"]](r["text"], case, persona, job, *extra)
+            text = r["repair_text"] if r.get("app_parse_ok") and r.get("repaired") else r["text"]
+            score, details = SCORERS[r["task"]](text, case, persona, job, *extra)
+            if r.get("app_failed"):
+                score = 0.0
             r["quality"], r["details"] = round(score, 1), details
         out = Path(args.file).with_name(Path(args.file).stem + ".rescored.json")
         out.write_text(json.dumps(d, ensure_ascii=False, indent=1))

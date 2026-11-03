@@ -6405,6 +6405,2736 @@
      }
     ]
    }
+  ],
+  "ocr": [
+   {
+    "id": "ocr-h01",
+    "seed": 9201,
+    "lang": "th",
+    "layout": "single",
+    "scan": 0,
+    "font_pt": 11,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "วรรณิดา วัฒนากูล"
+       },
+       {
+        "kind": "p",
+        "text": "นักออกแบบประสบการณ์ผู้ใช้"
+       },
+       {
+        "kind": "p",
+        "text": "wannida.90@example.com  082-555-0942"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 5 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "บริษัท ภูผาซอฟต์แวร์ จำกัด  2559 - 2561"
+       },
+       {
+        "kind": "p",
+        "text": "นักวิเคราะห์ข้อมูล"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท ลานนาดิจิทัล จำกัด (มหาชน)  2562 - 2563"
+       },
+       {
+        "kind": "p",
+        "text": "ผู้จัดการฝ่ายพัฒนาธุรกิจ"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "li",
+        "text": "ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2564 - 2565"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ฝ่ายบัญชีและการเงิน"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "ศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยศรีสยามเทคโนโลยี 2555"
+       },
+       {
+        "kind": "p",
+        "text": "วิทยาศาสตรบัณฑิต สาขาวิทยาการคอมพิวเตอร์ มหาวิทยาลัยราชภูมิล้านนา 2557"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "การวิเคราะห์ข้อมูล, การบริหารโครงการ, การเจรจาต่อรอง, การนำเสนอ, ภาษาอังกฤษระดับดี"
+       }
+      ]
+     }
+    ],
+    "text": "วรรณิดา วัฒนากูล\nนักออกแบบประสบการณ์ผู้ใช้\nwannida.90@example.com  082-555-0942\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 5 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน\nบริษัท ภูผาซอฟต์แวร์ จำกัด  2559 - 2561\nนักวิเคราะห์ข้อมูล\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nบริษัท ลานนาดิจิทัล จำกัด (มหาชน)  2562 - 2563\nผู้จัดการฝ่ายพัฒนาธุรกิจ\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nบริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2564 - 2565\nเจ้าหน้าที่ฝ่ายบัญชีและการเงิน\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nการศึกษา\nศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยศรีสยามเทคโนโลยี 2555\nวิทยาศาสตรบัณฑิต สาขาวิทยาการคอมพิวเตอร์ มหาวิทยาลัยราชภูมิล้านนา 2557\nทักษะ\nการวิเคราะห์ข้อมูล, การบริหารโครงการ, การเจรจาต่อรอง, การนำเสนอ, ภาษาอังกฤษระดับดี",
+    "facts": [
+     "wannida.90@example.com",
+     "082-555-0942",
+     "2555",
+     "2557",
+     "2559",
+     "2561",
+     "2562",
+     "2563",
+     "2564",
+     "2565",
+     "ภูผาซอฟต์แวร์",
+     "ลานนาดิจิทัล",
+     "เมฆาคลาวด์เซอร์วิส"
+    ]
+   },
+   {
+    "id": "ocr-h02",
+    "seed": 9202,
+    "lang": "en",
+    "layout": "single",
+    "scan": 0,
+    "font_pt": 11,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Piyanut Pongpipat"
+       },
+       {
+        "kind": "p",
+        "text": "Senior Software Engineer"
+       },
+       {
+        "kind": "p",
+        "text": "piyanut.67@example.com  061-555-0699"
+       }
+      ]
+     },
+     {
+      "title": "Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Over 13 years of experience in systems development and project delivery, focused on measurable results."
+       }
+      ]
+     },
+     {
+      "title": "Work Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Talaesai Logistics Co., Ltd.  2018 - 2020"
+       },
+       {
+        "kind": "p",
+        "text": "Business Development Manager"
+       },
+       {
+        "kind": "li",
+        "text": "Designed surveys and interviewed users to find the real problems"
+       },
+       {
+        "kind": "li",
+        "text": "Managed more than 40 corporate clients and negotiated annual service contracts"
+       },
+       {
+        "kind": "p",
+        "text": "Phuphaa Software Co., Ltd.  2021 - 2022"
+       },
+       {
+        "kind": "p",
+        "text": "Business Development Manager"
+       },
+       {
+        "kind": "li",
+        "text": "Analysed monthly sales data and presented strategic recommendations"
+       },
+       {
+        "kind": "li",
+        "text": "Built an executive reporting system that cut report preparation from three days to half a day"
+       },
+       {
+        "kind": "p",
+        "text": "Lanna Digital Public Co., Ltd.  2023 - 2024"
+       },
+       {
+        "kind": "p",
+        "text": "Senior Software Engineer"
+       },
+       {
+        "kind": "li",
+        "text": "Coordinated between engineering, sales and end users"
+       },
+       {
+        "kind": "li",
+        "text": "Prepared the annual budget and tracked spending against plan"
+       }
+      ]
+     },
+     {
+      "title": "Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "B.B.A. Marketing Lanna Rajabhum University 2014"
+       },
+       {
+        "kind": "p",
+        "text": "B.A. English Lanna Rajabhum University 2016"
+       }
+      ]
+     },
+     {
+      "title": "Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Data analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau"
+       }
+      ]
+     }
+    ],
+    "text": "Piyanut Pongpipat\nSenior Software Engineer\npiyanut.67@example.com  061-555-0699\nSummary\nOver 13 years of experience in systems development and project delivery, focused on measurable results.\nWork Experience\nTalaesai Logistics Co., Ltd.  2018 - 2020\nBusiness Development Manager\nDesigned surveys and interviewed users to find the real problems\nManaged more than 40 corporate clients and negotiated annual service contracts\nPhuphaa Software Co., Ltd.  2021 - 2022\nBusiness Development Manager\nAnalysed monthly sales data and presented strategic recommendations\nBuilt an executive reporting system that cut report preparation from three days to half a day\nLanna Digital Public Co., Ltd.  2023 - 2024\nSenior Software Engineer\nCoordinated between engineering, sales and end users\nPrepared the annual budget and tracked spending against plan\nEducation\nB.B.A. Marketing Lanna Rajabhum University 2014\nB.A. English Lanna Rajabhum University 2016\nSkills\nData analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau",
+    "facts": [
+     "piyanut.67@example.com",
+     "061-555-0699",
+     "2014",
+     "2016",
+     "2018",
+     "2020",
+     "2021",
+     "2022",
+     "2023",
+     "2024",
+     "Talaesai Logistics",
+     "Phuphaa Software",
+     "Lanna Digital"
+    ]
+   },
+   {
+    "id": "ocr-h03",
+    "seed": 9203,
+    "lang": "mix",
+    "layout": "single",
+    "scan": 0,
+    "font_pt": 11,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Thanaphong Thammarak"
+       },
+       {
+        "kind": "p",
+        "text": "Data Analyst"
+       },
+       {
+        "kind": "p",
+        "text": "thanaphong.84@example.com  088-555-0976"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 12 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Ruangkhao Foods Co., Ltd.  2559 - 2561"
+       },
+       {
+        "kind": "p",
+        "text": "Project Coordinator"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "p",
+        "text": "Lanna Digital Public Co., Ltd.  2562 - 2563"
+       },
+       {
+        "kind": "p",
+        "text": "Project Coordinator"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "p",
+        "text": "Anyamani Finance Co., Ltd.  2564 - 2565"
+       },
+       {
+        "kind": "p",
+        "text": "Accounting Officer"
+       },
+       {
+        "kind": "li",
+        "text": "ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "B.B.A. Marketing Lanna Rajabhum University 2555"
+       },
+       {
+        "kind": "p",
+        "text": "B.A. English Lanna Rajabhum University 2557"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Data analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau"
+       }
+      ]
+     }
+    ],
+    "text": "Thanaphong Thammarak\nData Analyst\nthanaphong.84@example.com  088-555-0976\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 12 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน Experience\nRuangkhao Foods Co., Ltd.  2559 - 2561\nProject Coordinator\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nLanna Digital Public Co., Ltd.  2562 - 2563\nProject Coordinator\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nAnyamani Finance Co., Ltd.  2564 - 2565\nAccounting Officer\nดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nการศึกษา Education\nB.B.A. Marketing Lanna Rajabhum University 2555\nB.A. English Lanna Rajabhum University 2557\nทักษะ Skills\nData analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau",
+    "facts": [
+     "thanaphong.84@example.com",
+     "088-555-0976",
+     "2555",
+     "2557",
+     "2559",
+     "2561",
+     "2562",
+     "2563",
+     "2564",
+     "2565",
+     "Ruangkhao Foods",
+     "Lanna Digital",
+     "Anyamani Finance"
+    ]
+   },
+   {
+    "id": "ocr-h04",
+    "seed": 9204,
+    "lang": "th",
+    "layout": "twocol",
+    "scan": 0,
+    "font_pt": 10,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "ณัฐวุฒิ เจริญสุขศรี"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ควบคุมคุณภาพ"
+       },
+       {
+        "kind": "p",
+        "text": "natthawut.61@example.com  098-555-0359"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "บริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยศรีสยามเทคโนโลยี 2555"
+       },
+       {
+        "kind": "p",
+        "text": "ศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยศรีสยามเทคโนโลยี 2557"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "การวิเคราะห์ข้อมูล, การบริหารโครงการ, การเจรจาต่อรอง, การนำเสนอ, ภาษาอังกฤษระดับดี"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 13 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "บริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2559 - 2561"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ควบคุมคุณภาพ"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท ทะเลใสโลจิสติกส์ จำกัด  2562 - 2563"
+       },
+       {
+        "kind": "p",
+        "text": "ผู้ประสานงานโครงการ"
+       },
+       {
+        "kind": "li",
+        "text": "ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท ภูผาซอฟต์แวร์ จำกัด  2564 - 2565"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ฝ่ายบัญชีและการเงิน"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       }
+      ]
+     }
+    ],
+    "text": "ณัฐวุฒิ เจริญสุขศรี\nเจ้าหน้าที่ควบคุมคุณภาพ\nnatthawut.61@example.com  098-555-0359\nการศึกษา\nบริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยศรีสยามเทคโนโลยี 2555\nศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยศรีสยามเทคโนโลยี 2557\nทักษะ\nการวิเคราะห์ข้อมูล, การบริหารโครงการ, การเจรจาต่อรอง, การนำเสนอ, ภาษาอังกฤษระดับดี\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 13 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน\nบริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2559 - 2561\nเจ้าหน้าที่ควบคุมคุณภาพ\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nบริษัท ทะเลใสโลจิสติกส์ จำกัด  2562 - 2563\nผู้ประสานงานโครงการ\nดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nบริษัท ภูผาซอฟต์แวร์ จำกัด  2564 - 2565\nเจ้าหน้าที่ฝ่ายบัญชีและการเงิน\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น",
+    "facts": [
+     "natthawut.61@example.com",
+     "098-555-0359",
+     "2555",
+     "2557",
+     "2559",
+     "2561",
+     "2562",
+     "2563",
+     "2564",
+     "2565",
+     "เมฆาคลาวด์เซอร์วิส",
+     "ทะเลใสโลจิสติกส์",
+     "ภูผาซอฟต์แวร์"
+    ]
+   },
+   {
+    "id": "ocr-h05",
+    "seed": 9205,
+    "lang": "en",
+    "layout": "twocol",
+    "scan": 0,
+    "font_pt": 10,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Benjamas Boonruangrit"
+       },
+       {
+        "kind": "p",
+        "text": "UX Designer"
+       },
+       {
+        "kind": "p",
+        "text": "benjamas.35@example.com  088-555-0153"
+       }
+      ]
+     },
+     {
+      "title": "Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "B.A. English Srisayam University of Technology 2011"
+       },
+       {
+        "kind": "p",
+        "text": "M.Eng. Industrial Engineering Srisayam University of Technology 2013"
+       }
+      ]
+     },
+     {
+      "title": "Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Data analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau"
+       }
+      ]
+     },
+     {
+      "title": "Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Over 7 years of experience in systems development and project delivery, focused on measurable results."
+       }
+      ]
+     },
+     {
+      "title": "Work Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Mekha Cloud Service Co., Ltd.  2015 - 2017"
+       },
+       {
+        "kind": "p",
+        "text": "Data Analyst"
+       },
+       {
+        "kind": "li",
+        "text": "Built an executive reporting system that cut report preparation from three days to half a day"
+       },
+       {
+        "kind": "li",
+        "text": "Coordinated between engineering, sales and end users"
+       },
+       {
+        "kind": "p",
+        "text": "Talaesai Logistics Co., Ltd.  2018 - 2019"
+       },
+       {
+        "kind": "p",
+        "text": "Accounting Officer"
+       },
+       {
+        "kind": "li",
+        "text": "Built an executive reporting system that cut report preparation from three days to half a day"
+       },
+       {
+        "kind": "li",
+        "text": "Managed more than 40 corporate clients and negotiated annual service contracts"
+       },
+       {
+        "kind": "p",
+        "text": "Ruangkhao Foods Co., Ltd.  2020 - 2021"
+       },
+       {
+        "kind": "p",
+        "text": "Business Development Manager"
+       },
+       {
+        "kind": "li",
+        "text": "Coordinated between engineering, sales and end users"
+       },
+       {
+        "kind": "li",
+        "text": "Managed more than 40 corporate clients and negotiated annual service contracts"
+       }
+      ]
+     }
+    ],
+    "text": "Benjamas Boonruangrit\nUX Designer\nbenjamas.35@example.com  088-555-0153\nEducation\nB.A. English Srisayam University of Technology 2011\nM.Eng. Industrial Engineering Srisayam University of Technology 2013\nSkills\nData analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau\nSummary\nOver 7 years of experience in systems development and project delivery, focused on measurable results.\nWork Experience\nMekha Cloud Service Co., Ltd.  2015 - 2017\nData Analyst\nBuilt an executive reporting system that cut report preparation from three days to half a day\nCoordinated between engineering, sales and end users\nTalaesai Logistics Co., Ltd.  2018 - 2019\nAccounting Officer\nBuilt an executive reporting system that cut report preparation from three days to half a day\nManaged more than 40 corporate clients and negotiated annual service contracts\nRuangkhao Foods Co., Ltd.  2020 - 2021\nBusiness Development Manager\nCoordinated between engineering, sales and end users\nManaged more than 40 corporate clients and negotiated annual service contracts",
+    "facts": [
+     "benjamas.35@example.com",
+     "088-555-0153",
+     "2011",
+     "2013",
+     "2015",
+     "2017",
+     "2018",
+     "2019",
+     "2020",
+     "2021",
+     "Mekha Cloud Service",
+     "Talaesai Logistics",
+     "Ruangkhao Foods"
+    ]
+   },
+   {
+    "id": "ocr-h06",
+    "seed": 9206,
+    "lang": "mix",
+    "layout": "twocol",
+    "scan": 0,
+    "font_pt": 10,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Phattharaphon Srisuwanphat"
+       },
+       {
+        "kind": "p",
+        "text": "Senior Software Engineer"
+       },
+       {
+        "kind": "p",
+        "text": "phattharaphon.85@example.com  086-555-0551"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "M.Eng. Industrial Engineering Lanna Rajabhum University 2554"
+       },
+       {
+        "kind": "p",
+        "text": "M.Eng. Industrial Engineering Lanna Rajabhum University 2556"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Budget planning, Client communication, Leadership, Python, SQL, Docker"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 6 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Talaesai Logistics Co., Ltd.  2558 - 2560"
+       },
+       {
+        "kind": "p",
+        "text": "Project Coordinator"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       },
+       {
+        "kind": "p",
+        "text": "Lanna Digital Public Co., Ltd.  2561 - 2562"
+       },
+       {
+        "kind": "p",
+        "text": "Project Coordinator"
+       },
+       {
+        "kind": "li",
+        "text": "ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       },
+       {
+        "kind": "p",
+        "text": "Mekha Cloud Service Co., Ltd.  2563 - 2564"
+       },
+       {
+        "kind": "p",
+        "text": "Quality Control Officer"
+       },
+       {
+        "kind": "li",
+        "text": "ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       }
+      ]
+     }
+    ],
+    "text": "Phattharaphon Srisuwanphat\nSenior Software Engineer\nphattharaphon.85@example.com  086-555-0551\nการศึกษา Education\nM.Eng. Industrial Engineering Lanna Rajabhum University 2554\nM.Eng. Industrial Engineering Lanna Rajabhum University 2556\nทักษะ Skills\nBudget planning, Client communication, Leadership, Python, SQL, Docker\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 6 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน Experience\nTalaesai Logistics Co., Ltd.  2558 - 2560\nProject Coordinator\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\nLanna Digital Public Co., Ltd.  2561 - 2562\nProject Coordinator\nประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nMekha Cloud Service Co., Ltd.  2563 - 2564\nQuality Control Officer\nประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน",
+    "facts": [
+     "phattharaphon.85@example.com",
+     "086-555-0551",
+     "2554",
+     "2556",
+     "2558",
+     "2560",
+     "2561",
+     "2562",
+     "2563",
+     "2564",
+     "Talaesai Logistics",
+     "Lanna Digital",
+     "Mekha Cloud Service"
+    ]
+   },
+   {
+    "id": "ocr-h07",
+    "seed": 9207,
+    "lang": "th",
+    "layout": "table",
+    "scan": 0,
+    "font_pt": 10,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "สุรเชษฐ์ สิริมงคลชัย"
+       },
+       {
+        "kind": "p",
+        "text": "ผู้ประสานงานโครงการ"
+       },
+       {
+        "kind": "p",
+        "text": "surachet.12@example.com  091-555-0704"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 8 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "บริษัท ภูผาซอฟต์แวร์ จำกัด  2556 - 2558"
+       },
+       {
+        "kind": "p",
+        "text": "วิศวกรซอฟต์แวร์อาวุโส"
+       },
+       {
+        "kind": "li",
+        "text": "ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท ทะเลใสโลจิสติกส์ จำกัด  2559 - 2560"
+       },
+       {
+        "kind": "p",
+        "text": "นักออกแบบประสบการณ์ผู้ใช้"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2561 - 2562"
+       },
+       {
+        "kind": "p",
+        "text": "นักวิเคราะห์ข้อมูล"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "li",
+        "text": "ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา",
+      "side": true,
+      "items": [
+       {
+        "kind": "row",
+        "cells": [
+         "บริหารธุรกิจบัณฑิต สาขาการตลาด",
+         "มหาวิทยาลัยศรีสยามเทคโนโลยี",
+         "2552"
+        ]
+       },
+       {
+        "kind": "row",
+        "cells": [
+         "บริหารธุรกิจบัณฑิต สาขาการตลาด",
+         "มหาวิทยาลัยศรีสยามเทคโนโลยี",
+         "2554"
+        ]
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "การบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ"
+       }
+      ]
+     }
+    ],
+    "text": "สุรเชษฐ์ สิริมงคลชัย\nผู้ประสานงานโครงการ\nsurachet.12@example.com  091-555-0704\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 8 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน\nบริษัท ภูผาซอฟต์แวร์ จำกัด  2556 - 2558\nวิศวกรซอฟต์แวร์อาวุโส\nประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\nบริษัท ทะเลใสโลจิสติกส์ จำกัด  2559 - 2560\nนักออกแบบประสบการณ์ผู้ใช้\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nบริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2561 - 2562\nนักวิเคราะห์ข้อมูล\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nการศึกษา\nบริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยศรีสยามเทคโนโลยี 2552\nบริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยศรีสยามเทคโนโลยี 2554\nทักษะ\nการบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ",
+    "facts": [
+     "surachet.12@example.com",
+     "091-555-0704",
+     "2552",
+     "2554",
+     "2556",
+     "2558",
+     "2559",
+     "2560",
+     "2561",
+     "2562",
+     "ภูผาซอฟต์แวร์",
+     "ทะเลใสโลจิสติกส์",
+     "เมฆาคลาวด์เซอร์วิส"
+    ]
+   },
+   {
+    "id": "ocr-h08",
+    "seed": 9208,
+    "lang": "en",
+    "layout": "table",
+    "scan": 0,
+    "font_pt": 10,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Benjamas Boonruangrit"
+       },
+       {
+        "kind": "p",
+        "text": "Project Coordinator"
+       },
+       {
+        "kind": "p",
+        "text": "benjamas.80@example.com  065-555-0628"
+       }
+      ]
+     },
+     {
+      "title": "Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Over 4 years of experience in systems development and project delivery, focused on measurable results."
+       }
+      ]
+     },
+     {
+      "title": "Work Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Phuphaa Software Co., Ltd.  2012 - 2014"
+       },
+       {
+        "kind": "p",
+        "text": "Accounting Officer"
+       },
+       {
+        "kind": "li",
+        "text": "Analysed monthly sales data and presented strategic recommendations"
+       },
+       {
+        "kind": "li",
+        "text": "Improved the goods receiving process to be faster and more accurate"
+       },
+       {
+        "kind": "p",
+        "text": "Lanna Digital Public Co., Ltd.  2015 - 2016"
+       },
+       {
+        "kind": "p",
+        "text": "Project Coordinator"
+       },
+       {
+        "kind": "li",
+        "text": "Analysed monthly sales data and presented strategic recommendations"
+       },
+       {
+        "kind": "li",
+        "text": "Improved the goods receiving process to be faster and more accurate"
+       },
+       {
+        "kind": "p",
+        "text": "Mekha Cloud Service Co., Ltd.  2017 - 2018"
+       },
+       {
+        "kind": "p",
+        "text": "UX Designer"
+       },
+       {
+        "kind": "li",
+        "text": "Analysed monthly sales data and presented strategic recommendations"
+       },
+       {
+        "kind": "li",
+        "text": "Built an executive reporting system that cut report preparation from three days to half a day"
+       }
+      ]
+     },
+     {
+      "title": "Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "row",
+        "cells": [
+         "B.A. English",
+         "Srisayam University of Technology",
+         "2008"
+        ]
+       },
+       {
+        "kind": "row",
+        "cells": [
+         "B.Sc. Computer Science",
+         "Srisayam University of Technology",
+         "2010"
+        ]
+       }
+      ]
+     },
+     {
+      "title": "Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Budget planning, Client communication, Leadership, Python, SQL, Docker"
+       }
+      ]
+     }
+    ],
+    "text": "Benjamas Boonruangrit\nProject Coordinator\nbenjamas.80@example.com  065-555-0628\nSummary\nOver 4 years of experience in systems development and project delivery, focused on measurable results.\nWork Experience\nPhuphaa Software Co., Ltd.  2012 - 2014\nAccounting Officer\nAnalysed monthly sales data and presented strategic recommendations\nImproved the goods receiving process to be faster and more accurate\nLanna Digital Public Co., Ltd.  2015 - 2016\nProject Coordinator\nAnalysed monthly sales data and presented strategic recommendations\nImproved the goods receiving process to be faster and more accurate\nMekha Cloud Service Co., Ltd.  2017 - 2018\nUX Designer\nAnalysed monthly sales data and presented strategic recommendations\nBuilt an executive reporting system that cut report preparation from three days to half a day\nEducation\nB.A. English Srisayam University of Technology 2008\nB.Sc. Computer Science Srisayam University of Technology 2010\nSkills\nBudget planning, Client communication, Leadership, Python, SQL, Docker",
+    "facts": [
+     "benjamas.80@example.com",
+     "065-555-0628",
+     "2008",
+     "2010",
+     "2012",
+     "2014",
+     "2015",
+     "2016",
+     "2017",
+     "2018",
+     "Phuphaa Software",
+     "Lanna Digital",
+     "Mekha Cloud Service"
+    ]
+   },
+   {
+    "id": "ocr-h09",
+    "seed": 9209,
+    "lang": "mix",
+    "layout": "table",
+    "scan": 0,
+    "font_pt": 10,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Kanyapak Kaewmaneewong"
+       },
+       {
+        "kind": "p",
+        "text": "Senior Software Engineer"
+       },
+       {
+        "kind": "p",
+        "text": "kanyapak.40@example.com  061-555-0551"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 13 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Mekha Cloud Service Co., Ltd.  2559 - 2561"
+       },
+       {
+        "kind": "p",
+        "text": "Senior Software Engineer"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       },
+       {
+        "kind": "li",
+        "text": "ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี"
+       },
+       {
+        "kind": "p",
+        "text": "Lanna Digital Public Co., Ltd.  2562 - 2563"
+       },
+       {
+        "kind": "p",
+        "text": "Data Analyst"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       },
+       {
+        "kind": "p",
+        "text": "Talaesai Logistics Co., Ltd.  2564 - 2565"
+       },
+       {
+        "kind": "p",
+        "text": "Project Coordinator"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "row",
+        "cells": [
+         "B.A. English",
+         "Lanna Rajabhum University",
+         "2555"
+        ]
+       },
+       {
+        "kind": "row",
+        "cells": [
+         "B.Sc. Computer Science",
+         "Srisayam University of Technology",
+         "2557"
+        ]
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Data analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau"
+       }
+      ]
+     }
+    ],
+    "text": "Kanyapak Kaewmaneewong\nSenior Software Engineer\nkanyapak.40@example.com  061-555-0551\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 13 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน Experience\nMekha Cloud Service Co., Ltd.  2559 - 2561\nSenior Software Engineer\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\nดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี\nLanna Digital Public Co., Ltd.  2562 - 2563\nData Analyst\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\nTalaesai Logistics Co., Ltd.  2564 - 2565\nProject Coordinator\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nการศึกษา Education\nB.A. English Lanna Rajabhum University 2555\nB.Sc. Computer Science Srisayam University of Technology 2557\nทักษะ Skills\nData analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau",
+    "facts": [
+     "kanyapak.40@example.com",
+     "061-555-0551",
+     "2555",
+     "2557",
+     "2559",
+     "2561",
+     "2562",
+     "2563",
+     "2564",
+     "2565",
+     "Mekha Cloud Service",
+     "Lanna Digital",
+     "Talaesai Logistics"
+    ]
+   },
+   {
+    "id": "ocr-h10",
+    "seed": 9210,
+    "lang": "th",
+    "layout": "dense",
+    "scan": 0,
+    "font_pt": 8.5,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "วรรณิดา วัฒนากูล"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ฝ่ายบัญชีและการเงิน"
+       },
+       {
+        "kind": "p",
+        "text": "wannida.88@example.com  062-555-0314"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 5 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "บริษัท ภูผาซอฟต์แวร์ จำกัด  2559 - 2561"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ฝ่ายบัญชีและการเงิน"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       },
+       {
+        "kind": "li",
+        "text": "ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท ทะเลใสโลจิสติกส์ จำกัด  2562 - 2563"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ฝ่ายบัญชีและการเงิน"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       },
+       {
+        "kind": "li",
+        "text": "ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท อัญมณีการเงิน จำกัด  2564 - 2565"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ควบคุมคุณภาพ"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "ศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยราชภูมิล้านนา 2555"
+       },
+       {
+        "kind": "p",
+        "text": "บริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยศรีสยามเทคโนโลยี 2557"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "การบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ"
+       }
+      ]
+     }
+    ],
+    "text": "วรรณิดา วัฒนากูล\nเจ้าหน้าที่ฝ่ายบัญชีและการเงิน\nwannida.88@example.com  062-555-0314\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 5 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน\nบริษัท ภูผาซอฟต์แวร์ จำกัด  2559 - 2561\nเจ้าหน้าที่ฝ่ายบัญชีและการเงิน\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\nประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nบริษัท ทะเลใสโลจิสติกส์ จำกัด  2562 - 2563\nเจ้าหน้าที่ฝ่ายบัญชีและการเงิน\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nบริษัท อัญมณีการเงิน จำกัด  2564 - 2565\nเจ้าหน้าที่ควบคุมคุณภาพ\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nการศึกษา\nศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยราชภูมิล้านนา 2555\nบริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยศรีสยามเทคโนโลยี 2557\nทักษะ\nการบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ",
+    "facts": [
+     "wannida.88@example.com",
+     "062-555-0314",
+     "2555",
+     "2557",
+     "2559",
+     "2561",
+     "2562",
+     "2563",
+     "2564",
+     "2565",
+     "ภูผาซอฟต์แวร์",
+     "ทะเลใสโลจิสติกส์",
+     "อัญมณีการเงิน"
+    ]
+   },
+   {
+    "id": "ocr-h11",
+    "seed": 9211,
+    "lang": "en",
+    "layout": "dense",
+    "scan": 0,
+    "font_pt": 8.5,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Piyanut Pongpipat"
+       },
+       {
+        "kind": "p",
+        "text": "Project Coordinator"
+       },
+       {
+        "kind": "p",
+        "text": "piyanut.20@example.com  096-555-0416"
+       }
+      ]
+     },
+     {
+      "title": "Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Over 11 years of experience in systems development and project delivery, focused on measurable results."
+       }
+      ]
+     },
+     {
+      "title": "Work Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Anyamani Finance Co., Ltd.  2015 - 2017"
+       },
+       {
+        "kind": "p",
+        "text": "Quality Control Officer"
+       },
+       {
+        "kind": "li",
+        "text": "Analysed monthly sales data and presented strategic recommendations"
+       },
+       {
+        "kind": "li",
+        "text": "Prepared the annual budget and tracked spending against plan"
+       },
+       {
+        "kind": "li",
+        "text": "Improved the goods receiving process to be faster and more accurate"
+       },
+       {
+        "kind": "p",
+        "text": "Ruangkhao Foods Co., Ltd.  2018 - 2019"
+       },
+       {
+        "kind": "p",
+        "text": "Accounting Officer"
+       },
+       {
+        "kind": "li",
+        "text": "Managed more than 40 corporate clients and negotiated annual service contracts"
+       },
+       {
+        "kind": "li",
+        "text": "Trained new staff on safety and service standards"
+       },
+       {
+        "kind": "li",
+        "text": "Designed surveys and interviewed users to find the real problems"
+       },
+       {
+        "kind": "p",
+        "text": "Talaesai Logistics Co., Ltd.  2020 - 2021"
+       },
+       {
+        "kind": "p",
+        "text": "Quality Control Officer"
+       },
+       {
+        "kind": "li",
+        "text": "Improved the goods receiving process to be faster and more accurate"
+       },
+       {
+        "kind": "li",
+        "text": "Trained new staff on safety and service standards"
+       },
+       {
+        "kind": "li",
+        "text": "Built an executive reporting system that cut report preparation from three days to half a day"
+       }
+      ]
+     },
+     {
+      "title": "Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "B.A. English Srisayam University of Technology 2011"
+       },
+       {
+        "kind": "p",
+        "text": "M.Eng. Industrial Engineering Lanna Rajabhum University 2013"
+       }
+      ]
+     },
+     {
+      "title": "Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Budget planning, Client communication, Leadership, Python, SQL, Docker"
+       }
+      ]
+     }
+    ],
+    "text": "Piyanut Pongpipat\nProject Coordinator\npiyanut.20@example.com  096-555-0416\nSummary\nOver 11 years of experience in systems development and project delivery, focused on measurable results.\nWork Experience\nAnyamani Finance Co., Ltd.  2015 - 2017\nQuality Control Officer\nAnalysed monthly sales data and presented strategic recommendations\nPrepared the annual budget and tracked spending against plan\nImproved the goods receiving process to be faster and more accurate\nRuangkhao Foods Co., Ltd.  2018 - 2019\nAccounting Officer\nManaged more than 40 corporate clients and negotiated annual service contracts\nTrained new staff on safety and service standards\nDesigned surveys and interviewed users to find the real problems\nTalaesai Logistics Co., Ltd.  2020 - 2021\nQuality Control Officer\nImproved the goods receiving process to be faster and more accurate\nTrained new staff on safety and service standards\nBuilt an executive reporting system that cut report preparation from three days to half a day\nEducation\nB.A. English Srisayam University of Technology 2011\nM.Eng. Industrial Engineering Lanna Rajabhum University 2013\nSkills\nBudget planning, Client communication, Leadership, Python, SQL, Docker",
+    "facts": [
+     "piyanut.20@example.com",
+     "096-555-0416",
+     "2011",
+     "2013",
+     "2015",
+     "2017",
+     "2018",
+     "2019",
+     "2020",
+     "2021",
+     "Anyamani Finance",
+     "Ruangkhao Foods",
+     "Talaesai Logistics"
+    ]
+   },
+   {
+    "id": "ocr-h12",
+    "seed": 9212,
+    "lang": "mix",
+    "layout": "dense",
+    "scan": 0,
+    "font_pt": 8.5,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Wannida Wattanakul"
+       },
+       {
+        "kind": "p",
+        "text": "Accounting Officer"
+       },
+       {
+        "kind": "p",
+        "text": "wannida.10@example.com  092-555-0487"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 10 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Lanna Digital Public Co., Ltd.  2556 - 2558"
+       },
+       {
+        "kind": "p",
+        "text": "Business Development Manager"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       },
+       {
+        "kind": "p",
+        "text": "Ruangkhao Foods Co., Ltd.  2559 - 2560"
+       },
+       {
+        "kind": "p",
+        "text": "Accounting Officer"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "p",
+        "text": "Mekha Cloud Service Co., Ltd.  2561 - 2562"
+       },
+       {
+        "kind": "p",
+        "text": "Project Coordinator"
+       },
+       {
+        "kind": "li",
+        "text": "ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "M.Eng. Industrial Engineering Srisayam University of Technology 2552"
+       },
+       {
+        "kind": "p",
+        "text": "B.A. English Lanna Rajabhum University 2554"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Budget planning, Client communication, Leadership, Python, SQL, Docker"
+       }
+      ]
+     }
+    ],
+    "text": "Wannida Wattanakul\nAccounting Officer\nwannida.10@example.com  092-555-0487\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 10 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน Experience\nLanna Digital Public Co., Ltd.  2556 - 2558\nBusiness Development Manager\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\nRuangkhao Foods Co., Ltd.  2559 - 2560\nAccounting Officer\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nMekha Cloud Service Co., Ltd.  2561 - 2562\nProject Coordinator\nดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nการศึกษา Education\nM.Eng. Industrial Engineering Srisayam University of Technology 2552\nB.A. English Lanna Rajabhum University 2554\nทักษะ Skills\nBudget planning, Client communication, Leadership, Python, SQL, Docker",
+    "facts": [
+     "wannida.10@example.com",
+     "092-555-0487",
+     "2552",
+     "2554",
+     "2556",
+     "2558",
+     "2559",
+     "2560",
+     "2561",
+     "2562",
+     "Lanna Digital",
+     "Ruangkhao Foods",
+     "Mekha Cloud Service"
+    ]
+   },
+   {
+    "id": "ocr-h13",
+    "seed": 9213,
+    "lang": "th",
+    "layout": "single",
+    "scan": 1,
+    "font_pt": 11,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "ณัฐวุฒิ เจริญสุขศรี"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ควบคุมคุณภาพ"
+       },
+       {
+        "kind": "p",
+        "text": "natthawut.41@example.com  094-555-0776"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 4 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "บริษัท ลานนาดิจิทัล จำกัด (มหาชน)  2557 - 2559"
+       },
+       {
+        "kind": "p",
+        "text": "นักออกแบบประสบการณ์ผู้ใช้"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "li",
+        "text": "ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท รวงข้าวฟู้ดส์ จำกัด  2560 - 2561"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ฝ่ายบัญชีและการเงิน"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2562 - 2563"
+       },
+       {
+        "kind": "p",
+        "text": "วิศวกรซอฟต์แวร์อาวุโส"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       },
+       {
+        "kind": "li",
+        "text": "ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "ศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยศรีสยามเทคโนโลยี 2553"
+       },
+       {
+        "kind": "p",
+        "text": "วิศวกรรมศาสตรมหาบัณฑิต สาขาวิศวกรรมอุตสาหการ มหาวิทยาลัยราชภูมิล้านนา 2555"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "การวิเคราะห์ข้อมูล, การบริหารโครงการ, การเจรจาต่อรอง, การนำเสนอ, ภาษาอังกฤษระดับดี"
+       }
+      ]
+     }
+    ],
+    "text": "ณัฐวุฒิ เจริญสุขศรี\nเจ้าหน้าที่ควบคุมคุณภาพ\nnatthawut.41@example.com  094-555-0776\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 4 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน\nบริษัท ลานนาดิจิทัล จำกัด (มหาชน)  2557 - 2559\nนักออกแบบประสบการณ์ผู้ใช้\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nบริษัท รวงข้าวฟู้ดส์ จำกัด  2560 - 2561\nเจ้าหน้าที่ฝ่ายบัญชีและการเงิน\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nบริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2562 - 2563\nวิศวกรซอฟต์แวร์อาวุโส\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี\nการศึกษา\nศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยศรีสยามเทคโนโลยี 2553\nวิศวกรรมศาสตรมหาบัณฑิต สาขาวิศวกรรมอุตสาหการ มหาวิทยาลัยราชภูมิล้านนา 2555\nทักษะ\nการวิเคราะห์ข้อมูล, การบริหารโครงการ, การเจรจาต่อรอง, การนำเสนอ, ภาษาอังกฤษระดับดี",
+    "facts": [
+     "natthawut.41@example.com",
+     "094-555-0776",
+     "2553",
+     "2555",
+     "2557",
+     "2559",
+     "2560",
+     "2561",
+     "2562",
+     "2563",
+     "ลานนาดิจิทัล",
+     "รวงข้าวฟู้ดส์",
+     "เมฆาคลาวด์เซอร์วิส"
+    ]
+   },
+   {
+    "id": "ocr-h14",
+    "seed": 9214,
+    "lang": "th",
+    "layout": "twocol",
+    "scan": 1,
+    "font_pt": 10,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "ภัทรพล ศรีสุวรรณพัฒน์"
+       },
+       {
+        "kind": "p",
+        "text": "ผู้จัดการฝ่ายพัฒนาธุรกิจ"
+       },
+       {
+        "kind": "p",
+        "text": "phattharaphon.69@example.com  085-555-0249"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "ศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยราชภูมิล้านนา 2552"
+       },
+       {
+        "kind": "p",
+        "text": "ศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยศรีสยามเทคโนโลยี 2554"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "การบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 11 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "บริษัท รวงข้าวฟู้ดส์ จำกัด  2556 - 2558"
+       },
+       {
+        "kind": "p",
+        "text": "นักออกแบบประสบการณ์ผู้ใช้"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "li",
+        "text": "ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท ทะเลใสโลจิสติกส์ จำกัด  2559 - 2560"
+       },
+       {
+        "kind": "p",
+        "text": "วิศวกรซอฟต์แวร์อาวุโส"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2561 - 2562"
+       },
+       {
+        "kind": "p",
+        "text": "ผู้ประสานงานโครงการ"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       }
+      ]
+     }
+    ],
+    "text": "ภัทรพล ศรีสุวรรณพัฒน์\nผู้จัดการฝ่ายพัฒนาธุรกิจ\nphattharaphon.69@example.com  085-555-0249\nการศึกษา\nศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยราชภูมิล้านนา 2552\nศิลปศาสตรบัณฑิต สาขาภาษาอังกฤษ มหาวิทยาลัยศรีสยามเทคโนโลยี 2554\nทักษะ\nการบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 11 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน\nบริษัท รวงข้าวฟู้ดส์ จำกัด  2556 - 2558\nนักออกแบบประสบการณ์ผู้ใช้\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี\nบริษัท ทะเลใสโลจิสติกส์ จำกัด  2559 - 2560\nวิศวกรซอฟต์แวร์อาวุโส\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nบริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2561 - 2562\nผู้ประสานงานโครงการ\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน",
+    "facts": [
+     "phattharaphon.69@example.com",
+     "085-555-0249",
+     "2552",
+     "2554",
+     "2556",
+     "2558",
+     "2559",
+     "2560",
+     "2561",
+     "2562",
+     "รวงข้าวฟู้ดส์",
+     "ทะเลใสโลจิสติกส์",
+     "เมฆาคลาวด์เซอร์วิส"
+    ]
+   },
+   {
+    "id": "ocr-h15",
+    "seed": 9215,
+    "lang": "mix",
+    "layout": "single",
+    "scan": 1,
+    "font_pt": 11,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Natthawut Charoensuksri"
+       },
+       {
+        "kind": "p",
+        "text": "Project Coordinator"
+       },
+       {
+        "kind": "p",
+        "text": "natthawut.86@example.com  064-555-0986"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 9 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Lanna Digital Public Co., Ltd.  2558 - 2560"
+       },
+       {
+        "kind": "p",
+        "text": "Business Development Manager"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       },
+       {
+        "kind": "p",
+        "text": "Ruangkhao Foods Co., Ltd.  2561 - 2562"
+       },
+       {
+        "kind": "p",
+        "text": "Accounting Officer"
+       },
+       {
+        "kind": "li",
+        "text": "พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน"
+       },
+       {
+        "kind": "li",
+        "text": "ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง"
+       },
+       {
+        "kind": "p",
+        "text": "Phuphaa Software Co., Ltd.  2563 - 2564"
+       },
+       {
+        "kind": "p",
+        "text": "Accounting Officer"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "B.B.A. Marketing Lanna Rajabhum University 2554"
+       },
+       {
+        "kind": "p",
+        "text": "B.A. English Lanna Rajabhum University 2556"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Budget planning, Client communication, Leadership, Python, SQL, Docker"
+       }
+      ]
+     }
+    ],
+    "text": "Natthawut Charoensuksri\nProject Coordinator\nnatthawut.86@example.com  064-555-0986\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 9 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน Experience\nLanna Digital Public Co., Ltd.  2558 - 2560\nBusiness Development Manager\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nRuangkhao Foods Co., Ltd.  2561 - 2562\nAccounting Officer\nพัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\nประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nPhuphaa Software Co., Ltd.  2563 - 2564\nAccounting Officer\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nการศึกษา Education\nB.B.A. Marketing Lanna Rajabhum University 2554\nB.A. English Lanna Rajabhum University 2556\nทักษะ Skills\nBudget planning, Client communication, Leadership, Python, SQL, Docker",
+    "facts": [
+     "natthawut.86@example.com",
+     "064-555-0986",
+     "2554",
+     "2556",
+     "2558",
+     "2560",
+     "2561",
+     "2562",
+     "2563",
+     "2564",
+     "Lanna Digital",
+     "Ruangkhao Foods",
+     "Phuphaa Software"
+    ]
+   },
+   {
+    "id": "ocr-h16",
+    "seed": 9216,
+    "lang": "mix",
+    "layout": "table",
+    "scan": 1,
+    "font_pt": 10,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Kanyapak Kaewmaneewong"
+       },
+       {
+        "kind": "p",
+        "text": "Data Analyst"
+       },
+       {
+        "kind": "p",
+        "text": "kanyapak.83@example.com  094-555-0226"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 8 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Phuphaa Software Co., Ltd.  2560 - 2562"
+       },
+       {
+        "kind": "p",
+        "text": "Senior Software Engineer"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       },
+       {
+        "kind": "p",
+        "text": "Mekha Cloud Service Co., Ltd.  2563 - 2564"
+       },
+       {
+        "kind": "p",
+        "text": "Accounting Officer"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "p",
+        "text": "Talaesai Logistics Co., Ltd.  2565 - 2566"
+       },
+       {
+        "kind": "p",
+        "text": "Data Analyst"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "li",
+        "text": "ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "row",
+        "cells": [
+         "B.Sc. Computer Science",
+         "Srisayam University of Technology",
+         "2556"
+        ]
+       },
+       {
+        "kind": "row",
+        "cells": [
+         "M.Eng. Industrial Engineering",
+         "Srisayam University of Technology",
+         "2558"
+        ]
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Data analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau"
+       }
+      ]
+     }
+    ],
+    "text": "Kanyapak Kaewmaneewong\nData Analyst\nkanyapak.83@example.com  094-555-0226\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 8 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน Experience\nPhuphaa Software Co., Ltd.  2560 - 2562\nSenior Software Engineer\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nMekha Cloud Service Co., Ltd.  2563 - 2564\nAccounting Officer\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nTalaesai Logistics Co., Ltd.  2565 - 2566\nData Analyst\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี\nการศึกษา Education\nB.Sc. Computer Science Srisayam University of Technology 2556\nM.Eng. Industrial Engineering Srisayam University of Technology 2558\nทักษะ Skills\nData analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau",
+    "facts": [
+     "kanyapak.83@example.com",
+     "094-555-0226",
+     "2556",
+     "2558",
+     "2560",
+     "2562",
+     "2563",
+     "2564",
+     "2565",
+     "2566",
+     "Phuphaa Software",
+     "Mekha Cloud Service",
+     "Talaesai Logistics"
+    ]
+   },
+   {
+    "id": "ocr-h17",
+    "seed": 9217,
+    "lang": "th",
+    "layout": "dense",
+    "scan": 1,
+    "font_pt": 9.5,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "ธนพงศ์ ธรรมรักษ์"
+       },
+       {
+        "kind": "p",
+        "text": "นักออกแบบประสบการณ์ผู้ใช้"
+       },
+       {
+        "kind": "p",
+        "text": "thanaphong.45@example.com  067-555-0360"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 4 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "บริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2560 - 2562"
+       },
+       {
+        "kind": "p",
+        "text": "วิศวกรซอฟต์แวร์อาวุโส"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท อัญมณีการเงิน จำกัด  2563 - 2564"
+       },
+       {
+        "kind": "p",
+        "text": "เจ้าหน้าที่ควบคุมคุณภาพ"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท ลานนาดิจิทัล จำกัด (มหาชน)  2565 - 2566"
+       },
+       {
+        "kind": "p",
+        "text": "ผู้จัดการฝ่ายพัฒนาธุรกิจ"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "วิศวกรรมศาสตรมหาบัณฑิต สาขาวิศวกรรมอุตสาหการ มหาวิทยาลัยศรีสยามเทคโนโลยี 2556"
+       },
+       {
+        "kind": "p",
+        "text": "บริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยศรีสยามเทคโนโลยี 2558"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "การวิเคราะห์ข้อมูล, การบริหารโครงการ, การเจรจาต่อรอง, การนำเสนอ, ภาษาอังกฤษระดับดี"
+       }
+      ]
+     }
+    ],
+    "text": "ธนพงศ์ ธรรมรักษ์\nนักออกแบบประสบการณ์ผู้ใช้\nthanaphong.45@example.com  067-555-0360\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 4 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน\nบริษัท เมฆาคลาวด์เซอร์วิส จำกัด  2560 - 2562\nวิศวกรซอฟต์แวร์อาวุโส\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nบริษัท อัญมณีการเงิน จำกัด  2563 - 2564\nเจ้าหน้าที่ควบคุมคุณภาพ\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nบริษัท ลานนาดิจิทัล จำกัด (มหาชน)  2565 - 2566\nผู้จัดการฝ่ายพัฒนาธุรกิจ\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nการศึกษา\nวิศวกรรมศาสตรมหาบัณฑิต สาขาวิศวกรรมอุตสาหการ มหาวิทยาลัยศรีสยามเทคโนโลยี 2556\nบริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยศรีสยามเทคโนโลยี 2558\nทักษะ\nการวิเคราะห์ข้อมูล, การบริหารโครงการ, การเจรจาต่อรอง, การนำเสนอ, ภาษาอังกฤษระดับดี",
+    "facts": [
+     "thanaphong.45@example.com",
+     "067-555-0360",
+     "2556",
+     "2558",
+     "2560",
+     "2562",
+     "2563",
+     "2564",
+     "2565",
+     "2566",
+     "เมฆาคลาวด์เซอร์วิส",
+     "อัญมณีการเงิน",
+     "ลานนาดิจิทัล"
+    ]
+   },
+   {
+    "id": "ocr-h18",
+    "seed": 9218,
+    "lang": "en",
+    "layout": "single",
+    "scan": 1,
+    "font_pt": 11,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Piyanut Pongpipat"
+       },
+       {
+        "kind": "p",
+        "text": "Senior Software Engineer"
+       },
+       {
+        "kind": "p",
+        "text": "piyanut.97@example.com  096-555-0664"
+       }
+      ]
+     },
+     {
+      "title": "Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Over 5 years of experience in systems development and project delivery, focused on measurable results."
+       }
+      ]
+     },
+     {
+      "title": "Work Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Anyamani Finance Co., Ltd.  2018 - 2020"
+       },
+       {
+        "kind": "p",
+        "text": "Data Analyst"
+       },
+       {
+        "kind": "li",
+        "text": "Designed surveys and interviewed users to find the real problems"
+       },
+       {
+        "kind": "li",
+        "text": "Managed more than 40 corporate clients and negotiated annual service contracts"
+       },
+       {
+        "kind": "p",
+        "text": "Lanna Digital Public Co., Ltd.  2021 - 2022"
+       },
+       {
+        "kind": "p",
+        "text": "UX Designer"
+       },
+       {
+        "kind": "li",
+        "text": "Trained new staff on safety and service standards"
+       },
+       {
+        "kind": "li",
+        "text": "Built an executive reporting system that cut report preparation from three days to half a day"
+       },
+       {
+        "kind": "p",
+        "text": "Ruangkhao Foods Co., Ltd.  2023 - 2024"
+       },
+       {
+        "kind": "p",
+        "text": "Senior Software Engineer"
+       },
+       {
+        "kind": "li",
+        "text": "Improved the goods receiving process to be faster and more accurate"
+       },
+       {
+        "kind": "li",
+        "text": "Designed surveys and interviewed users to find the real problems"
+       }
+      ]
+     },
+     {
+      "title": "Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "B.A. English Srisayam University of Technology 2014"
+       },
+       {
+        "kind": "p",
+        "text": "B.A. English Lanna Rajabhum University 2016"
+       }
+      ]
+     },
+     {
+      "title": "Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Budget planning, Client communication, Leadership, Python, SQL, Docker"
+       }
+      ]
+     }
+    ],
+    "text": "Piyanut Pongpipat\nSenior Software Engineer\npiyanut.97@example.com  096-555-0664\nSummary\nOver 5 years of experience in systems development and project delivery, focused on measurable results.\nWork Experience\nAnyamani Finance Co., Ltd.  2018 - 2020\nData Analyst\nDesigned surveys and interviewed users to find the real problems\nManaged more than 40 corporate clients and negotiated annual service contracts\nLanna Digital Public Co., Ltd.  2021 - 2022\nUX Designer\nTrained new staff on safety and service standards\nBuilt an executive reporting system that cut report preparation from three days to half a day\nRuangkhao Foods Co., Ltd.  2023 - 2024\nSenior Software Engineer\nImproved the goods receiving process to be faster and more accurate\nDesigned surveys and interviewed users to find the real problems\nEducation\nB.A. English Srisayam University of Technology 2014\nB.A. English Lanna Rajabhum University 2016\nSkills\nBudget planning, Client communication, Leadership, Python, SQL, Docker",
+    "facts": [
+     "piyanut.97@example.com",
+     "096-555-0664",
+     "2014",
+     "2016",
+     "2018",
+     "2020",
+     "2021",
+     "2022",
+     "2023",
+     "2024",
+     "Anyamani Finance",
+     "Lanna Digital",
+     "Ruangkhao Foods"
+    ]
+   },
+   {
+    "id": "ocr-h19",
+    "seed": 9219,
+    "lang": "th",
+    "layout": "table",
+    "scan": 1,
+    "font_pt": 10,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "ธนพงศ์ ธรรมรักษ์"
+       },
+       {
+        "kind": "p",
+        "text": "วิศวกรซอฟต์แวร์อาวุโส"
+       },
+       {
+        "kind": "p",
+        "text": "thanaphong.43@example.com  097-555-0488"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 4 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "บริษัท ภูผาซอฟต์แวร์ จำกัด  2555 - 2557"
+       },
+       {
+        "kind": "p",
+        "text": "วิศวกรซอฟต์แวร์อาวุโส"
+       },
+       {
+        "kind": "li",
+        "text": "ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท ทะเลใสโลจิสติกส์ จำกัด  2558 - 2559"
+       },
+       {
+        "kind": "p",
+        "text": "วิศวกรซอฟต์แวร์อาวุโส"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "p",
+        "text": "บริษัท ลานนาดิจิทัล จำกัด (มหาชน)  2560 - 2561"
+       },
+       {
+        "kind": "p",
+        "text": "นักวิเคราะห์ข้อมูล"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา",
+      "side": true,
+      "items": [
+       {
+        "kind": "row",
+        "cells": [
+         "บริหารธุรกิจบัณฑิต สาขาการตลาด",
+         "มหาวิทยาลัยศรีสยามเทคโนโลยี",
+         "2551"
+        ]
+       },
+       {
+        "kind": "row",
+        "cells": [
+         "วิทยาศาสตรบัณฑิต สาขาวิทยาการคอมพิวเตอร์",
+         "มหาวิทยาลัยศรีสยามเทคโนโลยี",
+         "2553"
+        ]
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "การบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ"
+       }
+      ]
+     }
+    ],
+    "text": "ธนพงศ์ ธรรมรักษ์\nวิศวกรซอฟต์แวร์อาวุโส\nthanaphong.43@example.com  097-555-0488\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 4 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน\nบริษัท ภูผาซอฟต์แวร์ จำกัด  2555 - 2557\nวิศวกรซอฟต์แวร์อาวุโส\nดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nบริษัท ทะเลใสโลจิสติกส์ จำกัด  2558 - 2559\nวิศวกรซอฟต์แวร์อาวุโส\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nบริษัท ลานนาดิจิทัล จำกัด (มหาชน)  2560 - 2561\nนักวิเคราะห์ข้อมูล\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nการศึกษา\nบริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยศรีสยามเทคโนโลยี 2551\nวิทยาศาสตรบัณฑิต สาขาวิทยาการคอมพิวเตอร์ มหาวิทยาลัยศรีสยามเทคโนโลยี 2553\nทักษะ\nการบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ",
+    "facts": [
+     "thanaphong.43@example.com",
+     "097-555-0488",
+     "2551",
+     "2553",
+     "2555",
+     "2557",
+     "2558",
+     "2559",
+     "2560",
+     "2561",
+     "ภูผาซอฟต์แวร์",
+     "ทะเลใสโลจิสติกส์",
+     "ลานนาดิจิทัล"
+    ]
+   },
+   {
+    "id": "ocr-h20",
+    "seed": 9220,
+    "lang": "mix",
+    "layout": "twocol",
+    "scan": 1,
+    "font_pt": 10,
+    "sections": [
+     {
+      "title": "",
+      "side": true,
+      "items": [
+       {
+        "kind": "name",
+        "text": "Kanyapak Kaewmaneewong"
+       },
+       {
+        "kind": "p",
+        "text": "Senior Software Engineer"
+       },
+       {
+        "kind": "p",
+        "text": "kanyapak.20@example.com  065-555-0899"
+       }
+      ]
+     },
+     {
+      "title": "การศึกษา Education",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "B.B.A. Marketing Lanna Rajabhum University 2557"
+       },
+       {
+        "kind": "p",
+        "text": "B.B.A. Marketing Lanna Rajabhum University 2559"
+       }
+      ]
+     },
+     {
+      "title": "ทักษะ Skills",
+      "side": true,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Data analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau"
+       }
+      ]
+     },
+     {
+      "title": "สรุปประวัติ Summary",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "มีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 11 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ"
+       }
+      ]
+     },
+     {
+      "title": "ประสบการณ์ทำงาน Experience",
+      "side": false,
+      "items": [
+       {
+        "kind": "p",
+        "text": "Anyamani Finance Co., Ltd.  2561 - 2563"
+       },
+       {
+        "kind": "p",
+        "text": "Quality Control Officer"
+       },
+       {
+        "kind": "li",
+        "text": "ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น"
+       },
+       {
+        "kind": "li",
+        "text": "ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ"
+       },
+       {
+        "kind": "p",
+        "text": "Ruangkhao Foods Co., Ltd.  2564 - 2565"
+       },
+       {
+        "kind": "p",
+        "text": "Accounting Officer"
+       },
+       {
+        "kind": "li",
+        "text": "วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์"
+       },
+       {
+        "kind": "li",
+        "text": "ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง"
+       },
+       {
+        "kind": "p",
+        "text": "Phuphaa Software Co., Ltd.  2566 - 2567"
+       },
+       {
+        "kind": "p",
+        "text": "Senior Software Engineer"
+       },
+       {
+        "kind": "li",
+        "text": "จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน"
+       },
+       {
+        "kind": "li",
+        "text": "ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี"
+       }
+      ]
+     }
+    ],
+    "text": "Kanyapak Kaewmaneewong\nSenior Software Engineer\nkanyapak.20@example.com  065-555-0899\nการศึกษา Education\nB.B.A. Marketing Lanna Rajabhum University 2557\nB.B.A. Marketing Lanna Rajabhum University 2559\nทักษะ Skills\nData analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 11 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\nประสบการณ์ทำงาน Experience\nAnyamani Finance Co., Ltd.  2561 - 2563\nQuality Control Officer\nปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nRuangkhao Foods Co., Ltd.  2564 - 2565\nAccounting Officer\nวิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\nออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nPhuphaa Software Co., Ltd.  2566 - 2567\nSenior Software Engineer\nจัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\nดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี",
+    "facts": [
+     "kanyapak.20@example.com",
+     "065-555-0899",
+     "2557",
+     "2559",
+     "2561",
+     "2563",
+     "2564",
+     "2565",
+     "2566",
+     "2567",
+     "Anyamani Finance",
+     "Ruangkhao Foods",
+     "Phuphaa Software"
+    ]
+   }
   ]
  }
 }

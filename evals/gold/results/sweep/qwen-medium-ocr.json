@@ -1,0 +1,134 @@
+{
+ "tag": "qwen-medium-ocr",
+ "date": "2026-11-03 21:23",
+ "backend_src": "/Users/parksurakiat/AI-Job-Search-Agent-Platform-dem-worktrees/qwen-harness/backend/src",
+ "backend_commit": "1df8cf9ae3d3a74d21f6754f0f305aa8ae4566d5",
+ "mode": "app",
+ "scorer_version": "23e372a3e12a",
+ "dataset_sha256_12": "716f4922071e",
+ "models": [
+  "qwen/qwen3.7-flash"
+ ],
+ "prices_per_mtok": {
+  "qwen/qwen3.7-flash": {
+   "in": 0.03,
+   "out": 0.13,
+   "cache": 0.006
+  }
+ },
+ "max_tokens": 16000,
+ "reasoning": "app",
+ "dataset": "gold.v1",
+ "results": [
+  {
+   "model": "qwen/qwen3.7-flash",
+   "task": "ocr",
+   "case": "ocr-d03",
+   "text": "Natthawut Charoensuksri\nData Analyst\nnatthawut.64@example.com 063-555-0470\n\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 11 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\n\nประสบการณ์ทำงาน Experience\nLanna Digital Public Co., Ltd. 2556 - 2558\nUX Designer\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\n• ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nAnyamani Finance Co., Ltd. 2559 - 2560\nAccounting Officer\n• ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี\n• ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nPhuphaa Software Co., Ltd. 2561 - 2562\nBusiness Development Manager\n• ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\n• ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\n\nการศึกษา Education\nB.Sc. Computer Science | Srisayam University of Technology | 2552\nB.Sc. Computer Science | Lanna Rajabhum University | 2554\n\nทักษะ Skills\nData analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau",
+   "total_s": 24.83253704092931,
+   "first_token_s": 3.507023665937595,
+   "first_text_s": 19.99202908296138,
+   "prompt_tokens": 2301,
+   "completion_tokens": 1340,
+   "reasoning_tokens": 1047,
+   "cached_tokens": 0,
+   "finish": "stop",
+   "quality": 100.0,
+   "details": {
+    "cer": 0.0,
+    "marks": 1.0,
+    "facts": 1.0,
+    "len": 1012
+   },
+   "cost_usd": 0.00024323000000000001
+  },
+  {
+   "model": "qwen/qwen3.7-flash",
+   "task": "ocr",
+   "case": "ocr-d05",
+   "text": "Piyanut Pongpipat\nUX Designer\npiyanut.47@example.com 061-555-0253\n\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 11 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\n\nประสบการณ์ทำงาน Experience\nAnyamani Finance Co., Ltd. 2555 - 2557\nProject Coordinator\n• ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\n• ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nLanna Digital Public Co., Ltd. 2558 - 2559\nBusiness Development Manager\n• จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nPhuphaa Software Co., Ltd. 2560 - 2561\nBusiness Development Manager\n• ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\n\nการศึกษา Education\nB.B.A. Marketing Lanna Rajabhum University 2551\nM.Eng. Industrial Engineering Srisayam University of Technology 2553\n\nทักษะ Skills\nBudget planning, Client communication, Leadership, Python, SQL, Docker",
+   "total_s": 29.852736167027615,
+   "first_token_s": 4.922009749920107,
+   "first_text_s": 25.229126208927482,
+   "prompt_tokens": 2301,
+   "completion_tokens": 1506,
+   "reasoning_tokens": 1229,
+   "cached_tokens": 0,
+   "finish": "stop",
+   "quality": 100.0,
+   "details": {
+    "cer": 0.0,
+    "marks": 1.0,
+    "facts": 1.0,
+    "len": 1010
+   },
+   "cost_usd": 0.00026481
+  },
+  {
+   "model": "qwen/qwen3.7-flash",
+   "task": "ocr",
+   "case": "ocr-d04",
+   "text": "กัญญาภัก แก้วมณีวงศ์\nผู้ประสานงานโครงการ\nkanyapak.90@example.com 064-555-0942\n\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 8 ปี มุ่งเน้นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่\nเสมอ\n\nประสบการณ์ทำงาน\nบริษัท แมคคาลด์เจอร์วิส จำกัด 2560 - 2562\nเจ้าหน้าที่ควบคุมคุณภาพ\n• วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\n• พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\n• ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nบริษัท รวงข้าวฟุสส์ จำกัด 2563 - 2564\nเจ้าหน้าที่ฝ่ายบัญชีและการเงิน\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\n• จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\n• ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nบริษัท กูมาซอฟต์แวร์ จำกัด 2565 - 2566\nเจ้าหน้าที่ฝ่ายบัญชีและการเงิน\n• ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\n• จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\n\nการศึกษา\nบริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยราชภัฏลานนา 2556\nบริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยราชภัฏลานนา 2558\n\nทักษะ\nการบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ",
+   "total_s": 32.87874524993822,
+   "first_token_s": 4.616803832934238,
+   "first_text_s": 27.519762541982345,
+   "prompt_tokens": 765,
+   "completion_tokens": 1811,
+   "reasoning_tokens": 1474,
+   "cached_tokens": 0,
+   "finish": "stop",
+   "quality": 90.7,
+   "details": {
+    "cer": 0.02,
+    "marks": 0.949,
+    "facts": 0.77,
+    "len": 1182
+   },
+   "cost_usd": 0.00025838
+  },
+  {
+   "model": "qwen/qwen3.7-flash",
+   "task": "ocr",
+   "case": "ocr-d01",
+   "text": "ณัฐวุฒิ เจริญสุขศรี\nผู้จัดการฝ่ายพัฒนาธุรกิจ\nnatthawut.36@example.com 064-555-0668\n\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 6 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อม\nเรียนรู้สิ่งใหม่อยู่เสมอ\n\nประสบการณ์ทำงาน\nบริษัท อัญมณีการเงิน จำกัด 2560 - 2562\nวิศวกรซอฟต์แวร์อาวุโส\n• พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nบริษัท รวงข่าวฟู้ดส์ จำกัด 2563 - 2564\nเจ้าหน้าที่ควบคุมคุณภาพ\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\n• ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nบริษัท ทะเลใสโลจิสติกส์ จำกัด 2565 - 2566\nผู้ประสานงานโครงการ\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\n• วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\n\nการศึกษา\nวิศวกรรมศาสตรมหาบัณฑิต สาขาวิศวกรรมอุตสาหการ มหาวิทยาลัยศรีสยามเทคโนโลยี 2556\nวิศวกรรมศาสตรมหาบัณฑิต สาขาวิศวกรรมอุตสาหการ มหาวิทยาลัยราชภัฏล้านนา 2558\n\nทักษะ\nการบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ",
+   "total_s": 44.22191158309579,
+   "first_token_s": 3.6227303750347346,
+   "first_text_s": 39.53257800010033,
+   "prompt_tokens": 2301,
+   "completion_tokens": 2702,
+   "reasoning_tokens": 2403,
+   "cached_tokens": 0,
+   "finish": "stop",
+   "quality": 96.9,
+   "details": {
+    "cer": 0.005,
+    "marks": 0.981,
+    "facts": 0.92,
+    "len": 1037
+   },
+   "cost_usd": 0.00042029
+  },
+  {
+   "model": "qwen/qwen3.7-flash",
+   "task": "ocr",
+   "case": "ocr-d02",
+   "text": "Wannida\nWattanakul\nSenior Software Engineer\nwannida.32@example.com 064-555-0197\n\nEducation\nB.A. English Srisayam University of Technology 2012\nB.Sc. Computer Science Srisayam University of Technology 2014\n\nSkills\nData analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau\n\nSummary\nOver 5 years of experience in systems development and project delivery, focused on measurable results.\n\nWork Experience\nAnyamani Finance Co., Ltd. 2016 - 2018\nUX Designer\n• Trained new staff on safety and service standards\n• Built an executive reporting system that cut report preparation from three days to half a day\n\nTalaesai Logistics Co., Ltd. 2019 - 2020\nQuality Control Officer\n• Analysed monthly sales data and presented strategic recommendations\n• Trained new staff on safety and service standards\n\nPhuphaa Software Co., Ltd. 2021 - 2022\nSenior Software Engineer\n• Trained new staff on safety and service standards\n• Prepared the annual budget and tracked spending against plan",
+   "total_s": 77.53001641610172,
+   "first_token_s": 2.2436688750749454,
+   "first_text_s": 72.86441533302423,
+   "prompt_tokens": 2301,
+   "completion_tokens": 4456,
+   "reasoning_tokens": 4196,
+   "cached_tokens": 0,
+   "finish": "stop",
+   "quality": 100.0,
+   "details": {
+    "cer": 0.0,
+    "marks": null,
+    "facts": 1.0,
+    "len": 973
+   },
+   "cost_usd": 0.0006483099999999999
+  }
+ ]
+}

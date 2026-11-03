@@ -150,8 +150,10 @@ this proof covers native bridge death while the adapter remains alive.
 Pasted UTF-8 text, text-bearing English/Thai PDF, and DOCX are supported. Inputs are
 limited to 20 MiB; DOCX expansion to 100 MiB, 1000 entries, and ratio 100; extracted
 text to 1 MiB. Unsupported, encrypted, malformed, and empty inputs return stable
-errors. Image-only PDFs return `scanned_pdf_unsupported`; no OCR or network fallback
-is attempted. Magic bytes identify PDF/DOCX rather than trusting their filename.
+errors. Image-only PDFs and PDFs whose Thai text layer lost its tone marks make the sandbox render up
+to 4 pages to `staging/ocr-N.jpg` (poppler, network off) and return `needs_vision`; the host then
+transcribes them through LiteLLM (`services/ocr.py`, `AI_MODEL_DOCUMENT_OCR`). Without a gateway key
+the code stays `scanned_pdf_unsupported`. Magic bytes identify PDF/DOCX rather than trusting their filename.
 
 `export_document(project_id, format, source, output)` accepts relative `staging/`
 paths and returns the output path. Native invocations are:

@@ -32,7 +32,7 @@ const formatSize = (bytes: number) => bytes >= 1048576 ? `${(bytes / 1048576).to
 const uploadMessages: Record<string, string> = {
   scanned_pdf_unsupported: 'errors.scanned_pdf_unsupported', document_encrypted: 'errors.document_encrypted', document_invalid: 'errors.document_invalid', empty_input: 'errors.empty_input',
   document_expansion_limit: 'errors.document_limits', extracted_text_limit: 'errors.document_limits', input_size_invalid: 'pages.uploadTooLarge', upload_too_large: 'pages.uploadTooLarge',
-  unsupported_input: 'pages.uploadInvalidType', unsupported_media_type: 'pages.uploadInvalidType', document_parse_timeout: 'errors.document_parse_timeout', network_error: 'errors.network_error',
+  unsupported_input: 'pages.uploadInvalidType', unsupported_media_type: 'pages.uploadInvalidType', document_parse_timeout: 'errors.document_parse_timeout', ocr_unavailable: 'errors.ocr_unavailable', network_error: 'errors.network_error',
 };
 const ACCEPT = '.pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain';
 

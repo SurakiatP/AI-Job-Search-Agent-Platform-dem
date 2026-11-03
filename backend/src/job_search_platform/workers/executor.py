@@ -29,6 +29,7 @@ from job_search_platform.services.contracts import EvaluationReport, EvaluationR
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
 from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.gateway import GatewaySettings
+from job_search_platform.services.ocr import with_vision_text
 from job_search_platform.services import applications, experience, job_sources, resume, smart_match, tailoring
 from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, claims, fact_claims, require_evidence, summary_claims
 from job_search_platform.services.errors import ServiceError
@@ -57,6 +58,13 @@ def _native_json(value: str):
     """Parse native JSON, accepting one surrounding markdown fence that some models add."""
     fenced = re.fullmatch(r"\s*```(?:json)?\s*\n(.*)\n\s*```\s*", value, re.DOTALL)
     return json.loads(fenced.group(1) if fenced else value)
+
+
+def repair_prompt(expected_shape: str, previous_reply: str) -> str:
+    """Ask once for the same answer again as a bare JSON object (the earlier reply was not parseable)."""
+    return (f"Your previous reply could not be read:\n{previous_reply[:4000]}\n\n"
+            f"Reply only a JSON object shaped {expected_shape}; no prose, no code fence. "
+            "The top level must be one JSON object, not an array.")
 
 
 _MATCH_TEXT = {"strong": "✅", "partial": "⚠️", "missing": "❌", "not_applicable": "➖"}
@@ -261,6 +269,17 @@ class RunExecutor:
                     notified = True
                     execution.cancel("claim-watchdog")
 
+    async def _parse_or_repair(self, run: Run, lease_owner: str, gate_failure, provider, raw: str, parse, shape: str, tool_gate):
+        """Parse the native reply; on an invalid shape ask once more with repair_prompt, then parse that."""
+        try:
+            return parse(raw)
+        except ValueError:
+            began = time.monotonic()
+            await self.runtime.submit(run.project_id, uuid.uuid5(run.id, "repair"), repair_prompt(shape, raw),
+                                      "Answer JSON only. Do not use tools.", provider,
+                                      operation=run.operation, tool_gate=tool_gate)
+            return parse(await self._await_result(run, lease_owner, gate_failure, began))
+
     async def _execute_claimed(self, run: Run, lease_owner: str) -> None:
         if await self._apply_approved_action(run, lease_owner):
             return
@@ -314,7 +333,7 @@ class RunExecutor:
             # per-run reservation before any untrusted input reaches Hermes.
             self.runtime.projects[run.project_id].tool_gate = reserve_tool
             self._record_process(run.id, lease_owner, project)
-            parsed = await self.runtime.parse_input(run.project_id, cv_path)
+            parsed = await self._parse_input(run, cv_path, sandbox)
             # Free by-product of parsing: remember the CV's skill names (never its text) if not yet stored.
             with contextlib.suppress(Exception):
                 await asyncio.to_thread(self._store_profile, run.cv_revision_id, parsed.text)
@@ -334,7 +353,10 @@ class RunExecutor:
             self._public_event(run.id, "run_progress", {"step": "agent_running"})
             native_result = await self._await_result(run, lease_owner, gate_failure, began)
             if run.operation == "evaluate_job":
-                evaluation = parse_evaluation_result(native_result)
+                evaluation = await self._parse_or_repair(
+                    run, lease_owner, gate_failure, provider, native_result, parse_evaluation_result,
+                    '{"score": 1-5 or null, "report": {"verdict", "summary", "requirements", "strengths", "risks", "interview_prep", "cv_changes"}}',
+                    reserve_tool)
                 job = run.input_snapshot["job"]
                 coverage = compute_skill_coverage(parsed.text, f"{job['title']}\n{job['description']}")
                 if coverage is not None:
@@ -439,6 +461,11 @@ class RunExecutor:
             if text.strip() and db.get(CVRevisionText, cv_revision_id) is None:
                 db.add(CVRevisionText(cv_revision_id=cv_revision_id, project_id=revision.project_id, text=text))
 
+    async def _parse_input(self, run: Run, cv_path: str, sandbox: RunSandbox):
+        """Sandbox parse; scanned or broken-text PDFs continue through the vision fallback (services/ocr.py)."""
+        parsed = await self.runtime.parse_input(run.project_id, cv_path)
+        return await with_vision_text(parsed, sandbox.workspace, self.gateway)
+
     async def _parse_cv_text(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> str:
         """Parse the run's CV inside the sandbox (no LLM); the native project is stopped again before returning."""
         cv_path = await self._materialize(run, sandbox)
@@ -456,7 +483,7 @@ class RunExecutor:
             started = True
             self.runtime.projects[run.project_id].tool_gate = reserve_tool
             self._record_process(run.id, lease_owner, project)
-            parsed = await self.runtime.parse_input(run.project_id, cv_path)
+            parsed = await self._parse_input(run, cv_path, sandbox)
         finally:
             await self._stop(run.project_id, started)
         return parsed.text
@@ -495,7 +522,7 @@ class RunExecutor:
             self.runtime.projects[run.project_id].tool_gate = reserve_tool
             self._record_process(run.id, lease_owner, project)
             if text is None:
-                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+                text = (await self._parse_input(run, cv_path, sandbox)).text.replace("\x00", "")
                 with contextlib.suppress(Exception):
                     await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
             if not text.strip():
@@ -505,7 +532,9 @@ class RunExecutor:
             await self.runtime.submit(run.project_id, run.id, prompt, instructions, provider,
                                       operation="extract_experience", tool_gate=reserve_tool)
             self._public_event(run.id, "run_progress", {"step": "agent_running"})
-            items = experience.parse_experience_items(await self._await_result(run, lease_owner, gate_failure, began))
+            items = await self._parse_or_repair(
+                run, lease_owner, gate_failure, provider, await self._await_result(run, lease_owner, gate_failure, began),
+                experience.parse_experience_items, '{"items": [{"kind", "text", ...}]}', reserve_tool)
             await self._stop(run.project_id, started)
             started = False
             await asyncio.to_thread(self._store_experience, run, text, items)
@@ -639,7 +668,7 @@ class RunExecutor:
             self.runtime.projects[run.project_id].tool_gate = deny_tool
             self._record_process(run.id, lease_owner, project)
             if text is None:
-                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+                text = (await self._parse_input(run, cv_path, sandbox)).text.replace("\x00", "")
                 with contextlib.suppress(Exception):
                     await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
             if not text.strip():
@@ -771,7 +800,7 @@ class RunExecutor:
             self.runtime.projects[run.project_id].tool_gate = deny_tool
             self._record_process(run.id, lease_owner, project)
             if text is None:
-                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+                text = (await self._parse_input(run, cv_path, sandbox)).text.replace("\x00", "")
                 with contextlib.suppress(Exception):
                     await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
             if not text.strip():
@@ -870,7 +899,7 @@ class RunExecutor:
             self.runtime.projects[run.project_id].tool_gate = deny_tool
             self._record_process(run.id, lease_owner, project)
             if text is None:
-                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+                text = (await self._parse_input(run, cv_path, sandbox)).text.replace("\x00", "")
             if not text.strip():
                 raise ServiceError("cv_text_empty")
             if run.operation == "interview_generate":
@@ -1140,6 +1169,11 @@ class RunExecutor:
             f"Company: {job.get('company') or ''}\nJob description:\n{job['description']}\n"
             f"Candidate CV:\n{cv_text}"
         )
+        if run.operation != "evaluate_job":
+            prompt += ("\nWriting rules: Never leave bracketed placeholders such as [Company] or [Name]; omit the line "
+                       "instead. A skill the job asks for but the CV lacks must be left out, or framed only as willingness "
+                       "to learn, never as a skill the candidate holds. Copy every number, date and name exactly as the "
+                       "CV states it; never invent one.")
         if run.operation == "draft_documents" and facts:
             prompt += ("\nCandidate facts (the only facts you may state about the candidate; do not add new facts, "
                        "numbers, employers, titles or dates):\n" + "\n".join(f"- {line}" for line in facts))
@@ -1404,6 +1438,8 @@ def _safe_message(code: str) -> str:
         "connector_disabled": "errors.connector_disabled",
         "export_failed": "errors.export_failed",
         "gateway_unconfigured": "errors.gateway_unconfigured",
+        "ocr_unavailable": "errors.ocr_unavailable",
+        "scanned_pdf_unsupported": "errors.scanned_pdf_unsupported",
         "jev_unavailable": "errors.jev_unavailable",
         "jev_failed": "errors.jev_failed",
         "cv_text_empty": "errors.cv_text_empty",

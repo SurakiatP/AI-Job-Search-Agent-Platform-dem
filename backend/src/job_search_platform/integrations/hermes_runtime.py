@@ -28,17 +28,18 @@ PARSE_ERRORS = frozenset({"input_path_invalid", "input_size_invalid", "document_
 NATIVE_OPERATIONS = ("evaluate_job", "draft_documents", "extract_experience", "tailor_cv", "apply_prepare",
                      "interview_generate", "interview_grade", "interview_report")
 
-EFFORTS = frozenset({"low", "medium", "high", "default"})
+EFFORTS = frozenset({"none", "minimal", "low", "medium", "high", "default"})
+
+
+def reasoning_effort(env, operation: str) -> str | None:
+    """AI_REASONING_<OPERATION> (none|minimal|low|medium|high|default); anything else is ignored."""
+    value = str(env.get("AI_REASONING_" + operation.upper(), "")).strip().lower()
+    return value if value in EFFORTS else None
 
 
 def reasoning_overrides(env) -> dict[str, str]:
-    """Thinking effort per operation from AI_REASONING_<OPERATION>=low|medium|high|default; anything else is ignored."""
-    found = {}
-    for operation in NATIVE_OPERATIONS:
-        value = str(env.get("AI_REASONING_" + operation.upper(), "")).strip().lower()
-        if value in EFFORTS:
-            found[operation] = value
-    return found
+    """Thinking effort per native operation; see reasoning_effort."""
+    return {op: v for op in NATIVE_OPERATIONS if (v := reasoning_effort(env, op))}
 
 
 class RuntimeErrorCode(RuntimeError):
@@ -81,6 +82,8 @@ class ParsedInput:
     text: str
     kind: Literal["text", "pdf", "docx"]
     sha256: str
+    needs_vision: str | None = None  # "scanned_pdf" | "broken_thai": text is empty, pages hold JPEG paths to transcribe
+    pages: tuple[str, ...] = ()
 
 @dataclass
 class ProjectRuntime:
@@ -310,6 +313,14 @@ class HermesRuntime:
         if "parse_error" in response:
             code = response["parse_error"]
             raise RuntimeErrorCode(code if isinstance(code, str) and code in PARSE_ERRORS else "document_invalid")
+        if response.get("needs_vision") is True:
+            pages = response.get("pages")
+            if (response.get("reason") not in ("scanned_pdf", "broken_thai") or response.get("kind") != "pdf"
+                    or not isinstance(pages, list) or not 1 <= len(pages) <= 4
+                    or any(not isinstance(p, str) or not re.fullmatch(r"staging/ocr-[1-4]\.jpg", p) for p in pages)
+                    or not isinstance(response.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", response["sha256"])):
+                raise RuntimeErrorCode("native_response_invalid")
+            return ParsedInput("", "pdf", response["sha256"], response["reason"], tuple(pages))
         if (not isinstance(response.get("text"), str)
                 or len(response["text"].encode()) > 1024 * 1024
                 or response.get("kind") not in ("text", "pdf", "docx")

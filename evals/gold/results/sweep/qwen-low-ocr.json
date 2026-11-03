@@ -1,0 +1,118 @@
+{
+ "tag": "qwen-low-ocr",
+ "date": "2026-11-03 21:25",
+ "backend_src": "/Users/parksurakiat/AI-Job-Search-Agent-Platform-dem-worktrees/qwen-harness/backend/src",
+ "backend_commit": "1df8cf9ae3d3a74d21f6754f0f305aa8ae4566d5",
+ "mode": "app",
+ "scorer_version": "23e372a3e12a",
+ "dataset_sha256_12": "716f4922071e",
+ "models": [
+  "qwen/qwen3.7-flash"
+ ],
+ "prices_per_mtok": {
+  "qwen/qwen3.7-flash": {
+   "in": 0.03,
+   "out": 0.13,
+   "cache": 0.006
+  }
+ },
+ "max_tokens": 16000,
+ "reasoning": "app",
+ "dataset": "gold.v1",
+ "results": [
+  {
+   "model": "qwen/qwen3.7-flash",
+   "task": "ocr",
+   "case": "ocr-d05",
+   "text": "Piyanut Pongpipat\nUX Designer\npiyanut.47@example.com 061-555-0253\n\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 11 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\n\nประสบการณ์ทำงาน Experience\nAnyamani Finance Co., Ltd. 2555 - 2557\nProject Coordinator\n• ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\n• ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nLanna Digital Public Co., Ltd. 2558 - 2559\nBusiness Development Manager\n• จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\nPhuphaa Software Co., Ltd. 2560 - 2561\nBusiness Development Manager\n• ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\n\nการศึกษา Education\nB.B.A. Marketing Lanna Rajabhum University 2551\nM.Eng. Industrial Engineering Srisayam University of Technology 2553\n\nทักษะ Skills\nBudget planning, Client communication, Leadership, Python, SQL, Docker",
+   "total_s": 12.46172912500333,
+   "first_token_s": 3.3466241670539603,
+   "first_text_s": 7.879906208952889,
+   "prompt_tokens": 2301,
+   "completion_tokens": 566,
+   "reasoning_tokens": 288,
+   "cached_tokens": 1024,
+   "finish": "stop",
+   "quality": 100.0,
+   "details": {
+    "cer": 0.0,
+    "marks": 1.0,
+    "facts": 1.0,
+    "len": 1010
+   },
+   "cost_usd": 0.00011803399999999999
+  },
+  {
+   "model": "qwen/qwen3.7-flash",
+   "task": "ocr",
+   "case": "ocr-d01",
+   "text": "",
+   "total_s": 18.317435582983308,
+   "first_token_s": 4.7002545420546085,
+   "first_text_s": null,
+   "prompt_tokens": null,
+   "completion_tokens": null,
+   "reasoning_tokens": null,
+   "cached_tokens": null,
+   "finish": null,
+   "quality": 0.0,
+   "details": {
+    "valid": false
+   },
+   "cost_usd": 0.0
+  },
+  {
+   "model": "qwen/qwen3.7-flash",
+   "task": "ocr",
+   "case": "ocr-d03",
+   "text": "Natthawut Charoensuksri\nData Analyst\nnatthawut.64@example.com 063-555-0470\n\nสรุปประวัติ Summary\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากกว่า 11 ปี มุ่งมั่นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\n\nประสบการณ์ทำงาน Experience\nLanna Digital Public Co., Ltd. 2556 - 2558\nUX Designer\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\n• ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nAnyamani Finance Co., Ltd. 2559 - 2560\nAccounting Officer\n• ดูแลลูกค้าองค์กรกว่า 40 ราย และเจรจาต่อสัญญาบริการประจำปี\n• ออกแบบแบบสอบถามและสัมภาษณ์ผู้ใช้เพื่อค้นหาปัญหาที่แท้จริง\nPhuphaa Software Co., Ltd. 2561 - 2562\nBusiness Development Manager\n• ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\n• ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\n\nการศึกษา Education\nB.Sc. Computer Science\nSrisayam University of Technology\n2552\nB.Sc. Computer Science\nLanna Rajabhum University\n2554\n\nทักษะ Skills\nData analysis, Project management, Negotiation, Presentation, Python, SQL, Tableau",
+   "total_s": 21.81144620804116,
+   "first_token_s": 2.9340687909862027,
+   "first_text_s": 16.904699375038035,
+   "prompt_tokens": 2301,
+   "completion_tokens": 1196,
+   "reasoning_tokens": 905,
+   "cached_tokens": 1024,
+   "finish": "stop",
+   "quality": 100.0,
+   "details": {
+    "cer": 0.0,
+    "marks": 1.0,
+    "facts": 1.0,
+    "len": 1012
+   },
+   "cost_usd": 0.00019993400000000003
+  },
+  {
+   "model": "qwen/qwen3.7-flash",
+   "task": "ocr",
+   "case": "ocr-d04",
+   "text": "กัญญาภัก แก้วมณีวงศ์\nผู้ประสานงานโครงการ\nkanyapak.90@example.com 064-555-0942\n\nสรุปประวัติ\nมีประสบการณ์ทำงานด้านการพัฒนาระบบและบริหารโครงการมากว่า 8 ปี มุ่งเน้นสร้างผลลัพธ์ที่วัดผลได้ และพร้อมเรียนรู้สิ่งใหม่อยู่เสมอ\n\nประสบการณ์ทำงาน\nบริษัท เมฆาดลาร์โซลาร์วิส จำกัด 2560 - 2562\nเจ้าหน้าที่ที่ควบคุมคุณภาพ\n• วิเคราะห์ข้อมูลยอดขายรายเดือนและนำเสนอข้อเสนอแนะเชิงกลยุทธ์\n• พัฒนาระบบรายงานผู้บริหารที่ช่วยลดเวลาจัดทำรายงานจากสามวันเหลือครึ่งวัน\n• ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\nบริษัท รวงข้าวฟุสส์ จำกัด 2563 - 2564\nเจ้าหน้าที่ฝ่ายบัญชีและการเงิน\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\n• จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\n• ปรับปรุงขั้นตอนการตรวจรับสินค้าให้รวดเร็วและถูกต้องยิ่งขึ้น\nบริษัท กูมาซอฟต์แวร์ จำกัด 2565 - 2566\nเจ้าหน้าที่ฝ่ายบัญชีและการเงิน\n• ประสานงานระหว่างทีมวิศวกรรม ฝ่ายขาย และผู้ใช้งานปลายทาง\n• ฝึกอบรมพนักงานใหม่เกี่ยวกับมาตรฐานความปลอดภัยและการให้บริการ\n• จัดทำงบประมาณประจำปีและติดตามค่าใช้จ่ายให้เป็นไปตามแผน\n\nการศึกษา\nบริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยราชภัฏลำเนา 2556\nบริหารธุรกิจบัณฑิต สาขาการตลาด มหาวิทยาลัยราชภัฏลำเนา 2558\n\nทักษะ\nการบริหารโครงการ, การวางแผนงบประมาณ, การสื่อสารกับลูกค้า, ทักษะการเป็นผู้นำ",
+   "total_s": 37.64693879208062,
+   "first_token_s": 3.1088771250797436,
+   "first_text_s": 36.055328999995254,
+   "prompt_tokens": 765,
+   "completion_tokens": 5035,
+   "reasoning_tokens": 4695,
+   "cached_tokens": 0,
+   "finish": "stop",
+   "quality": 90.5,
+   "details": {
+    "cer": 0.026,
+    "marks": 0.949,
+    "facts": 0.77,
+    "len": 1185
+   },
+   "cost_usd": 0.0006775000000000002
+  },
+  {
+   "model": "qwen/qwen3.7-flash",
+   "task": "ocr",
+   "case": "ocr-d02",
+   "text": null,
+   "error": "TimeoutError: no complete reply within 90s",
+   "total_s": null,
+   "quality": 0.0
+  }
+ ]
+}

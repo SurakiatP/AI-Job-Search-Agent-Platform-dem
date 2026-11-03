@@ -129,12 +129,8 @@ async def prove(image: str | None = None):
                 pdf.extend(f"{offset:010} 00000 n \n".encode())
             pdf.extend(f"trailer\n<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode())
             (first.workspace / "inputs/scanned.pdf").write_bytes(pdf)
-            try:
-                await runtime.parse_input(first.project_id, "inputs/scanned.pdf")
-            except RuntimeErrorCode as error:
-                assert str(error) == "scanned_pdf_unsupported", str(error)
-            else:
-                raise AssertionError("scanned PDF accepted")
+            scanned = await runtime.parse_input(first.project_id, "inputs/scanned.pdf")
+            assert scanned.needs_vision == "scanned_pdf" and not scanned.text, scanned  # host runs the OCR step
             unsupported = await tool("skill_view", name="../../other-project")
             assert unsupported.get("error") == "unsupported_tool"
             escaped = await tool("terminal", command="true", _host_local=True)

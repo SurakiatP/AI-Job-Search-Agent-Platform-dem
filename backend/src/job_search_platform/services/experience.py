@@ -99,6 +99,7 @@ def parse_experience_items(value: str) -> list[ExtractedItem]:
 
 def extraction_prompt(cv_text: str) -> tuple[str, str]:
     prompt = (
+        "The top level of your reply must be one JSON object with exactly the key \"items\" (a list), never a bare array. "
         "Extract every fact about the candidate from the CV below. Return only JSON shaped as "
         '{"items":[{"kind":"experience|education|skill|certification|project|other","text":"...",'
         '"role":null,"organization":null,"period":null,"start_date":null,"end_date":null,"is_current":false,'
