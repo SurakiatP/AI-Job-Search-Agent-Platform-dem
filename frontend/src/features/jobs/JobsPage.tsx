@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { EmptyState } from '@/components/EmptyState';
-import { FitScore, FitScoreWhy } from '@/components/FitScore';
+import { FitScore } from '@/components/FitScore';
 import { PageBack } from '@/components/PageBack';
 import { Markdown } from '@/components/Markdown';
 import { CompanyMark } from '@/components/CompanyMark';
@@ -200,7 +200,6 @@ export function JobDetailPage() {
               : t('sourceCVUnavailable')}</span>
           {evaluationSession.status === 'error' && <button type="button" className="min-h-11 lg:min-h-10 text-primary underline underline-offset-4" onClick={evaluationSession.reload}>{t('retry')}</button>}
         </div>
-        <FitScoreWhy result={score} locale={locale} />
         {evaluation.evaluation_result.skill_coverage && <SkillsFound coverage={evaluation.evaluation_result.skill_coverage} />}
         <div>
           <h3 className="inline-flex flex-wrap items-center gap-2 font-medium">{t('latestEvaluation')}<AiLabel /></h3>

@@ -86,7 +86,7 @@ test('landing menu: each feature has its own page; other links reach their secti
   await nav.getByRole('link', { name: 'Manual' }).click();
   await expect(page).toHaveURL(/\/docs$/);
   await expect(page.getByRole('heading', { name: 'User manual', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Start in 3 steps' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Topics in the manual', level: 2 })).toBeVisible();
 });
 
 test('the two explainer pages exist in both languages and show every section', async ({ page }) => {
