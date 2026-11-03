@@ -2,7 +2,7 @@ type Topic = { title: string; body: string };
 export const docsCopy = {
   th: {
     title: 'คู่มือการใช้งาน', intro: 'ทุกอย่างที่ผู้ใช้ใหม่ควรรู้ ตั้งแต่ใส่ CV จนถึงติดตามใบสมัคร',
-    home: 'กลับหน้าแรก', start: 'เริ่มใช้งาน', openApp: 'เปิดแอป', quick: 'เริ่มใน 3 ขั้นตอน', topics: 'หัวข้อในคู่มือ', read: 'อ่านหัวข้อนี้', onThisPage: 'ในหน้านี้', madeUp: 'ข้อมูลสมมุติ', back: 'หัวข้อทั้งหมด', backToGuide: 'กลับไปคู่มือ', notFound: 'ไม่พบหัวข้อนี้ในคู่มือ', loading: 'กำลังโหลด…', pager: 'หัวข้อก่อนหน้าและถัดไป', topicOf: (n: number, total: number) => `หัวข้อที่ ${n} จาก ${total}`,
+    home: 'กลับหน้าแรก', start: 'เริ่มใช้งาน', openApp: 'เปิดแอป', quick: 'เริ่มใน 3 ขั้นตอน', topics: 'หัวข้อในคู่มือ', read: 'อ่านหัวข้อนี้', onThisPage: 'ในหน้านี้', expand: 'ขยาย', collapse: 'หุบ', madeUp: 'ข้อมูลสมมุติ', back: 'หัวข้อทั้งหมด', backToGuide: 'กลับไปคู่มือ', notFound: 'ไม่พบหัวข้อนี้ในคู่มือ', loading: 'กำลังโหลด…', pager: 'หัวข้อก่อนหน้าและถัดไป', topicOf: (n: number, total: number) => `หัวข้อที่ ${n} จาก ${total}`,
     list: [
       { title: 'เริ่มต้นใช้งาน', body: 'สร้างบัญชี ยืนยันอีเมล และสร้างโปรเจกต์แรกของคุณ' },
       { title: 'เพิ่ม CV และคลังประสบการณ์', body: 'อัปโหลด CV ให้ AI สกัดประสบการณ์ แล้วตรวจและแก้ไขเองได้' },
@@ -17,7 +17,7 @@ export const docsCopy = {
   },
   en: {
     title: 'User guide', intro: 'Everything a new user needs, from adding a CV to tracking applications.',
-    home: 'Back to home', start: 'Get started', openApp: 'Open app', quick: 'Start in 3 steps', topics: 'Topics in the guide', read: 'Read this topic', onThisPage: 'On this page', madeUp: 'made-up data', back: 'All topics', backToGuide: 'Back to the guide', notFound: 'This topic is not in the guide', loading: 'Loading…', pager: 'Previous and next topic', topicOf: (n: number, total: number) => `Topic ${n} of ${total}`,
+    home: 'Back to home', start: 'Get started', openApp: 'Open app', quick: 'Start in 3 steps', topics: 'Topics in the guide', read: 'Read this topic', onThisPage: 'On this page', expand: 'expand', collapse: 'collapse', madeUp: 'made-up data', back: 'All topics', backToGuide: 'Back to the guide', notFound: 'This topic is not in the guide', loading: 'Loading…', pager: 'Previous and next topic', topicOf: (n: number, total: number) => `Topic ${n} of ${total}`,
     list: [
       { title: 'Getting started', body: 'Create an account, verify your email and make your first project.' },
       { title: 'Add your CV and experience bank', body: 'Upload a CV, let AI extract your experience, then check and edit it yourself.' },

@@ -18,7 +18,7 @@ const T = <A>(locale: Locale, th: A, en: A) => (locale === 'th' ? th : en);
 // A blue dot follows the pointer so a viewer can see where the click happens.
 const cursor = () => {
   const dot = document.createElement('div');
-  dot.style.cssText = 'position:fixed;z-index:99999;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(43,69,196,.45);border:2px solid #2B45C4;pointer-events:none;left:-50px;top:-50px';
+  dot.style.cssText = 'position:fixed;z-index:99999;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(40,122,116,.45);border:2px solid #287A74;pointer-events:none;left:-50px;top:-50px';
   addEventListener('DOMContentLoaded', () => document.body.appendChild(dot));
   addEventListener('mousemove', e => { dot.style.left = e.clientX + 'px'; dot.style.top = e.clientY + 'px'; }, true);
 };
@@ -117,9 +117,17 @@ for (const locale of ['th', 'en'] as const) {
 
   test(`clip search ${locale}`, async ({ page }) => {
     await useSyntheticApplication(page);
+    // Sample mode cannot evaluate a job, so the clip serves a few invented postings through the real search screen.
+    const items = [['Frontend Developer', 'Example Digital Studio', 'Bangkok'], ['Frontend Engineer', 'Sample Retail Tech', 'Chiang Mai']].map(([title, company, city], i) => ({
+      slug: `clip-${i}`, title, company, location: city, cities: [city], work_mode: i ? 'remote' : 'hybrid', skills: ['React', 'TypeScript', 'CSS'], category: 'software_engineering',
+      posted_at: '2026-10-14T08:00:00Z', age_days: 2, stale: false, source_url: `https://jobs.example.test/clip-${i}`, description_markdown: 'Build and maintain the web interface of a product used by thousands of people. React, TypeScript and CSS.' }));
+    await page.route(`**/v1/projects/${projectId}/job-search**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(new URL(route.request().url()).pathname.endsWith('/facets')
+      ? { total: 124, categories: [], cities: [], seniority: [], employment_type: [], company_type: [], skills: [], new_7d: 16, thai_postings: 21 }
+      : { items, total: items.length, limit: 20, offset: 0, pool: items.length, hidden_count: 0 }) }));
+    await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
     await boots(page, locale);
     await page.goto(`/app/projects/${projectId}/search`); await pause(page, 1500);
-    await page.getByRole('button', { name: /ดูข้อมูลตัวอย่าง|sample/i }).click(); await pause(page, 1200);
+    await pause(page, 1200);
     await step(page, T(locale, '1. พิมพ์ตำแหน่งหรือทักษะที่อยากหา', '1. Type the role or skill you want'), page.getByPlaceholder(/Frontend/).first(), typeInto('Frontend', 110), 2200);
     await step(page, T(locale, '2. ดูผลที่ตรงกับคำค้น แล้วเลือกงานที่สนใจ', '2. Browse the matches and pick a job'), page.getByRole('button', { name: /บันทึก|Save/ }).first(), 'none', 3200);
     await step(page, T(locale, '3. กด “ประเมินงานนี้” ให้เอเจนต์เทียบกับ CV ของคุณ', '3. Click “Evaluate this job” so the agent compares it with your CV'), page.getByRole('button', { name: /ประเมินงานนี้|Evaluate this job/ }).first(), 'none', 3800);

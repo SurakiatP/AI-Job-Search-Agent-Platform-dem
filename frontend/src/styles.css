@@ -394,3 +394,8 @@ input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: n
 .mui-field:focus-within > .mui-label { color: var(--primary); }
 .mui-field input::placeholder { color: transparent; }
 @media (prefers-reduced-motion: reduce) { .mui-field > .mui-label { transition: none; } }
+
+/* Docs sidebar: the section list opens and closes by animating its row height (0fr to 1fr), slowly enough to follow (500 ms). */
+.docs-sections { grid-template-rows: 0fr; transition: grid-template-rows 500ms var(--ease-standard), opacity 500ms var(--ease-standard); opacity: 0; }
+.docs-sections.is-open { grid-template-rows: 1fr; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .docs-sections, .docs-sections.is-open { transition: none; } }
