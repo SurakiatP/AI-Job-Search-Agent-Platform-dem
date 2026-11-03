@@ -35,7 +35,20 @@
     "dropHere": "Drop a file here, or choose one",
     "accepted": "PDF, DOCX or TXT · up to 20 MB",
     "dropActive": "Drop to upload",
-    "uploading": "Uploading and reading your CV…"
+    "uploading": "Uploading…",
+    "reading": "Reading your CV…",
+    "readCount_one": "Read {{count}} fact from your CV",
+    "readCount_other": "Read {{count}} facts from your CV",
+    "readFailed": "Could not read your CV",
+    "notStarted": "This CV has not been read yet",
+    "retry": "Read CV again",
+    "whyNoProvider": "AI is not set up for this project. Set it up, then read again.",
+    "whyQuota": "Today's AI quota is used up. Read again when it resets.",
+    "whyIdle": "Reading did not start for this file. Read it again now.",
+    "newCv": "Add a CV (optional)",
+    "newCvRemove": "Remove file",
+    "newCvHint": "PDF, DOCX or TXT up to 20 MB. We start reading it as soon as the project exists.",
+    "newCvInvalid": "Use a PDF, DOCX or TXT file up to 20 MB."
   },
   "documents": {
     "count_one": "{{count}} document",

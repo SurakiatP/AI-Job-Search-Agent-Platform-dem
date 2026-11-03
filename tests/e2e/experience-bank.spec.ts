@@ -78,7 +78,7 @@ test('a new CV version refreshes the bank to the queued extraction', async ({ pa
   const chooser = page.waitForEvent('filechooser');
   await page.locator('button', { hasText: 'Upload new version' }).click();
   await (await chooser).setFiles({ name: 'cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic CV') });
-  await expect(page.getByRole('status').filter({ hasText: 'extracting experience' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Reading your CV' })).toBeVisible();
   await page.getByRole('tab', { name: 'Experience bank' }).click();
   await expect(section.getByRole('status')).toContainText('The agent is queued to extract experience from your CV');
 });

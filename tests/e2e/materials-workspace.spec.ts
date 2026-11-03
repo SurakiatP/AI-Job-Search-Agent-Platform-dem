@@ -18,7 +18,7 @@ test('CV workspace keeps named identity, primary selection, rename and preferenc
   await page.getByRole('button', { name: 'Options for Product Analytics' }).click();
   await page.getByRole('menuitem', { name: 'Rename' }).click();
   await page.getByLabel('CV name').fill('Product Insights');
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByLabel('CV name').press('Enter');
   await expect(page.getByRole('heading', { name: 'Product Insights' })).toBeVisible();
   expect(fixture.mutations).toContainEqual({ method: 'PATCH', path: `/projects/${projectId}/cvs/${fixture.cvIds.product}`, body: { name: 'Product Insights' } });
 
