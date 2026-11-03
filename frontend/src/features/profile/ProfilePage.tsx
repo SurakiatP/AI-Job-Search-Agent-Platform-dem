@@ -10,12 +10,10 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog';
-import { PageBack } from '../../components/PageBack';
 import { cn } from '@/lib/utils';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { apiRequest } from '../../lib/api';
@@ -38,25 +36,24 @@ const uploadMessages: Record<string, string> = {
 };
 const ACCEPT = '.pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain';
 
-function RenameDialog({ cv, c, projectId, onClose, onDone }: { cv: CVView; c: typeof copy.en; projectId: string; onClose: () => void; onDone: () => void }) {
+// Inline rename: Enter or leaving the field saves, Escape cancels.
+function InlineName({ cv, c, projectId, onClose, onDone }: { cv: CVView; c: typeof copy.en; projectId: string; onClose: () => void; onDone: () => void }) {
   const [value, setValue] = useState(cv.name);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const cancelled = useRef(false);
   async function submit() {
     const next = value.trim();
-    if (busy || !next) return;
-    if (next === cv.name) { onClose(); return; }
+    if (busy || cancelled.current) return;
+    if (!next || next === cv.name) { onClose(); return; }
     setBusy(true); setError(false);
     try { await sendJson(`/projects/${projectId}/cvs/${cv.id}`, 'PATCH', { name: next }); onDone(); } catch { setError(true); setBusy(false); }
   }
-  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}><DialogContent aria-describedby={undefined}>
-    <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
-      <DialogTitle>{c.renameTitle}</DialogTitle>
-      <label className="grid gap-2 text-sm font-medium">{c.name}<Input autoFocus maxLength={120} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
-      {error && <Alert severity="error" role="alert">{c.failed}</Alert>}
-      <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{c.cancel}</Button></DialogClose><Button type="submit" disabled={busy || !value.trim()}>{c.save}</Button></div>
-    </form>
-  </DialogContent></Dialog>;
+  return <form className="grid min-w-0 flex-1 gap-1" onSubmit={event => { event.preventDefault(); void submit(); }}>
+    <Input autoFocus aria-label={c.name} maxLength={120} value={value} disabled={busy} aria-invalid={error} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} onBlur={() => void submit()}
+      onKeyDown={event => { if (event.key === 'Escape') { cancelled.current = true; onClose(); } }} />
+    {error && <span role="alert" className="text-sm text-destructive">{c.failed}</span>}
+  </form>;
 }
 
 // Row menu: Make primary (with what it changes), Rename, Delete.
@@ -80,7 +77,7 @@ function CvRowMenu({ cv, c, label, help, onMakePrimary, onRename, onDelete }: { 
 function VersionHistory({ projectId, cv, revisions, date, label, versionLabel }: { projectId: string; cv: CVView; revisions: CVRevisionInfo[]; date: Intl.DateTimeFormat; label: string; versionLabel: (n: number) => string }) {
   return <ol aria-label={label} className="grid gap-1 rounded-lg bg-muted/50 p-2 xl:col-span-full">{revisions.map(revision => <li key={revision.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-md px-2 py-1 text-sm">
     <span className="min-w-0 break-words text-muted-foreground [overflow-wrap:anywhere]"><span className="font-medium text-foreground">{versionLabel(revision.revision)}</span> · {revision.original_filename} · {date.format(new Date(revision.created_at))} · {formatSize(revision.size_bytes)}</span>
-    <CvPreviewButton projectId={projectId} fileId={revision.file_id} name={cv.name} revision={revision.revision} filename={revision.original_filename} mimeType={revision.mime_type} variant="ghost" />
+    <CvPreviewButton projectId={projectId} fileId={revision.file_id} name={cv.name} revision={revision.revision} filename={revision.original_filename} mimeType={revision.mime_type} cvId={cv.id} variant="ghost" />
   </li>)}</ol>;
 }
 
@@ -110,7 +107,8 @@ export function ProfilePage() {
   const [extractError, setExtractError] = useState(false);
   const bank = useResource<ExperienceView>(`/projects/${projectId}/experience`);
   const extractionStatus = bank.data?.extraction?.status;
-  const extracting = extractionStatus === 'queued' || extractionStatus === 'running';
+  const [settling, setSettling] = useState(false);
+  const extracting = extractionStatus === 'queued' || extractionStatus === 'running' || settling;
   // A new CV revision queues an extraction server-side; refresh the bank whenever the revisions change.
   const revisionKey = cvs.data?.map(cv => cv.latest_revision?.id ?? '').join() ?? null;
   const seenRevisionKey = useRef<string | null>(null);
@@ -134,6 +132,8 @@ export function ProfilePage() {
       const body = new FormData(); body.set('file', file); if (name) body.set('name', name);
       await apiRequest(`/projects/${projectId}${path}`, { method: 'POST', body });
       cvs.reload(); primaryRevisions.reload();
+      // The server queues the read right after the upload; give it a moment before reporting that nothing started.
+      setSettling(true); window.setTimeout(reloadBank, 1200); window.setTimeout(() => { reloadBank(); setSettling(false); }, 2500);
     } catch (error) { setUploadError(error instanceof ApiError ? uploadMessages[error.code] ?? 'pages.loadError' : 'pages.loadError'); }
     finally { setBusy(false); }
   }
@@ -157,16 +157,19 @@ export function ProfilePage() {
   const history = primaryRevisions.status === 'ready' ? primaryRevisions.data ?? [] : [];
   const factCount = bank.data?.items.length;
   const skillNames = [...new Set((bank.data?.items ?? []).filter(i => i.kind === 'skill').map(i => i.text.trim()).filter(Boolean))].slice(0, 5);
+  const readFailed = !!extractionStatus && ['failed', 'interrupted', 'cancelled'].includes(extractionStatus);
+  const notStarted = !!bank.data && !extractionStatus && !factCount && list.length > 0;
+  const notStartedWhy = !bank.data?.provider_configured ? w('whyNoProvider') : gate.blocked ? (gate.title ?? w('whyQuota')) : w('whyIdle');
+  const retryCv = list.find(cv => cv.id === bank.data?.extraction?.cv_id) ?? primary ?? list[0];
   const versionLabel = (n: number) => w('versionShort', { n });
   const dropProps = { onDragOver: (event: React.DragEvent) => { event.preventDefault(); setDragging(true); }, onDragLeave: () => setDragging(false),
     onDrop: (event: React.DragEvent) => { event.preventDefault(); setDragging(false); if (!busy) void upload(event.dataTransfer.files[0], '/cvs'); } };
   return <section className="grid gap-6 lg:gap-8">
     <div className="grid gap-1">
-    <PageBack to={`${base}/overview`}>{t('nav.overview')}</PageBack>
     <div className="grid">
-      <PageHeader icon={UserRound} title={w('title')} lede={w('subtitle')} actions={<><Button busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button><BuildCvButton projectId={projectId} /></>} />
-      <input ref={addInput} className="sr-only" tabIndex={-1} aria-label={c.add} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], '/cvs'); event.target.value = ''; }} />
-      <input ref={versionInput} className="sr-only" tabIndex={-1} aria-label={c.upload} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], `/cvs/${versionTarget.current}/revisions`); event.target.value = ''; }} />
+      <PageHeader icon={UserRound} title={w('title')} lede={w('subtitle')} actions={list.length === 0 ? undefined : <><Button busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button><BuildCvButton projectId={projectId} /></>} />
+      <input ref={addInput} hidden tabIndex={-1} aria-label={c.add} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], '/cvs'); event.target.value = ''; }} />
+      <input ref={versionInput} hidden tabIndex={-1} aria-label={c.upload} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], `/cvs/${versionTarget.current}/revisions`); event.target.value = ''; }} />
     </div>
     </div>
     {busy && <p role="status" className="text-sm text-muted-foreground">{w('uploading')}</p>}
@@ -180,10 +183,10 @@ export function ProfilePage() {
       <Button type="button" variant="ghost" size="icon" className="max-sm:ml-auto" aria-label={c.dismiss} onClick={() => setRemoved(null)}><X className="size-4" aria-hidden="true" /></Button>
     </div>}
     <Tabs value={tab} onValueChange={showTab}>
-      <TabsList className="w-full justify-start sm:w-auto">
+      {list.length > 0 && <TabsList className="w-full justify-start sm:w-auto">
         <TabsTrigger className="grow sm:grow-0" value="library">{w('tabLibrary')}</TabsTrigger>
         <TabsTrigger className="grow sm:grow-0" value="experience">{w('tabBank')}</TabsTrigger>
-      </TabsList>
+      </TabsList>}
       <TabsContent value="library" className="grid gap-6">
         {list.length === 0 ? <div {...dropProps} className={cn('grid justify-items-center gap-3 rounded-xl border-2 border-dashed p-6 text-center sm:p-12', dragging && 'border-primary bg-accent')}>
           <FileText className="size-10 text-muted-foreground" aria-hidden="true" />
@@ -203,14 +206,15 @@ export function ProfilePage() {
                 <div className="flex min-w-0 items-start gap-3">
                   <FileText className="mt-1 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="min-w-0 break-words text-base font-semibold [overflow-wrap:anywhere]">{cv.name}</h3>{cv.is_primary && <Badge><Star className="me-1 size-3" aria-hidden="true" />{c.primary}</Badge>}</div>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">{rename?.id === cv.id ? <InlineName key={cv.id} cv={cv} c={c} projectId={projectId} onClose={() => setRename(null)} onDone={() => { setRename(null); cvs.reload(); }} />
+                      : <h3 className="min-w-0 break-words text-base font-semibold [overflow-wrap:anywhere]" title={c.rename} onDoubleClick={() => setRename(cv)}>{cv.name}</h3>}{cv.is_primary && <Badge><Star className="me-1 size-3" aria-hidden="true" />{c.primary}</Badge>}</div>
                     {meta.length > 0 && <p className="mt-1 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{meta.join(' · ')}</p>}
                     {latest && <p className="text-sm"><span className="text-muted-foreground">{w('colVersion')}: </span>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>}</p>}
                     {cv.in_use && <p className="mt-1 text-xs text-muted-foreground">{c.inUse}</p>}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {latest && <CvPreviewButton projectId={projectId} fileId={latest.file_id} name={cv.name} revision={latest.revision} filename={latest.original_filename} mimeType={latest.mime_type} />}
+                  {latest && <CvPreviewButton projectId={projectId} fileId={latest.file_id} name={cv.name} revision={latest.revision} filename={latest.original_filename} mimeType={latest.mime_type} cvId={cv.id} />}
                   {cv.has_builder_draft
                     ? <Button asChild size="sm" variant="outline"><Link to={`/app/projects/${projectId}/cvs/${cv.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{c.editBuilder}</Link></Button>
                     : <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>}
@@ -226,23 +230,29 @@ export function ProfilePage() {
             })}</ul>
             <p className="text-sm text-muted-foreground">{w('primaryNote')}</p>
           </section>}
-        <Card><CardContent className="grid gap-2 p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="grid min-w-0 gap-2"><h2 className="text-lg font-semibold">{w('bankTitle')}</h2>
-              {bank.data && <p className="flex flex-wrap items-baseline gap-2 text-sm"><span className="text-xl font-semibold tabular-nums">{factCount}</span> <span className="text-muted-foreground">{w('bankCount', { count: factCount }).replace(/^\d+\s*/, '')}</span> <span className="text-muted-foreground">{factCount ? w('bankFrom') : w('bankNone')}</span></p>}
-              {skillNames.length > 0 && <ul className="flex flex-wrap gap-1">{skillNames.map(name => <li key={name}><Badge variant="muted">{name}</Badge></li>)}</ul>}
-              {extracting && <BusyNote bar label={w('bankRunning')} />}
-              {extractionStatus && ['failed', 'interrupted', 'cancelled'].includes(extractionStatus) && <Alert severity="error" role="status">{w('bankFailed')}</Alert>}</div>
-            <Button type="button" variant="outline" className="sm:ms-auto" onClick={() => showTab('experience')}>{w('bankReview')}<ArrowRight className="size-4" aria-hidden="true" /></Button>
-          </div>
-        </CardContent></Card>
-        <p className="text-sm text-muted-foreground"><Link className="rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" to={`/app/settings?project=${projectId}&section=preferences`}>{w('prefsMoved')}</Link></p>
+        {list.length > 0 && <>
+          <Card><CardContent className="grid gap-2 p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="grid min-w-0 gap-2" aria-live="polite">
+                {extracting && <BusyNote bar label={w('reading')} />}
+                {!extracting && bank.data && <p className="flex flex-wrap items-baseline gap-2 text-sm">
+                  {readFailed || notStarted ? <span className="font-medium">{readFailed ? w('readFailed') : w('notStarted')}</span> : <><span className="text-xl font-semibold tabular-nums">{factCount}</span><span className="font-medium">{w('readCount', { count: factCount })}</span></>}
+                </p>}
+                {!extracting && notStarted && <p className="text-sm text-muted-foreground">{notStartedWhy}</p>}
+                {!extracting && !notStarted && !readFailed && skillNames.length > 0 && <ul className="flex flex-wrap gap-1">{skillNames.map(name => <li key={name}><Badge variant="muted">{name}</Badge></li>)}</ul>}
+              </div>
+              {!extracting && (readFailed || notStarted)
+                ? retryCv && bank.data?.provider_configured && <Button type="button" className="sm:ms-auto" disabled={gate.blocked} title={gate.title} onClick={() => void extract(retryCv)}><Sparkles className="size-4" aria-hidden="true" />{w('retry')}</Button>
+                : !extracting && !!factCount && <Button type="button" variant="outline" className="sm:ms-auto" onClick={() => showTab('experience')}>{w('bankReview')}<ArrowRight className="size-4" aria-hidden="true" /></Button>}
+            </div>
+          </CardContent></Card>
+          <p className="text-sm text-muted-foreground"><Link className="rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" to={`/app/settings?project=${projectId}&section=preferences`}>{w('prefsMoved')}</Link></p>
+        </>}
       </TabsContent>
       <TabsContent value="experience">
         <ExperienceBank projectId={projectId} locale={locale} bank={bank} primaryCvId={primary?.id ?? list[0]?.id ?? null} />
       </TabsContent>
     </Tabs>
-    {rename && <RenameDialog key={rename.id} cv={rename} c={c} projectId={projectId} onClose={() => setRename(null)} onDone={() => { setRename(null); cvs.reload(); }} />}
     {remove && <ConfirmDeleteDialog title={c.delTitle(remove.name)} description={c.delBody} confirmLabel={c.delConfirm}
       onConfirm={() => apiRequest(`/projects/${projectId}/cvs/${remove.id}`, { method: 'DELETE' }).then(() => undefined)}
       returnFocus={() => document.getElementById('profile-cvs-title')} onDone={() => { setRemoved(remove); setUndoFailed(false); setRemove(null); cvs.reload(); primaryRevisions.reload(); notifyTrashChanged(); }} onClose={() => setRemove(null)} />}
