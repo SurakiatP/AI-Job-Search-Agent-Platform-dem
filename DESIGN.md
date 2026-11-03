@@ -3,62 +3,64 @@ name: AI Job Search Agent Platform
 description: Bilingual job-search workspaces with clear project and revision context.
 colors:
   background: "#F3F4EF"
-  foreground: "#1B2550"
+  foreground: "#0F3B38"
   card: "#FFFFFF"
-  primary: "#2B45C4"
+  primary: "#287A74"
   primary-foreground: "#FFFFFF"
   secondary: "#E9EAE2"
-  secondary-foreground: "#1B2550"
+  secondary-foreground: "#0F3B38"
   muted: "#E9EAE2"
   muted-foreground: "#585E70"
-  accent: "#E4E7F4"
-  accent-foreground: "#1B2550"
+  accent: "#E8F7F2"
+  accent-foreground: "#0F3B38"
   destructive: "#AF263E"
   success: "#166445"
   warning: "#805319"
   border: "#DCDDD3"
   border-strong: "#C9CBC0"
   input: "#858993"
-  ring: "#2B45C4"
+  ring: "#287A74"
   sidebar: "#EAEBE3"
-  stage-cv: "#0F766E"
-  stage-search: "#2563EB"
-  stage-evaluate: "#7C3AED"
-  stage-docs: "#C2410C"
-  stage-track: "#15803D"
-  dark-background: "#131D42"
-  dark-foreground: "#EEF2FF"
-  dark-card: "#1B2756"
-  dark-primary: "#9DB4FF"
-  dark-primary-foreground: "#0F1738"
-  dark-secondary: "#243266"
-  dark-secondary-foreground: "#EEF2FF"
-  dark-muted: "#243266"
-  dark-muted-foreground: "#B4C0E6"
-  dark-accent: "#2E3F7E"
-  dark-accent-foreground: "#EEF2FF"
+  surface-tint: "#EDEEE6"
+  stage-cv: "#287A74"
+  stage-search: "#287A74"
+  stage-evaluate: "#287A74"
+  stage-docs: "#287A74"
+  stage-track: "#287A74"
+  dark-background: "#151F1E"
+  dark-foreground: "#D9E4E1"
+  dark-card: "#1D2A29"
+  dark-primary: "#86C9BF"
+  dark-primary-foreground: "#10231F"
+  dark-secondary: "#253533"
+  dark-secondary-foreground: "#D9E4E1"
+  dark-muted: "#253533"
+  dark-muted-foreground: "#9CB0AC"
+  dark-accent: "#233B38"
+  dark-accent-foreground: "#D9E4E1"
   dark-destructive: "#FF9AAA"
   dark-success: "#79D5AA"
   dark-warning: "#EBC27D"
-  dark-border: "#34447F"
-  dark-border-strong: "#46579A"
-  dark-input: "#7F8FC4"
-  dark-ring: "#9DB4FF"
-  dark-sidebar: "#16224D"
-  dark-stage-cv: "#5EEAD4"
-  dark-stage-search: "#7FA8FF"
-  dark-stage-evaluate: "#B79CFF"
-  dark-stage-docs: "#FFA36B"
-  dark-stage-track: "#6FE09A"
+  dark-border: "#2D3F3D"
+  dark-border-strong: "#3D5452"
+  dark-input: "#6E8582"
+  dark-ring: "#86C9BF"
+  dark-sidebar: "#111A19"
+  dark-surface-tint: "#192524"
+  dark-stage-cv: "#86C9BF"
+  dark-stage-search: "#86C9BF"
+  dark-stage-evaluate: "#86C9BF"
+  dark-stage-docs: "#86C9BF"
+  dark-stage-track: "#86C9BF"
 typography:
   display:
     fontFamily: "Noto Serif Thai, Georgia, serif"
-    fontSize: "34px"
+    fontSize: "36px"
     fontWeight: 500
     lineHeight: 1.4
   headline:
     fontFamily: "Noto Serif Thai, Georgia, serif"
-    fontSize: "24px"
+    fontSize: "20px"
     fontWeight: 500
     lineHeight: 1.45
   body:
@@ -112,14 +114,14 @@ components:
 
 **Creative North Star: "Quiet Ledger"**
 
-The application is a warm paper-toned work surface with a royal-blue action colour and a navy ink. The sidebar colour doubles as the window frame; on wide screens the page sits in one rounded panel on that frame. Cards are white and flat with a hairline border. Page titles are set in a Thai serif; everything else is Noto Sans Thai. Its signature is still the readable pairing of a CV revision with a job revision: source context stays near the task that uses it. Written labels always accompany semantic status colours.
+Teal is action and AI. The page is a warm neutral ground with white hairline cards framed by a tinted sidebar; dark mode is a soft grey-green ground (low saturation, text 11:1 not 14:1, to avoid glare). Page titles are Thai serif, everything else Noto Sans Thai. Its signature is the pairing of CV revision and job revision: source context stays near the task that uses it. Written labels always accompany semantic status colours.
 
 Inspired by visual character only; no code or assets from AGPL-licensed Dossier.
 
 The system is evidenced in `frontend/src/styles.css`, shared UI primitives, and the application shell and workspace pages. This record describes visual implementation; product behavior and API contracts remain in their engineering specifications.
 
 **Key Characteristics:**
-- Warm neutral canvas, white hairline surfaces, restrained royal-blue emphasis. No black or near-black anywhere; ink is navy.
+- Warm neutral canvas, white hairline surfaces, restrained teal emphasis. No black or near-black anywhere; ink is deep teal (`#0F3B38`).
 - Serif page titles, sans-serif reading with generous Thai body leading.
 - Inset work panel, segmented controls, status dots, divided rows.
 
@@ -129,11 +131,22 @@ The light and dark themes use semantic CSS variables so components keep the same
 
 ### Primary
 
-Royal blue (`primary`) marks primary actions, links, and focus. `accent` marks selected surfaces and notices; the active sidebar row uses `--nav-active`, a 10% blue tint over `sidebar`. Row hover uses `--nav-hover`, a 5% navy tint. In dark mode, use the matching `dark-` values.
+Teal (`primary`, `#287A74`) marks primary actions, links, and focus. `accent` marks selected surfaces and notices; the active sidebar row uses `--nav-active`, an 8% primary tint (16% in dark, Material UI selected opacity) over `sidebar`. Row hover uses `--nav-hover`, a 5% navy tint. In dark mode, use the matching `dark-` values.
+
+### AI analysis
+
+- AI analysis surfaces (AI labels, fit score, evidence panel, Smart match start, evaluation verdict, AI-drafted document label) use the `ai*` tokens. In this palette they alias the primary family (`ai` = `primary`, `ai-soft` = `accent`, `ai-border` = `border-strong`), so the AI parts look like the rest of the brand but can be given their own hue later by changing the aliases in one place.
+- Never use `ai` for statuses, links, nav or focus.
+- Stage hues appear only as icons, dots and chips.
+- `surface-tint` is for full-bleed alternating bands only, never cards.
 
 ### Neutral
 
-`background` is the warm page; `card` is the work surface (white); `sidebar` is both the navigation colour and the frame around the page panel. `foreground` (navy) carries reading text, `muted-foreground` secondary information, `border` panel and row separation, and `border-strong` the hairline of outline buttons and active segments. `input` is the stronger stroke inputs need for a 3:1 boundary.
+`background` is the warm page; `card` is the work surface (white); `sidebar` is both the navigation colour and the frame around the page panel. `foreground` (deep teal) carries reading text, `muted-foreground` secondary information, `border` panel and row separation, and `border-strong` the hairline of outline buttons and active segments. `input` is the stronger stroke inputs need for a 3:1 boundary.
+
+### One surface, no frames
+
+Tone steps replace nested hairline boxes. There is no dark or coloured panel wrapped around content: search, hero demos and auth side panels sit on the page ground as plain `card` or `muted` surfaces. A card may have one 1px border; nothing inside it gets another bordered box. Inner tiles use `bg-muted`, lists use `divide-y`, and a selected row uses the accent fill with a 3px inset primary bar.
 
 ### Journey stages
 
@@ -149,12 +162,12 @@ Each step of the search owns a hue: `stage-cv`, `stage-search`, `stage-evaluate`
 
 **Heading Font:** Noto Serif Thai 500 (with Georgia as load-failure fallback)  
 **Body Font:** Noto Sans Thai, Manrope, sans-serif  
-**Character:** Serif is for `h1` and for `h2` authored at 18px or larger (including dialog titles), always weight 500, letter-spacing 0. Markdown output (AI answers) stays sans. `h3`, body, controls and small headings (kanban column, sidebar labels) are Noto Sans Thai. `CardTitle` is authored `text-lg` (18px), so it renders serif. Manrope is the English document fallback. Prompt is no longer used.
+**Character:** Serif is for `h1` and for `h2` authored at 20px or larger (including dialog titles), always weight 500, letter-spacing 0. Markdown output (AI answers) stays sans. `h3`, body, controls and small headings (kanban column, sidebar labels) are Noto Sans Thai. `CardTitle` is authored `text-lg`, which `styles.css` sets to 20px, so it renders serif. Manrope is the English document fallback. Prompt is no longer used.
 
 ### Hierarchy
 
-- **Page title** (serif 500, 24px, 34px from 768px, 1.35): `PageHeader` h1.
-- **Section title** (serif 500, 18–24px, 1.45): large `h2` and dialog titles. 18px is the serif floor, except the header wordmark.
+- **Page title** (serif 500, 30px, 36px from 768px, 1.35; the largest text in the app): `PageHeader` h1.
+- **Section title** (serif 500, 20px, 1.45): card and dialog `h2`. 20px is the serif floor, except the header wordmark.
 - **Body** (sans 400, 16px, 1.7): default interface and form text; inputs use 16px.
 - **Label** (sans 500, 14px, 1.6): buttons, navigation rows, tabs, labels.
 - **Micro** (sans 500, 12px): sidebar group labels, table headers, counts.
@@ -193,7 +206,7 @@ The scale is a named set of Tailwind classes, not CSS variables. Allowed steps (
 | table-cell | 8×12 | `px-3 py-2` | data tables |
 | landing-section | 64 to 96 | `mt-16 sm:mt-20`, `mt-16 sm:mt-24`, `mt-20 sm:mt-24` | landing sections, varied on purpose |
 
-Banned: the steps `2.5`, `7`, `9`, `11`, `14`; arbitrary `[..]` spacing; negative margins used for rhythm (an optical nudge on an icon button carries an `// optical:` comment). Gate, expected empty:
+`1.5` (6px) is allowed only in Alert and Badge, which follow Material UI (decision 2026-11-03). Banned: the steps `2.5`, `7`, `9`, `11`, `14`; arbitrary `[..]` spacing; negative margins used for rhythm (an optical nudge on an icon button carries an `// optical:` comment). Gate, expected empty:
 
 ```
 cd frontend/src && grep -rnE "(^|[ \"'])(sm:|md:|lg:|xl:)?(-?m[tbxylrse]?|p[tbxylrse]?|gap(-[xy])?)-(2\.5|7|9|11|14)([ \"']|$)" --include='*.tsx' . ; grep -rnE "(^|[ \"'])-m[tb]-[0-9]" --include='*.tsx' .
@@ -215,7 +228,7 @@ The public page persuades; the app operates. Section order: skip link, hero, thr
 
 ### Buttons
 
-Use `components/ui/button.tsx`; `components/Button.tsx` is its compatibility adapter. Control height is 44px below `lg` and 40px from `lg`; icon buttons are square at the same size with an 8px radius. Default is solid primary; outline is a card surface with the `border-strong` hairline; ghost shows the `--nav-hover` tint. A pressed outline button shows `accent` fill plus a primary border. Preserve the visible focus ring and disabled state.
+Use `components/ui/button.tsx`; `components/Button.tsx` is its compatibility adapter. Material-style anatomy, heights below `lg` / from `lg` / coarse pointer: default 44 / 40 / 48; `sm` 44 / 36 / 44; `lg` 48 (16px text, 20px icons); `icon` square 44 / 40 / 48; `icon-sm` square 44 / 36 / 44. Radius 8px, gap 8px, 14px text at weight 500. Default is solid primary; outline is a card surface with the `border-strong` hairline; ghost shows the `--nav-hover` tint. A pressed outline button shows `accent` fill plus a primary border. Preserve the visible focus ring and disabled state.
 
 ### Segmented control
 
@@ -223,11 +236,11 @@ Use `components/ui/button.tsx`; `components/Button.tsx` is its compatibility ada
 
 ### Page title block
 
-`components/PageHeader.tsx`: an outline icon in the page's stage hue, the serif title, a muted lede (16px, max 42rem) and actions on the right. Existing back links stay above it.
+`components/PageHeader.tsx`: an outline icon in the page's stage hue, the serif title, a muted lede (16px, max 42rem; title 30px, 36px from 768px, line-height 1.35) and actions on the right. Existing back links stay above it.
 
 ### Status dot and stage chip
 
-`.stage-dot` (8px) sits beside a written status label. `.stage-chip` (36px) is the tinted stage icon tile in journey and getting-started steps; active is solid stage colour. Step indicators use a 24px circle: done is filled with a check, the current step is filled with its stage colour like a done step plus a "next" badge, upcoming steps are dimmed.
+`.stage-dot` (8px) sits beside a written status label; application status badges are muted badges with that dot. `CompanyMark` is a decorative initial-letter square (32, 40 or 48px, `bg-muted`) always beside the written company name. `.stage-chip` (36px) is the tinted stage icon tile in journey and getting-started steps; active is solid stage colour. Step indicators use a 24px circle: done is filled with a check, the current step is filled with its stage colour like a done step plus a "next" badge, upcoming steps are dimmed.
 
 ### Kanban and lists
 
@@ -235,11 +248,11 @@ Board columns are `muted` trays with a status dot, label and count; cards are wh
 
 ### Inputs / Forms
 
-Use the shared Input, Select, and Textarea primitives. Inputs have a card background, stronger input border, 16px text, and a visible focus ring. Keep labels and helper or error text associated with their controls. Compact account forms remain compact; do not turn simple settings into oversized panels.
+Use the shared Input, Select, and Textarea primitives. Inputs have a card background, stronger input border, 16px text, and a visible focus ring. Keep labels and helper or error text associated with their controls. Input and Select are 44 / 40 / 48 tall with an 8px radius and `px-3`; `aria-invalid` turns the border destructive with a 2px destructive/30 ring. Checkbox and radio are 20px with the primary accent. `Alert` (`ui/alert.tsx`) is a borderless tinted row: `rounded-lg px-4 py-2`, 20px severity icon, optional end action; error uses `role="alert"`, others `role="status"`. Compact account forms remain compact; do not turn simple settings into oversized panels.
 
 ### Cards / Badges / Status
 
-Cards use a bordered card surface with 12px radius and no shadow. Badges are 6px-radius chips with written status and semantic colour; the default badge is a 10% primary tint. Announce meaningful asynchronous updates through the existing status regions. A progress indicator must reflect an actual value.
+Cards use a bordered card surface with 12px radius and no shadow. Badges are 24px-high (`min-h-6`), 6px-radius chips with a 4px gap with written status and semantic colour; the default badge is a 10% primary tint. Announce meaningful asynchronous updates through the existing status regions. Dialogs default to `max-w-xl` with `p-6 gap-4` (confirm dialogs pass `max-w-md`), titles semibold, actions `flex flex-wrap justify-end gap-2`. Menu items are 40px (44 coarse) with 16px icons in a `min-w-40 p-1` menu. `Progress` is 4px high. A progress indicator must reflect an actual value.
 
 ### Working and waiting states
 
@@ -271,5 +284,5 @@ Keep task destinations grouped under the active project, with the project switch
 - Replace the next action with decorative KPI cards.
 - Add stage-coloured gradients, excessive nested cards, or unnecessary animation.
 - Name backend services, data sources or providers in user-facing copy.
-- Use serif below 18px (the 14px header wordmark is the one exception), or on Markdown output.
+- Use serif below 20px (the 14px header wordmark is the one exception), or on Markdown output.
 - Use black or near-black for any colour, shadow or button.

@@ -18,7 +18,7 @@ type Copy = (typeof themeCopy)['en'] | (typeof themeCopy)['th'];
 type Edit = Working & { name: string };
 
 function Seg<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
-  return <div role="group" aria-label={label} className="grid gap-1.5">
+  return <div role="group" aria-label={label} className="grid gap-2">
     <span className="text-sm font-medium">{label}</span>
     <div className="segmented flex-wrap">
       {options.map(([key, text]) => <button key={key} type="button" aria-pressed={value === key} onClick={() => onChange(key)}
@@ -33,7 +33,7 @@ function Card({ id, name, layout, tokens, selected, c, ats, photo, onPick }: {
   return <button type="button" aria-pressed={selected} onClick={() => onPick(id)}
     className="group grid gap-2 rounded-lg border bg-card p-2 text-left transition-colors hover:border-[color:var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card aria-pressed:border-primary aria-pressed:ring-1 aria-pressed:ring-primary aria-pressed:focus-visible:ring-2 motion-reduce:transition-none">
     <span className="relative block aspect-[3/4] overflow-hidden rounded-sm border bg-white shadow-sm"><ThemeThumb layout={layout} tokens={tokens} />
-      {selected && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-3.5" aria-hidden="true" /></span>}
+      {selected && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary-fill text-primary-fill-foreground"><Check className="size-3.5" aria-hidden="true" /></span>}
     </span>
     <span className="grid gap-0.5 px-1 pb-1"><span className="truncate text-sm font-medium">{name}</span>
       <span className="text-xs text-muted-foreground">{ats ? c.atsOk : c.atsNo}{photo ? ` · ${c.withPhoto}` : ''}</span></span>
@@ -144,7 +144,7 @@ export function ThemePanel({ templateId, accent, hasPhoto, locale, onPick, onWor
       <h3 className="text-sm font-medium"><span className="mr-2 text-primary">2</span>{c.adjust}</h3>
       <p className="text-xs text-muted-foreground" role="status">{c.unsaved}</p>
       <div className="grid gap-4 md:grid-cols-2 [&>*]:min-w-0">
-        <div className="grid gap-1.5"><span className="text-sm font-medium">{c.colour}</span>
+        <div className="grid gap-2"><span className="text-sm font-medium">{c.colour}</span>
           <div className="flex flex-wrap items-center gap-2">
             {ACCENTS.map(a => <button key={a.id} type="button" aria-label={bc.accents[a.id]} aria-pressed={edit.tokens.accent.toUpperCase() === a.hex.toUpperCase()} onClick={() => token('accent', a.hex)}
               className="grid size-11 place-items-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground"><span className="size-7 rounded-full" style={{ background: a.hex }} /></button>)}

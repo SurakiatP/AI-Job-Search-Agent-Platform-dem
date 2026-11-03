@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
+import { Pencil, Trash2, TriangleAlert } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { ItemMenu } from '@/components/ItemMenu';
 import { Button } from '@/components/ui/button';
@@ -7,9 +8,10 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui
 import { Input } from '@/components/ui/input';
 import { apiRequest } from '../../lib/api';
 import { useProjectCopy } from './copy';
+import { ForceDeleteProjectDialog } from './ForceDeleteProjectDialog';
 import { sendJson } from './useResource';
 
-type Mode = 'rename' | 'delete' | null;
+type Mode = 'rename' | 'delete' | 'force' | null;
 
 function RenameDialog({ id, name, onClose, onDone }: { id: string; name: string; onClose: () => void; onDone: () => void }) {
   const { c } = useProjectCopy();
@@ -28,7 +30,7 @@ function RenameDialog({ id, name, onClose, onDone }: { id: string; name: string;
       <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
         <DialogTitle>{c.renameTitle}</DialogTitle>
         <label className="grid gap-2 text-sm font-medium">{c.name}<Input autoFocus maxLength={200} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
-        {error && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{error}</p>}
+        {error && <Alert severity="error">{error}</Alert>}
         <div className="flex flex-wrap justify-end gap-2">
           <DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{c.cancel}</Button></DialogClose>
           <Button type="submit" busy={busy} disabled={busy || !value.trim()}>{busy ? c.saving : c.save}</Button>
@@ -47,8 +49,10 @@ export function ProjectActions({ id, name, onChanged }: { id: string; name: stri
     <ItemMenu label={c.options(name)} className="size-11" actions={[
       { label: c.rename, icon: <Pencil className="size-4" aria-hidden="true" />, onSelect: () => setMode('rename') },
       { label: c.delete, icon: <Trash2 className="size-4" aria-hidden="true" />, destructive: true, onSelect: () => setMode('delete') },
+      { label: c.forceDelete, icon: <TriangleAlert className="size-4" aria-hidden="true" />, destructive: true, onSelect: () => setMode('force') },
     ]} />
     {mode === 'rename' && <RenameDialog id={id} name={name} onClose={() => setMode(null)} onDone={done} />}
+    {mode === 'force' && <ForceDeleteProjectDialog id={id} name={name} onClose={() => setMode(null)} onDone={done} />}
     {mode === 'delete' && <ConfirmDeleteDialog title={c.deleteTitle(name)} description={c.deleteBody} confirmLabel={c.delete} errors={{ project_not_empty: c.notEmpty }}
       onConfirm={() => apiRequest(`/projects/${id}`, { method: 'DELETE' }).then(() => undefined)} onDone={done} onClose={() => setMode(null)} />}
   </>;

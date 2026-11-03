@@ -7,13 +7,15 @@ import { Header } from '../../components/Header';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { landingCopy } from './copy';
-import { DemoCard } from './LandingPreview';
+import { DemoCard, StepPanel } from './LandingPreview';
 import { LandingMenu, LandingNav } from './LandingNav';
 import { Tick } from './Reveal';
 import { Tour } from './Tour';
 import './landing.css';
 
 const wrap = 'mx-auto w-full max-w-6xl px-4 sm:px-6';
+// Tour panels reused for the three starter steps: add CV, search, track.
+const stepPanels = [0, 2, 6];
 const footerLink = 'inline-flex min-h-11 items-center hover:text-foreground hover:underline lg:min-h-10';
 
 export function LandingPage() {
@@ -44,7 +46,7 @@ export function LandingPage() {
           </div>
           <ul aria-label={c.controlTitle} className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
             {c.control.map(item => <li key={item} className="flex items-center gap-2">
-              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3" /></span>{item}
+              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary-fill text-primary-fill-foreground"><Tick className="size-3" /></span>{item}
             </li>)}
           </ul>
         </div>
@@ -53,20 +55,22 @@ export function LandingPage() {
 
       <section id="steps" aria-labelledby="steps-title" className={`${wrap} mt-16 grid scroll-mt-16 gap-6 sm:mt-20`}>
         <h2 id="steps-title" className="text-2xl font-semibold not-italic sm:text-3xl">{c.stepsTitle}</h2>
-        <ol className="grid gap-6 md:grid-cols-3 md:gap-0">
-          {c.how.map((step, index) => <li key={step.title} className="grid grid-cols-[2rem_minmax(0,1fr)] content-start gap-x-3 gap-y-1 md:border-l md:px-6 md:first:border-l-0 md:first:pl-0">
-            <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">{index + 1}</span>
-            <h3 className="self-center text-lg font-semibold leading-snug not-italic">{step.title}</h3>
-            <p className="col-start-2 text-sm text-muted-foreground sm:text-base">{step.body}</p>
+        <ol className="grid">
+          {c.how.map((step, index) => <li key={step.title} className="grid gap-6 border-t py-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+            <div className="grid content-start gap-2">
+              <h3 className="text-xl font-semibold leading-snug not-italic">{step.title}</h3>
+              <p className="max-w-prose text-base text-muted-foreground">{step.body}</p>
+            </div>
+            <div className="min-w-0"><StepPanel index={stepPanels[index]} /></div>
           </li>)}
         </ol>
-        <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3" /></span><span>{c.noSubmit}</span></p>
+        <p className="border-t pt-4 text-sm text-muted-foreground">{c.noSubmit}</p>
       </section>
 
       <div className={`${wrap} mt-16 sm:mt-24`}>
         <div className="border-y py-12 sm:py-16">
           <p className="max-w-3xl font-heading text-3xl leading-snug sm:text-4xl lg:text-5xl">
-            <span className="block text-muted-foreground">{c.tagline[0]}</span>
+            <span className="block">{c.tagline[0]}</span>
             <span className="block">{c.tagline[1]}</span>
           </p>
         </div>
@@ -74,7 +78,8 @@ export function LandingPage() {
 
       <Tour />
 
-      <section id="data" className={`${wrap} mt-20 grid scroll-mt-16 gap-8 sm:mt-24`} aria-labelledby="diff-title">
+      <div className="mt-16 bg-surface-tint py-12 sm:mt-20 sm:py-16">
+      <section id="data" className={`${wrap} grid scroll-mt-16 gap-8`} aria-labelledby="diff-title">
         <h2 id="diff-title" className="max-w-2xl text-2xl font-semibold not-italic sm:text-3xl">{c.diffTitle}</h2>
         <div className="grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-16">
           <section aria-labelledby="local-title" className="grid content-start gap-4">
@@ -82,7 +87,7 @@ export function LandingPage() {
             <p className="max-w-prose text-base text-muted-foreground">{c.local.body}</p>
             <ul className="grid gap-3 text-base">
               {[...c.local.rows, `${c.local.submit} · ${c.local.submitNote}`].map(row => <li key={row} className="flex items-start gap-3">
-                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3.5" /></span>{row}
+                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-primary-fill text-primary-fill-foreground"><Tick className="size-3.5" /></span>{row}
               </li>)}
             </ul>
           </section>
@@ -91,28 +96,26 @@ export function LandingPage() {
             <p className="max-w-prose text-base text-muted-foreground">{c.agent.body}</p>
             <Badge variant="outline" className="w-fit">{c.panel.sample}</Badge>
             <ol aria-label={c.agent.flow} className="grid gap-3">
-              <li className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/60 px-4 py-3 text-sm">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground" aria-hidden="true">1</span>
+              <li className="flex flex-wrap items-center gap-2 rounded-lg bg-card px-4 py-3 text-sm">
                 <span className="font-medium">{c.agent.token}</span><span className="text-muted-foreground">· {c.agent.scopes}</span>
               </li>
               <li className="flex items-center gap-2 rounded-lg bg-warning/12 px-4 py-3 text-sm font-medium text-warning">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-warning/20 text-xs font-semibold" aria-hidden="true">2</span>
                 {c.agent.request}
               </li>
-              <li className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/60 px-4 py-3 text-sm">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground" aria-hidden="true">3</span>
-                <span className="rounded-md bg-primary px-3 py-1 font-medium text-primary-foreground">{c.agent.approve}</span>
+              <li className="flex flex-wrap items-center gap-2 rounded-lg bg-card px-4 py-3 text-sm">
+                <span className="rounded-md bg-primary-fill px-3 py-1 font-medium text-primary-fill-foreground">{c.agent.approve}</span>
                 <span className="rounded-md border bg-card px-3 py-1 font-medium">{c.agent.reject}</span>
               </li>
             </ol>
           </section>
         </div>
       </section>
+      </div>
 
       <section id="faq" aria-labelledby="faq-title" className={`${wrap} mt-16 grid scroll-mt-16 gap-6 sm:mt-20 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:gap-16`}>
         <h2 id="faq-title" className="text-2xl font-semibold not-italic sm:text-3xl">{c.faqTitle}</h2>
-        <div className="grid border-t">
-          {c.faq.map(item => <details key={item.q} className="group border-b">
+        <div className="grid rounded-xl border bg-card px-5">
+          {c.faq.map(item => <details key={item.q} className="group border-b last:border-b-0">
             <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 text-base font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
               {item.q}<ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>

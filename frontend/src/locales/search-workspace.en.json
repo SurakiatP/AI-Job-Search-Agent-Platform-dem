@@ -42,7 +42,9 @@
       "Data analyst",
       "Frontend",
       "Product manager"
-    ]
+    ],
+    "searchBand": "Search and filter jobs",
+    "resultsLabel": "Search results"
   },
   "methods": {
     "keywordNote": "Deterministic coverage counts recognizable required skills in the posting and selected CV. It is not an AI estimate or an ATS pass prediction.",

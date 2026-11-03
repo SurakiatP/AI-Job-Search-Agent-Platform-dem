@@ -1,7 +1,7 @@
 // Copy added by the auth redesign; older strings stay in locales/common.*.json under `auth.*`.
 const th = {
   loginTitle: 'ยินดีต้อนรับกลับ',
-  loginSide: { title: 'งานหางานของคุณ รวมไว้ที่เดียว', points: ['เก็บ CV หลายเวอร์ชันให้เป็นระเบียบ', 'ตรวจหลักฐานที่ AI ช่วยประเมิน', 'ติดตามความคืบหน้าการสมัครด้วยตัวเอง'] },
+  loginSide: { title: 'จับคู่ CV กับงานที่ใช่', points: ['เลือก CV และงานที่สนใจมาเทียบกัน', 'AI ประเมินความเหมาะสมพร้อมหลักฐานให้ตรวจ', 'คุณส่งใบสมัครเอง และบันทึกสถานะติดตามในระบบ'] },
   signupTitle: 'สร้างบัญชีของคุณ',
   signupSide: { title: 'เริ่มจากแผนที่ชัดเจน', steps: [
     { title: 'สร้างบัญชีและยืนยันอีเมล', body: 'เราส่งลิงก์ยืนยันไปที่อีเมลของคุณ' },
@@ -34,7 +34,7 @@ const th = {
 
 const en: typeof th = {
   loginTitle: 'Welcome back',
-  loginSide: { title: 'Your next move, in one place.', points: ['Keep CV versions organized.', 'Review the evidence behind each AI estimate.', 'Track your own application progress.'] },
+  loginSide: { title: 'Match your CV to a job.', points: ['Pair a CV with a job you want.', 'AI estimates the fit and shows its evidence.', 'You submit applications yourself and record the status here.'] },
   signupTitle: 'Create your account',
   signupSide: { title: 'Start with a clearer plan.', steps: [
     { title: 'Create an account and confirm your email', body: 'We send a confirmation link to your address.' },

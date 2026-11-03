@@ -23,7 +23,7 @@ export function ConfirmDeleteDialog({ title, description, confirmLabel, onConfir
     }
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
-    <DialogContent onCloseAutoFocus={returnFocus ? event => { if (done.current) { event.preventDefault(); returnFocus()?.focus(); } } : undefined}>
+    <DialogContent className="max-w-md" onCloseAutoFocus={returnFocus ? event => { if (done.current) { event.preventDefault(); returnFocus()?.focus(); } } : undefined}>
       <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>

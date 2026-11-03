@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, FileText, Info, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
 import type { JobRevisionView, RunEventView, RunOperation, RunStatus, RunView } from '@/lib/api-types';
@@ -75,7 +77,7 @@ function RunDetails({ projectId, run, c }: { projectId: string; run: RunView; c:
   const [events, setEvents] = useState<RunEventView[] | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => { fetchRunEvents(projectId, run.id).then(setEvents).catch(() => setFailed(true)); }, [projectId, run.id, run.status]);
-  if (failed) return <p role="alert" className="text-sm text-destructive">{c.detailsFailed}</p>;
+  if (failed) return <Alert severity="error">{c.detailsFailed}</Alert>;
   if (!events) return <p role="status" className="text-sm text-muted-foreground">…</p>;
   const rounds = events.filter(e => e.data.step === 'llm_round');
   const sum = (key: 'latency_ms' | 'input_tokens' | 'output_tokens') => rounds.reduce((n, e) => n + (e.data[key] ?? 0), 0);
@@ -113,14 +115,13 @@ export function TimelineTab({ projectId, locale, c }: { projectId: string; local
   const all = [...(runs.data ?? [])].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   if (all.length === 0) return <Empty title={c.noRuns} next={c.noRunsNext} />;
   const medium = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
-  const idle = !all.some(run => run.status === 'queued' || run.status === 'running');
 
   function row(run: RunView, primary: boolean) {
     const dest = destination(run, base, c);
     const meta = [run.job_revision_id ? titles.get(run.job_revision_id) ?? c.untitled : null, requesterLabel(run, c)].filter((part): part is string => !!part);
     const finished = run.status === 'completed' || run.status === 'failed' || run.status === 'interrupted' || run.status === 'cancelled';
     const note = run.status === 'waiting_approval' ? c.needsDecisionNote : run.status === 'needs_input' ? c.needsInputNote : run.status === 'cancelled' ? c.cancelledNote : null;
-    return <li key={run.id} className="grid gap-3 py-4 first:pt-3 last:pb-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+    return <li key={run.id} className={cn('grid gap-3 px-4 py-4 sm:px-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6', (run.status === 'failed' || run.status === 'interrupted') && 'bg-destructive/5')}>
       <div className="flex min-w-0 gap-3">
         <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground" aria-hidden="true">
           {run.operation === 'evaluate_job' || run.operation === 'match_jobs' ? <Search className="size-4" /> : <FileText className="size-4" />}
@@ -129,7 +130,7 @@ export function TimelineTab({ projectId, locale, c }: { projectId: string; local
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
             <span className="[overflow-wrap:anywhere]">{c.ops[run.operation]}</span>
             <StatusBadge status={run.status} locale={locale} />
-            {run.retry_of_id && <span className="rounded-md border px-1.5 py-0.5 text-xs font-normal text-muted-foreground" title={c.retryOf}>{c.retry}</span>}
+            {run.retry_of_id && <span className="rounded-md border px-2 py-0.5 text-xs font-normal text-muted-foreground" title={c.retryOf}>{c.retry}</span>}
           </p>
           <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
             {meta.join(' · ')}{meta.length > 0 && ' · '}
@@ -152,16 +153,15 @@ export function TimelineTab({ projectId, locale, c }: { projectId: string; local
   }
 
   return <div className="grid gap-4">
-    {anyActive && <p className="text-xs text-muted-foreground" role="status">{c.autoRefresh}</p>}
-    {idle && <p className="text-sm text-muted-foreground">{c.nothingRunning}</p>}
     {GROUPS.map(({ key, statuses }) => {
       const items = all.filter(run => (statuses as readonly RunStatus[]).includes(run.status));
       if (items.length === 0) return null;
       const [title, hint] = c.groups[key];
-      return <section key={key} aria-labelledby={`activity-${key}`} className="rounded-xl border bg-card px-4 py-4 sm:px-5">
-        <h2 id={`activity-${key}`} className="text-lg font-semibold">{title} <span className="tabular-nums text-muted-foreground">({items.length})</span></h2>
-        <p className="text-sm text-muted-foreground">{hint}</p>
-        <ul className="mt-2 divide-y">{items.map(run => row(run, key === 'decision'))}</ul>
+      const lead = key === 'decision';
+      return <section key={key} aria-labelledby={`activity-${key}`} className={cn('rounded-xl border bg-card py-4', lead && 'border-warning')}>
+        <h2 id={`activity-${key}`} className={cn('px-4 sm:px-5', lead ? 'text-lg font-semibold' : 'font-sans text-base font-medium text-muted-foreground')}>{title} <span className="tabular-nums text-muted-foreground">({items.length})</span></h2>
+        {lead && <p className="px-4 text-sm text-muted-foreground sm:px-5">{hint}</p>}
+        <ul className="mt-2 divide-y border-t">{items.map(run => row(run, key === 'decision'))}</ul>
       </section>;
     })}
     <p className="flex items-start gap-2 text-sm text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />{c.footer}</p>

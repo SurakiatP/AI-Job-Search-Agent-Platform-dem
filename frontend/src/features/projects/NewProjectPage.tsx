@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useDraft } from '../../app/drafts';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { PageBack } from '../../components/PageBack';
@@ -39,13 +40,12 @@ export function NewProjectPage() {
   return <section className="mx-auto grid w-full max-w-2xl gap-6 lg:gap-8"><PageBack to="/app/projects">{t('pages.backProjects')}</PageBack><h1>{t('pages.newProject')}</h1>
     <form className="workspace-panel grid gap-4 p-5 sm:p-6" onSubmit={event => { event.preventDefault(); void submit(); }} noValidate>
       <div className="grid gap-2">
-        <label className="text-sm font-medium" htmlFor="project-name">{t('pages.projectName')}</label>
-        <Input id="project-name" autoComplete="off" value={name} onChange={event => { setName(event.target.value); if (failed === 'taken') setFailed(null); }} aria-invalid={!!error} aria-describedby={error ? 'project-name-error project-name-hint' : 'project-name-hint'} />
+        <div className="mui-field"><Input id="project-name" placeholder=" " autoComplete="off" value={name} onChange={event => { setName(event.target.value); if (failed === 'taken') setFailed(null); }} aria-invalid={!!error} aria-describedby={error ? 'project-name-error project-name-hint' : 'project-name-hint'} /><label className="mui-label" htmlFor="project-name">{t('pages.projectName')}</label></div>
         <p id="project-name-hint" className="text-sm text-muted-foreground">{c.nameHint(name.length)}</p>
         {error && <span className="field-error text-sm" id="project-name-error" role="alert">{error}</span>}
       </div>
       <div className="grid gap-2 border-t pt-4"><h2 className="text-base font-semibold">{c.nextTitle}</h2><ol className="grid list-decimal gap-1 ps-5 text-sm text-muted-foreground">{c.next.map(step => <li key={step}>{step}</li>)}</ol></div>
-      {failed === 'uncertain' && <div className="field-error" role="alert"><p>{t('workspace.creationUncertain')}</p><Link className="underline" to="/app/projects">{t('nav.allProjects')}</Link></div>}
+      {failed === 'uncertain' && <Alert severity="error"><p>{t('workspace.creationUncertain')}</p><Link className="font-medium text-primary underline underline-offset-4" to="/app/projects">{t('nav.allProjects')}</Link></Alert>}
       <div className="flex flex-wrap gap-3"><Button type="submit" busy={saving} disabled={saving}>{saving ? t('pages.loading') : t('pages.createProject')}</Button><Button asChild variant="outline"><Link to="/app/projects">{c.cancel}</Link></Button></div>
     </form></section>;
 }

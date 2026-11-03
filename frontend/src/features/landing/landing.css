@@ -22,4 +22,4 @@
   .demo-step, .demo-step .landing-tick-draw, .demo-seg, .demo-score { transition: none; opacity: 1; transform: none; animation: none; }
 }
 /* Colour only: the word carries no chip. */
-.landing-ai { color: var(--primary); }
+.landing-ai { color: var(--ai-foreground); }

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useDraft } from '../../app/drafts';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, ExternalLink, Kanban, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, FileText, Kanban, Plus } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { FitScore, fitBand } from '@/components/FitScore';
 import { PageBack } from '@/components/PageBack';
 import { Markdown } from '@/components/Markdown';
+import { CompanyMark } from '@/components/CompanyMark';
 import { StatusBadge } from '@/components/StatusBadge';
 import type { ApplicationCardView, CVView, DocumentView, JobRevisionView, Locale, RunView, SessionView, SkillCoverage } from '../../lib/api-types';
 import { latestEvaluations } from '../overview/latestEvaluations';
@@ -78,7 +80,7 @@ export function JobsPage() {
           <div className="grid gap-2"><Label htmlFor="job-company">{t('workflow.company')}</Label><Input id="job-company" value={company} maxLength={300} onChange={event => setCompany(event.target.value)} /></div>
           <div className="grid gap-2"><Label htmlFor="job-source-url">{t('workflow.sourceUrl')}</Label><Input id="job-source-url" type="text" inputMode="url" aria-invalid={error === 'source'} value={sourceUrl} maxLength={2048} onChange={event => { setSourceUrl(event.target.value); if (error === 'source') setError(null); }} /></div>
           <div className="grid gap-2"><Label htmlFor="job-description">{t('workflow.posting')}</Label><Textarea id="job-description" rows={8} maxLength={50000} value={description} aria-invalid={error === 'missing' && !description.trim()} aria-describedby={error === 'missing' ? 'job-error' : undefined} onChange={event => { setDescription(event.target.value); if (error === 'missing') setError(null); }} required /></div>
-          {error && <p id="job-error" role="alert" className="text-sm text-destructive">{appT(error === 'source' ? 'invalidSource' : error === 'missing' ? 'missingFields' : 'savePostingError')}</p>}
+          {error && <Alert severity="error" id="job-error" role="alert">{appT(error === 'source' ? 'invalidSource' : error === 'missing' ? 'missingFields' : 'savePostingError')}</Alert>}
           <div><Button type="submit" busy={busy} disabled={busy}>{appT('savePosting')}</Button></div>
         </form>
       </CardContent>
@@ -98,11 +100,11 @@ function SkillsFound({ coverage }: { coverage: SkillCoverage }) {
       <span className="font-semibold tabular-nums">{coverage.matched.length} / {coverage.required.length}</span>
     </div>
     <Progress value={Math.round(coverage.ratio * 100)} />
-    {coverage.matched.length > 0 && <ul className="flex flex-wrap gap-1.5" aria-label={t('skillsFound')}>
+    {coverage.matched.length > 0 && <ul className="flex flex-wrap gap-1" aria-label={t('skillsFound')}>
       {coverage.matched.map(skill => <li key={skill}><Badge variant="success" className="break-all">{skill}</Badge></li>)}
     </ul>}
-    {coverage.missing.length > 0 && <ul className="flex flex-wrap gap-1.5" aria-label={t('skillsMissing')}>
-      {coverage.missing.map(skill => <li key={skill}><Badge variant="outline" className="break-all">{skill}</Badge></li>)}
+    {coverage.missing.length > 0 && <ul className="flex flex-wrap gap-1" aria-label={t('skillsMissing')}>
+      {coverage.missing.map(skill => <li key={skill}><Badge variant="muted" className="break-all">{skill}</Badge></li>)}
     </ul>}
     <p className="text-xs text-muted-foreground">{t('skillsNote')}</p>
   </section>;
@@ -113,7 +115,7 @@ function JobDescription({ text }: { text: string }) {
   const { t } = useTranslation('applicationsWorkspace');
   const [expanded, setExpanded] = useState(false);
   const long = text.split('\n').length > 8 || text.length > 700;
-  return <section aria-labelledby="job-description" className="grid min-w-0 content-start gap-3 lg:col-start-1">
+  return <section aria-labelledby="job-description" className="grid min-w-0 content-start gap-3 rounded-lg border border-border bg-card p-5 sm:p-6 lg:col-start-1">
     <h2 id="job-description" className="text-lg font-semibold">{t('jobDescription')}</h2>
     <div id="job-description-body" className={long && !expanded ? 'max-h-48 overflow-hidden' : undefined}>
       <Markdown data-testid="job-description">{text}</Markdown>
@@ -153,15 +155,21 @@ export function JobDetailPage() {
   const primaryCv = usableCvs.find(cv => cv.is_primary) ?? usableCvs[0];
   const score = evaluation?.evaluation_result?.score ?? null;
   const band = bandView[fitBand(score) as keyof typeof bandView];
-  return <article className="grid min-w-0 gap-x-8 gap-y-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:grid-rows-[auto_auto_auto_1fr]">
-    <header className="grid min-w-0 gap-3 border-b border-border pb-5 lg:col-span-2">
+  const card = 'grid min-w-0 content-start gap-4 rounded-lg border border-border bg-card p-5 sm:p-6';
+  return <article className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-8 lg:grid-rows-[auto_auto_auto_1fr]">
+    <header className="grid min-w-0 gap-3 lg:col-span-2">
       <PageBack to={`${base}/applications`}>{t('back')}</PageBack>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="break-words text-2xl font-semibold">{job.title || t('untitled')}</h1>
-          {job.company && <p className="mt-1 break-words text-base text-muted-foreground">{job.company}</p>}
-          <p className="mt-1 text-sm text-muted-foreground">{t('revision', { revision: job.revision })}</p>
-          {source && <a className="mt-2 inline-flex min-h-11 lg:min-h-10 items-center gap-1 text-sm text-primary hover:underline" href={source} target="_blank" rel="noreferrer">{t('source')}<ExternalLink className="size-4" aria-hidden="true" /></a>}
+        <div className="flex min-w-0 items-start gap-4">
+          <CompanyMark name={job.company} size={48} />
+          <div className="min-w-0">
+            <h1 className="break-words text-2xl font-semibold md:text-3xl">{job.title || t('untitled')}</h1>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+              {job.company && <><span className="break-words">{job.company}</span><span aria-hidden="true">·</span></>}
+              <span>{t('revision', { revision: job.revision })}</span>
+              {source && <><span aria-hidden="true">·</span><a className="inline-flex min-h-11 lg:min-h-10 items-center gap-1 text-primary hover:underline" href={source} target="_blank" rel="noreferrer">{t('source')}<ExternalLink className="size-4" aria-hidden="true" /></a></>}
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={job.application_status ?? 'saved'} locale={locale} />
@@ -173,12 +181,13 @@ export function JobDetailPage() {
       </div>
     </header>
 
-    <section aria-labelledby="job-evaluation" className="grid min-w-0 content-start gap-4 border-b border-border pb-6 lg:col-start-1">
+    <section aria-labelledby="job-evaluation" className={`${card} lg:col-start-1`}>
       <h2 id="job-evaluation" className="text-lg font-semibold">{t('evaluation')}</h2>
       {evaluation?.evaluation_result ? <>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <FitScore size="lg" score={score} locale={locale} />
           {band && <Badge variant={band.variant}>{t(band.key)}</Badge>}
+          <AiLabel />
           <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{t('evaluationSession')}</Link>
         </div>
         <div data-testid="evaluation-provenance" className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
@@ -201,13 +210,13 @@ export function JobDetailPage() {
       </div>}
     </section>
 
-    <ApplicationPanel className="border-b border-border pb-6 lg:col-start-2 lg:row-span-3 lg:row-start-2 lg:border-b-0 lg:border-s lg:pb-0 lg:ps-8" projectId={projectId} jobId={job.id} jobTitle={job.title} onStageChanged={result.reload} />
+    <ApplicationPanel className="lg:sticky lg:top-4 lg:col-start-2 lg:row-span-3 lg:row-start-2 lg:self-start" projectId={projectId} jobId={job.id} jobTitle={job.title} onStageChanged={result.reload} />
 
-    <section aria-labelledby="job-documents" className="grid min-w-0 content-start gap-3 border-b border-border pb-6 lg:col-start-1">
+    <section aria-labelledby="job-documents" className={`${card} lg:col-start-1`}>
       <h2 id="job-documents" className="text-lg font-semibold">{t('relatedDocuments')}</h2>
       {related.length === 0 ? <div><p className="text-sm">{t('noRelatedDocuments')}</p><p className="text-sm text-muted-foreground">{t('noRelatedDocumentsNext')}</p></div> :
-        <ul className="grid gap-2">{related.map(doc => <li key={doc.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border py-2 last:border-b-0">
-          <Link className="break-words font-medium text-primary hover:underline" to={`${base}/documents/${doc.id}`}>{doc.title}</Link>
+        <ul className="divide-y divide-border">{related.map(doc => <li key={doc.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2 first:pt-0">
+          <span className="flex min-w-0 items-center gap-2"><FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><Link className="break-words font-medium text-primary hover:underline" to={`${base}/documents/${doc.id}`}>{doc.title}</Link></span>
           {doc.latest_revision && <span className="text-sm text-muted-foreground">{t('documentRevision', { revision: doc.latest_revision.revision })}</span>}
         </li>)}</ul>}
       <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/documents`}>{t('allDocuments')}</Link>

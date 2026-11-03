@@ -1,5 +1,6 @@
 // Session tab "ซ้อมสัมภาษณ์" (CR-IVP-01): the preparation list from the evaluation and the session's practice sets.
 import { useEffect, useId, useState, type FormEvent } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { Link, useNavigate } from 'react-router';
 import { Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,7 @@ export function PracticeTab({ projectId, sessionId, locale, prep }: { projectId:
     <section aria-labelledby={`${sessionId}-practice`} className="grid gap-4 rounded-xl border bg-card p-4 sm:px-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid max-w-2xl gap-1"><h2 id={`${sessionId}-practice`} className="text-lg font-semibold">{c.title}</h2><p className="text-sm text-muted-foreground">{c.intro}</p></div>
-        {list.length > 0 && <Button type="button" className="min-h-11" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{c.newSet}</Button>}
+        {list.length > 0 && <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{c.newSet}</Button>}
       </div>
       {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-background px-4 py-2 text-sm">
         <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -44,10 +45,10 @@ export function PracticeTab({ projectId, sessionId, locale, prep }: { projectId:
         <Button type="button" variant="ghost" size="sm" className="max-sm:ml-4" onClick={() => void act(async () => { await apiRequest(`${setPath(removed.id)}/restore`, { method: 'POST' }); setRemoved(null); })}>{c.undo}</Button>
         <Button type="button" variant="ghost" size="icon" className="max-sm:ml-auto" aria-label={c.dismiss} onClick={() => setRemoved(null)}><X className="size-4" aria-hidden="true" /></Button>
       </div>}
-      {failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}
+      {failure && <Alert severity="error">{failure}</Alert>}
       {sets.status === 'loading' && !sets.data ? <BusyNote label="…" /> : list.length === 0 ? <div className="grid justify-items-start gap-3 rounded-lg border border-dashed p-5">
         <h3 className="font-semibold">{c.emptyTitle}</h3><p className="max-w-xl text-sm text-muted-foreground">{c.emptyBody}</p>
-        <Button type="button" className="min-h-11" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{c.newSet}</Button>
+        <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{c.newSet}</Button>
       </div> : <ul className="grid divide-y rounded-lg border">{list.map(set => <li key={set.id} className="grid min-w-0 gap-2 px-4 py-3">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
           <div className="grid min-w-0 gap-0.5">
@@ -124,18 +125,18 @@ function CreateDialog({ c, api, projectId, sessionId, locale, defaultName, onClo
           <ul className="grid divide-y rounded-lg border">{SECTION_ORDER.map(section => {
             const on = Boolean(counts[section]);
             return <li key={section} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3">
-              <input id={`${id}-${section}`} type="checkbox" className="size-4 accent-[var(--primary)]" checked={on} aria-describedby={`${id}-${section}-hint`}
+              <input id={`${id}-${section}`} type="checkbox" className="size-5 shrink-0 accent-primary" checked={on} aria-describedby={`${id}-${section}-hint`}
                 onChange={event => setCounts(current => ({ ...current, [section]: event.target.checked ? DEFAULTS[section] ?? 2 : 0 }))} />
               <label htmlFor={`${id}-${section}`} className="grid min-w-0 cursor-pointer gap-0.5"><span className="text-sm font-medium">{c.sections[section]}</span><span id={`${id}-${section}-hint`} className="text-xs text-muted-foreground">{c.sectionHints[section]}</span></label>
-              <input type="number" min={1} max={6} disabled={!on} aria-label={c.countLabel(c.sections[section])} value={on ? counts[section] : ''}
+              <Input type="number" min={1} max={6} disabled={!on} aria-label={c.countLabel(c.sections[section])} value={on ? counts[section] : ''}
                 onChange={event => setCounts(current => ({ ...current, [section]: Math.min(6, Math.max(1, Number(event.target.value) || 1)) }))}
-                className="h-10 w-16 rounded-md border border-input bg-card px-2 text-center text-sm tabular-nums disabled:opacity-40" />
+                className="w-16 px-2 text-center tabular-nums" />
             </li>;
           })}</ul>
           <p className={cn('text-sm tabular-nums', total > 30 ? 'text-destructive' : 'text-muted-foreground')}>{total > 30 ? c.tooMany : c.total(total)}</p>
         </fieldset>
         <p className="text-xs text-muted-foreground">{c.quotaNote}</p>
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        {error && <Alert severity="error">{error}</Alert>}
         <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{c.cancel}</Button></DialogClose><Button type="submit" busy={busy} disabled={busy || !chosen.length || total > 30}>{c.createSet}</Button></div>
       </form>
     </DialogContent>
@@ -157,7 +158,7 @@ export function RenameDialog({ c, set, path, onClose, onDone }: { c: PracticeCop
     <DialogContent><form className="grid gap-4" onSubmit={event => void submit(event)}>
       <DialogTitle>{c.renameTitle}</DialogTitle>
       <div className="grid gap-2"><Label htmlFor={`${id}-name`}>{c.name}</Label><Input id={`${id}-name`} value={name} maxLength={120} onChange={event => setName(event.target.value)} /></div>
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {error && <Alert severity="error">{error}</Alert>}
       <div className="flex justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline">{c.cancel}</Button></DialogClose><Button type="submit" busy={busy} disabled={busy || !name.trim()}>{c.save}</Button></div>
     </form></DialogContent>
   </Dialog>;

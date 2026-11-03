@@ -38,6 +38,8 @@
     "uploading": "Uploading and reading your CV…"
   },
   "documents": {
+    "count_one": "{{count}} document",
+    "count_other": "{{count}} documents",
     "subtitle": "Review application files, their source revisions and the latest edits.",
     "emptyTitle": "No documents yet",
     "emptyHelp": "Documents appear here after you prepare them in an evaluation.",

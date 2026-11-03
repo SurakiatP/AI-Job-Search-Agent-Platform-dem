@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -108,7 +109,7 @@ function EmailSection() {
       <Badge variant={account.email_verified ? 'success' : 'secondary'}>{account.email_verified ? t('account.verifiedStatus') : t('account.unverifiedStatus')}</Badge>
       {!account.email_verified && <Button type="button" size="sm" variant="outline" disabled={state === 'busy' || state === 'sent'} onClick={() => void resend()}>{t('account.resend')}</Button>}
       <span role="status" className="text-sm text-muted-foreground">{state === 'sent' ? t('account.resent') : ''}</span>
-      {state === 'failed' && <span role="alert" className="text-sm text-destructive">{resendError}</span>}
+      {state === 'failed' && <Alert severity="error">{resendError}</Alert>}
       <div className="grid w-full gap-2 border-t pt-3">
         <p className="text-sm font-medium">{t('account.passwordLabel')}</p>
         <div className="flex flex-wrap items-center gap-3">
@@ -118,7 +119,7 @@ function EmailSection() {
         <div role="status" className="text-sm text-muted-foreground">
           {reset.kind === 'off' ? <>{mailOff.mailOffBody} {mailOff.mailOffNext}</> : reset.kind === 'sent' ? reset.text : null}
         </div>
-        {reset.kind === 'error' && <p role="alert" className="text-sm text-destructive">{reset.text}</p>}
+        {reset.kind === 'error' && <Alert severity="error">{reset.text}</Alert>}
       </div>
     </CardContent>
   </Card>;
@@ -138,11 +139,11 @@ function AgentsSection() {
   const item = (agent: AccountAgent) => {
     const state = stateOf(agent);
     return <li key={agent.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${state === 'active' ? '' : 'text-muted-foreground'}`}>
-      <div className="grid min-w-0 gap-1.5">
+      <div className="grid min-w-0 gap-2">
         <p className="break-words text-sm font-medium">{appName(agent)}</p>
         {agent.client_id_host && <p className="break-words text-sm text-muted-foreground">{t('account.oauthClient', { host: agent.client_id_host })}</p>}
         <p className="break-words text-sm">{t('account.project')}: {agent.project_name}</p>
-        <div className="flex flex-wrap gap-1.5">{agent.capabilities.map(cap => <Badge key={cap} variant="outline">{capabilityKey[cap as keyof typeof capabilityKey] ? t(capabilityKey[cap as keyof typeof capabilityKey], { ns: 'settings' }) : cap}</Badge>)}</div>
+        <div className="flex flex-wrap gap-2">{agent.capabilities.map(cap => <Badge key={cap} variant="outline">{capabilityKey[cap as keyof typeof capabilityKey] ? t(capabilityKey[cap as keyof typeof capabilityKey], { ns: 'settings' }) : cap}</Badge>)}</div>
         <p className="text-sm">{t('account.created')} <time dateTime={agent.created_at}>{fmt.format(new Date(agent.created_at))}</time> · {t('account.expires')} <time dateTime={agent.expires_at}>{fmt.format(new Date(agent.expires_at))}</time></p>
       </div>
       <div className="flex items-center gap-3">
@@ -220,7 +221,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
           </>}
           <Button type="button" variant="outline" className="justify-self-start" busy={codeState === 'sending'} disabled={busy || codeState === 'sending'} onClick={() => void requestCode()}>{codeState === 'sent' ? otp.resend : otp.send}</Button>
         </div>
-        {error && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{error}</p>}
+        {error && <Alert severity="error">{error}</Alert>}
         <div className="flex flex-wrap justify-end gap-2">
           <DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{t('account.cancel')}</Button></DialogClose>
           <Button type="submit" variant="destructive" busy={busy} disabled={busy || !password || code.length !== 6 || confirm.trim().toLowerCase() !== email.trim().toLowerCase()}>{t('account.deleteConfirm')}</Button>

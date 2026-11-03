@@ -20,13 +20,13 @@ import pytest
 import yaml
 from botocore.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import sessionmaker
 
 from job_search_platform.api.dependencies import Services
 from job_search_platform.integrations import logging as jsp_logging
 from job_search_platform.db.models import (
-    User,
+    Base, User,
     Approval, CVRevision, ConversationSession, Document, DocumentRevision, Grant, JobRevision, Message, Project, Run, RunArtifact, StoredFile,
 )
 from job_search_platform.integrations.hermes_runtime import ParsedInput
@@ -199,6 +199,73 @@ def test_owner_bootstrap_csrf_crud_and_empty_project_delete_only(api_context):
     deletion = client.delete(f"/v1/projects/{project_id}", headers=_write_headers(csrf))
     assert deletion.status_code == 409
     assert deletion.json()["code"] == "project_not_empty"
+
+
+@pytest.mark.integration
+def test_force_delete_erases_project_and_everything_in_it(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    headers = _write_headers(csrf)
+    keep = client.post("/v1/projects", json={"name": "Keep me"}, headers=headers).json()["id"]
+    doomed = client.post("/v1/projects", json={"name": "Erase me"}, headers=headers).json()["id"]
+    for pid in (keep, doomed):
+        workspace = api_context.tmp_path / "parse" / pid
+        (workspace / "inputs").mkdir(parents=True)
+        api_context.parser.projects[UUID(pid)] = SimpleNamespace(workspace=workspace)
+        assert client.post(f"/v1/projects/{pid}/cv", files={"file": ("cv.txt", b"Synthetic CV body", "text/plain")},
+                           headers=headers).status_code == 201
+        job = client.post(f"/v1/projects/{pid}/jobs", json={"title": "Engineer", "company": "Example", "description": "Synthetic role"},
+                          headers=headers)
+        assert job.status_code == 201
+        # a stage change writes an append-only application event; the erase must still get past its trigger
+        moved = client.patch(f"/v1/projects/{pid}/jobs/{job.json()['id']}/application-status", json={"application_status": "applied"}, headers=headers)
+        assert moved.status_code == 200, moved.text
+        _legacy_session(api_context, pid, "First")
+
+    # the ordinary delete still refuses a project that holds data
+    assert client.delete(f"/v1/projects/{doomed}", headers=headers).json()["code"] == "project_not_empty"
+    # the typed name must match exactly
+    wrong = client.post(f"/v1/projects/{doomed}/force-delete", json={"confirm_name": "erase me"}, headers=headers)
+    assert wrong.status_code == 422 and wrong.json()["code"] == "confirmation_mismatch"
+    # work that is still running blocks the erase
+    with api_context.sessions.begin() as db:
+        run_id = db.scalar(select(Run.id).where(Run.project_id == UUID(doomed)))
+    assert run_id is not None, "setup must leave a run behind so the busy check is really exercised"
+    with api_context.sessions.begin() as db:
+        db.execute(text("UPDATE runs SET status='running' WHERE id=:i"), {"i": run_id})
+    busy = client.post(f"/v1/projects/{doomed}/force-delete", json={"confirm_name": "Erase me"}, headers=headers)
+    assert busy.status_code == 409 and busy.json()["code"] == "project_runs_active"
+    with api_context.sessions.begin() as db:
+        db.execute(text("UPDATE runs SET status='completed' WHERE id=:i"), {"i": run_id})
+
+    with api_context.sessions() as db:
+        keys = list(db.scalars(select(StoredFile.storage_key).where(StoredFile.project_id == UUID(doomed))))
+        kept_keys = list(db.scalars(select(StoredFile.storage_key).where(StoredFile.project_id == UUID(keep))))
+    assert keys and kept_keys
+    stray = api_context.tmp_path / "work" / doomed
+    stray.mkdir(parents=True)
+    (stray / "note.txt").write_text("synthetic")
+    api_context.runtime.workspace_root = api_context.tmp_path / "work"
+
+    done = client.post(f"/v1/projects/{doomed}/force-delete", json={"confirm_name": "Erase me"}, headers=headers)
+    assert done.status_code == 204, done.text
+
+    assert client.get(f"/v1/projects/{doomed}").status_code == 404
+    assert not stray.exists()
+    with api_context.sessions() as db:
+        assert db.get(Project, UUID(doomed)) is None
+        leftovers = {}
+        for table in Base.metadata.sorted_tables:
+            if table.name != "projects" and "project_id" in table.c:
+                count = db.scalar(select(func.count()).select_from(table).where(table.c.project_id == UUID(doomed)))
+                if count:
+                    leftovers[table.name] = count
+        assert leftovers == {}
+        assert db.get(Project, UUID(keep)) is not None
+        assert db.scalar(select(func.count()).select_from(StoredFile).where(StoredFile.project_id == UUID(keep))) == len(kept_keys)
+    present = {item["Key"] for item in api_context.s3.list_objects_v2(Bucket=api_context.bucket).get("Contents", [])}
+    assert not present & set(keys)
+    assert set(kept_keys) <= present
 
 
 @pytest.mark.integration

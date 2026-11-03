@@ -26,12 +26,12 @@ export function PracticeHubPage() {
     <PageHeader icon={Mic} title={c.hubTitle} lede={c.hubIntro} />
     {groups.size === 0 ? <div className="workspace-panel grid justify-items-start gap-3 p-6 sm:p-8">
       <p className="max-w-xl text-muted-foreground">{c.hubEmpty}</p>
-      <Button asChild className="min-h-11"><Link to={`${base}/sessions`}>{c.goEvaluations}</Link></Button>
+      <Button asChild ><Link to={`${base}/sessions`}>{c.goEvaluations}</Link></Button>
     </div> : [...groups.values()].map(list => {
       const job = [list[0].job_title, list[0].job_company].filter(Boolean).join(' · ') || c.title;
       return <section key={list[0].session_id} aria-label={job} className="grid gap-3">
         <h2 className="break-words text-lg font-semibold"><Link className="hover:text-primary hover:underline" to={`${base}/sessions/${list[0].session_id}?tab=practice`}>{job}</Link></h2>
-        <ul className="workspace-panel divide-y overflow-hidden">{list.map(set => <li key={set.id} className="grid min-w-0 gap-1.5 px-4 py-3 sm:px-6">
+        <ul className="workspace-panel divide-y overflow-hidden">{list.map(set => <li key={set.id} className="grid min-w-0 gap-2 px-4 py-3 sm:px-6">
           <Link to={`${base}/sessions/${set.session_id}/practice/${set.id}`} className="w-fit break-words font-semibold hover:text-primary hover:underline [overflow-wrap:anywhere]">{set.name}</Link>
           <p className="text-sm text-muted-foreground">{c.levels[set.level]} · {set.sections.map(s => c.sections[s.id]).join(', ')}</p>
           {set.status === 'generating' ? <BusyNote label={c.generating} /> : set.status === 'failed' ? <p className="text-sm text-destructive">{c.failed}</p>

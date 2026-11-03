@@ -4,6 +4,9 @@ import { useGatewayHelp, useRunGate } from '../../lib/accountGate';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
+import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { apiRequest } from '../../lib/api';
 import { ApiError, type EmploymentType, type ExperienceItem, type ExperienceKind, type ExperienceView, type SkillGroup } from '../../lib/api-types';
@@ -30,7 +33,6 @@ const copy = {
 type Copy = typeof copy.en;
 type Draft = { kind: ExperienceKind; skill_group: SkillGroup | ''; text: string; role: string; organization: string; period: string; employment_type: EmploymentType | ''; location: string; start_date: string; end_date: string; is_current: boolean; industry: string; responsibilities: string; achievements: string; skills_used: string };
 const blank: Draft = { kind: 'experience', skill_group: '', text: '', role: '', organization: '', period: '', employment_type: '', location: '', start_date: '', end_date: '', is_current: false, industry: '', responsibilities: '', achievements: '', skills_used: '' };
-const fieldClass = 'flex min-h-11 lg:min-h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 const fromItem = (i: ExperienceItem): Draft => ({ kind: i.kind, skill_group: i.skill_group ?? '', text: i.text, role: i.role ?? '', organization: i.organization ?? '', period: i.period ?? '', employment_type: i.employment_type ?? '', location: i.location ?? '', start_date: i.start_date ?? '', end_date: i.end_date ?? '', is_current: i.is_current, industry: i.industry ?? '', responsibilities: i.responsibilities ?? '', achievements: i.achievements ?? '', skills_used: i.skills_used ?? '' });
 const hasExtra = (d: Draft) => Boolean(d.employment_type || d.location || d.start_date || d.end_date || d.is_current || d.industry || d.responsibilities || d.achievements || d.skills_used);
 
@@ -39,23 +41,23 @@ function FactForm({ c, initial, submitLabel, onSubmit, onCancel }: { c: Copy; in
   const [busy, setBusy] = useState(false);
   const set = (key: keyof Draft) => (event: { target: { value: string } }) => setDraft(d => ({ ...d, [key]: event.target.value }));
   const text = (key: keyof Draft, label: string, max: number, type = 'text') => <label className="grid gap-2 text-sm font-medium"><span>{label}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Input type={type} value={draft[key] as string} maxLength={max} onChange={set(key)} /></label>;
-  const area = (key: keyof Draft, label: string, max: number) => <label className="grid gap-2 text-sm font-medium sm:col-span-2"><span>{label}<span className="font-normal text-muted-foreground">{c.optional}</span></span><textarea className={fieldClass} rows={3} value={draft[key] as string} maxLength={max} onChange={set(key)} /></label>;
+  const area = (key: keyof Draft, label: string, max: number) => <label className="grid gap-2 text-sm font-medium sm:col-span-2"><span>{label}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Textarea rows={3} value={draft[key] as string} maxLength={max} onChange={set(key)} /></label>;
   return <form className="grid gap-3 sm:grid-cols-2" onSubmit={async event => { event.preventDefault(); if (!draft.text.trim() || busy) return; setBusy(true); try { await onSubmit(draft); setDraft(initial); } catch { /* the parent shows the error; keep the draft */ } finally { setBusy(false); } }}>
     <label className="grid gap-2 text-sm font-medium sm:col-span-2">{c.fact}<Input value={draft.text} maxLength={1000} onChange={set('text')} /></label>
-    <label className="grid gap-2 text-sm font-medium"><span>{c.kind}<span className="font-normal text-muted-foreground">{c.optional}</span></span><select className={fieldClass} value={draft.kind} onChange={set('kind')}>{KINDS.map(k => <option key={k} value={k}>{c.kinds[k]}</option>)}</select></label>
-    {draft.kind === 'skill' && <label className="grid gap-2 text-sm font-medium"><span>{c.skillGroup}<span className="font-normal text-muted-foreground">{c.optional}</span></span><select className={fieldClass} value={draft.skill_group} onChange={set('skill_group')}><option value="">{c.notSet}</option>{SKILL_GROUPS.map(g => <option key={g} value={g}>{c.skillGroups[g]}</option>)}</select></label>}
+    <label className="grid gap-2 text-sm font-medium"><span>{c.kind}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Select value={draft.kind} onChange={set('kind')}>{KINDS.map(k => <option key={k} value={k}>{c.kinds[k]}</option>)}</Select></label>
+    {draft.kind === 'skill' && <label className="grid gap-2 text-sm font-medium"><span>{c.skillGroup}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Select value={draft.skill_group} onChange={set('skill_group')}><option value="">{c.notSet}</option>{SKILL_GROUPS.map(g => <option key={g} value={g}>{c.skillGroups[g]}</option>)}</Select></label>}
     {text('role', draft.kind === 'education' ? c.degree : c.role, 200)}
     {text('organization', draft.kind === 'education' ? c.institution : c.org, 200)}
     {text('period', c.period, 60)}
     <details className="rounded-lg border bg-muted/30 p-3 sm:col-span-2" open={hasExtra(initial)}>
       <summary className="cursor-pointer text-sm font-medium">{c.more}</summary>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <label className="grid gap-2 text-sm font-medium"><span>{c.employment}<span className="font-normal text-muted-foreground">{c.optional}</span></span><select className={fieldClass} value={draft.employment_type} onChange={set('employment_type')}><option value="">{c.notSet}</option>{EMPLOYMENT.map(t => <option key={t} value={t}>{c.types[t]}</option>)}</select></label>
+        <label className="grid gap-2 text-sm font-medium"><span>{c.employment}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Select value={draft.employment_type} onChange={set('employment_type')}><option value="">{c.notSet}</option>{EMPLOYMENT.map(t => <option key={t} value={t}>{c.types[t]}</option>)}</Select></label>
         {text('location', c.location, 200)}
         {text('industry', c.industry, 200)}
         {text('start_date', c.start, 7, 'month')}
         <label className="grid gap-2 text-sm font-medium"><span>{c.end}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Input type="month" value={draft.is_current ? '' : draft.end_date} disabled={draft.is_current} onChange={set('end_date')} /></label>
-        <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={draft.is_current} onChange={event => setDraft(d => ({ ...d, is_current: event.target.checked, end_date: event.target.checked ? '' : d.end_date }))} />{c.current}</label>
+        <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-5 shrink-0 accent-primary" checked={draft.is_current} onChange={event => setDraft(d => ({ ...d, is_current: event.target.checked, end_date: event.target.checked ? '' : d.end_date }))} />{c.current}</label>
         {area('responsibilities', c.duties, 2000)}
         {area('achievements', c.wins, 2000)}
         <label className="grid gap-2 text-sm font-medium sm:col-span-2"><span>{c.skills}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Input value={draft.skills_used} maxLength={500} onChange={set('skills_used')} /></label>
@@ -109,15 +111,15 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
       {extraction?.status === 'completed' && extraction.summary && <p>{c.done(extraction.summary)}</p>}
       {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && <p className="flex flex-wrap items-center gap-2">{c.failed}{cvForRun && <Button size="sm" variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}>{c.retry}</Button>}</p>}
     </div>
-    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    {bank.status === 'error' && <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{c.loadError}<Button variant="outline" onClick={bank.reload}>{c.retry}</Button></p>}
+    {error && <Alert severity="error" role="alert">{error}</Alert>}
+    {bank.status === 'error' && <Alert severity="error" role="alert" action={<Button size="sm" variant="outline" onClick={bank.reload}>{c.retry}</Button>}>{c.loadError}</Alert>}
     {bank.data && bank.data.items.length === 0 && <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{c.empty}</p>}
-    {bank.data && bank.data.years_of_experience > 0 && <p className="w-fit rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">{c.years(bank.data.years_of_experience)}</p>}
+    {bank.data && bank.data.years_of_experience > 0 && <p className="w-fit rounded-lg border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">{c.years(bank.data.years_of_experience)}</p>}
     {byKind.map(({ kind, items }) => <div key={kind} className="grid gap-3">
-      <h3 className="flex items-baseline gap-2 border-b pb-1.5 text-base font-semibold">{c.kinds[kind]}<span className="text-sm font-normal text-muted-foreground">{c.count(items.length)}</span></h3>
+      <h3 className="flex items-baseline gap-2 border-b pb-2 text-base font-semibold">{c.kinds[kind]}<span className="text-sm font-normal text-muted-foreground">{c.count(items.length)}</span></h3>
       {sections(kind, items).map(group => <div key={group.title} className="grid gap-2">
         {group.title && <h4 className="flex items-baseline gap-2 break-words text-sm font-medium [overflow-wrap:anywhere]">{group.title}{group.counted && <span className="text-xs font-normal text-muted-foreground">{c.count(group.items.length)}</span>}</h4>}
-        <ul className={kind === 'skill' ? 'grid gap-2 sm:grid-cols-2' : 'grid gap-2'}>{group.items.map(item => <li key={item.id} className="rounded-lg border bg-card p-3">
+        <ul className={kind === 'skill' ? 'grid gap-2 sm:grid-cols-2' : 'grid gap-2'}>{group.items.map(item => <li key={item.id} className="rounded-lg bg-muted p-3">
           {editing === item.id
             ? <FactForm c={c} submitLabel={c.save} onCancel={() => setEditing(null)} initial={fromItem(item)}
                 onSubmit={d => act(() => sendJson(base + '/' + item.id, 'PUT', toBody(d))).then(() => setEditing(null))} />
@@ -131,7 +133,7 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
                   {item.achievements && <p className="text-sm"><span className="font-medium">{c.wins}: </span>{item.achievements}</p>}
                   {item.skills_used && <p className="text-sm"><span className="font-medium">{c.skills}: </span>{item.skills_used}</p>}
                   <p className="text-xs text-muted-foreground">{item.source_cv_name ? c.fromCv(item.source_cv_name) : c.mine}</p>
-                  {item.source === 'cv' && <AiLabel kind="extracted" className="mt-1.5" />}
+                  {item.source === 'cv' && <AiLabel kind="extracted" className="mt-1" />}
                 </div>
                 <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => setEditing(item.id)} aria-label={c.edit + ': ' + item.text}>{c.edit}</Button>
                   <Button size="sm" variant="ghost" className="text-destructive" aria-label={c.remove + ': ' + item.text} onClick={() => setRemoving(item)}>{c.remove}</Button></div>

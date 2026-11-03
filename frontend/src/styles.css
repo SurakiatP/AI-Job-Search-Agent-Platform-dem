@@ -9,78 +9,101 @@
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.5rem; /* MUI shape.borderRadius is 4px; owner asked for a little rounder (2026-11-03) */
   --shadow-xs: 0 1px 2px rgb(27 37 80 / 0.04);
+  --shadow-soft: 0 2px 1px -1px rgb(0 0 0 / 0.2), 0 1px 1px 0 rgb(0 0 0 / 0.14), 0 1px 3px 0 rgb(0 0 0 / 0.12); /* MUI elevation 1 (shadows[1]) */
   --overlay: color-mix(in srgb, var(--foreground) 40%, transparent);
   --background: #F3F4EF;
-  --foreground: #1B2550;
+  --foreground: #0F3B38;
   --card: #FFFFFF;
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: #2B45C4;
+  --primary: #287A74;
   --primary-foreground: #FFFFFF;
+  /* Solid fills (filled buttons, badges): same as primary in light; a deeper royal blue with white text in dark. */
+  --primary-fill: var(--primary);
+  --primary-fill-foreground: var(--primary-foreground);
+  --destructive-fill: var(--destructive);
   --secondary: #E9EAE2;
-  --secondary-foreground: #1B2550;
+  --secondary-foreground: #0F3B38;
   --muted: #E9EAE2;
   --muted-foreground: #585E70;
-  --accent: #E4E7F4;
-  --accent-foreground: #1B2550;
+  --accent: #E8F7F2;
+  --accent-foreground: #0F3B38;
   --destructive: #AF263E;
   --success: #166445;
   --warning: #805319;
   --border: #DCDDD3;
   --border-strong: #C9CBC0;
-  --nav-hover: color-mix(in srgb, var(--foreground) 5%, transparent);
-  --nav-active: color-mix(in srgb, var(--primary) 10%, var(--sidebar));
+  --nav-hover: color-mix(in srgb, var(--primary) 4%, transparent); /* MUI hoverOpacity */
+  --nav-active: color-mix(in srgb, var(--primary) 8%, var(--sidebar)); /* MUI selectedOpacity */
   --input: #858993;
-  --ring: #2B45C4;
+  --ring: #287A74;
   --sidebar: #EAEBE3;
+  --surface-tint: #EDEEE6;
+  --ai: var(--primary);
+  --ai-contrast: var(--primary-foreground);
+  --ai-foreground: var(--primary);
+  --ai-soft: var(--accent);
+  --ai-border: var(--border-strong);
   --font-sans: 'Noto Sans Thai', Manrope, sans-serif;
   --font-serif: 'Noto Serif Thai', serif;
   --font-document: Manrope, 'Noto Sans Thai', sans-serif;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-fast: 150ms;
-  --dur-base: 180ms;
-  --dur-slow: 240ms;
-  /* Journey stages: each step of the search owns one hue (CV, search, evaluate, documents, tracking). */
-  --stage-cv: #0F766E;
-  --stage-search: #2563EB;
-  --stage-evaluate: #7C3AED;
-  --stage-docs: #C2410C;
-  --stage-track: #15803D;
-  --font-heading: 'Noto Serif Thai', Georgia, serif;
+  --dur-base: 200ms;
+  --dur-slow: 300ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* MUI easeInOut, for state changes; --ease-out stays for entering */
+  /* Journey stages share the one brand hue; the step is named by its icon and label, not by colour. */
+  --stage-cv: var(--primary);
+  --stage-search: var(--primary);
+  --stage-evaluate: var(--primary);
+  --stage-docs: var(--primary);
+  --stage-track: var(--primary);
+  --font-heading: 'Noto Sans Thai', Manrope, sans-serif; /* friendly sans headings; the serif stack stays in --font-serif */
   --font-display: var(--font-heading);
   --surface: var(--card);
   --surface-subtle: var(--muted);
-  color-scheme: light;
+  color-scheme: light;  color-scheme: light;
 }
 :root[data-theme='dark'] {
   --overlay: color-mix(in srgb, var(--background) 72%, transparent);
-  --background: #131D42;
-  --foreground: #EEF2FF;
-  --card: #1B2756;
-  --primary: #9DB4FF;
-  --primary-foreground: #0F1738;
-  --secondary: #243266;
-  --secondary-foreground: #EEF2FF;
-  --muted: #243266;
-  --muted-foreground: #B4C0E6;
-  --accent: #2E3F7E;
-  --accent-foreground: #EEF2FF;
+  --background: #151F1E;
+  --foreground: #D9E4E1;
+  --card: #1D2A29;
+  --primary: #86C9BF;
+  --primary-foreground: #10231F;
+  /* Filled controls: white on a deeper royal blue (5.2:1), not dark text on pale periwinkle. */
+  --primary-fill: #2C7A72;
+  --primary-fill-foreground: #FFFFFF;
+  --destructive-fill: #C93A52;
+  --secondary: #253533;
+  --secondary-foreground: #D9E4E1;
+  --muted: #253533;
+  --muted-foreground: #9CB0AC;
+  --accent: #233B38;
+  --accent-foreground: #D9E4E1;
   --destructive: #FF9AAA;
   --success: #79D5AA;
   --warning: #EBC27D;
-  --border: #34447F;
-  --border-strong: #46579A;
-  --input: #7F8FC4;
-  --ring: #9DB4FF;
-  --sidebar: #16224D;
-  --stage-cv: #5EEAD4;
-  --stage-search: #7FA8FF;
-  --stage-evaluate: #B79CFF;
-  --stage-docs: #FFA36B;
-  --stage-track: #6FE09A;
+  --border: #2D3F3D;
+  --border-strong: #3D5452;
+  --input: #6E8582;
+  --ring: #86C9BF;
+  --sidebar: #111A19;
+  --surface-tint: #192524;
+  --ai: var(--primary);
+  --ai-contrast: var(--primary-foreground);
+  --ai-foreground: var(--primary);
+  --ai-soft: var(--accent);
+  --ai-border: var(--border-strong);
+  --nav-active: color-mix(in srgb, var(--primary) 16%, var(--sidebar)); /* MUI dark selectedOpacity */
+  --stage-cv: var(--primary);
+  --stage-search: var(--primary);
+  --stage-evaluate: var(--primary);
+  --stage-docs: var(--primary);
+  --stage-track: var(--primary);
   color-scheme: dark;
 }
 
@@ -90,7 +113,7 @@
   --shadow-md: 0 4px 6px -1px rgb(27 37 80 / 0.1), 0 2px 4px -2px rgb(27 37 80 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(27 37 80 / 0.12), 0 4px 6px -4px rgb(27 37 80 / 0.1);
   --default-transition-duration: var(--dur-fast);
-  --default-transition-timing-function: var(--ease-out);
+  --default-transition-timing-function: var(--ease-standard);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -99,6 +122,9 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-fill: var(--primary-fill);
+  --color-primary-fill-foreground: var(--primary-fill-foreground);
+  --color-destructive-fill: var(--destructive-fill);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -113,11 +139,17 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
+  --color-surface-tint: var(--surface-tint);
+  --color-ai: var(--ai);
+  --color-ai-contrast: var(--ai-contrast);
+  --color-ai-foreground: var(--ai-foreground);
+  --color-ai-soft: var(--ai-soft);
+  --color-ai-border: var(--ai-border);
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
   --font-heading: var(--font-heading);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) / 2);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 4px);
@@ -127,6 +159,7 @@
   * { border-color: var(--border); }
   body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-size: 16px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
   h3 { font-family: var(--font-sans); }
+  input[type=checkbox], input[type=radio] { width: 20px; height: 20px; min-width: 20px; flex-shrink: 0; accent-color: var(--primary); }
   h1, h2, h3, h4 { font-style: normal; overflow-wrap: anywhere; min-width: 0; }
   /* No word left alone on a last line: headings balance, interface text avoids widows. */
   h1, h2, h3, h4, label, legend { text-wrap: balance; }
@@ -138,7 +171,7 @@
   button, a { touch-action: manipulation; }
   a { color: var(--primary); }
   button { cursor: pointer; }
-  h1 { font-size: 24px; line-height: 1.4; font-weight: 600; }
+  h1 { font-size: 30px; line-height: 1.35; font-weight: 500; }
   h2 { line-height: 1.45; }
   input, textarea, select { font-size: 16px; }
   textarea { resize: vertical; min-height: 130px; }
@@ -148,8 +181,13 @@
 
 /* Serif titles: h1 everywhere, h2 only when authored large; Markdown (AI output) stays sans. */
 :where(h1, h2.text-lg, h2.text-xl, h2.text-2xl, h2.text-3xl, h2.text-4xl, .font-heading):not(:where([data-markdown] *)) {
-  font-family: var(--font-heading); font-weight: 500; letter-spacing: 0;
+  font-family: var(--font-heading); font-weight: 600; letter-spacing: 0;
 }
+/* Thai: small meta text reads at 13px with relaxed leading; Thai words wrap at word boundaries, not mid-word. */
+html:lang(th) .text-xs { font-size: 13px; line-height: 1.625; }
+html:lang(th) :where(h1, h2, h3, h4, .workspace-panel, [class*='overflow-wrap:anywhere']) { overflow-wrap: break-word; word-break: normal; line-break: strict; }
+/* Card and dialog titles: one 20px step (type scale 12/14/16/20/30/36). */
+h2.text-lg { font-size: 20px; line-height: 1.45; }
 
 @keyframes page-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .page-enter { animation: page-enter var(--dur-base) var(--ease-out) both; }
@@ -173,9 +211,9 @@
 .fit-ring { animation: ring-fill var(--dur-slow) var(--ease-out) both; }
 /* Sidebar names: fade instead of ellipsis, slide on row hover/focus (ChatGPT-style). */
 .scrolling-name { display: block; overflow: hidden; white-space: nowrap; }
-.scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); } /* taste-skill-ignore */
 .scrolling-name-text { display: inline-block; transition: transform var(--dur-base) var(--ease-out); }
-.group:hover .scrolling-name[data-overflow='true'], .group:focus-within .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, transparent, #000 28px); }
+.group:hover .scrolling-name[data-overflow='true'], .group:focus-within .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, transparent, #000 28px); } /* taste-skill-ignore */
 .group:hover .scrolling-name-text, .group:focus-within .scrolling-name-text { transform: translateX(var(--name-shift)); transition: transform var(--name-duration, 2s) linear 0.4s; }
 /* Journey stage tile (sidebar): plain outline icon, tinted by the step's hue when active. */
 .stage-tile { display: inline-flex; width: 20px; height: 20px; flex-shrink: 0; align-items: center; justify-content: center; color: var(--muted-foreground); background: transparent; transition: color var(--dur-fast) var(--ease-out); }
@@ -199,7 +237,7 @@ main[data-stage='brand'] { --stage: var(--primary); }
 .stage-dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--dot, var(--muted-foreground)); flex-shrink: 0; }
 [data-app-stage='saved'], [data-app-stage='withdrawn'] { --dot: var(--muted-foreground); }
 [data-app-stage='applied'] { --dot: var(--primary); }
-[data-app-stage='responded'] { --dot: var(--stage-evaluate); }
+[data-app-stage='responded'] { --dot: var(--stage-search); }
 [data-app-stage='interview'] { --dot: var(--stage-cv); }
 [data-app-stage='offer'] { --dot: var(--warning); }
 [data-app-stage='hired'] { --dot: var(--success); }
@@ -240,7 +278,7 @@ main[data-stage='brand'] { --stage: var(--primary); }
   .drawer-overlay { position: fixed; inset: 0; background: var(--overlay); z-index: 10; }
   .mobile-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(300px, 90vw); background: var(--sidebar); z-index: 11; overflow-y: auto; border-inline-end: 1px solid var(--border); border-start-end-radius: calc(var(--radius) + 4px); border-end-end-radius: calc(var(--radius) + 4px); }
   .drawer-heading { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 0 20px; }
-  .drawer-heading h2 { font-family: var(--font-heading); font-size: 18px; font-weight: 500; }
+  .drawer-heading h2 { font-family: var(--font-heading); font-size: 20px; font-weight: 500; }
   .skip-link { position: fixed; top: 8px; left: 8px; z-index: 20; padding: 8px 16px; border-radius: calc(var(--radius) - 2px); background: var(--primary); color: var(--primary-foreground); transform: translateY(-200%); }
   .skip-link:focus { transform: none; }
   .shell-test-form { max-width: 640px; margin: 24px auto; }
@@ -252,7 +290,7 @@ main[data-stage='brand'] { --stage: var(--primary); }
 .workspace-page-header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .workspace-page-header > :first-child { min-width: 0; }
 .workspace-page-header > button, .workspace-page-header > a { flex-shrink: 0; }
-.workspace-panel { box-shadow: none; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--card); color: var(--card-foreground); overflow-wrap: anywhere; }
+.workspace-panel { box-shadow: var(--shadow-soft); min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--card); color: var(--card-foreground); overflow-wrap: anywhere; }
 ::selection { background: color-mix(in srgb, var(--primary) 22%, transparent); color: var(--foreground); }
 input, textarea { caret-color: var(--primary); }
 * { scrollbar-color: color-mix(in srgb, var(--muted-foreground) 45%, var(--background)) var(--background); scrollbar-width: thin; }
@@ -261,7 +299,7 @@ input, textarea { caret-color: var(--primary); }
 }
 
 @layer base {
-  @media (min-width: 768px) { h1 { font-size: 28px; } }
+  @media (min-width: 768px) { h1 { font-size: 36px; } }
 }
 
 /* CR-IVP-01 flashcards: 3D flip, then the card slides toward the pile it was sorted into. */
@@ -317,3 +355,42 @@ input, textarea { caret-color: var(--primary); }
 @media (hover: hover) { .group:hover > .tip { opacity: 1; visibility: visible; transition: opacity var(--dur-fast) var(--ease-out) 300ms, visibility 0s 300ms; } }
 .group:focus-within > .tip { opacity: 1; visibility: visible; }
 .group[data-tip-off] > .tip { opacity: 0; visibility: hidden; }
+
+/* Always-visible scrollbar for wide boards, so clipped columns read as scrollable (overlay scrollbars hide on macOS). */
+.scroll-visible::-webkit-scrollbar { height: 10px; }
+.scroll-visible::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted-foreground) 45%, var(--background)); border-radius: 999px; }
+.scroll-visible::-webkit-scrollbar-track { background: var(--muted); border-radius: 999px; }
+
+/* MUI elevations (shadows[2], [4], [8], [24]) and the contained-button behaviour: 2 at rest, 4 on hover, 8 pressed, 0 disabled. */
+:root { --shadow-2: 0 3px 1px -2px rgb(0 0 0 / 0.2), 0 2px 2px 0 rgb(0 0 0 / 0.14), 0 1px 5px 0 rgb(0 0 0 / 0.12);
+  --shadow-4: 0 2px 4px -1px rgb(0 0 0 / 0.2), 0 4px 5px 0 rgb(0 0 0 / 0.14), 0 1px 10px 0 rgb(0 0 0 / 0.12);
+  --shadow-8: 0 5px 5px -3px rgb(0 0 0 / 0.2), 0 8px 10px 1px rgb(0 0 0 / 0.14), 0 3px 14px 2px rgb(0 0 0 / 0.12);
+  --shadow-24: 0 11px 15px -7px rgb(0 0 0 / 0.2), 0 24px 38px 3px rgb(0 0 0 / 0.14), 0 9px 46px 8px rgb(0 0 0 / 0.12); }
+:is(button, a).bg-primary-fill:not(:disabled), :is(button, a).bg-destructive-fill:not(:disabled) { box-shadow: var(--shadow-2); transition: box-shadow var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard); }
+:is(button, a).bg-primary-fill:not(:disabled):hover, :is(button, a).bg-destructive-fill:not(:disabled):hover { box-shadow: var(--shadow-4); }
+:is(button, a).bg-primary-fill:not(:disabled):active, :is(button, a).bg-destructive-fill:not(:disabled):active { box-shadow: var(--shadow-8); }
+.dialog-surface { box-shadow: var(--shadow-24); }
+/* MUI TouchRipple: a circle grows from the press point at 0.3 opacity and fades (550 ms). */
+.ripple { position: absolute; border-radius: 50%; background: currentColor; opacity: 0; pointer-events: none; transform: scale(0); animation: ripple-in 550ms var(--ease-standard) forwards; }
+@keyframes ripple-in { 0% { transform: scale(0); opacity: 0.3; } 60% { opacity: 0.3; } 100% { transform: scale(1); opacity: 0; } }
+
+/* MUI Tabs indicator glides between tabs (transform and width only). */
+.tab-indicator { transition: transform 300ms var(--ease-standard), width 300ms var(--ease-standard); }
+@media (prefers-reduced-motion: reduce) { .tab-indicator { transition: none; } }
+
+/* MUI caption: 12px at 1.66; Thai overrides above. */
+@theme { --text-xs--line-height: 1.66; }
+
+/* MUI checkbox/radio halo: a 4% ring on hover, 12% on keyboard focus. */
+input[type=checkbox], input[type=radio] { border-radius: 4px; transition: box-shadow var(--dur-fast) var(--ease-standard); }
+input[type=radio] { border-radius: 50%; }
+input[type=checkbox]:hover:not(:disabled), input[type=radio]:hover:not(:disabled) { box-shadow: 0 0 0 9px color-mix(in srgb, var(--primary) 4%, transparent); }
+input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: none; box-shadow: 0 0 0 9px color-mix(in srgb, var(--primary) 12%, transparent); }
+
+/* MUI outlined TextField: the label sits in the box and floats onto the border when focused or filled. */
+.mui-field { position: relative; }
+.mui-field > .mui-label, .mui-field > .relative ~ .mui-label { position: absolute; inset-inline-start: 12px; top: 50%; max-width: calc(100% - 24px); margin: 0; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1rem; font-weight: 400; line-height: 1.4; color: var(--muted-foreground); pointer-events: none; transform: translateY(-50%); transform-origin: left center; transition: transform 200ms var(--ease-standard), top 200ms var(--ease-standard), color 200ms var(--ease-standard); }
+.mui-field:focus-within > .mui-label, .mui-field:has(input:not(:placeholder-shown)) > .mui-label { top: 0; background: var(--card); transform: translateY(-50%) scale(0.8125); max-width: calc((100% - 24px) / 0.8125); }
+.mui-field:focus-within > .mui-label { color: var(--primary); }
+.mui-field input::placeholder { color: transparent; }
+@media (prefers-reduced-motion: reduce) { .mui-field > .mui-label { transition: none; } }

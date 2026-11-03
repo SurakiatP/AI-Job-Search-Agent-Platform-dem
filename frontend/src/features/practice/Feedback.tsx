@@ -1,5 +1,6 @@
 // AI feedback on one written answer (CR-IVP-01 FR-IVP-12/13) and the end-of-set summary (FR-IVP-14).
 import { useId, type ReactNode } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { ArrowDown, ArrowUp, Check, CircleDashed, RotateCcw, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AiLabel } from '@/components/AiMark';
@@ -22,7 +23,7 @@ export function FeedbackPanel({ c, feedback, answer, previous, onAsk, onRetry, o
   onUseFact: (text: string) => void;
 }) {
   const id = useId();
-  if (!feedback) return <Button type="button" variant="outline" className="min-h-11 justify-self-start" onClick={onAsk}>{c.getFeedback}</Button>;
+  if (!feedback) return <Button type="button" variant="outline" className="justify-self-start" onClick={onAsk}>{c.getFeedback}</Button>;
   if (feedback.status === 'pending') return <BusyNote label={c.grading} />;
   if (feedback.status !== 'done' || feedback.kind !== 'answer') return <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
     <TriangleAlert className="size-4" aria-hidden="true" />{c.gradeFailed}
@@ -34,10 +35,10 @@ export function FeedbackPanel({ c, feedback, answer, previous, onAsk, onRetry, o
     <ul className="grid gap-3 sm:grid-cols-2">{DIMS.map(dim => {
       const score = feedback.scores[dim];
       const before = previous?.scores[dim];
-      return <li key={dim} className="grid gap-1.5">
+      return <li key={dim} className="grid gap-2">
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-sm font-medium">{c.dims[dim]}</span>
-          <span className="flex items-center gap-1.5 text-sm tabular-nums">
+          <span className="flex items-center gap-2 text-sm tabular-nums">
             {before !== undefined && before !== score && <span className={cn('inline-flex items-center gap-0.5 text-xs', score > before ? 'text-success' : 'text-warning')}>
               {score > before ? <ArrowUp className="size-3" aria-hidden="true" /> : <ArrowDown className="size-3" aria-hidden="true" />}{score > before ? c.upFrom(before) : c.downFrom(before)}</span>}
             <span className="font-semibold">{c.outOf(score)}</span>
@@ -49,17 +50,17 @@ export function FeedbackPanel({ c, feedback, answer, previous, onAsk, onRetry, o
     })}</ul>
     <div className="grid gap-2">
       <p className="text-sm font-medium">{c.yourAnswer}</p>
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label={c.yourAnswer}>{PARTS.map(part => <li key={part} className={cn('flex items-center gap-1.5', !found.has(part) && 'text-muted-foreground')}>
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label={c.yourAnswer}>{PARTS.map(part => <li key={part} className={cn('flex items-center gap-2', !found.has(part) && 'text-muted-foreground')}>
         {found.has(part) ? <Check className="size-3.5 text-success" aria-hidden="true" /> : <CircleDashed className="size-3.5" aria-hidden="true" />}
         <span>{c.starParts[part]}</span>{!found.has(part) && <span>· {c.starMissing}</span>}
       </li>)}</ul>
       <p className="max-w-[70ch] whitespace-pre-wrap break-words rounded-lg border bg-card p-3 leading-loose">{marked(answer, feedback.star, c)}</p>
     </div>
-    {feedback.add.length > 0 && <div className="grid gap-1.5"><p className="text-sm font-medium">{c.toAdd}</p>
-      <ul className="grid gap-1.5 text-sm leading-relaxed">{feedback.add.map(item => <li key={item} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}</ul></div>}
-    {feedback.unused_facts.length > 0 && <div className="grid gap-1.5"><p className="text-sm font-medium">{c.unused}</p><p className="text-xs text-muted-foreground">{c.unusedHint}</p>
+    {feedback.add.length > 0 && <div className="grid gap-2"><p className="text-sm font-medium">{c.toAdd}</p>
+      <ul className="grid gap-2 text-sm leading-relaxed">{feedback.add.map(item => <li key={item} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}</ul></div>}
+    {feedback.unused_facts.length > 0 && <div className="grid gap-2"><p className="text-sm font-medium">{c.unused}</p><p className="text-xs text-muted-foreground">{c.unusedHint}</p>
       <div className="flex flex-wrap gap-2">{feedback.unused_facts.map(fact => <button key={fact.id} type="button" onClick={() => onUseFact(fact.text)}
-        className="max-w-full break-words rounded-lg border border-dashed border-primary/50 bg-accent/40 px-3 py-1.5 text-start text-sm text-accent-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{fact.text}</button>)}</div></div>}
+        className="max-w-full break-words rounded-lg border border-dashed border-primary/50 bg-accent/40 px-3 py-2 text-start text-sm text-accent-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{fact.text}</button>)}</div></div>}
   </section>;
 }
 
@@ -85,7 +86,7 @@ export function SummaryRound({ c, report, sections, onWrite }: { c: PracticeCopy
     <h3 className="text-sm font-semibold">{title}</h3>
     {ordered ? <ol className="grid gap-2">{items.map((item, i) => <li key={item} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2 leading-relaxed">
       <span className="mt-0.5 inline-flex size-6 items-center justify-center rounded-full bg-accent text-xs font-semibold tabular-nums text-accent-foreground" aria-hidden="true">{i + 1}</span><span className="min-w-0 break-words">{item}</span></li>)}</ol>
-      : <ul className="grid gap-1.5 text-sm leading-relaxed">{items.map(item => <li key={item} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}</ul>}
+      : <ul className="grid gap-2 text-sm leading-relaxed">{items.map(item => <li key={item} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}</ul>}
   </div>;
   const tone = { ready: 'text-success', almost: 'text-warning', not_yet: 'text-muted-foreground' } as const;
   return <section aria-labelledby={id} className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6">
@@ -103,10 +104,10 @@ export function SummaryRound({ c, report, sections, onWrite }: { c: PracticeCopy
             <span className={cn('text-sm font-semibold', tone[r.level])}>{c.levelsReady[r.level]}</span>
             <span className="text-sm text-muted-foreground">{r.note}</span>
           </li>)}</ul></div>}
-        <Button type="button" variant="outline" className="min-h-11 justify-self-start" onClick={onWrite}><RotateCcw className="size-4" aria-hidden="true" />{c.rewrite}</Button>
+        <Button type="button" variant="outline" className="justify-self-start" onClick={onWrite}><RotateCcw className="size-4" aria-hidden="true" />{c.rewrite}</Button>
       </> : <>
-        {report?.status === 'failed' && <p role="alert" className="text-sm text-destructive">{c.summaryFailed}</p>}
-        <Button type="button" className="min-h-11 justify-self-start" onClick={onWrite}>{c.writeSummary}</Button>
+        {report?.status === 'failed' && <Alert severity="error">{c.summaryFailed}</Alert>}
+        <Button type="button" className="justify-self-start" onClick={onWrite}>{c.writeSummary}</Button>
       </>}
   </section>;
 }

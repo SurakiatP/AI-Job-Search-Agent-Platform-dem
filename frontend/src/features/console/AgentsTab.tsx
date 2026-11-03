@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import type { FormEvent } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { sendJson, useResource } from '../projects/useResource';
 import { useRunGate } from '@/lib/accountGate';
@@ -50,14 +52,14 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
   const fmt = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
   const state = (g: Grant) => g.revoked_at ? 'revoked' : Date.parse(g.expires_at) <= now ? 'expired' : 'active';
   return <div className="grid gap-6">
-    {failed && <p role="alert" className="text-sm text-destructive">{c.opaction}</p>}
+    {failed && <Alert severity="error">{c.opaction}</Alert>}
     <Card>
       <CardHeader><CardTitle>{c.issue}</CardTitle><p className="text-sm text-muted-foreground">{c.issueIntro}</p></CardHeader>
       <CardContent>
         <form onSubmit={create} className="grid gap-4">
           <fieldset className="grid gap-2"><legend className="mb-1 text-sm font-medium">{c.capabilities}</legend>
             {CAPS.map(cap => <label key={cap} className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
-              <input type="checkbox" className="size-4 accent-primary" checked={caps.includes(cap)} onChange={e => setCaps(cur => e.target.checked ? [...new Set([...cur, cap])] : cur.filter(x => x !== cap))} />
+              <input type="checkbox" className="size-5 shrink-0 accent-primary" checked={caps.includes(cap)} onChange={e => setCaps(cur => e.target.checked ? [...new Set([...cur, cap])] : cur.filter(x => x !== cap))} />
               {c.caps[cap]} <span className="text-xs text-muted-foreground">{cap}</span>
             </label>)}
             {caps.length === 0 && <p role="alert" className="text-xs text-destructive">{c.needCap}</p>}
@@ -69,9 +71,9 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
           </div>
           <div className="grid max-w-xs gap-2">
             <label htmlFor="console-expiry" className="text-sm font-medium">{c.expiry}</label>
-            <select id="console-expiry" value={hours} onChange={e => setHours(e.target.value)} className="min-h-11 lg:min-h-10 rounded-md border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Select id="console-expiry" value={hours} onChange={e => setHours(e.target.value)}>
               <option value="1">{c.h1}</option><option value="24">{c.h24}</option><option value="168">{c.d7}</option>
-            </select>
+            </Select>
           </div>
           <div><Button type="submit" busy={busy} disabled={busy || caps.length === 0 || gate.blocked} title={gate.title}>{c.create}</Button></div>
         </form>
@@ -94,9 +96,9 @@ export function AgentsTab({ projectId, locale, c }: { projectId: string; locale:
         <ul className="divide-y rounded-xl border bg-card">{[...(grants.data ?? [])].sort((a, b) => Date.parse(b.expires_at) - Date.parse(a.expires_at)).map((g, index) => {
           const s = state(g);
           return <li key={g.id} className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${s === 'active' ? '' : 'text-muted-foreground'}`}>
-            <div className="grid min-w-0 gap-1.5">
+            <div className="grid min-w-0 gap-2">
               {g.label && <p className="break-words text-sm font-medium">{g.label}</p>}
-              <div className="flex flex-wrap gap-1.5">{g.capabilities.map(cap => <Badge key={cap} variant="outline">{c.caps[cap]}</Badge>)}</div>
+              <div className="flex flex-wrap gap-2">{g.capabilities.map(cap => <Badge key={cap} variant="outline">{c.caps[cap]}</Badge>)}</div>
               <p className="text-sm">{c.expiresAt} <time dateTime={g.expires_at}>{fmt.format(new Date(g.expires_at))}</time> · <span className="text-xs">{c.id} #{index + 1}</span></p>
             </div>
             <div className="flex items-center gap-3">

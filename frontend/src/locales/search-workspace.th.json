@@ -42,7 +42,9 @@
       "Data analyst",
       "Frontend",
       "Product manager"
-    ]
+    ],
+    "searchBand": "ค้นหาและกรองงาน",
+    "resultsLabel": "ผลการค้นหา"
   },
   "methods": {
     "keywordNote": "ความครอบคลุมแบบกำหนดแน่นอนนับทักษะที่ตรวจพบในประกาศและ CV ที่เลือก ไม่ใช่ผลประเมินจาก AI หรือคำทำนายว่า ATS จะผ่านหรือไม่",

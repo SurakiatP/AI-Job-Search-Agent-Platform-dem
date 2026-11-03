@@ -51,7 +51,25 @@ paths:
       responses: {'200': {description: Updated}}
     delete:
       tags: [projects]
+      description: Deletes an empty project only; a project that holds CVs, jobs, sessions, documents or runs answers 409 project_not_empty.
       responses: {'204': {description: Deleted}}
+  /projects/{project_id}/force-delete:
+    parameters: [{$ref: '#/components/parameters/project_id'}]
+    post:
+      tags: [projects]
+      description: >-
+        Owner only. Erases the project and everything in it for good (CVs, jobs, sessions, documents, runs and history,
+        private files, agent working folders); no tombstone remains and it cannot be undone. The body must carry the exact
+        project name (422 confirmation_mismatch otherwise). Runs that are queued, running or waiting for approval must be
+        stopped first (409 project_runs_active).
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ProjectForceDelete'}}}
+      responses:
+        '204': {description: Erased}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: project_runs_active}
+        '422': {description: confirmation_mismatch}
   /projects/{project_id}/preferences:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
@@ -2127,6 +2145,11 @@ components:
       additionalProperties: false
       required: [name]
       properties: {name: {type: string, minLength: 1, maxLength: 200}}
+    ProjectForceDelete:
+      type: object
+      additionalProperties: false
+      required: [confirm_name]
+      properties: {confirm_name: {type: string, minLength: 1, maxLength: 200, description: Must equal the project's current name}}
     PreferencesUpdate:
       type: object
       additionalProperties: false

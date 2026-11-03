@@ -4,11 +4,12 @@ import { Mail, NotebookPen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { Alert } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { ApplicationDetailView, ApplicationEventView, ApplicationStage } from '../../lib/api-types';
 import { STAGES, stageLabel } from '../../lib/applicationStages';
-import { selectClass } from '../settings/Field';
 import { sendJson, useResource } from '../projects/useResource';
 import { dateLocale } from '../../lib/locale';
 
@@ -59,17 +60,17 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
   };
   const when = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
 
-  if (!data) return result.status === 'error' ? <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{t('loadDetailError')}<Button variant="outline" size="sm" onClick={result.reload}>{t('retry')}</Button></p> : null;
-  return <section aria-labelledby="application-tracking-title" aria-busy={busy} className={cn('grid min-w-0 content-start gap-6', className)}>
+  if (!data) return result.status === 'error' ? <Alert severity="error" action={<Button variant="outline" size="sm" onClick={result.reload}>{t('retry')}</Button>}>{t('loadDetailError')}</Alert> : null;
+  return <section aria-labelledby="application-tracking-title" aria-busy={busy} className={cn('grid min-w-0 content-start gap-6 rounded-lg border border-border bg-card p-5 sm:p-6', className)}>
     <div className="grid gap-1"><h2 id="application-tracking-title" className="text-lg font-semibold">{t('applicationTracking')}</h2><p className="text-sm text-muted-foreground">{t('recordingNote')}</p></div>
-    {error && <p role="alert" className="text-sm text-destructive">{t('saveError')}</p>}
+    {error && <Alert severity="error">{t('saveError')}</Alert>}
 
     <div className="grid gap-2">
       <Label htmlFor="application-stage">{t('stage')}</Label>
-      <select id="application-stage" className={selectClass} value={data.stage} disabled={busy}
+      <Select id="application-stage" value={data.stage} disabled={busy}
         onChange={event => void run(() => sendJson(`${path}/application-status`, 'PATCH', { application_status: event.target.value }), onStageChanged)}>
         {STAGES.map(stage => <option key={stage} value={stage}>{stageLabel[stage][locale]}</option>)}
-      </select>
+      </Select>
     </div>
 
     <form className="grid gap-3 border-t border-border pt-5" onSubmit={event => { event.preventDefault(); void run(() => sendJson(`${path}/application/contact`, 'PUT', { name: blank(contact.name), email: blank(contact.email), role: blank(contact.role) }), () => setContactSaved(true)); }}>
@@ -82,7 +83,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
         <span role="status" className="text-sm text-success">{contactSaved ? t('contactSaved') : ''}</span>
         {data.contact.email && <Button asChild variant="ghost"><a href={mailtoHref(data.contact.email, jobTitle)}><Mail className="size-4" aria-hidden="true" />{t('writeEmail')}</a></Button>}
       </div>
-      {data.contact.email && <p className="text-xs text-muted-foreground">{t('writeEmailHelp')}</p>}
+      {data.contact.email && <p className="text-sm text-muted-foreground">{t('writeEmailHelp')}</p>}
     </form>
 
     <div className="grid gap-3 border-t border-border pt-5">
@@ -101,7 +102,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
         </form>}
         {composer === 'email' && <form className="grid gap-3" onSubmit={event => { event.preventDefault(); if (!log.subject.trim()) return; void run(() => sendJson(`${path}/application/events`, 'POST', { kind: 'email_logged', direction: log.direction, subject: log.subject.trim(), occurred_on: log.occurred_on, note: blank(log.note) }), () => { setLog({ ...log, subject: '', note: '' }); setComposer(null); }); }}>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="grid gap-2"><Label htmlFor="log-direction">{t('direction')}</Label><select id="log-direction" className={selectClass} value={log.direction} onChange={e => setLog({ ...log, direction: e.target.value })}><option value="sent">{t('sent')}</option><option value="received">{t('received')}</option></select></div>
+            <div className="grid gap-2"><Label htmlFor="log-direction">{t('direction')}</Label><Select id="log-direction" value={log.direction} onChange={e => setLog({ ...log, direction: e.target.value })}><option value="sent">{t('sent')}</option><option value="received">{t('received')}</option></Select></div>
             <div className="grid gap-2"><Label htmlFor="log-date">{t('date')}</Label><Input id="log-date" type="date" required value={log.occurred_on} onChange={e => setLog({ ...log, occurred_on: e.target.value })} /></div>
           </div>
           <div className="grid gap-2"><Label htmlFor="log-subject">{t('subject')}</Label><Input id="log-subject" maxLength={300} value={log.subject} onChange={e => setLog({ ...log, subject: e.target.value })} /></div>

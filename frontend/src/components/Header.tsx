@@ -10,14 +10,14 @@ import { Button } from './ui/button';
 
 export function Wordmark({ compact = false }: { compact?: boolean }) {
   return <span className="flex min-w-0 items-center gap-2 text-sm font-semibold leading-snug">
-    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"><Sparkles aria-hidden="true" size={16} /></span>
+    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary-fill text-primary-fill-foreground"><Sparkles aria-hidden="true" size={16} /></span>
     {!compact && <span className="hidden min-w-0 font-heading font-medium [overflow-wrap:anywhere] sm:inline">AI Job Search Agent Platform</span>}
   </span>;
 }
 
 export function HomeLink({ onClick, compact = false }: { onClick?: () => void; compact?: boolean }) {
   const { i18n } = useTranslation();
-  return <Link to="/" onClick={onClick} aria-label={i18n.language.startsWith('th') ? 'หน้าแรก' : 'Home'} className="min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Wordmark compact={compact} /></Link>;
+  return <Link to="/" onClick={onClick} aria-label={i18n.language.startsWith('th') ? 'หน้าแรก' : 'Home'} className="inline-flex min-h-11 min-w-0 items-center rounded-md lg:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Wordmark compact={compact} /></Link>;
 }
 
 // Collapsed-sidebar rail: a plain home icon (like ChatGPT) that clearly reads as "back to the landing page".
@@ -46,7 +46,7 @@ export function LanguageSwitch() {
 export function Header({ menu, nav, actions }: { menu?: ReactNode; nav?: ReactNode; actions?: ReactNode }) {
   const { t } = useTranslation();
   const session = useOwnerSession();
-  return <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-3 border-b bg-background px-4 py-2 sm:px-6">
+  return <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-3 border-b bg-background/90 px-4 py-2 backdrop-blur sm:px-6">
     <div className="flex min-w-0 items-center gap-2">{menu}<HomeLink /></div>
     {nav}
     <div className="flex shrink-0 items-center gap-1 sm:gap-2">

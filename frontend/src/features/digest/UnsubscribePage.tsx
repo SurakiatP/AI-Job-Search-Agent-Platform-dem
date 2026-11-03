@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, MailMinus, TriangleAlert } from 'lucide-react';
@@ -32,12 +33,12 @@ export function DigestUnsubscribePage() {
     {manage}
   </AuthLayout>;
   if (state === 'expired') return <AuthLayout title={c.expiredTitle} icon={<TriangleAlert className="size-8 text-destructive" aria-hidden="true" />}>
-    <p role="alert" className="text-sm text-destructive">{c.expired}</p>
+    <Alert severity="error">{c.expired}</Alert>
     {manage}
   </AuthLayout>;
   return <AuthLayout title={c.title} intro={c.intro} icon={<MailMinus className="size-8 text-primary" aria-hidden="true" />}>
     <p className="text-sm text-muted-foreground">{c.scope}</p>
-    {state === 'error' && <p role="alert" className="text-sm text-destructive">{c.error}</p>}
+    {state === 'error' && <Alert severity="error">{c.error}</Alert>}
     <Button onClick={() => void confirm()} disabled={state === 'busy'}>{c.confirm}</Button>
     {manage}
     <p className="text-sm text-muted-foreground">{c.noLogin}</p>

@@ -46,8 +46,8 @@ function SkillsFound({ coverage }: { coverage: SkillCoverage }) {
     <details className="group">
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">{t('result.showEvidence')}<ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" /></summary>
       <div className="grid gap-3 pt-1">
-        {coverage.matched.length > 0 && <div className="grid gap-1.5"><p className="text-xs font-medium text-muted-foreground">{t('result.found')}</p><ul className="flex flex-wrap gap-1.5">{coverage.matched.map(skill => <li key={skill}><Badge variant="success" className="break-all">{skill}</Badge></li>)}</ul></div>}
-        {coverage.missing.length > 0 && <div className="grid gap-1.5"><p className="text-xs font-medium text-muted-foreground">{t('result.missing')}</p><ul className="flex flex-wrap gap-1.5">{coverage.missing.map(skill => <li key={skill}><Badge variant="outline" className="break-all">{skill}</Badge></li>)}</ul></div>}
+        {coverage.matched.length > 0 && <div className="grid gap-2"><p className="text-xs font-medium text-muted-foreground">{t('result.found')}</p><ul className="flex flex-wrap gap-2">{coverage.matched.map(skill => <li key={skill}><Badge variant="success" className="break-all">{skill}</Badge></li>)}</ul></div>}
+        {coverage.missing.length > 0 && <div className="grid gap-2"><p className="text-xs font-medium text-muted-foreground">{t('result.missing')}</p><ul className="flex flex-wrap gap-2">{coverage.missing.map(skill => <li key={skill}><Badge variant="outline" className="break-all">{skill}</Badge></li>)}</ul></div>}
       </div>
     </details>
   </section>;
@@ -92,7 +92,7 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
     {evaluation && <div className="grid gap-4">
       <div className="grid gap-6 md:grid-cols-2 md:gap-8">
         <div className="grid min-w-0 content-start gap-2">
-          <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"><AiMark size="sm" />{t('result.aiFit')}</p>
+          <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><AiMark size="sm" />{t('result.aiFit')}</p>
           <div className="flex flex-wrap items-center gap-3"><FitScore score={evaluation.score} size="lg" locale={locale} /><Badge variant={bandVariant[band]}>{t(`result.bands.${bandKey[band]}`)}</Badge></div>
           <p className="text-sm text-muted-foreground">{t('result.notPrediction')}</p>
         </div>

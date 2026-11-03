@@ -18,7 +18,7 @@ export function SidebarToggle({ open, onToggle }: { open: boolean; onToggle: () 
       className="inline-flex size-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <PanelLeft size={18} aria-hidden="true" />
     </button>
-    <span role="tooltip" className={`tip pointer-events-none absolute z-50 items-center ${open ? 'right-0 top-full mt-1.5' : 'left-full top-1/2 ml-2 -translate-y-1/2'} gap-2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background shadow`}>
+    <span role="tooltip" className={`tip pointer-events-none absolute z-50 items-center ${open ? 'right-0 top-full mt-2' : 'left-full top-1/2 ml-2 -translate-y-1/2'} gap-2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background shadow`}>
       {label}<kbd className="rounded bg-background/20 px-1 font-sans">{sidebarShortcut}</kbd>
     </span>
   </span>;

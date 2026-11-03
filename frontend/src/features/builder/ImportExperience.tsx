@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { FileDown } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
 import type { ExperienceItem, ExperienceView } from '../../lib/api-types';
@@ -64,7 +65,7 @@ export function ImportExperience({ projectId, base, locale, onAdd }: { projectId
             </label>)}
           </fieldset>)}
         </>}
-        {state === 'failed' && <p role="alert" className="text-sm text-destructive">{c.failed}</p>}
+        {state === 'failed' && <Alert severity="error">{c.failed}</Alert>}
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => setOpen(false)}>{c.cancel}</Button>
           <Button busy={state === 'adding'} disabled={picked.size === 0} onClick={() => void add()}>{c.add(picked.size)}</Button>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,12 +15,12 @@ function SubmitDetail({ projectId, approval, c }: { projectId: string; approval:
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const pack = run.data?.result_payload as ApplyPack | undefined;
   const title = jobs.data?.find(job => job.id === run.data?.job_revision_id)?.title;
-  if (run.status === 'error' || (run.status === 'ready' && pack?.kind !== 'apply_pack')) return <p role="alert" className="text-sm text-destructive">{c.packGone}</p>;
+  if (run.status === 'error' || (run.status === 'ready' && pack?.kind !== 'apply_pack')) return <Alert severity="error">{c.packGone}</Alert>;
   if (!pack) return null;
   return <div className="grid gap-2 text-sm">
     <p><span className="text-muted-foreground">{c.job}: </span><span className="font-medium [overflow-wrap:anywhere]">{title ?? '—'}</span></p>
     <h3 className="font-medium">{c.answers}</h3>
-    <ul className="grid gap-2">{pack.answers.map(a => <li key={a.question_id} className="grid gap-0.5 rounded-lg border p-3">
+    <ul className="grid gap-2">{pack.answers.map(a => <li key={a.question_id} className="grid gap-0.5 rounded-lg bg-muted p-3">
       <span className="text-muted-foreground [overflow-wrap:anywhere]">{a.label ?? a.question_id}</span>
       {a.answer === null ? <Badge variant="warning" className="justify-self-start">{c.notAnswerable}</Badge> : <span className="[overflow-wrap:anywhere]">{String(a.answer)}</span>}
       <span className="text-xs text-muted-foreground">{a.evidence_ids.length} {c.evidenceN}</span>
@@ -56,15 +57,15 @@ export function ApprovalsTab({ projectId, locale, c }: { projectId: string; loca
   const resolved = sorted.filter(a => !isPending(a));
   const base = `/app/projects/${project}`;
   const runLink = (a: ApprovalView) => { const sessionId = sessionOf.get(a.run_id); return sessionId ? <Link className="text-sm text-primary hover:underline" to={`${base}/sessions/${encodeURIComponent(sessionId)}`}>{c.openRun}</Link> : null; };
-  const label = (a: ApprovalView) => a.decision === 'approve' ? <><Badge variant="success">{c.approved}</Badge>{a.decided_by === 'autopilot' && <Badge variant="secondary" className="ml-1">{c.autoApproved}</Badge>}</> : a.decision === 'reject' ? <Badge variant="secondary">{c.rejected}</Badge> : a.consumed_at ? <Badge variant="secondary">{c.used}</Badge> : <Badge variant="secondary">{c.expired}</Badge>;
+  const label = (a: ApprovalView) => a.decision === 'approve' ? <><Badge variant="success">{c.approved}</Badge>{a.decided_by === 'autopilot' && <Badge variant="secondary" className="ms-1">{c.autoApproved}</Badge>}</> : a.decision === 'reject' ? <Badge variant="secondary">{c.rejected}</Badge> : a.consumed_at ? <Badge variant="secondary">{c.used}</Badge> : <Badge variant="secondary">{c.expired}</Badge>;
   return <div className="grid gap-6">
-    {failed && <p role="alert" className="text-sm text-destructive">{c.opaction}</p>}
+    {failed && <Alert severity="error">{c.opaction}</Alert>}
     <section aria-labelledby="pending-heading" className="grid gap-3">
       <h2 id="pending-heading" className="text-lg font-semibold">{c.pending} <span className="tabular-nums text-muted-foreground">({pending.length})</span></h2>
       {pending.length === 0 ? <p className="text-sm text-muted-foreground">{c.noPending}</p> : pending.map(a => <Card key={a.id} className="border-warning">
         <CardContent className="grid gap-3 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <p className="min-w-0 font-medium [overflow-wrap:anywhere]">{c.actions[a.action]}</p>
+            <p className="min-w-0 text-base font-semibold [overflow-wrap:anywhere]">{c.actions[a.action]}</p>
             <span className="text-sm text-muted-foreground">{c.expiresIn} <time dateTime={a.expires_at}>{relativeTime(a.expires_at, now, locale)}</time></span>
           </div>
           {a.action === 'submit_application' && a.target_run_id && <SubmitDetail projectId={project} approval={a} c={c} />}
@@ -77,7 +78,7 @@ export function ApprovalsTab({ projectId, locale, c }: { projectId: string; loca
       </Card>)}
     </section>
     {resolved.length > 0 && <section aria-labelledby="resolved-heading" className="grid gap-2">
-      <h2 id="resolved-heading" className="text-lg font-semibold">{c.resolved}</h2>
+      <h2 id="resolved-heading" className="font-sans text-base font-medium text-muted-foreground">{c.resolved}</h2>
       <ul className="divide-y rounded-xl border bg-card text-muted-foreground">{resolved.map(a => <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
         <span className="min-w-0 [overflow-wrap:anywhere]">{c.actions[a.action]}</span>
         <span className="flex flex-wrap items-center gap-3">{label(a)}{runLink(a)}</span>

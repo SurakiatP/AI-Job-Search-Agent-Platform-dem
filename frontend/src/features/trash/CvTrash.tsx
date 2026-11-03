@@ -1,5 +1,6 @@
 // Trashed CVs: restore, or delete their content for good (CR-CVT-01). Same shape as the evaluation trash.
 import { useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { useTranslation } from 'react-i18next';
 import { RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,7 +43,7 @@ export function CvTrash({ projectId, locale, items, onChanged }: { projectId: st
         <p className="max-w-2xl text-sm text-muted-foreground">{t('trash.cv.note')}</p>
         <Button type="button" variant="outline" size="sm" onClick={() => setTarget('all')}><Trash2 className="size-4" aria-hidden="true" />{t('trash.cv.emptyAll')}</Button>
       </div>
-      {failure && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{failure}</p>}
+      {failure && <Alert severity="error">{failure}</Alert>}
       <ul className="workspace-panel divide-y overflow-hidden">{items.map(item => <li key={item.id} className="grid min-w-0 gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-6">
         <div className="min-w-0">
           <p className="break-words font-semibold [overflow-wrap:anywhere]">{item.name}</p>

@@ -45,7 +45,7 @@ export function StepPanel({ index }: { index: number }) {
       <Badge variant="success">{pn.ready}</Badge>
     </div>
     <div className="grid gap-2"><p className="text-sm text-muted-foreground">{pn.parsed}</p>
-      <ul className="flex flex-wrap gap-1.5">{pn.skills.map(s => <li key={s}><Badge variant="secondary">{s}</Badge></li>)}</ul></div>
+      <ul className="flex flex-wrap gap-2">{pn.skills.map(s => <li key={s}><Badge variant="secondary">{s}</Badge></li>)}</ul></div>
   </Shell>;
   if (slug === 'search') return <Shell label={label}>
     <div className="flex min-h-11 lg:min-h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-base"><Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="sr-only">{pn.searchLabel}: </span><span className="truncate">{pn.searchValue}</span></div>
@@ -58,7 +58,7 @@ export function StepPanel({ index }: { index: number }) {
   if (slug === 'evaluate') return <Shell label={label}>
     <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
       <FitScore score={4.2} size="lg" locale={locale} />
-      <ul className="grid gap-1.5 pl-4 text-sm text-muted-foreground [overflow-wrap:anywhere]">{p.reasons.map(r => <li className="list-disc" key={r}>{r}</li>)}</ul>
+      <ul className="grid gap-2 pl-4 text-sm text-muted-foreground [overflow-wrap:anywhere]">{p.reasons.map(r => <li className="list-disc" key={r}>{r}</li>)}</ul>
     </div>
     <SkillCoverage coverage={coverage} locale={locale} className="border-t pt-4" />
   </Shell>;
@@ -73,13 +73,13 @@ export function StepPanel({ index }: { index: number }) {
   if (slug === 'build-cv') return <Shell label={label}>
     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
       <div className="grid content-start gap-3">
-        <div className="grid gap-1.5"><span className="text-sm text-muted-foreground">{pn.build.tpl}</span>
-          <ul className="flex flex-wrap gap-1.5">{['Onyx', 'Kakuna', 'Lotus', 'Teak'].map((t, i) => <li key={t}><Badge variant={i === 2 ? 'default' : 'outline'}>{t}</Badge></li>)}</ul></div>
-        <div className="grid gap-1.5"><span className="text-sm text-muted-foreground">{pn.build.accent}</span>
+        <div className="grid gap-2"><span className="text-sm text-muted-foreground">{pn.build.tpl}</span>
+          <ul className="flex flex-wrap gap-2">{['Onyx', 'Kakuna', 'Lotus', 'Teak'].map((t, i) => <li key={t}><Badge variant={i === 2 ? 'default' : 'outline'}>{t}</Badge></li>)}</ul></div>
+        <div className="grid gap-2"><span className="text-sm text-muted-foreground">{pn.build.accent}</span>
           <ul className="flex gap-2">{['#3730A3', '#1D4ED8', '#115E59', '#166534', '#9F1239', '#334155'].map((h, i) => <li key={h} aria-hidden="true" className={cn('size-6 rounded-full', i === 2 && 'ring-2 ring-ring ring-offset-2 ring-offset-card')} style={{ background: h }} />)}</ul></div>
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Check className="size-4 text-success" aria-hidden="true" />{pn.build.saved}</p>
+        <p className="flex items-center gap-2 text-sm text-muted-foreground"><Check className="size-4 text-success" aria-hidden="true" />{pn.build.saved}</p>
       </div>
-      <div className="grid gap-2 rounded-lg border bg-white p-3 text-[#1B2550] shadow-sm">
+      <div className="grid gap-2 rounded-lg border bg-white p-3 text-[#0F3B38] shadow-sm">
         <span className="text-xs text-[#585E70]">{pn.build.preview}</span>
         <div className="grid gap-1 border-b-2 pb-2" style={{ borderColor: '#115E59' }}><span className="text-sm font-semibold">{pn.build.name}</span><span className="text-xs text-[#585E70]">{pn.build.headline}</span></div>
         {pn.build.sections.map(s => <div key={s} className="grid gap-1"><span className="text-xs font-semibold" style={{ color: '#115E59' }}>{s}</span><span className="h-1.5 w-full rounded-full bg-[#E9EAE2]" /><span className="h-1.5 w-4/5 rounded-full bg-[#E9EAE2]" /></div>)}
@@ -90,7 +90,7 @@ export function StepPanel({ index }: { index: number }) {
     <div className="grid gap-3 rounded-lg bg-muted/50 p-3">
       <Badge variant="secondary" className="w-fit">{pn.practice.section}</Badge>
       <p className="font-medium leading-snug">{pn.practice.question}</p>
-      <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">{pn.practice.star.map(([k, name, found]) => <li key={k} className={cn('flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs', !found && 'border-dashed text-muted-foreground')}><span className="font-semibold">{k}</span><span className="min-w-0 truncate">{found ? name : pn.practice.missing}</span></li>)}</ul>
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">{pn.practice.star.map(([k, name, found]) => <li key={k} className={cn('flex items-center gap-2 rounded-md border px-2 py-1 text-xs', !found && 'border-dashed text-muted-foreground')}><span className="font-semibold">{k}</span><span className="min-w-0 truncate">{found ? name : pn.practice.missing}</span></li>)}</ul>
     </div>
     <div className="grid gap-2">
       <p className="text-sm font-semibold">{pn.practice.feedback}</p>
@@ -137,15 +137,14 @@ export function DemoCard() {
   const { locale } = useLocale();
   const d = landingCopy[locale].demo;
   const [ref, play] = useSeen<HTMLElement>(0.3);
-  return <section ref={ref} data-play={play} aria-label={d.label} className="demo-card grid min-w-0 gap-6 rounded-xl border bg-card p-6">
-    <Badge variant="outline" className="w-fit">{d.label}</Badge>
+  return <div className="grid min-w-0 gap-3"><section ref={ref} data-play={play} aria-label={d.label} className="demo-card grid min-w-0 gap-6 rounded-xl border bg-card p-6">
     <div className="grid gap-1">
       <p className="font-heading text-2xl font-semibold leading-snug not-italic">{d.title}</p>
       <p className="text-sm text-muted-foreground">{d.company}</p>
     </div>
     <div className="grid gap-2">
       <span className="text-sm font-medium tabular-nums text-primary">{d.progress}</span>
-      <div aria-hidden="true" className="grid grid-cols-5 gap-1.5">
+      <div aria-hidden="true" className="grid grid-cols-5 gap-2">
         {d.steps.map((step, index) => <span key={step.stage} style={{ '--i': index } as CSSProperties} className={cn('demo-seg h-2 rounded-full', step.state === 'done' && 'bg-primary', step.state === 'current' && 'bg-warning/70', step.state === 'next' && 'bg-muted')} />)}
       </div>
     </div>
@@ -156,7 +155,7 @@ export function DemoCard() {
         return <li key={step.stage} style={{ '--i': index } as CSSProperties} aria-current={step.state === 'current' ? 'step' : undefined} className="demo-step relative grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3">
           {!last && <span aria-hidden="true" className={cn('absolute left-[1.0625rem] top-9 h-[calc(100%-1.75rem)] w-0.5 rounded-full', step.state === 'done' ? 'bg-primary/35' : 'bg-border')} />}
           <span aria-hidden="true" className={cn('grid size-9 place-items-center rounded-full',
-            step.state === 'done' && 'bg-primary text-primary-foreground',
+            step.state === 'done' && 'bg-primary-fill text-primary-fill-foreground',
             step.state === 'current' && 'bg-warning/15 text-warning ring-2 ring-warning ring-offset-2 ring-offset-card',
             step.state === 'next' && 'bg-muted text-muted-foreground')}>
             {step.state === 'done' ? <Tick draw /> : <Icon className="size-4" />}
@@ -167,12 +166,13 @@ export function DemoCard() {
               {(step.stage === 'evaluate' || step.stage === 'docs') && <Badge variant="secondary" className="gap-1"><Sparkles className="size-3" aria-hidden="true" />{d.ai}</Badge>}
               {step.stage === 'evaluate' && <Badge variant="success" className="demo-score tabular-nums">{d.score}</Badge>}
             </p>
-            <p className={cn('text-sm leading-relaxed [overflow-wrap:anywhere]', step.state === 'current' ? 'flex items-center gap-1.5 font-medium text-warning' : 'text-muted-foreground')}>
+            <p className={cn('text-sm leading-relaxed [overflow-wrap:anywhere]', step.state === 'current' ? 'flex items-center gap-2 font-medium text-warning' : 'text-muted-foreground')}>
               {step.state === 'current' && <Clock className="size-4 shrink-0" aria-hidden="true" />}{step.note}
             </p>
           </div>
         </li>;
       })}
     </ol>
-  </section>;
+  </section>
+  <p className="text-sm text-muted-foreground">{d.label}</p></div>;
 }

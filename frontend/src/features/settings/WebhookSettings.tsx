@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { useTranslation } from 'react-i18next';
 import { Check, Copy, Power, Send, Trash2, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -78,23 +79,23 @@ export function WebhookSettings({ projectId }: { projectId: string }) {
 
   if (hooks.status === 'loading' && !hooks.data) return <LoadingBlock label={c.loading} />;
   return <SectionCard title={c.title} description={c.description}>
-    {secret && <div className="grid gap-2 rounded-md border border-warning p-3">
-      <p className="text-sm font-semibold">{c.secretTitle}</p>
-      <code className="break-all rounded bg-muted p-2 text-sm">{secret}</code>
-      <p className="text-sm text-warning">{c.secretOnce}</p>
+    {secret && <Alert severity="warning" role="group" aria-label={c.secretTitle}>
+      <p className="font-semibold">{c.secretTitle}</p>
+      <code className="my-2 block break-all rounded bg-muted p-2 text-sm">{secret}</code>
+      <p className="mb-2">{c.secretOnce}</p>
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" className="min-h-11 lg:min-h-10" onClick={() => void copySecret()}>{copyState === 'ok' ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}{c.copy}</Button>
+        <Button variant="outline" onClick={() => void copySecret()}>{copyState === 'ok' ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}{c.copy}</Button>
         <Button variant="outline" onClick={() => { setSecret(null); setCopyState(''); }}>{c.secretDone}</Button>
         <span role="status" className={`text-sm ${copyState === 'fail' ? 'text-destructive' : 'text-success'}`}>{copyState === 'ok' ? c.copied : copyState === 'fail' ? c.copyFail : ''}</span>
       </div>
-    </div>}
+    </Alert>}
     <form className="grid gap-4" onSubmit={event => { event.preventDefault(); if (url.trim() && events.length) void add(); }}>
       <Field id="webhook-url" label={c.url} hint={c.urlHint}>
         <Input id="webhook-url" type="url" inputMode="url" maxLength={2048} value={url} onChange={event => setUrl(event.target.value)} required />
       </Field>
       <fieldset className="grid gap-1"><legend className="mb-1 text-sm font-medium">{c.events}</legend>
         <div className="grid gap-1 sm:grid-cols-2">{EVENTS.map(event => <label key={event} className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
-          <input type="checkbox" className="size-4 shrink-0 accent-primary" checked={events.includes(event)} onChange={e => setEvents(prev => e.target.checked ? [...prev, event] : prev.filter(x => x !== event))} />{c.labels[event]}
+          <input type="checkbox" className="size-5 shrink-0 accent-primary" checked={events.includes(event)} onChange={e => setEvents(prev => e.target.checked ? [...prev, event] : prev.filter(x => x !== event))} />{c.labels[event]}
         </label>)}</div>
       </fieldset>
       {message && <Notice ok={message.ok}>{message.text}</Notice>}

@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { CvPreviewButton } from '@/components/CvPreview';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles, UserRound, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles, UserRound, X } from 'lucide-react';
 import { notifyTrashChanged } from '@/lib/trash';
+import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -30,14 +31,12 @@ const copy = {
   en: { editBuilder: 'Edit in builder', cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Make primary', rename: 'Rename', delete: 'Delete', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Move CV “${n}” to the trash?`, delBody: 'This CV leaves the list and cannot be paired until you restore it from the trash. Evaluations that used it keep their results and documents.', delConfirm: 'Move to trash', moved: (n: string) => `“${n}” moved to the trash.`, undo: 'Undo', undoFailed: 'Undo did not work. Restore it from the trash.', openTrash: 'Open trash', dismiss: 'Dismiss', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.' },
 };
 const formatSize = (bytes: number) => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-const fileType = (filename: string) => filename.split('.').pop()?.toUpperCase() ?? '';
 const uploadMessages: Record<string, string> = {
   scanned_pdf_unsupported: 'errors.scanned_pdf_unsupported', document_encrypted: 'errors.document_encrypted', document_invalid: 'errors.document_invalid', empty_input: 'errors.empty_input',
   document_expansion_limit: 'errors.document_limits', extracted_text_limit: 'errors.document_limits', input_size_invalid: 'pages.uploadTooLarge', upload_too_large: 'pages.uploadTooLarge',
   unsupported_input: 'pages.uploadInvalidType', unsupported_media_type: 'pages.uploadInvalidType', document_parse_timeout: 'errors.document_parse_timeout', network_error: 'errors.network_error',
 };
 const ACCEPT = '.pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain';
-const ROW_GRID = 'xl:grid-cols-[minmax(0,1fr)_9rem_4.5rem_28rem]';
 
 function RenameDialog({ cv, c, projectId, onClose, onDone }: { cv: CVView; c: typeof copy.en; projectId: string; onClose: () => void; onDone: () => void }) {
   const [value, setValue] = useState(cv.name);
@@ -54,7 +53,7 @@ function RenameDialog({ cv, c, projectId, onClose, onDone }: { cv: CVView; c: ty
     <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
       <DialogTitle>{c.renameTitle}</DialogTitle>
       <label className="grid gap-2 text-sm font-medium">{c.name}<Input autoFocus maxLength={120} value={value} onChange={event => setValue(event.target.value)} onFocus={event => event.currentTarget.select()} /></label>
-      {error && <p role="alert" className="text-sm text-destructive">{c.failed}</p>}
+      {error && <Alert severity="error" role="alert">{c.failed}</Alert>}
       <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{c.cancel}</Button></DialogClose><Button type="submit" disabled={busy || !value.trim()}>{c.save}</Button></div>
     </form>
   </DialogContent></Dialog>;
@@ -64,7 +63,7 @@ function RenameDialog({ cv, c, projectId, onClose, onDone }: { cv: CVView; c: ty
 function CvRowMenu({ cv, c, label, help, onMakePrimary, onRename, onDelete }: { cv: CVView; c: typeof copy.en; label: string; help: string; onMakePrimary: () => void; onRename: () => void; onDelete: () => void }) {
   return <DropdownMenu>
     <DropdownMenuTrigger asChild>
-      <button type="button" aria-label={label} className="grid size-11 shrink-0 place-items-center rounded-md border bg-card text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring"><MoreHorizontal className="size-4" aria-hidden="true" /></button>
+      <button type="button" aria-label={label} className={cn(buttonVariants({ variant: 'outline', size: 'icon-sm' }), 'text-muted-foreground')}><MoreHorizontal className="size-4" aria-hidden="true" /></button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-64">
       {!cv.is_primary && <DropdownMenuItem className="h-auto flex-col items-start gap-0.5" onSelect={onMakePrimary}>
@@ -157,6 +156,7 @@ export function ProfilePage() {
   const primary = list.find(cv => cv.is_primary);
   const history = primaryRevisions.status === 'ready' ? primaryRevisions.data ?? [] : [];
   const factCount = bank.data?.items.length;
+  const skillNames = [...new Set((bank.data?.items ?? []).filter(i => i.kind === 'skill').map(i => i.text.trim()).filter(Boolean))].slice(0, 5);
   const versionLabel = (n: number) => w('versionShort', { n });
   const dropProps = { onDragOver: (event: React.DragEvent) => { event.preventDefault(); setDragging(true); }, onDragLeave: () => setDragging(false),
     onDrop: (event: React.DragEvent) => { event.preventDefault(); setDragging(false); if (!busy) void upload(event.dataTransfer.files[0], '/cvs'); } };
@@ -164,14 +164,14 @@ export function ProfilePage() {
     <div className="grid gap-1">
     <PageBack to={`${base}/overview`}>{t('nav.overview')}</PageBack>
     <div className="grid">
-      <PageHeader icon={UserRound} title={w('title')} lede={w('subtitle')} actions={<><Button className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button><BuildCvButton projectId={projectId} /></>} />
+      <PageHeader icon={UserRound} title={w('title')} lede={w('subtitle')} actions={<><Button busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Plus className="size-4" aria-hidden="true" />{c.add}</Button><BuildCvButton projectId={projectId} /></>} />
       <input ref={addInput} className="sr-only" tabIndex={-1} aria-label={c.add} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], '/cvs'); event.target.value = ''; }} />
       <input ref={versionInput} className="sr-only" tabIndex={-1} aria-label={c.upload} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], `/cvs/${versionTarget.current}/revisions`); event.target.value = ''; }} />
     </div>
     </div>
     {busy && <p role="status" className="text-sm text-muted-foreground">{w('uploading')}</p>}
-    {uploadError && <p className="text-sm text-destructive" role="alert">{t(uploadError)}</p>}
-    {extractError && <p className="text-sm text-destructive" role="alert">{c.failed}</p>}
+    {uploadError && <Alert severity="error" role="alert">{t(uploadError)}</Alert>}
+    {extractError && <Alert severity="error" role="alert">{c.failed}</Alert>}
     {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2 text-sm">
       <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <span className="min-w-0 flex-1 basis-[calc(100%-2rem)] break-words [overflow-wrap:anywhere] sm:basis-auto">{undoFailed ? c.undoFailed : c.moved(removed.name)}</span>
@@ -181,58 +181,62 @@ export function ProfilePage() {
     </div>}
     <Tabs value={tab} onValueChange={showTab}>
       <TabsList className="w-full justify-start sm:w-auto">
-        <TabsTrigger className="min-h-11 grow sm:grow-0" value="library">{w('tabLibrary')}</TabsTrigger>
-        <TabsTrigger className="min-h-11 grow sm:grow-0" value="experience">{w('tabBank')}</TabsTrigger>
+        <TabsTrigger className="grow sm:grow-0" value="library">{w('tabLibrary')}</TabsTrigger>
+        <TabsTrigger className="grow sm:grow-0" value="experience">{w('tabBank')}</TabsTrigger>
       </TabsList>
       <TabsContent value="library" className="grid gap-6">
         {list.length === 0 ? <div {...dropProps} className={cn('grid justify-items-center gap-3 rounded-xl border-2 border-dashed p-6 text-center sm:p-12', dragging && 'border-primary bg-accent')}>
           <FileText className="size-10 text-muted-foreground" aria-hidden="true" />
           <div className="grid gap-1"><h2 className="text-lg font-semibold">{dragging ? w('dropActive') : w('dropTitle')}</h2><p className="mx-auto max-w-md text-sm text-muted-foreground">{w('firstUploadHelp')}</p></div>
-          <div className="flex flex-wrap justify-center gap-2"><Button type="button" className="min-h-11" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Upload className="size-4" aria-hidden="true" />{w('firstUpload')}</Button><BuildCvButton projectId={projectId} /></div>
+          <div className="flex flex-wrap justify-center gap-2"><Button type="button" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Upload className="size-4" aria-hidden="true" />{w('firstUpload')}</Button><BuildCvButton projectId={projectId} /></div>
           <p className="text-sm text-muted-foreground">{w('dropHere')} · {w('accepted')}</p>
         </div>
-          : <Card><CardContent className="grid gap-3 p-4 sm:px-5">
+          : <section className="grid gap-3">
             <h2 id="profile-cvs-title" tabIndex={-1} className="text-lg font-semibold">{c.cvs}</h2>
-            <div aria-hidden="true" className={cn('hidden gap-3 border-b px-1 pb-2 text-sm font-medium text-muted-foreground xl:grid', ROW_GRID)}><span>{w('colName')}</span><span>{w('colVersion')}</span><span>{w('colType')}</span><span className="text-end">{w('colActions')}</span></div>
-            <ul className="grid divide-y">{list.map(cv => {
+            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[...list].sort((a, b) => Number(b.is_primary) - Number(a.is_primary)).map(cv => {
               const latest = cv.latest_revision;
               const showHistory = cv.is_primary && history.length > 1;
-              return <li key={cv.id} className={cn('grid gap-3 px-1 py-4', ROW_GRID, 'xl:items-center')}>
-                <div className="min-w-0">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="min-w-0 break-words font-semibold [overflow-wrap:anywhere]">{cv.name}</h3>{cv.is_primary && <Badge variant="success"><Star className="me-1 size-3" aria-hidden="true" />{c.primary}</Badge>}</div>
-                  {latest && <p className="mt-0.5 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{latest.original_filename} · {dateTime.format(new Date(latest.created_at))} · {formatSize(latest.size_bytes)}</p>}
-                  {!latest && !Number.isNaN(new Date(cv.created_at).getTime()) && <p className="mt-0.5 text-sm text-muted-foreground">{w('createdAt', { date: dateTime.format(new Date(cv.created_at)) })}</p>}
-                  {cv.in_use && <p className="mt-0.5 text-xs text-muted-foreground">{c.inUse}</p>}
+              const meta = latest
+                ? [latest.original_filename, dateTime.format(new Date(latest.created_at)), formatSize(latest.size_bytes)]
+                : Number.isNaN(new Date(cv.created_at).getTime()) ? [] : [w('createdAt', { date: dateTime.format(new Date(cv.created_at)) })];
+              return <li key={cv.id} className={cn('grid content-start gap-3 rounded-xl border bg-card p-4', cv.is_primary && 'border-primary')}>
+                <div className="flex min-w-0 items-start gap-3">
+                  <FileText className="mt-1 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="min-w-0 break-words text-base font-semibold [overflow-wrap:anywhere]">{cv.name}</h3>{cv.is_primary && <Badge><Star className="me-1 size-3" aria-hidden="true" />{c.primary}</Badge>}</div>
+                    {meta.length > 0 && <p className="mt-1 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{meta.join(' · ')}</p>}
+                    {latest && <p className="text-sm"><span className="text-muted-foreground">{w('colVersion')}: </span>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>}</p>}
+                    {cv.in_use && <p className="mt-1 text-xs text-muted-foreground">{c.inUse}</p>}
+                  </div>
                 </div>
-                <p className="text-sm"><span className="text-muted-foreground xl:sr-only">{w('colVersion')}: </span>{latest ? <>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>}</> : '—'}</p>
-                <p className="text-sm"><span className="text-muted-foreground xl:sr-only">{w('colType')}: </span>{latest ? fileType(latest.original_filename) : '—'}</p>
-                <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                  {latest && <CvPreviewButton projectId={projectId} fileId={latest.file_id} name={cv.name} revision={latest.revision} filename={latest.original_filename} mimeType={latest.mime_type} className="min-h-11" />}
+                <div className="flex flex-wrap items-center gap-2">
+                  {latest && <CvPreviewButton projectId={projectId} fileId={latest.file_id} name={cv.name} revision={latest.revision} filename={latest.original_filename} mimeType={latest.mime_type} />}
                   {cv.has_builder_draft
-                    ? <Button asChild size="sm" variant="outline" className="min-h-11"><Link to={`/app/projects/${projectId}/cvs/${cv.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{c.editBuilder}</Link></Button>
-                    : <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>}
-                  {latest && bank.data?.provider_configured && <Button type="button" size="sm" variant="outline" className="min-h-11" aria-label={`${w('extractFacts')}: ${cv.name}`} disabled={gate.blocked} title={gate.title} onClick={() => void extract(cv)}><Sparkles className="size-4" aria-hidden="true" />{w('extractFacts')}</Button>}
+                    ? <Button asChild size="sm" variant="outline"><Link to={`/app/projects/${projectId}/cvs/${cv.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{c.editBuilder}</Link></Button>
+                    : <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>}
+                  {latest && bank.data?.provider_configured && <Button type="button" size="sm" variant="outline" aria-label={`${w('extractFacts')}: ${cv.name}`} disabled={gate.blocked} title={gate.title} onClick={() => void extract(cv)}><Sparkles className="size-4" aria-hidden="true" />{w('extractFacts')}</Button>}
                   <CvRowMenu cv={cv} c={c} label={w('rowMenu', { name: cv.name })} help={w('makePrimaryHelp')} onMakePrimary={() => void makePrimary(cv)} onRename={() => setRename(cv)} onDelete={() => setRemove(cv)} />
                 </div>
-                {showHistory && <div className="grid gap-2 xl:col-span-full">
-                  <Button type="button" size="sm" variant="ghost" className="min-h-11 w-fit" aria-expanded={historyOpen === cv.id} onClick={() => setHistoryOpen(historyOpen === cv.id ? null : cv.id)}>
+                {showHistory && <div className="grid gap-2">
+                  <Button type="button" size="sm" variant="ghost" className="w-fit" aria-expanded={historyOpen === cv.id} onClick={() => setHistoryOpen(historyOpen === cv.id ? null : cv.id)}>
                     {historyOpen === cv.id ? <ChevronUp className="size-4" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}{historyOpen === cv.id ? w('versionsClose') : w('versionsOpen', { count: history.length })}</Button>
                   {historyOpen === cv.id && <VersionHistory projectId={projectId} cv={cv} revisions={history} date={date} label={w('versionHistory')} versionLabel={versionLabel} />}
                 </div>}
               </li>;
             })}</ul>
-            <p className="border-t pt-3 text-sm text-muted-foreground">{w('primaryNote')}</p>
-          </CardContent></Card>}
+            <p className="text-sm text-muted-foreground">{w('primaryNote')}</p>
+          </section>}
         <Card><CardContent className="grid gap-2 p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0"><h2 className="text-lg font-semibold">{w('bankTitle')}</h2>
-              {bank.data && <p className="text-sm"><span className="font-medium">{w('bankCount', { count: factCount })}</span> <span className="text-muted-foreground">{factCount ? w('bankFrom') : w('bankNone')}</span></p>}
+            <div className="grid min-w-0 gap-2"><h2 className="text-lg font-semibold">{w('bankTitle')}</h2>
+              {bank.data && <p className="flex flex-wrap items-baseline gap-2 text-sm"><span className="text-xl font-semibold tabular-nums">{factCount}</span> <span className="text-muted-foreground">{w('bankCount', { count: factCount }).replace(/^\d+\s*/, '')}</span> <span className="text-muted-foreground">{factCount ? w('bankFrom') : w('bankNone')}</span></p>}
+              {skillNames.length > 0 && <ul className="flex flex-wrap gap-1">{skillNames.map(name => <li key={name}><Badge variant="muted">{name}</Badge></li>)}</ul>}
               {extracting && <BusyNote bar label={w('bankRunning')} />}
-              {extractionStatus && ['failed', 'interrupted', 'cancelled'].includes(extractionStatus) && <p role="status" className="text-sm text-destructive">{w('bankFailed')}</p>}</div>
-            <Button type="button" variant="ghost" className="min-h-11" onClick={() => showTab('experience')}>{w('bankReview')}</Button>
+              {extractionStatus && ['failed', 'interrupted', 'cancelled'].includes(extractionStatus) && <Alert severity="error" role="status">{w('bankFailed')}</Alert>}</div>
+            <Button type="button" variant="outline" className="sm:ms-auto" onClick={() => showTab('experience')}>{w('bankReview')}<ArrowRight className="size-4" aria-hidden="true" /></Button>
           </div>
         </CardContent></Card>
-        <p className="text-sm text-muted-foreground"><Link className="rounded-sm underline underline-offset-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" to={`/app/settings?project=${projectId}&section=preferences`}>{w('prefsMoved')}</Link></p>
+        <p className="text-sm text-muted-foreground"><Link className="rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" to={`/app/settings?project=${projectId}&section=preferences`}>{w('prefsMoved')}</Link></p>
       </TabsContent>
       <TabsContent value="experience">
         <ExperienceBank projectId={projectId} locale={locale} bank={bank} primaryCvId={primary?.id ?? list[0]?.id ?? null} />

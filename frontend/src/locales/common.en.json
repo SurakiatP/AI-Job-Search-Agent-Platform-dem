@@ -83,6 +83,7 @@
     "sharingDescription": "Project sharing controls will appear when owner access is connected.",
     "loading": "Loading…",
     "loadError": "We could not load this information.",
+    "loadErrorHint": "The server did not answer. Check your connection, then try again.",
     "makePrimaryError": "We could not set this CV as primary. Try again.",
     "retry": "Try again",
     "notFound": "We could not find that item.",

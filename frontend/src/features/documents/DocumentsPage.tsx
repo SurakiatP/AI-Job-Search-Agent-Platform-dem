@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Download, File, FileText, FileUser, Info, Mail, MessageSquareText, Pencil, RotateCcw, type LucideIcon } from 'lucide-react';
+import { Download, File, FileText, FileUser, Mail, MessageSquareText, Pencil, RotateCcw, type LucideIcon } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
+import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,11 +35,10 @@ type SessionItem = Pick<SessionView, 'id' | 'title' | 'job_title' | 'job_company
 type DocType = DocumentItem['document_type'];
 
 const copy = {
-  th: { openTrash: 'เปิดถังขยะ', all: 'ทั้งหมด', filter: 'กรองตามประเภท', empty: 'ไม่มีเอกสารในประเภทนี้', evaluate: 'ไปที่หน้าประเมิน', back: 'กลับไปหน้าเอกสาร', type: 'ประเภท', created: 'สร้างเมื่อ', revisions: 'ประวัติฉบับ', current: 'ฉบับปัจจุบัน', metadata: 'รายละเอียด', downloadLatest: 'ดาวน์โหลดฉบับล่าสุด', requestChanges: 'ขอแก้ไข', sourceJob: 'งานต้นทาง', sourceSession: 'เซสชันต้นทาง', sessionDeleted: 'เซสชันถูกลบแล้ว', trash: 'ถังขยะ', trashed: 'ย้ายไปถังขยะแล้ว', undo: 'เลิกทำ', trashFailed: 'ย้ายไปถังขยะไม่สำเร็จ ลองอีกครั้ง', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', inTrash: 'เอกสารนี้อยู่ในถังขยะ', restore: 'กู้คืน', deleteForever: 'ลบถาวร', edit: 'แก้ไข', editTab: 'แก้ไข', previewTab: 'ดูตัวอย่าง', save: 'บันทึก', cancel: 'ยกเลิก', discard: 'ทิ้งการแก้ไขที่ยังไม่บันทึกหรือไม่?', generating: 'กำลังสร้างไฟล์…', manual: 'แก้เอง', ai: 'AI', editor: 'แก้ไขเอกสาร', retry: 'ลองบันทึกอีกครั้ง', exportFailed: 'สร้างไฟล์ไม่สำเร็จ', saveFailed: 'บันทึกไม่สำเร็จ ลองอีกครั้ง', busyDoc: 'มีงานของเอกสารนี้กำลังทำอยู่ ลองใหม่ภายหลัง', restoreVersion: 'กู้คืนเวอร์ชันนี้', restoring: 'กำลังกู้คืน…', restored: 'กู้คืนแล้ว เวอร์ชันใหม่ถูกสร้างขึ้น', restoreFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', promote: 'ใช้เป็น CV หลัก', promoteSent: 'ตั้งเอกสารนี้เป็น CV ของคุณแล้ว', promoteFailed: 'ตั้งเป็น CV ไม่สำเร็จ ลองอีกครั้ง', promoteAsk: 'ใช้ฉบับนี้แทน CV ปัจจุบัน?', promoteConfirm: 'ยืนยัน', promoteCancel: 'ยกเลิก', openApprovals: 'เปิดกล่องคำขออนุมัติ', noSource: 'เอกสารนี้ยังไม่มีต้นฉบับสำหรับสร้างไฟล์ ไม่สามารถบันทึกการแก้ไขได้', queueFull: 'คิวงานเต็ม ลองใหม่ภายหลัง', tooLong: 'เนื้อหายาวเกินไปหรือว่างเปล่า' },
-  en: { openTrash: 'Open trash', all: 'All', filter: 'Filter by type', empty: 'No documents of this type', evaluate: 'Go to Evaluate', back: 'Back to documents', type: 'Type', created: 'Created', revisions: 'Revisions', current: 'Current', metadata: 'Details', downloadLatest: 'Download latest', requestChanges: 'Request changes', sourceJob: 'Source job', sourceSession: 'Source session', sessionDeleted: 'Session deleted', trash: 'Trash', trashed: 'Moved to trash', undo: 'Undo', trashFailed: 'Could not move to trash. Try again.', undoFailed: 'Could not restore. Try again.', inTrash: 'This document is in the trash', restore: 'Restore', deleteForever: 'Delete permanently', edit: 'Edit', editTab: 'Edit', previewTab: 'Preview', save: 'Save', cancel: 'Cancel', discard: 'Discard unsaved changes?', generating: 'Generating file…', manual: 'Edited by you', ai: 'AI', editor: 'Edit document', retry: 'Try saving again', exportFailed: 'Could not generate the file', saveFailed: 'Could not save. Try again.', busyDoc: 'A task for this document is running. Try again later.', restoreVersion: 'Restore this version', restoring: 'Restoring…', restored: 'Restored. A new version was created.', restoreFailed: 'Could not restore. Try again.', promote: 'Use as my CV', promoteSent: 'This document is now your CV.', promoteFailed: 'Could not set it as your CV. Try again.', promoteAsk: 'Replace your current CV with this version?', promoteConfirm: 'Confirm', promoteCancel: 'Cancel', openApprovals: 'Open the approval inbox', noSource: 'This document has no source to build a file from, so edits cannot be saved.', queueFull: 'The job queue is full. Try again later.', tooLong: 'The content is empty or too long' },
+  th: { nextDocs: 'เอกสารถูกร่างจากผลการประเมิน ประเมินงานอื่นเพิ่มเพื่อให้ได้เอกสารสำหรับงานนั้นด้วย', openTrash: 'เปิดถังขยะ', all: 'ทั้งหมด', filter: 'กรองตามประเภท', empty: 'ไม่มีเอกสารในประเภทนี้', evaluate: 'ไปที่หน้าประเมิน', back: 'กลับไปหน้าเอกสาร', type: 'ประเภท', created: 'สร้างเมื่อ', revisions: 'ประวัติฉบับ', current: 'ฉบับปัจจุบัน', metadata: 'รายละเอียด', downloadLatest: 'ดาวน์โหลดฉบับล่าสุด', requestChanges: 'ขอแก้ไข', sourceJob: 'งานต้นทาง', sourceSession: 'เซสชันต้นทาง', sessionDeleted: 'เซสชันถูกลบแล้ว', trash: 'ถังขยะ', trashed: 'ย้ายไปถังขยะแล้ว', undo: 'เลิกทำ', trashFailed: 'ย้ายไปถังขยะไม่สำเร็จ ลองอีกครั้ง', undoFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', inTrash: 'เอกสารนี้อยู่ในถังขยะ', restore: 'กู้คืน', deleteForever: 'ลบถาวร', edit: 'แก้ไข', editTab: 'แก้ไข', previewTab: 'ดูตัวอย่าง', save: 'บันทึก', cancel: 'ยกเลิก', discard: 'ทิ้งการแก้ไขที่ยังไม่บันทึกหรือไม่?', generating: 'กำลังสร้างไฟล์…', manual: 'แก้เอง', ai: 'AI', editor: 'แก้ไขเอกสาร', retry: 'ลองบันทึกอีกครั้ง', exportFailed: 'สร้างไฟล์ไม่สำเร็จ', saveFailed: 'บันทึกไม่สำเร็จ ลองอีกครั้ง', busyDoc: 'มีงานของเอกสารนี้กำลังทำอยู่ ลองใหม่ภายหลัง', restoreVersion: 'กู้คืนเวอร์ชันนี้', restoring: 'กำลังกู้คืน…', restored: 'กู้คืนแล้ว เวอร์ชันใหม่ถูกสร้างขึ้น', restoreFailed: 'กู้คืนไม่สำเร็จ ลองอีกครั้ง', promote: 'ใช้เป็น CV หลัก', promoteSent: 'ตั้งเอกสารนี้เป็น CV ของคุณแล้ว', promoteFailed: 'ตั้งเป็น CV ไม่สำเร็จ ลองอีกครั้ง', promoteAsk: 'ใช้ฉบับนี้แทน CV ปัจจุบัน?', promoteConfirm: 'ยืนยัน', promoteCancel: 'ยกเลิก', openApprovals: 'เปิดกล่องคำขออนุมัติ', noSource: 'เอกสารนี้ยังไม่มีต้นฉบับสำหรับสร้างไฟล์ ไม่สามารถบันทึกการแก้ไขได้', queueFull: 'คิวงานเต็ม ลองใหม่ภายหลัง', tooLong: 'เนื้อหายาวเกินไปหรือว่างเปล่า' },
+  en: { nextDocs: 'Documents are drafted from an evaluation. Evaluate another job to get documents for it too.', openTrash: 'Open trash', all: 'All', filter: 'Filter by type', empty: 'No documents of this type', evaluate: 'Go to Evaluate', back: 'Back to documents', type: 'Type', created: 'Created', revisions: 'Revisions', current: 'Current', metadata: 'Details', downloadLatest: 'Download latest', requestChanges: 'Request changes', sourceJob: 'Source job', sourceSession: 'Source session', sessionDeleted: 'Session deleted', trash: 'Trash', trashed: 'Moved to trash', undo: 'Undo', trashFailed: 'Could not move to trash. Try again.', undoFailed: 'Could not restore. Try again.', inTrash: 'This document is in the trash', restore: 'Restore', deleteForever: 'Delete permanently', edit: 'Edit', editTab: 'Edit', previewTab: 'Preview', save: 'Save', cancel: 'Cancel', discard: 'Discard unsaved changes?', generating: 'Generating file…', manual: 'Edited by you', ai: 'AI', editor: 'Edit document', retry: 'Try saving again', exportFailed: 'Could not generate the file', saveFailed: 'Could not save. Try again.', busyDoc: 'A task for this document is running. Try again later.', restoreVersion: 'Restore this version', restoring: 'Restoring…', restored: 'Restored. A new version was created.', restoreFailed: 'Could not restore. Try again.', promote: 'Use as my CV', promoteSent: 'This document is now your CV.', promoteFailed: 'Could not set it as your CV. Try again.', promoteAsk: 'Replace your current CV with this version?', promoteConfirm: 'Confirm', promoteCancel: 'Cancel', openApprovals: 'Open the approval inbox', noSource: 'This document has no source to build a file from, so edits cannot be saved.', queueFull: 'The job queue is full. Try again later.', tooLong: 'The content is empty or too long' },
 };
 
-const ROW_GRID = 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_6rem_9rem_9rem]';
 const typeIcon: Record<DocType, LucideIcon> = { cv: FileUser, cover_letter: Mail, application_message: MessageSquareText, other: File };
 const downloadUrl = (projectId: string, fileId: string) => `/v1/projects/${projectId}/files/${fileId}/download`;
 
@@ -89,16 +90,16 @@ function DocumentEditor({ c, projectId, documentId, initial, onClose, onSaved }:
   return <Card className="min-w-0"><CardContent className="grid gap-4 p-6 sm:p-8">
     <h2 className="font-semibold">{c.editor}</h2>
     <Tabs defaultValue="edit">
-      <TabsList><TabsTrigger className="min-h-11" value="edit">{c.editTab}</TabsTrigger><TabsTrigger className="min-h-11" value="preview">{c.previewTab}</TabsTrigger></TabsList>
+      <TabsList><TabsTrigger value="edit">{c.editTab}</TabsTrigger><TabsTrigger value="preview">{c.previewTab}</TabsTrigger></TabsList>
       <TabsContent value="edit"><label className="sr-only" htmlFor={id}>{c.editor}</label>
         <Textarea id={id} className="min-h-[60vh] resize-y text-base leading-relaxed" value={text} maxLength={200000} disabled={saving} onChange={event => change(event.target.value)} /></TabsContent>
       <TabsContent value="preview"><Markdown className="min-h-[60vh]">{text}</Markdown></TabsContent>
     </Tabs>
     {saving && <p role="status" className="text-sm text-muted-foreground">{c.generating}</p>}
-    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    {error && <Alert severity="error" role="alert">{error}</Alert>}
     <div className="flex flex-wrap justify-end gap-2">
-      <Button type="button" variant="outline" className="min-h-11" disabled={saving} onClick={cancel}>{c.cancel}</Button>
-      <Button type="button" className="min-h-11" busy={saving} disabled={saving || !text.trim() || !dirty && phase !== 'failed'} onClick={() => void save()}>{phase === 'failed' ? c.retry : c.save}</Button>
+      <Button type="button" variant="outline" disabled={saving} onClick={cancel}>{c.cancel}</Button>
+      <Button type="button" busy={saving} disabled={saving || !text.trim() || !dirty && phase !== 'failed'} onClick={() => void save()}>{phase === 'failed' ? c.retry : c.save}</Button>
     </div>
   </CardContent></Card>;
 }
@@ -144,7 +145,6 @@ export function DocumentsPage() {
   </section>;
   const chips: [DocType | 'all', string][] = [['all', c.all], ['cv', documentTypeLabel('cv', t)], ['cover_letter', documentTypeLabel('cover_letter', t)], ['application_message', documentTypeLabel('application_message', t)], ['other', documentTypeLabel('other', t)]];
   const visible = filter === 'all' ? documents : documents.filter(document => document.document_type === filter);
-  const chipClass = (active: boolean) => cn('min-h-11 lg:min-h-10 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring', active && 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90');
   async function undoTrash() {
     if (!undo) return;
     try { await restoreDocument(projectId, undo.id); setUndo(null); reloadAll(); } catch { setUndo({ id: undo.id, message: c.undoFailed }); }
@@ -154,39 +154,35 @@ export function DocumentsPage() {
       <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
       <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
     </div>
-    {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-4 py-2 text-sm">
-      <span>{undo.message}</span>
-      <span className="flex flex-wrap items-center gap-2">
+    <p className="text-sm text-muted-foreground">{w('count', { count: documents.length })}</p>
+    {documents.length < 3 && filter === 'all' && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4"><p className="min-w-0 text-sm text-muted-foreground">{c.nextDocs}</p><Button asChild variant="outline"><Link to={evaluateHref}>{c.evaluate}</Link></Button></div>}
+    {undo && <Alert severity="info" role="status" action={<span className="flex flex-wrap items-center gap-2">
         {undo.id && <Button type="button" size="sm" variant="outline" onClick={() => { void undoTrash(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
         <Link className="inline-flex min-h-11 lg:min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=documents`}>{c.openTrash}</Link>
-      </span>
-    </div>}
-    <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <button key={value} type="button" aria-pressed={filter === value}
-      className={chipClass(filter === value)} onClick={() => setFilter(value)}>{label}</button>)}</div>
-    {visible.length === 0 ? <p className="text-sm text-muted-foreground">{w('emptyFilter')}</p> :
-      <div className="rounded-lg border bg-card">
-        <div aria-hidden="true" className={cn('hidden gap-4 border-b px-5 py-3 text-sm font-medium text-muted-foreground lg:grid', ROW_GRID)}><span>{w('colDocument')}</span><span>{w('colJob')}</span><span>{w('colVersion')}</span><span>{w('colStatus')}</span><span className="text-end">{w('colActions')}</span></div>
-        <ul aria-label={title} className="divide-y">{visible.map(document => {
-          const Icon = typeIcon[document.document_type];
-          const session = sessionFor(document);
-          const job = session?.job_title ? [session.job_title, session.job_company].filter(Boolean).join(' · ') : w('noJob');
-          return <li key={document.id} className={cn('grid min-w-0 gap-3 p-4 lg:items-center lg:gap-4 lg:px-5', ROW_GRID)}>
-            <div className="flex min-w-0 items-start gap-3"><Icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-              <div className="min-w-0"><h2 className="break-words font-medium [overflow-wrap:anywhere]">{document.title}</h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">{documentTypeLabel(document.document_type, t)}{document.output_language && ` · ${document.output_language === 'th' ? 'ไทย' : 'English'}`}</p>
-                {document.source_run_id && <AiLabel check className="mt-1.5" />}</div>
-            </div>
-            <p className="min-w-0 break-words text-sm [overflow-wrap:anywhere]"><span className="text-muted-foreground lg:hidden">{w('colJob')}: </span>{job}</p>
-            <p className="text-sm"><span className="text-muted-foreground lg:hidden">{w('colVersion')}: </span>{document.latest_revision ? w('version', { n: document.latest_revision.revision }) : '—'}</p>
-            <div><Badge variant={document.partial ? 'warning' : 'success'}>{document.partial ? w('statusPartial') : w('statusReady')}</Badge></div>
-            <div className="flex items-center gap-2 lg:justify-end">
-              <Button asChild size="sm" variant="outline" className="min-h-11"><Link aria-label={`${w('open')}: ${document.title}`} to={`${base}/documents/${document.id}`}>{w('open')}</Link></Button>
+      </span>}>{undo.message}</Alert>}
+    <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <Button key={value} type="button" size="sm" variant={filter === value ? 'default' : 'outline'} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</Button>)}</div>
+    {visible.length === 0 ? <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-5"><p className="text-sm text-muted-foreground">{w('emptyFilter')} {w('emptyHelp')}</p><Button asChild variant="outline"><Link to={evaluateHref}>{c.evaluate}</Link></Button></div> :
+      <ul aria-label={title} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map(document => {
+        const Icon = typeIcon[document.document_type];
+        const session = sessionFor(document);
+        const job = session?.job_title ? [session.job_title, session.job_company].filter(Boolean).join(' · ') : w('noJob');
+        return <li key={document.id} className="grid min-w-0 content-between gap-4 rounded-xl border bg-card p-5">
+          <div className="flex min-w-0 items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[color-mix(in_srgb,var(--stage-docs)_12%,var(--card))] text-[color:var(--stage-docs)]" aria-hidden="true"><Icon className="size-5" /></span>
+            <div className="grid min-w-0 gap-1"><h2 className="break-words font-sans text-base font-semibold [overflow-wrap:anywhere]">{document.title}</h2>
+              <p className="text-sm text-muted-foreground">{documentTypeLabel(document.document_type, t)}{document.output_language && ` · ${document.output_language === 'th' ? 'ไทย' : 'English'}`}</p>
+              <p className="break-words text-sm [overflow-wrap:anywhere]"><span className="text-muted-foreground">{w('colJob')}: </span>{job}</p>
+              {document.source_run_id && <AiLabel check className="mt-1" />}</div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-2 text-sm">{document.latest_revision ? w('version', { n: document.latest_revision.revision }) : '—'}<Badge variant={document.partial ? 'warning' : 'success'}>{document.partial ? w('statusPartial') : w('statusReady')}</Badge></p>
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm" variant="outline"><Link aria-label={`${w('open')}: ${document.title}`} to={`${base}/documents/${document.id}`}>{w('open')}</Link></Button>
               <DocumentDeleteMenu projectId={projectId} documentId={document.id} title={document.title}
                 onTrashed={() => { setUndo({ id: document.id, message: c.trashed }); reloadAll(); }} onFailed={() => setUndo({ id: '', message: c.trashFailed })} />
             </div>
-          </li>;
-        })}</ul>
-      </div>}
+          </div>
+        </li>;
+      })}</ul>}
   </section>;
 }
 
@@ -275,30 +271,28 @@ export function DocumentDetailPage() {
 
   return <article className="grid gap-6 lg:gap-8">
     <PageBack to={`${base}/documents`}>{t('nav.documents')}</PageBack>
-    {isTrashed && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted px-4 py-3 text-sm">
+    {isTrashed && <Alert severity="info" role="status" action={<span className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { void restore(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.restore}</Button>
+        <Button type="button" size="sm" variant="destructive" onClick={() => setConfirmDelete(true)}>{c.deleteForever}</Button></span>}>
       <span className="font-medium">{c.inTrash}</span>
-      <span className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { void restore(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.restore}</Button>
-        <Button type="button" size="sm" variant="destructive" onClick={() => setConfirmDelete(true)}>{c.deleteForever}</Button></span>
-      {actionError && <span role="alert" className="w-full text-destructive">{actionError}</span>}
-    </div>}
+      {actionError && <Alert severity="error">{actionError}</Alert>}
+    </Alert>}
     {confirmDelete && <ConfirmDeleteDialog confirmLabel={c.deleteForever} title={permanentTitle(locale === 'th', document.title)} description={permanentDescription(locale === 'th')}
       errors={{ document_in_use: inUseMessage(locale === 'th', projectId) }} onConfirm={() => deletePermanently(projectId, documentId)}
       onDone={() => navigate(`${base}/trash?tab=documents`)} onClose={() => setConfirmDelete(false)} />}
-    <div className="flex items-start gap-3"><Icon className="mt-1.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+    <div className="flex items-start gap-3"><Icon className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
       <div className="grid min-w-0 gap-2"><h1 className="break-words text-2xl font-semibold">{document.title}</h1>{document.source_run_id && <div data-testid="ai-document"><AiLabel check /></div>}</div></div>
     {editing && canEdit ? <DocumentEditor c={c} projectId={projectId} documentId={documentId} initial={preview} onClose={stopEditing} onSaved={() => { setPickedId(''); stopEditing(); docs.reload(); revisions.reload(); }} /> :
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <Card className="min-w-0"><CardContent className="p-6 sm:p-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{t('pages.documentContent', { defaultValue: 'Document content' })}</h2>
           {document.has_builder_draft && !isTrashed
-            ? <Button asChild size="sm" className="min-h-11"><Link to={`/app/projects/${projectId}/documents/${document.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{w('editInBuilder')}</Link></Button>
-            : canEdit && <Button type="button" size="sm" className="min-h-11" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{historical ? w('editFromThis') : w('editCurrent')}</Button>}
+            ? <Button asChild size="sm" variant="outline"><Link to={`/app/projects/${projectId}/documents/${document.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{w('editInBuilder')}</Link></Button>
+            : canEdit && <Button type="button" size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{historical ? w('editFromThis') : w('editCurrent')}</Button>}
           {document.document_type === 'cv' && !document.has_builder_draft && <p className="w-full text-xs text-muted-foreground">{w('templateHint')}</p>}
           {versions.length > 1 && <label className="flex items-center gap-2 text-sm"><span className="text-muted-foreground">{w('colVersion')}</span>
-            <select className="min-h-11 lg:min-h-10 rounded-md border border-input bg-card px-2 text-sm" value={viewed?.id ?? ''} onChange={event => setPickedId(event.target.value)}>
-              {newestFirst.map(({ revision, number }) => <option key={revision.id ?? number} value={revision.id ?? ''}>{number}{revision === latestRevision ? ` · ${c.current}` : ''}{revision.origin === 'manual' ? ` · ${c.manual}` : ''}</option>)}</select></label>}</div>
-        {historical && <div role="status" data-testid="historical-banner" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm"><span className="flex items-start gap-2"><Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />{w('historicalBanner', { n: viewedNumber })}</span>
-          <Button type="button" size="sm" variant="outline" className="min-h-11" onClick={() => setPickedId('')}>{w('backToCurrent')}</Button></div>}
+            <Select className="w-auto" value={viewed?.id ?? ''} onChange={event => setPickedId(event.target.value)}>
+              {newestFirst.map(({ revision, number }) => <option key={revision.id ?? number} value={revision.id ?? ''}>{number}{revision === latestRevision ? ` · ${c.current}` : ''}{revision.origin === 'manual' ? ` · ${c.manual}` : ''}</option>)}</Select></label>}</div>
+        {historical && <Alert severity="warning" role="status" data-testid="historical-banner" className="mb-4" action={<Button type="button" size="sm" variant="outline" onClick={() => setPickedId('')}>{w('backToCurrent')}</Button>}>{w('historicalBanner', { n: viewedNumber })}</Alert>}
         {document.has_builder_draft && viewed?.file_id && <div className="mb-4 rounded-xl bg-muted p-4 sm:p-6"><div className="overflow-hidden rounded-lg border bg-white shadow-md" style={{ aspectRatio: '1 / 1.414' }}>
           <PdfFrame url={downloadUrl(projectId, viewed.file_id)} title={w('templatePreview')} />
         </div></div>}
@@ -307,22 +301,22 @@ export function DocumentDetailPage() {
       </CardContent></Card>
 
       <div className="grid min-w-0 gap-6">
-        <Card><CardHeader className="flex-row items-center justify-between gap-2"><CardTitle>{c.metadata}</CardTitle>
+        <Card className="border-0 bg-muted"><CardHeader className="flex-row items-center justify-between gap-2"><CardTitle>{c.metadata}</CardTitle>
           {!isTrashed && <DocumentDeleteMenu projectId={projectId} documentId={document.id} title={document.title}
             onTrashed={() => navigate(`${base}/documents`, { state: { trashed: document.id } })} onFailed={() => setActionError(c.trashFailed)} />}</CardHeader><CardContent className="grid gap-3 text-sm">
           <p><span className="text-muted-foreground">{c.type}: </span>{documentTypeLabel(document.document_type, t)}</p>
           {document.output_language && <p data-testid="document-language">{t('pages.documentLanguage', { defaultValue: 'Document language' })}: {document.output_language === 'th' ? 'ไทย' : 'English'}</p>}
           {viewed && <p><span className="text-muted-foreground">{w('colVersion')}: </span>{viewedNumber}</p>}
           {viewed?.created_at && <p><span className="text-muted-foreground">{c.created}: </span><time dateTime={viewed.created_at}>{date.format(new Date(viewed.created_at))}</time></p>}
-          {actionError && !isTrashed && <p role="alert" className="text-destructive">{actionError}</p>}
+          {actionError && !isTrashed && <Alert severity="error" role="alert">{actionError}</Alert>}
           {document.partial && <div><Badge variant="warning" role="status">{t('pages.partial', { defaultValue: 'Partial document' })}</Badge></div>}
           <div className="flex flex-wrap gap-2 pt-1">
-            {viewed?.file_id && <Button asChild size="sm" className="min-h-11"><a href={downloadUrl(projectId, viewed.file_id)}><Download aria-hidden="true" />{w('downloadSelected')}</a></Button>}
-            {requestHref && <Button asChild size="sm" variant="outline" className="min-h-11"><Link to={requestHref}>{c.requestChanges}</Link></Button>}
+            {viewed?.file_id && <Button asChild size="sm"><a href={downloadUrl(projectId, viewed.file_id)}><Download aria-hidden="true" />{w('downloadSelected')}</a></Button>}
+            {requestHref && <Button asChild size="sm" variant="outline"><Link to={requestHref}>{c.requestChanges}</Link></Button>}
           </div>
         </CardContent></Card>
 
-        {(sourceJobId || sourceSessionId || viewed?.source_cv_revision_id) && <Card><CardHeader><CardTitle>{w('sourcePanel')}</CardTitle></CardHeader><CardContent className="grid gap-3 text-sm">
+        {(sourceJobId || sourceSessionId || viewed?.source_cv_revision_id) && <Card className="border-0 bg-muted"><CardHeader><CardTitle>{w('sourcePanel')}</CardTitle></CardHeader><CardContent className="grid gap-3 text-sm">
           {sourceJobId && <p className="break-words [overflow-wrap:anywhere]">{sourceJob && <span className="text-muted-foreground">{w('sourceJob')}: </span>}<Link className="text-primary hover:underline" to={`${base}/jobs/${sourceJobId}`}>{jobLabel(sourceJob) || w('sourceJob')}</Link>{sourceJob && <span className="text-muted-foreground"> · {w('sourceJobVersion', { n: sourceJob.revision })}</span>}</p>}
           {viewed?.source_cv_revision_id && <p><span className="text-muted-foreground">{w('sourceCv')}: </span>{sourceCvRevision ? w('sourceCvVersion', { n: sourceCvRevision.revision }) : t('pages.sourceCVUnavailable', { defaultValue: 'Source CV unavailable' })}</p>}
           {sourceSessionId && sessions.status === 'ready' && <p className="break-words [overflow-wrap:anywhere]">{sourceSession
@@ -330,7 +324,7 @@ export function DocumentDetailPage() {
             : <span className="text-muted-foreground">{w('sourceEvaluation')}: {c.sessionDeleted}</span>}</p>}
         </CardContent></Card>}
 
-        <Card><CardHeader><CardTitle>{t('documents.historyLabel', { ns: 'materialsWorkspace' })}</CardTitle></CardHeader><CardContent>
+        <Card className="border-0 bg-muted"><CardHeader><CardTitle>{t('documents.historyLabel', { ns: 'materialsWorkspace' })}</CardTitle></CardHeader><CardContent>
           {revNote && <p role={revNote.ok ? 'status' : 'alert'} className={cn('mb-3 text-sm', !revNote.ok && 'text-destructive')}>{revNote.text}</p>}
           <ol className="grid gap-3">{newestFirst.map(({ revision, number, index }) => {
             const sourceRevisionId = revision.source_cv_revision_id;
@@ -338,7 +332,7 @@ export function DocumentDetailPage() {
               ? cvRevisions.data?.find(item => item.id === sourceRevisionId)
               : undefined;
             const isCurrent = latestRevision !== undefined && revision === latestRevision;
-            return <li key={revision.id ?? `${revision.document_id}-${index}`} className={cn('grid gap-1.5 rounded-lg border p-3 text-sm', isCurrent && 'border-primary bg-primary/5')}>
+            return <li key={revision.id ?? `${revision.document_id}-${index}`} className={cn('grid gap-2 rounded-lg bg-card p-3 text-sm', isCurrent && 'bg-accent shadow-[inset_3px_0_0_var(--primary)]')}>
               <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{w('version', { n: number })}</span>{isCurrent && <Badge>{c.current}</Badge>}{revision.origin && <Badge variant={revision.origin === 'manual' ? 'secondary' : 'outline'}>{revision.origin === 'manual' ? c.manual : c.ai}</Badge>}
                 {revision.created_at && <time className="text-muted-foreground" dateTime={revision.created_at}>{date.format(new Date(revision.created_at))}</time>}</div>
               <p className="break-words text-muted-foreground">
@@ -346,14 +340,14 @@ export function DocumentDetailPage() {
                 {' '}<Link className="text-primary hover:underline" to={`${base}/profile`}>{t('pages.openCVProfile', { defaultValue: 'Open CV profile' })}</Link>
               </p>
               {isCv && revision.id && <div className="flex flex-wrap gap-2">
-                {!isCurrent && <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={revBusy} onClick={() => void restoreRevision(revision.id!)}><RotateCcw className="size-4" aria-hidden="true" />{revBusy ? c.restoring : c.restoreVersion}</Button>}
+                {!isCurrent && <Button type="button" size="sm" variant="outline" disabled={revBusy} onClick={() => void restoreRevision(revision.id!)}><RotateCcw className="size-4" aria-hidden="true" />{revBusy ? c.restoring : c.restoreVersion}</Button>}
                 {isCurrent && revision.file_id && latestCv && (confirmPromote
                   ? <span role="group" aria-label={c.promoteAsk} className="flex flex-wrap items-center gap-2 text-sm"><span>{c.promoteAsk}</span>
-                    <Button type="button" size="sm" className="min-h-11" disabled={revBusy} onClick={() => void promote(revision.id!)}>{c.promoteConfirm}</Button>
-                    <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={revBusy} onClick={() => setConfirmPromote(false)}>{c.promoteCancel}</Button></span>
-                  : <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={revBusy} onClick={() => setConfirmPromote(true)}>{c.promote}</Button>)}
+                    <Button type="button" size="sm" disabled={revBusy} onClick={() => void promote(revision.id!)}>{c.promoteConfirm}</Button>
+                    <Button type="button" size="sm" variant="outline" disabled={revBusy} onClick={() => setConfirmPromote(false)}>{c.promoteCancel}</Button></span>
+                  : <Button type="button" size="sm" variant="outline" disabled={revBusy} onClick={() => setConfirmPromote(true)}>{c.promote}</Button>)}
               </div>}
-              {revision.file_id && <a className="inline-flex w-fit items-center gap-1.5 text-primary hover:underline" href={downloadUrl(projectId, revision.file_id)}><Download className="size-4" aria-hidden="true" />{t('pages.downloadDocument', { defaultValue: 'Download document' })}</a>}
+              {revision.file_id && <a className="inline-flex min-h-11 w-fit items-center gap-1 text-primary hover:underline lg:min-h-10" href={downloadUrl(projectId, revision.file_id)}><Download className="size-4" aria-hidden="true" />{t('pages.downloadDocument', { defaultValue: 'Download document' })}</a>}
             </li>;
           })}</ol>
         </CardContent></Card>

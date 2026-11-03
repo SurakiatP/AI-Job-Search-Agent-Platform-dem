@@ -1,3 +1,4 @@
+import { Select } from '@/components/ui/select';
 import { useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +10,6 @@ import { useAccount } from '../../lib/api';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import { AppearanceSettings } from './AppearanceSettings';
-import { selectClass } from './Field';
 import { GatewaySettings } from './GatewaySettings';
 import { ProjectSharing } from './ProjectSharing';
 import { TelegramSettings } from './TelegramSettings';
@@ -47,7 +47,16 @@ export function SettingsPage() {
       <PageHeader icon={Settings} title={t('pages.settingsTitle', { defaultValue: 'Settings' })} lede={ts(`scope.${section}`)} />
     </div>
     <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
-      <nav aria-label={ts('navLabel')} className="grid min-w-0 gap-4 lg:sticky lg:top-4">
+      {/* Below lg: one compact Select instead of a tall button list, so the section content starts near the top. */}
+      <div className="grid gap-2 lg:hidden">
+        <Label htmlFor="settings-section">{ts('navLabel')}</Label>
+        <Select id="settings-section" value={section} onChange={event => { const id = event.target.value; setParams(previous => { const next = new URLSearchParams(previous); next.set('section', id); return next; }, { replace: true }); }}>
+          {groups.filter(group => visible.some(([id]) => (group.ids as readonly string[]).includes(id))).map(group => <optgroup key={group.id} label={ts(`groups.${group.id}`)}>
+            {visible.filter(([id]) => (group.ids as readonly string[]).includes(id)).map(([id]) => <option key={id} value={id}>{ts(`nav.${id}`)}</option>)}
+          </optgroup>)}
+        </Select>
+      </div>
+      <nav aria-label={ts('navLabel')} className="hidden min-w-0 gap-4 lg:sticky lg:top-4 lg:grid">
         {groups.filter(group => visible.some(([id]) => (group.ids as readonly string[]).includes(id))).map(group => <div key={group.id} role="group" aria-labelledby={`settings-group-${group.id}`} className="grid min-w-0 gap-1">
           <p id={`settings-group-${group.id}`} className="px-3 text-xs font-medium text-muted-foreground">{ts(`groups.${group.id}`)}</p>
           <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
@@ -69,10 +78,10 @@ export function SettingsPage() {
       <div className="grid min-w-0 gap-4">
         {(section === 'preferences' || section === 'tools' || section === 'sharing' || section === 'webhooks') && <div className="grid gap-2 sm:max-w-xs">
           <Label htmlFor="settings-project">{ts('projectScope')}</Label>
-          <select id="settings-project" className={selectClass} value={projectId} onChange={event => setParams(previous => { const next = new URLSearchParams(previous); next.set('project', event.target.value); return next; }, { replace: true })}>
+          <Select id="settings-project" value={projectId} onChange={event => setParams(previous => { const next = new URLSearchParams(previous); next.set('project', event.target.value); return next; }, { replace: true })}>
             {!projectId && <option value="">{t('workspace.chooseProject')}</option>}
             {projects.data?.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
-          </select>
+          </Select>
           {!projectId && <Link className="text-sm text-primary hover:underline" to="/app/projects/new">{t('pages.createProject', { defaultValue: 'Create a project' })}</Link>}
         </div>}
         {section === 'appearance' && <AppearanceSettings />}

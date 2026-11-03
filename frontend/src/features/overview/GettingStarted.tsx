@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle2, Compass, Info, Search, Upload } from 'lucide-react';
+import { CheckCircle2, Info, Search, Upload } from 'lucide-react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,7 @@ export function GettingStarted({ base, cv, job }: Props) {
     return null;
   };
   return <section aria-labelledby="getting-started-heading" className="workspace-panel p-5 sm:p-6">
-    <h2 id="getting-started-heading" className="text-xl font-semibold">{c.gettingStarted}</h2>
+    <h2 id="getting-started-heading" className="text-xl">{c.gettingStarted}</h2>
     <ol className="mt-5 grid gap-1">
       {c.steps.map((step, index) => {
         const finished = done[index];
@@ -37,7 +37,7 @@ export function GettingStarted({ base, cv, job }: Props) {
             {finished ? <><CheckCircle2 size={14} aria-hidden="true" /><span className="sr-only">{c.stepDone}</span></> : index + 1}
           </span>
           <div className="min-w-0">
-            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold">{step.title}{next === index && <Badge variant="secondary">{c.nextStep}</Badge>}</p>
+            <p className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 text-base', next === index ? 'font-semibold' : 'font-medium')}>{step.title}{next === index && <Badge variant="secondary">{c.nextStep}</Badge>}</p>
             <p className="mt-1 break-words text-sm text-muted-foreground">{finished && doneText[index] ? doneText[index] : blocked ? c.waitsFor(!done[0], !done[1]) : step.body}</p>
           </div>
           {!finished && action(index) && <div className="col-start-2 sm:col-start-3">{action(index)}</div>}
@@ -57,7 +57,7 @@ export function HelpPanel({ hasCv }: { hasCv: boolean }) {
   if (hasCv && state === 'dismissed') return null;
   const tips = hasCv ? c.tips.slice(1, 2) : c.tips;
   return <section aria-labelledby="help-heading" className="workspace-panel self-start p-5 sm:p-6">
-    <h2 id="help-heading" className="flex items-center gap-3 text-xl font-semibold"><Compass size={24} className="text-primary" aria-hidden="true" />{c.helpTitle}</h2>
+    <h2 id="help-heading" className="flex items-center gap-3 text-base font-semibold">{c.helpTitle}</h2>
     <ul className="mt-4 grid gap-4">{tips.map(tip => <li key={tip.title} className="border-t pt-4 first:border-t-0 first:pt-0"><p className="font-semibold">{tip.title}</p><p className="mt-1 text-sm text-muted-foreground">{tip.body}</p></li>)}</ul>
     {/* optical: the ghost button text lines up with the text above */}{hasCv && <Button variant="ghost" size="sm" className="mt-3 -ms-3" onClick={() => { savePreference(helpKey, 'dismissed'); setState('dismissed'); }}>{c.dismissHelp}</Button>}
   </section>;

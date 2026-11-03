@@ -184,7 +184,7 @@ test('first-run overview marks done steps, says what is blocked and shows no cou
   await expect(steps.getByRole('listitem').nth(1)).toContainText('Synthetic data analyst');
   await expect(steps.getByRole('listitem').nth(1)).toContainText('Done');
   await expect(steps.getByRole('listitem').nth(2)).toContainText('Needs a CV first.');
-  await expect(page.getByRole('main').locator('a.bg-primary, button.bg-primary')).toHaveCount(1);
+  await expect(page.getByRole('main').locator('a.bg-primary-fill, button.bg-primary-fill')).toHaveCount(1);
   await expect(page.getByRole('main').getByRole('link', { name: 'Add CV', exact: true }).first()).toHaveClass(/bg-primary/);
   await expect(page.getByRole('heading', { name: 'Need a hand?' })).toBeVisible();
   await expect(page.getByRole('main').getByText(/^Saved\s*\d/)).toHaveCount(0);
@@ -226,6 +226,37 @@ test('projects list shows one row per project with Open and management, no repea
   await main.getByRole('button', { name: 'Options for Second synthetic project' }).click();
   await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Delete project “Second synthetic project”?', exact: true })).toBeVisible();
+});
+
+test('force delete erases a project only after its exact name is typed, and explains a busy project', async ({ page }) => {
+  await useSyntheticApplication(page);
+  const name = 'Second synthetic project';
+  const calls: unknown[] = [];
+  let busy = true;
+  await page.route(`**/v1/projects/${secondProjectId}/force-delete`, route => {
+    calls.push(route.request().postDataJSON());
+    if (busy) return route.fulfill({ status: 409, json: { code: 'project_runs_active', message_key: 'errors.project_runs_active', retryable: false, correlation_id: 'c' } });
+    return route.fulfill({ status: 204, body: '' });
+  });
+  await page.goto('/app/projects');
+  const main = page.getByRole('main');
+  await main.getByRole('button', { name: `Options for ${name}` }).click();
+  await page.getByRole('menuitem', { name: 'Delete everything permanently…', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: `Delete project “${name}” and everything in it?`, exact: true });
+  await expect(dialog).toBeVisible();
+  const confirm = dialog.getByRole('button', { name: 'Delete everything permanently', exact: true });
+  await expect(confirm).toBeDisabled();
+  await dialog.getByRole('textbox').fill('second synthetic project');
+  await expect(confirm).toBeDisabled();
+  await dialog.getByRole('textbox').fill(name);
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
+  await expect(dialog.getByRole('alert')).toContainText('Stop it first');
+  expect(calls).toEqual([{ confirm_name: name }]);
+  busy = false;
+  await dialog.getByRole('button', { name: 'Delete everything permanently', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(calls).toHaveLength(2);
 });
 
 test('zero projects shows the getting-started guidance as the empty state', async ({ page }) => {

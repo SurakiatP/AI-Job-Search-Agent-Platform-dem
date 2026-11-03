@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 import os
 import re
+import shutil
 import subprocess
 from pathlib import PurePath
 from collections.abc import AsyncIterator
@@ -25,7 +26,7 @@ from job_search_platform.db.models import (
     Approval, CVRevisionText, DocumentRevision, InterviewSet, ResumeDraft,
     CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
     ProjectPreference, StoredFile, Run, RunArtifact, Grant, JobMatchScore, JobSearchHidden,
-    ToolConnectorConfiguration,
+    ToolConnectorConfiguration, Base,
 )
 from job_search_platform.services.authorization import authorize, require_scoped_id
 from job_search_platform.services.contracts import (
@@ -35,7 +36,7 @@ from job_search_platform.services.contracts import (
     ExperienceItemCreate, GrantIssueRequest, GrantIssuedView, HiddenCreate, MatchRunRequest, GrantView, JobApplicationStatusUpdate, JobApplicationStatusView,
     JobCreate, JobRevisionView, MessageCreate,
     PreferencesUpdate, ProjectCreate,
-    GatewayStatusView, PreferencesView, ProjectUpdate, ProjectView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
+    GatewayStatusView, PreferencesView, ProjectForceDelete, ProjectUpdate, ProjectView, RunInput, RunRequest, RunView, TailorApply, SessionCreate, SessionDeleteResult, SessionUpdate, SessionView, ToolConnectorSettingsView,
     ToolConnectorUpdate, ToolConnectorView, ToolsView,
     QueuedView, WebhookCreate, WebhookCreatedView, WebhookDeliveryView, WebhookUpdate, WebhookView,
 )
@@ -67,7 +68,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
     status_code = {
         "unauthorized": 401, "invalid_launch": 401, "invalid_origin": 403,
         "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
-        "project_not_empty": 409, "session_busy": 409, "session_not_trashed": 409, "idempotency_conflict": 409,
+        "project_not_empty": 409, "project_runs_active": 409, "confirmation_mismatch": 422, "session_busy": 409, "session_not_trashed": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
         "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409, "cv_not_trashed": 409, "practice_set_limit": 409, "practice_set_busy": 409, "practice_not_gradable": 409, "session_pair_required": 409,
         "document_busy": 409, "tailor_already_applied": 409, "run_not_awaiting_input": 409, "invalid_answer": 422, "document_source_unavailable": 409,
@@ -247,6 +248,37 @@ async def delete_project(project_id: UUID, actor=Depends(write_actor), services:
         if has_durable_data:
             raise ServiceError("project_not_empty")
         db.delete(row)
+
+
+@router.post("/projects/{project_id}/force-delete", status_code=204)
+async def force_delete_project(project_id: UUID, body: ProjectForceDelete, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Erase a project and everything in it for good: CVs, jobs, sessions, documents, runs and their history,
+    files in the private store and the agent's working folders. No tombstone is kept. Owner only; the caller
+    must type the project's exact name, and runs that are still working must be stopped first."""
+    _owner_only(actor)
+    with services.sessions.begin() as db:
+        authorize(db, actor, project_id, "manage", "project")
+        row = db.scalar(select(Project).where(Project.id == project_id).with_for_update())
+        if row is None:
+            raise ServiceError("not_found")
+        if body.confirm_name != row.name:
+            raise ServiceError("confirmation_mismatch")
+        if db.scalar(select(exists().where(Run.project_id == project_id, Run.status.in_(("queued", "running", "waiting_approval"))))):
+            raise ServiceError("project_runs_active")
+        keys = list(db.scalars(select(StoredFile.storage_key).where(StoredFile.project_id == project_id)))
+        # Children first, so nothing depends on database cascades alone: every table that carries project_id.
+        for table in reversed(Base.metadata.sorted_tables):
+            # application_events is append-only: its trigger allows a delete only through the FK cascade from job_revisions.
+            if table.name not in ("projects", "application_events") and "project_id" in table.c:
+                db.execute(table.delete().where(table.c.project_id == project_id))
+        db.delete(row)
+    for key in keys:  # rows are gone; an orphaned private object is harmless, so a failed delete never undoes the erase
+        with contextlib.suppress(Exception):
+            await services.files.object_store.delete(key)
+    runtime = services.runtime
+    for root in (getattr(runtime, "workspace_root", None), getattr(runtime, "state_root", None)):
+        if root is not None:
+            await asyncio.to_thread(shutil.rmtree, root / str(project_id), True)
 
 
 @router.get("/projects/{project_id}/preferences", response_model=PreferencesView)

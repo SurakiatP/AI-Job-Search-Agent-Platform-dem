@@ -332,8 +332,8 @@ test('SCR-04 exactly one primary action per run state; pending tailor proposals 
     await page.route(`**/v1/projects/${projectId}/documents`, route => route.fulfill(json([{ id: documentIdForTest, document_type: 'cv', title: 'Saved CV copy', partial: false, source_run_id: firstId, content_markdown: 'Saved text', latest_revision: { id: 'r1', revision: 2, created_at: '2026-10-10T00:00:00Z' } }])));
     await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
     await expect(page.getByRole('heading', { name: 'Agent workflow' }), name).toBeVisible();
-    await expect(page.locator('main button.bg-primary:visible, main a.bg-primary:visible'), name).toHaveCount(label ? 1 : 0);
-    if (label) await expect(page.locator('main .bg-primary:visible').filter({ hasText: label }), name).toHaveCount(1);
+    await expect(page.locator('main button.bg-primary-fill:visible, main a.bg-primary-fill:visible'), name).toHaveCount(label ? 1 : 0);
+    if (label) await expect(page.locator('main .bg-primary-fill:visible').filter({ hasText: label }), name).toHaveCount(1);
     if (name === 'completed') {
       await expect(page.getByText('4.2')).toBeVisible();
       await expect(page.getByText('Strong fit')).toBeVisible();
@@ -348,7 +348,7 @@ test('SCR-04 exactly one primary action per run state; pending tailor proposals 
       await expect(page.getByRole('link', { name: 'Open document' })).toHaveCount(1);
       await page.getByRole('button', { name: 'Review proposed CV changes' }).click();
       await expect(page.getByText('Pending Airflow proposal text')).toBeVisible();
-      await expect(page.locator('main button.bg-primary:visible, main a.bg-primary:visible')).toHaveCount(1);
+      await expect(page.locator('main button.bg-primary-fill:visible, main a.bg-primary-fill:visible')).toHaveCount(1);
     }
     await page.close();
   }

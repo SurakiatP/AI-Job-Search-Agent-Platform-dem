@@ -69,7 +69,7 @@ export function CvPreviewButton({ projectId, fileId, name, revision, filename, m
             <DialogTitle className="break-words">{name}</DialogTitle>
             {subtitle && <DialogDescription className="mt-0.5">{subtitle}</DialogDescription>}
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-2">
             <Button asChild size="sm" variant="outline"><a href={url}><Download className="size-4" aria-hidden="true" />{c.download}</a></Button>
             <DialogClose asChild><Button type="button" size="sm" variant="ghost" aria-label={c.close}><X className="size-4" aria-hidden="true" /></Button></DialogClose>
           </div>

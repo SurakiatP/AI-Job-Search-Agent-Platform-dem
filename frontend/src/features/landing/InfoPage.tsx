@@ -34,13 +34,13 @@ export function InfoPage({ slug }: { slug: InfoSlug }) {
       {page.sections.map((section, s) => <section key={section.heading} aria-labelledby={`sec-${s}`} className="grid gap-4">
         <h2 id={`sec-${s}`} className="text-2xl font-semibold">{section.heading}</h2>
         <ul className="grid gap-3 sm:grid-cols-2">
-          {section.items.map(item => <li key={item.title} className="grid content-start gap-1.5 rounded-xl border bg-card p-5">
+          {section.items.map(item => <li key={item.title} className="grid content-start gap-2 rounded-xl border bg-card p-5">
             <h3 className="text-base font-semibold leading-snug">{item.title}</h3>
             <p className="text-sm leading-relaxed text-muted-foreground">{item.body}</p>
           </li>)}
         </ul>
       </section>)}
-      <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3" /></span><span>{page.note}</span></p>
+      <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary-fill text-primary-fill-foreground"><Tick className="size-3" /></span><span>{page.note}</span></p>
       <div className="flex flex-wrap gap-3">{cta}<Button asChild size="lg" variant="outline"><Link to="/docs">{locale === 'th' ? 'ดูคู่มือ' : 'Read the guide'}</Link></Button></div>
     </main>
   </div>;

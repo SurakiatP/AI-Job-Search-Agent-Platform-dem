@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
+import { Alert } from '@/components/ui/alert';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
 import { cn } from '@/lib/utils';
@@ -28,13 +28,13 @@ export function WorkflowPanel({ locale, sessionRuns, run, events, cancellationPe
         const step = latest(operation);
         return <li key={operation} className="flex items-start justify-between gap-3">
           <div className="min-w-0"><p className="break-words text-sm font-medium">{t(`panel.ops.${operation}`)}</p><p className="break-words text-xs text-muted-foreground">{t(`panel.hints.${operation}`)}</p></div>
-          {step ? <StatusBadge status={step.status} locale={locale} /> : <Badge variant="outline" className="shrink-0 text-muted-foreground">{t('panel.notStarted')}</Badge>}
+          {step ? <StatusBadge status={step.status} locale={locale} /> : <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><span className="size-2 rounded-full bg-muted-foreground/50" aria-hidden="true" />{t('panel.notStarted')}</span>}
         </li>;
       })}
     </ol>
     {run && <div className="grid gap-3 border-t pt-4"><RunTimeline locale={locale} run={run} events={events} cancellationPending={cancellationPending} /></div>}
-    {needsInput && <p role="status" className="rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm font-medium">{t('run.needsInput')}</p>}
-    {error && <p className="flex flex-wrap items-center gap-3 text-sm text-destructive" role="alert"><span className="min-w-0 break-words">{t(error, { defaultValue: t('pages.loadError') })}</span><Button type="button" variant="outline" size="sm" onClick={onRefresh}>{t('refresh')}</Button></p>}
+    {needsInput && <Alert severity="warning" className="font-medium">{t('run.needsInput')}</Alert>}
+    {error && <Alert severity="error" action={<Button type="button" variant="outline" size="sm" onClick={onRefresh}>{t('refresh')}</Button>}>{t(error, { defaultValue: t('pages.loadError') })}</Alert>}
     <ApprovalCard approval={approval} locale={locale} busy={approvalBusy} onDecision={onDecision} onRefresh={onRefresh} />
     {(primary || canCancel) && <div className="grid gap-2">
       {primary && <Button type="button" className="w-full whitespace-normal" disabled={primary.disabled} title={primary.title} onClick={primary.onClick}>{primary.label}</Button>}
