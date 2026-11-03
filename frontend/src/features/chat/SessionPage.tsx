@@ -90,6 +90,9 @@ export function SessionPage() {
   const workflow = useRun(projectId, sessionId);
   const [outputLanguage, setOutputLanguage] = useState<Locale>(locale);
   const outputLanguageId = useId();
+  // Contract (UX_SIMPLIFY_PLAN 3.1): `?start=evaluate` means "run evaluate_job once on arrival".
+  // On first load with this param, call startRun('evaluate_job', '') and then navigate to the same URL
+  // without `start` (replace: true) so reload/back never start a second run. W3 implements; W2 links here.
   const initialTab = useSearchParams()[0].get('tab');
   const [tab, setTab] = useState(initialTab && ['evaluation', 'documents', 'answers', 'practice', 'history'].includes(initialTab) ? initialTab : 'evaluation');
   const [submitting, setSubmitting] = useState(false);

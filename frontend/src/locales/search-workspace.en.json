@@ -34,7 +34,7 @@
     "matchEvidence": "Match evidence",
     "aiFit": "AI fit",
     "skillsFound": "{{found}} of {{total}} skills found",
-    "aiUnavailable": "AI ranking unavailable — keyword ranking shown",
+    "aiUnavailable": "AI ranking unavailable: keyword ranking shown",
     "evaluateWith": "Evaluate with {{cv}}",
     "evalNote": "The evaluation uses this job posting and {{cv}}.",
     "examplesLabel": "Try",

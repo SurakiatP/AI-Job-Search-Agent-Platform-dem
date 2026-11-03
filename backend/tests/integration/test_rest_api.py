@@ -425,6 +425,23 @@ def _submit(client, csrf, pid, sid, job_id, key):
 
 
 @pytest.mark.integration
+def test_owner_run_list_shows_cv_reading_but_not_ranking_runs(api_context):
+    client = api_context.client
+    csrf = _owner(api_context)
+    pid = client.post("/v1/projects", json={"name": "Activity"}, headers=_write_headers(csrf)).json()["id"]
+    sid = _legacy_session(api_context, pid, "S")
+    with api_context.sessions.begin() as db:
+        cv, job = revisions(db, UUID(pid))
+        provider = provider_config(db, UUID(pid))
+        for op in ("extract_experience", "match_jobs"):
+            db.add(Run(project_id=UUID(pid), actor_scope="owner", idempotency_key=op, request_digest="c" * 64,
+                       session_id=UUID(sid), operation=op, cv_revision_id=cv.id, job_revision_id=job.id,
+                       provider_configuration_id=provider.id, input_snapshot={}, config_snapshot={},
+                       output_language="en", status="completed"))
+    ops = {r["operation"] for r in client.get(f"/v1/projects/{pid}/runs").json()}
+    assert ops == {"extract_experience"}
+
+
 def test_owner_removes_job_softly_hides_it_and_blocks_new_runs_but_old_runs_stay(api_context):
     client = api_context.client
     csrf = _owner(api_context)

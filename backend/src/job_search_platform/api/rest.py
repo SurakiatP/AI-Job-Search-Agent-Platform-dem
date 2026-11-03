@@ -1226,7 +1226,7 @@ async def list_runs(project_id: UUID, actor=Depends(run_actor), services: Servic
     with services.sessions() as db:
         authorize(db, actor, project_id, "results:read", "run")  # the scope agent tokens carry; sessions ignore the action
         query = select(Run).where(Run.project_id == project_id).order_by(Run.created_at.desc())
-        query = query.where(Run.operation.not_in(("profile_cv", "match_jobs", "extract_experience")))
+        query = query.where(Run.operation.not_in(("profile_cv", "match_jobs")))
         if actor.kind != "user":
             query = query.where(Run.operation.not_in(OWNER_ONLY_OPERATIONS))
     return await asyncio.to_thread(services.runs.list_views, actor, project_id, query)
