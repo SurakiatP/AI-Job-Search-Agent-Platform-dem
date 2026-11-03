@@ -32,6 +32,9 @@ for _operation, _effort in json.loads(os.environ.get("PLATFORM_REASONING") or "{
         # "none" turns reasoning off ({"enabled": false}); other values are an effort
         REASONING[_operation] = {"extra_body": {"reasoning": {"enabled": False} if _effort == "none" else {"effort": _effort}}}
 
+MAX_OUTPUT_TOKENS = 16000
+
+
 def _wire_reasoning(overrides):
     """The agent's own reasoning config for an operation's override, so the top-level reasoning_effort Hermes sends
     (default medium) agrees with extra_body's reasoning.effort; OpenRouter answers 400 when the two differ."""
@@ -341,6 +344,9 @@ def main():
                     enabled_toolsets=["terminal", "file"], skip_memory=True,
                     skip_context_files=True, skip_background_review=True,
                     max_iterations=30, run_budget_seconds=900, quiet_mode=True,
+                    # Without an explicit cap the gateway's default cut long answers (a 2-page CV's extraction is
+                    # ~4.6k tokens); a cut JSON then failed or was "repaired" into a shorter list.
+                    max_tokens=MAX_OUTPUT_TOKENS,
                     request_overrides=REASONING.get(request.get("operation")),
                     reasoning_config=_wire_reasoning(REASONING.get(request.get("operation"))),
                     save_trajectories=False, verbose_logging=False,
