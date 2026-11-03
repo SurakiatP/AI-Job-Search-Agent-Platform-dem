@@ -130,7 +130,7 @@ export function OverviewPage() {
         const sid = evaluation?.session_id;
         return <li key={job.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5" to={sid ? `${base}/sessions/${sid}` : `${base}/jobs/${job.id}`}>
           <div className="min-w-0"><span className="break-words font-semibold">{job.title}</span>{job.company && <p className="mt-1 break-words text-sm text-muted-foreground">{job.company}</p>}</div>
-          <span className="flex items-center gap-3"><StatusBadge status={job.application_status ?? 'saved'} locale={locale} /><FitScore score={evaluation?.evaluation_result?.score ?? null} locale={locale} /><ArrowRight size={17} aria-hidden="true" /></span>
+          <span className="flex items-center gap-3"><StatusBadge status={job.application_status ?? 'saved'} locale={locale} /><FitScore result={evaluation?.evaluation_result} locale={locale} /><ArrowRight size={17} aria-hidden="true" /></span>
         </Link></li>;
       })}</ul>}</ResourcePanel>
   </Section>;

@@ -5,7 +5,7 @@ import { Link } from 'react-router';
 import { ChevronDown, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FitScore, fitBand } from '@/components/FitScore';
+import { FitScore, FitScoreWhy } from '@/components/FitScore';
 import { Progress } from '@/components/ui/progress';
 import { Markdown } from '@/components/Markdown';
 import { CopyButton } from '@/components/CopyButton';
@@ -31,8 +31,6 @@ function ReportBody({ markdown }: { markdown: string }) {
   return <div className="border-t px-4 py-4"><div ref={ref}><Markdown data-testid="evaluation-report">{markdown}</Markdown></div><CopyButton className="mt-3" source={ref} markdown={markdown} /></div>;
 }
 
-const bandKey = { success: 'strong', warning: 'partial', danger: 'low', none: 'none' } as const;
-const bandVariant = { success: 'success', warning: 'warning', danger: 'danger', none: 'secondary' } as const;
 
 function SkillsFound({ coverage }: { coverage: SkillCoverage }) {
   const { t } = useTranslation('sessionWorkspace');
@@ -78,7 +76,6 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
   const resultDocuments = showDocuments ? ownDocuments : [];
   const trashedHere = trashedDocuments.filter(document => document.source_run_id === run.id);
   const evaluation = run.evaluation_result;
-  const band = evaluation ? fitBand(evaluation.score) : 'none';
   const report = t('result.report');
   const downloads = locale === 'th' ? 'ดาวน์โหลดไฟล์' : 'Download file';
   const noResult = locale === 'th' ? 'งานนี้ไม่มีผลลัพธ์ที่เผยแพร่' : 'This run has no published result yet.';
@@ -93,7 +90,8 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
       <div className="grid gap-6 md:grid-cols-2 md:gap-8">
         <div className="grid min-w-0 content-start gap-2">
           <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><AiMark size="sm" />{t('result.aiFit')}</p>
-          <div className="flex flex-wrap items-center gap-3"><FitScore score={evaluation.score} size="lg" locale={locale} /><Badge variant={bandVariant[band]}>{t(`result.bands.${bandKey[band]}`)}</Badge></div>
+          <div className="flex flex-wrap items-center gap-3"><FitScore result={evaluation} size="lg" locale={locale} /></div>
+          <FitScoreWhy result={evaluation} locale={locale} />
           <p className="text-sm text-muted-foreground">{t('result.notPrediction')}</p>
         </div>
         {evaluation.skill_coverage && <SkillsFound coverage={evaluation.skill_coverage} />}

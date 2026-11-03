@@ -20,7 +20,7 @@ Before you start, get these ready:
 
 ![Job search (sample data) — circle 1 = switch to Smart match, 2 = the search box](/manual/search.en.png)
 
-![What the AI agent returns: a 1–5 score, a verdict and each job requirement matched against your CV — circle 1 = the verdict](/manual/ai-evaluation.en.png)
+![What the AI agent returns: a fit score in percent (0–100%), a verdict and each job requirement matched against your CV — circle 1 = the verdict](/manual/ai-evaluation.en.png)
 
 ![Video: search, pick a job and let the agent evaluate it](/manual/search.en.mp4)
 
@@ -56,7 +56,7 @@ There are 2 ways.
 - Smart match uses AI every time it runs, so it waits for you to start it.
 - Smart match ranking and the evaluation use AI, and the evaluation carries a "Made by AI" label. The skills found in your CV are matched by keywords from the posting, with no AI. If AI ranking is not finished, the system shows a keyword ranking first.
 - The content of your CV is sent to an AI service to rank the jobs.
-- The score is an AI estimate to help you decide. It does not predict whether you will get the job, so check the evidence yourself.
+- The score is a percentage the platform works out from the AI's judgment of each requirement, using a written formula (open "How the score is calculated" to see it). It helps you decide. It does not predict whether you will get the job, so check the evidence yourself.
 - If you change your CV later, only new evaluations are affected.
 - Each evaluation always shows which CV and job posting version it used.
 - Data marked as sample data is made up. It is not a real job posting.

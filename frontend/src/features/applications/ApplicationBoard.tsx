@@ -40,7 +40,7 @@ function OpportunityRow({ projectId, card, locale, onMove, flowData }: {
     <ChevronRight className="size-5 text-muted-foreground md:col-start-6 md:row-start-1" aria-hidden="true" />
     {/* Phone: score and stage share one line. From md up, `contents` puts both back in their own columns. */}
     <div className="col-span-2 flex flex-wrap items-center gap-3 md:contents">
-      <div className="relative z-10 flex items-center gap-2 md:col-start-3 md:row-start-1"><FitScore score={flow.score} locale={locale} /></div>
+      <div className="relative z-10 flex items-center gap-2 md:col-start-3 md:row-start-1"><FitScore result={flow.score} locale={locale} /></div>
       <div className="relative z-10 flex items-center md:col-start-4 md:row-start-1"><StatusBadge status={card.stage} locale={locale} /></div>
     </div>
     {/* Split button: the next step, plus a menu that moves the stage (keyboard and touch; the board view keeps drag). */}

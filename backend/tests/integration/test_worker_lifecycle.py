@@ -152,7 +152,7 @@ def test_evaluation_result_accepts_only_the_public_report_contract() -> None:
     result = parse('{"report_markdown":"Synthetic evidence","score":4.0}')
 
     assert result.report_markdown == "Synthetic evidence"
-    assert result.score == 4.0
+    assert result.score is None
     with pytest.raises(ValueError, match="native_response_invalid"):
         parse('{"report_markdown":"Synthetic evidence","score":4,"raw_trace":"private"}')
 
@@ -168,7 +168,7 @@ def test_native_json_wrapped_in_one_markdown_fence_is_accepted() -> None:
     executor = import_module("job_search_platform.workers.executor")
 
     result = executor.parse_evaluation_result('```json\n{"report_markdown":"Synthetic","score":3.5}\n```')
-    assert result.score == 3.5
+    assert result.score is None
     drafts = executor.parse_draft_manifest(
         '```\n{"drafts":[{"path":"cv.md","document_type":"cv","title":"Synthetic","format":"pdf"}]}\n```')
     assert drafts[0]["path"] == "cv.md"
@@ -570,7 +570,7 @@ async def test_completed_evaluation_stores_deterministic_skill_coverage(db_sessi
     with sessions() as db:
         finished = db.get(Run, view.id)
         assert finished.status == "completed"
-        assert finished.evaluation_result["score"] == 4.0
+        assert finished.evaluation_result["score"] is None
         assert finished.evaluation_result["skill_coverage"] == {
             "required": ["React", "TypeScript", "PostgreSQL"],
             "matched": ["React", "PostgreSQL"],

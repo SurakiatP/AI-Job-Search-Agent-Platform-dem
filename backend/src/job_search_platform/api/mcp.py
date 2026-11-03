@@ -67,6 +67,10 @@ def _run_result(run: RunView) -> dict[str, Any]:
     }
     if run.evaluation_result is not None:
         result["evaluation_resource"] = f"job-search://runs/{run.id}/evaluation"
+        result.update({k: v for k, v in (
+            ("score_percent", run.evaluation_result.score_percent),
+            ("score_band", run.evaluation_result.score_band),
+            ("score", run.evaluation_result.score)) if v is not None})
     return result
 
 

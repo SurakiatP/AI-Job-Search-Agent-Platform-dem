@@ -57,7 +57,7 @@ export function StepPanel({ index }: { index: number }) {
   </Shell>;
   if (slug === 'evaluate') return <Shell label={label}>
     <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
-      <FitScore score={4.2} size="lg" locale={locale} />
+      <FitScore result={{ score: null, score_percent: 84, score_band: 'strong' }} size="lg" locale={locale} />
       <ul className="grid gap-2 pl-4 text-sm text-muted-foreground [overflow-wrap:anywhere]">{p.reasons.map(r => <li className="list-disc" key={r}>{r}</li>)}</ul>
     </div>
     <SkillCoverage coverage={coverage} locale={locale} className="border-t pt-4" />
@@ -124,7 +124,7 @@ export function StepPanel({ index }: { index: number }) {
         <span className="text-sm text-muted-foreground">{run.job}</span>
         <span className="flex flex-wrap items-center gap-2"><StatusBadge status={run.status} locale={locale} /><Badge variant="outline">{run.origin}</Badge></span>
       </div>
-      <FitScore score={run.score} locale={locale} />
+      <FitScore result={run.score == null ? null : { score: null, score_percent: run.score, score_band: 'strong' }} locale={locale} />
     </div>
   </Shell>;
 }

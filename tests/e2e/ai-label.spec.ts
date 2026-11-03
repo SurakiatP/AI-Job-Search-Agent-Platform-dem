@@ -9,7 +9,7 @@ const report = { verdict: 'Worth applying', summary: 'Fits well.', requirements:
   strengths: ['RAG'], risks: ['No GCP'], interview_prep: ['Explain RAG'], cv_changes: ['Name function calling'] };
 const evalRun = { id: runId, project_id: projectId, session_id: sessionId, operation: 'evaluate_job', status: 'completed', job_revision_id: job, output_language: 'en',
   result_file_ids: [], created_at: '2026-10-10T00:00:00Z', finished_at: '2026-10-10T00:01:00Z', retry_of_id: null,
-  evaluation_result: { score: 4.2, report, report_markdown: 'x', skill_coverage: { matched: ['SQL'], missing: [], required: ['SQL'], ratio: 1, method: 'k' } } };
+  evaluation_result: { score: null, score_percent: 84, score_band: 'strong', report, report_markdown: 'x', skill_coverage: { matched: ['SQL'], missing: [], required: ['SQL'], ratio: 1, method: 'k' } } };
 const label = 'Made by AI';
 
 async function setup(page: Page) {

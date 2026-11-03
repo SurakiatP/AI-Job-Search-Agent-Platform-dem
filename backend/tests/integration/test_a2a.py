@@ -243,7 +243,7 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
             "completed",
             evaluation_result={
                 "report_markdown": "Synthetic A2A evaluation report.",
-                "score": 4.5,
+                "score_percent": 72, "score_band": "good",
             },
         )
 
@@ -260,6 +260,8 @@ async def test_official_a2a_clients_use_durable_runs_and_authorized_artifacts(ap
         context = ClientCallContext(service_parameters={"A2A-Version": "1.0"})
         recovered = await persisted_client.get_task(GetTaskRequest(id=str(run_id)), context=context)
         assert TaskState.Name(recovered.status.state) == "TASK_STATE_COMPLETED"
+        meta = {k: (v.number_value if v.HasField("number_value") else v.string_value) for k, v in recovered.artifacts[0].metadata.fields.items()}
+        assert meta == {"score_percent": 72, "score_band": "good"}
         assert len(recovered.artifacts) == 1
         artifact_url = recovered.artifacts[0].parts[0].data.struct_value.fields["uri"].string_value
         async with httpx.AsyncClient(headers={"Authorization": f"Bearer {grant['token']}"}) as download:

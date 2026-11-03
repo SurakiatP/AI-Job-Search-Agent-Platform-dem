@@ -20,7 +20,7 @@ export function jobFlow(data: JobFlowData, jobId: string, stage: ApplicationStag
     waitingRunId: waiting?.id,
     job: { id: jobId, stage, session: evaluation ? { id: evaluation.session_id ?? '', scored: true, drafted } : undefined },
   });
-  const score = evaluation?.evaluation_result?.score ?? null;
+  const score = evaluation?.evaluation_result ?? null;
   return { step, score, waitingSessionId: waiting?.session_id ?? null, evaluationSessionId: evaluation?.session_id ?? null };
 }
 

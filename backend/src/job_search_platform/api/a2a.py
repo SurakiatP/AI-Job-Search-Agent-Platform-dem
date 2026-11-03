@@ -319,6 +319,10 @@ class _PlatformRequestHandler(RequestHandler):
                 {
                     "artifactId": f"evaluation-{run.id}",
                     "name": "Evaluation report",
+                    "metadata": {k: v for k, v in (
+                        ("score_percent", run.evaluation_result.score_percent),
+                        ("score_band", run.evaluation_result.score_band),
+                        ("score", run.evaluation_result.score)) if v is not None},
                     "parts": [
                         {
                             "data": {

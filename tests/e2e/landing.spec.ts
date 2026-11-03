@@ -41,7 +41,7 @@ test('landing FAQ has six questions that open, and the footer links to real page
   const items = faq.locator('details');
   await expect(items).toHaveCount(6);
   await expect(items.locator('summary')).toHaveText([
-    'Does the app submit applications for me?', 'Where does my CV go?', 'What does a score of 4.2 out of 5 mean?',
+    'Does the app submit applications for me?', 'Where does my CV go?', 'What does a score of 84% mean?',
     'If I upload a new CV, do old evaluations change?', 'Can I start without a CV file?', 'Can I connect the AI assistant I already use?',
   ]);
   await items.first().locator('summary').focus();
@@ -103,7 +103,7 @@ test('landing demo is labelled illustrative and states what the app will not do'
   await expect(steps).toHaveCount(5);
   await expect(steps.nth(2)).toContainText('Fit evaluation');
   await expect(steps.nth(2).getByText('AI', { exact: true })).toBeVisible();
-  await expect(steps.nth(2)).toContainText('4.2 / 5');
+  await expect(steps.nth(2)).toContainText('84%');
   await expect(steps.nth(2)).toContainText('Skills found: 8 of 11, counted from keywords, no AI');
   await expect(steps.nth(3)).toHaveAttribute('aria-current', 'step');
   await expect(steps.nth(3)).toContainText('Waiting for you to review the CV changes');

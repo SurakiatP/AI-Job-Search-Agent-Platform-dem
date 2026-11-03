@@ -421,9 +421,22 @@ class EvaluationReport(DTO):
     cv_changes: _Lines = ()
 
 
+class ScoreBasis(DTO):
+    """Why the percent is what it is: requirement rows per match level and whether the critical gate capped it."""
+    strong: Annotated[int, Field(ge=0, le=30)]
+    partial: Annotated[int, Field(ge=0, le=30)]
+    missing: Annotated[int, Field(ge=0, le=30)]
+    not_applicable: Annotated[int, Field(ge=0, le=30)]
+    critical_missing: bool
+    capped: bool
+
+
 class EvaluationResult(DTO):
     report_markdown: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200000)]
-    score: Annotated[float, Field(ge=1, le=5, strict=True)] | None = None
+    score: Annotated[float, Field(ge=1, le=5, strict=True)] | None = None  # legacy 1-5, old stored results only
+    score_percent: Annotated[int, Field(ge=0, le=100, strict=True)] | None = None  # computed by the platform rubric
+    score_band: Literal["strong", "good", "partial", "weak", "poor"] | None = None
+    score_basis: ScoreBasis | None = None
     skill_coverage: SkillCoverage | None = None
     report: EvaluationReport | None = None
 
