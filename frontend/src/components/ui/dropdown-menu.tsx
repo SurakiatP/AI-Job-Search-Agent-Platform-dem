@@ -10,5 +10,5 @@ export function DropdownMenuContent({ className, sideOffset = 4, ...props }: Com
 }
 
 export function DropdownMenuItem({ className, ...props }: ComponentProps<typeof Primitive.Item>) {
-  return <Primitive.Item className={cn('flex min-h-11 cursor-pointer lg:min-h-10 items-center gap-2 rounded-md px-3 py-2 text-sm outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground [&_svg]:shrink-0', className)} {...props} />;
+  return <Primitive.Item className={cn('flex min-h-10 cursor-pointer items-center gap-2 rounded-md px-3 text-sm pointer-coarse:min-h-11 outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground [&_svg]:size-4 [&_svg]:shrink-0', className)} {...props} />;
 }

@@ -130,17 +130,17 @@ function ProjectRow({ project, current, sessionId, expanded, version, onToggle, 
         onClick={() => { if (!expanded) onToggle(); onNavigate?.(); }}><ScrollingName>{project.name}</ScrollingName></Link>
       <RowMenu name={project.name} onRename={() => onDialog({ mode: 'rename', target: projectTarget })} onDelete={() => onDialog({ mode: 'delete', target: projectTarget })} />
     </div>
-    {expanded && <ul className="ms-4 mt-0.5 grid grid-cols-1 gap-0.5 border-s ps-1.5">
+    {expanded && <ul className="ms-4 mt-0.5 grid grid-cols-1 gap-0.5 border-s ps-2">
       {sessions.map(session => {
         const target: Target = { kind: 'session', projectId: project.id, id: session.id, name: session.name };
         return <li key={session.id} className={cn(rowClass, activeSessionClass)}>
           <Link to={session.href} title={session.name} aria-current={current && session.id === sessionId ? 'page' : undefined}
-            className="min-w-0 flex-1 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onNavigate}><ScrollingName>{session.name}</ScrollingName></Link>
+            className="min-w-0 flex-1 rounded-md px-2 py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onNavigate}><ScrollingName>{session.name}</ScrollingName></Link>
           <RowMenu name={session.name} onRename={() => onDialog({ mode: 'rename', target })} onDelete={() => onDialog({ mode: 'delete', target })} />
         </li>;
       })}
       <li>
-        <button type="button" onClick={() => setCreating(true)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm text-muted-foreground outline-none transition-colors hover:bg-[color:var(--nav-hover)] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+        <button type="button" onClick={() => setCreating(true)} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-start text-sm text-muted-foreground outline-none transition-colors hover:bg-[color:var(--nav-hover)] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
           <Plus className="size-4 shrink-0" aria-hidden="true" />{c.newSession}
         </button>
         {creating && <NewSessionDialog projectId={project.id} onClose={() => { setCreating(false); onNavigate?.(); }} />}
@@ -189,11 +189,11 @@ export function ProjectTree({ projects, projectId, sessionId, onNavigate, onRelo
   return <section aria-labelledby="sidebar-projects-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1">
     <div className="flex items-center justify-between gap-1">
       <h2 id="sidebar-projects-heading" className="min-w-0 text-sm font-medium">
-        <button type="button" aria-expanded={listOpen} aria-label={`${c.projects}: ${c.toggleList}`} onClick={() => setListOpen(value => !value)} className="flex items-center gap-1 rounded-md px-2 py-1.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+        <button type="button" aria-expanded={listOpen} aria-label={`${c.projects}: ${c.toggleList}`} onClick={() => setListOpen(value => !value)} className="flex items-center gap-1 rounded-md px-2 py-2 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
           {c.projects}<ChevronDown className={cn('size-4 transition-transform', !listOpen && '-rotate-90')} aria-hidden="true" />
         </button>
       </h2>
-      <Button asChild variant="ghost" size="icon" className="size-8"><Link to="/app/projects/new" aria-label={c.newProject} title={c.newProject} onClick={onNavigate}><Plus className="size-4" aria-hidden="true" /></Link></Button>
+      <Button asChild variant="ghost" size="icon-sm"><Link to="/app/projects/new" aria-label={c.newProject} title={c.newProject} onClick={onNavigate}><Plus className="size-4" aria-hidden="true" /></Link></Button>
     </div>
     {listOpen && (projects.length === 0 ? <p className="px-2 text-sm text-muted-foreground">{t('noProjects')}</p> : <ul className="grid grid-cols-1 gap-0.5">
       {projects.map(project => <ProjectRow key={project.id} project={project} current={project.id === projectId} sessionId={sessionId} expanded={expanded.has(project.id)} version={version}

@@ -1,6 +1,7 @@
 // One practice set laid out as the interview day (CR-IVP-01): a run sheet of rounds with a course line that fills as
 // questions become ready, and a work pane for the current question (or the flashcard stage in the technical round).
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Pencil, RotateCcw, Timer } from 'lucide-react';
@@ -88,11 +89,11 @@ export function PracticeSetPage() {
         <p className="mt-1 break-words text-sm text-muted-foreground">{[c.levels[set.level], s?.job_title && `${s.job_title}${s.job_company ? ` · ${s.job_company}` : ''}`, s?.cv_name && `CV: ${s.cv_name}${s.cv_revision != null ? ` · v${s.cv_revision}` : ''}`].filter(Boolean).join(' · ')}</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" className="min-h-11" onClick={() => setRenaming(true)}><Pencil className="size-4" aria-hidden="true" />{c.rename}</Button>
+        <Button type="button" variant="outline" onClick={() => setRenaming(true)}><Pencil className="size-4" aria-hidden="true" />{c.rename}</Button>
       </div>
     </header>
     </div>
-    {failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}
+    {failure && <Alert severity="error">{failure}</Alert>}
 
     {set.status !== 'ready' ? <div className="grid justify-items-start gap-3 rounded-xl border bg-card p-6">
       {set.status === 'generating' ? <><BusyNote bar label={c.generating} /><p className="text-sm text-muted-foreground">{c.generatingBody}</p></>
@@ -148,14 +149,14 @@ function RunSheet({ c, rounds, current, index, readyCount, total, reverseCount, 
         </span>
         <div className="min-w-0">
           <button type="button" onClick={() => onSelect(round.id)} aria-current={active ? 'step' : undefined}
-            className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-md py-1.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-md py-2 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <span className="min-w-0"><span className={cn('block break-words text-sm font-semibold', active && 'text-primary')}>{label}</span><span className="block text-xs text-muted-foreground">{sub}</span></span>
             {minutes !== null && <span className="pt-0.5 text-xs tabular-nums text-muted-foreground">{c.minutes(minutes)}</span>}
           </button>
           {active && round.id !== 'technical' && !extra && <ul className="mt-1 grid gap-0.5">{round.questions.map((q, i) => <li key={q.id}>
             <button type="button" onClick={() => onSelect(round.id, i)} aria-current={i === index ? 'true' : undefined}
-              className={cn('flex w-full min-w-0 items-start gap-2 rounded-md px-1.5 py-1 text-start text-sm transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', i === index ? 'font-medium text-foreground' : 'text-muted-foreground')}>
-              <span aria-hidden="true" className={cn('mt-1.5 size-2 shrink-0 rounded-full border-[1.5px]', q.ready ? 'border-success bg-success' : i === index ? 'border-primary bg-primary' : 'border-primary/60')} />
+              className={cn('flex w-full min-w-0 items-start gap-2 rounded-md px-2 py-1 text-start text-sm transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', i === index ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+              <span aria-hidden="true" className={cn('mt-2 size-2 shrink-0 rounded-full border-[1.5px]', q.ready ? 'border-success bg-success' : i === index ? 'border-primary bg-primary' : 'border-primary/60')} />
               <span className="line-clamp-2 min-w-0 break-words">{q.prompt}</span>
             </button>
           </li>)}</ul>}
@@ -212,19 +213,19 @@ function WrittenQuestion({ c, projectId, question, facts, roundLabel, counter, o
       </div>
       {stories.length > 0 && <div className="grid gap-2"><p className="text-sm font-medium">{c.stories}</p>
         <div className="flex flex-wrap gap-2">{stories.map(fact => <button key={fact.id} type="button" onClick={() => setAnswer(text => (text.trim() ? `${text.trim()}\n${fact.text}` : fact.text))}
-          className="max-w-full break-words rounded-lg border border-dashed border-primary/50 bg-accent/40 px-3 py-1.5 text-start text-sm text-accent-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{fact.text}</button>)}</div>
+          className="max-w-full break-words rounded-lg border border-dashed border-primary/50 bg-accent/40 px-3 py-2 text-start text-sm text-accent-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{fact.text}</button>)}</div>
       </div>}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {error && <Alert severity="error">{error}</Alert>}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-1">
-          <Button type="button" variant="ghost" className="min-h-11" disabled={!onPrev} onClick={onPrev} aria-label={c.prev}><ArrowLeft className="size-4" aria-hidden="true" /></Button>
+          <Button type="button" variant="ghost" disabled={!onPrev} onClick={onPrev} aria-label={c.prev}><ArrowLeft className="size-4" aria-hidden="true" /></Button>
           <span className="self-center px-1 text-sm tabular-nums text-muted-foreground"><span className="sr-only">{roundLabel} </span>{counter}</span>
-          <Button type="button" variant="ghost" className="min-h-11" disabled={!onNext} onClick={onNext}>{c.next}<ArrowRight className="size-4" aria-hidden="true" /></Button>
+          <Button type="button" variant="ghost" disabled={!onNext} onClick={onNext}>{c.next}<ArrowRight className="size-4" aria-hidden="true" /></Button>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant={question.ready ? 'secondary' : 'outline'} className="min-h-11" aria-pressed={question.ready} onClick={() => onReady(!question.ready)}>
+          <Button type="button" variant={question.ready ? 'secondary' : 'outline'} aria-pressed={question.ready} onClick={() => onReady(!question.ready)}>
             {question.ready && <Check className="size-4 text-success" aria-hidden="true" />}{question.ready ? c.ready : c.markReady}</Button>
-          <Button type="button" className="min-h-11" busy={saving} disabled={saving || !answer.trim()} onClick={() => void save()}>{c.saveAnswer}</Button>
+          <Button type="button" busy={saving} disabled={saving || !answer.trim()} onClick={() => void save()}>{c.saveAnswer}</Button>
         </div>
       </div>
       {question.attempts[0] && <FeedbackPanel c={c} feedback={question.attempts[0].feedback} answer={question.attempts[0].answer}
@@ -234,7 +235,7 @@ function WrittenQuestion({ c, projectId, question, facts, roundLabel, counter, o
       <div className="grid gap-3 border-t pt-4">
         <Points title={c.keyPoints} items={question.key_points} />
         {question.model_answer ? <div className="grid gap-2">
-          <button type="button" aria-expanded={showExample} onClick={() => setShowExample(open => !open)} className="flex w-fit items-center gap-1.5 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <button type="button" aria-expanded={showExample} onClick={() => setShowExample(open => !open)} className="flex w-fit items-center gap-2 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {c.example}<ChevronDown className={cn('size-4 transition-transform', showExample && 'rotate-180')} aria-hidden="true" /></button>
           {showExample && <p className="max-w-[70ch] rounded-lg bg-secondary p-3 leading-relaxed">{question.model_answer}</p>}
         </div> : <p className="text-sm text-muted-foreground">{c.noExample}</p>}
@@ -254,8 +255,8 @@ function answerFeedback(feedback: PracticeFeedback | null) {
 function Points({ title, items, open = false }: { title: string; items: string[]; open?: boolean }) {
   if (!items.length) return null;
   return <details open={open} className="group grid gap-2">
-    <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-primary hover:underline">{title}<ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" /></summary>
-    <ul className="mt-2 grid max-w-[70ch] gap-1.5 text-sm leading-relaxed">{items.map(item => <li key={item} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}</ul>
+    <summary className="flex w-fit cursor-pointer list-none items-center gap-2 text-sm font-medium text-primary hover:underline">{title}<ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" /></summary>
+    <ul className="mt-2 grid max-w-[70ch] gap-2 text-sm leading-relaxed">{items.map(item => <li key={item} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}</ul>
   </details>;
 }
 

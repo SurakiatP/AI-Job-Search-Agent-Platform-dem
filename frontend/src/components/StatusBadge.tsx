@@ -22,6 +22,8 @@ const config: Record<Status, { variant: Variant; th: string; en: string }> = {
 
 export function StatusBadge({ status, locale }: { status: Status; locale: 'th' | 'en' }) {
   const { variant, ...labels } = config[status];
+  const isStage = status in stageLabel;
   const working = status === 'queued' || status === 'running';
-  return <Badge variant={variant} className={working ? 'gap-1.5' : undefined}>{working && <Spinner className="size-3" />}{labels[locale]}</Badge>;
+  if (isStage) return <Badge variant="muted"><span className="stage-dot" data-app-stage={status} aria-hidden="true" />{labels[locale]}</Badge>;
+  return <Badge variant={variant}>{working && <Spinner className="size-3" />}{labels[locale]}</Badge>;
 }

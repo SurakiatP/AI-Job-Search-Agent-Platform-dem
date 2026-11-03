@@ -1,3 +1,4 @@
+import { Select } from '@/components/ui/select';
 import { useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +10,6 @@ import { useAccount } from '../../lib/api';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import { AppearanceSettings } from './AppearanceSettings';
-import { selectClass } from './Field';
 import { GatewaySettings } from './GatewaySettings';
 import { ProjectSharing } from './ProjectSharing';
 import { TelegramSettings } from './TelegramSettings';
@@ -69,10 +69,10 @@ export function SettingsPage() {
       <div className="grid min-w-0 gap-4">
         {(section === 'preferences' || section === 'tools' || section === 'sharing' || section === 'webhooks') && <div className="grid gap-2 sm:max-w-xs">
           <Label htmlFor="settings-project">{ts('projectScope')}</Label>
-          <select id="settings-project" className={selectClass} value={projectId} onChange={event => setParams(previous => { const next = new URLSearchParams(previous); next.set('project', event.target.value); return next; }, { replace: true })}>
+          <Select id="settings-project" value={projectId} onChange={event => setParams(previous => { const next = new URLSearchParams(previous); next.set('project', event.target.value); return next; }, { replace: true })}>
             {!projectId && <option value="">{t('workspace.chooseProject')}</option>}
             {projects.data?.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
-          </select>
+          </Select>
           {!projectId && <Link className="text-sm text-primary hover:underline" to="/app/projects/new">{t('pages.createProject', { defaultValue: 'Create a project' })}</Link>}
         </div>}
         {section === 'appearance' && <AppearanceSettings />}

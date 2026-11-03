@@ -28,7 +28,7 @@ export function LandingNav() {
     </DropdownMenu>
     <Link to="/how-it-works" className={link}>{c.nav.how}</Link>
     <Link to="/data" className={link}>{c.nav.data}</Link>
-    <Link to="/docs" className={`${link} gap-1.5`}><BookOpen className="size-4" aria-hidden="true" />{c.docs}</Link>
+    <Link to="/docs" className={`${link} gap-2`}><BookOpen className="size-4" aria-hidden="true" />{c.docs}</Link>
   </nav>;
 }
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { Link, useParams } from 'react-router';
 import { PageBack } from '@/components/PageBack';
 import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, RefreshCw, Trash2 } from 'lucide-react';
@@ -10,6 +11,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
+import { Select } from '../../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog';
 import { BusyNote } from '../../components/BusyNote';
 import { ACCENTS, FIELDS, PERSONAL_KEYS, emptyItem, mergeResume, normalize, type Draft, type Field, type Item, type Lang, type ListSection, type ResumeData, type SectionName } from './sections';
@@ -190,13 +192,13 @@ export function BuilderPage({ kind }: { kind: Kind }) {
       <h2 className="text-sm font-semibold">{c.preview}{pages > 0 && <span className="ml-2 font-normal text-muted-foreground">· {c.pages(pages)}</span>}</h2>
       <Button size="sm" variant="outline" busy={previewing} onClick={() => void preview()}><RefreshCw className="size-4" aria-hidden="true" />{c.updatePreview}</Button>
     </div>
-    {previewError && <p role="alert" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-sm">{c.previewFailed}</p>}
-    {sampled.length > 0 && <div role="note" className="grid gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+    {previewError && <Alert severity="warning" role="alert">{c.previewFailed}</Alert>}
+    {sampled.length > 0 && <Alert severity="warning" role="note">
       <p className="font-semibold">{c.sampleTitle}</p>
       <p>{c.sampleBody}</p>
-      <ul className="flex flex-wrap gap-2">{sampled.map(s => <li key={s} className="rounded-full border border-warning/50 bg-warning/20 px-3 py-1 font-medium">{s}</li>)}</ul>
-    </div>}
-    {pages > 2 && <p role="note" className="rounded-md border border-warning/40 bg-warning/10 p-2 text-sm">{c.tooLong}</p>}
+      <ul className="mt-2 flex flex-wrap gap-2">{sampled.map(s => <li key={s} className="rounded-md bg-warning/20 px-3 py-1 font-medium">{s}</li>)}</ul>
+    </Alert>}
+    {pages > 2 && <Alert severity="warning" role="note">{c.tooLong}</Alert>}
     <div className="rounded-xl bg-muted p-4 sm:p-6"><div className="relative overflow-hidden rounded-lg border bg-white shadow-md" style={{ aspectRatio: '1 / 1.414' }}>
       {pdfUrl ? <iframe title={c.preview} src={`${pdfUrl}#toolbar=0&navpanes=0&view=FitH`} className="absolute -left-4 -top-1.5 h-[calc(100%+2.5rem)] w-[calc(100%+2rem)] max-w-none border-0" /> : <div className="grid size-full place-items-center p-4 text-sm text-muted-foreground">{c.loading}</div>}
       {previewing && pdfUrl && <div className="absolute right-2 top-2 rounded bg-primary px-2 py-1 text-xs text-primary-foreground">{c.rendering}</div>}
@@ -218,12 +220,11 @@ export function BuilderPage({ kind }: { kind: Kind }) {
         <Button onClick={() => { setPublishError(''); setConfirm(true); }}>{c.publish}</Button>
       </div>
     </div>
-    {save === 'conflict' && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">{c.conflictLong}<Button size="sm" variant="outline" onClick={() => void load()}>{c.reload}</Button></div>}
-    {save === 'offline' && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">{c.offlineLong}<Button size="sm" variant="outline" onClick={() => void persist()}>{c.retry}</Button></div>}
-    {stash && save === 'saved' && <div role="status" className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">{c.stashFound}
-      <Button size="sm" variant="outline" onClick={() => { setStash(null); localStorage.removeItem(stashKey); if (draft) change({ ...stash, updated_at: draft.updated_at }); }}>{c.restore}</Button>
-      <Button size="sm" variant="ghost" onClick={() => { setStash(null); localStorage.removeItem(stashKey); }}>{c.discard}</Button></div>}
-    {published !== null && <div role="status" className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm">{kind === 'cv' ? c.publishedCv(published) : c.publishedDoc(published)} <Link className="font-medium text-primary underline" to={back}>{c.open}</Link></div>}
+    {save === 'conflict' && <Alert severity="warning" role="alert" action={<Button size="sm" variant="outline" onClick={() => void load()}>{c.reload}</Button>}>{c.conflictLong}</Alert>}
+    {save === 'offline' && <Alert severity="warning" role="alert" action={<Button size="sm" variant="outline" onClick={() => void persist()}>{c.retry}</Button>}>{c.offlineLong}</Alert>}
+    {stash && save === 'saved' && <Alert severity="info" action={<span className="flex gap-2"><Button size="sm" variant="outline" onClick={() => { setStash(null); localStorage.removeItem(stashKey); if (draft) change({ ...stash, updated_at: draft.updated_at }); }}>{c.restore}</Button>
+      <Button size="sm" variant="ghost" onClick={() => { setStash(null); localStorage.removeItem(stashKey); }}>{c.discard}</Button></span>}>{c.stashFound}</Alert>}
+    {published !== null && <Alert severity="success">{kind === 'cv' ? c.publishedCv(published) : c.publishedDoc(published)} <Link className="font-medium text-primary underline" to={back}>{c.open}</Link></Alert>}
     {kind === 'document' && <p className="rounded-lg border bg-muted/40 p-3 text-sm">{c.docNote}</p>}
 
     {kind === 'cv' && <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4">
@@ -240,8 +241,8 @@ export function BuilderPage({ kind }: { kind: Kind }) {
           className="grid size-11 place-items-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground"><span className="size-7 rounded-full" style={{ background: a.hex }} /></button>)}</div>
       </fieldset>}
       <div className="grid gap-2 lg:w-56"><Label htmlFor="cvb-lang">{c.docLanguage}</Label>
-        <select id="cvb-lang" className="min-h-11 rounded-md border border-input bg-card px-3 text-sm" value={draft.document_language} onChange={e => change({ ...draft, document_language: e.target.value as Lang })}>
-          <option value="th">ไทย</option><option value="en">English</option></select></div>
+        <Select id="cvb-lang" value={draft.document_language} onChange={e => change({ ...draft, document_language: e.target.value as Lang })}>
+          <option value="th">ไทย</option><option value="en">English</option></Select></div>
     </div>
 
     <div className="flex gap-2 lg:hidden">
@@ -276,7 +277,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
       <DialogContent>
         <DialogTitle>{c.publishTitle}</DialogTitle>
         <DialogDescription>{kind === 'cv' ? c.publishBodyCv : c.publishBodyDoc}</DialogDescription>
-        {publishError && <p role="alert" className="text-sm text-destructive">{publishError}</p>}
+        {publishError && <Alert severity="error">{publishError}</Alert>}
         <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setConfirm(false)}>{c.cancel}</Button><Button busy={publishing} onClick={() => void publish()}>{c.publish}</Button></div>
       </DialogContent>
     </Dialog>
@@ -328,7 +329,7 @@ function ItemsEditor({ name, data, locale, update }: { name: ListSection; data: 
   return <>
     {name === 'references' && <div className="grid gap-2 rounded-lg bg-muted/40 p-3 text-sm">
       <p>{c.referencesNote}</p>
-      <label className="flex min-h-11 lg:min-h-10 items-center gap-2"><input type="checkbox" className="size-4 accent-primary" checked={data.references_on_request} onChange={e => update(d => { d.references_on_request = e.target.checked; return d; })} />{c.onRequest}</label>
+      <label className="flex min-h-11 lg:min-h-10 items-center gap-2"><input type="checkbox" className="size-5 shrink-0 accent-primary" checked={data.references_on_request} onChange={e => update(d => { d.references_on_request = e.target.checked; return d; })} />{c.onRequest}</label>
     </div>}
     {items.map((item, i) => <fieldset key={item.id} className="grid gap-3 rounded-lg border p-3">
       <legend className="sr-only">{c.itemLabel(c.sections[name], i + 1)}</legend>
@@ -351,7 +352,7 @@ function FieldInput({ field, item, locale, prefix, onChange }: { field: Field; i
   const label = field[locale];
   const placeholder = field.placeholder?.[locale];
   const value = item[field.key];
-  if (field.kind === 'bool') return <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm sm:self-end"><input id={id} type="checkbox" className="size-4 accent-primary" checked={Boolean(value)} onChange={e => onChange(e.target.checked)} />{label}</label>;
+  if (field.kind === 'bool') return <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm sm:self-end"><input id={id} type="checkbox" className="size-5 shrink-0 accent-primary" checked={Boolean(value)} onChange={e => onChange(e.target.checked)} />{label}</label>;
   if (field.kind === 'lines' || field.kind === 'textarea') {
     const text = field.kind === 'lines' ? ((value as string[]) ?? []).join('\n') : String(value ?? '');
     return <div className="grid gap-2 sm:col-span-2"><Label htmlFor={id}>{label}</Label>
@@ -396,8 +397,8 @@ function NameEditor({ c, label, initial, url, field, max }: { c: Copy; label: st
         if (e.key === 'Enter') e.currentTarget.blur();
         if (e.key === 'Escape') { skip.current = true; setValue(saved); e.currentTarget.blur(); }
       }}
-      /* optical: the input padding is pulled back so the text lines up with the title above */ className="-mx-1 w-full max-w-md rounded-md border border-transparent bg-transparent px-1 py-0.5 text-base text-muted-foreground hover:border-input focus-visible:border-input focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-    {failed && <p role="alert" className="text-sm text-destructive">{c.renameFailed}</p>}
+      /* optical: the input padding is pulled back so the text lines up with the title above */ className="-mx-1 w-full max-w-md min-h-11 rounded-md border border-transparent bg-transparent px-1 py-1 text-base text-muted-foreground lg:min-h-10 hover:border-input focus-visible:border-input focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+    {failed && <Alert severity="error">{c.renameFailed}</Alert>}
   </div>;
 }
 
@@ -413,13 +414,13 @@ function AddressEditor({ c, locale, data, update }: { c: Copy; locale: Lang; dat
       <TextField id="address-subdistrict" label={c.addressFields.subdistrict} value={a.subdistrict} onChange={v => set('subdistrict', v)} />
       <TextField id="address-district" label={c.addressFields.district} value={a.district} onChange={v => set('district', v)} />
       <div className="grid min-w-0 gap-2"><Label htmlFor="address-province">{c.addressFields.province}</Label>
-        <select id="address-province" className="min-h-11 lg:min-h-10 rounded-md border border-input bg-card px-3 text-sm" value={a.province} onChange={e => set('province', e.target.value)}>
+        <Select id="address-province" value={a.province} onChange={e => set('province', e.target.value)}>
           <option value="">{c.chooseProvince}</option>{sorted.map(p => <option key={p.id} value={p.id}>{p[locale]}</option>)}
-        </select></div>
+        </Select></div>
       <div className="grid min-w-0 gap-2"><Label htmlFor="address-postcode">{c.addressFields.postcode}</Label>
         <Input id="address-postcode" inputMode="numeric" autoComplete="postal-code" value={a.postcode} onChange={e => set('postcode', e.target.value.replace(/\D/g, '').slice(0, 5))} /></div>
     </div>
-    <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={data.basics.address_full}
+    <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-5 shrink-0 accent-primary" checked={data.basics.address_full}
       onChange={e => update(d => { d.basics.address_full = e.target.checked; return d; })} />{c.addressFull}</label>
     <p className="text-xs text-muted-foreground">{c.addressNote}</p>
   </fieldset>;

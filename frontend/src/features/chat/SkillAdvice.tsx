@@ -45,7 +45,7 @@ export function SkillAdvice({ projectId, locale, coverage }: { projectId: string
       {canAdd.length > 0 && <div className="grid gap-2 rounded-lg border border-success/40 bg-success/5 p-3" data-testid="advice-can-add">
         <h3 className="flex items-center gap-2 text-sm font-semibold"><CheckCircle2 className="size-4 text-success" aria-hidden="true" />{c.canAdd}</h3>
         <p className="text-xs text-muted-foreground">{c.canAddHint}</p>
-        <ul className="flex flex-wrap gap-2">{canAdd.map(({ skill, count }) => <li key={skill}><Badge variant="success" className="gap-1.5 break-all">{skill}<span className="font-normal opacity-80">· {c.evidence(count)}</span></Badge></li>)}</ul>
+        <ul className="flex flex-wrap gap-2">{canAdd.map(({ skill, count }) => <li key={skill}><Badge variant="success" className="gap-2 break-all">{skill}<span className="font-normal opacity-80">· {c.evidence(count)}</span></Badge></li>)}</ul>
       </div>}
       {cannot.length > 0 && bank.status !== 'loading' && <div className="grid gap-3 rounded-lg border border-warning/40 bg-warning/5 p-3" data-testid="advice-cannot-add">
         <h3 className="flex items-center gap-2 text-sm font-semibold"><MinusCircle className="size-4 text-warning" aria-hidden="true" />{c.cannot}</h3>

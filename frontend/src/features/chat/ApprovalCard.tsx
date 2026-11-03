@@ -32,7 +32,7 @@ export function ApprovalCard({ approval, locale, busy, onDecision, onRefresh }: 
       <dt className="text-muted-foreground">{t.expires}</dt><dd><time dateTime={approval.expires_at}>{new Date(approval.expires_at).toLocaleString(dateLocale(locale))}</time></dd>
     </dl>
     {expired ? <div className="grid justify-items-start gap-3"><p role="status" className="text-sm">{t.expired}</p><Button type="button" onClick={onRefresh}>{t.refresh}</Button></div> : <>
-      <label className="flex min-h-11 items-start gap-2 text-sm"><input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" checked={confirmation} onChange={event => setConfirmedIdentity(event.target.checked ? identity : '')} /> <span className="min-w-0 break-words">{t.confirm}</span></label>
+      <label className="flex min-h-11 items-start gap-2 text-sm"><input type="checkbox" className="mt-1 size-5 shrink-0 accent-primary" checked={confirmation} onChange={event => setConfirmedIdentity(event.target.checked ? identity : '')} /> <span className="min-w-0 break-words">{t.confirm}</span></label>
       <div className="flex flex-wrap gap-3">
         <Button type="button" busy={busy} disabled={busy || !confirmation} onClick={() => onDecision(approval.id, 'approve')}>{t.approve}</Button>
         <Button type="button" variant="outline" disabled={busy} onClick={() => onDecision(approval.id, 'reject')}>{t.reject}</Button>

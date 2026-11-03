@@ -19,10 +19,10 @@ export function SkillCoverage({ coverage, locale, className }: { coverage?: Skil
       <span className="text-2xl font-semibold tabular-nums">{coverage.matched.length}/{coverage.required.length}</span>
     </div>
     <Progress value={Math.round(coverage.ratio * 100)} />
-    {coverage.matched.length > 0 && <ul className="flex flex-wrap gap-1.5" aria-label={th ? 'ทักษะที่ตรง' : 'Matched skills'}>
+    {coverage.matched.length > 0 && <ul className="flex flex-wrap gap-2" aria-label={th ? 'ทักษะที่ตรง' : 'Matched skills'}>
       {coverage.matched.map(skill => <li key={skill}><Badge variant="success" className="break-all">{skill}</Badge></li>)}
     </ul>}
-    {coverage.missing.length > 0 && <ul className="flex flex-wrap gap-1.5" aria-label={th ? 'ทักษะที่ยังขาด' : 'Missing skills'}>
+    {coverage.missing.length > 0 && <ul className="flex flex-wrap gap-2" aria-label={th ? 'ทักษะที่ยังขาด' : 'Missing skills'}>
       {coverage.missing.map(skill => <li key={skill}><Badge variant="outline" className="break-all">{skill}</Badge></li>)}
     </ul>}
     <p className="text-xs text-muted-foreground">{th ? 'คำนวณจากคำสำคัญในประกาศและ CV โดยไม่ใช้ AI' : 'Keyword-based, no AI'}</p>

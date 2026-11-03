@@ -29,7 +29,6 @@
   "moveTo": "Move to",
   "moveError": "Could not update the stage. Try again.",
   "noApplications": "No postings in this stage.",
-  "contactSaved": "Contact saved",
   "hasContact": "Recruiter contact saved",
   "back": "Applications",
   "source": "Original posting",
@@ -127,5 +126,9 @@
   "saveEmail": "Save email",
   "dragHint": "Drag a card to another column to change its stage. It is saved right away; this only tracks your application and does not contact the employer.",
   "dropHere": "Drop here",
-  "dropTo": "Drop to move to {{stage}}"
+  "dropTo": "Drop to move to {{stage}}",
+  "board": {
+    "byStage": "Applications by stage",
+    "closedCount": "All closed applications"
+  }
 }

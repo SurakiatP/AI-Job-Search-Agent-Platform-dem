@@ -5,8 +5,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 
-export const selectClass = 'flex min-h-11 lg:min-h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-base transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
-
 export function Field({ id, label, hint, children, className }: { id: string; label: string; hint?: ReactNode; children: ReactNode; className?: string }) {
   return <div className={cn('grid gap-2', className)}>
     <Label htmlFor={id}>{label}</Label>

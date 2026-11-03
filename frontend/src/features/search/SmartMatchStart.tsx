@@ -23,16 +23,16 @@ export function SmartMatchStart({ locale, cvName, disabled, title, onStart }: { 
   const icons = [FileText, ListOrdered, Brain];
   const stages = ['cv', 'search', 'evaluate'];
   // Header spans the card; steps and the start action share one row so the button lines up with the steps.
-  return <section aria-labelledby="smart-start-title" className="grid gap-4 rounded-xl border border-[color:var(--stage-search)]/35 bg-gradient-to-b from-[color-mix(in_srgb,var(--stage-search)_9%,var(--card))] to-card p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_15rem] lg:gap-x-6">
+  return <section aria-labelledby="smart-start-title" className="grid gap-4 rounded-xl border border-ai-border bg-card p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_15rem] lg:gap-x-6">
     <div className="flex items-start gap-3 lg:col-span-2">
       <AiMark className="size-10" />
       <div className="min-w-0"><h2 id="smart-start-title" className="text-lg font-semibold">{c.title}</h2><p className="mt-0.5 max-w-2xl text-sm text-muted-foreground">{c.body}</p></div>
     </div>
-    <ol className="grid auto-rows-fr gap-2 sm:grid-cols-3">{c.steps.map((step, index) => { const Icon = icons[index]; return <li key={step} className="flex items-center gap-2 rounded-lg border bg-card/80 px-3 py-2 text-sm">
+    <ol className="grid auto-rows-fr gap-2 sm:grid-cols-3">{c.steps.map((step, index) => { const Icon = icons[index]; return <li key={step} className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm">
       <span aria-hidden="true" data-stage={stages[index]} data-active="true" className="stage-chip !size-7 !rounded-full"><Icon className="size-3.5" /></span><span className="min-w-0 text-balance">{step}</span>
     </li>; })}</ol>
-    <div className="grid content-start gap-1.5">
-      <Button type="button" size="lg" className="h-auto min-h-12 whitespace-normal py-2 text-center" disabled={disabled} title={title} onClick={onStart} aria-label={c.startWith(cvName)}><Sparkles className="size-4" aria-hidden="true" />{c.start}</Button>
+    <div className="grid content-start gap-2">
+      <Button type="button" size="lg" className="bg-ai text-ai-contrast hover:bg-ai/90 active:bg-ai/80 h-auto min-h-12 whitespace-normal py-2 text-center" disabled={disabled} title={title} onClick={onStart} aria-label={c.startWith(cvName)}><Sparkles className="size-4" aria-hidden="true" />{c.start}</Button>
       <p className="truncate text-center text-xs text-muted-foreground" title={cvName}>{c.using}: <span className="text-foreground">{cvName}</span></p>
     </div>
     <p className="text-xs text-muted-foreground lg:col-span-2">{c.cost}</p>

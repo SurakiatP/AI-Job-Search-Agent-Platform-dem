@@ -1,3 +1,5 @@
+import { Alert } from '@/components/ui/alert';
+import { Select } from '@/components/ui/select';
 import { useState, type ReactNode } from 'react';
 import { CvPreviewButton } from '@/components/CvPreview';
 import { Link, useNavigate } from 'react-router';
@@ -15,7 +17,6 @@ import { BuildCvButton } from '../builder/BuildCvButton';
 export type InlineJobDraft = { title: string; company?: string | null; description: string; source_url?: string | null };
 export type SessionJob = { savedId?: string; inline?: InlineJobDraft };
 
-const selectClass = 'flex min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-base transition-colors hover:border-ring/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 const copy = {
   th: { title: 'เริ่มเซสชันใหม่', desc: 'จับคู่ CV หนึ่งฉบับกับประกาศงานหนึ่งรายการ ระบบจะเริ่มประเมินความเหมาะสมให้ทันที', cv: 'CV', job: 'ประกาศงาน', saved: 'ใบสมัคร', paste: 'วางประกาศงานใหม่', pick: 'เลือกงาน', jtitle: 'ตำแหน่งงาน', company: 'บริษัท (ไม่บังคับ)', url: 'ลิงก์ต้นทาง (ไม่บังคับ)', jdesc: 'รายละเอียดงาน', start: 'เริ่มเซสชัน', starting: 'กำลังสร้าง…', cancel: 'ยกเลิก', noCv: 'ยังไม่มี CV', noCvBody: 'เพิ่ม CV ก่อนจึงจะเริ่มเซสชันได้', addCv: 'ไปหน้า CV', exists: 'มีเซสชันสำหรับ CV เวอร์ชันนี้กับงานนี้อยู่แล้ว', open: 'เปิดเซสชันที่มีอยู่', provider: 'ยังไม่ได้ตั้งค่า AI gateway ใส่ OPENROUTER_API_KEY แล้วดูที่ ตั้งค่า > เกตเวย์ AI', settings: 'ไปที่การตั้งค่า', failed: 'สร้างเซสชันไม่สำเร็จ ลองอีกครั้ง', notFound: 'ไม่พบ CV หรืองานที่เลือก ลองโหลดหน้าใหม่', loadFailed: 'โหลดข้อมูลไม่สำเร็จ', loading: 'กำลังโหลด…' },
   en: { title: 'New session', desc: 'Pair one CV with one job posting. The fit evaluation starts right away.', cv: 'CV', job: 'Job posting', saved: 'Application', paste: 'Paste a new job', pick: 'Choose a job', jtitle: 'Job title', company: 'Company (optional)', url: 'Source link (optional)', jdesc: 'Job description', start: 'Start session', starting: 'Creating…', cancel: 'Cancel', noCv: 'No CV yet', noCvBody: 'Add a CV before starting a session.', addCv: 'Go to CV page', exists: 'A session for this CV version and job already exists.', open: 'Open existing session', provider: 'The AI gateway is not configured. Set OPENROUTER_API_KEY, then see Settings > AI gateway.', settings: 'Open settings', failed: 'Could not create the session. Try again.', notFound: 'The CV or job was not found. Reload the page and try again.', loadFailed: 'Could not load data', loading: 'Loading…' },
@@ -69,25 +70,25 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
         : !ready ? <p role="status" className="text-sm text-muted-foreground">{c.loading}</p>
         : !usable.length ? <div className="grid gap-3 rounded-lg border border-dashed p-4"><p className="font-medium">{c.noCv}</p><p className="text-sm text-muted-foreground">{c.noCvBody}</p><div className="flex flex-wrap gap-2"><Button asChild onClick={onClose}><Link to={`${base}/profile`}>{c.addCv}</Link></Button><BuildCvButton projectId={projectId} /></div></div>
         : <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
-          <Field label={c.cv}><select className={selectClass} value={cv?.id ?? ''} onChange={event => setCvPick(event.target.value)} disabled={busy}>
-            {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}</option>)}</select></Field>
+          <Field label={c.cv}><Select value={cv?.id ?? ''} onChange={event => setCvPick(event.target.value)} disabled={busy}>
+            {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}</option>)}</Select></Field>
           {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="ghost" className="justify-self-start" />}
           <fieldset className="grid gap-3" disabled={busy}>
-            <legend className="mb-1.5 text-sm font-medium">{c.job}</legend>
+            <legend className="mb-2 text-sm font-medium">{c.job}</legend>
             {saved.length > 0 && <div className="flex flex-wrap gap-2" role="group">
               <Button type="button" size="sm" variant={effectiveMode === 'saved' ? 'default' : 'outline'} aria-pressed={effectiveMode === 'saved'} onClick={() => setMode('saved')}>{c.saved}</Button>
               <Button type="button" size="sm" variant={effectiveMode === 'new' ? 'default' : 'outline'} aria-pressed={effectiveMode === 'new'} onClick={() => setMode('new')}>{c.paste}</Button></div>}
             {effectiveMode === 'saved'
-              ? <select aria-label={c.pick} className={selectClass} value={savedId} onChange={event => setSavedPick(event.target.value)}>{saved.map(item => <option key={item.id} value={item.id}>{item.title}{item.company ? ` · ${item.company}` : ''}</option>)}</select>
+              ? <Select aria-label={c.pick} value={savedId} onChange={event => setSavedPick(event.target.value)}>{saved.map(item => <option key={item.id} value={item.id}>{item.title}{item.company ? ` · ${item.company}` : ''}</option>)}</Select>
               : <div className="grid gap-3">
                 <Field label={c.jtitle}><Input required maxLength={300} value={form.title} onChange={set('title')} /></Field>
                 <Field label={c.company}><Input maxLength={300} value={form.company} onChange={set('company')} /></Field>
                 <Field label={c.url}><Input type="url" maxLength={2048} value={form.source_url} onChange={set('source_url')} /></Field>
                 <Field label={c.jdesc}><Textarea required rows={6} maxLength={50000} value={form.description} onChange={set('description')} /></Field></div>}
           </fieldset>
-          {existing && <div role="alert" className="grid gap-2 rounded-lg border border-warning/50 p-3 text-sm"><p>{c.exists}</p><Button asChild size="sm" className="justify-self-start"><Link to={`${base}/sessions/${existing}`} onClick={onClose}>{c.open}</Link></Button></div>}
-          {error === 'provider' && <div role="alert" className="grid gap-2 rounded-lg border border-warning/50 p-3 text-sm"><p>{gatewayHelp.isAdmin ? c.provider : gatewayHelp.contactText}</p>{gatewayHelp.isAdmin && <Button asChild size="sm" className="justify-self-start"><Link to="/app/settings?section=gateway" onClick={onClose}>{c.settings}</Link></Button>}</div>}
-          {(error === 'failed' || error === 'notFound') && <p role="alert" className="text-sm text-destructive">{error === 'notFound' ? c.notFound : c.failed}</p>}
+          {existing && <Alert severity="warning" action={<Button asChild size="sm" className="justify-self-start"><Link to={`${base}/sessions/${existing}`} onClick={onClose}>{c.open}</Link></Button>}><p>{c.exists}</p></Alert>}
+          {error === 'provider' && <Alert severity="warning" role="alert" action={gatewayHelp.isAdmin && <Button asChild size="sm" className="justify-self-start"><Link to="/app/settings?section=gateway" onClick={onClose}>{c.settings}</Link></Button>}><p>{gatewayHelp.isAdmin ? c.provider : gatewayHelp.contactText}</p></Alert>}
+          {(error === 'failed' || error === 'notFound') && <Alert severity="error">{error === 'notFound' ? c.notFound : c.failed}</Alert>}
           <div className="flex flex-wrap justify-end gap-2">
             <DialogClose asChild><Button type="button" variant="outline" disabled={busy}>{c.cancel}</Button></DialogClose>
             <Button type="submit" busy={busy} disabled={busy || !valid}>{busy ? c.starting : c.start}</Button>

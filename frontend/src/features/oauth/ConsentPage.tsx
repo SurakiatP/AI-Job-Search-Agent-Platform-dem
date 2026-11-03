@@ -1,3 +1,5 @@
+import { Select } from '@/components/ui/select';
+import { Alert } from '@/components/ui/alert';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { ApiError } from '../../lib/api-types';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { sendJson, useResource } from '../projects/useResource';
-import { Field, selectClass } from '../settings/Field';
+import { Field } from '../settings/Field';
 import { useConsentCopy } from './copy';
 
 type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor' | 'jobs:search' | 'applications:apply' | 'applications:write';
@@ -83,9 +85,9 @@ function ConsentBody() {
     {data.projects.length === 0 ? <CardContent className="grid justify-items-start gap-3"><p>{t('oauth.noProjects')}</p><Button asChild><a href="/app/projects/new">{t('oauth.createProject')}</a></Button></CardContent> : <>
       <CardContent className="grid gap-4">
         <Field id="oauth-project" label={t('oauth.project')}>
-          <select id="oauth-project" className={selectClass} value={projectId} onChange={e => setProject(e.target.value)}>
+          <Select id="oauth-project" value={projectId} onChange={e => setProject(e.target.value)}>
             {data.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          </Select>
         </Field>
         <fieldset className="grid gap-4">
           <legend className="mb-1 text-sm font-medium">{t('oauth.capabilities')}</legend>
@@ -96,11 +98,11 @@ function ConsentBody() {
           </details>
         </fieldset>
         <Field id="oauth-expiry" label={t('oauth.expiry')} className="sm:max-w-xs">
-          <select id="oauth-expiry" className={selectClass} value={days} onChange={e => setDays(e.target.value)}>
+          <Select id="oauth-expiry" value={days} onChange={e => setDays(e.target.value)}>
             {['7', '30', '90'].map(d => <option key={d} value={d}>{t('oauth.days', { count: Number(d) })}</option>)}
-          </select>
+          </Select>
         </Field>
-        {error === 'failed' && <p role="alert" className="text-sm text-destructive">{t('errors.request_failed')}</p>}
+        {error === 'failed' && <Alert severity="error">{t('errors.request_failed')}</Alert>}
       </CardContent>
       <CardFooter className="sticky bottom-0 grid gap-3 rounded-b-xl border-t bg-card p-4 sm:p-6">
         <div aria-live="polite" className="text-sm"><p className="font-semibold">{c.summaryTitle}</p>

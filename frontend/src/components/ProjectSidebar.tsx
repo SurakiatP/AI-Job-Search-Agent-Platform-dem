@@ -13,12 +13,12 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 
 export type { SidebarProject };
-const itemClass = 'flex min-h-11 lg:min-h-10 min-w-0 items-center gap-2 rounded-lg px-3 text-sm text-foreground transition-colors hover:bg-[color:var(--nav-hover)] data-[active=true]:bg-[color:var(--nav-active)] data-[active=true]:font-medium [overflow-wrap:anywhere]';
+const itemClass = 'flex min-h-11 lg:min-h-10 min-w-0 items-center gap-2 rounded-lg px-3 text-sm text-foreground transition-colors hover:bg-[color:var(--nav-hover)] data-[active=true]:bg-[color:var(--nav-active)] data-[active=true]:font-medium data-[active=true]:text-primary [overflow-wrap:anywhere]';
 
 const STAGE: Record<string, string> = { profile: 'cv', search: 'search', sessions: 'evaluate', practice: 'evaluate', documents: 'docs', applications: 'track' };
 
 function NavItem({ to, icon: Icon, active, onNavigate, children, count, stage }: { stage?: string; to: string; icon: LucideIcon; active: boolean; onNavigate?: () => void; children: ReactNode; count?: number }) {
-  return <Link className={itemClass} to={to} data-active={active} aria-current={active ? 'page' : undefined} onClick={onNavigate}><span className={stage ? 'stage-tile' : 'inline-flex text-muted-foreground'} data-stage={stage} data-active={active}><Icon size={18} strokeWidth={1.75} className="shrink-0" aria-hidden="true" /></span><span className="min-w-0 flex-1">{children}</span>{count ? <span className="ms-auto rounded-full bg-muted px-1.5 text-xs font-medium tabular-nums text-muted-foreground"><span className="sr-only"> </span>{count}</span> : null}</Link>;
+  return <Link className={itemClass} to={to} data-active={active} aria-current={active ? 'page' : undefined} onClick={onNavigate}><span className={stage ? 'stage-tile' : 'inline-flex text-muted-foreground'} data-stage={stage} data-active={active}><Icon size={18} strokeWidth={1.75} className="shrink-0" aria-hidden="true" /></span><span className="min-w-0 flex-1">{children}</span>{count ? <span className="ms-auto rounded-full bg-card px-2 text-xs font-medium tabular-nums text-muted-foreground"><span className="sr-only"> </span>{count}</span> : null}</Link>;
 }
 
 export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate, onReload, toggle }: {
@@ -52,13 +52,13 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
       <Button asChild variant="outline"><Link to="/app/projects" onClick={closeNavigation}>{t('nav.allProjects')}</Link></Button>
     </DialogContent></Dialog>
     </div> : <ul className="grid min-w-0 gap-0.5"><li className="min-w-0"><NavItem to="/app/projects" icon={FolderOpen} active={inside('/app/projects')} onNavigate={onNavigate}>{t('nav.allProjects')}</NavItem></li></ul>}
-    {project && groups.map(([group, entries]) => <section key={group} className="grid min-w-0 gap-1.5" aria-labelledby={`${navId}-${group}`}>
+    {project && groups.map(([group, entries]) => <section key={group} className="grid min-w-0 gap-2" aria-labelledby={`${navId}-${group}`}>
       <h2 id={`${navId}-${group}`} className="px-3 pb-1 text-xs font-medium text-muted-foreground">{t(`workspace.${group}`)}</h2>
       <ul className="grid min-w-0 gap-0.5">{entries.map(([section, icon, label]) => <li className="min-w-0" key={section}><NavItem to={`${base}/${section}`} icon={icon} stage={STAGE[section]} active={inside(`${base}/${section}`)} onNavigate={onNavigate} count={section === 'trash' ? trashCount : undefined}>{label}</NavItem></li>)}</ul>
     </section>)}
     <div className="mt-auto grid min-w-0 gap-1 border-t pt-3">
       <Link className={itemClass} to="/app/account" data-active={inside('/app/account')} aria-current={inside('/app/account') ? 'page' : undefined} onClick={onNavigate}>
-        {account ? <Avatar account={account} size={20} /> : <UserCog size={18} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />}<span className="min-w-0">{t('account.menu')}</span>
+        {account ? <Avatar account={account} size={24} /> : <UserCog size={18} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />}<span className="min-w-0">{t('account.menu')}</span>
       </Link>
       <NavItem to={projectId ? `/app/settings?project=${encodeURIComponent(projectId)}` : '/app/settings'} icon={Settings} active={inside('/app/settings')} onNavigate={onNavigate}>{t('settings')}</NavItem>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><AppearanceControl /><LanguageSwitch /></div>

@@ -5,22 +5,23 @@ import { cn } from '@/lib/utils';
 import { Spinner } from './spinner';
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:border-primary/40 [&_svg]:pointer-events-none [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:border-primary/40 [&_svg]:pointer-events-none [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70',
-        outline: 'border border-[color:var(--border-strong)] bg-card hover:bg-muted/60 active:bg-muted',
-        ghost: 'hover:bg-[color:var(--nav-hover)] active:bg-muted',
-        destructive: 'bg-destructive text-primary-foreground hover:bg-destructive/90 active:bg-destructive/80',
-        link: 'text-primary underline-offset-4 hover:underline',
+        default: 'disabled:bg-foreground/10 disabled:text-foreground/40 bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80',
+        secondary: 'disabled:bg-foreground/10 disabled:text-foreground/40 bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70',
+        outline: 'disabled:border-foreground/10 disabled:bg-transparent disabled:text-foreground/40 border border-[color:var(--border-strong)] bg-card hover:bg-muted/60 active:bg-muted',
+        ghost: 'disabled:text-foreground/40 hover:bg-[color:var(--nav-hover)] active:bg-muted',
+        destructive: 'disabled:bg-foreground/10 disabled:text-foreground/40 bg-destructive text-primary-foreground hover:bg-destructive/90 active:bg-destructive/80',
+        link: 'disabled:text-foreground/40 text-primary underline-offset-4 hover:underline',
       },
       size: {
-        default: 'min-h-11 px-4 py-2 lg:min-h-10',
-        sm: 'min-h-11 px-3 text-sm lg:min-h-10',
-        lg: 'min-h-11 px-5 text-base',
-        icon: 'size-11 rounded-lg lg:size-10',
+        default: 'min-h-11 px-4 py-2 lg:min-h-10 pointer-coarse:min-h-12',
+        sm: 'min-h-11 px-3 text-sm lg:min-h-9 pointer-coarse:min-h-11',
+        lg: 'min-h-12 px-6 text-base [&_svg]:size-5',
+        icon: 'size-11 rounded-lg lg:size-10 pointer-coarse:size-12',
+        'icon-sm': 'size-11 rounded-lg lg:size-9 pointer-coarse:size-11',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

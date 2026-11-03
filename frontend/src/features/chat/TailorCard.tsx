@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router';
 import { AiLabel, AiMark } from '@/components/AiMark';
 import { Badge } from '@/components/ui/badge';
@@ -54,15 +55,15 @@ export function TailorCard({ projectId, sessionId, locale, outputLanguage, busy,
     <fieldset className="grid gap-2" disabled={busy || working}>
       <legend className="mb-1 text-sm font-medium">{c.mode}</legend>
       {(['autopilot', 'interactive'] as const).map(value => <label key={value} className="flex min-h-11 items-start gap-2 text-sm">
-        <input type="radio" name={`tailor-mode-${sessionId}`} className="mt-1 size-4 shrink-0 accent-primary" value={value} checked={mode === value} onChange={() => setMode(value)} />
+        <input type="radio" name={`tailor-mode-${sessionId}`} className="mt-1 size-5 shrink-0 accent-primary" value={value} checked={mode === value} onChange={() => setMode(value)} />
         <span className="min-w-0"><span className="font-medium">{c[value]}</span><span className="block text-muted-foreground">{c[`${value}Hint` as const]}</span></span></label>)}
     </fieldset>
     {mode === 'interactive' && <div className="grid gap-2">
       <label htmlFor={`tailor-wish-${sessionId}`} className="text-sm font-medium">{c.wishLabel}</label>
-      <textarea id={`tailor-wish-${sessionId}`} value={wish} maxLength={1000} rows={3} disabled={busy || working} onChange={event => setWish(event.target.value)} aria-describedby={`tailor-wish-hint-${sessionId}`} className="min-h-20 w-full rounded-md border border-input bg-card px-3 py-2 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      <Textarea id={`tailor-wish-${sessionId}`} value={wish} maxLength={1000} rows={3} disabled={busy || working} onChange={event => setWish(event.target.value)} aria-describedby={`tailor-wish-hint-${sessionId}`} />
       <p id={`tailor-wish-hint-${sessionId}`} className="text-xs text-muted-foreground">{c.wishHint}</p>
     </div>}
-    <div><Button type="button" variant="outline" className="min-h-11" busy={working} disabled={busy || working || gate.blocked} title={gate.title} onClick={() => void start()}>{c.start}</Button></div>
+    <div><Button type="button" variant="outline" busy={working} disabled={busy || working || gate.blocked} title={gate.title} onClick={() => void start()}>{c.start}</Button></div>
     {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className={`text-sm ${message.kind === 'error' ? 'text-destructive' : ''}`}>{message.text}{message.kind === 'ok' && <> <Link className="text-primary hover:underline" to={`/app/projects/${projectId}/documents`}>{c.docs}</Link></>}</p>}
     {run?.status === 'needs_input' && <p role="status" className="text-sm font-medium">{c.waitingChoice}</p>}
     {payload && <section aria-labelledby={`tailor-result-${run?.id}`} className="grid gap-3 border-t pt-4">
@@ -75,16 +76,16 @@ export function TailorCard({ projectId, sessionId, locale, outputLanguage, busy,
         <h4 className="text-sm font-medium">{c.proposals}</h4>
         {proposals.length === 0 ? <p className="text-sm text-muted-foreground">{c.none}</p> : <ul className="grid gap-3">{proposals.map(item => {
           const ok = selectable(item.status);
-          return <li key={item.id} className={`grid gap-1.5 rounded-lg border p-3 text-sm ${ok ? '' : 'bg-muted text-muted-foreground'}`}>
+          return <li key={item.id} className={`grid gap-2 rounded-lg border p-3 text-sm ${ok ? '' : 'bg-muted text-muted-foreground'}`}>
             <label className="flex min-h-11 items-start gap-2">
-              <input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" disabled={!ok || busy || working} checked={picked.includes(item.id)} onChange={event => toggle(item.id, event.target.checked)} aria-label={`${c.pick} ${item.id + 1}`} />
+              <input type="checkbox" className="mt-1 size-5 shrink-0 accent-primary" disabled={!ok || busy || working} checked={picked.includes(item.id)} onChange={event => toggle(item.id, event.target.checked)} aria-label={`${c.pick} ${item.id + 1}`} />
               <span className="min-w-0 break-words"><span className="text-xs text-muted-foreground">{c.text}</span><span className="block whitespace-pre-wrap">{item.text}</span></span></label>
             <p className="break-words"><span className="text-muted-foreground">{c.find}: </span>{item.find ? <q className="whitespace-pre-wrap">{item.find}</q> : c.append}</p>
             <p className="flex flex-wrap items-center gap-2"><span>{c.evidence}: {item.evidence_ids.length}</span><Badge variant={ok ? 'outline' : item.status === 'applied' ? 'secondary' : 'warning'}>{c[item.status]}</Badge></p>
             {item.status === 'rejected_by_gate' && <p>{c.gateReason}</p>}
           </li>;
         })}</ul>}
-        <div><Button type="button" className="min-h-11" busy={busy} disabled={busy || working || picked.length === 0} onClick={() => void apply()}>{c.apply}</Button></div>
+        <div><Button type="button" busy={busy} disabled={busy || working || picked.length === 0} onClick={() => void apply()}>{c.apply}</Button></div>
       </>}
     </section>}
   </section>;

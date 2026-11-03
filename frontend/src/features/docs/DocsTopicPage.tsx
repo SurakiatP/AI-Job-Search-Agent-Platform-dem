@@ -48,7 +48,7 @@ export function DocsTopicPage() {
             {item.id === slug && page && <nav aria-label={c.onThisPage} className="ml-5 mt-1 hidden border-l-2 border-[var(--stage,var(--primary))]/30 pl-2 lg:block">
               <ul className="grid gap-0.5">
                 {page.sections.map((section, sectionIndex) => <li key={section.heading}>
-                  <a href={`#section-${sectionIndex + 1}`} className="block rounded-md px-3 py-1.5 text-sm leading-snug text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>
+                  <a href={`#section-${sectionIndex + 1}`} className="block rounded-md px-3 py-2 text-sm leading-snug text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>
                 </li>)}
               </ul>
             </nav>}
@@ -67,7 +67,7 @@ export function DocsTopicPage() {
           <h1 className="mb-8 text-3xl font-semibold sm:text-4xl">{page.title}</h1>
           <nav aria-label={c.onThisPage} className="mb-8 flex flex-wrap gap-2 lg:hidden">
             {page.sections.map((section, position) => <a key={section.heading} href={`#section-${position + 1}`}
-              className="rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>)}
+              className="rounded-lg border bg-card px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground">{section.heading}</a>)}
           </nav>
           <div className="manual-body">
             {page.sections.map((section, position) => {

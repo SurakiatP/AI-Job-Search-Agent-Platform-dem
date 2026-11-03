@@ -4,8 +4,8 @@ import { Check, Copy } from 'lucide-react';
 import { Button } from './ui/button';
 
 const copy = {
-  th: { copy: 'คัดลอก', done: 'คัดลอกแล้ว ✓', md: 'คัดลอกแบบ Markdown', fail: 'คัดลอกไม่สำเร็จ ลองเลือกข้อความแล้วคัดลอกเอง' },
-  en: { copy: 'Copy', done: 'Copied ✓', md: 'Copy as Markdown', fail: 'Could not copy. Select the text and copy it yourself.' },
+  th: { copy: 'คัดลอก', done: 'คัดลอกแล้ว', md: 'คัดลอกแบบ Markdown', fail: 'คัดลอกไม่สำเร็จ ลองเลือกข้อความแล้วคัดลอกเอง' },
+  en: { copy: 'Copy', done: 'Copied', md: 'Copy as Markdown', fail: 'Could not copy. Select the text and copy it yourself.' },
 };
 
 // Copies the rendered text (innerText of `source`, so what you see is what you copy); the second button copies the raw Markdown.

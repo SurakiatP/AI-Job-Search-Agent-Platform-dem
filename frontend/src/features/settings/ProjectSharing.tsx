@@ -1,3 +1,4 @@
+import { Select } from '@/components/ui/select';
 import { useRunGate } from '@/lib/accountGate';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
@@ -9,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { apiRequest } from '../../lib/api';
 import { useResource } from '../projects/useResource';
-import { Field, LoadingBlock, Notice, SectionCard, selectClass } from './Field';
+import { Field, LoadingBlock, Notice, SectionCard } from './Field';
 import { dateLocale } from '../../lib/locale';
 
 type Capability = 'results:read' | 'jobs:evaluate' | 'documents:draft' | 'cv:tailor' | 'jobs:search' | 'applications:apply' | 'applications:write';
@@ -70,9 +71,9 @@ export function ProjectSharing({ projectId }: { projectId: string }) {
       </fieldset>
       <Field id="grant-name" label={t('grantName')} className="sm:max-w-xs"><Input id="grant-name" value={name} maxLength={80} autoComplete="off" onChange={event => setName(event.target.value)} /></Field>
       <Field id="grant-expiry" label={t('expiresAfter')} className="sm:max-w-xs">
-        <select id="grant-expiry" className={selectClass} value={expiryHours} onChange={event => setExpiryHours(event.target.value)}>
+        <Select id="grant-expiry" value={expiryHours} onChange={event => setExpiryHours(event.target.value)}>
           {[1, 6, 24].map(hours => <option key={hours} value={hours}>{t('hours', { count: hours })}</option>)}
-        </select>
+        </Select>
       </Field>
       {error && <Notice>{t('saveFailed')}</Notice>}
     </SectionCard>

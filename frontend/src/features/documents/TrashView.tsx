@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { RotateCcw, Trash2 } from 'lucide-react';
@@ -67,7 +68,7 @@ export function TrashView({ projectId, items, typeLabel, onChanged }: { projectI
       <p className="text-sm text-muted-foreground">{th ? 'เอกสารในถังขยะซ่อนอยู่จากผลลัพธ์ที่แชร์ กู้คืนหรือลบถาวรได้ที่นี่' : 'Trashed documents are hidden from shared results. Restore or delete them permanently here.'}</p>
       <Button type="button" variant="outline" size="sm" onClick={() => setEmptying(true)}><Trash2 className="size-4" aria-hidden="true" />{th ? 'ลบทั้งหมดถาวร' : 'Empty trash'}</Button>
     </div>
-    {failure && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{failure}</p>}
+    {failure && <Alert severity="error">{failure}</Alert>}
     <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map(item => <li key={item.id}><Card className="h-full"><CardHeader>
       <CardTitle className="min-w-0 break-words text-base"><Link className="hover:underline" to={`/app/projects/${projectId}/documents/${item.id}`}>{item.title}</Link></CardTitle>
     </CardHeader><CardContent className="grid gap-3">

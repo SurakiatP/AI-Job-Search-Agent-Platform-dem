@@ -5,7 +5,7 @@ import { Link, useParams, useSearchParams } from 'react-router';
 import { PracticeTab } from '../practice/PracticeTab';
 import { practiceCopy } from '../practice/copy';
 import { useTranslation } from 'react-i18next';
-import { Bot, Briefcase, Check, ChevronDown, FileText, Pencil, TriangleAlert } from 'lucide-react';
+import { Bot, Briefcase, Check, ChevronDown, FileText, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Breadcrumb } from '@/components/PageBack';
@@ -30,10 +30,11 @@ import { SkillAdvice } from './SkillAdvice';
 import { TailorCard } from './TailorCard';
 import { ApplyCard } from './ApplyCard';
 import { BusyNote } from '@/components/BusyNote';
+import { Alert } from '@/components/ui/alert';
+import { Select } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
-const selectClass = 'flex min-h-11 rounded-lg border border-input bg-card px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50';
 const copy = {
   th: { title: 'เซสชัน', unpaired: 'ยังไม่ได้จับคู่', unpairedBody: 'เซสชันเก่านี้ไม่ได้จับคู่ CV กับงาน จึงดูได้อย่างเดียว เริ่มเซสชันใหม่เพื่อประเมินและร่างเอกสาร', startPaired: 'เริ่มเซสชันที่จับคู่', outdated: 'มี CV เวอร์ชันใหม่', outdatedBody: 'เซสชันนี้ใช้ CV เวอร์ชันเก่า เริ่มเซสชันใหม่ด้วย CV ล่าสุดกับงานเดิม', outdatedBtn: 'เริ่มด้วย CV ล่าสุด', eval: 'การประเมิน', evalNone: 'ยังไม่มีผลประเมิน', draft: 'ร่างเอกสาร', draftBody: 'เลือกประเภทเอกสารที่ต้องการ เอเจนต์จะร่างจาก CV และงานคู่นี้', letter: 'จดหมายสมัครงาน', message: 'ข้อความสมัครงาน', lang: 'ภาษาเอกสาร', docs: 'เอกสารที่ร่างในเซสชันนี้', noDocs: 'ยังไม่มีเอกสาร', open: 'เปิดเอกสาร', revise: 'สั่งแก้', reviseHint: 'บอกสิ่งที่ต้องการแก้ ระบบจะสร้างเวอร์ชันใหม่ของเอกสารนี้', send: 'ส่งคำสั่งแก้', cancel: 'หยุดงาน', retry: 'ลองใหม่เป็นงานใหม่', refresh: 'โหลดสถานะใหม่', noProvider: 'ยังไม่ได้ตั้งค่าเกตเวย์ AI เปิดการตั้งค่าเกตเวย์ AI เพื่อตรวจสอบการเชื่อมต่อ', settings: 'ไปที่การตั้งค่า', version: 'เวอร์ชัน', you: 'คุณ', cvPage: 'เปิดหน้า CV', jobPage: 'ดูรายละเอียดงาน', letterAsk: 'ร่างจดหมายสมัครงาน (cover letter) สำหรับงานนี้', messageAsk: 'ร่างข้อความสมัครงานสั้น ๆ สำหรับส่งผู้รับสมัครงานนี้', th: 'ไทย', en: 'English', readOnly: 'ข้อความในเซสชันเก่า (ดูอย่างเดียว)', redraft: 'ร่างใหม่ทั้งฉบับ', redraftConfirm: 'จะสร้างเวอร์ชันใหม่ของเอกสารเดิม', redraftBody: 'เอเจนต์จะร่างใหม่ทั้งฉบับและเพิ่มเป็นเวอร์ชันใหม่ของเอกสารนี้ เวอร์ชันเดิมยังอยู่ในประวัติ', confirm: 'ร่างใหม่', dismiss: 'ยกเลิก', edit: 'แก้ไข', reviseAi: 'สั่งแก้ด้วย AI', draftStatus: 'สถานะการร่างเอกสาร' },
   en: { title: 'Session', unpaired: 'Not paired', unpairedBody: 'This older session has no CV and job pair, so it is read-only. Start a new session to evaluate and draft.', startPaired: 'Start a paired session', outdated: 'A newer CV version exists', outdatedBody: 'This session uses an older CV version. Start a new session with the latest CV and the same job.', outdatedBtn: 'Start with latest CV', eval: 'Evaluation', evalNone: 'No evaluation yet', draft: 'Draft documents', draftBody: 'Pick a document type. The agent drafts it from this CV and job pair.', letter: 'Cover letter', message: 'Application message', lang: 'Document language', docs: 'Documents drafted in this session', noDocs: 'No documents yet', open: 'Open document', revise: 'Revise', reviseHint: 'Say what to change. A new version of this document is created.', send: 'Send revision request', cancel: 'Stop run', retry: 'Retry as a new run', refresh: 'Refresh status', noProvider: 'AI is unavailable because the gateway is not configured. Open AI gateway settings to check the connection.', settings: 'Open settings', version: 'Version', you: 'You', cvPage: 'Open CV page', jobPage: 'View job details', letterAsk: 'Draft a cover letter for this job.', messageAsk: 'Draft a short application message to send to the recruiter for this job.', th: 'ไทย', en: 'English', readOnly: 'Messages from the older session (read-only)', redraft: 'Redraft from scratch', redraftConfirm: 'This creates a new version of the existing document', redraftBody: 'The agent drafts the whole document again and adds it as a new version of this document. Earlier versions stay in the history.', confirm: 'Redraft', dismiss: 'Cancel', edit: 'Edit', reviseAi: 'Revise with AI', draftStatus: 'Draft status' },
@@ -47,11 +48,11 @@ function ReviseBox({ c, projectId, docId, busy, onSubmit }: { c: typeof copy.en;
   const id = useId();
   const gate = useRunGate();
   return <div className="grid gap-2">
-    <Button type="button" variant="ghost" size="sm" className="min-h-11 justify-self-start" aria-expanded={open} onClick={() => setOpen(value => !value)}><ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />{c.reviseAi}</Button>
+    <Button type="button" variant="ghost" size="sm" className="justify-self-start" aria-expanded={open} onClick={() => setOpen(value => !value)}><ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />{c.reviseAi}</Button>
     {open && <form className="grid gap-2" onSubmit={event => { event.preventDefault(); if (text.trim() && !busy) void onSubmit(text.trim()).then(ok => { if (ok) setText(''); }); }}>
       <label className="text-sm font-medium" htmlFor={id}>{c.revise}</label>
       <Textarea id={id} rows={2} maxLength={500} value={text} placeholder={c.reviseHint} onChange={event => setText(event.target.value)} disabled={busy} />
-      <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{text.length}/500</span><Button type="submit" size="sm" variant="outline" className="min-h-11" busy={busy} disabled={busy || !text.trim()} title={gate.title}>{c.send}</Button></div>
+      <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{text.length}/500</span><Button type="submit" size="sm" variant="outline" busy={busy} disabled={busy || !text.trim()} title={gate.title}>{c.send}</Button></div>
     </form>}
   </div>;
 }
@@ -64,9 +65,9 @@ function DocCard({ c, base, projectId, doc, busy, onRevise }: { c: typeof copy.e
   return <Card><CardContent className="grid gap-3 p-4">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="min-w-0 break-words font-semibold">{doc.title}{doc.latest_revision ? <span className="ms-2 text-sm font-normal text-muted-foreground">{c.version} {doc.latest_revision.revision}</span> : null}</h3>{doc.source_run_id && <AiLabel check />}</div>
     {content && <Link to={`${base}/documents/${doc.id}`} className="relative block max-h-28 overflow-hidden rounded-md text-foreground no-underline" title={c.open}>
-      <div ref={ref}><Markdown>{content}</Markdown></div><div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" aria-hidden="true" /></Link>}
+      <div ref={ref}><Markdown>{content}</Markdown></div><div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-card/80" aria-hidden="true" /></Link>}
     <div className="flex flex-wrap items-center gap-2">
-      <Button asChild size="sm" variant="outline" className="min-h-11"><Link to={`${base}/documents/${doc.id}?edit=1`}><Pencil className="size-4" aria-hidden="true" />{c.edit}</Link></Button>
+      <Button asChild size="sm" variant="outline" ><Link to={`${base}/documents/${doc.id}?edit=1`}><Pencil className="size-4" aria-hidden="true" />{c.edit}</Link></Button>
       {content && <CopyButton source={ref} markdown={content} />}
     </div>
     <ReviseBox c={c} projectId={projectId} docId={doc.id} busy={busy} onSubmit={onRevise} />
@@ -161,26 +162,24 @@ export function SessionPage() {
   // Job + company + CV identify the session; several sessions can share a job but never the same CV/job pair.
   const cvLine = paired && current.cv_name ? `CV: ${current.cv_name}${current.cv_revision != null ? ` · v${current.cv_revision}` : ''}` : null;
   const subline = [paired ? current.job_company : null, headline !== current.title ? current.title : null, cvLine].filter(Boolean).join(' · ');
-  const tabClass = 'min-h-11 shrink-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
+  const tabClass = 'min-h-12 shrink-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
   return <section className="flex min-w-0 flex-col gap-6 lg:gap-8">
     <div className="grid gap-1">
     <Breadcrumb label={c.title} items={[{ label: project.data?.name ?? t('pages.project'), to: `${base}/overview` }, { label: t('nav.evaluate'), to: `${base}/sessions` }, { label: current.title }]} />
     <header className="min-w-0"><h1 className="break-words text-2xl font-semibold">{headline}</h1>{subline && <p className="mt-1 break-words text-muted-foreground">{subline}</p>}</header>
     </div>
-    {paired ? <div className="grid gap-3 rounded-xl border border-primary/25 bg-accent/30 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
+    {paired ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
       <p className="text-sm font-semibold sm:col-span-2 lg:col-span-1">{t('pair.label')}</p>
       <div className="flex min-w-0 flex-wrap items-center gap-2"><FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="text-sm text-muted-foreground">{t('pair.cv')}</span><Link className="break-words font-medium text-primary hover:underline" to={`${base}/profile`} title={c.cvPage}>{current.cv_name} · v{current.cv_revision}</Link><CvPreviewButton projectId={projectId} fileId={current.cv_file_id} name={current.cv_name ?? 'CV'} revision={current.cv_revision} variant="ghost" className="h-8 px-2" /></div>
       <div className="flex min-w-0 flex-wrap items-center gap-2"><Briefcase className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="text-sm text-muted-foreground">{t('pair.job')}</span><Link className="break-words font-medium text-primary hover:underline" to={`${base}/jobs/${current.job_revision_id}`} title={c.jobPage}>{current.job_title}{current.job_company ? ` · ${current.job_company}` : ''}</Link><Badge variant="outline">{jobRevision ? t('pair.version', { n: jobRevision.revision }) : `${t('identity.unknownRevision')} ${current.job_revision_id}`}</Badge></div>
     </div> : <Badge variant="outline" className="w-fit">{c.unpaired}</Badge>}
 
     {!paired && <Card><CardContent className="grid gap-3 p-4"><p className="text-sm">{c.unpairedBody}</p><NewSessionButton projectId={projectId} className="justify-self-start">{c.startPaired}</NewSessionButton></CardContent></Card>}
-    {paired && current.cv_outdated && <Card role="status" className="border-warning/50"><CardContent className="flex flex-wrap items-center gap-3 p-4">
-      <TriangleAlert className="size-5 text-warning" aria-hidden="true" /><div className="min-w-0 flex-1"><p className="font-medium">{c.outdated}</p><p className="text-sm text-muted-foreground">{c.outdatedBody}</p></div>
-      <NewSessionButton size="sm" variant="outline" projectId={projectId} job={{ savedId: current.job_revision_id ?? undefined }} cvName={current.cv_name ?? undefined}>{c.outdatedBtn}</NewSessionButton></CardContent></Card>}
+    {paired && current.cv_outdated && <Alert severity="warning" action={<NewSessionButton size="sm" variant="outline" projectId={projectId} job={{ savedId: current.job_revision_id ?? undefined }} cvName={current.cv_name ?? undefined}>{c.outdatedBtn}</NewSessionButton>}><p className="font-medium">{c.outdated}</p><p className="text-muted-foreground">{c.outdatedBody}</p></Alert>}
     {!paired && workflow.messages.length > 0 && <section className="grid gap-3" aria-label={c.readOnly}><h2 className="text-base font-semibold">{c.readOnly}</h2>{workflow.messages.map(item => item.role === 'user' ? <article key={item.id} className="flex flex-col items-end gap-1"><p className="text-xs text-muted-foreground">{c.you}</p><p className="plain-content chat-text m-0 max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-primary-foreground">{item.content}</p></article> : <article key={item.id} className="flex items-start gap-3"><span className="mt-1 grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground" aria-hidden="true"><Bot className="size-4" /></span><p className="plain-content chat-text m-0 min-w-0 max-w-[85%] rounded-2xl rounded-tl-sm border bg-card px-4 py-2">{item.content}</p></article>)}</section>}
-    {error === 'provider' && <Card role="alert" className="border-warning/50"><CardContent className="flex flex-wrap items-center gap-3 p-4"><p className="min-w-0 flex-1 font-medium">{gatewayHelp.isAdmin ? c.noProvider : gatewayHelp.contactText}</p>{gatewayHelp.isAdmin && <Button asChild size="sm" variant="outline"><Link to="/app/settings?section=gateway">{c.settings}</Link></Button>}</CardContent></Card>}
-    {accountError && <p className="text-sm text-destructive [overflow-wrap:anywhere]" role="alert">{accountError}</p>}
-    {error && error !== 'provider' && <p className="text-sm text-destructive" role="alert">{t(error, { defaultValue: t('pages.loadError') })}</p>}
+    {error === 'provider' && <Alert severity="warning" role="alert" action={gatewayHelp.isAdmin && <Button asChild size="sm" variant="outline"><Link to="/app/settings?section=gateway">{c.settings}</Link></Button>}><p className="font-medium">{gatewayHelp.isAdmin ? c.noProvider : gatewayHelp.contactText}</p></Alert>}
+    {accountError && <Alert severity="error">{accountError}</Alert>}
+    {error && error !== 'provider' && <Alert severity="error">{t(error, { defaultValue: t('pages.loadError') })}</Alert>}
 
     {paired && <>
       {(status === 'queued' || status === 'running') && <BusyNote announce={false} bar className="lg:hidden" label={status === 'queued' ? (i18n.language.startsWith('th') ? 'เอเจนต์รับงานแล้ว รอคิว' : 'The agent has the task and is queued') : (i18n.language.startsWith('th') ? 'เอเจนต์กำลังประมวลผล' : 'The agent is processing')} detail={i18n.language.startsWith('th') ? 'หน้านี้อัปเดตเองเมื่อมีความคืบหน้า' : 'This page updates by itself as work progresses'} />}
@@ -194,7 +193,7 @@ export function SessionPage() {
             <TabsTrigger value="history" className={tabClass}>{t('tabs.history')}</TabsTrigger>
           </TabsList>
           <div className="grid min-w-0 gap-1 pb-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-medium"><label htmlFor={outputLanguageId}>{t('outputLanguage')}</label><select id={outputLanguageId} aria-describedby={`${outputLanguageId}-hint`} className={`${selectClass} w-40 max-w-full`} value={outputLanguage} onChange={event => setOutputLanguage(event.target.value === 'en' ? 'en' : 'th')} disabled={busy}><option value="th">{t('thai')}</option><option value="en">{t('english')}</option></select></div>
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-medium"><label htmlFor={outputLanguageId}>{t('outputLanguage')}</label><Select id={outputLanguageId} aria-describedby={`${outputLanguageId}-hint`} className="w-40 max-w-full" value={outputLanguage} onChange={event => setOutputLanguage(event.target.value === 'en' ? 'en' : 'th')} disabled={busy}><option value="th">{t('thai')}</option><option value="en">{t('english')}</option></Select></div>
             <p id={`${outputLanguageId}-hint`} className="text-xs text-muted-foreground">{t('outputLanguageHint')}</p>
           </div>
         </div>
@@ -209,11 +208,11 @@ export function SessionPage() {
                 <div className="grid gap-2"><h2 id="eval-empty-heading" className="text-lg font-semibold">{t('empty.title')}</h2><p className="max-w-xl text-muted-foreground">{t('empty.body')}</p></div>
                 <ul className="grid max-w-xl gap-2 text-sm">{(t('empty.gets', { returnObjects: true }) as string[]).map(line => <li key={line} className="flex items-start gap-2"><Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" /><span className="min-w-0 break-words">{line}</span></li>)}</ul>
                 <p className="text-sm text-muted-foreground">{t('result.notPrediction')}</p>
-                <Button type="button" variant={primary || urgent || active ? 'outline' : 'default'} className="min-h-11 justify-self-start" disabled={busy || gate.blocked} title={gate.title} onClick={() => void startRun('evaluate_job', '')}>{t('evaluate')}</Button>
+                <Button type="button" variant={primary || urgent || active ? 'outline' : 'default'} className="justify-self-start" disabled={busy || gate.blocked} title={gate.title} onClick={() => void startRun('evaluate_job', '')}>{t('evaluate')}</Button>
               </section>}
             </TabsContent>
             <TabsContent value="documents" forceMount className={`grid gap-4 ${tab === 'documents' ? '' : 'hidden'}`}>
-              <section className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6"><h2 className="text-lg font-semibold">{c.draft}</h2><p className="text-sm text-muted-foreground">{c.draftBody}</p><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button><Button type="button" className="min-h-11" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button></div></section>
+              <section className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6"><h2 className="text-lg font-semibold">{c.draft}</h2><p className="text-sm text-muted-foreground">{c.draftBody}</p><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button><Button type="button" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button></div></section>
               <ReportListCard kind="cvChanges" items={evalReport?.cv_changes} />
               <TailorCard projectId={projectId} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} run={sessionRuns.find(run => run.operation === 'tailor_cv') ?? null} onChanged={() => { reloadRun(); reloadRuns(); }} />
               <section className="grid gap-3"><h2 className="text-lg font-semibold">{c.docs}</h2>{drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <DocCard key={doc.id} c={c} base={base} projectId={projectId} doc={doc} busy={busy || gate.blocked} onRevise={text => startRun('draft_documents', text, doc.id)} />)}</section>
@@ -222,7 +221,7 @@ export function SessionPage() {
             <TabsContent value="practice" forceMount className={`grid gap-4 ${tab === 'practice' ? '' : 'hidden'}`}><PracticeTab projectId={projectId} sessionId={sessionId} locale={locale} prep={evalReport?.interview_prep} /></TabsContent>
             <TabsContent value="history" forceMount className={`grid gap-4 ${tab === 'history' ? '' : 'hidden'}`}>
               <h2 className="text-lg font-semibold">{t('tabs.history')}</h2>{sessionRuns.filter(run => run.id !== workflow.run?.id).length === 0 ? <p className="text-sm text-muted-foreground">{t('historyEmpty')}</p> : <div className="grid gap-3">{sessionRuns.filter(run => run.id !== workflow.run?.id).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)).map(run => <div key={run.id} className="grid gap-3 rounded-xl border bg-card p-4"><RunTimeline locale={locale} run={run} events={[]} historical />{run.operation === 'evaluate_job' && <RunResults projectId={projectId} locale={locale} run={run} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} />}</div>)}</div>}
-              <div className="flex flex-wrap gap-2"><Button asChild variant="outline" className="min-h-11"><Link to={`${base}/console`}>{t('openHistory')}</Link></Button><Button asChild variant="outline" className="min-h-11"><Link to={`${base}/trash?tab=documents`}>{t('openTrash')}</Link></Button></div>
+              <div className="flex flex-wrap gap-2"><Button asChild variant="outline" ><Link to={`${base}/console`}>{t('openHistory')}</Link></Button><Button asChild variant="outline" ><Link to={`${base}/trash?tab=documents`}>{t('openTrash')}</Link></Button></div>
             </TabsContent>
           </div>
           <WorkflowPanel className={cn(urgent && 'order-first lg:order-none')} locale={locale} sessionRuns={sessionRuns} run={workflow.run} events={workflow.events} cancellationPending={workflow.cancellationPending}
@@ -233,7 +232,7 @@ export function SessionPage() {
       </Tabs>
     {confirmKind && <Dialog open onOpenChange={open => { if (!open) setConfirmKind(null); }}><DialogContent>
       <DialogTitle>{c.redraftConfirm}</DialogTitle><DialogDescription>{kindLabel(confirmKind)}: {c.redraftBody}</DialogDescription>
-      <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" className="min-h-11">{c.dismiss}</Button></DialogClose><Button type="button" className="min-h-11" onClick={() => draftNow(confirmKind)}>{c.confirm}</Button></div>
+      <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" >{c.dismiss}</Button></DialogClose><Button type="button" onClick={() => draftNow(confirmKind)}>{c.confirm}</Button></div>
     </DialogContent></Dialog>}
     </>}
   </section>;

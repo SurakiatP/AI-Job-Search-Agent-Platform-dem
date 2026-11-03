@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { apiRequest } from '../../lib/api';
 import { ApiError, type DigestFrequency, type SavedSearchFilters, type SavedSearchList, type SavedSearchView, type TelegramStatusView, type WebhookView } from '../../lib/api-types';
-import { selectClass } from '../settings/Field';
+import { Alert } from '@/components/ui/alert';
+import { Select } from '@/components/ui/select';
 import { sendJson, useResource } from '../projects/useResource';
 import { splitList } from './AdvancedFilters';
 import { dateLocale } from '../../lib/locale';
@@ -112,8 +113,8 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
       <Button variant="outline" disabled={!savable} onClick={openSave}><Bookmark className="size-4" aria-hidden="true" />{c.save}</Button>
     </div>
     {!savable && items.length === 0 && <p className="text-sm text-muted-foreground">{c.hint}</p>}
-    {status && !status.email_verified && <p role="status" className="text-sm text-warning">{c.unverified}</p>}
-    {status && status.email_verified && !status.notifications_enabled && <p role="status" className="text-sm text-warning">{c.notificationsOff}</p>}
+    {status && !status.email_verified && <Alert severity="warning">{c.unverified}</Alert>}
+    {status && status.email_verified && !status.notifications_enabled && <Alert severity="warning">{c.notificationsOff}</Alert>}
     {!saveOpen && notice}
     {items.length > 0 && <ul className="grid gap-2">{items.map(item => <li key={item.id} className="grid min-w-0 gap-2 rounded-md bg-muted/40 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="min-w-0">
@@ -121,10 +122,10 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
         <p className="text-xs text-muted-foreground">{item.digest_enabled ? c.next(when.format(new Date(item.next_run_at))) : c.off}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <select aria-label={c.frequencyFor(item.name)} className={`${selectClass} w-auto`} value={item.frequency} disabled={busy}
+        <Select aria-label={c.frequencyFor(item.name)} className="w-auto" value={item.frequency} disabled={busy}
           onChange={event => void run(() => sendJson(`${base}/${item.id}`, 'PATCH', { frequency: event.target.value }))}>
           <option value="daily">{c.daily}</option><option value="weekly">{c.weekly}</option>
-        </select>
+        </Select>
         <Button variant="outline" size="icon" aria-pressed={item.digest_enabled} aria-label={c.emailFor(item.name)} disabled={busy}
           onClick={() => void run(() => sendJson(`${base}/${item.id}`, 'PATCH', { digest_enabled: !item.digest_enabled }))}><Mail className="size-4" aria-hidden="true" /></Button>
         <Button variant="outline" size="icon" aria-pressed={item.push_enabled} aria-label={c.pushFor(item.name)} disabled={busy || (!pushReady && !item.push_enabled)}

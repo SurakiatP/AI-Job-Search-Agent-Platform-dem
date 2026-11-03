@@ -1,5 +1,6 @@
 // Technical round as Quizlet-style flashcards (CR-IVP-01 FR-IVP-10): flip, know / still learning piles, keys and swipe.
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { ArrowLeft, ArrowRight, Check, ChevronDown, RotateCcw, Shuffle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { BusyNote } from '@/components/BusyNote';
@@ -67,8 +68,8 @@ export function Flashcards({ cards, c, onRate, onCheck }: { cards: PracticeQuest
         <div className="grid gap-1"><dt className="text-muted-foreground">{c.learning}</dt><dd className="text-3xl font-semibold tabular-nums text-warning">{ids.length}</dd></div>
       </dl>
       <div className="flex flex-wrap justify-center gap-2">
-        {ids.length > 0 && <Button type="button" className="min-h-11" onClick={() => restart(ids)}>{c.reviewLearning(ids.length)}</Button>}
-        <Button type="button" variant="outline" className="min-h-11" onClick={() => restart(cards.map(item => item.id))}><RotateCcw className="size-4" aria-hidden="true" />{c.restart}</Button>
+        {ids.length > 0 && <Button type="button" onClick={() => restart(ids)}>{c.reviewLearning(ids.length)}</Button>}
+        <Button type="button" variant="outline" onClick={() => restart(cards.map(item => item.id))}><RotateCcw className="size-4" aria-hidden="true" />{c.restart}</Button>
       </div>
     </section>;
   }
@@ -91,7 +92,7 @@ export function Flashcards({ cards, c, onRate, onCheck }: { cards: PracticeQuest
           className="flashcard relative h-[22rem] cursor-pointer select-none sm:h-[24rem]">
           <div className="flashcard-inner relative size-full">
             <div className="flashcard-face face-front absolute inset-0 grid grid-rows-[auto_1fr_auto] gap-3 rounded-2xl border bg-card p-5 shadow-[0_24px_48px_-28px_rgb(23_35_59/0.45)] sm:p-6" aria-hidden={flipped}>
-              <div className="flex items-start justify-between gap-3"><span className="inline-flex h-7 items-center rounded-full bg-accent px-2 text-xs font-semibold tabular-nums text-accent-foreground">{c.card(index + 1, deck.length)}</span><AiLabel /></div>
+              <div className="flex items-start justify-between gap-3"><span className="inline-flex h-7 items-center rounded-md bg-accent px-2 text-xs font-semibold tabular-nums text-accent-foreground">{c.card(index + 1, deck.length)}</span><AiLabel /></div>
               <p className="self-center text-balance text-center text-xl font-semibold leading-relaxed sm:text-2xl">{card.prompt}</p>
               <p className="text-center text-xs text-muted-foreground">{c.why}: {card.why} · <span className="hidden sm:inline">{c.flipHint}</span><span className="sm:hidden">{c.flipHintTouch}</span></p>
             </div>
@@ -110,8 +111,8 @@ export function Flashcards({ cards, c, onRate, onCheck }: { cards: PracticeQuest
     <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-center">
       <span className="h-1.5 w-full overflow-hidden rounded-full bg-accent sm:order-2 sm:w-40" aria-hidden="true"><span className="block h-full rounded-full bg-primary transition-[width] duration-(--dur-slow) ease-out" style={{ width: `${(100 * index) / deck.length}%` }} /></span>
       <div className="grid grid-cols-2 gap-2 sm:contents">
-        <Button type="button" variant="outline" className="min-h-12 border-warning/40 bg-warning/10 px-5 text-warning hover:bg-warning/15 sm:order-1" onClick={() => rate('learning')}>{c.learning}<kbd className="ms-1 hidden rounded border border-current/30 px-1.5 text-xs sm:inline">1</kbd></Button>
-        <Button type="button" variant="outline" className="min-h-12 border-success/40 bg-success/10 px-5 text-success hover:bg-success/15 sm:order-3" onClick={() => rate('know')}>{c.know}<kbd className="ms-1 hidden rounded border border-current/30 px-1.5 text-xs sm:inline">2</kbd></Button>
+        <Button type="button" variant="outline" size="lg" className="border-warning/40 bg-warning/10 text-warning hover:bg-warning/15 sm:order-1" onClick={() => rate('learning')}>{c.learning}<kbd className="ms-1 hidden rounded border border-current/30 px-2 text-xs sm:inline">1</kbd></Button>
+        <Button type="button" variant="outline" size="lg" className="border-success/40 bg-success/10 text-success hover:bg-success/15 sm:order-3" onClick={() => rate('know')}>{c.know}<kbd className="ms-1 hidden rounded border border-current/30 px-2 text-xs sm:inline">2</kbd></Button>
       </div>
       <div className="flex items-center justify-center gap-1 sm:contents">
         <Button type="button" variant="ghost" size="icon" className="sm:order-first" aria-label={c.prev} disabled={index === 0} onClick={() => go(index - 1)}><ArrowLeft className="size-4" aria-hidden="true" /></Button>
@@ -133,22 +134,22 @@ function CardCheck({ c, card, onCheck }: { c: PracticeCopy; card: PracticeQuesti
   const tone = { correct: 'text-success', partial: 'text-warning', incorrect: 'text-destructive' } as const;
   return <div className="grid justify-items-center gap-3">
     <button type="button" aria-expanded={open} onClick={() => setOpen(value => !value)}
-      className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      className="flex items-center gap-2 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       {c.cardAnswerToggle}<ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} aria-hidden="true" /></button>
     {open && <div className="grid w-full max-w-2xl gap-2">
       <label htmlFor={`${id}-a`} className="text-sm font-medium">{c.cardAnswerLabel}</label>
       <Textarea id={`${id}-a`} rows={3} maxLength={4000} value={answer} onChange={event => setAnswer(event.target.value)} />
-      <Button type="button" variant="outline" className="min-h-11 justify-self-start" busy={busy} disabled={busy || !answer.trim()}
+      <Button type="button" variant="outline" className="justify-self-start" busy={busy} disabled={busy || !answer.trim()}
         onClick={() => { setBusy(true); void onCheck(answer.trim()).finally(() => setBusy(false)); }}>{c.checkAnswer}</Button>
     </div>}
     {latest?.status === 'pending' && <BusyNote label={c.grading} />}
-    {latest?.status === 'failed' && <p role="alert" className="text-sm text-destructive">{c.gradeFailed}</p>}
+    {latest?.status === 'failed' && <Alert severity="error">{c.gradeFailed}</Alert>}
     {verdict && <div className="grid w-full max-w-2xl gap-2 rounded-lg border bg-card p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2"><p className={cn('font-semibold', tone[verdict.verdict])}>{c.verdicts[verdict.verdict]}</p><AiLabel /></div>
       {verdict.note && <p className="leading-relaxed">{verdict.note}</p>}
-      {verdict.missing.length > 0 && <div className="grid gap-1.5">
+      {verdict.missing.length > 0 && <div className="grid gap-2">
         <p className="font-medium text-muted-foreground" id={`${id}-missing`}>{c.missingPoints}</p>
-        <ul aria-labelledby={`${id}-missing`} className="grid gap-1.5 leading-relaxed">{verdict.missing.map(point => <li key={point} className="flex gap-2">
+        <ul aria-labelledby={`${id}-missing`} className="grid gap-2 leading-relaxed">{verdict.missing.map(point => <li key={point} className="flex gap-2">
           <span className="mt-2 size-1.5 shrink-0 rounded-full bg-warning" aria-hidden="true" /><span className="min-w-0 break-words">{point}</span></li>)}</ul>
       </div>}
     </div>}

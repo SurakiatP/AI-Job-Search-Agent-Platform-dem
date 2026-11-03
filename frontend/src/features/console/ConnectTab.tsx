@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { Select } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,10 +21,10 @@ function ClientPicker({ c, lang, list, local }: { c: Copy; lang: Lang; list: Cli
   const pick = (value: string) => { setId(value); localStorage.setItem(PICK_KEY, value); };
   return <div className="grid gap-6">
     <div className="grid gap-2">
-      <label htmlFor="connect-client" className="text-sm font-medium">{c.pickClient}</label>
-      <select id="connect-client" value={client.id} onChange={e => pick(e.target.value)} className="min-h-11 lg:min-h-10 max-w-md rounded-md border border-input bg-card px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Label htmlFor="connect-client">{c.pickClient}</Label>
+      <Select id="connect-client" value={client.id} onChange={e => pick(e.target.value)} className="max-w-md">
         {list.map(item => <option key={item.id} value={item.id}>{item.vendor ? `${item.name} · ${item.vendor}` : item.name}</option>)}
-      </select>
+      </Select>
     </div>
     <section aria-labelledby="connect-client-name" className="grid gap-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -29,7 +32,7 @@ function ClientPicker({ c, lang, list, local }: { c: Copy; lang: Lang; list: Cli
         {client.protocols.map(p => <Badge key={p} variant="secondary">{p}</Badge>)}
       </div>
       <p className="max-w-prose text-sm text-muted-foreground">{client.hint[lang]}</p>
-      {client.needsPublicHttps && local && <p role="note" className="rounded-lg border border-warning p-3 text-sm">{c.needsHttps}</p>}
+      {client.needsPublicHttps && local && <Alert severity="warning" role="note">{c.needsHttps}</Alert>}
       {client.snippets.map(s => <Block key={s.label.en} c={c} label={s.label[lang]} where={s.where} text={s.code} />)}
       {client.protocols.includes('REST') && <a className="text-sm font-medium text-primary underline-offset-4 hover:underline" href="/v1/docs" target="_blank" rel="noreferrer">{c.apiDocs}</a>}
     </section>
@@ -41,7 +44,7 @@ type Info = { share_origin: string | null; oauth: boolean };
 
 function Block({ text, c, label, where }: { text: string; c: Copy; label: string; where?: string }) {
   return <div className="grid gap-2">
-    <span className="text-sm font-medium">{label}{where && <code className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{where}</code>}</span>
+    <span className="text-sm font-medium">{label}{where && <code className="ml-2 rounded bg-muted px-2 py-0.5 text-xs font-normal">{where}</code>}</span>
     <pre className="overflow-x-auto rounded-lg border bg-muted p-3 text-xs" tabIndex={0} aria-label={label}><code>{text}</code></pre>
     <div><CopyButton text={text} c={c} label={label} /></div>
   </div>;
@@ -62,7 +65,7 @@ export function ConnectTab({ c, lang, projectId, onIssue }: { c: Copy; lang: Lan
   const api = `${window.location.origin}/v1`;
   if (!share) return <div className="grid gap-6">
     <p className="max-w-prose text-sm text-muted-foreground">{c.connectIntro}</p>
-    <p role="status" className="rounded-lg border border-warning p-3 text-sm">{isAdmin ? c.offAdmin : c.offUser}</p>
+    <Alert severity="warning">{isAdmin ? c.offAdmin : c.offUser}</Alert>
     {isAdmin && <Card><CardHeader><CardTitle>{c.startTitle}</CardTitle><p className="text-sm text-muted-foreground">{c.startNote}</p></CardHeader>
       <CardContent><Block text={START} c={c} label={c.startTitle} /></CardContent></Card>}
   </div>;
@@ -77,6 +80,6 @@ export function ConnectTab({ c, lang, projectId, onIssue }: { c: Copy; lang: Lan
     <Step n={2} title={c.step2}>
       <ClientPicker c={c} lang={lang} list={clients(share, api, projectId)} local={isLocal(share)} />
     </Step>
-    <p role="note" className="rounded-lg border border-warning p-3 text-sm">{c.secNote}</p>
+    <Alert severity="warning" role="note">{c.secNote}</Alert>
   </div>;
 }

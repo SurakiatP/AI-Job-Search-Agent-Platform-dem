@@ -36,6 +36,12 @@
   --input: #858993;
   --ring: #2B45C4;
   --sidebar: #EAEBE3;
+  --surface-tint: #EDEEE6;
+  --ai: var(--primary);
+  --ai-contrast: var(--primary-foreground);
+  --ai-foreground: var(--primary);
+  --ai-soft: var(--accent);
+  --ai-border: var(--border-strong);
   --font-sans: 'Noto Sans Thai', Manrope, sans-serif;
   --font-serif: 'Noto Serif Thai', serif;
   --font-document: Manrope, 'Noto Sans Thai', sans-serif;
@@ -53,7 +59,7 @@
   --font-display: var(--font-heading);
   --surface: var(--card);
   --surface-subtle: var(--muted);
-  color-scheme: light;
+  color-scheme: light;  color-scheme: light;
 }
 :root[data-theme='dark'] {
   --overlay: color-mix(in srgb, var(--background) 72%, transparent);
@@ -76,6 +82,13 @@
   --input: #7F8FC4;
   --ring: #9DB4FF;
   --sidebar: #16224D;
+  --surface-tint: #172250;
+  --ai: var(--primary);
+  --ai-contrast: var(--primary-foreground);
+  --ai-foreground: var(--primary);
+  --ai-soft: var(--accent);
+  --ai-border: var(--border-strong);
+  --nav-active: color-mix(in srgb, var(--primary) 18%, var(--sidebar));
   --stage-cv: #5EEAD4;
   --stage-search: #7FA8FF;
   --stage-evaluate: #B79CFF;
@@ -113,6 +126,12 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
+  --color-surface-tint: var(--surface-tint);
+  --color-ai: var(--ai);
+  --color-ai-contrast: var(--ai-contrast);
+  --color-ai-foreground: var(--ai-foreground);
+  --color-ai-soft: var(--ai-soft);
+  --color-ai-border: var(--ai-border);
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
   --font-heading: var(--font-heading);
@@ -127,6 +146,7 @@
   * { border-color: var(--border); }
   body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-size: 16px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
   h3 { font-family: var(--font-sans); }
+  input[type=checkbox], input[type=radio] { width: 20px; height: 20px; min-width: 20px; flex-shrink: 0; accent-color: var(--primary); }
   h1, h2, h3, h4 { font-style: normal; overflow-wrap: anywhere; min-width: 0; }
   /* No word left alone on a last line: headings balance, interface text avoids widows. */
   h1, h2, h3, h4, label, legend { text-wrap: balance; }
@@ -138,7 +158,7 @@
   button, a { touch-action: manipulation; }
   a { color: var(--primary); }
   button { cursor: pointer; }
-  h1 { font-size: 24px; line-height: 1.4; font-weight: 600; }
+  h1 { font-size: 30px; line-height: 1.35; font-weight: 500; }
   h2 { line-height: 1.45; }
   input, textarea, select { font-size: 16px; }
   textarea { resize: vertical; min-height: 130px; }
@@ -150,6 +170,8 @@
 :where(h1, h2.text-lg, h2.text-xl, h2.text-2xl, h2.text-3xl, h2.text-4xl, .font-heading):not(:where([data-markdown] *)) {
   font-family: var(--font-heading); font-weight: 500; letter-spacing: 0;
 }
+/* Card and dialog titles: one 20px step (type scale 12/14/16/20/30/36). */
+h2.text-lg { font-size: 20px; line-height: 1.45; }
 
 @keyframes page-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .page-enter { animation: page-enter var(--dur-base) var(--ease-out) both; }
@@ -173,9 +195,9 @@
 .fit-ring { animation: ring-fill var(--dur-slow) var(--ease-out) both; }
 /* Sidebar names: fade instead of ellipsis, slide on row hover/focus (ChatGPT-style). */
 .scrolling-name { display: block; overflow: hidden; white-space: nowrap; }
-.scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); } /* taste-skill-ignore */
 .scrolling-name-text { display: inline-block; transition: transform var(--dur-base) var(--ease-out); }
-.group:hover .scrolling-name[data-overflow='true'], .group:focus-within .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, transparent, #000 28px); }
+.group:hover .scrolling-name[data-overflow='true'], .group:focus-within .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, transparent, #000 28px); } /* taste-skill-ignore */
 .group:hover .scrolling-name-text, .group:focus-within .scrolling-name-text { transform: translateX(var(--name-shift)); transition: transform var(--name-duration, 2s) linear 0.4s; }
 /* Journey stage tile (sidebar): plain outline icon, tinted by the step's hue when active. */
 .stage-tile { display: inline-flex; width: 20px; height: 20px; flex-shrink: 0; align-items: center; justify-content: center; color: var(--muted-foreground); background: transparent; transition: color var(--dur-fast) var(--ease-out); }
@@ -199,7 +221,7 @@ main[data-stage='brand'] { --stage: var(--primary); }
 .stage-dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--dot, var(--muted-foreground)); flex-shrink: 0; }
 [data-app-stage='saved'], [data-app-stage='withdrawn'] { --dot: var(--muted-foreground); }
 [data-app-stage='applied'] { --dot: var(--primary); }
-[data-app-stage='responded'] { --dot: var(--stage-evaluate); }
+[data-app-stage='responded'] { --dot: var(--stage-search); }
 [data-app-stage='interview'] { --dot: var(--stage-cv); }
 [data-app-stage='offer'] { --dot: var(--warning); }
 [data-app-stage='hired'] { --dot: var(--success); }
@@ -240,7 +262,7 @@ main[data-stage='brand'] { --stage: var(--primary); }
   .drawer-overlay { position: fixed; inset: 0; background: var(--overlay); z-index: 10; }
   .mobile-drawer { position: fixed; top: 0; bottom: 0; left: 0; width: min(300px, 90vw); background: var(--sidebar); z-index: 11; overflow-y: auto; border-inline-end: 1px solid var(--border); border-start-end-radius: calc(var(--radius) + 4px); border-end-end-radius: calc(var(--radius) + 4px); }
   .drawer-heading { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 0 20px; }
-  .drawer-heading h2 { font-family: var(--font-heading); font-size: 18px; font-weight: 500; }
+  .drawer-heading h2 { font-family: var(--font-heading); font-size: 20px; font-weight: 500; }
   .skip-link { position: fixed; top: 8px; left: 8px; z-index: 20; padding: 8px 16px; border-radius: calc(var(--radius) - 2px); background: var(--primary); color: var(--primary-foreground); transform: translateY(-200%); }
   .skip-link:focus { transform: none; }
   .shell-test-form { max-width: 640px; margin: 24px auto; }
@@ -261,7 +283,7 @@ input, textarea { caret-color: var(--primary); }
 }
 
 @layer base {
-  @media (min-width: 768px) { h1 { font-size: 28px; } }
+  @media (min-width: 768px) { h1 { font-size: 36px; } }
 }
 
 /* CR-IVP-01 flashcards: 3D flip, then the card slides toward the pile it was sorted into. */
@@ -317,3 +339,8 @@ input, textarea { caret-color: var(--primary); }
 @media (hover: hover) { .group:hover > .tip { opacity: 1; visibility: visible; transition: opacity var(--dur-fast) var(--ease-out) 300ms, visibility 0s 300ms; } }
 .group:focus-within > .tip { opacity: 1; visibility: visible; }
 .group[data-tip-off] > .tip { opacity: 0; visibility: hidden; }
+
+/* Always-visible scrollbar for wide boards, so clipped columns read as scrollable (overlay scrollbars hide on macOS). */
+.scroll-visible::-webkit-scrollbar { height: 10px; }
+.scroll-visible::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted-foreground) 45%, var(--background)); border-radius: 999px; }
+.scroll-visible::-webkit-scrollbar-track { background: var(--muted); border-radius: 999px; }

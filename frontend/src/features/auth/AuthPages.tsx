@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Alert as Notice } from '@/components/ui/alert';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeft, Check, CheckCircle2, Circle, MailCheck, TriangleAlert } from 'lucide-react';
@@ -18,23 +19,23 @@ const linkClass = 'rounded-sm font-medium text-primary underline-offset-4 hover:
 
 // One layout for all five pages: shared header, then a split panel (login, sign up) or a single centred card (recovery, verify).
 export function AuthLayout({ title, intro, side, icon, children }: { title: string; intro?: string; side?: ReactNode; icon?: ReactNode; children: ReactNode }) {
-  const body = <div className="grid content-center gap-4 p-6 sm:p-10">
+  const body = <div className={`grid content-center gap-4 p-6 sm:p-10${side ? ' rounded-xl border bg-card text-card-foreground' : ''}`}>
     <div className="grid gap-2">
       {icon}
-      <h1 className="text-2xl font-semibold leading-snug [overflow-wrap:anywhere]">{title}</h1>
+      <h1 className="font-serif text-2xl font-medium leading-snug [overflow-wrap:anywhere] sm:text-3xl">{title}</h1>
       {intro && <p className="text-sm leading-relaxed text-muted-foreground">{intro}</p>}
     </div>
     {children}
   </div>;
-  return <>
+  return <div className="flex min-h-dvh flex-col [&_button:disabled]:opacity-60 [&_input:disabled]:opacity-60">
     <Header />
-    <main id="main-content" tabIndex={-1} className={`mx-auto w-full px-4 py-8 sm:py-12 ${side ? 'max-w-4xl' : 'max-w-md'}`}>
-      <div className={side ? 'grid overflow-hidden rounded-xl border bg-card text-card-foreground md:grid-cols-2' : 'rounded-xl border bg-card text-card-foreground'}>
+    <main id="main-content" tabIndex={-1} className="flex flex-1 items-start justify-center px-4 py-8 sm:py-12 lg:items-center">
+      <div className={`w-full ${side ? 'grid max-w-4xl gap-6 lg:grid-cols-2' : 'max-w-md rounded-xl border bg-card text-card-foreground'}`}>
         {body}
-        {side && <aside className="grid content-center gap-4 border-t bg-muted p-6 sm:p-10 md:order-first md:border-t-0 md:border-r">{side}</aside>}
+        {side && <aside className="grid content-center gap-4 rounded-xl bg-muted p-8 text-sm text-muted-foreground lg:order-first">{side}</aside>}
       </div>
     </main>
-  </>;
+  </div>;
 }
 
 function Field({ id, label, hint, ...props }: { id: string; label: string; hint?: ReactNode } & React.ComponentProps<typeof Input>) {
@@ -64,11 +65,11 @@ function PasswordRule({ length }: { length: number }) {
   const c = authCopy[locale];
   const ok = length >= 10 && length <= 128;
   const Icon = ok ? Check : Circle;
-  return <p className={`flex items-center gap-1.5 ${ok ? 'text-success' : ''}`}><Icon className="size-3.5 shrink-0" aria-hidden="true" />{length > 128 ? c.passwordRuleLong : c.passwordRule}</p>;
+  return <p className={`flex items-center gap-2 ${ok ? 'text-success' : ''}`}><Icon className="size-3.5 shrink-0" aria-hidden="true" />{length > 128 ? c.passwordRuleLong : c.passwordRule}</p>;
 }
 
 function Alert({ id, children }: { id?: string; children: ReactNode }) {
-  return children ? <p id={id} role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{children}</p> : null;
+  return children ? <Notice id={id} severity="error">{children}</Notice> : null;
 }
 
 // Only same-app paths may be targets, so a crafted ?next= cannot send people to another site.
@@ -99,7 +100,7 @@ function useUrlToken(): string | null {
 
 function SidePoints({ title, children }: { title: string; children: ReactNode }) {
   return <>
-    <p className="text-2xl font-semibold leading-snug [overflow-wrap:anywhere] sm:text-3xl">{title}</p>
+    <p className="text-xl font-semibold leading-snug [overflow-wrap:anywhere]">{title}</p>
     {children}
   </>;
 }
@@ -124,7 +125,7 @@ export function LoginPage() {
       <Field id="login-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'login-error' } : {})} />
       <Field id="login-password" label={t('auth.password')} type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'login-error' } : {})} />
       <Alert id="login-error">{error}</Alert>
-      <Button type="submit" busy={busy} disabled={busy || !email || !password}>{busy ? t('auth.working') : t('auth.loginAction')}</Button>
+      <Button type="submit" size="lg" busy={busy} disabled={busy || !email || !password}>{busy ? t('auth.working') : t('auth.loginAction')}</Button>
     </form>
     <p className="text-sm"><Link className={linkClass} to="/forgot-password">{t('auth.forgotLink')}</Link></p>
     <p className="border-t pt-4 text-sm text-muted-foreground">{t('auth.noAccount')} <Link className={linkClass} to="/signup">{t('auth.toSignup')}</Link></p>
@@ -133,7 +134,7 @@ export function LoginPage() {
 
 function MailOffNotice({ c, onBack }: { c: (typeof authCopy)['en']; onBack: () => void }) {
   return <AuthLayout title={c.mailOffTitle} intro={c.mailOffBody}>
-    <p role="alert" className="rounded-lg border border-warning bg-warning/10 p-3 text-sm">{c.mailOffNext}</p>
+    <Notice severity="warning" role="alert">{c.mailOffNext}</Notice>
     <Button variant="outline" onClick={onBack}>{c.differentEmail}</Button>
     <p className="text-sm"><Link className={linkClass} to="/login">{c.mailOffLogin}</Link></p>
   </AuthLayout>;
@@ -164,7 +165,7 @@ export function SignupPage() {
       <CodeInput id="signup-code" value={code} onChange={setCode} aria-invalid={verify.error ? true : undefined} aria-describedby={verify.error ? 'signup-code-hint signup-code-error' : 'signup-code-hint'} />
       <p id="signup-code-hint" className="text-xs text-muted-foreground">{otp.hint}</p>
       <Alert id="signup-code-error">{verify.error}</Alert>
-      <Button type="submit" busy={verify.busy} disabled={verify.busy || code.length !== 6} className="justify-self-start">{otp.action}</Button>
+      <Button type="submit" size="lg" busy={verify.busy} disabled={verify.busy || code.length !== 6} className="justify-self-start">{otp.action}</Button>
     </form>
     <p className="text-sm text-muted-foreground">{c.noMail}</p>
     <Button variant="outline" onClick={() => setSent(false)}>{c.differentEmail}</Button>
@@ -172,7 +173,7 @@ export function SignupPage() {
   </AuthLayout>;
   return <AuthLayout title={c.signupTitle} intro={t('auth.signupIntro')} side={<SidePoints title={c.signupSide.title}>
     <ol className="grid gap-4">{c.signupSide.steps.map((step, index) => <li key={step.title} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3">
-      <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-background text-sm font-semibold text-primary">{index + 1}</span>
+      <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-card text-sm font-semibold text-primary">{index + 1}</span>
       <span className="grid gap-0.5"><span className="font-medium leading-snug">{step.title}</span><span className="text-sm text-muted-foreground">{step.body}</span></span>
     </li>)}</ol>
   </SidePoints>}>
@@ -180,7 +181,7 @@ export function SignupPage() {
       <Field id="signup-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'signup-error' } : {})} />
       <Field id="signup-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'signup-error' } : {})} />
       <Alert id="signup-error">{error}</Alert>
-      <Button type="submit" busy={busy} disabled={busy || !email || password.length < 10}>{busy ? t('auth.working') : t('auth.signupAction')}</Button>
+      <Button type="submit" size="lg" busy={busy} disabled={busy || !email || password.length < 10}>{busy ? t('auth.working') : t('auth.signupAction')}</Button>
       <p className="text-sm text-muted-foreground">{c.next}</p>
     </form>
     <p className="border-t pt-4 text-sm text-muted-foreground">{t('auth.haveAccount')} <Link className={linkClass} to="/login">{t('auth.toLogin')}</Link></p>
@@ -248,7 +249,7 @@ export function ForgotPasswordPage() {
     {!sent && <form className="grid gap-4" onSubmit={event => void submit(event)} noValidate>
       <Field id="forgot-email" label={t('auth.email')} type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} {...(error ? { ...(fieldError ? { 'aria-invalid': true } : {}), 'aria-describedby': 'forgot-error' } : {})} />
       <Alert id="forgot-error">{error}</Alert>
-      <Button type="submit" busy={busy} disabled={busy || !email}>{busy ? t('auth.working') : t('auth.forgotAction')}</Button>
+      <Button type="submit" size="lg" busy={busy} disabled={busy || !email}>{busy ? t('auth.working') : t('auth.forgotAction')}</Button>
     </form>}
     {sent && <Button variant="outline" onClick={() => setSent(false)}>{c.differentEmail}</Button>}
     <p className="text-sm"><Link className={`${linkClass} inline-flex min-h-11 items-center gap-1 lg:min-h-10`} to="/login"><ArrowLeft className="size-4" aria-hidden="true" />{t('auth.backToLogin')}</Link></p>
@@ -282,7 +283,7 @@ export function ResetPasswordPage() {
       <Field id="reset-password" label={t('auth.password')} hint={<PasswordRule length={password.length} />} type="password" autoComplete="new-password" minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} {...resetLink} />
       <Field id="reset-confirm" label={t('auth.confirmPassword')} type="password" autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)} {...resetLink} />
       <Alert id="reset-error">{error}</Alert>
-      <Button type="submit" busy={busy} disabled={busy || password.length < 10}>{busy ? t('auth.working') : t('auth.resetAction')}</Button>
+      <Button type="submit" size="lg" busy={busy} disabled={busy || password.length < 10}>{busy ? t('auth.working') : t('auth.resetAction')}</Button>
     </form>
   </AuthLayout>;
 }

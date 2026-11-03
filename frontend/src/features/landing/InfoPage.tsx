@@ -34,7 +34,7 @@ export function InfoPage({ slug }: { slug: InfoSlug }) {
       {page.sections.map((section, s) => <section key={section.heading} aria-labelledby={`sec-${s}`} className="grid gap-4">
         <h2 id={`sec-${s}`} className="text-2xl font-semibold">{section.heading}</h2>
         <ul className="grid gap-3 sm:grid-cols-2">
-          {section.items.map(item => <li key={item.title} className="grid content-start gap-1.5 rounded-xl border bg-card p-5">
+          {section.items.map(item => <li key={item.title} className="grid content-start gap-2 rounded-xl border bg-card p-5">
             <h3 className="text-base font-semibold leading-snug">{item.title}</h3>
             <p className="text-sm leading-relaxed text-muted-foreground">{item.body}</p>
           </li>)}

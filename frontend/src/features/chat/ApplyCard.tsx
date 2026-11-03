@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { Select } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,14 +20,13 @@ const copy = {
 };
 type Row = { label: string; required: boolean; kind: ApplyQuestion['kind']; choices: string };
 const blank = (): Row => ({ label: '', required: true, kind: 'text', choices: '' });
-const field = 'min-h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50';
 const isPack = (payload: RunView['result_payload']): payload is ApplyPack => (payload as ApplyPack | null | undefined)?.kind === 'apply_pack';
 
 function CopyAnswer({ text, c }: { text: string; c: (typeof copy)['en'] }) {
   const [done, setDone] = useState(false);
   const timer = useRef<number>(0);
   useEffect(() => () => window.clearTimeout(timer.current), []);
-  return <Button type="button" variant="outline" size="sm" className="min-h-11 justify-self-start" onClick={() => { void navigator.clipboard.writeText(text).then(() => { setDone(true); window.clearTimeout(timer.current); timer.current = window.setTimeout(() => setDone(false), 2000); }).catch(() => undefined); }}>{done ? c.copied : c.copy}</Button>;
+  return <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => { void navigator.clipboard.writeText(text).then(() => { setDone(true); window.clearTimeout(timer.current); timer.current = window.setTimeout(() => setDone(false), 2000); }).catch(() => undefined); }}>{done ? c.copied : c.copy}</Button>;
 }
 
 export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage, busy, runs, onChanged }: { projectId: string; jobId: string; sessionId: string; locale: Locale; outputLanguage: Locale; busy: boolean; runs: RunView[]; onChanged: () => void }) {
@@ -91,9 +93,9 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
     const set = (v: string | boolean) => setDrafts(current => ({ ...current, [id]: v }));
     if (q?.kind === 'boolean') return <fieldset aria-describedby={describedBy} className="flex flex-wrap gap-4"><legend className="sr-only">{label}</legend>
       {([true, false] as const).map(v => <label key={String(v)} className="flex min-h-11 items-center gap-2"><input type="radio" className="size-4 accent-primary" name={`answer-${id}`} checked={value === v} onChange={() => set(v)} />{v ? c.yes : c.no}</label>)}</fieldset>;
-    if (q?.kind === 'choice') return <select aria-label={label} aria-describedby={describedBy} className={field} value={typeof value === 'string' ? value : ''} onChange={event => set(event.target.value)}>
-      <option value="">{c.choose}</option>{(q.choices ?? []).map(choice => <option key={choice} value={choice}>{choice}</option>)}</select>;
-    return <textarea aria-label={label} aria-describedby={describedBy} className={field} rows={3} maxLength={4000} placeholder={c.answerHere} value={typeof value === 'string' ? value : ''} onChange={event => set(event.target.value)} />;
+    if (q?.kind === 'choice') return <Select aria-label={label} aria-describedby={describedBy} value={typeof value === 'string' ? value : ''} onChange={event => set(event.target.value)}>
+      <option value="">{c.choose}</option>{(q.choices ?? []).map(choice => <option key={choice} value={choice}>{choice}</option>)}</Select>;
+    return <Textarea aria-label={label} aria-describedby={describedBy} rows={3} maxLength={4000} placeholder={c.answerHere} value={typeof value === 'string' ? value : ''} onChange={event => set(event.target.value)} />;
   }
 
   return <Card><CardHeader><CardTitle className="text-lg">{c.title}</CardTitle></CardHeader><CardContent className="grid gap-4">
@@ -111,28 +113,28 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
       </li>)}</ul>
       {waiting && <div className="grid gap-2">
         {pack.missing_required.length > 0 && <p role="status" className="text-sm">{c.stillMissing}: {pack.missing_required.map(id => pack.answers.find(a => a.question_id === id)?.label ?? id).join(', ')}</p>}
-        <div><Button type="button" className="min-h-11" busy={working} disabled={working || Object.keys(drafts).length === 0} onClick={() => void saveAnswers()}>{c.save}</Button></div>
+        <div><Button type="button" busy={working} disabled={working || Object.keys(drafts).length === 0} onClick={() => void saveAnswers()}>{c.save}</Button></div>
       </div>}
     </section>}
     <form className="grid gap-3 border-t pt-4" onSubmit={event => { event.preventDefault(); prepare(); }}>
       <h3 className="font-semibold">{c.questions}</h3>
       {rows.map((row, index) => <fieldset key={index} className="grid gap-2 rounded-lg border p-3" disabled={disabled}>
         <legend className="px-1 text-sm text-muted-foreground">{index + 1}</legend>
-        <label className="grid gap-1 text-sm">{c.qLabel}<input className={field} value={row.label} maxLength={400} onChange={event => update(index, { label: event.target.value })} /></label>
-        <label className="grid gap-1 text-sm">{c.qKind}<select className={field} value={row.kind} onChange={event => update(index, { kind: event.target.value as Row['kind'] })}>{(['text', 'boolean', 'choice'] as const).map(kind => <option key={kind} value={kind}>{c.kinds[kind]}</option>)}</select></label>
-        {row.kind === 'choice' && <label className="grid gap-1 text-sm">{c.choices}<input className={field} value={row.choices} onChange={event => update(index, { choices: event.target.value })} /></label>}
-        <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={row.required} onChange={event => update(index, { required: event.target.checked })} />{c.required}</label>
-        {rows.length > 1 && <Button type="button" variant="ghost" size="sm" className="min-h-11 justify-self-start" onClick={() => setRows(current => current.filter((_, i) => i !== index))}>{c.remove} {index + 1}</Button>}
+        <label className="grid gap-1 text-sm">{c.qLabel}<Input value={row.label} maxLength={400} onChange={event => update(index, { label: event.target.value })} /></label>
+        <label className="grid gap-1 text-sm">{c.qKind}<Select value={row.kind} onChange={event => update(index, { kind: event.target.value as Row['kind'] })}>{(['text', 'boolean', 'choice'] as const).map(kind => <option key={kind} value={kind}>{c.kinds[kind]}</option>)}</Select></label>
+        {row.kind === 'choice' && <label className="grid gap-1 text-sm">{c.choices}<Input value={row.choices} onChange={event => update(index, { choices: event.target.value })} /></label>}
+        <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="size-5 shrink-0 accent-primary" checked={row.required} onChange={event => update(index, { required: event.target.checked })} />{c.required}</label>
+        {rows.length > 1 && <Button type="button" variant="ghost" size="sm" className="justify-self-start" onClick={() => setRows(current => current.filter((_, i) => i !== index))}>{c.remove} {index + 1}</Button>}
       </fieldset>)}
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" className="min-h-11" disabled={disabled || rows.length >= 40} title={gate.title} onClick={() => setRows(current => [...current, blank()])}>{c.add}</Button>
-        <Button type="submit" variant="outline" className="min-h-11" disabled={disabled} title={gate.title}>{c.prepare}</Button>
+        <Button type="button" variant="outline" disabled={disabled || rows.length >= 40} title={gate.title} onClick={() => setRows(current => [...current, blank()])}>{c.add}</Button>
+        <Button type="submit" variant="outline" disabled={disabled} title={gate.title}>{c.prepare}</Button>
       </div>
     </form>
     <div className="grid gap-2 border-t pt-4">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" className="min-h-11" disabled={disabled || latest?.status !== 'completed' || pack?.state !== 'ready' || applied} title={gate.title} onClick={() => void send('apply_submit')}>{c.submit}</Button>
-        {applied && <Button type="button" variant="outline" className="min-h-11" disabled={disabled} title={gate.title} onClick={() => void send('draft_follow_up')}>{c.followUp}</Button>}
+        <Button type="button" variant="outline" disabled={disabled || latest?.status !== 'completed' || pack?.state !== 'ready' || applied} title={gate.title} onClick={() => void send('apply_submit')}>{c.submit}</Button>
+        {applied && <Button type="button" variant="outline" disabled={disabled} title={gate.title} onClick={() => void send('draft_follow_up')}>{c.followUp}</Button>}
       </div>
       <p className="text-xs text-muted-foreground">{c.submitHint} <Link className="text-primary hover:underline" to={`/app/projects/${projectId}/console?tab=approvals`}>{c.approvals}</Link></p>
     </div>

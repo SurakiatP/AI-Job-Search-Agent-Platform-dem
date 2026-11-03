@@ -1,5 +1,6 @@
 // CV photo (CR-CVT-01): checked and cropped to a 3:4 portrait in the browser, stored privately, never sent to AI.
 import { useRef, useState } from 'react';
+import { Alert } from '@/components/ui/alert';
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { apiRequest } from '../../lib/api';
@@ -59,6 +60,6 @@ export function PhotoField({ projectId, photoId, onChange, c }: { projectId: str
         onChange={event => { void choose(event.target.files?.[0]); event.target.value = ''; }} />
     </div>
     <p className="text-sm text-muted-foreground">{c.photoHint}</p>
-    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    {error && <Alert severity="error">{error}</Alert>}
   </div>;
 }

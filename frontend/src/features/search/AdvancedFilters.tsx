@@ -64,7 +64,7 @@ export function Presets({ locale, get, setMany }: { locale: 'th' | 'en'; get: (k
     {PRESETS.map(p => {
       const entries = Object.entries(p.params);
       const on = entries.every(([k, v]) => splitList(get(k)).sort().join(',') === v.split(',').sort().join(','));
-      return <Button key={p.id} type="button" variant={on ? 'default' : 'outline'} size="sm" className="whitespace-nowrap rounded-full" aria-pressed={on}
+      return <Button key={p.id} type="button" variant={on ? 'default' : 'outline'} size="sm" className="whitespace-nowrap" aria-pressed={on}
         onClick={() => setMany(Object.fromEntries(entries.map(([k, v]) => [k, on ? '' : v])))}>{c.preset[p.id]}</Button>;
     })}
   </div>;
@@ -89,7 +89,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, addition
     setMany({ skills: [...skills, s].join(',') }); setSkillInput('');
   };
   const suggestions = (facets?.skills ?? []).filter(f => !skills.includes(f.value) && SKILL_RE.test(f.value)).slice(0, 10);
-  const chipClass = 'h-auto whitespace-normal rounded-full text-left';
+  const chipClass = 'h-auto min-h-9 gap-2 whitespace-normal rounded-full border-border px-3 text-left aria-pressed:font-semibold';
 
   return <div className="grid gap-3">
     <div>
@@ -99,7 +99,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, addition
         <ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </Button>
     </div>
-    {open && <div id="adv-filters" className="grid gap-4 rounded-xl border bg-card p-4">
+    {open && <div id="adv-filters" className="grid gap-0 divide-y divide-border rounded-xl border bg-card [&>*]:p-4 sm:[&>*]:p-6">
       {GROUPS.map(g => {
         const counts = new Map((facets?.[g.key] ?? []).map(f => [f.value, f.count]));
         const selected = splitList(get(g.key));
@@ -108,8 +108,8 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, addition
           <div className="flex flex-wrap gap-2">
             {g.options.map(([value, thLabel, enLabel]) => {
               const n = counts.get(value);
-              return <Button key={value} type="button" variant={selected.includes(value) ? 'default' : 'outline'} size="sm" className={chipClass} aria-pressed={selected.includes(value)} onClick={() => toggle(g.key, value)}>
-                {locale === 'th' ? thLabel : enLabel}{n ? <span className="opacity-70">{number.format(n)}</span> : null}
+              return <Button key={value} type="button" variant="outline" size="sm" className={chipClass} aria-pressed={selected.includes(value)} onClick={() => toggle(g.key, value)}>
+                {locale === 'th' ? thLabel : enLabel}{n ? <span className="text-xs font-normal tabular-nums text-muted-foreground">{number.format(n)}</span> : null}
               </Button>;
             })}
           </div>
