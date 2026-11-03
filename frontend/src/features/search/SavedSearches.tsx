@@ -110,7 +110,7 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
   return <section aria-labelledby="saved-searches-title" className="grid min-w-0 gap-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h2 id="saved-searches-title" tabIndex={-1} className={items.length > 0 ? "text-base font-semibold" : "sr-only"}>{c.title}</h2>
-      <Button variant="outline" disabled={!savable} onClick={openSave}><Bookmark className="size-4" aria-hidden="true" />{c.save}</Button>
+      {savable && <Button variant="outline" onClick={openSave}><Bookmark className="size-4" aria-hidden="true" />{c.save}</Button>}
     </div>
     {!savable && items.length === 0 && <p className="text-sm text-muted-foreground">{c.hint}</p>}
     {status && !status.email_verified && <Alert severity="warning">{c.unverified}</Alert>}

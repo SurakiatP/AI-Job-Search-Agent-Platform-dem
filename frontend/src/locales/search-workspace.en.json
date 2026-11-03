@@ -35,7 +35,7 @@
     "aiFit": "AI fit",
     "skillsFound": "{{found}} of {{total}} skills found",
     "aiUnavailable": "AI ranking unavailable: keyword ranking shown",
-    "evaluateWith": "Evaluate with {{cv}}",
+    "evaluateWith": "Get fit score (CV: {{cv}})",
     "evalNote": "The evaluation uses this job posting and {{cv}}.",
     "examplesLabel": "Try",
     "examples": [

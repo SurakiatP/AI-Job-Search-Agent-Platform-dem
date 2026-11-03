@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Select } from '@/components/ui/select';
@@ -63,7 +63,7 @@ export const advancedCount = (get: (k: string) => string) =>
 
 export function Presets({ locale, get, setMany }: { locale: 'th' | 'en'; get: (k: string) => string; setMany: (changes: Record<string, string>) => void }) {
   const c = copy[locale];
-  return <div role="group" aria-label={c.presets} className="flex gap-2 sm:flex-wrap">
+  return <div role="group" aria-label={c.presets} className="flex flex-wrap gap-2">
     {PRESETS.map(p => {
       const entries = Object.entries(p.params);
       const on = entries.every(([k, v]) => splitList(get(k)).sort().join(',') === v.split(',').sort().join(','));
@@ -77,9 +77,9 @@ type Section = 'role' | 'work' | 'skills' | 'pay' | 'language';
 const SECTIONS: Section[] = ['role', 'work', 'skills', 'pay', 'language'];
 export type FilterLabels = { categories: string; posted: string; anyPosted: string; days: (n: number) => string };
 
-export function AdvancedFilters({ locale, get, setMany, facets, number, categories = [], catLabel, labels }: {
+export function AdvancedFilters({ extra, extraCount = 0, locale, get, setMany, facets, number, categories = [], catLabel, labels }: {
   locale: 'th' | 'en'; get: (k: string) => string; setMany: (changes: Record<string, string>) => void; facets?: AdvFacets; number: Intl.NumberFormat;
-  categories?: Facet[]; catLabel: (slug: string) => string; labels: FilterLabels;
+  extra?: ReactNode; extraCount?: number; categories?: Facet[]; catLabel: (slug: string) => string; labels: FilterLabels;
 }) {
   const c = copy[locale];
   const [open, setOpen] = useState(false);
@@ -87,7 +87,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, categori
   const [skillInput, setSkillInput] = useState('');
   const category = get('category');
   const posted = get('posted_within_days');
-  const count = advancedCount(get) + (category ? 1 : 0) + (posted ? 1 : 0);
+  const count = advancedCount(get) + (category ? 1 : 0) + (posted ? 1 : 0) + extraCount;
   const skills = splitList(get('skills'));
   const toggle = (key: string, value: string) => {
     const list = splitList(get(key));
@@ -105,7 +105,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, categori
     work: splitList(get('employment_type')).length + splitList(get('company_type')).length,
     skills: skills.length, pay: get('salary_min') ? 1 : 0, language: get('posting_language') ? 1 : 0,
   })[key];
-  const clearAll = () => setMany({ seniority: '', employment_type: '', company_type: '', skills: '', posting_language: '', salary_min: '', category: '', posted_within_days: '' });
+  const clearAll = () => setMany({ seniority: '', employment_type: '', company_type: '', skills: '', posting_language: '', salary_min: '', category: '', posted_within_days: '', ...(extraCount ? { cities: '', work_mode: '' } : {}) });
   const group = (g: typeof GROUPS[number]) => {
     const counts = new Map((facets?.[g.key] ?? []).map(f => [f.value, f.count]));
     const selected = splitList(get(g.key));
@@ -147,6 +147,8 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, categori
           </nav>
           <div className="grid min-h-0 content-start gap-6 overflow-y-auto px-6 py-5">
             {section === 'role' && <>
+              {extra}
+              <Presets locale={locale} get={get} setMany={setMany} />
               {group(GROUPS[0])}
               <div className="grid max-w-xs gap-2"><Label htmlFor="job-posted">{labels.posted}</Label>
                 <Select id="job-posted" value={posted} onChange={e => setMany({ posted_within_days: e.target.value })}>
