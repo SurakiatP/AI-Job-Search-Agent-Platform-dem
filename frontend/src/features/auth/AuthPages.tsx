@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { Alert as Notice } from '@/components/ui/alert';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeft, Check, CheckCircle2, Circle, MailCheck, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, Circle, ClipboardCheck, FileText, MailCheck, Sparkles, TriangleAlert } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { Header } from '../../components/Header';
 import { Button } from '../../components/ui/button';
@@ -32,7 +32,7 @@ export function AuthLayout({ title, intro, side, icon, children }: { title: stri
     <main id="main-content" tabIndex={-1} className="flex flex-1 items-start justify-center px-4 py-8 sm:py-12 lg:items-center">
       <div className={`w-full ${side ? 'grid max-w-4xl gap-6 lg:grid-cols-2' : 'max-w-md rounded-xl border bg-card text-card-foreground'}`}>
         {body}
-        {side && <aside className="grid content-center gap-4 rounded-xl bg-muted p-8 text-sm text-muted-foreground lg:order-first">{side}</aside>}
+        {side && <aside className="grid content-center gap-6 rounded-xl border bg-surface-tint p-6 text-sm text-muted-foreground sm:p-10 lg:order-first">{side}</aside>}
       </div>
     </main>
   </div>;
@@ -40,11 +40,13 @@ export function AuthLayout({ title, intro, side, icon, children }: { title: stri
 
 function Field({ id, label, hint, ...props }: { id: string; label: string; hint?: ReactNode } & React.ComponentProps<typeof Input>) {
   const described = [hint ? `${id}-hint` : '', props['aria-describedby'] ?? ''].filter(Boolean).join(' ') || undefined;
-  return <div className="grid gap-2">
-    <Label htmlFor={id}>{label}</Label>
-    {props.type === 'password'
-      ? <PasswordInput id={id} {...props} aria-describedby={described} />
-      : <Input id={id} {...props} aria-describedby={described} />}
+  return <div className="grid gap-1">
+    <div className="mui-field">
+      {props.type === 'password'
+        ? <PasswordInput id={id} placeholder=" " {...props} aria-describedby={described} />
+        : <Input id={id} placeholder=" " {...props} aria-describedby={described} />}
+      <Label htmlFor={id} className="mui-label">{label}</Label>
+    </div>
     {hint && <div id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</div>}
   </div>;
 }
@@ -100,7 +102,7 @@ function useUrlToken(): string | null {
 
 function SidePoints({ title, children }: { title: string; children: ReactNode }) {
   return <>
-    <p className="text-xl font-semibold leading-snug [overflow-wrap:anywhere]">{title}</p>
+    <p className="font-serif text-2xl font-medium leading-snug text-foreground [overflow-wrap:anywhere]">{title}</p>
     {children}
   </>;
 }
@@ -117,7 +119,9 @@ export function LoginPage() {
   const { busy, error, fieldError, submit } = useSubmit(() => login(email.trim(), password));
   if (session.status === 'ready') return <Navigate to={next} replace />;
   return <AuthLayout title={c.loginTitle} intro={t('auth.loginIntro')} side={<SidePoints title={c.loginSide.title}>
-    <ul className="grid gap-2 text-muted-foreground">{c.loginSide.points.map(point => <li key={point}>{point}</li>)}</ul>
+    <ul className="grid gap-4">{c.loginSide.points.map((point, index) => { const Icon = [FileText, Sparkles, ClipboardCheck][index] ?? Check; return <li key={point} className="flex items-start gap-3 text-base leading-relaxed text-foreground">
+      <Icon className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" /><span className="min-w-0">{point}</span>
+    </li>; })}</ul>
   </SidePoints>}>
     {params.get('notice') === 'password-reset' && <p role="status" className="text-sm text-success">{c.loginNotice}</p>}
     {params.get('notice') === 'verified' && <p role="status" className="text-sm text-success">{locale === 'th' ? 'ยืนยันอีเมลแล้ว เข้าสู่ระบบได้เลย' : 'Email verified. You can log in now.'}</p>}

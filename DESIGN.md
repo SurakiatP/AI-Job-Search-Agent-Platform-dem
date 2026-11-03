@@ -206,10 +206,10 @@ The scale is a named set of Tailwind classes, not CSS variables. Allowed steps (
 | table-cell | 8×12 | `px-3 py-2` | data tables |
 | landing-section | 64 to 96 | `mt-16 sm:mt-20`, `mt-16 sm:mt-24`, `mt-20 sm:mt-24` | landing sections, varied on purpose |
 
-Banned: the steps `1.5` (6px), `2.5`, `7`, `9`, `11`, `14`; arbitrary `[..]` spacing; negative margins used for rhythm (an optical nudge on an icon button carries an `// optical:` comment). Gate, expected empty:
+`1.5` (6px) is allowed only in Alert and Badge, which follow Material UI (decision 2026-11-03). Banned: the steps `2.5`, `7`, `9`, `11`, `14`; arbitrary `[..]` spacing; negative margins used for rhythm (an optical nudge on an icon button carries an `// optical:` comment). Gate, expected empty:
 
 ```
-cd frontend/src && grep -rnE "(^|[ \"'])(sm:|md:|lg:|xl:)?(-?m[tbxylrse]?|p[tbxylrse]?|gap(-[xy])?)-(1\.5|2\.5|7|9|11|14)([ \"']|$)" --include='*.tsx' . ; grep -rnE "(^|[ \"'])-m[tb]-[0-9]" --include='*.tsx' .
+cd frontend/src && grep -rnE "(^|[ \"'])(sm:|md:|lg:|xl:)?(-?m[tbxylrse]?|p[tbxylrse]?|gap(-[xy])?)-(2\.5|7|9|11|14)([ \"']|$)" --include='*.tsx' . ; grep -rnE "(^|[ \"'])-m[tb]-[0-9]" --include='*.tsx' .
 ```
 
 ## Elevation & Depth

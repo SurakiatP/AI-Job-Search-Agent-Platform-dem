@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Alert } from '@/components/ui/alert';
+import { Snackbar } from '@/components/ui/snackbar';
 import { CompanyMark } from '@/components/CompanyMark';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ItemMenu } from '@/components/ItemMenu';
@@ -140,7 +141,8 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
       }))} />
     </div>
     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2">
-      <StatusBadge status={card.stage} locale={locale} />
+      {/* Active columns already name the stage; only closed cards (shown together) carry a badge. */}
+      {CLOSED_STAGES.includes(card.stage) && <StatusBadge status={card.stage} locale={locale} />}
       <p className="text-xs text-muted-foreground">{updatedLabel(card.last_activity_at || card.created_at)}</p>
       {card.has_contact && <p className="text-xs text-muted-foreground">{t('hasContact')}</p>}
     </div>
@@ -185,12 +187,9 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
       </div>
     </div>
     {error && <Alert severity="error">{t('moveError')}</Alert>}
-    <div role="status" className="min-h-0 text-sm">
-      {moved && <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span>{t('movedNotice', { title: moved.card.title, stage: stageLabel[moved.card.stage][locale] })}</span>
-        <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => void move(moved.card, moved.from, true)}>{t('undo')}</Button>
-      </p>}
-    </div>
+    <Snackbar open={!!moved} autoHideDuration={10000} onClose={() => setMoved(null)}
+      message={moved ? t('movedNotice', { title: moved.card.title, stage: stageLabel[moved.card.stage][locale] }) : ''}
+      action={moved && <Button type="button" variant="ghost" size="sm" onClick={() => void move(moved.card, moved.from, true)}>{t('undo')}</Button>} />
 
     {shown.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
       <p className="font-medium">{t('noMatches')}</p><p className="text-sm text-muted-foreground">{t('noMatchesNext')}</p>

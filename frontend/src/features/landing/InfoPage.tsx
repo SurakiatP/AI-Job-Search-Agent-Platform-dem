@@ -40,7 +40,7 @@ export function InfoPage({ slug }: { slug: InfoSlug }) {
           </li>)}
         </ul>
       </section>)}
-      <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3" /></span><span>{page.note}</span></p>
+      <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary-fill text-primary-fill-foreground"><Tick className="size-3" /></span><span>{page.note}</span></p>
       <div className="flex flex-wrap gap-3">{cta}<Button asChild size="lg" variant="outline"><Link to="/docs">{locale === 'th' ? 'ดูคู่มือ' : 'Read the guide'}</Link></Button></div>
     </main>
   </div>;

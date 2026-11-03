@@ -85,7 +85,7 @@ export function RunSteps({ events, locale, status }: { events: RunEvent[]; local
       const Icon = step.icon;
       return <li key={`${step.key}:${index}`} className="relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3 pb-4 last:pb-0">
         {index < steps.length - 1 && <span aria-hidden="true" className="absolute start-[0.8125rem] top-7 bottom-0 w-px bg-border" />}
-        <span aria-hidden="true" className={cn('relative grid size-7 place-items-center rounded-full border', current ? 'border-primary bg-primary text-primary-foreground shadow-[0_0_0_4px_color-mix(in_oklch,var(--primary)_18%,transparent)]' : tones[step.tone])}>
+        <span aria-hidden="true" className={cn('relative grid size-7 place-items-center rounded-full border', current ? 'border-primary bg-primary-fill text-primary-fill-foreground shadow-[0_0_0_4px_color-mix(in_oklch,var(--primary)_18%,transparent)]' : tones[step.tone])}>
           {current ? <Spinner className="size-3.5" /> : <Icon className="size-3.5" />}
         </span>
         <div className="min-w-0 pt-0.5">

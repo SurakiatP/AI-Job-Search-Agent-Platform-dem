@@ -90,7 +90,7 @@ export function AgentSteps({ c, step, scored, total }: { c: Copy; step: 0 | 1 | 
     <p className="flex items-center gap-2 font-medium"><AiSpinner size="sm" />{c.agentWorking}</p>
     <ol className="grid gap-2">{labels.map((label, i) => <li key={i} aria-current={i === step ? 'step' : undefined}
       className={`flex items-center gap-2 ${i < step ? 'text-muted-foreground' : i === step ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-      <span aria-hidden="true" className={`grid size-6 shrink-0 place-items-center rounded-full text-xs tabular-nums ${i < step ? 'bg-ai text-ai-contrast' : i === step ? 'border-[1.5px] border-foreground font-medium text-foreground' : 'border border-[color:var(--border-strong)]'}`}>{i < step ? <Check className="size-3.5" aria-hidden="true" /> : i + 1}</span>
+      <span aria-hidden="true" className={`grid size-6 shrink-0 place-items-center rounded-full text-xs tabular-nums ${i < step ? 'bg-primary-fill text-primary-fill-foreground' : i === step ? 'border-[1.5px] border-foreground font-medium text-foreground' : 'border border-[color:var(--border-strong)]'}`}>{i < step ? <Check className="size-3.5" aria-hidden="true" /> : i + 1}</span>
       <span>{label}</span>
     </li>)}</ol>
   </div>;

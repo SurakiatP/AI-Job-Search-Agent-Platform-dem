@@ -144,7 +144,7 @@ function RunSheet({ c, rounds, current, index, readyCount, total, reverseCount, 
       return <li key={round.id} className="relative grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 pb-4 last:pb-0">
         {n < rounds.length - 1 && <span aria-hidden="true" className={cn('absolute bottom-0 left-[1.0625rem] top-9 w-0.5 rounded-full transition-colors duration-(--dur-slow)', complete ? 'bg-primary' : 'bg-border')} />}
         <span aria-hidden="true" className={cn('relative z-10 grid size-9 place-items-center rounded-full border-2 text-sm font-semibold tabular-nums transition-colors duration-(--dur-slow)',
-          complete ? 'border-primary bg-primary text-primary-foreground' : active ? 'border-primary bg-card text-primary ring-4 ring-accent' : 'border-border bg-card text-muted-foreground')}>
+          complete ? 'border-primary bg-primary-fill text-primary-fill-foreground' : active ? 'border-primary bg-card text-primary ring-4 ring-accent' : 'border-border bg-card text-muted-foreground')}>
           {complete ? <Check className="size-4" /> : n + 1}
         </span>
         <div className="min-w-0">

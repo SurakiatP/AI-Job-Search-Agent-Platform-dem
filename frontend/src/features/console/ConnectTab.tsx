@@ -52,7 +52,7 @@ function Block({ text, c, label, where }: { text: string; c: Copy; label: string
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return <Card><CardHeader><CardTitle className="flex items-center gap-3 text-base">
-    <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-sm text-primary-foreground">{n}</span>{title}
+    <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-primary-fill text-sm text-primary-fill-foreground">{n}</span>{title}
   </CardTitle></CardHeader><CardContent className="grid gap-4">{children}</CardContent></Card>;
 }
 

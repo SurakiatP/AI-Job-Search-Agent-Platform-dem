@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 
 export type { SidebarProject };
-const itemClass = 'flex min-h-11 lg:min-h-10 min-w-0 items-center gap-2 rounded-lg px-3 text-sm text-foreground transition-colors hover:bg-[color:var(--nav-hover)] data-[active=true]:bg-[color:var(--nav-active)] data-[active=true]:font-medium data-[active=true]:text-primary [overflow-wrap:anywhere]';
+const itemClass = 'flex min-h-11 lg:min-h-10 min-w-0 items-center gap-2 rounded-lg px-3 text-sm text-foreground transition-colors hover:bg-primary/[0.04] data-[active=true]:bg-[color:var(--nav-active)] data-[active=true]:font-medium data-[active=true]:text-primary [overflow-wrap:anywhere]';
 
 const STAGE: Record<string, string> = { profile: 'cv', search: 'search', sessions: 'evaluate', practice: 'evaluate', documents: 'docs', applications: 'track' };
 
@@ -43,7 +43,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
   return <nav className="flex min-w-0 flex-1 flex-col gap-4 p-3" aria-label={t('navigation')}>
     <div className="hidden min-w-0 items-center justify-between gap-2 px-1 pt-1 lg:flex"><div className="flex min-w-0 items-center gap-2"><HomeLink compact onClick={onNavigate} /><span className="font-heading text-lg font-medium tracking-normal">Job Search</span></div>{toggle}</div>
     {projectId ? <div className="grid min-w-0 gap-2">
-    <Link to="/app/projects" onClick={onNavigate} className="inline-flex w-fit items-center gap-2 rounded-md px-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ArrowLeft size={16} aria-hidden="true" />{t('nav.allProjects')}</Link>
+    <Link to="/app/projects" onClick={onNavigate} className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md px-1 text-sm lg:min-h-10 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ArrowLeft size={16} aria-hidden="true" />{t('nav.allProjects')}</Link>
     <Button ref={switcherTrigger} variant="outline" className="min-h-12 w-full min-w-0 justify-between whitespace-normal px-3 text-start" onClick={() => setSwitching(true)} aria-label={t('workspace.projectSwitchLabel', { name: project?.name ?? t('nav.allProjects') })}>
       <span className="min-w-0 break-words line-clamp-2">{project?.name ?? t('workspace.chooseProject')}</span><ChevronDown size={16} className="shrink-0" aria-hidden="true" />
     </Button>

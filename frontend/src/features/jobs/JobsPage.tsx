@@ -187,6 +187,7 @@ export function JobDetailPage() {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <FitScore size="lg" score={score} locale={locale} />
           {band && <Badge variant={band.variant}>{t(band.key)}</Badge>}
+          <AiLabel />
           <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{t('evaluationSession')}</Link>
         </div>
         <div data-testid="evaluation-provenance" className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">

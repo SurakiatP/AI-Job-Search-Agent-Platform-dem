@@ -23,7 +23,10 @@ test('a directly linked mobile settings section is visible in its navigation', a
   await useUtilitiesFixture(page);
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto(`/app/settings?section=webhooks&project=${projectId}`);
-  await expect(page.getByRole('main').locator('button[aria-current="page"]')).toBeInViewport();
+  // Below lg the section list is one compact Select (owner request: content starts near the top).
+  const sections = page.getByRole('main').getByRole('combobox', { name: 'Settings sections' });
+  await expect(sections).toBeInViewport();
+  await expect(sections).toHaveValue('webhooks');
 });
 
 test('console activity groups runs by what needs you and each row links to its real destination', async ({ page }) => {

@@ -286,8 +286,8 @@ export function DocumentDetailPage() {
       <Card className="min-w-0"><CardContent className="p-6 sm:p-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{t('pages.documentContent', { defaultValue: 'Document content' })}</h2>
           {document.has_builder_draft && !isTrashed
-            ? <Button asChild size="sm"><Link to={`/app/projects/${projectId}/documents/${document.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{w('editInBuilder')}</Link></Button>
-            : canEdit && <Button type="button" size="sm" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{historical ? w('editFromThis') : w('editCurrent')}</Button>}
+            ? <Button asChild size="sm" variant="outline"><Link to={`/app/projects/${projectId}/documents/${document.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{w('editInBuilder')}</Link></Button>
+            : canEdit && <Button type="button" size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{historical ? w('editFromThis') : w('editCurrent')}</Button>}
           {document.document_type === 'cv' && !document.has_builder_draft && <p className="w-full text-xs text-muted-foreground">{w('templateHint')}</p>}
           {versions.length > 1 && <label className="flex items-center gap-2 text-sm"><span className="text-muted-foreground">{w('colVersion')}</span>
             <Select className="w-auto" value={viewed?.id ?? ''} onChange={event => setPickedId(event.target.value)}>
@@ -347,7 +347,7 @@ export function DocumentDetailPage() {
                     <Button type="button" size="sm" variant="outline" disabled={revBusy} onClick={() => setConfirmPromote(false)}>{c.promoteCancel}</Button></span>
                   : <Button type="button" size="sm" variant="outline" disabled={revBusy} onClick={() => setConfirmPromote(true)}>{c.promote}</Button>)}
               </div>}
-              {revision.file_id && <a className="inline-flex w-fit items-center gap-1 text-primary hover:underline" href={downloadUrl(projectId, revision.file_id)}><Download className="size-4" aria-hidden="true" />{t('pages.downloadDocument', { defaultValue: 'Download document' })}</a>}
+              {revision.file_id && <a className="inline-flex min-h-11 w-fit items-center gap-1 text-primary hover:underline lg:min-h-10" href={downloadUrl(projectId, revision.file_id)}><Download className="size-4" aria-hidden="true" />{t('pages.downloadDocument', { defaultValue: 'Download document' })}</a>}
             </li>;
           })}</ol>
         </CardContent></Card>

@@ -32,7 +32,7 @@ export function SmartMatchStart({ locale, cvName, disabled, title, onStart }: { 
       <span aria-hidden="true" data-stage={stages[index]} data-active="true" className="stage-chip !size-7 !rounded-full"><Icon className="size-3.5" /></span><span className="min-w-0 text-balance">{step}</span>
     </li>; })}</ol>
     <div className="grid content-start gap-2">
-      <Button type="button" size="lg" className="bg-ai text-ai-contrast hover:bg-ai/90 active:bg-ai/80 h-auto min-h-12 whitespace-normal py-2 text-center" disabled={disabled} title={title} onClick={onStart} aria-label={c.startWith(cvName)}><Sparkles className="size-4" aria-hidden="true" />{c.start}</Button>
+      <Button type="button" size="lg" className="bg-primary-fill text-primary-fill-foreground hover:bg-primary-fill/90 active:bg-primary-fill/80 h-auto min-h-12 whitespace-normal py-2 text-center" disabled={disabled} title={title} onClick={onStart} aria-label={c.startWith(cvName)}><Sparkles className="size-4" aria-hidden="true" />{c.start}</Button>
       <p className="truncate text-center text-xs text-muted-foreground" title={cvName}>{c.using}: <span className="text-foreground">{cvName}</span></p>
     </div>
     <p className="text-xs text-muted-foreground lg:col-span-2">{c.cost}</p>

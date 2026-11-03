@@ -24,8 +24,8 @@ export function Tour() {
     <div className="mx-auto grid max-w-6xl gap-6 px-4 sm:gap-8 sm:px-6">
       <h2 id="how-title" className="text-2xl font-semibold not-italic sm:text-3xl">{c.tourTitle}</h2>
       <Tabs orientation={wide ? 'vertical' : 'horizontal'} defaultValue="0" className="grid min-w-0 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
-        <TabsList aria-label={c.tourLabel} className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3 lg:flex lg:flex-col lg:items-stretch lg:self-start">
-          {c.steps.map((step, index) => <TabsTrigger key={step.tab} value={String(index)} className="min-h-11 min-w-0 justify-start whitespace-normal px-3 text-left text-sm leading-snug lg:min-h-10">{step.tab}</TabsTrigger>)}
+        <TabsList aria-label={c.tourLabel} className="segmented grid h-auto w-full grid-cols-2 gap-1 border-b-0 p-1 sm:grid-cols-3 lg:flex lg:flex-col lg:items-stretch lg:self-start">
+          {c.steps.map((step, index) => <TabsTrigger key={step.tab} value={String(index)} className="min-h-11 min-w-0 justify-start whitespace-normal rounded-md border-b-0 px-3 text-left data-[state=active]:text-foreground text-sm leading-snug lg:min-h-10">{step.tab}</TabsTrigger>)}
         </TabsList>
         {c.steps.map((step, index) => <TabsContent key={step.tab} value={String(index)} className="mt-0 min-w-0">
           <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] xl:items-start">

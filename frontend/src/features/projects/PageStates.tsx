@@ -1,4 +1,6 @@
 import { Link } from 'react-router';
+import { RotateCw } from 'lucide-react';
+import { Alert } from '../../components/ui/alert';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '../../components/EmptyState';
 import { Button } from '../../components/ui/button';
@@ -15,9 +17,13 @@ export function LoadingState() {
   </div>;
 }
 
+// Load failure: an error Alert that says what failed and what to do, with a compact Retry beside it.
 export function ErrorState({ onRetry }: { onRetry: () => void }) {
   const { t } = useTranslation();
-  return <section className="mx-auto my-12 flex max-w-xl flex-col items-start gap-3" role="alert"><p>{t('pages.loadError', { defaultValue: 'We could not load this information.' })}</p><Button variant="outline" onClick={onRetry}>{t('pages.retry', { defaultValue: 'Try again' })}</Button></section>;
+  return <Alert severity="error" className="mx-auto my-8 w-full max-w-xl" action={<Button variant="outline" size="sm" className="bg-card" onClick={onRetry}><RotateCw className="size-4" aria-hidden="true" />{t('pages.retry', { defaultValue: 'Try again' })}</Button>}>
+    <p className="font-medium">{t('pages.loadError', { defaultValue: 'We could not load this information.' })}</p>
+    <p className="text-muted-foreground">{t('pages.loadErrorHint', { defaultValue: 'The server did not answer. Check your connection, then try again.' })}</p>
+  </Alert>;
 }
 
 export function MissingResource() {

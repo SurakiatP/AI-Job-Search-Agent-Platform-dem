@@ -99,7 +99,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, categori
     setMany({ skills: [...skills, s].join(',') }); setSkillInput('');
   };
   const suggestions = (facets?.skills ?? []).filter(f => !skills.includes(f.value) && SKILL_RE.test(f.value)).slice(0, 10);
-  const chipClass = 'h-auto min-h-9 gap-2 whitespace-normal rounded-full border-border px-3 text-left aria-pressed:font-semibold';
+  const chipClass = 'h-auto min-h-11 gap-2 whitespace-normal rounded-full border-border px-3 lg:min-h-8 text-left aria-pressed:font-semibold';
   const countFor = (key: Section) => ({
     role: splitList(get('seniority')).length + (category ? 1 : 0) + (posted ? 1 : 0),
     work: splitList(get('employment_type')).length + splitList(get('company_type')).length,
@@ -130,7 +130,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, categori
     </Button>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent id="adv-filters" className="h-[min(44rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0">
-        <div className="flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-6">
+        <div className="flex items-center justify-between gap-3 border-b px-6 py-4">
           <div className="min-w-0"><DialogTitle>{c.title}</DialogTitle><DialogDescription className="sr-only">{c.badLabel}</DialogDescription></div>
           <Button type="button" variant="ghost" size="icon" aria-label={c.close} onClick={() => setOpen(false)}><X className="size-5" aria-hidden="true" /></Button>
         </div>
@@ -145,7 +145,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, categori
               </button>;
             })}
           </nav>
-          <div className="grid min-h-0 content-start gap-6 overflow-y-auto p-4 sm:p-6">
+          <div className="grid min-h-0 content-start gap-6 overflow-y-auto px-6 py-5">
             {section === 'role' && <>
               {group(GROUPS[0])}
               <div className="grid max-w-xs gap-2"><Label htmlFor="job-posted">{labels.posted}</Label>
@@ -192,7 +192,7 @@ export function AdvancedFilters({ locale, get, setMany, facets, number, categori
             </label>}
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3 border-t px-4 py-3 sm:px-6">
+        <div className="flex items-center justify-end gap-2 border-t p-2">
           <Button type="button" variant="ghost" disabled={count === 0} onClick={clearAll}>{c.clearAll}</Button>
           <Button type="button" onClick={() => setOpen(false)}>{c.show}</Button>
         </div>

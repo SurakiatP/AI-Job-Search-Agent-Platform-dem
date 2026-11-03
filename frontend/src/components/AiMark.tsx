@@ -23,7 +23,7 @@ export function AiSpinner({ className, size = 'md' }: { className?: string; size
 export function AiLabel({ kind = 'made', check = false, className }: { kind?: 'made' | 'extracted'; check?: boolean; className?: string }) {
   const { t } = useTranslation();
   // w-fit + justify/self-start: a pill, never stretched by a grid or flex-column parent.
-  return <span className={cn('inline-flex h-6 w-fit shrink-0 items-center gap-1 self-start justify-self-start whitespace-nowrap rounded-full border border-ai-border bg-ai-soft px-2 text-xs font-medium leading-none text-ai-foreground', className)}>
+  return <span className={cn('inline-flex h-6 w-fit shrink-0 items-center gap-1 self-start justify-self-start whitespace-nowrap rounded-full bg-ai/10 px-2 text-xs font-medium leading-none text-ai-foreground dark:bg-ai/20', className)}>
     <Sparkles className="size-3.5 shrink-0 text-ai" aria-hidden="true" />
     <span>{t(`ai.${kind}`)}</span>
     {check && <><span className="h-3 w-px bg-current opacity-30" aria-hidden="true" /><span className="font-normal text-muted-foreground">{t('ai.check')}</span></>}

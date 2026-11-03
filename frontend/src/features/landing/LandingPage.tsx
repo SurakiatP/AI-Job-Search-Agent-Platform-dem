@@ -46,7 +46,7 @@ export function LandingPage() {
           </div>
           <ul aria-label={c.controlTitle} className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
             {c.control.map(item => <li key={item} className="flex items-center gap-2">
-              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3" /></span>{item}
+              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary-fill text-primary-fill-foreground"><Tick className="size-3" /></span>{item}
             </li>)}
           </ul>
         </div>
@@ -87,7 +87,7 @@ export function LandingPage() {
             <p className="max-w-prose text-base text-muted-foreground">{c.local.body}</p>
             <ul className="grid gap-3 text-base">
               {[...c.local.rows, `${c.local.submit} · ${c.local.submitNote}`].map(row => <li key={row} className="flex items-start gap-3">
-                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Tick className="size-3.5" /></span>{row}
+                <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-primary-fill text-primary-fill-foreground"><Tick className="size-3.5" /></span>{row}
               </li>)}
             </ul>
           </section>
@@ -103,7 +103,7 @@ export function LandingPage() {
                 {c.agent.request}
               </li>
               <li className="flex flex-wrap items-center gap-2 rounded-lg bg-card px-4 py-3 text-sm">
-                <span className="rounded-md bg-primary px-3 py-1 font-medium text-primary-foreground">{c.agent.approve}</span>
+                <span className="rounded-md bg-primary-fill px-3 py-1 font-medium text-primary-fill-foreground">{c.agent.approve}</span>
                 <span className="rounded-md border bg-card px-3 py-1 font-medium">{c.agent.reject}</span>
               </li>
             </ol>

@@ -184,7 +184,7 @@ test('first-run overview marks done steps, says what is blocked and shows no cou
   await expect(steps.getByRole('listitem').nth(1)).toContainText('Synthetic data analyst');
   await expect(steps.getByRole('listitem').nth(1)).toContainText('Done');
   await expect(steps.getByRole('listitem').nth(2)).toContainText('Needs a CV first.');
-  await expect(page.getByRole('main').locator('a.bg-primary, button.bg-primary')).toHaveCount(1);
+  await expect(page.getByRole('main').locator('a.bg-primary-fill, button.bg-primary-fill')).toHaveCount(1);
   await expect(page.getByRole('main').getByRole('link', { name: 'Add CV', exact: true }).first()).toHaveClass(/bg-primary/);
   await expect(page.getByRole('heading', { name: 'Need a hand?' })).toBeVisible();
   await expect(page.getByRole('main').getByText(/^Saved\s*\d/)).toHaveCount(0);

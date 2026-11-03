@@ -33,7 +33,7 @@ function Card({ id, name, layout, tokens, selected, c, ats, photo, onPick }: {
   return <button type="button" aria-pressed={selected} onClick={() => onPick(id)}
     className="group grid gap-2 rounded-lg border bg-card p-2 text-left transition-colors hover:border-[color:var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card aria-pressed:border-primary aria-pressed:ring-1 aria-pressed:ring-primary aria-pressed:focus-visible:ring-2 motion-reduce:transition-none">
     <span className="relative block aspect-[3/4] overflow-hidden rounded-sm border bg-white shadow-sm"><ThemeThumb layout={layout} tokens={tokens} />
-      {selected && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-3.5" aria-hidden="true" /></span>}
+      {selected && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary-fill text-primary-fill-foreground"><Check className="size-3.5" aria-hidden="true" /></span>}
     </span>
     <span className="grid gap-0.5 px-1 pb-1"><span className="truncate text-sm font-medium">{name}</span>
       <span className="text-xs text-muted-foreground">{ats ? c.atsOk : c.atsNo}{photo ? ` · ${c.withPhoto}` : ''}</span></span>

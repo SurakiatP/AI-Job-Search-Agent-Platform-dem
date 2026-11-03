@@ -8,7 +8,7 @@ import { ArrowRight, ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, P
 import { notifyTrashChanged } from '@/lib/trash';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -31,7 +31,6 @@ const copy = {
   en: { editBuilder: 'Edit in builder', cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Make primary', rename: 'Rename', delete: 'Delete', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Move CV “${n}” to the trash?`, delBody: 'This CV leaves the list and cannot be paired until you restore it from the trash. Evaluations that used it keep their results and documents.', delConfirm: 'Move to trash', moved: (n: string) => `“${n}” moved to the trash.`, undo: 'Undo', undoFailed: 'Undo did not work. Restore it from the trash.', openTrash: 'Open trash', dismiss: 'Dismiss', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.' },
 };
 const formatSize = (bytes: number) => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-const fileType = (filename: string) => filename.split('.').pop()?.toUpperCase() ?? '';
 const uploadMessages: Record<string, string> = {
   scanned_pdf_unsupported: 'errors.scanned_pdf_unsupported', document_encrypted: 'errors.document_encrypted', document_invalid: 'errors.document_invalid', empty_input: 'errors.empty_input',
   document_expansion_limit: 'errors.document_limits', extracted_text_limit: 'errors.document_limits', input_size_invalid: 'pages.uploadTooLarge', upload_too_large: 'pages.uploadTooLarge',
@@ -64,7 +63,7 @@ function RenameDialog({ cv, c, projectId, onClose, onDone }: { cv: CVView; c: ty
 function CvRowMenu({ cv, c, label, help, onMakePrimary, onRename, onDelete }: { cv: CVView; c: typeof copy.en; label: string; help: string; onMakePrimary: () => void; onRename: () => void; onDelete: () => void }) {
   return <DropdownMenu>
     <DropdownMenuTrigger asChild>
-      <button type="button" aria-label={label} className="grid size-11 shrink-0 place-items-center rounded-md border bg-card text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring"><MoreHorizontal className="size-4" aria-hidden="true" /></button>
+      <button type="button" aria-label={label} className={cn(buttonVariants({ variant: 'outline', size: 'icon-sm' }), 'text-muted-foreground')}><MoreHorizontal className="size-4" aria-hidden="true" /></button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-64">
       {!cv.is_primary && <DropdownMenuItem className="h-auto flex-col items-start gap-0.5" onSelect={onMakePrimary}>
@@ -202,9 +201,9 @@ export function ProfilePage() {
                 : Number.isNaN(new Date(cv.created_at).getTime()) ? [] : [w('createdAt', { date: dateTime.format(new Date(cv.created_at)) })];
               return <li key={cv.id} className={cn('grid content-start gap-3 rounded-xl border bg-card p-4', cv.is_primary && 'border-primary')}>
                 <div className="flex min-w-0 items-start gap-3">
-                  <div aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-lg bg-[color-mix(in_srgb,var(--stage-cv)_12%,var(--card))] text-xs font-semibold text-[color:var(--stage-cv)]">{latest ? fileType(latest.original_filename) : <FileText className="size-5" />}</div>
+                  <FileText className="mt-1 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="min-w-0 break-words text-base font-semibold [overflow-wrap:anywhere]">{cv.name}</h3>{cv.is_primary && <Badge variant="success"><Star className="me-1 size-3" aria-hidden="true" />{c.primary}</Badge>}</div>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2"><h3 className="min-w-0 break-words text-base font-semibold [overflow-wrap:anywhere]">{cv.name}</h3>{cv.is_primary && <Badge><Star className="me-1 size-3" aria-hidden="true" />{c.primary}</Badge>}</div>
                     {meta.length > 0 && <p className="mt-1 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{meta.join(' · ')}</p>}
                     {latest && <p className="text-sm"><span className="text-muted-foreground">{w('colVersion')}: </span>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>}</p>}
                     {cv.in_use && <p className="mt-1 text-xs text-muted-foreground">{c.inUse}</p>}

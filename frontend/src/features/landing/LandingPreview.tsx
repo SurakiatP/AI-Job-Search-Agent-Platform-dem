@@ -155,7 +155,7 @@ export function DemoCard() {
         return <li key={step.stage} style={{ '--i': index } as CSSProperties} aria-current={step.state === 'current' ? 'step' : undefined} className="demo-step relative grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3">
           {!last && <span aria-hidden="true" className={cn('absolute left-[1.0625rem] top-9 h-[calc(100%-1.75rem)] w-0.5 rounded-full', step.state === 'done' ? 'bg-primary/35' : 'bg-border')} />}
           <span aria-hidden="true" className={cn('grid size-9 place-items-center rounded-full',
-            step.state === 'done' && 'bg-primary text-primary-foreground',
+            step.state === 'done' && 'bg-primary-fill text-primary-fill-foreground',
             step.state === 'current' && 'bg-warning/15 text-warning ring-2 ring-warning ring-offset-2 ring-offset-card',
             step.state === 'next' && 'bg-muted text-muted-foreground')}>
             {step.state === 'done' ? <Tick draw /> : <Icon className="size-4" />}

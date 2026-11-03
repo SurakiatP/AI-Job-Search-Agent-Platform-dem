@@ -9,8 +9,9 @@
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.5rem; /* MUI shape.borderRadius is 4px; owner asked for a little rounder (2026-11-03) */
   --shadow-xs: 0 1px 2px rgb(27 37 80 / 0.04);
+  --shadow-soft: 0 2px 1px -1px rgb(0 0 0 / 0.2), 0 1px 1px 0 rgb(0 0 0 / 0.14), 0 1px 3px 0 rgb(0 0 0 / 0.12); /* MUI elevation 1 (shadows[1]) */
   --overlay: color-mix(in srgb, var(--foreground) 40%, transparent);
   --background: #F3F4EF;
   --foreground: #1B2550;
@@ -20,6 +21,10 @@
   --popover-foreground: var(--foreground);
   --primary: #2B45C4;
   --primary-foreground: #FFFFFF;
+  /* Solid fills (filled buttons, badges): same as primary in light; a deeper royal blue with white text in dark. */
+  --primary-fill: var(--primary);
+  --primary-fill-foreground: var(--primary-foreground);
+  --destructive-fill: var(--destructive);
   --secondary: #E9EAE2;
   --secondary-foreground: #1B2550;
   --muted: #E9EAE2;
@@ -31,8 +36,8 @@
   --warning: #805319;
   --border: #DCDDD3;
   --border-strong: #C9CBC0;
-  --nav-hover: color-mix(in srgb, var(--foreground) 5%, transparent);
-  --nav-active: color-mix(in srgb, var(--primary) 10%, var(--sidebar));
+  --nav-hover: color-mix(in srgb, var(--primary) 4%, transparent); /* MUI hoverOpacity */
+  --nav-active: color-mix(in srgb, var(--primary) 8%, var(--sidebar)); /* MUI selectedOpacity */
   --input: #858993;
   --ring: #2B45C4;
   --sidebar: #EAEBE3;
@@ -47,15 +52,16 @@
   --font-document: Manrope, 'Noto Sans Thai', sans-serif;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-fast: 150ms;
-  --dur-base: 180ms;
-  --dur-slow: 240ms;
-  /* Journey stages: each step of the search owns one hue (CV, search, evaluate, documents, tracking). */
-  --stage-cv: #0F766E;
-  --stage-search: #2563EB;
-  --stage-evaluate: #7C3AED;
-  --stage-docs: #C2410C;
-  --stage-track: #15803D;
-  --font-heading: 'Noto Serif Thai', Georgia, serif;
+  --dur-base: 200ms;
+  --dur-slow: 300ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* MUI easeInOut, for state changes; --ease-out stays for entering */
+  /* Journey stages share the one brand hue; the step is named by its icon and label, not by colour. */
+  --stage-cv: var(--primary);
+  --stage-search: var(--primary);
+  --stage-evaluate: var(--primary);
+  --stage-docs: var(--primary);
+  --stage-track: var(--primary);
+  --font-heading: 'Noto Sans Thai', Manrope, sans-serif; /* friendly sans headings; the serif stack stays in --font-serif */
   --font-display: var(--font-heading);
   --surface: var(--card);
   --surface-subtle: var(--muted);
@@ -63,14 +69,18 @@
 }
 :root[data-theme='dark'] {
   --overlay: color-mix(in srgb, var(--background) 72%, transparent);
-  --background: #131D42;
+  --background: #111A3B;
   --foreground: #EEF2FF;
-  --card: #1B2756;
+  --card: #1F2C60;
   --primary: #9DB4FF;
   --primary-foreground: #0F1738;
-  --secondary: #243266;
+  /* Filled controls: white on a deeper royal blue (5.2:1), not dark text on pale periwinkle. */
+  --primary-fill: #4361E0;
+  --primary-fill-foreground: #FFFFFF;
+  --destructive-fill: #C93A52;
+  --secondary: #2A3970;
   --secondary-foreground: #EEF2FF;
-  --muted: #243266;
+  --muted: #2A3970;
   --muted-foreground: #B4C0E6;
   --accent: #2E3F7E;
   --accent-foreground: #EEF2FF;
@@ -88,12 +98,12 @@
   --ai-foreground: var(--primary);
   --ai-soft: var(--accent);
   --ai-border: var(--border-strong);
-  --nav-active: color-mix(in srgb, var(--primary) 18%, var(--sidebar));
-  --stage-cv: #5EEAD4;
-  --stage-search: #7FA8FF;
-  --stage-evaluate: #B79CFF;
-  --stage-docs: #FFA36B;
-  --stage-track: #6FE09A;
+  --nav-active: color-mix(in srgb, var(--primary) 16%, var(--sidebar)); /* MUI dark selectedOpacity */
+  --stage-cv: var(--primary);
+  --stage-search: var(--primary);
+  --stage-evaluate: var(--primary);
+  --stage-docs: var(--primary);
+  --stage-track: var(--primary);
   color-scheme: dark;
 }
 
@@ -103,7 +113,7 @@
   --shadow-md: 0 4px 6px -1px rgb(27 37 80 / 0.1), 0 2px 4px -2px rgb(27 37 80 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(27 37 80 / 0.12), 0 4px 6px -4px rgb(27 37 80 / 0.1);
   --default-transition-duration: var(--dur-fast);
-  --default-transition-timing-function: var(--ease-out);
+  --default-transition-timing-function: var(--ease-standard);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -112,6 +122,9 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-fill: var(--primary-fill);
+  --color-primary-fill-foreground: var(--primary-fill-foreground);
+  --color-destructive-fill: var(--destructive-fill);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -135,8 +148,8 @@
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
   --font-heading: var(--font-heading);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) / 2);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 4px);
@@ -168,8 +181,11 @@
 
 /* Serif titles: h1 everywhere, h2 only when authored large; Markdown (AI output) stays sans. */
 :where(h1, h2.text-lg, h2.text-xl, h2.text-2xl, h2.text-3xl, h2.text-4xl, .font-heading):not(:where([data-markdown] *)) {
-  font-family: var(--font-heading); font-weight: 500; letter-spacing: 0;
+  font-family: var(--font-heading); font-weight: 600; letter-spacing: 0;
 }
+/* Thai: small meta text reads at 13px with relaxed leading; Thai words wrap at word boundaries, not mid-word. */
+html:lang(th) .text-xs { font-size: 13px; line-height: 1.625; }
+html:lang(th) :where(h1, h2, h3, h4, .workspace-panel, [class*='overflow-wrap:anywhere']) { overflow-wrap: break-word; word-break: normal; line-break: strict; }
 /* Card and dialog titles: one 20px step (type scale 12/14/16/20/30/36). */
 h2.text-lg { font-size: 20px; line-height: 1.45; }
 
@@ -274,7 +290,7 @@ main[data-stage='brand'] { --stage: var(--primary); }
 .workspace-page-header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .workspace-page-header > :first-child { min-width: 0; }
 .workspace-page-header > button, .workspace-page-header > a { flex-shrink: 0; }
-.workspace-panel { box-shadow: none; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--card); color: var(--card-foreground); overflow-wrap: anywhere; }
+.workspace-panel { box-shadow: var(--shadow-soft); min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--card); color: var(--card-foreground); overflow-wrap: anywhere; }
 ::selection { background: color-mix(in srgb, var(--primary) 22%, transparent); color: var(--foreground); }
 input, textarea { caret-color: var(--primary); }
 * { scrollbar-color: color-mix(in srgb, var(--muted-foreground) 45%, var(--background)) var(--background); scrollbar-width: thin; }
@@ -344,3 +360,37 @@ input, textarea { caret-color: var(--primary); }
 .scroll-visible::-webkit-scrollbar { height: 10px; }
 .scroll-visible::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted-foreground) 45%, var(--background)); border-radius: 999px; }
 .scroll-visible::-webkit-scrollbar-track { background: var(--muted); border-radius: 999px; }
+
+/* MUI elevations (shadows[2], [4], [8], [24]) and the contained-button behaviour: 2 at rest, 4 on hover, 8 pressed, 0 disabled. */
+:root { --shadow-2: 0 3px 1px -2px rgb(0 0 0 / 0.2), 0 2px 2px 0 rgb(0 0 0 / 0.14), 0 1px 5px 0 rgb(0 0 0 / 0.12);
+  --shadow-4: 0 2px 4px -1px rgb(0 0 0 / 0.2), 0 4px 5px 0 rgb(0 0 0 / 0.14), 0 1px 10px 0 rgb(0 0 0 / 0.12);
+  --shadow-8: 0 5px 5px -3px rgb(0 0 0 / 0.2), 0 8px 10px 1px rgb(0 0 0 / 0.14), 0 3px 14px 2px rgb(0 0 0 / 0.12);
+  --shadow-24: 0 11px 15px -7px rgb(0 0 0 / 0.2), 0 24px 38px 3px rgb(0 0 0 / 0.14), 0 9px 46px 8px rgb(0 0 0 / 0.12); }
+:is(button, a).bg-primary-fill:not(:disabled), :is(button, a).bg-destructive-fill:not(:disabled) { box-shadow: var(--shadow-2); transition: box-shadow var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard); }
+:is(button, a).bg-primary-fill:not(:disabled):hover, :is(button, a).bg-destructive-fill:not(:disabled):hover { box-shadow: var(--shadow-4); }
+:is(button, a).bg-primary-fill:not(:disabled):active, :is(button, a).bg-destructive-fill:not(:disabled):active { box-shadow: var(--shadow-8); }
+.dialog-surface { box-shadow: var(--shadow-24); }
+/* MUI TouchRipple: a circle grows from the press point at 0.3 opacity and fades (550 ms). */
+.ripple { position: absolute; border-radius: 50%; background: currentColor; opacity: 0; pointer-events: none; transform: scale(0); animation: ripple-in 550ms var(--ease-standard) forwards; }
+@keyframes ripple-in { 0% { transform: scale(0); opacity: 0.3; } 60% { opacity: 0.3; } 100% { transform: scale(1); opacity: 0; } }
+
+/* MUI Tabs indicator glides between tabs (transform and width only). */
+.tab-indicator { transition: transform 300ms var(--ease-standard), width 300ms var(--ease-standard); }
+@media (prefers-reduced-motion: reduce) { .tab-indicator { transition: none; } }
+
+/* MUI caption: 12px at 1.66; Thai overrides above. */
+@theme { --text-xs--line-height: 1.66; }
+
+/* MUI checkbox/radio halo: a 4% ring on hover, 12% on keyboard focus. */
+input[type=checkbox], input[type=radio] { border-radius: 4px; transition: box-shadow var(--dur-fast) var(--ease-standard); }
+input[type=radio] { border-radius: 50%; }
+input[type=checkbox]:hover:not(:disabled), input[type=radio]:hover:not(:disabled) { box-shadow: 0 0 0 9px color-mix(in srgb, var(--primary) 4%, transparent); }
+input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: none; box-shadow: 0 0 0 9px color-mix(in srgb, var(--primary) 12%, transparent); }
+
+/* MUI outlined TextField: the label sits in the box and floats onto the border when focused or filled. */
+.mui-field { position: relative; }
+.mui-field > .mui-label, .mui-field > .relative ~ .mui-label { position: absolute; inset-inline-start: 12px; top: 50%; max-width: calc(100% - 24px); margin: 0; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1rem; font-weight: 400; line-height: 1.4; color: var(--muted-foreground); pointer-events: none; transform: translateY(-50%); transform-origin: left center; transition: transform 200ms var(--ease-standard), top 200ms var(--ease-standard), color 200ms var(--ease-standard); }
+.mui-field:focus-within > .mui-label, .mui-field:has(input:not(:placeholder-shown)) > .mui-label { top: 0; background: var(--card); transform: translateY(-50%) scale(0.8125); max-width: calc((100% - 24px) / 0.8125); }
+.mui-field:focus-within > .mui-label { color: var(--primary); }
+.mui-field input::placeholder { color: transparent; }
+@media (prefers-reduced-motion: reduce) { .mui-field > .mui-label { transition: none; } }

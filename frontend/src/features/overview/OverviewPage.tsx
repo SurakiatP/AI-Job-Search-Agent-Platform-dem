@@ -31,7 +31,7 @@ function ResourcePanel({ resource, children }: { resource: { status: string; rel
 function Section({ id, title, viewAll, className, children }: { id: string; title: string; viewAll?: { to: string; label: string }; className?: string; children: ReactNode }) {
   const { t } = useTranslation();
   return <section aria-labelledby={id} className={`grid min-w-0 gap-3 ${className ?? ''}`}>
-    <div className="flex flex-wrap items-center justify-between gap-3"><h2 id={id} className="text-xl">{title}</h2>{viewAll && <Link className="text-sm hover:underline" to={viewAll.to}>{t('workspace.viewAll')}<span className="sr-only"> {viewAll.label}</span></Link>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 id={id} className="text-xl">{title}</h2>{viewAll && <Link className="inline-flex min-h-11 items-center text-sm hover:underline lg:min-h-10" to={viewAll.to}>{t('workspace.viewAll')}<span className="sr-only"> {viewAll.label}</span></Link>}</div>
     <div className="workspace-panel">{children}</div>
   </section>;
 }
@@ -105,12 +105,14 @@ export function OverviewPage() {
     <ul className="divide-y">{active.slice(0, 5).map(run => <li key={run.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm sm:px-5" to={runHref(run)}><span className="flex items-center gap-2 font-medium"><Clock3 size={16} aria-hidden="true" />{t(`workspace.operations.${run.operation}`)}</span><StatusBadge status={run.status} locale={locale} /></Link></li>)}</ul>
   </Section>;
 
+  const journey = <JourneyStrip base={base} counts={{ profile: cvs.data?.length, sessions: jobs.data && runs.data ? evaluations.size : undefined, documents: documents.data?.length, applications: jobs.data?.length }} />;
+
   if (project.status === 'error' && !project.data) return <ErrorState onRetry={project.reload} />;
   return <div className="grid min-w-0 gap-6 lg:gap-8">
     <PageHeader icon={LayoutDashboard} title={project.data?.name ?? t('nav.overview')} lede={firstRun ? c.subtitleFirst : t('workspace.overviewSubtitle')}
         actions={!firstRun && <Button asChild variant="outline"><Link to={`${base}/search`}><Search size={17} aria-hidden="true" />{t('workspace.findJobs')}</Link></Button>} />
 
-    <JourneyStrip base={base} counts={{ profile: cvs.data?.length, sessions: jobs.data && runs.data ? evaluations.size : undefined, documents: documents.data?.length, applications: jobs.data?.length }} />
+    {!firstRun && journey}
 
     {(hasAttention || approvals.status === 'error') && <section aria-labelledby="attention-heading" className="grid gap-3 rounded-xl border border-warning/40 bg-card p-5 sm:p-6">
       <div className="flex items-center gap-3"><ListChecks size={21} className="text-warning" aria-hidden="true" /><h2 id="attention-heading" className="text-lg font-semibold">{t('workspace.attention')}</h2>{hasAttention && <Badge variant="warning">{attention.length + unmatchedApprovals.length}</Badge>}</div>
@@ -125,9 +127,10 @@ export function OverviewPage() {
     {firstRun ? <>
       <div className="grid min-w-0 gap-6">
         <GettingStarted base={base} cv={revision && cv ? { name: cv.name, version: revision.revision } : null} job={jobList[0] ? { title: jobList[0].title, more: jobList.length - 1 } : null} />
+        {/* First run: the next step leads; counts follow, and the empty evaluations list is step 3 of the guide. */}
+        {journey}
         <HelpPanel hasCv={!!revision} />
       </div>
-      <Section id="evaluations-heading" title={c.evaluations}><EmptyLine title={c.noEvaluations} body={c.noEvaluationsFirst} /></Section>
       {jobsSection}
       {(documents.status === 'error' || docList.length > 0) && documentsSection}
     </> : <div className="grid min-w-0 gap-6 lg:gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
