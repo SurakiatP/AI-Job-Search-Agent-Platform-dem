@@ -17,7 +17,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from job_search_platform.db.models import CV, CVRevision, Document, DocumentRevision, Project, Run, RunArtifact, StoredFile
+from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.integrations.hermes_runtime import PARSE_ERRORS, RuntimeErrorCode
+from job_search_platform.services.ocr import with_vision_text
 from job_search_platform.integrations.object_store import ObjectMissing, ObjectTooLarge
 from job_search_platform.services import rate_limits
 from job_search_platform.services.authorization import authorize
@@ -42,10 +44,11 @@ class StorageCommitError(ServiceError):
 class Files:
     """Owns upload validation, parser sandbox staging, and file publication."""
 
-    def __init__(self, sessions: sessionmaker[Session], object_store, parser) -> None:
+    def __init__(self, sessions: sessionmaker[Session], object_store, parser, gateway=GatewaySettings.from_env) -> None:
         self.sessions = sessions
         self.object_store = object_store
         self.parser = parser
+        self.gateway = gateway
 
     async def upload(
         self,
@@ -281,10 +284,11 @@ class Files:
                 target.write(body)
             staged.chmod(0o600)
             try:
-                return await asyncio.wait_for(
+                parsed = await asyncio.wait_for(
                     self.parser.parse_input(project_id, f"inputs/{staged.name}"),
                     timeout=MAX_PARSE_SECONDS,
                 )
+                return await with_vision_text(parsed, workspace, self.gateway)
             finally:
                 staged.unlink(missing_ok=True)
         except RuntimeErrorCode as exc:
@@ -313,6 +317,7 @@ class Files:
             workspace.mkdir(mode=0o700)
             inputs = workspace / "inputs"
             inputs.mkdir(mode=0o700)
+            (workspace / "staging").mkdir(mode=0o700)  # the parser writes rendered pages here for the OCR fallback
             await asyncio.wait_for(
                 self.parser.start_project(runtime_id, workspace), timeout=120
             )
@@ -332,10 +337,11 @@ class Files:
             with staged.open("xb") as target:
                 target.write(body)
             staged.chmod(0o600)
-            return await asyncio.wait_for(
+            parsed = await asyncio.wait_for(
                 self.parser.parse_input(runtime_id, f"inputs/{staged.name}"),
                 timeout=MAX_PARSE_SECONDS,
             )
+            return await with_vision_text(parsed, workspace, self.gateway)
         except RuntimeErrorCode as exc:
             code = str(exc)
             raise ServiceError(code if code in PARSE_ERRORS else "document_invalid") from None

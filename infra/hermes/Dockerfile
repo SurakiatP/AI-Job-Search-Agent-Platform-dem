@@ -7,7 +7,7 @@ COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
     apk upgrade --no-cache && apk add --no-cache \
-        bash chromium ripgrep libstdc++ typst font-noto-thai
+        bash chromium ripgrep libstdc++ typst font-noto-thai poppler-utils
 COPY career-ops/ /opt/career-ops/
 COPY career-ops-docx/ /opt/career-ops-docx/
 COPY package.json package-lock.json /opt/runtime/

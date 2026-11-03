@@ -836,7 +836,7 @@ paths:
       responses: {'200': {description: CVs, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/CVView'}}}}}}
     post:
       tags: [files]
-      description: Owner-only multipart upload creating a CV. Name defaults to the filename stem; the project's first CV becomes primary. 429 rate_limited after 20 upload attempts per hour per user (every authorized attempt counts, not only successes; requests refused earlier for size, type or authorization are not counted).
+      description: Owner-only multipart upload creating a CV. Name defaults to the filename stem; the project's first CV becomes primary. 429 rate_limited after 20 upload attempts per hour per user (every authorized attempt counts, not only successes; requests refused earlier for size, type or authorization are not counted). A scanned PDF, or one whose Thai text layer lost its tone marks, is transcribed by the vision model AI_MODEL_DOCUMENT_OCR; 503 ocr_unavailable (retryable) when that call fails, 400 scanned_pdf_unsupported when no gateway key is set.
       requestBody:
         required: true
         content:

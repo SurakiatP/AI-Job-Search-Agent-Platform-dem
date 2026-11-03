@@ -29,6 +29,7 @@ from job_search_platform.services.contracts import EvaluationReport, EvaluationR
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
 from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.gateway import GatewaySettings
+from job_search_platform.services.ocr import with_vision_text
 from job_search_platform.services import applications, experience, job_sources, resume, smart_match, tailoring
 from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, claims, fact_claims, require_evidence, summary_claims
 from job_search_platform.services.errors import ServiceError
@@ -314,7 +315,7 @@ class RunExecutor:
             # per-run reservation before any untrusted input reaches Hermes.
             self.runtime.projects[run.project_id].tool_gate = reserve_tool
             self._record_process(run.id, lease_owner, project)
-            parsed = await self.runtime.parse_input(run.project_id, cv_path)
+            parsed = await self._parse_input(run, cv_path, sandbox)
             # Free by-product of parsing: remember the CV's skill names (never its text) if not yet stored.
             with contextlib.suppress(Exception):
                 await asyncio.to_thread(self._store_profile, run.cv_revision_id, parsed.text)
@@ -439,6 +440,11 @@ class RunExecutor:
             if text.strip() and db.get(CVRevisionText, cv_revision_id) is None:
                 db.add(CVRevisionText(cv_revision_id=cv_revision_id, project_id=revision.project_id, text=text))
 
+    async def _parse_input(self, run: Run, cv_path: str, sandbox: RunSandbox):
+        """Sandbox parse; scanned or broken-text PDFs continue through the vision fallback (services/ocr.py)."""
+        parsed = await self.runtime.parse_input(run.project_id, cv_path)
+        return await with_vision_text(parsed, sandbox.workspace, self.gateway)
+
     async def _parse_cv_text(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> str:
         """Parse the run's CV inside the sandbox (no LLM); the native project is stopped again before returning."""
         cv_path = await self._materialize(run, sandbox)
@@ -456,7 +462,7 @@ class RunExecutor:
             started = True
             self.runtime.projects[run.project_id].tool_gate = reserve_tool
             self._record_process(run.id, lease_owner, project)
-            parsed = await self.runtime.parse_input(run.project_id, cv_path)
+            parsed = await self._parse_input(run, cv_path, sandbox)
         finally:
             await self._stop(run.project_id, started)
         return parsed.text
@@ -495,7 +501,7 @@ class RunExecutor:
             self.runtime.projects[run.project_id].tool_gate = reserve_tool
             self._record_process(run.id, lease_owner, project)
             if text is None:
-                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+                text = (await self._parse_input(run, cv_path, sandbox)).text.replace("\x00", "")
                 with contextlib.suppress(Exception):
                     await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
             if not text.strip():
@@ -639,7 +645,7 @@ class RunExecutor:
             self.runtime.projects[run.project_id].tool_gate = deny_tool
             self._record_process(run.id, lease_owner, project)
             if text is None:
-                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+                text = (await self._parse_input(run, cv_path, sandbox)).text.replace("\x00", "")
                 with contextlib.suppress(Exception):
                     await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
             if not text.strip():
@@ -771,7 +777,7 @@ class RunExecutor:
             self.runtime.projects[run.project_id].tool_gate = deny_tool
             self._record_process(run.id, lease_owner, project)
             if text is None:
-                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+                text = (await self._parse_input(run, cv_path, sandbox)).text.replace("\x00", "")
                 with contextlib.suppress(Exception):
                     await asyncio.to_thread(self._store_profile, run.cv_revision_id, text)
             if not text.strip():
@@ -870,7 +876,7 @@ class RunExecutor:
             self.runtime.projects[run.project_id].tool_gate = deny_tool
             self._record_process(run.id, lease_owner, project)
             if text is None:
-                text = (await self.runtime.parse_input(run.project_id, cv_path)).text.replace("\x00", "")
+                text = (await self._parse_input(run, cv_path, sandbox)).text.replace("\x00", "")
             if not text.strip():
                 raise ServiceError("cv_text_empty")
             if run.operation == "interview_generate":
@@ -1404,6 +1410,8 @@ def _safe_message(code: str) -> str:
         "connector_disabled": "errors.connector_disabled",
         "export_failed": "errors.export_failed",
         "gateway_unconfigured": "errors.gateway_unconfigured",
+        "ocr_unavailable": "errors.ocr_unavailable",
+        "scanned_pdf_unsupported": "errors.scanned_pdf_unsupported",
         "jev_unavailable": "errors.jev_unavailable",
         "jev_failed": "errors.jev_failed",
         "cv_text_empty": "errors.cv_text_empty",
