@@ -1,7 +1,7 @@
 type Topic = { title: string; body: string };
 export const docsCopy = {
   th: {
-    title: 'คู่มือการใช้งาน', intro: 'ทุกอย่างที่ผู้ใช้ใหม่ควรรู้ ตั้งแต่ใส่ CV จนถึงติดตามใบสมัคร',
+    title: 'คู่มือการใช้งาน', intro: 'วิธีใช้แต่ละส่วนของแอป ตั้งแต่ใส่ CV จนถึงติดตามใบสมัคร เลือกหัวข้อที่ต้องการ หรือเริ่มอ่านจากหัวข้อแรก',
     home: 'กลับหน้าแรก', start: 'เริ่มใช้งาน', openApp: 'เปิดแอป', quick: 'เริ่มใน 3 ขั้นตอน', topics: 'หัวข้อในคู่มือ', read: 'อ่านหัวข้อนี้', onThisPage: 'ในหน้านี้', expand: 'ขยาย', collapse: 'หุบ', madeUp: 'ข้อมูลสมมุติ', back: 'หัวข้อทั้งหมด', backToGuide: 'กลับไปคู่มือ', notFound: 'ไม่พบหัวข้อนี้ในคู่มือ', loading: 'กำลังโหลด…', pager: 'หัวข้อก่อนหน้าและถัดไป', topicOf: (n: number, total: number) => `หัวข้อที่ ${n} จาก ${total}`,
     list: [
       { title: 'เริ่มต้นใช้งาน', body: 'สร้างบัญชี ยืนยันอีเมล และสร้างโปรเจกต์แรกของคุณ' },
@@ -16,8 +16,8 @@ export const docsCopy = {
     ] satisfies Topic[],
   },
   en: {
-    title: 'User guide', intro: 'Everything a new user needs, from adding a CV to tracking applications.',
-    home: 'Back to home', start: 'Get started', openApp: 'Open app', quick: 'Start in 3 steps', topics: 'Topics in the guide', read: 'Read this topic', onThisPage: 'On this page', expand: 'expand', collapse: 'collapse', madeUp: 'made-up data', back: 'All topics', backToGuide: 'Back to the guide', notFound: 'This topic is not in the guide', loading: 'Loading…', pager: 'Previous and next topic', topicOf: (n: number, total: number) => `Topic ${n} of ${total}`,
+    title: 'User manual', intro: 'How to use each part of the app, from adding a CV to tracking applications. Pick a topic, or start at the top.',
+    home: 'Back to home', start: 'Get started', openApp: 'Open app', quick: 'Start in 3 steps', topics: 'Topics in the manual', read: 'Read this topic', onThisPage: 'On this page', expand: 'expand', collapse: 'collapse', madeUp: 'made-up data', back: 'All topics', backToGuide: 'Back to the guide', notFound: 'This topic is not in the guide', loading: 'Loading…', pager: 'Previous and next topic', topicOf: (n: number, total: number) => `Topic ${n} of ${total}`,
     list: [
       { title: 'Getting started', body: 'Create an account, verify your email and make your first project.' },
       { title: 'Add your CV and experience bank', body: 'Upload a CV, press Extract CV when you want AI to pull out your experience, then check and edit it yourself.' },

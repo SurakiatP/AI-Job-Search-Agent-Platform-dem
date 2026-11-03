@@ -1,8 +1,10 @@
 import { BookOpen, ChevronDown, Menu } from 'lucide-react';
 import { Link } from 'react-router';
 import { useLocale } from '../../app/providers';
+import { useOwnerSession } from '../../lib/api';
+import { Header } from '../../components/Header';
 import { Button } from '../../components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
 import { landingCopy } from './copy';
 import { featureSlugs } from './featurePages';
 
@@ -32,7 +34,7 @@ export function LandingNav() {
   </nav>;
 }
 
-/** The same links in one menu for narrower screens. */
+/** The same links, in the same order, in one labelled menu for narrower screens. */
 export function LandingMenu({ signedOut }: { signedOut: boolean }) {
   const { locale } = useLocale();
   const c = landingCopy[locale];
@@ -42,12 +44,26 @@ export function LandingMenu({ signedOut }: { signedOut: boolean }) {
         <Button variant="ghost" size="icon" aria-label={c.nav.menu}><Menu className="size-5" aria-hidden="true" /></Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
-        <DropdownMenuItem asChild><Link to="/how-it-works">{c.nav.how}</Link></DropdownMenuItem>
+        <DropdownMenuLabel>{c.nav.features}</DropdownMenuLabel>
         {c.steps.map((step, index) => <DropdownMenuItem key={step.tab} asChild><Link to={`/features/${featureSlugs[index]}`}>{step.tab}</Link></DropdownMenuItem>)}
+        <div role="separator" className="my-1 h-px bg-border" />
+        <DropdownMenuItem asChild><Link to="/how-it-works">{c.nav.how}</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link to="/data">{c.nav.data}</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link to="/docs">{c.docs}</Link></DropdownMenuItem>
         {signedOut && <DropdownMenuItem asChild className="sm:hidden"><Link to="/login">{c.login}</Link></DropdownMenuItem>}
       </DropdownMenuContent>
     </DropdownMenu>
   </div>;
+}
+
+/** One header for every public page: menu, Log in and Get started (or Open app once signed in). Nothing shows until the session is known. */
+export function PublicHeader() {
+  const { locale } = useLocale();
+  const c = landingCopy[locale];
+  const status = useOwnerSession().status;
+  const signedOut = status !== 'ready' && status !== 'loading';
+  return <Header menu={<LandingMenu signedOut={signedOut} />} nav={<LandingNav />} actions={<>
+    {signedOut && <Button asChild size="sm" variant="ghost" className="hidden sm:inline-flex"><Link to="/login">{c.login}</Link></Button>}
+    {status === 'ready' ? <Button asChild size="sm"><Link to="/app/projects">{c.openApp}</Link></Button> : signedOut && <Button asChild size="sm"><Link to="/signup">{c.signup}</Link></Button>}
+  </>} />;
 }

@@ -4,10 +4,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Link, useParams } from 'react-router';
 import { useLocale } from '../../app/providers';
-import { useOwnerSession } from '../../lib/api';
-import { Header } from '../../components/Header';
-import { LandingMenu, LandingNav } from '../landing/LandingNav';
-import { Button } from '../../components/ui/button';
+import { PublicHeader } from '../landing/LandingNav';
 import { loadPage, prepare, topics } from './topics';
 import { docsCopy } from './copy';
 
@@ -17,7 +14,6 @@ export function DocsTopicPage() {
   useEffect(() => setOpen(true), [slug]);
   const { locale } = useLocale();
   const c = docsCopy[locale];
-  const status = useOwnerSession().status;
   const index = topics.findIndex(item => item.id === slug);
   const topic = topics[index];
   const titleOf = (id: string) => c.list[topics.findIndex(item => item.id === id)].title;
@@ -33,10 +29,7 @@ export function DocsTopicPage() {
   const previous = topics[index - 1], next = topics[index + 1];
 
   return <div className="min-h-svh text-foreground">
-    <Header menu={<LandingMenu signedOut={status !== 'ready' && status !== 'loading'} />} nav={<LandingNav />} actions={<>
-      <Button asChild size="sm" variant="ghost"><Link to="/docs">{c.back}</Link></Button>
-      {status === 'ready' && <Button asChild size="sm"><Link to="/app/projects">{c.openApp}</Link></Button>}
-    </>} />
+    <PublicHeader />
     <main data-stage={topic?.stage}>
     <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-12 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
       <nav aria-label={c.topics} className="mb-8 lg:sticky lg:top-20 lg:mb-0 lg:self-start">
@@ -72,7 +65,7 @@ export function DocsTopicPage() {
           <Link to="/docs" className="text-primary underline underline-offset-4">{c.backToGuide}</Link>
         </div>}
         {page && topic && <>
-          <p className="mb-2 text-sm font-medium text-[var(--stage,var(--primary))]">{c.topicOf(index + 1, topics.length)}</p>
+          <p className="mb-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><Link to="/docs" className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline lg:min-h-10">{c.title}</Link><span aria-hidden="true">/</span><span>{c.topicOf(index + 1, topics.length)}</span></p>
           <h1 className="mb-8 text-3xl font-semibold sm:text-4xl">{page.title}</h1>
           <nav aria-label={c.onThisPage} className="mb-8 flex flex-wrap gap-2 lg:hidden">
             {page.sections.map((section, position) => <a key={section.heading} href={`#section-${position + 1}`}
