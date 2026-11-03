@@ -211,8 +211,8 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
       <form className="grid gap-4" onSubmit={event => void submit(event)}>
         <DialogTitle>{t('account.deleteTitle')}</DialogTitle>
         <DialogDescription>{t('account.deleteBody')}</DialogDescription>
-        <div className="grid gap-2"><Label htmlFor="delete-password">{t('auth.password')}</Label><PasswordInput id="delete-password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
-        <div className="grid gap-2"><Label htmlFor="delete-email">{t('account.confirmEmail')}</Label><Input id="delete-email" type="email" autoComplete="off" placeholder={email} required value={confirm} onChange={e => setConfirm(e.target.value)} /></div>
+        <div className="grid gap-2"><div className="mui-field"><PasswordInput placeholder=" " id="delete-password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /><Label htmlFor="delete-password" className="mui-label">{t('auth.password')}</Label></div></div>
+        <div className="grid gap-2"><div className="mui-field"><Input id="delete-email" type="email" autoComplete="off" placeholder={email} required value={confirm} onChange={e => setConfirm(e.target.value)} /><Label htmlFor="delete-email" className="mui-label">{t('account.confirmEmail')}</Label></div></div>
         <div className="grid gap-2 rounded-lg border p-3">
           {codeState !== 'sent' ? <p className="text-sm text-muted-foreground">{otp.first}</p> : <>
             <Label htmlFor="delete-code">{otp.label}</Label>

@@ -65,19 +65,19 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
     <div className="grid gap-1"><h2 id="application-tracking-title" className="text-lg font-semibold">{t('applicationTracking')}</h2><p className="text-sm text-muted-foreground">{t('recordingNote')}</p></div>
     {error && <Alert severity="error">{t('saveError')}</Alert>}
 
-    <div className="grid gap-2">
-      <Label htmlFor="application-stage">{t('stage')}</Label>
+    <div className="mui-field mui-select">
       <Select id="application-stage" value={data.stage} disabled={busy}
         onChange={event => void run(() => sendJson(`${path}/application-status`, 'PATCH', { application_status: event.target.value }), onStageChanged)}>
         {STAGES.map(stage => <option key={stage} value={stage}>{stageLabel[stage][locale]}</option>)}
       </Select>
+      <Label htmlFor="application-stage" className="mui-label">{t('stage')}</Label>
     </div>
 
     <form className="grid gap-3 border-t border-border pt-5" onSubmit={event => { event.preventDefault(); void run(() => sendJson(`${path}/application/contact`, 'PUT', { name: blank(contact.name), email: blank(contact.email), role: blank(contact.role) }), () => setContactSaved(true)); }}>
       <h3 className="text-sm font-semibold">{t('contact')}</h3>
-      <div className="grid gap-2"><Label htmlFor="contact-name">{t('name')}</Label><Input id="contact-name" maxLength={200} value={contact.name} onChange={e => setContact({ ...contact, name: e.target.value })} /></div>
-      <div className="grid gap-2"><Label htmlFor="contact-email">{t('email')}</Label><Input id="contact-email" type="email" maxLength={320} value={contact.email} onChange={e => setContact({ ...contact, email: e.target.value })} /></div>
-      <div className="grid gap-2"><Label htmlFor="contact-role">{t('role')}</Label><Input id="contact-role" maxLength={200} value={contact.role} onChange={e => setContact({ ...contact, role: e.target.value })} /></div>
+      <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="contact-name" maxLength={200} value={contact.name} onChange={e => setContact({ ...contact, name: e.target.value })} /><Label htmlFor="contact-name" className="mui-label">{t('name')}</Label></div></div>
+      <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="contact-email" type="email" maxLength={320} value={contact.email} onChange={e => setContact({ ...contact, email: e.target.value })} /><Label htmlFor="contact-email" className="mui-label">{t('email')}</Label></div></div>
+      <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="contact-role" maxLength={200} value={contact.role} onChange={e => setContact({ ...contact, role: e.target.value })} /><Label htmlFor="contact-role" className="mui-label">{t('role')}</Label></div></div>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" variant="outline" busy={busy} disabled={busy}>{t('saveContact')}</Button>
         <span role="status" className="text-sm text-success">{contactSaved ? t('contactSaved') : ''}</span>
@@ -96,17 +96,16 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
       </div>
       <div id="application-composer">
         {composer === 'note' && <form className="grid gap-2" onSubmit={event => { event.preventDefault(); if (!note.trim()) return; void run(() => sendJson(`${path}/application/events`, 'POST', { kind: 'note', text: note.trim() }), () => { setNote(''); setComposer(null); }); }}>
-          <Label htmlFor="application-note">{t('note')}</Label>
-          <Textarea id="application-note" rows={3} maxLength={2000} value={note} onChange={e => setNote(e.target.value)} />
+          <div className="mui-field"><Textarea placeholder=" " id="application-note" rows={3} maxLength={2000} value={note} onChange={e => setNote(e.target.value)} /><Label htmlFor="application-note" className="mui-label">{t('note')}</Label></div>
           <div><Button type="submit" busy={busy} disabled={busy || !note.trim()}>{t('saveNote')}</Button></div>
         </form>}
         {composer === 'email' && <form className="grid gap-3" onSubmit={event => { event.preventDefault(); if (!log.subject.trim()) return; void run(() => sendJson(`${path}/application/events`, 'POST', { kind: 'email_logged', direction: log.direction, subject: log.subject.trim(), occurred_on: log.occurred_on, note: blank(log.note) }), () => { setLog({ ...log, subject: '', note: '' }); setComposer(null); }); }}>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2"><Label htmlFor="log-direction">{t('direction')}</Label><Select id="log-direction" value={log.direction} onChange={e => setLog({ ...log, direction: e.target.value })}><option value="sent">{t('sent')}</option><option value="received">{t('received')}</option></Select></div>
-            <div className="grid gap-2"><Label htmlFor="log-date">{t('date')}</Label><Input id="log-date" type="date" required value={log.occurred_on} onChange={e => setLog({ ...log, occurred_on: e.target.value })} /></div>
+            <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="log-date" type="date" required value={log.occurred_on} onChange={e => setLog({ ...log, occurred_on: e.target.value })} /><Label htmlFor="log-date" className="mui-label">{t('date')}</Label></div></div>
           </div>
-          <div className="grid gap-2"><Label htmlFor="log-subject">{t('subject')}</Label><Input id="log-subject" maxLength={300} value={log.subject} onChange={e => setLog({ ...log, subject: e.target.value })} /></div>
-          <div className="grid gap-2"><Label htmlFor="log-note">{t('detailsOptional')}</Label><Textarea id="log-note" rows={2} maxLength={2000} value={log.note} onChange={e => setLog({ ...log, note: e.target.value })} /></div>
+          <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="log-subject" maxLength={300} value={log.subject} onChange={e => setLog({ ...log, subject: e.target.value })} /><Label htmlFor="log-subject" className="mui-label">{t('subject')}</Label></div></div>
+          <div className="grid gap-2"><div className="mui-field"><Textarea placeholder=" " id="log-note" rows={2} maxLength={2000} value={log.note} onChange={e => setLog({ ...log, note: e.target.value })} /><Label htmlFor="log-note" className="mui-label">{t('detailsOptional')}</Label></div></div>
           <div><Button type="submit" busy={busy} disabled={busy || !log.subject.trim()}>{t('saveEmail')}</Button></div>
         </form>}
       </div>

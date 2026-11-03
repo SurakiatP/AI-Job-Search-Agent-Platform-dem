@@ -160,7 +160,7 @@ export function DocumentsPage() {
         {undo.id && <Button type="button" size="sm" variant="outline" onClick={() => { void undoTrash(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
         <Link className="inline-flex min-h-11 lg:min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=documents`}>{c.openTrash}</Link>
       </span>}>{undo.message}</Alert>}
-    <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <Button key={value} type="button" size="sm" variant={filter === value ? 'default' : 'outline'} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</Button>)}</div>
+    <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <Button key={value} type="button" size="sm" variant="outline" className={filter === value ? 'border-primary bg-primary/12 font-semibold text-primary' : ''} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</Button>)}</div>
     {visible.length === 0 ? <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-5"><p className="text-sm text-muted-foreground">{w('emptyFilter')} {w('emptyHelp')}</p><Button asChild variant="outline"><Link to={evaluateHref}>{c.evaluate}</Link></Button></div> :
       <ul aria-label={title} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map(document => {
         const Icon = typeIcon[document.document_type];
