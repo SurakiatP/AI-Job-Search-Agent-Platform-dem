@@ -70,7 +70,7 @@ export type SessionView = {
   cv_revision_id?: string | null; job_revision_id?: string | null; cv_name?: string | null; cv_revision?: number | null;
   job_title?: string | null; job_company?: string | null; cv_outdated?: boolean; cv_file_id?: string | null; evaluation_run_id?: string | null;
 };
-export type CVRevisionInfo = { id: string; revision: number; created_at: string; original_filename: string; mime_type: string; size_bytes: number; file_id?: string | null; skill_profile_ready?: boolean; skill_count?: number | null };
+export type CVRevisionInfo = { id: string; revision: number; created_at: string; original_filename: string; mime_type: string; size_bytes: number; file_id?: string | null; skill_profile_ready?: boolean; skill_count?: number | null; extracted_at?: string | null; extracted_count?: number };
 export type CVView = { id: string; name: string; is_primary: boolean; created_at: string; latest_revision: CVRevisionInfo | null; revision_count: number; in_use: boolean; has_builder_draft?: boolean; trashed_at?: string | null };
 export type MessageView = {
   id: string;

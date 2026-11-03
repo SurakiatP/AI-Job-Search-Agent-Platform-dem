@@ -58,30 +58,53 @@ test('experience bank empty states and Thai at 320px', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test('a new CV version refreshes the bank to the queued extraction', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
-  await useSyntheticApplication(page);
-  const current: Cv = { ...cv, latest_revision: revision('r1', 1) };
-  const state = { items: [] as Item[], extraction: null as unknown, provider_configured: true };
-  await bank(page, state, [current]);
-  await page.route(`**/v1/projects/${projectId}/cvs/${cv.id}/revisions`, route => {
-    current.latest_revision = revision('r2', 2);
-    current.revision_count = 2;
-    state.extraction = { run_id: 'r-upload', status: 'queued', cv_id: cv.id, summary: null };
-    return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(current.latest_revision) });
+for (const [locale, t] of [['en', { notYet: 'Not extracted', extract: 'Extract CV', again: 'Extract again', done: 'Extracted 3 facts', upload: 'Upload new version', versions: 'Version history (2)' }],
+  ['th', { notYet: 'ยังไม่สกัด', extract: 'สกัด CV', again: 'สกัดอีกครั้ง', done: 'สกัดแล้ว 3 ข้อเท็จจริง', upload: 'อัปโหลดเวอร์ชันใหม่', versions: 'ประวัติฉบับ (2)' }]] as const) {
+  test(`uploading a CV version does not extract; the Extract CV button does, once, and marks it (${locale})`, async ({ page }) => {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await useSyntheticApplication(page);
+    const rev = (id: string, n: number, done: boolean) => ({ ...revision(id, n), extracted_at: done ? '2026-10-11T00:00:00Z' : null, extracted_count: done ? 3 : 0 });
+    const current: Cv = { ...cv, latest_revision: rev('r1', 1, false) };
+    const state = { items: [] as Item[], extraction: null as unknown, provider_configured: true };
+    await bank(page, state, [current]);
+    await page.route(`**/v1/projects/${projectId}/cv`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([current.latest_revision, ...(current.revision_count > 1 ? [rev('r1', 1, false)] : [])]) }));
+    let extractions = 0;
+    await page.route(`**/v1/async/projects/${projectId}/cvs/*/experience-extractions**`, route => {
+      extractions += 1;
+      current.latest_revision = rev(String((current.latest_revision as { id: string }).id), (current.latest_revision as { revision: number }).revision, true);
+      state.items = [fact('a', 'Ran BigQuery')];
+      state.extraction = { run_id: 'r-x', status: 'completed', cv_id: cv.id, summary: { added: 3, duplicates: 0, rejected: 0 } };
+      return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'r-x', status: 'queued' }) });
+    });
+    await page.route(`**/v1/projects/${projectId}/cvs/${cv.id}/revisions`, route => {
+      current.latest_revision = rev('r2', 2, false);
+      current.revision_count = 2;
+      return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(current.latest_revision) });
+    });
+    await page.goto(`/app/projects/${projectId}/profile`);
+    const card = page.getByRole('listitem').filter({ hasText: 'Data CV' });
+    await expect(card.getByText(t.notYet)).toBeVisible();
+    const chooser = page.waitForEvent('filechooser');
+    await page.locator('button', { hasText: t.upload }).click();
+    await (await chooser).setFiles({ name: 'cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic CV') });
+    await expect(card.getByText(locale === 'en' ? 'v2' : 'ฉบับ 2')).toBeVisible();
+    await page.waitForTimeout(1500);
+    expect(extractions).toBe(0);
+    await expect(card.getByText(t.notYet)).toBeVisible();
+    await card.getByRole('button', { name: new RegExp(`^${t.extract}`) }).click();
+    await expect(card.getByText(t.done)).toBeVisible();
+    expect(extractions).toBe(1);
+    await expect(card.getByRole('button', { name: new RegExp(`^${t.again}`) })).toBeVisible();
+    await card.getByRole('button', { name: new RegExp(`^${t.again}`) }).click();
+    await expect.poll(() => extractions).toBe(2);
+    await page.getByRole('button', { name: t.versions }).click();
+    const rows = page.getByRole('list', { name: locale === 'en' ? 'Version history' : 'ประวัติฉบับ' }).getByRole('listitem');
+    await expect(rows.first().getByText(t.done)).toBeVisible();
+    await expect(rows.nth(1).getByText(t.notYet)).toBeVisible();
+    await page.setViewportSize({ width: 320, height: 800 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
-  await page.goto(`/app/projects/${projectId}/profile`);
-  await page.getByRole('tab', { name: 'Experience bank' }).click();
-  const section = page.getByRole('region', { name: 'Experience bank' });
-  await expect(section.getByRole('button', { name: 'Extract experience from CV with AI', exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'CV library' }).click();
-  const chooser = page.waitForEvent('filechooser');
-  await page.locator('button', { hasText: 'Upload new version' }).click();
-  await (await chooser).setFiles({ name: 'cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic CV') });
-  await expect(page.getByRole('status').filter({ hasText: 'Reading your CV' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Experience bank' }).click();
-  await expect(section.getByRole('status')).toContainText('The agent is queued to extract experience from your CV');
-});
+}
 
 test('each CV card can start an extraction for that CV', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
@@ -94,9 +117,9 @@ test('each CV card can start an extraction for that CV', async ({ page }) => {
     return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'r-other', status: 'queued' }) });
   });
   await page.goto(`/app/projects/${projectId}/profile`);
-  await expect(page.getByRole('button', { name: 'Extract experience with AI: Older CV' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Extract CV: Older CV' })).toBeVisible();
   const request = page.waitForRequest(r => r.method() === 'POST' && r.url().endsWith(`/cvs/${other.id}/experience-extractions`));
-  await page.getByRole('button', { name: 'Extract experience with AI: Older CV' }).click();
+  await page.getByRole('button', { name: 'Extract CV: Older CV' }).click();
   await request;
   await page.getByRole('tab', { name: 'Experience bank' }).click();
   await expect(page.getByRole('region', { name: 'Experience bank' }).getByRole('status')).toContainText('The agent is queued to extract experience from your CV');

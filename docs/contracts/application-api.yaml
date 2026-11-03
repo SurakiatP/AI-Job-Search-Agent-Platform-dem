@@ -1708,12 +1708,16 @@ paths:
         in: path
         required: true
         schema: {type: string, format: uuid}
+      - name: revision_id
+        in: query
+        required: false
+        schema: {type: string, format: uuid}
     post:
       tags: [files]
       description: >-
         Owner-only. Queues (or returns the active) extract_experience run that reads the CV's latest revision and
-        adds its verbatim facts to the experience bank. Every CV upload also queues one automatically when a
-        gateway app key is available. extract_experience runs are hidden from the run list, grants, MCP and A2A.
+        adds its verbatim facts to the experience bank. Uploading never starts it; the owner presses a separate
+        button. The optional revision_id query selects an older revision instead of the latest. extract_experience runs are hidden from the run list, grants, MCP and A2A.
       security: [{ownerSession: []}]
       responses:
         '202': {description: Extraction run queued, content: {application/json: {schema: {$ref: '#/components/schemas/RunView'}}}}
@@ -2336,6 +2340,8 @@ components:
             file_id: {type: [string, 'null'], format: uuid}
             skill_profile_ready: {type: boolean, default: false}
             skill_count: {type: [integer, 'null'], minimum: 0}
+            extracted_at: {type: [string, 'null'], format: date-time, description: When the latest completed AI extraction of this revision finished; null when never extracted}
+            extracted_count: {type: integer, minimum: 0, default: 0, description: Live experience-bank facts that came from this revision}
     SectionChoice:
       type: object
       additionalProperties: false

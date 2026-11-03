@@ -56,7 +56,7 @@ const en: Record<InfoSlug, InfoPage> = {
         { title: 'An AI provider', body: 'Features that use AI (extract experience, evaluate, draft documents, Smart match) need an AI provider set up first. Plain job search does not.' },
       ] },
       { heading: 'The flow', items: [
-        { title: '1. Add your CV', body: 'Upload a CV and extract your experience into a bank of facts about you.' },
+        { title: '1. Add your CV', body: 'Upload a CV, then press Extract CV to add your experience to a bank of facts about you.' },
         { title: '2. Search jobs', body: 'Search real jobs in Thailand, see posting age, and let Smart match rank them against your CV when you press start.' },
         { title: '3. Evaluate', body: 'Compare your CV with one posting: an AI fit with reasons, and skills found counted from keywords.' },
         { title: '4. Draft documents', body: 'Tailor your CV and draft letters, citing only facts in your experience bank.' },

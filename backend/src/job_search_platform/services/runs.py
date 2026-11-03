@@ -815,12 +815,12 @@ class RunService:
             append_event(db, run, "run_queued", {"status": "queued"}, now=now)
             return self._authorized_view(db, actor, run)
 
-    async def submit_extract(self, actor: Actor, project_id: UUID, cv_id: UUID, *, automatic: bool = False) -> RunView | None:
+    async def submit_extract(self, actor: Actor, project_id: UUID, cv_id: UUID, *, automatic: bool = False, revision_id: UUID | None = None) -> RunView | None:
         """Owner-only: queue LLM extraction of the CV's latest revision into the experience bank.
         Automatic (upload) triggers skip revisions already extracted; None then."""
-        return await asyncio.to_thread(self._submit_extract_sync, actor, project_id, cv_id, automatic)
+        return await asyncio.to_thread(self._submit_extract_sync, actor, project_id, cv_id, automatic, revision_id)
 
-    def _submit_extract_sync(self, actor: Actor, project_id: UUID, cv_id: UUID, automatic: bool) -> RunView | None:
+    def _submit_extract_sync(self, actor: Actor, project_id: UUID, cv_id: UUID, automatic: bool, revision_id: UUID | None = None) -> RunView | None:
         if actor.kind != "user":
             raise ServiceError("forbidden")
         now = datetime.now(timezone.utc)
@@ -833,7 +833,8 @@ class RunService:
                 .join(CV, (CV.project_id == CVRevision.project_id) & (CV.id == CVRevision.cv_id))
                 .join(StoredFile, (StoredFile.project_id == CVRevision.project_id) & (StoredFile.id == CVRevision.file_id))
                 .where(CVRevision.project_id == project_id, CVRevision.cv_id == cv_id, CV.removed_at.is_(None),
-                       StoredFile.publication_state == "published")
+                       StoredFile.publication_state == "published",
+                       *([CVRevision.id == revision_id] if revision_id else []))
                 .order_by(CVRevision.revision.desc()).limit(1))
             if latest is None:
                 raise ServiceError("not_found")

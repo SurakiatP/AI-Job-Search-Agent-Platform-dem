@@ -308,6 +308,8 @@ class CVRevisionView(RevisionView):
     file_id: UUID | None = None
     skill_profile_ready: bool = False
     skill_count: int | None = None
+    extracted_at: datetime | None = None
+    extracted_count: int = 0
 
 
 class DocumentRename(DTO):

@@ -15,15 +15,24 @@ PREFIX = "/v1/projects"
 
 
 @pytest.mark.integration
-def test_upload_queues_extraction_once_and_owner_crud(api_context):
+def test_upload_does_not_extract_until_owner_asks_and_owner_crud(api_context):
     csrf = _owner(api_context)
     pid = _project(api_context, csrf)
     client, headers = api_context.client, _write_headers(csrf)
     cv_id = _upload(api_context, csrf, pid).json()["id"]
     with api_context.sessions() as db:
+        assert not list(db.scalars(select(Run).where(Run.project_id == UUID(pid), Run.operation == "extract_experience")))
+    revision = client.get(f"{PREFIX}/{pid}/cv").json()[0]
+    assert revision["extracted_at"] is None and revision["extracted_count"] == 0
+    assert client.get(f"{PREFIX}/{pid}/experience").json()["extraction"] is None
+
+    started = client.post(f"/v1/async/projects/{pid}/cvs/{cv_id}/experience-extractions", headers=headers)
+    assert started.status_code == 202
+    again = client.post(f"/v1/async/projects/{pid}/cvs/{cv_id}/experience-extractions", headers=headers)
+    assert again.json()["id"] == started.json()["id"]
+    with api_context.sessions() as db:
         runs = list(db.scalars(select(Run).where(Run.project_id == UUID(pid), Run.operation == "extract_experience")))
     assert len(runs) == 1 and runs[0].status == "queued"
-    assert client.get(f"{PREFIX}/{pid}/runs").json() == []
 
     view = client.get(f"{PREFIX}/{pid}/experience").json()
     assert view["items"] == [] and view["provider_configured"] is True

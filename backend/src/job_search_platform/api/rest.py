@@ -23,7 +23,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
 from job_search_platform.db.models import (
-    Approval, CVRevisionText, DocumentRevision, InterviewSet, ResumeDraft,
+    Approval, ExperienceItem, CVRevisionText, DocumentRevision, InterviewSet, ResumeDraft,
     CV, CVRevision, ConversationSession, Document, JobApplicationStatus, JobRevision, Message, Project,
     ProjectPreference, StoredFile, Run, RunArtifact, Grant, JobMatchScore, JobSearchHidden,
     ToolConnectorConfiguration, Base,
@@ -144,10 +144,27 @@ def _pair_holder(db, row: ConversationSession) -> UUID | None:
         ConversationSession.job_revision_id == row.job_revision_id))
 
 
-def _cv_revision_view(revision: CVRevision, file: StoredFile) -> dict[str, Any]:
+def _extraction_stats(db, revision_ids: list[UUID]) -> dict[UUID, tuple[datetime | None, int]]:
+    """Per revision: when its latest extraction run finished and how many live bank facts came from it (two queries)."""
+    stats: dict[UUID, tuple[datetime | None, int]] = {}
+    if not revision_ids:
+        return stats
+    counts = dict(db.execute(select(ExperienceItem.source_cv_revision_id, func.count()).where(
+        ExperienceItem.source_cv_revision_id.in_(revision_ids), ExperienceItem.removed_at.is_(None))
+        .group_by(ExperienceItem.source_cv_revision_id)).all())
+    times = dict(db.execute(select(Run.cv_revision_id, func.max(Run.finished_at)).where(
+        Run.cv_revision_id.in_(revision_ids), Run.operation == "extract_experience", Run.status == "completed")
+        .group_by(Run.cv_revision_id)).all())
+    for rid in revision_ids:
+        stats[rid] = (times.get(rid), counts.get(rid, 0))
+    return stats
+
+
+def _cv_revision_view(revision: CVRevision, file: StoredFile, extraction: tuple[datetime | None, int] = (None, 0)) -> dict[str, Any]:
     profile = revision.skill_profile if (revision.skill_profile or {}).get("method") == SKILL_METHOD else None
     return {"skill_profile_ready": profile is not None,
-            "skill_count": len(profile["skills"]) if profile else None,"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
+            "skill_count": len(profile["skills"]) if profile else None,
+            "extracted_at": extraction[0], "extracted_count": extraction[1], "id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
             "original_filename": file.display_name, "mime_type": file.mime_type, "size_bytes": file.size_bytes,
             "file_id": file.id}
 
@@ -161,7 +178,7 @@ def _cv_view(db, cv: CV) -> dict[str, Any]:
         ConversationSession.project_id == cv.project_id,
         ConversationSession.cv_revision_id.in_(select(CVRevision.id).where(CVRevision.cv_id == cv.id)))))
     return {"id": cv.id, "name": cv.name, "is_primary": cv.is_primary, "created_at": cv.created_at,
-            "latest_revision": _cv_revision_view(*rows[0]) if rows else None,
+            "latest_revision": _cv_revision_view(*rows[0], _extraction_stats(db, [rows[0][0].id])[rows[0][0].id]) if rows else None,
             "revision_count": len(rows), "in_use": bool(in_use), "trashed_at": cv.removed_at,
             "has_builder_draft": db.scalar(select(exists().where(ResumeDraft.cv_id == cv.id))) or False}
 
@@ -822,9 +839,9 @@ async def remove_experience(project_id: UUID, item_id: UUID, actor=Depends(write
 
 
 @router.post("/async/projects/{project_id}/cvs/{cv_id}/experience-extractions", status_code=202, response_model=RunView)
-async def start_experience_run(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), services: Services = Depends(get_services)):
-    """Queue (or return the active) owner-only extraction of this CV's latest revision into the experience bank."""
-    return await services.runs.submit_extract(actor, project_id, cv_id)
+async def start_experience_run(project_id: UUID, cv_id: UUID, revision_id: UUID | None = None, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    """Queue (or return the active) owner-only extraction of this CV's latest (or the given) revision into the experience bank."""
+    return await services.runs.submit_extract(actor, project_id, cv_id, revision_id=revision_id)
 
 
 @router.get("/projects/{project_id}/job-search/facets")
@@ -1015,7 +1032,8 @@ async def get_cv(project_id: UUID, actor=Depends(owner_actor), services: Service
           .where(CVRevision.project_id == project_id, StoredFile.publication_state == "published",
                  CV.is_primary, CV.removed_at.is_(None))
           .order_by(CVRevision.revision.desc())).all()
-        return [_cv_revision_view(*row) for row in rows]
+        stats = _extraction_stats(db, [row[0].id for row in rows])
+        return [_cv_revision_view(*row, stats[row[0].id]) for row in rows]
 
 
 async def _upload_cv(services, actor, project_id: UUID, file: UploadFile, **target) -> tuple[dict[str, Any], UUID]:
@@ -1030,9 +1048,7 @@ async def _upload_cv(services, actor, project_id: UUID, file: UploadFile, **targ
         ))
         if revision is None:
             raise ServiceError("file_unavailable")
-    # Every new CV revision feeds the experience bank; without a provider (or with a full queue) the owner starts it later.
-    with contextlib.suppress(ServiceError):
-        await services.runs.submit_extract(actor, project_id, revision.cv_id, automatic=True)
+    # Extraction into the experience bank is the owner's separate choice (experience-extractions endpoint).
     return ({"id": revision.id, "revision": revision.revision, "created_at": revision.created_at,
              "original_filename": view.display_name, "mime_type": view.mime_type, "size_bytes": view.size_bytes,
              "file_id": view.id},

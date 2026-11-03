@@ -227,7 +227,10 @@ def test_force_delete_erases_project_and_everything_in_it(api_context):
     # the typed name must match exactly
     wrong = client.post(f"/v1/projects/{doomed}/force-delete", json={"confirm_name": "erase me"}, headers=headers)
     assert wrong.status_code == 422 and wrong.json()["code"] == "confirmation_mismatch"
-    # work that is still running blocks the erase
+    # work that is still running blocks the erase; extraction no longer starts on upload, so queue one
+    cv_id = client.get(f"/v1/projects/{doomed}/cvs").json()[0]["id"]
+    started = client.post(f"/v1/async/projects/{doomed}/cvs/{cv_id}/experience-extractions", headers=headers)
+    assert started.status_code == 202, started.text
     with api_context.sessions.begin() as db:
         run_id = db.scalar(select(Run.id).where(Run.project_id == UUID(doomed)))
     assert run_id is not None, "setup must leave a run behind so the busy check is really exercised"

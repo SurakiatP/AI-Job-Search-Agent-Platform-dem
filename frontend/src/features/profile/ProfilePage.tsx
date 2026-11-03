@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CvPreviewButton } from '@/components/CvPreview';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles, UserRound, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles, UserRound, X } from 'lucide-react';
 import { notifyTrashChanged } from '@/lib/trash';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -73,11 +73,21 @@ function CvRowMenu({ cv, c, label, help, onMakePrimary, onRename, onDelete }: { 
   </DropdownMenu>;
 }
 
+function ExtractedBadge({ revision, w }: { revision: CVRevisionInfo; w: (key: string, options?: Record<string, unknown>) => string }) {
+  const done = !!revision.extracted_at || (revision.extracted_count ?? 0) > 0;
+  return done
+    ? <Badge className="gap-1 border-teal-600/40 bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-200"><Check className="size-3" aria-hidden="true" />{w('extractedBadge', { count: revision.extracted_count ?? 0 })}</Badge>
+    : <Badge variant="muted">{w('notExtracted')}</Badge>;
+}
+
 // Earlier uploads of the primary CV (the API lists revisions for the primary CV only).
-function VersionHistory({ projectId, cv, revisions, date, label, versionLabel }: { projectId: string; cv: CVView; revisions: CVRevisionInfo[]; date: Intl.DateTimeFormat; label: string; versionLabel: (n: number) => string }) {
+function VersionHistory({ projectId, cv, revisions, date, label, versionLabel, w, canExtract, extractBlocked, onExtract }: { projectId: string; cv: CVView; revisions: CVRevisionInfo[]; date: Intl.DateTimeFormat; label: string; versionLabel: (n: number) => string; w: (key: string, options?: Record<string, unknown>) => string; canExtract: boolean; extractBlocked: boolean; onExtract: (revisionId: string) => void }) {
   return <ol aria-label={label} className="grid gap-1 rounded-lg bg-muted/50 p-2 xl:col-span-full">{revisions.map(revision => <li key={revision.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-md px-2 py-1 text-sm">
-    <span className="min-w-0 break-words text-muted-foreground [overflow-wrap:anywhere]"><span className="font-medium text-foreground">{versionLabel(revision.revision)}</span> · {revision.original_filename} · {date.format(new Date(revision.created_at))} · {formatSize(revision.size_bytes)}</span>
+    <span className="min-w-0 break-words text-muted-foreground [overflow-wrap:anywhere]"><span className="font-medium text-foreground">{versionLabel(revision.revision)}</span> · {revision.original_filename} · {date.format(new Date(revision.created_at))} · {formatSize(revision.size_bytes)} · <ExtractedBadge revision={revision} w={w} /></span>
+    <span className="flex flex-wrap items-center gap-1">
+    {canExtract && <Button type="button" size="sm" variant="ghost" aria-label={`${w(revision.extracted_at ? 'extractAgain' : 'extractFacts')}: ${versionLabel(revision.revision)}`} disabled={extractBlocked} onClick={() => onExtract(revision.id)}><Sparkles className="size-4" aria-hidden="true" />{w(revision.extracted_at ? 'extractAgain' : 'extractFacts')}</Button>}
     <CvPreviewButton projectId={projectId} fileId={revision.file_id} name={cv.name} revision={revision.revision} filename={revision.original_filename} mimeType={revision.mime_type} cvId={cv.id} variant="ghost" />
+    </span>
   </li>)}</ol>;
 }
 
@@ -107,9 +117,8 @@ export function ProfilePage() {
   const [extractError, setExtractError] = useState(false);
   const bank = useResource<ExperienceView>(`/projects/${projectId}/experience`);
   const extractionStatus = bank.data?.extraction?.status;
-  const [settling, setSettling] = useState(false);
-  const extracting = extractionStatus === 'queued' || extractionStatus === 'running' || settling;
-  // A new CV revision queues an extraction server-side; refresh the bank whenever the revisions change.
+  const extracting = extractionStatus === 'queued' || extractionStatus === 'running';
+  // Reload the bank when a CV revision is added.
   const revisionKey = cvs.data?.map(cv => cv.latest_revision?.id ?? '').join() ?? null;
   const seenRevisionKey = useRef<string | null>(null);
   const reloadBank = bank.reload;
@@ -119,6 +128,12 @@ export function ProfilePage() {
     seenRevisionKey.current = revisionKey;
   }, [revisionKey, reloadBank]);
   useEffect(() => { if (!extracting) return; const timer = window.setInterval(reloadBank, 3000); return () => window.clearInterval(timer); }, [extracting, reloadBank]);
+  const wasExtracting = useRef(false);
+  const reloadCvs = cvs.reload, reloadRevisions = primaryRevisions.reload;
+  useEffect(() => {
+    if (wasExtracting.current && !extracting) { reloadCvs(); reloadRevisions(); }
+    wasExtracting.current = extracting;
+  }, [extracting, reloadCvs, reloadRevisions]);
   if (cvs.status === 'loading' && !cvs.data) return <LoadingState />;
   if (cvs.status === 'error') return <ErrorState onRetry={cvs.reload} />;
 
@@ -132,8 +147,6 @@ export function ProfilePage() {
       const body = new FormData(); body.set('file', file); if (name) body.set('name', name);
       await apiRequest(`/projects/${projectId}${path}`, { method: 'POST', body });
       cvs.reload(); primaryRevisions.reload();
-      // The server queues the read right after the upload; give it a moment before reporting that nothing started.
-      setSettling(true); window.setTimeout(reloadBank, 1200); window.setTimeout(() => { reloadBank(); setSettling(false); }, 2500);
     } catch (error) { setUploadError(error instanceof ApiError ? uploadMessages[error.code] ?? 'pages.loadError' : 'pages.loadError'); }
     finally { setBusy(false); }
   }
@@ -145,9 +158,9 @@ export function ProfilePage() {
     try { await apiRequest(`/projects/${projectId}/cvs/${cv.id}/restore`, { method: 'POST' }); setRemoved(null); cvs.reload(); primaryRevisions.reload(); notifyTrashChanged(); }
     catch { setUndoFailed(true); }
   }
-  async function extract(cv: CVView) {
+  async function extract(cv: CVView, revisionId?: string) {
     setExtractError(false);
-    try { await apiRequest(`/async/projects/${projectId}/cvs/${cv.id}/experience-extractions`, { method: 'POST' }); bank.reload(); } catch { setExtractError(true); }
+    try { await apiRequest(`/async/projects/${projectId}/cvs/${cv.id}/experience-extractions${revisionId ? `?revision_id=${revisionId}` : ''}`, { method: 'POST' }); bank.reload(); cvs.reload(); primaryRevisions.reload(); } catch { setExtractError(true); }
   }
   const date = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium' });
   const dateTime = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
@@ -209,7 +222,7 @@ export function ProfilePage() {
                     <div className="flex min-w-0 flex-wrap items-center gap-2">{rename?.id === cv.id ? <InlineName key={cv.id} cv={cv} c={c} projectId={projectId} onClose={() => setRename(null)} onDone={() => { setRename(null); cvs.reload(); }} />
                       : <h3 className="min-w-0 break-words text-base font-semibold [overflow-wrap:anywhere]" title={c.rename} onDoubleClick={() => setRename(cv)}>{cv.name}</h3>}{cv.is_primary && <Badge><Star className="me-1 size-3" aria-hidden="true" />{c.primary}</Badge>}</div>
                     {meta.length > 0 && <p className="mt-1 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{meta.join(' · ')}</p>}
-                    {latest && <p className="text-sm"><span className="text-muted-foreground">{w('colVersion')}: </span>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>}</p>}
+                    {latest && <p className="text-sm"><span className="text-muted-foreground">{w('colVersion')}: </span>{versionLabel(latest.revision)}{cv.revision_count > 1 && <span className="text-muted-foreground"> · {cv.revision_count} {c.versions}</span>} <ExtractedBadge revision={latest} w={w} /></p>}
                     {cv.in_use && <p className="mt-1 text-xs text-muted-foreground">{c.inUse}</p>}
                   </div>
                 </div>
@@ -218,13 +231,13 @@ export function ProfilePage() {
                   {cv.has_builder_draft
                     ? <Button asChild size="sm" variant="outline"><Link to={`/app/projects/${projectId}/cvs/${cv.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{c.editBuilder}</Link></Button>
                     : <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>}
-                  {latest && bank.data?.provider_configured && <Button type="button" size="sm" variant="outline" aria-label={`${w('extractFacts')}: ${cv.name}`} disabled={gate.blocked} title={gate.title} onClick={() => void extract(cv)}><Sparkles className="size-4" aria-hidden="true" />{w('extractFacts')}</Button>}
+                  {latest && bank.data?.provider_configured && <Button type="button" size="sm" variant="outline" aria-label={`${w(latest.extracted_at ? 'extractAgain' : 'extractFacts')}: ${cv.name}`} disabled={gate.blocked} title={gate.title} onClick={() => void extract(cv)}><Sparkles className="size-4" aria-hidden="true" />{w(latest.extracted_at ? 'extractAgain' : 'extractFacts')}</Button>}
                   <CvRowMenu cv={cv} c={c} label={w('rowMenu', { name: cv.name })} help={w('makePrimaryHelp')} onMakePrimary={() => void makePrimary(cv)} onRename={() => setRename(cv)} onDelete={() => setRemove(cv)} />
                 </div>
                 {showHistory && <div className="grid gap-2">
                   <Button type="button" size="sm" variant="ghost" className="w-fit" aria-expanded={historyOpen === cv.id} onClick={() => setHistoryOpen(historyOpen === cv.id ? null : cv.id)}>
                     {historyOpen === cv.id ? <ChevronUp className="size-4" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}{historyOpen === cv.id ? w('versionsClose') : w('versionsOpen', { count: history.length })}</Button>
-                  {historyOpen === cv.id && <VersionHistory projectId={projectId} cv={cv} revisions={history} date={date} label={w('versionHistory')} versionLabel={versionLabel} />}
+                  {historyOpen === cv.id && <VersionHistory projectId={projectId} cv={cv} revisions={history} date={date} label={w('versionHistory')} versionLabel={versionLabel} w={w} canExtract={!!bank.data?.provider_configured} extractBlocked={gate.blocked} onExtract={id => void extract(cv, id)} />}
                 </div>}
               </li>;
             })}</ul>
@@ -241,9 +254,9 @@ export function ProfilePage() {
                 {!extracting && notStarted && <p className="text-sm text-muted-foreground">{notStartedWhy}</p>}
                 {!extracting && !notStarted && !readFailed && skillNames.length > 0 && <ul className="flex flex-wrap gap-1">{skillNames.map(name => <li key={name}><Badge variant="muted">{name}</Badge></li>)}</ul>}
               </div>
-              {!extracting && (readFailed || notStarted)
+              {!extracting && readFailed
                 ? retryCv && bank.data?.provider_configured && <Button type="button" className="sm:ms-auto" disabled={gate.blocked} title={gate.title} onClick={() => void extract(retryCv)}><Sparkles className="size-4" aria-hidden="true" />{w('retry')}</Button>
-                : !extracting && !!factCount && <Button type="button" variant="outline" className="sm:ms-auto" onClick={() => showTab('experience')}>{w('bankReview')}<ArrowRight className="size-4" aria-hidden="true" /></Button>}
+                : !extracting && !notStarted && !!factCount && <Button type="button" variant="outline" className="sm:ms-auto" onClick={() => showTab('experience')}>{w('bankReview')}<ArrowRight className="size-4" aria-hidden="true" /></Button>}
             </div>
           </CardContent></Card>
           <p className="text-sm text-muted-foreground"><Link className="rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" to={`/app/settings?project=${projectId}&section=preferences`}>{w('prefsMoved')}</Link></p>
