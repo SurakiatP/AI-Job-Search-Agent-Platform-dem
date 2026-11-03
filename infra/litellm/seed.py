@@ -78,10 +78,12 @@ def seed_model():
         print("model_check_failed", flush=True)
         return False
     ok = True
-    for spec in [MODEL] + [{"model_name": n, "litellm_params": {"model": upstream(n), "api_key": "os.environ/OPENROUTER_API_KEY"}} for n in task_models()]:
+    for spec in [MODEL] + [{"model_name": n, "litellm_params": {"model": upstream(n), "api_key": "os.environ/OPENROUTER_API_KEY", "drop_params": True}} for n in task_models()]:
         name = spec["model_name"]
         current = [m for m in info.get("data", []) if m.get("model_name") == name]
-        if current and all(m.get("litellm_params", {}).get("model") == spec["litellm_params"]["model"] for m in current):
+        if current and all(m.get("litellm_params", {}).get("model") == spec["litellm_params"]["model"]
+                           and bool(m.get("litellm_params", {}).get("drop_params")) == bool(spec["litellm_params"].get("drop_params"))
+                           for m in current):
             print("model_present", flush=True)
             continue
         for m in current:  # the upstream model in .env changed: replace the alias so the new one takes effect
