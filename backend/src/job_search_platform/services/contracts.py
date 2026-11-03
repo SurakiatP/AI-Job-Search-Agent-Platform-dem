@@ -163,6 +163,11 @@ class ProjectUpdate(DTO):
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
+class ProjectForceDelete(DTO):
+    """Typed confirmation for erasing a project and everything in it; must equal the project's current name."""
+    confirm_name: Annotated[str, StringConstraints(min_length=1, max_length=200)]
+
+
 class PreferencesUpdate(DTO):
     locale: Literal["th", "en"] | None = None
     output_language: Literal["th", "en"] | None = None
