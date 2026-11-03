@@ -192,7 +192,8 @@ export function JobDetailPage() {
           <FitScore size="lg" score={score} locale={locale} />
           {band && <Badge variant={band.variant}>{t(band.key)}</Badge>}
           <AiLabel />
-          <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{t('evaluationSession')}</Link>
+          {/* Hidden when the next-step button already opens this session (draft or practise), so one place has one control. */}
+          {!(flow.step.action.type === 'draft' || flow.step.action.type === 'link' && flow.step.action.to !== 'search') && <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{t('evaluationSession')}</Link>}
         </div>
         <div data-testid="evaluation-provenance" className="flex min-w-0 flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
           <span>{t('revision', { revision: job.revision })}</span>
@@ -204,10 +205,10 @@ export function JobDetailPage() {
           {evaluationSession.status === 'error' && <button type="button" className="min-h-11 lg:min-h-10 text-primary underline underline-offset-4" onClick={evaluationSession.reload}>{t('retry')}</button>}
         </div>
         {evaluation.evaluation_result.skill_coverage && <SkillsFound coverage={evaluation.evaluation_result.skill_coverage} />}
-        <details open>
-          <summary className="min-h-11 lg:min-h-10 cursor-pointer content-center font-medium"><span className="inline-flex flex-wrap items-center gap-2">{t('latestEvaluation')}<AiLabel /></span></summary>
+        <div>
+          <h3 className="inline-flex flex-wrap items-center gap-2 font-medium">{t('latestEvaluation')}<AiLabel /></h3>
           <Markdown className="mt-2" data-testid="evaluation-report">{evaluation.evaluation_result.report_markdown}</Markdown>
-        </details>
+        </div>
       </> : <div className="flex flex-col items-start gap-2">
         <p className="font-medium">{t('notEvaluated')}</p><p className="text-sm text-muted-foreground">{t('notEvaluatedNext')}</p>
       </div>}
@@ -222,7 +223,6 @@ export function JobDetailPage() {
           <span className="flex min-w-0 items-center gap-2"><FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><Link className="break-words font-medium text-primary hover:underline" to={`${base}/documents/${doc.id}`}>{doc.title}</Link></span>
           {doc.latest_revision && <span className="text-sm text-muted-foreground">{t('documentRevision', { revision: doc.latest_revision.revision })}</span>}
         </li>)}</ul>}
-      <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/documents`}>{t('allDocuments')}</Link>
     </section>
 
     <JobDescription text={job.description ?? ''} />

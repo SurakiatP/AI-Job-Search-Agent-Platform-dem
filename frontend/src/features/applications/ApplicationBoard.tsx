@@ -9,6 +9,7 @@ import { Snackbar } from '@/components/ui/snackbar';
 import { CompanyMark } from '@/components/CompanyMark';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ItemMenu } from '@/components/ItemMenu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import type { ApplicationCardView, ApplicationStage } from '../../lib/api-types';
 import { FitScore } from '@/components/FitScore';
 import { NextStepButton, jobFlow, type JobFlowData } from '../jobs/NextStepButton';
@@ -37,19 +38,27 @@ function OpportunityRow({ projectId, card, locale, onMove, flowData }: {
       {card.company && <p className="mt-0.5 break-words text-sm text-muted-foreground">{card.company}</p>}
     </div>
     <ChevronRight className="size-5 text-muted-foreground md:col-start-6 md:row-start-1" aria-hidden="true" />
-    <div className="relative z-10 col-span-2 flex items-center gap-2 md:col-span-1 md:col-start-3 md:row-start-1"><FitScore score={flow.score} locale={locale} /></div>
-    <div className="relative z-10 col-span-2 grid gap-1 md:col-span-1 md:col-start-4 md:row-start-1">
-      <span className="text-xs text-muted-foreground md:hidden" aria-hidden="true">{t('stage')}</span>
-      <span className="relative inline-flex w-fit items-center" data-app-stage={card.stage}>
-        <span className="stage-dot pointer-events-none absolute start-3" aria-hidden="true" />
-        <ChevronDown className="pointer-events-none absolute end-2 size-4 text-muted-foreground" aria-hidden="true" />
-        <select className="min-h-11 cursor-pointer appearance-none rounded-lg border border-[color:var(--border-strong)] bg-card ps-8 pe-8 text-sm lg:min-h-9 pointer-coarse:min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={t('stageFor', { title: card.title })} value={card.stage} onChange={event => onMove(card, event.target.value as ApplicationStage)}>
-          {STAGES.map(stage => <option key={stage} value={stage}>{stageLabel[stage][locale]}</option>)}
-        </select>
-      </span>
+    {/* Phone: score and stage share one line. From md up, `contents` puts both back in their own columns. */}
+    <div className="col-span-2 flex flex-wrap items-center gap-3 md:contents">
+      <div className="relative z-10 flex items-center gap-2 md:col-start-3 md:row-start-1"><FitScore score={flow.score} locale={locale} /></div>
+      <div className="relative z-10 flex items-center md:col-start-4 md:row-start-1"><StatusBadge status={card.stage} locale={locale} /></div>
     </div>
-    <div className="relative z-10 col-span-2 grid justify-items-start gap-1 md:col-span-1 md:col-start-5 md:row-start-1">
-      <NextStepButton projectId={projectId} jobId={card.job_revision_id} step={flow.step} waitingSessionId={flow.waitingSessionId} cvName={cvName} onApplied={() => onMove(card, 'applied')} />
+    {/* Split button: the next step, plus a menu that moves the stage (keyboard and touch; the board view keeps drag). */}
+    <div role="group" aria-label={t('nextStep')} className="relative z-10 col-span-2 flex min-w-0 items-stretch md:col-span-1 md:col-start-5 md:row-start-1">
+      <NextStepButton className="min-w-0 rounded-e-none" projectId={projectId} jobId={card.job_revision_id} step={flow.step} waitingSessionId={flow.waitingSessionId} cvName={cvName} onApplied={() => onMove(card, 'applied')} />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" size="icon" className="ms-px w-10 shrink-0 rounded-s-none lg:w-9" aria-label={t('stageFor', { title: card.title, stage: stageLabel[card.stage][locale] })}>
+            <ChevronDown className="size-4" aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>{t('moveTo')}</DropdownMenuLabel>
+          <DropdownMenuRadioGroup value={card.stage} onValueChange={value => { if (value !== card.stage) onMove(card, value as ApplicationStage); }}>
+            {STAGES.map(stage => <DropdownMenuRadioItem key={stage} value={stage}><span className="stage-dot" data-app-stage={stage} aria-hidden="true" />{stageLabel[stage][locale]}</DropdownMenuRadioItem>)}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   </li>;
 }

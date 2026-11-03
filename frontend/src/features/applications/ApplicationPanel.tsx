@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Mail, NotebookPen } from 'lucide-react';
+import { ChevronDown, Mail, NotebookPen, Plus } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +35,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
   const [contactSaved, setContactSaved] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const data = result.data;
+  const hasContact = Boolean(data && (data.contact.name || data.contact.email || data.contact.role));
 
   useEffect(() => {
     if (data) setContact({ name: data.contact.name ?? '', email: data.contact.email ?? '', role: data.contact.role ?? '' });
@@ -74,9 +76,18 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
       <Label htmlFor="application-stage" className="mui-label">{t('stage')}</Label>
     </div>
 
-    {!(contactOpen || data.contact.name || data.contact.email || data.contact.role)
+    {!contactOpen && !hasContact
       ? <div className="border-t border-border pt-5"><Button type="button" variant="ghost" size="sm" aria-expanded="false" onClick={() => setContactOpen(true)}>{t('addContact')}</Button></div>
-      : <form className="grid gap-3 border-t border-border pt-5" onSubmit={event => { event.preventDefault(); void run(() => sendJson(`${path}/application/contact`, 'PUT', { name: blank(contact.name), email: blank(contact.email), role: blank(contact.role) }), () => setContactSaved(true)); }}>
+      : !contactOpen ? <div className="grid gap-2 border-t border-border pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">{t('contact')}</h3>
+          <Button type="button" variant="ghost" size="sm" aria-expanded="false" onClick={() => setContactOpen(true)}>{t('editContact')}</Button>
+        </div>
+        <p className="min-w-0 break-words text-sm">{[data.contact.name, data.contact.role].filter(Boolean).join(' · ')}</p>
+        {data.contact.email && <p className="min-w-0 break-all text-sm text-muted-foreground">{data.contact.email}</p>}
+        <span role="status" className="text-sm text-success">{contactSaved ? t('contactSaved') : ''}</span>
+      </div>
+      : <form className="grid gap-3 border-t border-border pt-5" onSubmit={event => { event.preventDefault(); void run(() => sendJson(`${path}/application/contact`, 'PUT', { name: blank(contact.name), email: blank(contact.email), role: blank(contact.role) }), () => { setContactSaved(true); setContactOpen(false); }); }}>
       <h3 className="text-sm font-semibold">{t('contact')}</h3>
       <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="contact-name" maxLength={200} value={contact.name} onChange={e => setContact({ ...contact, name: e.target.value })} /><Label htmlFor="contact-name" className="mui-label">{t('name')}</Label></div></div>
       <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="contact-email" type="email" maxLength={320} value={contact.email} onChange={e => setContact({ ...contact, email: e.target.value })} /><Label htmlFor="contact-email" className="mui-label">{t('email')}</Label></div></div>
@@ -92,10 +103,13 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
     <div className="grid gap-3 border-t border-border pt-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id="application-timeline" className="text-sm font-semibold">{t('timeline')}</h3>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" aria-expanded={composer === 'note'} aria-controls="application-composer" onClick={() => setComposer(composer === 'note' ? null : 'note')}><NotebookPen className="size-4" aria-hidden="true" />{t('addNote')}</Button>
-          <Button type="button" variant="outline" size="sm" aria-expanded={composer === 'email'} aria-controls="application-composer" onClick={() => setComposer(composer === 'email' ? null : 'email')}><Mail className="size-4" aria-hidden="true" />{t('logEmail')}</Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild><Button type="button" variant="outline" size="sm" aria-controls="application-composer"><Plus className="size-4" aria-hidden="true" />{t('addToHistory')}<ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" /></Button></DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => setComposer('note')}><NotebookPen aria-hidden="true" />{t('addNote')}</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setComposer('email')}><Mail aria-hidden="true" />{t('logEmail')}</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <div id="application-composer">
         {composer === 'note' && <form className="grid gap-2" onSubmit={event => { event.preventDefault(); if (!note.trim()) return; void run(() => sendJson(`${path}/application/events`, 'POST', { kind: 'note', text: note.trim() }), () => { setNote(''); setComposer(null); }); }}>

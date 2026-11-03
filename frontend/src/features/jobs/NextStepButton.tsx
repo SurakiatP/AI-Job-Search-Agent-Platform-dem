@@ -35,7 +35,7 @@ export function NextStepButton({ projectId, jobId, step, waitingSessionId, cvNam
     : action.type === 'draft' ? `${base}/sessions/${action.sessionId}`
     : action.type === 'openRun' ? `${base}/sessions/${waitingSessionId ?? ''}`
     : action.type === 'pickFile' ? `${base}/profile` : null;
-  if (action.type === 'evaluate') return <EvaluateButton projectId={projectId} job={{ savedId: jobId }} cvName={cvName}>{label}</EvaluateButton>;
+  if (action.type === 'evaluate') return <EvaluateButton className={className} projectId={projectId} job={{ savedId: jobId }} cvName={cvName}>{label}</EvaluateButton>;
   if (action.type === 'setStage') return <Button type="button" className={className} onClick={onApplied}>{label}</Button>;
   if (to) return <Button asChild className={className}><Link to={to}>{label}</Link></Button>;
   return <span className="text-sm text-muted-foreground">{label}</span>;
