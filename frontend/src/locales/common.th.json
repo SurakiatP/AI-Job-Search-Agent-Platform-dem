@@ -14,14 +14,14 @@
   "settings": "การตั้งค่า",
   "back": "กลับ",
   "nav": {
-    "overview": "ภาพรวม",
+    "overview": "วันนี้",
     "console": "กิจกรรมเอเจนต์",
     "evaluate": "การประเมิน",
-    "savedJobs": "ใบสมัคร",
-    "search": "ค้นหางาน",
+    "savedJobs": "งานของฉัน",
+    "search": "หางาน",
     "preview": "Preview",
     "documents": "เอกสาร",
-    "cv": "CV และประสบการณ์",
+    "cv": "CV",
     "allProjects": "ทุกโปรเจกต์",
     "newProject": "สร้าง Project ใหม่",
     "trash": "ถังขยะ",
@@ -338,5 +338,9 @@
       "restoreFailed": "กู้คืน “{{name}}” ไม่สำเร็จ ลองอีกครั้ง"
     },
     "tabCvs": "CV"
+  },
+  "runs": {
+    "needsYou": "รอคุณ ({{count}})",
+    "working": "AI กำลังทำงาน ({{count}})"
   }
 }

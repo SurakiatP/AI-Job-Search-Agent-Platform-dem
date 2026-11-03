@@ -1,10 +1,11 @@
+import { toggleLanguage } from '../fixtures/shell';
 import { expect, test } from '@playwright/test';
 
 test('locale/theme/navigation retain distinct project and session drafts only in memory', async ({ page }) => {
   await page.goto('/tests/shell.html');
   await page.getByRole('textbox', { name: 'ข้อความ', exact: true }).fill('สนใจงานนี้');
-  await page.getByRole('button', { name: 'EN', exact: true }).click();
-  await page.getByRole('navigation').getByRole('button', { name: 'Dark', exact: true }).click();
+  await toggleLanguage(page);
+  await page.getByRole('button', { name: 'Dark', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('สนใจงานนี้');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -37,10 +38,10 @@ test('invalid preferences fall back and System tracks OS while an explicit theme
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('navigation').getByRole('button', { name: 'สว่าง', exact: true }).click();
+  await page.getByRole('button', { name: 'สว่าง', exact: true }).click();
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('navigation').getByRole('button', { name: 'ตามระบบ', exact: true }).click();
+  await page.getByRole('button', { name: 'ตามระบบ', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
@@ -61,26 +62,27 @@ test('actual sidebar navigation keeps the application document and unsent draft'
   expect(documentRequests).toEqual([]);
   await page.goBack();
   await expect(page.getByRole('textbox', { name: 'ข้อความ', exact: true })).toHaveValue('draft before navigation');
-  await page.getByRole('link', { name: 'การตั้งค่า', exact: true }).click();
+  await page.getByRole('button', { name: /^บัญชี/ }).click();
+  await page.getByRole('menuitem', { name: 'การตั้งค่า', exact: true }).click();
   await expect(page).toHaveURL('/app/settings?project=project-a');
   expect(documentRequests).toEqual([]);
   await page.goBack();
   await expect(page.getByRole('textbox', { name: 'ข้อความ', exact: true })).toHaveValue('draft before navigation');
 });
 
-test('320px shell keeps the language control visible and drawer returns keyboard focus', async ({ page }) => {
+test('320px shell keeps the account menu reachable and returns keyboard focus', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto('/tests/shell.html');
-  await expect(page.getByRole('button', { name: 'EN', exact: true })).toBeInViewport();
-  const menu = page.getByRole('button', { name: 'เปิดเมนู', exact: true });
+  const menu = page.getByRole('button', { name: /^บัญชี/ });
+  await expect(menu).toBeInViewport();
   await menu.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('dialog', { name: 'เมนูหลัก' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /ภาษาของหน้าจอ/ })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(menu).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'EN', exact: true }).click();
+  await toggleLanguage(page);
   await expect(page.getByRole('heading', { name: 'Shell verification' })).toBeVisible();
   const motion = await page.locator('body *').evaluateAll(elements => elements.some(el => {
     const css = getComputedStyle(el);

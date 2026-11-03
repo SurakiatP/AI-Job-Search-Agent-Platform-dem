@@ -14,14 +14,14 @@
   "settings": "Settings",
   "back": "Back",
   "nav": {
-    "overview": "Overview",
+    "overview": "Today",
     "console": "Agent activity",
     "evaluate": "Evaluations",
-    "savedJobs": "Applications",
-    "search": "Job search",
+    "savedJobs": "My jobs",
+    "search": "Find jobs",
     "preview": "Preview",
     "documents": "Documents",
-    "cv": "CV & experience",
+    "cv": "CV",
     "allProjects": "All projects",
     "newProject": "New project",
     "trash": "Trash",
@@ -341,5 +341,9 @@
       "restoreFailed": "Could not restore “{{name}}”. Try again."
     },
     "tabCvs": "CVs"
+  },
+  "runs": {
+    "needsYou": "Needs you ({{count}})",
+    "working": "AI working ({{count}})"
   }
 }

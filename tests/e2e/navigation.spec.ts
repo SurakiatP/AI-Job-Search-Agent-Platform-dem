@@ -1,3 +1,4 @@
+import { toggleLanguage } from '../fixtures/shell';
 import { expect, test } from '@playwright/test';
 import { documentId, jobId, projectId, secondProjectId, sessionId, useSyntheticApplication } from '../fixtures/application';
 
@@ -78,9 +79,9 @@ test('every page supports direct links, back/forward, locale changes and respons
   await page.getByRole('main').getByRole('link', { name: 'New project' }).click();
   const name = page.getByRole('textbox', { name: 'Project name' });
   await name.fill('Synthetic project draft');
-  await page.getByRole('button', { name: 'ไทย', exact: true }).click();
+  await toggleLanguage(page);
   await expect(page.getByRole('textbox', { name: 'ชื่อโปรเจกต์' })).toHaveValue('Synthetic project draft');
-  await page.getByRole('button', { name: 'EN', exact: true }).click();
+  await toggleLanguage(page);
   await page.getByRole('link', { name: 'Back to projects' }).click();
   await page.goBack();
   await expect(name).toHaveValue('Synthetic project draft');
@@ -100,8 +101,8 @@ test('every page supports direct links, back/forward, locale changes and respons
   await page.goto(`/app/projects/${projectId}/profile`);
   await expect(page.getByRole('heading', { name: 'CV & experience', level: 1 })).toBeVisible();
   const projectNavigation = page.getByRole('navigation', { name: 'Navigation' }).first();
-  await expect(projectNavigation.getByRole('link', { name: 'CV & experience', exact: true })).toBeVisible();
-  await expect(projectNavigation.getByRole('link', { name: 'Applications', exact: true })).toBeVisible();
+  await expect(projectNavigation.getByRole('link', { name: 'CV', exact: true })).toBeVisible();
+  await expect(projectNavigation.getByRole('link', { name: 'My jobs', exact: true })).toBeVisible();
   await expect(projectNavigation.getByRole('link', { name: 'Documents', exact: true })).toBeVisible();
   await page.screenshot({ path: '/tmp/ui02-profile-desktop.png', fullPage: true });
   await expect(page.getByRole('heading', { name: "Add your first CV" })).toBeVisible();
@@ -137,9 +138,9 @@ test('every page supports direct links, back/forward, locale changes and respons
   await expect(sections.getByRole('button', { name: 'Tools' })).toBeVisible();
   await sections.getByRole('button', { name: 'Tools' }).click();
   await expect(sections.getByRole('button', { name: 'Tools' })).toHaveAttribute('aria-current', 'page');
-  await page.getByRole('button', { name: 'ไทย', exact: true }).click();
+  await toggleLanguage(page);
   await expect(page.getByRole('navigation', { name: 'หมวดการตั้งค่า' }).getByRole('button', { name: 'เครื่องมือ' })).toHaveAttribute('aria-current', 'page');
-  await page.getByRole('button', { name: 'EN', exact: true }).click();
+  await toggleLanguage(page);
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto('/');
   await expect(page.getByRole('banner').getByRole('link', { name: 'Open app', exact: true })).toBeInViewport();
@@ -153,7 +154,7 @@ test('every page supports direct links, back/forward, locale changes and respons
   await page.getByRole('banner').getByRole('link', { name: 'เปิดแอป', exact: true }).click();
   await expect(page).toHaveURL(/\/app\/projects/);
   await page.goto('/app/settings');
-  await expect(page.getByRole('button', { name: 'EN', exact: true })).toBeInViewport();
+  await expect(page.getByRole('button', { name: /^บัญชี/ })).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: '/tmp/ui02-settings-mobile.png', fullPage: true });
 });
@@ -257,14 +258,16 @@ test('unsaved preference fields survive route changes and remain project scoped'
   const navigation = page.getByRole('navigation', { name: 'Navigation' }).first();
   await page.getByLabel('Document language').selectOption('th');
   await page.getByRole('checkbox', { name: /^Notifications/ }).uncheck();
-  await navigation.getByRole('link', { name: 'Account' }).click();
+  await page.getByRole('button', { name: /^Account/ }).click();
+  await page.getByRole('menuitem', { name: 'Account', exact: true }).click();
   await page.goBack();
   await expect(page.getByLabel('Document language')).toHaveValue('th');
   await expect(page.getByRole('checkbox', { name: /^Notifications/ })).not.toBeChecked();
   await page.getByRole('button', { name: 'Save preferences' }).click();
   await expect(page.getByLabel('Document language')).toHaveValue('th');
   await expect(page.getByRole('checkbox', { name: /^Notifications/ })).not.toBeChecked();
-  await navigation.getByRole('link', { name: 'Account' }).click();
+  await page.getByRole('button', { name: /^Account/ }).click();
+  await page.getByRole('menuitem', { name: 'Account', exact: true }).click();
   await page.goBack();
   await expect(page.getByLabel('Document language')).toHaveValue('th');
   await expect(page.getByRole('checkbox', { name: /^Notifications/ })).not.toBeChecked();
@@ -279,7 +282,8 @@ test('enabled primary actions meet normal-text contrast requirements', async ({ 
   await useSyntheticApplication(page);
   for (const theme of ['Light', 'Dark']) {
     await page.goto('/app/settings');
-    await page.getByRole('button', { name: theme, exact: true }).click();
+    await page.evaluate(value => localStorage.setItem('ui.theme', value), theme.toLowerCase());
+    await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.toLowerCase());
     await page.goto(`/app/projects/${projectId}/profile`);
     const addCv = page.locator('button', { hasText: 'Add CV' });

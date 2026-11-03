@@ -32,7 +32,7 @@ test('approved routes fit 320px, tablet, and desktop and keep the language contr
     for (const route of routes) {
       await page.goto(route);
       await expect(page.getByRole('main')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'EN', exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'EN', exact: true }).or(page.getByRole('button', { name: /^บัญชี/ })).first()).toBeVisible();
       await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${width}px overflow at ${route}`).toBe(true);
       // Reduced motion clamps every animation to one 1ms run; a clamped one may still read "running" until its first frame on a busy host.
@@ -56,23 +56,25 @@ test('approved routes fit 320px, tablet, and desktop and keep the language contr
   }
 });
 
-test('mobile drawer opens and closes by keyboard with focus returned to its trigger', async ({ page }) => {
+test('account menu opens by keyboard, closes with Escape and returns focus; 320px bottom bar has five 44px tabs', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto(`/app/projects/${projectId}/profile`);
+  await expect(page.getByRole('button', { name: 'Open menu' })).toHaveCount(0);
 
-  const trigger = page.getByRole('button', { name: 'Open menu' });
+  const tabs = page.getByRole('navigation', { name: 'Navigation' }).last().getByRole('link');
+  await expect(tabs).toHaveCount(5);
+  for (const box of await tabs.evaluateAll(links => links.map(link => link.getBoundingClientRect().height))) expect(box).toBeGreaterThanOrEqual(44);
+
+  const trigger = page.getByRole('button', { name: /^Account/ });
   await trigger.focus();
   await page.keyboard.press('Enter');
-  const drawer = page.getByRole('dialog', { name: 'Main menu' });
-  await expect(drawer).toBeVisible();
-  await expect(drawer.getByRole('button', { name: 'Close menu' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(drawer.getByRole('button', { name: /Switch project/ })).toBeVisible();
-  await expect(drawer.locator(':focus')).toHaveCount(1);
+  await expect(page.getByRole('menuitem', { name: 'Trash' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Interview practice' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Agent activity' })).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(drawer).toHaveCount(0);
+  await expect(page.getByRole('menu')).toHaveCount(0);
   await expect(trigger).toBeFocused();
 });
 
@@ -82,7 +84,6 @@ test('document language stays English after the UI changes to Thai and partial s
   await page.goto(`/app/projects/${projectId}/documents/${documentId}`);
   await expect(page.getByRole('status').filter({ hasText: 'Partial document' })).toHaveText('Partial document');
   await expect(page.getByTestId('document-language')).toContainText('ไทย');
-  await page.getByRole('button', { name: 'EN', exact: true }).click();
   await expect(page.getByTestId('document-language')).toContainText('ไทย');
   await expect(page.getByRole('status').filter({ hasText: 'Partial document' })).toHaveText('Partial document');
 });

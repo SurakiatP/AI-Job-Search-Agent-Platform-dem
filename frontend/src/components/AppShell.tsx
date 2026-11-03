@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
-import { Header, HomeIconLink } from './Header';
+import { HomeIconLink, HomeLink } from './Header';
+import { AccountMenu } from './AccountMenu';
+import { BottomNav } from './BottomNav';
+import { RunIndicator } from './RunIndicator';
 import { isSidebarShortcut, SidebarToggle } from './SidebarToggle';
 import { readPreference, savePreference } from '../app/theme';
-import { MobileDrawer } from './MobileDrawer';
-import { ProjectSidebar } from './ProjectSidebar';
+import { ProjectSidebar, ProjectSwitcher } from './ProjectSidebar';
 import type { SidebarProject } from './ProjectSidebar';
 import { VerifyBanner } from './VerifyBanner';
 
@@ -32,12 +34,16 @@ export function AppShell({ children, projects, projectId, sessionId, onReload }:
         ? <aside className="sticky top-0 hidden h-dvh min-w-0 flex-col overflow-y-auto bg-sidebar lg:flex"><ProjectSidebar {...sidebarProps} toggle={<SidebarToggle open onToggle={toggle} />} /></aside>
         : <aside className="sticky top-0 hidden h-dvh flex-col items-center gap-3 bg-sidebar py-4 lg:flex"><SidebarToggle open={false} onToggle={toggle} /><HomeIconLink /></aside>}
       <div className="min-w-0 lg:p-2 lg:ps-0">
-        <div className="lg:hidden"><Header menu={<MobileDrawer>{close => <ProjectSidebar {...sidebarProps} onNavigate={close} />}</MobileDrawer>} /></div>
+        <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-2 border-b bg-background/90 px-4 py-2 backdrop-blur lg:hidden">
+          {projectId ? <ProjectSwitcher {...sidebarProps} compact /> : <HomeLink />}
+          <div className="flex shrink-0 items-center gap-2"><RunIndicator projectId={projectId} compact /><AccountMenu projectId={projectId} /></div>
+        </header>
         <div className="min-w-0 lg:min-h-[calc(100dvh-16px)] lg:overflow-clip lg:rounded-xl lg:border lg:bg-background">
         <VerifyBanner />
-        <main id="main-content" data-stage={stage} className="mx-auto w-full min-w-0 max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 xl:px-10 xl:py-10" tabIndex={-1}><div key={pathname} className="page-enter">{children}</div></main>
+        <main id="main-content" data-stage={stage} className={`${projectId ? 'pb-24 lg:pb-10 ' : ''}mx-auto w-full min-w-0 max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 xl:px-10 xl:py-10`} tabIndex={-1}><div key={pathname} className="page-enter">{children}</div></main>
         </div>
       </div>
     </div>
+    {projectId && <BottomNav projectId={projectId} />}
   </>;
 }

@@ -76,6 +76,7 @@ for (const locale of ['th', 'en']) {
     }
     await useSyntheticApplication(page);
     await page.goto(`${base}/overview`);
+    await page.waitForLoadState('networkidle');
     // Plan 2.1: bottom tab bar with 5 items replaces the hamburger drawer.
     const tabs = await page.evaluate(() => [...document.querySelectorAll('nav')].map(n => n.querySelectorAll('a[href]').length));
     expect.soft(Math.max(0, ...tabs), 'mobile bottom nav has 5 items').toBe(5);

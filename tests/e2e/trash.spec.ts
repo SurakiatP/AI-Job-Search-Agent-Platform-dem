@@ -16,9 +16,9 @@ test('sidebar trash shows the count and holds evaluations and documents in tabs'
   await page.route(`**/v1/projects/${projectId}/sessions/${sid}/restore`, route => { sessionsTrash = []; return route.fulfill(json({ id: sid })); });
 
   await page.goto(`/app/projects/${projectId}/overview`);
-  const nav = page.getByRole('navigation', { name: 'Navigation' });
-  await expect(nav.getByRole('link', { name: 'Trash 3' })).toBeVisible();
-  await nav.getByRole('link', { name: 'Trash 3' }).click();
+  await page.getByRole('button', { name: /^Account/ }).click();
+  await expect(page.getByRole('menuitem', { name: 'Trash 3' })).toBeVisible();
+  await page.getByRole('menuitem', { name: 'Trash 3' }).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/trash$`));
   await expect(page.getByRole('heading', { level: 1, name: 'Trash' })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Evaluations 1' })).toHaveAttribute('aria-selected', 'true');
@@ -32,7 +32,8 @@ test('sidebar trash shows the count and holds evaluations and documents in tabs'
   await page.getByRole('tab', { name: 'Evaluations 1' }).click();
   await page.getByRole('listitem').filter({ hasText: 'Old job' }).getByRole('button', { name: 'Restore' }).click();
   await expect(page.getByRole('tab', { name: 'Evaluations 0' })).toBeVisible();
-  await expect(nav.getByRole('link', { name: 'Trash 2' })).toBeVisible();
+  await page.getByRole('button', { name: /^Account/ }).click();
+  await expect(page.getByRole('menuitem', { name: 'Trash 2' })).toBeVisible();
 });
 
 test('empty trash: sidebar item has no count and the page says what lands here', async ({ page }) => {
@@ -40,7 +41,9 @@ test('empty trash: sidebar item has no count and the page says what lands here',
   await useSyntheticApplication(page);
   await page.route(`**/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([])));
   await page.goto(`/app/projects/${projectId}/trash`);
-  await expect(page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Trash', exact: true })).toHaveAttribute('aria-current', 'page');
+  await page.getByRole('button', { name: /^Account/ }).click();
+  await expect(page.getByRole('menuitem', { name: 'Trash', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(page.getByText('No evaluations in the trash. Evaluations you delete land here and can be restored.')).toBeVisible();
 });
 

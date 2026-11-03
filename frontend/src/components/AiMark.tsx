@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 // Marks anything the AI agent produces or is working on. Decorative: the words beside it say what it is.
 export function AiMark({ className, size = 'md' }: { className?: string; size?: 'sm' | 'md' }) {
   return <span aria-hidden="true" className={cn('inline-grid shrink-0 place-items-center rounded-full bg-ai-soft text-ai', size === 'sm' ? 'size-5' : 'size-7', className)}>
-    <Sparkles className={size === 'sm' ? 'size-3' : 'size-4'} />
+    <span className={cn('font-semibold leading-none tracking-tight', size === 'sm' ? 'text-[9px]' : 'text-[11px]')}>AI</span>
   </span>;
 }
 
@@ -14,7 +14,7 @@ export function AiSpinner({ className, size = 'md' }: { className?: string; size
   const box = size === 'sm' ? 'size-5' : 'size-7';
   return <span aria-hidden="true" className={cn('relative inline-grid shrink-0 place-items-center text-ai', box, className)}>
     <span className={cn('absolute inset-0 animate-spin rounded-full border-2 border-ai/20 border-t-ai motion-reduce:animate-none')} />
-    <Sparkles className={cn(size === 'sm' ? 'size-2.5' : 'size-3.5')} />
+    <span className={cn('font-semibold leading-none', size === 'sm' ? 'text-[8px]' : 'text-[10px]')}>AI</span>
   </span>;
 }
 
