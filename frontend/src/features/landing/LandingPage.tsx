@@ -3,19 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { ArrowDown, ChevronDown } from 'lucide-react';
 import { useLocale } from '../../app/providers';
 import { useOwnerSession } from '../../lib/api';
-import { Header } from '../../components/Header';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { landingCopy } from './copy';
-import { DemoCard, StepPanel } from './LandingPreview';
-import { LandingMenu, LandingNav } from './LandingNav';
+import { DemoCard } from './LandingPreview';
+import { PublicHeader } from './LandingNav';
 import { Tick } from './Reveal';
 import { Tour } from './Tour';
 import './landing.css';
 
 const wrap = 'mx-auto w-full max-w-6xl px-4 sm:px-6';
-// Tour panels reused for the three starter steps: add CV, search, track.
-const stepPanels = [0, 2, 6];
 const footerLink = 'inline-flex min-h-11 items-center hover:text-foreground hover:underline lg:min-h-10';
 
 export function LandingPage() {
@@ -29,10 +26,7 @@ export function LandingPage() {
     : status === 'loading' ? null : <Button asChild size={size}><Link to="/signup">{size === 'sm' ? c.signup : c.cta}</Link></Button>;
   return <div className="landing text-foreground">
     <a href="#main" className="skip-link">{t('skipToContent')}</a>
-    <Header menu={<LandingMenu signedOut={status !== 'ready' && status !== 'loading'} />} nav={<LandingNav />} actions={<>
-      {status !== 'ready' && status !== 'loading' && <Button asChild size="sm" variant="ghost" className="hidden sm:inline-flex"><Link to="/login">{c.login}</Link></Button>}
-      {cta('sm')}
-    </>} />
+    <PublicHeader />
     <main id="main" tabIndex={-1} className="grid grid-cols-[minmax(0,1fr)] pb-12 focus-visible:outline-none sm:pb-16">
       <section className={`${wrap} grid items-center gap-10 pt-10 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-12`}>
         <div className="grid content-start justify-items-start gap-6">
@@ -55,13 +49,11 @@ export function LandingPage() {
 
       <section id="steps" aria-labelledby="steps-title" className={`${wrap} mt-16 grid scroll-mt-16 gap-6 sm:mt-20`}>
         <h2 id="steps-title" className="text-2xl font-semibold not-italic sm:text-3xl">{c.stepsTitle}</h2>
-        <ol className="grid">
-          {c.how.map((step, index) => <li key={step.title} className="grid gap-6 border-t py-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
-            <div className="grid content-start gap-2">
-              <h3 className="text-xl font-semibold leading-snug not-italic">{step.title}</h3>
-              <p className="max-w-prose text-base text-muted-foreground">{step.body}</p>
-            </div>
-            <div className="min-w-0"><StepPanel index={stepPanels[index]} /></div>
+        <ol className="grid gap-8 border-t pt-8 md:grid-cols-3 md:gap-6">
+          {c.how.map((step, index) => <li key={step.title} className="grid content-start gap-2">
+            <span aria-hidden="true" className="font-heading text-4xl leading-none text-primary">{index + 1}</span>
+            <h3 className="text-xl font-semibold leading-snug not-italic">{step.title}</h3>
+            <p className="max-w-prose text-base text-muted-foreground">{step.body}</p>
           </li>)}
         </ol>
         <p className="border-t pt-4 text-sm text-muted-foreground">{c.noSubmit}</p>

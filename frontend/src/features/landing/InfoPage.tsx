@@ -1,12 +1,10 @@
-import { Tick } from './Reveal';
 import { Link, Navigate } from 'react-router';
 import { useLocale } from '../../app/providers';
 import { useOwnerSession } from '../../lib/api';
-import { Header } from '../../components/Header';
 import { Button } from '../../components/ui/button';
 import { landingCopy } from './copy';
 import { infoPages, type InfoSlug } from './infoPages';
-import { LandingMenu, LandingNav } from './LandingNav';
+import { PublicHeader } from './LandingNav';
 
 /** The two menu explainers (/how-it-works, /data): sections of short titled points. Text lives in infoPages.ts. */
 export function InfoPage({ slug }: { slug: InfoSlug }) {
@@ -18,13 +16,10 @@ export function InfoPage({ slug }: { slug: InfoSlug }) {
     ? <Button asChild size="lg"><Link to="/app/projects">{c.openApp}</Link></Button>
     : status !== 'loading' && <Button asChild size="lg"><Link to="/signup">{c.cta}</Link></Button>;
   return <div className="min-h-svh text-foreground">
-    <Header menu={<LandingMenu signedOut={status !== 'ready' && status !== 'loading'} />} nav={<LandingNav />} actions={<>
-      {status !== 'ready' && status !== 'loading' && <Button asChild size="sm" variant="ghost" className="hidden sm:inline-flex"><Link to="/login">{c.login}</Link></Button>}
-      {status === 'ready' ? <Button asChild size="sm"><Link to="/app/projects">{c.openApp}</Link></Button> : status !== 'loading' && <Button asChild size="sm"><Link to="/signup">{c.signup}</Link></Button>}
-    </>} />
+    <PublicHeader />
     <main className="mx-auto grid w-full max-w-4xl gap-10 px-4 py-8 sm:px-6 sm:py-12">
       <nav aria-label="breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <Link to="/" className="hover:text-foreground hover:underline">{locale === 'th' ? 'หน้าแรก' : 'Home'}</Link><span aria-hidden="true">/</span>
+        <Link to="/" className="inline-flex min-h-11 items-center hover:text-foreground hover:underline lg:min-h-10">{locale === 'th' ? 'หน้าแรก' : 'Home'}</Link><span aria-hidden="true">/</span>
         <span aria-current="page" className="font-medium text-foreground">{slug === 'data' ? c.nav.data : c.nav.how}</span>
       </nav>
       <section className="grid max-w-2xl gap-4">
@@ -33,15 +28,17 @@ export function InfoPage({ slug }: { slug: InfoSlug }) {
       </section>
       {page.sections.map((section, s) => <section key={section.heading} aria-labelledby={`sec-${s}`} className="grid gap-4">
         <h2 id={`sec-${s}`} className="text-2xl font-semibold">{section.heading}</h2>
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {section.items.map(item => <li key={item.title} className="grid content-start gap-2 rounded-xl border bg-card p-5">
+        <ul className="grid divide-y rounded-xl border bg-card">
+          {section.items.map(item => <li key={item.title} className="grid gap-1 px-4 py-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-6 sm:px-6">
             <h3 className="text-base font-semibold leading-snug">{item.title}</h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+            <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">{item.body}</p>
           </li>)}
         </ul>
       </section>)}
-      <p className="flex items-start gap-2 border-t pt-4 text-sm text-muted-foreground"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary-fill text-primary-fill-foreground"><Tick className="size-3" /></span><span>{page.note}</span></p>
-      <div className="flex flex-wrap gap-3">{cta}<Button asChild size="lg" variant="outline"><Link to="/docs">{locale === 'th' ? 'ดูคู่มือ' : 'Read the guide'}</Link></Button></div>
+      <div className="grid gap-4 border-t pt-6">
+        <p className="max-w-prose text-base text-foreground">{page.note}</p>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">{cta}<Link to="/docs" className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline lg:min-h-10">{locale === 'th' ? 'อ่านคู่มือการใช้งาน' : 'Read the user manual'}</Link></div>
+      </div>
     </main>
   </div>;
 }

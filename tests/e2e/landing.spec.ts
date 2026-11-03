@@ -49,10 +49,10 @@ test('landing FAQ has six questions that open, and the footer links to real page
   await expect(items.first()).toHaveAttribute('open', '');
   await expect(items.first()).toContainText('No. You apply yourself');
   const footer = page.getByRole('navigation', { name: 'Footer links' });
-  await expect(footer.getByRole('link')).toHaveText(['How it works', 'Data & connections', 'Docs']);
+  await expect(footer.getByRole('link')).toHaveText(['How it works', 'Data & connections', 'Manual']);
   await expect(footer.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '/how-it-works');
   await expect(footer.getByRole('link', { name: 'Data & connections' })).toHaveAttribute('href', '/data');
-  await expect(footer.getByRole('link', { name: 'Docs' })).toHaveAttribute('href', '/docs');
+  await expect(footer.getByRole('link', { name: 'Manual' })).toHaveAttribute('href', '/docs');
 });
 test('landing data section: two readable cards with ticks and a three-part approval flow', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));

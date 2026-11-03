@@ -3,12 +3,12 @@ import { useSyntheticApplication } from '../fixtures/application';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
 
-test('landing: Docs link sits left of Open app and the account picture sits right of it, linking to Account', async ({ page }) => {
+test('landing: Manual link sits left of Open app and the account picture sits right of it, linking to Account', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   await page.goto('/');
   const banner = page.getByRole('banner');
-  const docs = banner.getByRole('link', { name: 'Docs', exact: true }), open = banner.getByRole('link', { name: 'Open app', exact: true });
+  const docs = banner.getByRole('link', { name: 'Manual', exact: true }), open = banner.getByRole('link', { name: 'Open app', exact: true });
   const account = banner.getByRole('link', { name: /^Account: synthetic@example\.test/ });
   const [d, o, a] = await Promise.all([docs.boundingBox(), open.boundingBox(), account.boundingBox()]);
   expect(d!.x).toBeLessThan(o!.x);
@@ -65,7 +65,7 @@ test('account: upload, choose a built-in picture, remove; bad type and size are 
   await expect.poll(() => state.image).toBe(false);
 });
 
-test('landing menu: each feature has its own page; other links reach their sections and Docs', async ({ page }) => {
+test('landing menu: each feature has its own page; other links reach their sections and the Manual', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await page.goto('/');
   const nav = page.getByRole('navigation', { name: 'Main menu' });
@@ -83,9 +83,9 @@ test('landing menu: each feature has its own page; other links reach their secti
   await nav.getByRole('link', { name: 'How it works' }).click();
   await expect(page).toHaveURL(/\/how-it-works$/);
   await expect(page.getByRole('heading', { name: 'The flow', level: 2 })).toBeVisible();
-  await nav.getByRole('link', { name: 'Docs' }).click();
+  await nav.getByRole('link', { name: 'Manual' }).click();
   await expect(page).toHaveURL(/\/docs$/);
-  await expect(page.getByRole('heading', { name: 'User guide', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'User manual', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Start in 3 steps' })).toBeVisible();
 });
 

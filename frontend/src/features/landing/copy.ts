@@ -118,7 +118,7 @@ const en: typeof th = {
   signup: 'Get started',
   login: 'Log in',
   openApp: 'Open app',
-  docs: 'Docs',
+  docs: 'Manual',
   nav: { label: 'Main menu', menu: 'Menu', features: 'Features', how: 'How it works', data: 'Data & connections', learnMore: 'See how it works' },
   secondary: 'See what each part does',
   tagline: ['The AI reads, compares and drafts.', 'Deciding and applying stay with you.'],
