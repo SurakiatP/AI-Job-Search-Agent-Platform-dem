@@ -24,7 +24,7 @@ test('board shows stage columns and moves a card by keyboard, surviving an error
   await boardWithState(page);
   await page.goto(`/app/projects/${projectId}/jobs`);
   await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/applications$`)); await page.getByRole("button", { name: "Board" }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Applications' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'My jobs' })).toBeVisible();
   for (const name of ['Saved', 'Applied', 'Responded', 'Interview', 'Offer', 'Hired']) {
     await expect(page.getByRole('heading', { level: 2, name: new RegExp(`^${name}`) })).toBeVisible();
   }
@@ -61,7 +61,7 @@ test('board fits 320px in Thai with long titles', async ({ page }) => {
   await boardWithState(page);
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto(`/app/projects/${projectId}/applications`); await page.getByRole("button", { name: "บอร์ด" }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'ใบสมัคร' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'งานของฉัน' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: /^บันทึกไว้/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
@@ -97,15 +97,20 @@ test('job page edits stage and contact, offers mailto, logs correspondence and n
   await page.getByLabel('Recruiter name').fill('สมหญิง ใจดี');
   await page.getByLabel('Recruiter email').fill('a+jobs@example.co.th');
   await page.getByRole('button', { name: 'Save contact' }).click();
+  // Saved: the panel shows a summary with one Edit button; the mail link sits in the edit form.
+  await expect(page.getByText('สมหญิง ใจดี', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit contact' }).click();
   await expect(page.getByRole('link', { name: 'Write email' })).toHaveAttribute('href', 'mailto:a%2Bjobs@example.co.th?subject=Re%3A%20Synthetic%20data%20analyst');
 
-  await page.getByRole('button', { name: 'Log email' }).click();
+  await page.getByRole('button', { name: 'Add to activity' }).click();
+  await page.getByRole('menuitem', { name: 'Log email' }).click();
   await page.getByLabel('Direction').selectOption('received');
   await page.getByLabel('Subject').fill('Interview invite');
   await page.getByRole('button', { name: 'Save email' }).click();
   await expect(page.getByLabel('Subject')).toHaveCount(0);
   await page.getByLabel('Recruiter role').fill('Unsaved draft');
-  await page.getByRole('button', { name: 'Add note' }).click();
+  await page.getByRole('button', { name: 'Add to activity' }).click();
+  await page.getByRole('menuitem', { name: 'Add note' }).click();
   await page.getByLabel('Note', { exact: true }).fill('Prepare portfolio');
   await page.getByRole('button', { name: 'Save note' }).click();
   const items = page.getByRole('list', { name: 'Activity' }).getByRole('listitem');

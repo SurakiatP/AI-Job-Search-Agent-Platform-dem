@@ -53,6 +53,11 @@ test('evaluation and document pages have no trash buttons; old trash addresses o
   const sid = 'a1a1a1a1-0000-4000-8000-000000000000';
   await page.route(`**/v1/projects/${projectId}/sessions?view=trash`, route => route.fulfill(json([{ id: sid, project_id: projectId, title: 'Old job', job_title: 'Old job', created_at: at, trashed_at: at }])));
   await page.route(`**/v1/projects/${projectId}/documents/trash`, route => route.fulfill(json([{ id: 'd1d1d1d1-0000-4000-8000-000000000000', document_type: 'cover_letter', title: 'Old letter', trashed_at: at }])));
+  // Four documents, so the filter chips (shown from 4 documents up) are on the page too.
+  await page.route(`**/v1/projects/${projectId}/documents`, route => route.fulfill(json(['cover_letter', 'cv', 'application_message', 'cover_letter'].map((document_type, index) => ({
+    id: `d2d2d2d2-0000-4000-8000-00000000000${index}`, document_type, title: `Synthetic document ${index + 1}`, output_language: 'en', partial: false, content_markdown: 'Synthetic text.',
+    latest_revision: { id: `e2e2e2e2-0000-4000-8000-00000000000${index}`, revision: 1, created_at: at }, created_at: at,
+  })))));
   await page.goto(`/app/projects/${projectId}/documents`);
   await expect(page.getByRole('heading', { level: 1, name: 'Documents' })).toBeVisible();
   await expect(page.getByRole('main').getByRole('button', { name: /Trash/ })).toHaveCount(0);

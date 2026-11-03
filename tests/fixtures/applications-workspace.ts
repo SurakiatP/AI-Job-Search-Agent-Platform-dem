@@ -84,7 +84,11 @@ export async function useApplicationsWorkspaceFixture(page: Page) {
   await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), async route => {
     if (route.request().method() !== 'GET') return route.fallback();
     const run = { id: runId, project_id: projectId, session_id: evaluationSessionId, operation: 'evaluate_job', status: 'completed', job_revision_id: jobId, output_language: 'en', result_file_ids: [], created_at: '2026-10-13T00:00:00Z', finished_at: '2026-10-13T00:01:00Z', retry_of_id: null, evaluation_result: { report_markdown: 'Strong SQL and stakeholder experience. **Improve:** add one quantified experimentation example.', score: 3.7, skill_coverage: { required: ['SQL', 'experimentation', 'healthcare analytics'], matched: ['SQL', 'healthcare analytics'], missing: ['experimentation'], ratio: 2 / 3, method: 'keyword' } } };
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([run]) });
+    // Growth Analyst (saved) is scored and drafted, so its row's next step is "I applied".
+    const done = { ...run, job_revision_id: stageJobIds[0], finished_at: '2026-10-13T00:03:00Z' };
+    const savedScored = { ...done, id: '55555555-5555-4555-8555-555555555552', created_at: '2026-10-13T00:02:00Z' };
+    const savedDrafted = { ...done, id: '55555555-5555-4555-8555-555555555553', operation: 'draft_documents', evaluation_result: null, created_at: '2026-10-13T00:04:00Z' };
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([run, savedScored, savedDrafted]) });
   });
   await page.route(`**/v1/projects/${projectId}/documents`, async route => {
     if (route.request().method() !== 'GET') return route.fallback();

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { toggleLanguage } from '../fixtures/shell';
 import { useApplicationsWorkspaceFixture } from '../fixtures/applications-workspace';
 
 test('applications open as a list and keep the board as a URL-backed view', async ({ page }) => {
@@ -6,14 +7,14 @@ test('applications open as a list and keep the board as a URL-backed view', asyn
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await page.goto(`/app/projects/${fixture.projectId}/applications`);
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Applications' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'My jobs' })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Applications list' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Senior Data Analyst' })).toBeVisible();
   await expect(page.getByRole('listitem').filter({ hasText: 'Senior Data Analyst' })).toContainText('Northstar Health');
 
   // Stage is a visible, labelled control on every row; rows carry no recruiter details and link to the detail page.
   const row = page.getByRole('listitem').filter({ hasText: 'Senior Data Analyst' });
-  await expect(row.getByRole('combobox', { name: 'Stage: Senior Data Analyst' })).toHaveValue('applied');
+  await expect(row.getByRole('button', { name: 'Stage for Senior Data Analyst: Applied', exact: true })).toBeVisible();
   await expect(row).not.toContainText('northstar.example');
   await expect(row).not.toContainText('Sirin');
   await expect(row.getByRole('link', { name: 'Senior Data Analyst' })).toHaveAttribute('href', new RegExp(`/jobs/${fixture.jobId}$`));
@@ -32,12 +33,14 @@ test('stage changes from the row announce the move and can be undone; search and
   const fixture = await useApplicationsWorkspaceFixture(page);
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await page.goto(`/app/projects/${fixture.projectId}/applications`);
-  const stage = page.getByRole('combobox', { name: 'Stage: Senior Data Analyst' });
-  await stage.selectOption('interview');
+  const stage = page.getByRole('button', { name: /^Stage for Senior Data Analyst:/ });
+  await stage.click();
+  await expect(page.getByRole('menuitemradio', { name: 'Applied' })).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('menuitemradio', { name: 'Interview' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Moved “Senior Data Analyst” to Interview.' })).toBeVisible();
   expect(fixture.writes.at(-1)?.body).toEqual({ application_status: 'interview' });
   await page.getByRole('button', { name: 'Undo' }).click();
-  await expect(stage).toHaveValue('applied');
+  await expect(stage).toHaveAccessibleName('Stage for Senior Data Analyst: Applied');
   expect(fixture.writes.at(-1)?.body).toEqual({ application_status: 'applied' });
 
   await page.getByLabel('Search applications').fill('lumen');
@@ -117,6 +120,7 @@ test('job detail presents source, evaluation, and documents before tracking and 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.locator('img[src="x"][onerror]')).toHaveCount(0);
 
+  await page.getByRole('button', { name: 'Edit contact' }).click();
   await page.getByLabel('Recruiter name').fill('<img src=x onerror=alert(1)>');
   await page.getByRole('button', { name: 'Save contact' }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
@@ -133,8 +137,8 @@ test('job evaluation names its exact source pair and labels document versions co
   await expect(source).toContainText('Job posting · version 1');
   await expect(page.getByText('Document revision 2', { exact: true })).toBeVisible();
   await page.goto(`/app/projects/${fixture.projectId}/applications`);
-  await page.getByRole('button', { name: 'ไทย', exact: true }).click();
-  await expect(page.getByRole('combobox', { name: 'ขั้นตอน: Senior Data Analyst', exact: true })).toBeVisible();
+  await toggleLanguage(page);
+  await expect(page.getByRole('button', { name: /^ขั้นตอนของ Senior Data Analyst: / })).toBeVisible();
 });
 
 test('unavailable CV details preserve the report and offer recovery without guessing', async ({ page }) => {

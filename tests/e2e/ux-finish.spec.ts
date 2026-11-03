@@ -43,14 +43,15 @@ test('answer output language is visible and used without visiting document prepa
   await expect.poll(() => posted).toMatchObject({ operation: 'apply_prepare', output_language: 'th' });
 });
 
-test('mobile Overview shows the chosen CV before recent documents', async ({ page }) => {
+test('mobile Overview leads with the CV step inside the first viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/app/projects/${projectId}/overview`);
-  // First-run fixture has no CV: the CV step of Getting started must come before recent documents.
-  const cv = await page.getByText('Add your first CV').first().boundingBox();
-  const documents = await page.locator('#documents-heading').boundingBox();
-  expect(cv).not.toBeNull(); expect(documents).not.toBeNull();
-  expect(cv!.y).toBeLessThan(documents!.y);
+  // First-run fixture has no CV: the next-step card asks for one before any other section.
+  const hero = page.getByRole('region', { name: 'Upload your CV' });
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAccessibleName('Upload your CV');
+  const box = await hero.getByRole('link', { name: 'Upload your CV' }).boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.y + box!.height).toBeLessThanOrEqual(844 - 64); // clear of the bottom tab bar
 });
 
 async function searchFixture(page: Page) {

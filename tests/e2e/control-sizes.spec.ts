@@ -15,6 +15,8 @@ for (const [width, expected] of [[1440, 40], [390, 44]] as const) {
     await expect(page.locator('#job-search')).toBeVisible();
     expect(await height(page, '#job-search')).toBeGreaterThanOrEqual(expected - 1);
     expect(await height(page, '#job-search')).toBeLessThanOrEqual(expected + 1);
+    await page.getByRole('button', { name: /^(More filters|ตัวกรองเพิ่มเติม)/ }).click(); // location sits in the filter dialog
+    await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running')); // the dialog scales in
     expect(await height(page, '#job-city')).toBeGreaterThanOrEqual(expected - 1);
     expect(await height(page, '#job-city')).toBeLessThanOrEqual(expected + 1);
   });

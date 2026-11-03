@@ -9,7 +9,8 @@ test.beforeEach(async ({ page }, info) => {
 test('settings navigation carries explicit project scope through section changes', async ({ page }) => {
   await useSyntheticApplication(page);
   await page.goto(`/app/projects/${secondProjectId}/overview`);
-  await page.getByRole('navigation', { name: 'Navigation', exact: true }).getByRole('link', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: /^Account/ }).click();
+  await page.getByRole('menuitem', { name: 'Settings', exact: true }).click();
   await expect(page).toHaveURL(`/app/settings?project=${secondProjectId}`);
   await page.getByRole('button', { name: 'Tools', exact: true }).click();
   await expect(page.locator('#settings-project')).toHaveValue(secondProjectId);

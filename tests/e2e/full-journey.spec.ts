@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { toggleLanguage } from '../fixtures/shell';
 import { documentId, jobId, projectId, sessionId, useSyntheticApplication } from '../fixtures/application';
 
 const runId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -73,15 +74,18 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await page.getByRole('textbox', { name: 'Project name' }).fill('Synthetic bilingual project');
   await page.getByRole('button', { name: 'Create a project' }).click();
   await expect(page).toHaveURL(/\/app\/projects\/[^/]+\/overview$/);
-  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'CV & experience', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'CV', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'CV & experience', level: 1 })).toBeVisible();
   await page.getByLabel('Add CV', { exact: true }).setInputFiles({ name: 'synthetic-cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic CV: data analysis and reporting experience.') });
-  await page.getByRole('link', { name: /Document language & notifications/ }).click();
+  // The empty CV page keeps to its upload actions; preferences open from Settings in the account menu.
+  await page.getByRole('button', { name: /^Account/ }).click();
+  await page.getByRole('menuitem', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Documents & notifications', exact: true }).click();
   await page.getByLabel('Document language').selectOption('en');
   await page.getByRole('button', { name: 'Save preferences' }).click();
   await page.goBack();
 
-  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'Applications', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'My jobs', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic data analyst' }).click();
   await expect(page.getByTestId('job-description')).toContainText('Synthetic posting description.');
   await page.goBack();
@@ -91,10 +95,10 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await page.getByRole('dialog', { name: 'Switch project' }).getByRole('link', { name: 'First synthetic session', exact: true }).click();
   // The session is paired (CV and job) and has no free-text composer, so the output language is chosen
   // before drafting. The Thai UI keeps its own selector label; the chosen language must reach the run.
-  await page.getByRole('button', { name: 'ไทย', exact: true }).click();
+  await toggleLanguage(page);
   await page.getByRole('tab', { name: 'เตรียมเอกสาร', exact: true }).click();
   await page.getByLabel('ภาษาของเอกสารที่สร้าง', { exact: true }).selectOption('en');
-  await page.getByRole('button', { name: 'EN', exact: true }).click();
+  await toggleLanguage(page);
   await page.getByRole('tab', { name: 'Prepare documents', exact: true }).click();
   await page.getByRole('button', { name: 'Cover letter', exact: true }).click();
   await expect(page.getByTestId('run-status')).toHaveText('Completed');
@@ -110,13 +114,16 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await expect(page.getByTestId('document-language')).toContainText('English');
   await expect(page.getByRole('status').filter({ hasText: /\S/ })).toHaveText('Partial document');
   await expect(page.getByTestId('document-content')).toHaveText('Synthetic English draft for review.');
-  await page.getByRole('button', { name: 'ไทย', exact: true }).click();
+  await toggleLanguage(page);
   await expect(page.getByTestId('document-language')).toContainText('English');
   await expect(page.getByTestId('document-content')).toHaveText('Synthetic English draft for review.');
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
   await page.goto('/app/settings');
-  await page.getByRole('button', { name: 'มืด', exact: true }).click();
+  // Theme cycles light, dark, system from the account menu.
+  await page.getByRole('button', { name: /^บัญชี/ }).click();
+  for (let i = 0; i < 3 && await page.locator('html').getAttribute('data-theme') !== 'dark'; i += 1) await page.getByRole('menuitem', { name: /^รูปแบบหน้าจอ/ }).click();
+  await page.keyboard.press('Escape');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByTestId('run-status')).toHaveText('เสร็จแล้ว');

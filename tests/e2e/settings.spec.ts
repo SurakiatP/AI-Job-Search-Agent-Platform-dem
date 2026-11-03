@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { toggleLanguage } from '../fixtures/shell';
 import { projectId, useSyntheticApplication } from '../fixtures/application';
 
 const grantId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -59,7 +60,7 @@ test.beforeEach(async ({ page }) => {
 
 async function openSettings(page: import('@playwright/test').Page, section: 'Tools' | 'Project sharing') {
   await page.goto('/app/settings');
-  await page.getByRole('button', { name: 'EN', exact: true }).click();
+  await toggleLanguage(page);
   await page.getByRole('button', { name: section, exact: true }).click();
   await expect(page.getByLabel('Project settings for')).toBeVisible();
 }

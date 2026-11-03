@@ -119,7 +119,7 @@ test('every page supports direct links, back/forward, locale changes and respons
   await page.goto(`/app/projects/${projectId}/applications`);
   await page.getByRole('link', { name: 'Synthetic data analyst' }).click();
   await expect(page).toHaveURL(`/app/projects/${projectId}/jobs/${jobId}`);
-  await page.getByRole('link', { name: 'View all documents' }).click();
+  await page.getByRole('navigation', { name: 'Navigation' }).first().getByRole('link', { name: 'Documents', exact: true }).click();
   await expect(page).toHaveURL(`/app/projects/${projectId}/documents`);
   await page.getByRole('link', { name: 'Synthetic cover letter' }).click();
   await expect(page).toHaveURL(`/app/projects/${projectId}/documents/${documentId}`);
@@ -173,7 +173,7 @@ test('missing resources and empty project state offer a usable route forward', a
   await useSyntheticApplication(page, { missingJob: true });
   await page.goto(`/app/projects/${projectId}/jobs/${jobId}`);
   await expect(page.getByRole('heading', { name: 'ประกาศงานนี้ไม่อยู่ในโปรเจกต์แล้ว' })).toBeVisible();
-  await page.getByRole('main').getByRole('link', { name: 'กลับไปที่ใบสมัคร' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'กลับไปที่งานของฉัน' }).click();
   await expect(page).toHaveURL(`/app/projects/${projectId}/applications`);
 });
 
@@ -286,7 +286,7 @@ test('enabled primary actions meet normal-text contrast requirements', async ({ 
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.toLowerCase());
     await page.goto(`/app/projects/${projectId}/profile`);
-    const addCv = page.locator('button', { hasText: 'Add CV' });
+    const addCv = page.getByRole('button', { name: 'Upload your first CV', exact: true });
     await expect(addCv).toBeEnabled();
     expect(await contrastRatio(addCv)).toBeGreaterThanOrEqual(4.5);
     await page.goto(`/app/settings?project=${projectId}&section=preferences`);

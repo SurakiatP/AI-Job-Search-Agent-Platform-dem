@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
-import { projectId, sessionId, useSyntheticApplication } from '../fixtures/application';
+import { jobId, projectId, sessionId, useSyntheticApplication } from '../fixtures/application';
 import commonEn from '../../frontend/src/locales/common.en.json';
 async function ensureScreenshotFonts(page: import('@playwright/test').Page) {
   const loaded = await page.evaluate(async () => {
@@ -340,6 +340,9 @@ test('SCR-04 exactly one primary action per run state; pending tailor proposals 
       await expect(page.getByText('dbt', { exact: true }).first()).toBeVisible();
       await expect(page.getByRole('link', { name: 'Open document' })).toHaveAttribute('href', `/app/projects/${projectId}/documents/${documentIdForTest}`);
     }
+    if (name === 'failed evaluation') {
+      await expect(page.getByRole('alert').filter({ hasText: 'The evaluation did not finish' })).toContainText('The agent stopped before it finished.');
+    }
     if (name === 'tailor needs input') {
       await expect(page.getByText('Pending Airflow proposal text')).toBeHidden();
       await expect(page.getByRole('link', { name: 'Open document' })).toHaveCount(1);
@@ -456,7 +459,7 @@ test('SCR-03 evaluation trash: restore, restore blocked by a newer pair, delete 
   await page.getByRole('dialog').getByRole('button', { name: 'Empty trash' }).click();
   await expect(page.getByText('No evaluations in the trash.')).toBeVisible();
   expect(calls).toEqual(['POST restore a1', 'POST restore b2', 'DELETE permanent c3', 'DELETE permanent b2']);
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Evaluations', exact: true }).click();
+  await page.goto(`/app/projects/${projectId}/sessions`); // Evaluations left the nav; the list stays routable
   await expect(row('Old job')).toHaveCount(1);
 });
 
@@ -480,4 +483,32 @@ test('?start=evaluate starts one evaluation, drops the param and survives a relo
   await page.reload();
   await page.waitForLoadState('networkidle');
   expect(posts).toBe(1);
+});
+
+test('Get fit score from the job page: one session POST, then exactly one evaluation POST', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.request().method() === 'GET' ? route.fulfill(json([{ id: 'c0c0c0c0-0000-4000-8000-000000000001', project_id: projectId, name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', latest_revision: { id: 'c1', revision: 1, original_filename: 'data-cv.pdf', skill_profile_ready: true, created_at: '2026-10-01T00:00:00Z' } }])) : route.fallback());
+  const sessionPosts: unknown[] = [];
+  await page.route(`**/v1/projects/${projectId}/sessions`, route => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    sessionPosts.push(route.request().postDataJSON());
+    return route.fulfill({ status: 201, ...json(pairedSession) });
+  });
+  await page.route(`**/v1/projects/${projectId}/sessions/${sessionId}`, route => route.fulfill(json(pairedSession)));
+  const runPosts: Array<Record<string, unknown>> = [];
+  await page.route(new RegExp(`/v1/async/projects/${projectId}/agent-runs$`), route => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    runPosts.push(route.request().postDataJSON());
+    return route.fulfill({ status: 202, ...json(sessionRun('evaluate_job', 'running')) });
+  });
+  await page.route(new RegExp(`/v1/projects/${projectId}/runs(\\?.*)?$`), route => route.fulfill(json([])));
+  await page.goto(`/app/projects/${projectId}/jobs/${jobId}`);
+  await page.getByRole('main').getByRole('button', { name: 'Get fit score' }).click();
+  await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}$`));
+  await expect.poll(() => runPosts.length).toBe(1);
+  expect(sessionPosts).toEqual([{ cv_revision_id: 'c1', job_revision_id: jobId }]);
+  expect(runPosts[0]).toMatchObject({ session_id: sessionId, operation: 'evaluate_job' });
+  await page.waitForLoadState('networkidle');
+  expect(runPosts).toHaveLength(1);
 });

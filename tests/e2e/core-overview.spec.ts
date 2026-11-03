@@ -12,10 +12,12 @@ test('first-run overview offers one primary action and stable evaluation navigat
   await page.goto(`/app/projects/${projectId}/overview`);
   await expect(page.getByRole('heading', { name: 'Synthetic analyst search', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('overview-desktop.png'), fullPage: true });
-  await expect(page.getByRole('navigation').getByRole('link', { name: 'Evaluations', exact: true })).toHaveAttribute('href', `/app/projects/${projectId}/sessions`);
+  // Evaluations left the nav (plan 2.1): My jobs lists every evaluated job.
+  await expect(page.getByRole('navigation').getByRole('link', { name: 'Evaluations', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('navigation').getByRole('link', { name: 'My jobs', exact: true })).toHaveAttribute('href', `/app/projects/${projectId}/applications`);
   await expect(page.getByRole('heading', { name: 'Upload your CV', exact: true })).toBeVisible();
   await expect(page.getByRole('main').getByRole('link', { name: 'Upload your CV', exact: true })).toBeVisible();
-  await page.getByRole('navigation').getByRole('link', { name: 'Evaluations', exact: true }).click();
+  await page.goto(`/app/projects/${projectId}/sessions`); // still routable for deep links
   await expect(page.getByRole('heading', { name: 'Evaluations', exact: true })).toBeVisible();
   await expect(page.getByRole('main').getByRole('link', { name: /First synthetic session/ })).toBeVisible();
 });
@@ -71,9 +73,11 @@ for (const width of [390, 768, 1440]) for (const locale of ['th', 'en']) for (co
     await page.keyboard.press('Enter');
     await expect(page.getByRole('main')).toBeFocused();
     if (width < 1024) {
-      const menu = page.getByRole('button', { name: locale === 'th' ? 'เปิดเมนู' : 'Open menu', exact: true });
+      // Bottom tab bar replaces the drawer; everything else sits in the account menu.
+      await expect(page.getByRole('navigation', { name: locale === 'th' ? 'การนำทาง' : 'Navigation' }).getByRole('link')).toHaveCount(5);
+      const menu = page.getByRole('button', { name: new RegExp(`^${locale === 'th' ? 'บัญชี' : 'Account'}`) });
       await menu.click();
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(page.getByRole('menu')).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(menu).toBeFocused();
     }

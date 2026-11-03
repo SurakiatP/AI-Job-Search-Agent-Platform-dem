@@ -39,7 +39,9 @@ test('AC-CVT-01 deleting a CV moves it to the trash and undo brings it back', as
   const notice = page.getByRole('status').filter({ hasText: '“Data CV” moved to the trash.' });
   await expect(notice).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Data CV', level: 3 })).toHaveCount(0);
-  await expect(page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Trash 1' })).toBeVisible();
+  await page.getByRole('button', { name: /^Account/ }).click();
+  await expect(page.getByRole('menuitem', { name: 'Trash 1' })).toBeVisible();
+  await page.keyboard.press('Escape');
   await notice.getByRole('button', { name: 'Undo' }).click();
   await expect(page.getByRole('heading', { name: 'Data CV', level: 3 })).toBeVisible();
   await expect(notice).toHaveCount(0);
@@ -52,8 +54,13 @@ test('AC-CVT-04 the trash has a CV tab to restore or delete a CV for good', asyn
   const state = await cvApi(page, { live: [], trash: [cv({ is_primary: false, trashed_at: at }), cv({ id: 'c2c2c2c2-0000-4000-8000-000000000000', name: 'Old CV', is_primary: false, trashed_at: at })] });
   await page.route(`**/v1/projects/${projectId}/cvs/c2c2c2c2-0000-4000-8000-000000000000/permanent`, route => route.fulfill(json({ code: 'cv_in_use', message_key: 'errors.cv_in_use', retryable: false }, 409)));
   await page.goto(`/app/projects/${projectId}/trash?tab=cvs`);
-  const nav = page.getByRole('navigation', { name: 'Navigation' });
-  await expect(nav.getByRole('link', { name: 'Trash 2' })).toBeVisible();
+  const account = page.getByRole('button', { name: /^Account/ });
+  const trashItem = async (name: string, exact = false) => {
+    await account.click();
+    await expect(page.getByRole('menuitem', { name, exact })).toBeVisible();
+    await page.keyboard.press('Escape');
+  };
+  await trashItem('Trash 2');
   await expect(page.getByRole('tab', { name: 'CVs 2' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('Deleting for good removes the CV’s files, text and builder data.', { exact: false })).toBeVisible();
 
@@ -67,7 +74,7 @@ test('AC-CVT-04 the trash has a CV tab to restore or delete a CV for good', asyn
   await expect(row.getByText('data-cv.pdf · v1')).toBeVisible();
   await row.getByRole('button', { name: 'Restore' }).click();
   await expect(page.getByRole('tab', { name: 'CVs 0' })).toBeVisible();
-  await expect(nav.getByRole('link', { name: 'Trash', exact: true })).toBeVisible();
+  await trashItem('Trash', true);
   expect(state.calls).toContain(`POST /${cvId}/restore`);
 });
 

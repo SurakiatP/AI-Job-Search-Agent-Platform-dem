@@ -70,11 +70,12 @@ test('AC-IVP-11 the summary round asks for the report and shows plan and readine
   await expect(report.getByRole('button', { name: 'Write it again' })).toBeVisible();
 });
 
-test('FR-IVP-19 sidebar practice page lists every set by job', async ({ page }) => {
+test('FR-IVP-19 account-menu practice page lists every set by job', async ({ page }) => {
   await boot(page);
   await practiceApi(page);
   await page.goto(`/app/projects/${projectId}/overview`);
-  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Interview practice' }).click();
+  await page.getByRole('button', { name: /^Account/ }).click();
+  await page.getByRole('menuitem', { name: 'Interview practice' }).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/practice$`));
   await expect(page.getByRole('heading', { level: 1, name: 'Interview practice' })).toBeVisible();
   const group = page.getByRole('region', { name: 'AI Engineer · Example Co' });

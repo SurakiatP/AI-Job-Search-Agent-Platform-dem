@@ -13,6 +13,7 @@ test('CV summary uses named primary CV rather than highest unrelated revision', 
     { id: 'other', name: 'Other CV', is_primary: false, latest_revision: { id: 'o99', revision: 99, original_filename: 'other.pdf', created_at: '2026-10-16T00:00:00Z' } },
   ] }));
   await page.goto(`/app/projects/${projectId}/overview`);
-  await expect(page.getByRole('main').getByText('Product CV', { exact: true })).toBeVisible();
+  // The next-step card names the CV a one-click evaluation will use.
+  await expect(page.getByRole('main').getByText(/with Product CV\./)).toBeVisible();
   await expect(page.getByRole('main').getByText('other.pdf', { exact: true })).toHaveCount(0);
 });

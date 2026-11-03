@@ -56,7 +56,7 @@ test('account: upload, choose a built-in picture, remove; bad type and size are 
   await input.setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: png });
   await expect(page.getByRole('status').filter({ hasText: 'Picture saved' })).toBeVisible();
   expect(state.puts).toBe(1);
-  await expect(page.getByRole('link', { name: 'Account', exact: true }).locator('img, svg').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Account/ }).locator('img, svg').first()).toBeVisible();
   await page.getByText('Spark', { exact: true }).click();
   await expect.poll(() => state.preset).toBe('spark');
   await expect(page.getByLabel('Spark')).toBeChecked();
