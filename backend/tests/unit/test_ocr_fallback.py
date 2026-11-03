@@ -132,3 +132,19 @@ def test_pdf_anydoc_cannot_read_falls_back_to_page_images(tmp_path, monkeypatch)
     monkeypatch.setattr(parse_document, "render_pages", lambda *a: (_ for _ in ()).throw(ValueError("x")))
     with pytest.raises(ValueError, match="document_invalid"):  # poppler cannot open it either
         parse_document.parse(path)
+
+
+def test_no_text_sentinel_means_empty_page():
+    import io, json
+    from job_search_platform.services import ocr
+
+    class Opener:
+        def open(self, request, timeout):
+            return io.BytesIO(json.dumps({"choices": [{"finish_reason": "stop", "message": {"content": "NO_TEXT"}}]}).encode())
+
+    class Gateway:
+        opener = Opener()
+        def provider_config(self, op):
+            return type("C", (), {"model": "m", "base_url": "http://x/v1", "api_key": "k"})()
+
+    assert ocr._call(Gateway(), b"x") == ""

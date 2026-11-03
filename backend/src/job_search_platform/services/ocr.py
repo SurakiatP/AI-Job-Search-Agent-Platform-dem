@@ -26,7 +26,8 @@ MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 PAGE_TIMEOUT_SECONDS = 90
 PROMPT = ("Transcribe all visible text in this document page exactly as written. Keep the reading order and every "
           "Thai tone mark and vowel sign. Do not summarise, translate, correct or add anything. "
-          "Output plain text or Markdown only, with no commentary. If the page has no readable text, output nothing.")
+          "Output plain text or Markdown only, with no commentary. If the page has no readable text, output exactly NO_TEXT and nothing else.")
+NO_TEXT = "NO_TEXT"
 OCR_TOTAL_SECONDS = 80  # pages run in parallel; keeps the whole upload under typical 100 s proxy limits
 
 
@@ -49,7 +50,9 @@ def _call(gateway: GatewaySettings, image: bytes) -> str:
     content = choice["message"]["content"]
     if not isinstance(content, str):
         raise ValueError("ocr_response_invalid")
-    return content.strip()
+    content = content.strip()
+    # Models sometimes describe an empty page instead of staying silent; only the sentinel counts as "no text".
+    return "" if content.strip("`*_ .\n").upper() == NO_TEXT else content
 
 
 async def transcribe_pages(gateway: GatewaySettings, image_paths: list[Path]) -> str:
