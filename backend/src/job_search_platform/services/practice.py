@@ -82,8 +82,10 @@ def prompt(*, level: str, sections: Sequence[Mapping], job: Mapping, cv_text: st
         "logistics and gaps (null for logistics and gaps: a gaps question names something the candidate lacks, so give only "
         "`key_points` for it). In every `model_answer`: never name the hiring company (say \"the company\" instead), never use "
         "numbers from the posting as if they were the candidate's, write plain Thai or English words only (no framework "
-        "labels such as STAR, ROI or Situation/Task/Action/Result), and name only skills, employers and numbers that "
+        "labels such as STAR, ROI or Situation/Task/Action/Result), keep skill, tool, company and job-title names in their original "
+        "spelling (never transliterate them into Thai script), write numbers as digits, and name only skills, employers and numbers that "
         "appear in the cited facts. Also give up to 5 `reverse_questions` the candidate could ask the interviewer, from the posting. "
+        "`section` must be exactly one of these ids: " + ", ".join(w["id"] for w in sections) + ". "
         "Return ONLY JSON shaped as {\"questions\": [{\"section\": \"<id>\", \"prompt\": \"…\", \"why\": \"…\", "
         "\"key_points\": [\"…\"], \"model_answer\": \"…\"|null, \"evidence_ids\": [\"F1\"]}], "
         "\"reverse_questions\": [\"…\"]}."
@@ -198,6 +200,13 @@ def parse_rewrite(raw: str, rejected: Sequence[Mapping], fact_claims: Mapping[UU
     return found
 
 
+def _section_id(value: object, valid: set[str]) -> str:
+    """Exact id first; else the part before the first `_` or `-` when that is a valid id (technical_sql -> technical)."""
+    text = str(value).strip()
+    prefix = re.split(r"[_-]", text, maxsplit=1)[0]
+    return text if text in valid or prefix not in valid else prefix
+
+
 def parse_reply(raw: str, sections: Sequence[Mapping], fact_claims: Mapping[UUID, set[str]],
                 vocabulary: Collection[str] | None, known: set[str] = frozenset(),
                 dropped: dict[str, int] | None = None, aliases: Mapping[str, str] | None = None,
@@ -210,11 +219,12 @@ def parse_reply(raw: str, sections: Sequence[Mapping], fact_claims: Mapping[UUID
     payload = _payload(raw)
     if not isinstance(payload, dict):
         return [], []
+    valid = {w["id"] for w in sections}
     by_section: dict[str, list[dict]] = {}
     for item in _items(raw):
         if not isinstance(item.get("prompt"), str) or not item["prompt"].strip():
             continue
-        by_section.setdefault(str(item.get("section")), []).append(item)
+        by_section.setdefault(_section_id(item.get("section"), valid), []).append(item)
     questions = []
     for wanted in sections:
         for item in by_section.get(wanted["id"], [])[:wanted["count"]]:

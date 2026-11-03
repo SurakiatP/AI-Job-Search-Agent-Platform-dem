@@ -29,12 +29,16 @@ for _operation, _effort in json.loads(os.environ.get("PLATFORM_REASONING") or "{
     if _effort == "default":
         REASONING.pop(_operation, None)
     else:
-        REASONING[_operation] = {"extra_body": {"reasoning": {"effort": _effort}}}
+        # "none" turns reasoning off ({"enabled": false}); other values are an effort
+        REASONING[_operation] = {"extra_body": {"reasoning": {"enabled": False} if _effort == "none" else {"effort": _effort}}}
 
 def _wire_reasoning(overrides):
     """The agent's own reasoning config for an operation's override, so the top-level reasoning_effort Hermes sends
     (default medium) agrees with extra_body's reasoning.effort; OpenRouter answers 400 when the two differ."""
-    effort = (((overrides or {}).get("extra_body") or {}).get("reasoning") or {}).get("effort")
+    reasoning = ((overrides or {}).get("extra_body") or {}).get("reasoning") or {}
+    if reasoning.get("enabled") is False:
+        return {"enabled": False}
+    effort = reasoning.get("effort")
     return {"enabled": True, "effort": effort} if effort else None
 
 
