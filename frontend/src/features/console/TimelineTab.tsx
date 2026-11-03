@@ -27,7 +27,8 @@ function destination(run: RunView, base: string, c: Copy) {
   const op: RunOperation = run.operation;
   if (op === 'profile_cv' || op === 'extract_experience') return { to: `${base}/profile`, label: c.dest.cv };
   if (op === 'match_jobs') return { to: `${base}/search`, label: c.dest.search };
-  return { to: `${base}/sessions/${encodeURIComponent(run.session_id)}`, label: c.dest.session };
+  // Runs without a session (CV reading, agent-started work) have no evaluation to open.
+  return run.session_id ? { to: `${base}/sessions/${encodeURIComponent(run.session_id)}`, label: c.dest.session } : { to: `${base}/profile`, label: c.dest.cv };
 }
 
 const unit = (locale: Locale, value: number, name: 'second' | 'minute' | 'hour') => new Intl.NumberFormat(locale, { style: 'unit', unit: name, unitDisplay: 'narrow' }).format(value);

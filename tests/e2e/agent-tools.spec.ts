@@ -143,3 +143,15 @@ test('autopilot hint names the agent risk in Thai', async ({ page }) => {
   await page.goto(`/app/settings?project=${projectId}&section=preferences`);
   await expect(page.getByText(/เอเจนต์ที่คุณให้สิทธิ์เข้าถึงใบสมัครก็ใช้ฟังก์ชันนี้ได้ สูงสุด N ใบต่อวัน/)).toBeVisible();
 });
+
+for (const [locale, label] of [['en', 'Read CV'], ['th', 'อ่าน CV']] as const) {
+  test(`activity labels a sessionless extract_experience run "${label}" and never links it to a session`, async ({ page }) => {
+    await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
+    await useSyntheticApplication(page);
+    for (const url of [`**/v1/projects/${projectId}/runs`, `**/v1/async/projects/${projectId}/agent-runs`]) await page.route(url, r => r.fulfill(json([run('cccccccc-0000-4000-8000-0000000000aa', 'extract_experience', { session_id: null, job_revision_id: null, status: 'failed' })])));
+    await page.goto(`/app/projects/${projectId}/console?tab=timeline`);
+    await expect(page.getByRole('main').getByText(label, { exact: true })).toBeVisible();
+    await expect(page.getByRole('main').locator('a[href*="/sessions/"]')).toHaveCount(0);
+    await expect(page.getByRole('main').locator('a[href$="/profile"]')).toHaveCount(1);
+  });
+}

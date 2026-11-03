@@ -1,69 +1,50 @@
 import { useTranslation } from 'react-i18next';
+import type { NextStepKey } from './nextStep';
+
+type Hero = { title: string; body: (job?: string) => string };
 
 const th = {
-  subtitleFirst: 'เพิ่ม CV แล้วค้นหางานที่อยากประเมิน',
-  gettingStarted: 'เริ่มต้นใช้งาน',
+  subtitleFirst: 'เริ่มจาก CV แล้วค้นหางานที่อยากประเมิน',
   nextStep: 'ขั้นถัดไป',
-  stepDone: 'ทำแล้ว',
-  steps: [
-    { title: 'เพิ่ม CV ฉบับแรก', body: 'ไฟล์ PDF, DOCX หรือ TXT' },
-    { title: 'หางาน', body: 'ค้นหาตำแหน่งหรือบันทึกประกาศงานที่มีอยู่' },
-    { title: 'ประเมินความเหมาะสม', body: 'จับคู่งานที่บันทึกไว้กับ CV หนึ่งฉบับ' },
-  ],
-  cvDone: (name: string, version: number) => `${name} · ฉบับที่ ${version}`,
-  jobDone: (title: string, more: number) => more > 0 ? `${title} และอีก ${more} งาน` : title,
-  waitsFor: (cv: boolean, job: boolean): string => cv && job ? 'ต้องมี CV และงานที่บันทึกไว้ก่อน' : cv ? 'ต้องมี CV ก่อน' : 'ต้องมีงานที่บันทึกไว้ก่อน',
-  helpTitle: 'ต้องการความช่วยเหลือไหม',
-  tips: [
-    { title: 'CV แต่ละฉบับเก็บไฟล์ต้นฉบับไว้', body: 'อัปโหลด CV หลายฉบับได้ ระบบเก็บต้นฉบับให้ครบ' },
-    { title: 'ผลประเมินระบุ CV และงานที่ใช้เสมอ', body: 'ดูได้ชัดว่าแต่ละผลประเมินใช้ CV และงานฉบับไหน' },
-    { title: 'หน้าใบสมัครติดตามความคืบหน้า', body: 'เก็บรายการงานที่สมัครแล้ว พร้อม CV ที่ใช้และบันทึกของคุณ' },
-  ],
-  dismissHelp: 'เข้าใจแล้ว ซ่อนไว้',
-  evaluations: 'ผลการประเมิน',
-  noEvaluations: 'ยังไม่มีผลการประเมิน',
-  noEvaluationsReturning: 'เริ่มจากงานที่บันทึกไว้ด้านล่าง',
-  recentEvaluations: 'ผลประเมินล่าสุด',
-  jobs: 'งานและใบสมัคร',
+  hero: {
+    uploadCv: { title: 'อัปโหลด CV', body: () => 'เพิ่มไฟล์ PDF, DOCX หรือ TXT ระบบจะอ่านให้ แล้วคุณตรวจได้ว่าอ่านถูกไหม' },
+    readingCv: { title: 'กำลังอ่าน CV ของคุณ', body: () => 'ใช้เวลาไม่นาน ปิดหน้านี้ไว้ก่อนได้' },
+    findJob: { title: 'หางานแรก', body: () => 'CV พร้อมแล้ว ค้นหาตำแหน่ง หรือบันทึกประกาศงานที่มีอยู่' },
+    getFitScore: { title: 'ดูคะแนนความเหมาะสม', body: job => `เทียบ ${job} กับ CV ของคุณ` },
+    draftLetter: { title: 'ร่างจดหมายสมัครงาน', body: job => `สำหรับ ${job}` },
+    markApplied: { title: 'ฉันสมัครแล้ว', body: job => `บันทึกว่าคุณสมัคร ${job} แล้ว ระบบไม่ได้ส่งใบสมัครให้` },
+    practise: { title: 'ซ้อมสัมภาษณ์งานนี้', body: job => `สำหรับ ${job}` },
+    answerAi: { title: 'ตอบคำถามของ AI', body: () => 'มีงานที่หยุดรอคำตอบหรือการอนุมัติจากคุณ' },
+  } satisfies Record<NextStepKey, Hero>,
+  recentJobs: 'งานล่าสุด',
   noJobs: 'ยังไม่มีงานที่บันทึกไว้',
   noJobsFirst: 'ค้นหาตำแหน่งหรือบันทึกประกาศงานเพื่อเริ่มต้น',
-  version: (n: number) => `ฉบับที่ ${n}`,
-  usedCv: (name: string, version: number) => `CV: ${name} · ฉบับที่ ${version}`,
   running: 'กำลังทำงานอยู่',
+  failed: 'บันทึกสถานะไม่สำเร็จ ลองอีกครั้ง',
+  ops: { extract_experience: 'อ่าน CV' } as Record<string, string>,
+  usedCv: (name: string, version: number) => `CV: ${name} · ฉบับที่ ${version}`,
 };
 
 const en: typeof th = {
-  subtitleFirst: 'Add a CV, then find a role to evaluate.',
-  gettingStarted: 'Getting started',
+  subtitleFirst: 'Start with your CV, then find a job to score.',
   nextStep: 'Next step',
-  stepDone: 'Done',
-  steps: [
-    { title: 'Add your first CV', body: 'PDF, DOCX or TXT.' },
-    { title: 'Find a job', body: 'Search roles or save a posting you already have.' },
-    { title: 'Evaluate a match', body: 'Pair a saved job with a CV version.' },
-  ],
-  cvDone: (name, version) => `${name} · v${version}`,
-  jobDone: (title, more) => more > 0 ? `${title} and ${more} more` : title,
-  waitsFor: (cv, job) => cv && job ? 'Needs a CV and a saved job first.' : cv ? 'Needs a CV first.' : 'Needs a saved job first.',
-  helpTitle: 'Need a hand?',
-  tips: [
-    { title: 'CV versions keep your original files.', body: 'Upload different versions of your CV and we keep the originals safe.' },
-    { title: 'Evaluations always name their CV and job.', body: "It's clear which CV and job were used for each evaluation." },
-    { title: 'Applications tracks your progress.', body: "Keep a list of the jobs you've applied to, with the CV version and notes." },
-  ],
-  dismissHelp: 'Got it, hide this',
-  evaluations: 'Evaluations',
-  noEvaluations: 'No evaluations yet',
-  noEvaluationsReturning: 'Start one from a saved job below.',
-  recentEvaluations: 'Recent evaluations',
-  jobs: 'Jobs and applications',
+  hero: {
+    uploadCv: { title: 'Upload your CV', body: () => 'Add a PDF, DOCX or TXT. The AI reads it, and you check what it understood.' },
+    readingCv: { title: 'Reading your CV', body: () => 'This takes a moment. You can leave this page.' },
+    findJob: { title: 'Find a job to score', body: () => 'Your CV is ready. Search roles or save a posting you already have.' },
+    getFitScore: { title: 'Get a fit score', body: job => `Compare ${job} with your CV.` },
+    draftLetter: { title: 'Draft a cover letter', body: job => `For ${job}.` },
+    markApplied: { title: 'I applied', body: job => `Record that you applied to ${job}. Nothing is sent for you.` },
+    practise: { title: 'Practise this interview', body: job => `For ${job}.` },
+    answerAi: { title: "Answer the AI's question", body: () => 'A task is paused until you reply or approve.' },
+  },
+  recentJobs: 'Recent jobs',
   noJobs: 'No saved jobs yet',
   noJobsFirst: 'Search for roles or save a posting to get started.',
-  version: n => `Version ${n}`,
-  usedCv: (name, version) => `CV: ${name} · v${version}`,
   running: 'Running now',
+  failed: 'Could not record this. Try again.',
+  ops: { extract_experience: 'Read CV' },
+  usedCv: (name, version) => `CV: ${name} · v${version}`,
 };
 
-export function useOverviewCopy() {
-  return useTranslation().i18n.language.startsWith('th') ? th : en;
-}
+export function useOverviewCopy() { return useTranslation().i18n.language.startsWith('th') ? th : en; }
