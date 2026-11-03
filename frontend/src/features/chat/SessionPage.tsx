@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { Bot, Briefcase, Check, ChevronDown, FileText, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Breadcrumb } from '@/components/PageBack';
 import { Card, CardContent } from '@/components/ui/card';
 import { Markdown } from '@/components/Markdown';
 import { CopyButton } from '@/components/CopyButton';
@@ -16,7 +15,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } fr
 import { useDraft } from '../../app/drafts';
 import { Textarea } from '@/components/ui/textarea';
 import { ErrorState, LoadingState, MissingResource } from '../projects/PageStates';
-import { useResource } from '../projects/useResource';
+import { sendJson, useResource } from '../projects/useResource';
 import { NewSessionButton } from '../sessions/NewSessionDialog';
 import { apiRequest } from '../../lib/api';
 import { ApiError, PRACTICE_OPERATIONS, type DocumentView, type Locale, type RunOperation, type RunView, type SessionView } from '../../lib/api-types';
@@ -25,7 +24,8 @@ import { RunTimeline } from './RunTimeline';
 import { RelatedDocuments, RunResults } from './RunResults';
 import { ReportListCard } from './EvaluationReportView';
 import { AiLabel } from '@/components/AiMark';
-import { WorkflowPanel, type PrimaryAction } from './WorkflowPanel';
+import { ApprovalCard } from './ApprovalCard';
+import { nextStep } from '../overview/nextStep';
 import { SkillAdvice } from './SkillAdvice';
 import { TailorCard } from './TailorCard';
 import { ApplyCard } from './ApplyCard';
@@ -36,10 +36,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
 const copy = {
-  th: { title: 'เซสชัน', unpaired: 'ยังไม่ได้จับคู่', unpairedBody: 'เซสชันเก่านี้ไม่ได้จับคู่ CV กับงาน จึงดูได้อย่างเดียว เริ่มเซสชันใหม่เพื่อประเมินและร่างเอกสาร', startPaired: 'เริ่มเซสชันที่จับคู่', outdated: 'มี CV เวอร์ชันใหม่', outdatedBody: 'เซสชันนี้ใช้ CV เวอร์ชันเก่า เริ่มเซสชันใหม่ด้วย CV ล่าสุดกับงานเดิม', outdatedBtn: 'เริ่มด้วย CV ล่าสุด', eval: 'การประเมิน', evalNone: 'ยังไม่มีผลประเมิน', draft: 'ร่างเอกสาร', draftBody: 'เลือกประเภทเอกสารที่ต้องการ เอเจนต์จะร่างจาก CV และงานคู่นี้', letter: 'จดหมายสมัครงาน', message: 'ข้อความสมัครงาน', lang: 'ภาษาเอกสาร', docs: 'เอกสารที่ร่างในเซสชันนี้', noDocs: 'ยังไม่มีเอกสาร', open: 'เปิดเอกสาร', revise: 'สั่งแก้', reviseHint: 'บอกสิ่งที่ต้องการแก้ ระบบจะสร้างเวอร์ชันใหม่ของเอกสารนี้', send: 'ส่งคำสั่งแก้', cancel: 'หยุดงาน', retry: 'ลองใหม่เป็นงานใหม่', refresh: 'โหลดสถานะใหม่', noProvider: 'ยังไม่ได้ตั้งค่าเกตเวย์ AI เปิดการตั้งค่าเกตเวย์ AI เพื่อตรวจสอบการเชื่อมต่อ', settings: 'ไปที่การตั้งค่า', version: 'เวอร์ชัน', you: 'คุณ', cvPage: 'เปิดหน้า CV', jobPage: 'ดูรายละเอียดงาน', letterAsk: 'ร่างจดหมายสมัครงาน (cover letter) สำหรับงานนี้', messageAsk: 'ร่างข้อความสมัครงานสั้น ๆ สำหรับส่งผู้รับสมัครงานนี้', th: 'ไทย', en: 'English', readOnly: 'ข้อความในเซสชันเก่า (ดูอย่างเดียว)', redraft: 'ร่างใหม่ทั้งฉบับ', redraftConfirm: 'จะสร้างเวอร์ชันใหม่ของเอกสารเดิม', redraftBody: 'เอเจนต์จะร่างใหม่ทั้งฉบับและเพิ่มเป็นเวอร์ชันใหม่ของเอกสารนี้ เวอร์ชันเดิมยังอยู่ในประวัติ', confirm: 'ร่างใหม่', dismiss: 'ยกเลิก', edit: 'แก้ไข', reviseAi: 'สั่งแก้ด้วย AI', draftStatus: 'สถานะการร่างเอกสาร' },
-  en: { title: 'Session', unpaired: 'Not paired', unpairedBody: 'This older session has no CV and job pair, so it is read-only. Start a new session to evaluate and draft.', startPaired: 'Start a paired session', outdated: 'A newer CV version exists', outdatedBody: 'This session uses an older CV version. Start a new session with the latest CV and the same job.', outdatedBtn: 'Start with latest CV', eval: 'Evaluation', evalNone: 'No evaluation yet', draft: 'Draft documents', draftBody: 'Pick a document type. The agent drafts it from this CV and job pair.', letter: 'Cover letter', message: 'Application message', lang: 'Document language', docs: 'Documents drafted in this session', noDocs: 'No documents yet', open: 'Open document', revise: 'Revise', reviseHint: 'Say what to change. A new version of this document is created.', send: 'Send revision request', cancel: 'Stop run', retry: 'Retry as a new run', refresh: 'Refresh status', noProvider: 'AI is unavailable because the gateway is not configured. Open AI gateway settings to check the connection.', settings: 'Open settings', version: 'Version', you: 'You', cvPage: 'Open CV page', jobPage: 'View job details', letterAsk: 'Draft a cover letter for this job.', messageAsk: 'Draft a short application message to send to the recruiter for this job.', th: 'ไทย', en: 'English', readOnly: 'Messages from the older session (read-only)', redraft: 'Redraft from scratch', redraftConfirm: 'This creates a new version of the existing document', redraftBody: 'The agent drafts the whole document again and adds it as a new version of this document. Earlier versions stay in the history.', confirm: 'Redraft', dismiss: 'Cancel', edit: 'Edit', reviseAi: 'Revise with AI', draftStatus: 'Draft status' },
+  th: { draftCta: 'ร่างจดหมายสมัครงาน', appliedCta: 'ฉันสมัครแล้ว', appliedNote: 'บันทึกสถานะเท่านั้น ระบบไม่ได้ส่งใบสมัครให้', practiseCta: 'ซ้อมสัมภาษณ์งานนี้', undo: 'ยกเลิกที่บันทึกว่าสมัครแล้ว', title: 'เซสชัน', unpaired: 'ยังไม่ได้จับคู่', unpairedBody: 'เซสชันเก่านี้ไม่ได้จับคู่ CV กับงาน จึงดูได้อย่างเดียว เริ่มเซสชันใหม่เพื่อประเมินและร่างเอกสาร', startPaired: 'เริ่มเซสชันที่จับคู่', outdated: 'มี CV เวอร์ชันใหม่', outdatedBody: 'เซสชันนี้ใช้ CV เวอร์ชันเก่า เริ่มเซสชันใหม่ด้วย CV ล่าสุดกับงานเดิม', outdatedBtn: 'เริ่มด้วย CV ล่าสุด', eval: 'การประเมิน', evalNone: 'ยังไม่มีผลประเมิน', draft: 'ร่างเอกสาร', draftBody: 'เลือกประเภทเอกสารที่ต้องการ เอเจนต์จะร่างจาก CV และงานคู่นี้', letter: 'จดหมายสมัครงาน', message: 'ข้อความสมัครงาน', lang: 'ภาษาเอกสาร', docs: 'เอกสารที่ร่างในเซสชันนี้', noDocs: 'ยังไม่มีเอกสาร', open: 'เปิดเอกสาร', revise: 'สั่งแก้', reviseHint: 'บอกสิ่งที่ต้องการแก้ ระบบจะสร้างเวอร์ชันใหม่ของเอกสารนี้', send: 'ส่งคำสั่งแก้', cancel: 'หยุดงาน', retry: 'ลองใหม่เป็นงานใหม่', refresh: 'โหลดสถานะใหม่', noProvider: 'ยังไม่ได้ตั้งค่าเกตเวย์ AI เปิดการตั้งค่าเกตเวย์ AI เพื่อตรวจสอบการเชื่อมต่อ', settings: 'ไปที่การตั้งค่า', version: 'เวอร์ชัน', you: 'คุณ', cvPage: 'เปิดหน้า CV', jobPage: 'ดูรายละเอียดงาน', letterAsk: 'ร่างจดหมายสมัครงาน (cover letter) สำหรับงานนี้', messageAsk: 'ร่างข้อความสมัครงานสั้น ๆ สำหรับส่งผู้รับสมัครงานนี้', th: 'ไทย', en: 'English', readOnly: 'ข้อความในเซสชันเก่า (ดูอย่างเดียว)', redraft: 'ร่างใหม่ทั้งฉบับ', redraftConfirm: 'จะสร้างเวอร์ชันใหม่ของเอกสารเดิม', redraftBody: 'เอเจนต์จะร่างใหม่ทั้งฉบับและเพิ่มเป็นเวอร์ชันใหม่ของเอกสารนี้ เวอร์ชันเดิมยังอยู่ในประวัติ', confirm: 'ร่างใหม่', dismiss: 'ยกเลิก', edit: 'แก้ไข', reviseAi: 'สั่งแก้ด้วย AI', draftStatus: 'สถานะการร่างเอกสาร' },
+  en: { draftCta: 'Draft cover letter', appliedCta: 'I applied', appliedNote: 'Records the stage only. We do not submit anything.', practiseCta: 'Practise this interview', undo: 'Undo: not applied yet', title: 'Session', unpaired: 'Not paired', unpairedBody: 'This older session has no CV and job pair, so it is read-only. Start a new session to evaluate and draft.', startPaired: 'Start a paired session', outdated: 'A newer CV version exists', outdatedBody: 'This session uses an older CV version. Start a new session with the latest CV and the same job.', outdatedBtn: 'Start with latest CV', eval: 'Evaluation', evalNone: 'No evaluation yet', draft: 'Draft documents', draftBody: 'Pick a document type. The agent drafts it from this CV and job pair.', letter: 'Cover letter', message: 'Application message', lang: 'Document language', docs: 'Documents drafted in this session', noDocs: 'No documents yet', open: 'Open document', revise: 'Revise', reviseHint: 'Say what to change. A new version of this document is created.', send: 'Send revision request', cancel: 'Stop run', retry: 'Retry as a new run', refresh: 'Refresh status', noProvider: 'AI is unavailable because the gateway is not configured. Open AI gateway settings to check the connection.', settings: 'Open settings', version: 'Version', you: 'You', cvPage: 'Open CV page', jobPage: 'View job details', letterAsk: 'Draft a cover letter for this job.', messageAsk: 'Draft a short application message to send to the recruiter for this job.', th: 'ไทย', en: 'English', readOnly: 'Messages from the older session (read-only)', redraft: 'Redraft from scratch', redraftConfirm: 'This creates a new version of the existing document', redraftBody: 'The agent drafts the whole document again and adds it as a new version of this document. Earlier versions stay in the history.', confirm: 'Redraft', dismiss: 'Cancel', edit: 'Edit', reviseAi: 'Revise with AI', draftStatus: 'Draft status' },
 };
 type DraftKind = 'cover_letter' | 'application_message';
+type PrimaryAction = { label: string; onClick: () => void; disabled?: boolean; title?: string; note?: string };
 const ACTIVE = ['queued', 'running', 'waiting_approval'];
 
 function ReviseBox({ c, projectId, docId, busy, onSubmit }: { c: typeof copy.en; projectId: string; docId: string; busy: boolean; onSubmit: (text: string) => Promise<boolean> }) {
@@ -82,7 +83,6 @@ export function SessionPage() {
   const { projectId = '', sessionId = '' } = useParams();
   const base = `/app/projects/${projectId}`;
   const session = useResource<SessionView>(`/projects/${projectId}/sessions/${sessionId}`);
-  const project = useResource<{ name: string }>(`/projects/${projectId}`);
   const documents = useResource<DocumentView[]>(`/projects/${projectId}/documents`);
   const trashed = useResource<DocumentView[]>(`/projects/${projectId}/documents/trash`);
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
@@ -93,8 +93,11 @@ export function SessionPage() {
   // Contract (UX_SIMPLIFY_PLAN 3.1): `?start=evaluate` means "run evaluate_job once on arrival".
   // On first load with this param, call startRun('evaluate_job', '') and then navigate to the same URL
   // without `start` (replace: true) so reload/back never start a second run. W3 implements; W2 links here.
-  const initialTab = useSearchParams()[0].get('tab');
-  const [tab, setTab] = useState(initialTab && ['evaluation', 'documents', 'answers', 'practice', 'history'].includes(initialTab) ? initialTab : 'evaluation');
+  const [params, setParams] = useSearchParams();
+  const initialTab = params.get('tab');
+  const startParam = params.get('start');
+  const autoStarted = useRef(false);
+  const [tab, setTab] = useState(initialTab && ['evaluation', 'documents', 'answers', 'practice'].includes(initialTab) ? initialTab : 'evaluation');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [accountError, setAccountError] = useState('');
@@ -105,6 +108,16 @@ export function SessionPage() {
   const runId = workflow.run?.id;
   const { reload: reloadRuns } = runs; const { reload: reloadDocs } = documents; const { reload: reloadTrash } = trashed;
   useEffect(() => { reloadRuns(); if (status && !ACTIVE.includes(status)) { reloadDocs(); reloadTrash(); } }, [runId, status, reloadRuns, reloadDocs, reloadTrash]);
+  const [appliedUndo, setAppliedUndo] = useState<string | null>(null);
+  // `?start=evaluate`: strip the param first, then start once. The ref stops a second POST on re-render or StrictMode.
+  useEffect(() => {
+    if (startParam !== 'evaluate' || autoStarted.current) return;
+    if (session.status !== 'ready' || runs.status !== 'ready' || workflow.loading) return;
+    autoStarted.current = true;
+    setParams(next => { next.delete('start'); return next; }, { replace: true });
+    const hasEval = (runs.data ?? []).some(run => run.session_id === sessionId && run.operation === 'evaluate_job');
+    if (session.data?.cv_revision_id && session.data.job_revision_id && !hasEval && !(status && ACTIVE.includes(status))) void startRun('evaluate_job', '');
+  }); // eslint-disable-line react-hooks/exhaustive-deps
   const resources = [session, documents, runs];
   if (resources.some(item => item.status === 'loading' && item.data === undefined) || workflow.loading) return <LoadingState />;
   if (session.errorStatus === 404) return <MissingResource />;
@@ -155,12 +168,30 @@ export function SessionPage() {
   const reloadRun = () => void workflow.reload().catch(() => undefined);
   const operation = workflow.run?.operation;
   const needsTab = operation === 'apply_prepare' ? 'answers' : 'documents';
-  // Exactly one primary action per run state; once the user is on the tab that finishes the step, that tab's own button takes over.
+  // One primary action per state: run states first (answer, retry), then the shared next-step rule.
+  const waiting = status === 'needs_input' || status === 'waiting_approval' ? runId : undefined;
+  const scored = evalRun?.status === 'completed';
+  const step = nextStep({ hasCv: true, extractionRunning: false, waitingRunId: waiting, job: { id: current.job_revision_id ?? '', stage: jobRevision?.application_status, session: { id: sessionId, scored: Boolean(scored), drafted: drafted.length > 0 } } });
+  const setStage = async (stage: 'applied' | 'saved') => {
+    const before = jobRevision?.application_status ?? 'saved';
+    setSubmitting(true); setError('');
+    try { await sendJson(`/projects/${projectId}/jobs/${current.job_revision_id}/application-status`, 'PATCH', { application_status: stage }); setAppliedUndo(stage === 'applied' ? before : null); jobs.reload(); }
+    catch { setError('errors.request_failed'); } finally { setSubmitting(false); }
+  };
+  const blocked = busy || gate.blocked;
   const primary: PrimaryAction | null = workflow.pendingApproval ? null
     : status === 'waiting_approval' ? { label: c.refresh, onClick: reloadRun }
     : status === 'needs_input' ? (tab === needsTab ? null : { label: operation === 'tailor_cv' ? t('panel.reviewChanges') : operation === 'apply_prepare' ? t('panel.answerQuestions') : t('run.openDocuments'), onClick: () => setTab(needsTab) })
-    : failed && (last.current || operation === 'evaluate_job') ? { label: c.retry, onClick: retry, disabled: busy || gate.blocked, title: gate.title }
+    : failed && (last.current || operation === 'evaluate_job') ? { label: c.retry, onClick: retry, disabled: blocked, title: gate.title }
+    : active ? null
+    : step.key === 'getFitScore' ? { label: t('evaluate'), onClick: () => void startRun('evaluate_job', ''), disabled: blocked, title: gate.title }
+    : step.key === 'draftLetter' ? { label: c.draftCta, onClick: () => askDraft('cover_letter'), disabled: blocked, title: gate.title }
+    : step.key === 'markApplied' ? { label: c.appliedCta, onClick: () => void setStage('applied'), disabled: blocked, note: c.appliedNote }
+    : step.key === 'practise' ? { label: c.practiseCta, onClick: () => setTab('practice') }
     : null;
+  const failReason = failed ? t((workflow.events.filter(event => event.data.message_key).pop()?.data.message_key) ?? 'failReason', { defaultValue: t('failReason') }) : '';
+  const dot = (state: 'done' | 'working' | 'attention' | 'failed' | null) => state ? <><span aria-hidden="true" className={cn('ms-2 inline-block size-2 rounded-full', state === 'done' && 'bg-success', state === 'working' && 'animate-pulse bg-primary', state === 'attention' && 'bg-warning', state === 'failed' && 'bg-destructive')} /><span className="sr-only">{t(`dots.${state}`)}</span></> : null;
+  const runDot = (run?: RunView | null) => !run ? null : ACTIVE.includes(run.status) ? 'working' as const : run.status === 'completed' ? 'done' as const : run.status === 'needs_input' ? 'attention' as const : 'failed' as const;
   const headline = paired ? current.job_title ?? current.title : current.title;
   // Job + company + CV identify the session; several sessions can share a job but never the same CV/job pair.
   const cvLine = paired && current.cv_name ? `CV: ${current.cv_name}${current.cv_revision != null ? ` · v${current.cv_revision}` : ''}` : null;
@@ -168,7 +199,6 @@ export function SessionPage() {
   const tabClass = 'min-h-12 shrink-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
   return <section className="flex min-w-0 flex-col gap-6 lg:gap-8">
     <div className="grid gap-1">
-    <Breadcrumb label={c.title} items={[{ label: project.data?.name ?? t('pages.project'), to: `${base}/overview` }, { label: t('nav.evaluate'), to: `${base}/sessions` }, { label: current.title }]} />
     <header className="min-w-0"><h1 className="break-words text-2xl font-semibold">{headline}</h1>{subline && <p className="mt-1 break-words text-muted-foreground">{subline}</p>}</header>
     </div>
     {paired ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
@@ -186,23 +216,32 @@ export function SessionPage() {
 
     {paired && <>
       {(status === 'queued' || status === 'running') && <BusyNote announce={false} bar className="lg:hidden" label={status === 'queued' ? (i18n.language.startsWith('th') ? 'เอเจนต์รับงานแล้ว รอคิว' : 'The agent has the task and is queued') : (i18n.language.startsWith('th') ? 'เอเจนต์กำลังประมวลผล' : 'The agent is processing')} detail={i18n.language.startsWith('th') ? 'หน้านี้อัปเดตเองเมื่อมีความคืบหน้า' : 'This page updates by itself as work progresses'} />}
-      <Tabs value={tab} onValueChange={setTab} className="grid min-w-0 gap-4">
-        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b">
-          <TabsList aria-label={c.title} className="h-auto min-w-0 max-w-full justify-start overflow-x-auto rounded-none border-b-0 bg-transparent p-0">
-            <TabsTrigger value="evaluation" className={tabClass}>{t('tabs.evaluation')}</TabsTrigger>
-            <TabsTrigger value="documents" className={tabClass}>{t('tabs.documents')}</TabsTrigger>
-            <TabsTrigger value="answers" className={tabClass}>{t('tabs.answers')}</TabsTrigger>
-            <TabsTrigger value="practice" className={tabClass}>{practiceCopy[locale].tab}</TabsTrigger>
-            <TabsTrigger value="history" className={tabClass}>{t('tabs.history')}</TabsTrigger>
-          </TabsList>
-          <div className="grid min-w-0 gap-1 pb-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-medium"><label htmlFor={outputLanguageId}>{t('outputLanguage')}</label><Select id={outputLanguageId} aria-describedby={`${outputLanguageId}-hint`} className="w-40 max-w-full" value={outputLanguage} onChange={event => setOutputLanguage(event.target.value === 'en' ? 'en' : 'th')} disabled={busy}><option value="th">{t('thai')}</option><option value="en">{t('english')}</option></Select></div>
-            <p id={`${outputLanguageId}-hint`} className="text-xs text-muted-foreground">{t('outputLanguageHint')}</p>
-          </div>
+      <section aria-labelledby="next-heading" className={cn('grid min-w-0 gap-3 rounded-xl border bg-card p-4 sm:p-5', urgent && 'border-primary')}>
+        <h2 id="next-heading" className="sr-only">{t('panel.title')}</h2>
+        {workflow.run && <RunTimeline locale={locale} run={workflow.run} events={workflow.events} cancellationPending={workflow.cancellationPending} />}
+        {failed && <Alert severity="error" role="alert"><p className="font-medium">{t('failTitle')}</p><p className="text-sm">{failReason}</p></Alert>}
+        {status === 'needs_input' && <Alert severity="warning" className="font-medium">{t('run.needsInput')}</Alert>}
+        {workflow.error && <Alert severity="error" action={<Button type="button" variant="outline" size="sm" onClick={reloadRun}>{t('refresh')}</Button>}>{t(workflow.error, { defaultValue: t('pages.loadError') })}</Alert>}
+        <ApprovalCard approval={workflow.pendingApproval} locale={locale} busy={workflow.submitting} onDecision={(id, decision) => void workflow.decideApproval(id, decision)} onRefresh={reloadRun} />
+        <div className="flex flex-wrap items-center gap-2">
+          {primary && <Button type="button" className="whitespace-normal" disabled={primary.disabled} title={primary.title} onClick={primary.onClick}>{primary.label}</Button>}
+          {appliedUndo && jobRevision?.application_status === 'applied' && <Button type="button" variant="ghost" onClick={() => void setStage(appliedUndo as 'saved').then(() => setAppliedUndo(null))} disabled={busy}>{c.undo}</Button>}
+          {active && <Button type="button" variant="outline" disabled={workflow.submitting || workflow.cancellationPending} onClick={() => void workflow.cancel()}>{t('cancel')}</Button>}
         </div>
-        <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
-          <div className="grid min-w-0 gap-4">
-            <TabsContent value="evaluation" forceMount className={`grid gap-4 ${tab === 'evaluation' ? '' : 'hidden'}`}>
+        {primary?.note && <p className="text-xs text-muted-foreground">{primary.note}</p>}
+        {primary && status === 'needs_input' && operation === 'tailor_cv' && <p className="text-xs text-muted-foreground">{t('panel.reviewHint')}</p>}
+      </section>
+      <Tabs value={tab} onValueChange={setTab} className="grid min-w-0 gap-4">
+        <div className="border-b">
+          <TabsList aria-label={c.title} className="h-auto min-w-0 max-w-full justify-start rounded-none max-sm:overflow-x-auto border-b-0 bg-transparent p-0">
+            <TabsTrigger value="evaluation" className={tabClass}>{t('tabs.evaluation')}{dot(runDot(evalRun))}</TabsTrigger>
+            <TabsTrigger value="documents" className={tabClass}>{t('tabs.documents')}{dot(runDot(sessionRuns.find(run => run.operation === 'draft_documents') ?? sessionRuns.find(run => run.operation === 'tailor_cv')))}</TabsTrigger>
+            <TabsTrigger value="answers" className={tabClass}>{t('tabs.answers')}{dot(runDot(sessionRuns.find(run => run.operation === 'apply_prepare')))}</TabsTrigger>
+            <TabsTrigger value="practice" className={tabClass}>{practiceCopy[locale].tab}</TabsTrigger>
+          </TabsList>
+        </div>
+        <div className="grid min-w-0 gap-4">
+            <TabsContent value="evaluation" forceMount tabIndex={-1} className={`grid gap-4 ${tab === 'evaluation' ? '' : 'hidden'}`}>
               {evalRun ? <>
                 <RunResults projectId={projectId} locale={locale} run={evalRun} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} showDocuments={false} />
                 {evalRun.status === 'completed' && evalRun.evaluation_result?.skill_coverage && <SkillAdvice projectId={projectId} locale={locale} coverage={evalRun.evaluation_result.skill_coverage} />}
@@ -211,28 +250,20 @@ export function SessionPage() {
                 <div className="grid gap-2"><h2 id="eval-empty-heading" className="text-lg font-semibold">{t('empty.title')}</h2><p className="max-w-xl text-muted-foreground">{t('empty.body')}</p></div>
                 <ul className="grid max-w-xl gap-2 text-sm">{(t('empty.gets', { returnObjects: true }) as string[]).map(line => <li key={line} className="flex items-start gap-2"><Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" /><span className="min-w-0 break-words">{line}</span></li>)}</ul>
                 <p className="text-sm text-muted-foreground">{t('result.notPrediction')}</p>
-                <Button type="button" variant={primary || urgent || active ? 'outline' : 'default'} className="justify-self-start" disabled={busy || gate.blocked} title={gate.title} onClick={() => void startRun('evaluate_job', '')}>{t('evaluate')}</Button>
               </section>}
             </TabsContent>
             <TabsContent value="documents" forceMount className={`grid gap-4 ${tab === 'documents' ? '' : 'hidden'}`}>
-              <section className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6"><h2 className="text-lg font-semibold">{c.draft}</h2><p className="text-sm text-muted-foreground">{c.draftBody}</p><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button><Button type="button" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button></div></section>
+              <section className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6"><h2 className="text-lg font-semibold">{c.draft}</h2><p className="text-sm text-muted-foreground">{c.draftBody}</p><div className="grid gap-1"><div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-medium"><label htmlFor={outputLanguageId}>{t('outputLanguage')}</label><Select id={outputLanguageId} aria-describedby={`${outputLanguageId}-hint`} className="w-40 max-w-full" value={outputLanguage} onChange={event => setOutputLanguage(event.target.value === 'en' ? 'en' : 'th')} disabled={busy}><option value="th">{t('thai')}</option><option value="en">{t('english')}</option></Select></div>
+            <p id={`${outputLanguageId}-hint`} className="text-xs text-muted-foreground">{t('outputLanguageHint')}</p></div><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button><Button type="button" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button></div></section>
               <ReportListCard kind="cvChanges" items={evalReport?.cv_changes} />
               <TailorCard projectId={projectId} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} run={sessionRuns.find(run => run.operation === 'tailor_cv') ?? null} onChanged={() => { reloadRun(); reloadRuns(); }} />
               <section className="grid gap-3"><h2 className="text-lg font-semibold">{c.docs}</h2>{drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <DocCard key={doc.id} c={c} base={base} projectId={projectId} doc={doc} busy={busy || gate.blocked} onRevise={text => startRun('draft_documents', text, doc.id)} />)}</section>
             </TabsContent>
             <TabsContent value="answers" forceMount className={`grid gap-4 ${tab === 'answers' ? '' : 'hidden'}`}>{current.job_revision_id && <ApplyCard projectId={projectId} jobId={current.job_revision_id} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} runs={sessionRuns} onChanged={() => { reloadRun(); reloadRuns(); }} />}</TabsContent>
             <TabsContent value="practice" forceMount className={`grid gap-4 ${tab === 'practice' ? '' : 'hidden'}`}><PracticeTab projectId={projectId} sessionId={sessionId} locale={locale} prep={evalReport?.interview_prep} /></TabsContent>
-            <TabsContent value="history" forceMount className={`grid gap-4 ${tab === 'history' ? '' : 'hidden'}`}>
-              <h2 className="text-lg font-semibold">{t('tabs.history')}</h2>{sessionRuns.filter(run => run.id !== workflow.run?.id).length === 0 ? <p className="text-sm text-muted-foreground">{t('historyEmpty')}</p> : <div className="grid gap-3">{sessionRuns.filter(run => run.id !== workflow.run?.id).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)).map(run => <div key={run.id} className="grid gap-3 rounded-xl border bg-card p-4"><RunTimeline locale={locale} run={run} events={[]} historical />{run.operation === 'evaluate_job' && <RunResults projectId={projectId} locale={locale} run={run} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} />}</div>)}</div>}
-              <div className="flex flex-wrap gap-2"><Button asChild variant="outline" ><Link to={`${base}/console`}>{t('openHistory')}</Link></Button><Button asChild variant="outline" ><Link to={`${base}/trash?tab=documents`}>{t('openTrash')}</Link></Button></div>
-            </TabsContent>
-          </div>
-          <WorkflowPanel className={cn(urgent && 'order-first lg:order-none')} locale={locale} sessionRuns={sessionRuns} run={workflow.run} events={workflow.events} cancellationPending={workflow.cancellationPending}
-            approval={workflow.pendingApproval} approvalBusy={workflow.submitting} onDecision={(id, decision) => void workflow.decideApproval(id, decision)} onRefresh={reloadRun}
-            error={workflow.error} primary={primary} hint={status === 'needs_input' && operation === 'tailor_cv' ? t('panel.reviewHint') : undefined} needsInput={status === 'needs_input'}
-            canCancel={active} cancelDisabled={workflow.submitting || workflow.cancellationPending} onCancel={() => void workflow.cancel()} activityHref={`${base}/console`} />
         </div>
       </Tabs>
+      {sessionRuns.length > 1 && <Link to={`${base}/console`} className="inline-flex min-h-11 w-fit items-center text-sm text-primary hover:underline">{t('openHistory')}</Link>}
     {confirmKind && <Dialog open onOpenChange={open => { if (!open) setConfirmKind(null); }}><DialogContent>
       <DialogTitle>{c.redraftConfirm}</DialogTitle><DialogDescription>{kindLabel(confirmKind)}: {c.redraftBody}</DialogDescription>
       <div className="flex flex-wrap justify-end gap-2"><DialogClose asChild><Button type="button" variant="outline" >{c.dismiss}</Button></DialogClose><Button type="button" onClick={() => draftNow(confirmKind)}>{c.confirm}</Button></div>

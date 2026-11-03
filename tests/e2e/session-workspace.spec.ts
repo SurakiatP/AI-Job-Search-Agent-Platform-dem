@@ -48,7 +48,6 @@ test('Session workspace falls back to shared translations for account errors and
     ? route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ code: 'email_unverified', message_key: 'errors.email_unverified', retryable: false }) })
     : route.fallback());
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
-  await expect(page.getByRole('link', { name: commonEn.pages.project, exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Evaluate this job' }).click();
   await expect(page.getByText(commonEn.errors.email_unverified, { exact: true })).toBeVisible();
 });
@@ -123,12 +122,10 @@ test('paired session keeps exact immutable context, global evaluation and task t
   await expect(page.getByRole('tab', { name: 'Evaluation' })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Prepare documents' })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Application answers' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'History' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'History' })).toHaveCount(0);
   await expect(page.getByRole('tabpanel', { name: 'Application answers' }).getByLabel('Question')).toBeHidden();
   await expect(page.getByTestId('run-status')).toHaveCount(1);
   await expect(page.getByRole('tabpanel', { name: 'Evaluation' }).getByText('Strong analytical foundation with Python and SQL.')).toBeVisible();
-  await page.getByRole('tab', { name: 'History' }).click();
-  await expect(page.getByRole('tabpanel', { name: 'History' }).getByRole('status').filter({ hasText: 'Failed' })).toBeVisible();
   await expect(page.getByTestId('run-status')).toHaveCount(1);
 });
 
@@ -315,7 +312,7 @@ test('SCR-04 exactly one primary action per run state; pending tailor proposals 
   const cases: [string, unknown[], string | null][] = [
     ['no run', [], 'Evaluate this job'],
     ['running', [sessionRun('evaluate_job', 'running')], null],
-    ['completed', [evaluation], null],
+    ['completed', [evaluation], 'Draft cover letter'],
     ['failed evaluation', [sessionRun('evaluate_job', 'failed')], 'Retry as'],
     ['waiting approval', [sessionRun('draft_documents', 'waiting_approval')], 'Approve'],
     ['tailor needs input', [sessionRun('tailor_cv', 'needs_input', { result_payload: proposal }), evaluation], 'Review proposed CV changes'],
@@ -362,8 +359,10 @@ test('SCR-04 header, language label and rich empty state', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Senior Data Analyst', exact: true })).toBeVisible();
   await expect(page.getByText('Northstar · Evaluation 014')).toBeVisible();
   await expect(page.getByText('Compared using')).toBeVisible();
+  await page.getByRole('tab', { name: 'Prepare documents' }).click();
   await expect(page.getByLabel('Language of generated documents')).toBeVisible();
   await expect(page.getByText('Separate from the app language')).toBeVisible();
+  await page.getByRole('tab', { name: 'Evaluation' }).click();
   await expect(page.getByRole('button', { name: 'Evaluate this job' })).toHaveCount(1);
   await expect(page.getByText('A written report you can copy')).toBeVisible();
 });
@@ -466,4 +465,19 @@ test('session header names the CV so sessions of the same job are told apart', a
   await useSyntheticApplication(page);
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByRole('main').locator('header')).toContainText('Example Co · First synthetic session · CV: Data CV · v1');
+});
+
+test('?start=evaluate starts one evaluation, drops the param and survives a reload', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await page.route(`**/v1/projects/${projectId}/sessions/${sessionId}`, route => route.fulfill(json(pairedSession)));
+  let posts = 0;
+  await page.route(new RegExp(`/v1/async/projects/${projectId}/agent-runs$`), route => { posts += 1; return route.fulfill({ status: 202, ...json(sessionRun('evaluate_job', 'running')) }); });
+  await page.route(new RegExp(`/v1/projects/${projectId}/runs(\\?.*)?$`), route => route.fulfill(json([])));
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}?start=evaluate`);
+  await expect.poll(() => posts).toBe(1);
+  await expect(page).not.toHaveURL(/start=evaluate/);
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  expect(posts).toBe(1);
 });
