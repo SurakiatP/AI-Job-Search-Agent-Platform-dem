@@ -101,7 +101,7 @@ test('posted_within_days alone cannot be saved', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await searchWithSaved(page);
   await page.goto(`/app/projects/${projectId}/search?posted_within_days=7`);
-  await expect(page.getByRole('button', { name: 'Save this search' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Save this search' })).toHaveCount(0);
 });
 
 async function saveOne(page: Page) {

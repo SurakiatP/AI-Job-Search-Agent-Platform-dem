@@ -19,16 +19,18 @@ async function installSearchFixture(page: Page, items = searchItems) {
   await page.route(`**/v1/projects/${projectId}/saved-searches**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], status: { email_verified: true, notifications_enabled: true } }) }));
 }
 
-test('Search keeps location and work mode in the lead and summarizes active filters', async ({ page }) => {
+test('Search keeps location and work mode in the filters dialog and summarizes active filters', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await installSearchFixture(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`/app/projects/${projectId}/search?q=analyst&cities=Bangkok&work_mode=remote&seniority=senior`);
-  await expect(page.getByLabel('Location', { exact: true })).toBeVisible();
-  await expect(page.getByLabel('Work mode', { exact: true })).toBeVisible();
   const advanced = page.getByRole('button', { name: /More filters/ });
   await expect(advanced).toBeVisible();
   await expect(advanced).toHaveAttribute('aria-expanded', 'false');
+  await advanced.click();
+  await expect(page.getByLabel('Location', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Work mode', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Remove filter: Location: Bangkok' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Remove filter: Seniority: Senior' })).toBeVisible();
 });
@@ -217,11 +219,10 @@ test('saving a result and starting its evaluation each send one mutation', async
   await page.goto(`/app/projects/${projectId}/search`);
   await page.getByRole('button', { name: 'Save job' }).click();
   await expect.poll(() => savePosts).toBe(1);
-  await page.getByRole('button', { name: 'Evaluate this job' }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('button', { name: 'Start session' }).click();
+  await page.getByRole('button', { name: /^Get fit score/ }).click();
   await expect.poll(() => sessionPosts).toBe(1);
-  await expect(page).toHaveURL(new RegExp(`/sessions/new-evaluation$`));
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/sessions\/new-evaluation\?start=evaluate$/);
   expect(savePosts).toBe(1);
   expect(sessionPosts).toBe(1);
 });
@@ -234,7 +235,9 @@ test('Thai and dark mode keep the Search controls readable without horizontal ov
   await installSearchFixture(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/app/projects/${projectId}/search?q=data&work_mode=remote`);
+  await page.getByRole('button', { name: /^ตัวกรองเพิ่มเติม/ }).click();
   await expect(page.getByLabel('สถานที่', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'ค้นหางาน' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: '/tmp/jsp-ux-search/evidence/search-after-mobile-th-dark.png', fullPage: true });
@@ -270,7 +273,7 @@ test('Smart match labels deterministic coverage and reports a partial AI pool', 
   await expect(evidence.getByText('4 / 5 · Good fit')).toBeVisible();
   await expect(evidence.getByText('2 of 3 skills found')).toBeVisible();
   await expect(page.getByText('%', { exact: false }).filter({ hasText: /72%/ })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Evaluate with Data CV · v3' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Get fit score (CV: Data CV · v3)' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'View details' })).toHaveCount(0);
   await expect(page.getByText('AI estimate is uncertain')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Hidden (1)' })).toBeVisible();
@@ -449,6 +452,7 @@ test('the location list shows Thai provinces in the app language', async ({ page
   for (const [locale, label, other] of [['th', 'กรุงเทพมหานคร (72)', 'Bangkok'], ['en', 'Bangkok (72)', 'กรุงเทพมหานคร']] as const) {
     await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
     await page.goto(`/app/projects/${projectId}/search?q=analyst`);
+    await page.getByRole('button', { name: /^(More filters|ตัวกรองเพิ่มเติม)/ }).click();
     const options = page.locator('#job-city option');
     await expect(options.filter({ hasText: label })).toHaveCount(1);
     await expect(options.filter({ hasText: other })).toHaveCount(0);
@@ -462,6 +466,7 @@ test('every list filter reaches the search request, and clearing removes it', as
   page.on('request', r => { const u = new URL(r.url()); if (u.pathname.endsWith('/job-search')) seen.push(u.search); });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`/app/projects/${projectId}/search`);
+  await page.getByRole('button', { name: /^(More filters|ตัวกรองเพิ่มเติม)/ }).click();
   await expect(page.locator('#job-city')).toBeVisible();
   await page.locator('#job-city').selectOption('Chiang Mai');
   await expect.poll(() => seen.some(s => s.includes('cities=Chiang+Mai'))).toBe(true);
@@ -501,8 +506,7 @@ test('the filter panel fits a phone in both languages and every control stays re
     await page.getByRole('button', { name: /^(More filters|ตัวกรองเพิ่มเติม)/ }).click();
     await expect(page.locator('#adv-filters')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.locator('#adv-filters nav').getByRole('button', { name: /Pay|เงินเดือน/ }).click();
-    for (const target of [page.locator('#adv-filters button').first(), page.locator('#adv-salary'), page.locator('#job-city'), page.locator('#job-mode')]) {
+    for (const target of [page.locator('#adv-filters button').first(), page.locator('#job-city'), page.locator('#job-mode')]) {
       const box = await target.boundingBox();
       expect(box!.height).toBeGreaterThanOrEqual(36);
       expect(box!.x + box!.width).toBeLessThanOrEqual(390);
@@ -571,4 +575,18 @@ test('F2 a failed save is announced once, next to the button that was used', asy
   await page.goto(`/app/projects/${projectId}/search`);
   await page.getByRole('button', { name: 'Save job' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Could not save this job' })).toHaveCount(1);
+});
+
+test('arrow keys move through the result cards', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await installSearchFixture(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/app/projects/${projectId}/search?q=data`);
+  const cards = page.locator('[data-job-slug]');
+  await expect(cards.nth(1)).toBeVisible();
+  await cards.first().focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(cards.nth(1)).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(cards.first()).toBeFocused();
 });

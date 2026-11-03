@@ -21,15 +21,14 @@ import { ItemMenu } from '@/components/ItemMenu';
 import { apiRequest } from '../../lib/api';
 import { ApiError, type CVView } from '../../lib/api-types';
 import { CvPreviewButton } from '@/components/CvPreview';
-import { NewSessionButton } from '../sessions/NewSessionDialog';
+import { EvaluateButton } from '../sessions/EvaluateButton';
 import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 import { Markdown } from '@/components/Markdown';
-import { PageBack } from '@/components/PageBack';
 import { sampleJobs } from './sampleJobs';
 import { highlightSegments } from './highlight';
 import { categoryLabel } from './categories';
 import { SavedSearchesPanel } from './SavedSearches';
-import { ADV_KEYS, AdvancedFilters, advValueLabel, Presets, splitList, type Facet } from './AdvancedFilters';
+import { ADV_KEYS, AdvancedFilters, advValueLabel, splitList, type Facet } from './AdvancedFilters';
 import { BuildCvButton } from '../builder/BuildCvButton';
 import { CompanyMark } from '@/components/CompanyMark';
 import { PageHeader } from '@/components/PageHeader';
@@ -75,14 +74,14 @@ const copy = {
     remote: 'ทำงานทางไกล', hybrid: 'ไฮบริด', onsite: 'ทำงานที่ออฟฟิศ',
     found: (n: string) => `พบ ${n} ตำแหน่ง`, age: (n: number) => (n <= 0 ? 'ลงประกาศวันนี้' : `ลงประกาศ ${n} วันที่แล้ว`),
     stale: 'ประกาศเก่า · อาจปิดรับแล้ว',
-    ghost: { old: (n: number) => `ลงประกาศมา ${n} วันแล้ว`, source_flagged: 'แหล่งงานระบุว่าประกาศนี้อาจไม่เป็นปัจจุบัน', unlisted: 'ไม่พบประกาศนี้ในแหล่งงานตอนตรวจครั้งล่าสุด' }, evaluate: 'ประเมินงานนี้', save: 'บันทึกงาน', saveShort: 'บันทึก', saved: 'บันทึกแล้ว', saving: 'กำลังบันทึก…',
+    ghost: { old: (n: number) => `ลงประกาศมา ${n} วันแล้ว`, source_flagged: 'แหล่งงานระบุว่าประกาศนี้อาจไม่เป็นปัจจุบัน', unlisted: 'ไม่พบประกาศนี้ในแหล่งงานตอนตรวจครั้งล่าสุด' }, evaluate: 'เพิ่ม CV เพื่อดูคะแนน', save: 'บันทึกงาน', saveShort: 'บันทึก', saved: 'บันทึกแล้ว', saving: 'กำลังบันทึก…',
     original: 'เปิดประกาศต้นฉบับ', saveError: 'บันทึกงานไม่สำเร็จ ลองอีกครั้ง', loadMore: 'โหลดเพิ่ม', capNote: 'แสดงสูงสุด 1,000 รายการแรก ใช้คำค้นหรือตัวกรองเพื่อจำกัดผลให้แคบลง', loading: 'กำลังโหลด…',
     none: 'ไม่พบตำแหน่งที่ตรงกับตัวกรอง', noneNext: 'ลองเปลี่ยนคำค้นหาหรือล้างตัวกรองเพื่อดูทั้งหมด', clear: 'ล้างตัวกรอง',
     errTitle: 'โหลดรายการงานไม่สำเร็จ', errBody: 'บริการอาจไม่พร้อมใช้งานชั่วคราว ลองใหม่อีกครั้ง หรือดูข้อมูลตัวอย่างเพื่อสำรวจหน้านี้',
     retry: 'ลองอีกครั้ง', viewSample: 'ดูข้อมูลตัวอย่าง', backLive: 'กลับไปข้อมูลจริง',
     sampleBanner: 'ข้อมูลตัวอย่าง', sampleBody: 'ข้อมูลทั้งหมดในมุมมองนี้เป็นข้อมูลสมมติ ไม่ใช่ประกาศงานจริง',
     description: 'รายละเอียดงาน', untitled: 'ไม่ระบุบริษัท',
-    modeSearch: 'ค้นหาทั่วไป', modeMatch: 'Smart match', modeLabel: 'โหมดการค้นหา',
+    modeSearch: 'ล่าสุด', modeMatch: 'เหมาะกับ CV ฉัน', modeLabel: 'โหมดการค้นหา',
     cvLabel: 'CV ที่ใช้จับคู่', noCv: 'ยังไม่มี CV ในโปรเจกต์นี้', noCvBody: 'เพิ่ม CV ก่อน เพื่อให้ระบบเทียบทักษะกับประกาศงานได้', addCv: 'ไปที่หน้า CV',
     analyzeError: 'วิเคราะห์ CV ไม่สำเร็จ ลองอีกครั้ง',
     poolNote: (n: string) => `จัดอันดับจาก ${n} ตำแหน่งล่าสุดที่ตรงกับตัวกรอง`,
@@ -107,14 +106,14 @@ const copy = {
     remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site',
     found: (n: string) => `${n} ${n === '1' ? 'job' : 'jobs'} found`, age: (n: number) => (n <= 0 ? 'Posted today' : `${n} ${n === 1 ? 'day' : 'days'} ago`),
     stale: 'Stale listing',
-    ghost: { old: (n: number) => `Posted ${n} days ago`, source_flagged: 'The source marks this listing as possibly out of date', unlisted: 'Not found on the source at the last check' }, evaluate: 'Evaluate this job', save: 'Save job', saveShort: 'Save', saved: 'Saved', saving: 'Saving…',
+    ghost: { old: (n: number) => `Posted ${n} days ago`, source_flagged: 'The source marks this listing as possibly out of date', unlisted: 'Not found on the source at the last check' }, evaluate: 'Add a CV to see your score', save: 'Save job', saveShort: 'Save', saved: 'Saved', saving: 'Saving…',
     original: 'Open original posting', saveError: 'Could not save this job. Try again.', loadMore: 'Load more', capNote: 'Showing the first 1,000 results. Use a keyword or filters to narrow them down.', loading: 'Loading…',
     none: 'No jobs match these filters', noneNext: 'Change the search or clear the filters to see everything.', clear: 'Clear filters',
     errTitle: "Couldn't load jobs", errBody: 'The service may be temporarily unavailable. Try again, or view sample data to explore this page.',
     retry: 'Retry', viewSample: 'View sample data', backLive: 'Back to live data',
     sampleBanner: 'Sample', sampleBody: 'Everything in this view is fictional sample data, not real postings.',
     description: 'Job description', untitled: 'Company not listed',
-    modeSearch: 'Search', modeMatch: 'Smart match', modeLabel: 'Search mode',
+    modeSearch: 'Newest', modeMatch: 'Best fit for my CV', modeLabel: 'Search mode',
     cvLabel: 'CV to match against', noCv: 'This project has no CV yet', noCvBody: 'Add a CV first so skills can be compared with each posting.', addCv: 'Go to the CV page',
     analyzeError: 'Could not analyze the CV. Try again.',
     poolNote: (n: string) => `Ranked from the ${n} latest jobs matching your filters`,
@@ -209,10 +208,9 @@ function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, s
     </div>
     <div className="grid gap-2">
       {sample ? <p className="text-sm text-muted-foreground">{c.sampleSave}</p> : <>
-      <NewSessionButton projectId={projectId} cvName={cv?.name} className="h-auto w-full whitespace-normal text-center" job={{ inline: { title: job.title, company: job.company, description: job.description_markdown.slice(0, 50000), source_url: source } }}>
+      <EvaluateButton projectId={projectId} cvName={cv?.name} changeCv={Boolean(cv)} className="h-auto w-full whitespace-normal text-center" job={{ inline: { title: job.title, company: job.company, description: job.description_markdown.slice(0, 50000), source_url: source } }}>
         {cvLabel ? tSearch('controls.evaluateWith', { cv: cvLabel }) : c.evaluate}
-      </NewSessionButton>
-      {cvLabel && <p className="text-xs text-muted-foreground">{tSearch('controls.evalNote', { cv: cvLabel })}</p>}
+      </EvaluateButton>
       </>}
       <div className="flex flex-wrap items-center gap-2">
         {!sample && <SaveJob key={job.slug} job={job} c={c} projectId={projectId} saves={saves} tSearch={tSearch} />}
@@ -244,7 +242,7 @@ function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, s
 }
 
 export function SearchPage() {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const { t: tSearch } = useTranslation('searchWorkspace');
   const locale: 'th' | 'en' = i18n.language.startsWith('th') ? 'th' : 'en';
   const c = copy[locale];
@@ -289,7 +287,7 @@ export function SearchPage() {
   const facetsRes = useResource<Facets>(sample ? null : `/projects/${projectId}/job-search/facets`);
 
   const smartActive = smart && !sample;
-  const cvs = useResource<CVView[]>(smartActive ? `/projects/${projectId}/cvs` : null);
+  const cvs = useResource<CVView[]>(sample ? null : `/projects/${projectId}/cvs`);
   const usable = (cvs.data ?? []).filter(item => item.latest_revision);
   const [cvPick, setCvPick] = useState('');
   const cv = usable.find(item => item.id === cvPick) ?? usable.find(item => item.is_primary) ?? usable[0];
@@ -486,10 +484,9 @@ export function SearchPage() {
   const placeOf = (job: JobSearchItem) => { const names = locale === 'th' ? (job.cities ?? []).map(v => provinceTh.get(v)).filter(Boolean) : []; return names.length ? names.join(', ') : job.location; };
   const saves = useSavedJobs(projectId);
   const detailCv = cv?.latest_revision ? { name: cv.name, revision: cv.latest_revision.revision } : undefined;
-  const detail = (job: JobSearchItem) => <JobDetail job={job} place={placeOf(job)} c={c} projectId={projectId} scored={smartActive} tSearch={tSearch} cv={smartActive ? detailCv : undefined} saves={saves} ranking={ranking} sample={sample} />;
+  const detail = (job: JobSearchItem) => <JobDetail job={job} place={placeOf(job)} c={c} projectId={projectId} scored={smartActive} tSearch={tSearch} cv={detailCv} saves={saves} ranking={ranking} sample={sample} />;
 
   const activeFilterChips: { key: string; label: string }[] = [];
-  if (q) activeFilterChips.push({ key: 'q', label: tSearch('controls.queryValue', { value: q }) });
   if (city) activeFilterChips.push({ key: 'cities', label: tSearch('controls.filterValue', { name: tSearch('controls.location'), value: provinceName(cities.find(f => f.value === city) ?? { value: city, count: 0 }) }) });
   if (mode) activeFilterChips.push({ key: 'work_mode', label: tSearch('controls.filterValue', { name: c.mode, value: mode === 'remote' ? c.remote : mode === 'hybrid' ? c.hybrid : mode === 'onsite' ? c.onsite : mode }) });
   if (posted) activeFilterChips.push({ key: 'posted_within_days', label: tSearch('controls.postedValue', { days: posted }) });
@@ -519,7 +516,17 @@ export function SearchPage() {
     }
   };
 
-  const list = <ul aria-label={tSearch('controls.resultsLabel')} className="grid gap-3 [&>li]:min-w-0">
+  const arrowKeys = (event: React.KeyboardEvent<HTMLUListElement>) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const cards = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[data-job-slug]')];
+    const at = cards.indexOf(document.activeElement as HTMLButtonElement);
+    if (at < 0) return;
+    const next = cards[at + (event.key === 'ArrowDown' ? 1 : -1)];
+    if (!next) return;
+    event.preventDefault(); next.focus();
+    if (wide) setSelectedSlug(next.dataset.jobSlug ?? null);
+  };
+  const list = <ul aria-label={tSearch('controls.resultsLabel')} onKeyDown={arrowKeys} className="grid gap-3 [&>li]:min-w-0">
     {visible.map(job => {
       const isSel = selected?.slug === job.slug;
       const ai = job.ai_match;
@@ -571,16 +578,11 @@ export function SearchPage() {
 
   return <section className="grid gap-3 sm:gap-6 lg:gap-8">
     <div className="grid gap-1">
-      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
       <PageHeader icon={Search} title={c.title} lede={grandTotal != null ? (!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
         ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))) : undefined} actions={
-        <div role="group" aria-label={c.modeLabel} className="segmented w-fit max-w-full">
-          {([['search', c.modeSearch], ['match', c.modeMatch]] as const).map(([key, label]) => {
-            const on = (key === 'match') === smart;
-            return <button key={key} type="button" aria-pressed={on} onClick={() => setSearchMode(key)}
-              className={`min-h-11 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? '' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>;
-          })}
-        </div>} />
+        <Select aria-label={c.modeLabel} className="w-fit max-w-full" value={smart ? 'match' : 'search'} onChange={e => setSearchMode(e.target.value as 'search' | 'match')}>
+          <option value="match">{c.modeMatch}</option><option value="search">{c.modeSearch}</option>
+        </Select>} />
     </div>
 
     <div className="grid gap-2 sm:gap-5">
@@ -607,8 +609,8 @@ export function SearchPage() {
       </CardContent>
     </Card>}
 
-    <div role="search" aria-label={tSearch('controls.searchBand')} className="grid grid-cols-2 items-start gap-3 rounded-xl border bg-card p-4 sm:gap-4 sm:p-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="col-span-2 grid min-w-0 gap-2 lg:col-span-1">
+    <div role="search" aria-label={tSearch('controls.searchBand')} className="grid items-start gap-3 rounded-xl border bg-card p-4 sm:gap-4 sm:p-5">
+      <div className="grid min-w-0 gap-2">
         <Label htmlFor="job-search" className="text-sm text-muted-foreground">{c.searchLabel}</Label>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -616,6 +618,12 @@ export function SearchPage() {
         </div>
         <p className="text-sm text-muted-foreground">{tSearch(smart ? 'controls.modeHintMatch' : 'controls.modeHintSearch')}</p>
       </div>
+    </div>
+
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
+    <div className="grid min-w-0 gap-3 sm:gap-5">
+    {!sample && <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+      <AdvancedFilters extraCount={(city ? 1 : 0) + (mode ? 1 : 0)} extra={<div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
       <div className="grid min-w-0 gap-2">
         <Label htmlFor="job-city" className="text-sm text-muted-foreground">{tSearch('controls.location')}</Label>
         <Select id="job-city" className="py-0" value={city} onChange={e => setFilter('cities', e.target.value)}>
@@ -630,14 +638,8 @@ export function SearchPage() {
           {(['remote', 'hybrid', 'onsite'] as const).map(m => <option key={m} value={m}>{c[m]}</option>)}
         </Select>
       </div>
-    </div>
-
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
-    <div className="grid min-w-0 gap-3 sm:gap-5">
-    {!sample && <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-      <AdvancedFilters locale={locale} get={get} setMany={setMany} facets={facetsRes.data ?? undefined} number={number} categories={categories} catLabel={catLabel}
+      </div>} locale={locale} get={get} setMany={setMany} facets={facetsRes.data ?? undefined} number={number} categories={categories} catLabel={catLabel}
         labels={{ categories: c.categories, posted: c.posted, anyPosted: c.anyPosted, days: c.days }} />
-      <Presets locale={locale} get={get} setMany={setMany} />
     </div>}
     {activeFilterChips.length > 0 && <div role="group" className="flex flex-wrap items-center gap-2" aria-label={tSearch('controls.activeFilters')}>
       {activeFilterChips.map(chip => <Button key={`${chip.key}:${chip.label}`} type="button" variant="secondary" size="sm" className="h-auto max-w-full whitespace-normal text-left" aria-label={tSearch('controls.removeFilter', { label: chip.label })} onClick={() => removeFilter(chip.key)}>
@@ -649,10 +651,6 @@ export function SearchPage() {
     <SavedSearchesPanel projectId={projectId} params={params} onApply={changes => { setQInput(changes.q ?? ''); setMany(changes); }} />
     </div>
 
-    {!sample && !filtered && <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm text-muted-foreground">{tSearch('controls.examplesLabel')}</span>
-      {(tSearch('controls.examples', { returnObjects: true }) as unknown as string[]).map(example => <Button key={example} type="button" variant="outline" size="sm" className="h-auto whitespace-normal" onClick={() => { setQInput(example); setFilter('q', example); }}>{example}</Button>)}
-    </div>}
 
     </div>
 
@@ -685,7 +683,11 @@ export function SearchPage() {
         <Search className="size-6 text-muted-foreground" aria-hidden="true" />
         <p className="font-medium">{c.none}</p>
         <p className="text-sm text-muted-foreground">{c.noneNext}</p>
-        <Button variant="outline" size="sm" onClick={clear} disabled={!filtered}>{c.clear}</Button>
+        {filtered ? <Button variant="outline" size="sm" onClick={clear}>{c.clear}</Button> : null}
+        {!sample && !filtered && !q && <div className="flex flex-wrap items-center gap-2">
+      <span className="text-sm text-muted-foreground">{tSearch('controls.examplesLabel')}</span>
+      {(tSearch('controls.examples', { returnObjects: true }) as unknown as string[]).map(example => <Button key={example} type="button" variant="outline" size="sm" className="h-auto whitespace-normal" onClick={() => { setQInput(example); setFilter('q', example); }}>{example}</Button>)}
+    </div>}
       </div> : showMobileDetail && selected ? <section className="grid min-w-0 gap-4" aria-label={selected.title}>
         <Button ref={detailBack} type="button" variant="outline" className="justify-self-start" onClick={() => {
           const previous = selectedSlug;

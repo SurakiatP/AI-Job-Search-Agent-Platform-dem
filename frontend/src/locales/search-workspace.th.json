@@ -35,7 +35,7 @@
     "aiFit": "ความเหมาะสมโดย AI",
     "skillsFound": "พบ {{found}} จาก {{total}} ทักษะ",
     "aiUnavailable": "ยังไม่มีผลจัดอันดับโดย AI แสดงการจัดอันดับตามคำสำคัญ",
-    "evaluateWith": "ประเมินกับ {{cv}}",
+    "evaluateWith": "ดูคะแนนความเหมาะสม (CV: {{cv}})",
     "evalNote": "การประเมินจะใช้ประกาศงานนี้และ {{cv}}",
     "examplesLabel": "ลองค้นหา",
     "examples": [

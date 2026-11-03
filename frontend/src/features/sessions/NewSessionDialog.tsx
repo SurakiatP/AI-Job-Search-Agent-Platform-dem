@@ -55,7 +55,7 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
     try {
       const session = await apiRequest<SessionView>(`/projects/${projectId}/sessions`, { method: 'POST', body: JSON.stringify({ cv_revision_id: cv.latest_revision.id, ...jobPart }) });
       window.dispatchEvent(new Event('sessions:changed'));
-      onClose(); navigate(`${base}/sessions/${session.id}`);
+      onClose(); navigate(`${base}/sessions/${session.id}?start=evaluate`);
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'session_pair_exists' && caught.fields?.session_id) setExisting(caught.fields.session_id);
       else setError(caught instanceof ApiError && caught.code === 'gateway_unconfigured' ? 'provider' : caught instanceof ApiError && caught.status === 404 ? 'notFound' : 'failed');
