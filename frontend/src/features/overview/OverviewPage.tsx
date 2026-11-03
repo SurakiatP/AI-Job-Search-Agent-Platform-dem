@@ -51,6 +51,9 @@ export function OverviewPage() {
   const [stageBusy, setStageBusy] = useState(false);
   const [stageFailed, setStageFailed] = useState(false);
   const cv = cvs.data?.find(item => item.is_primary) ?? cvs.data?.[0];
+  // The CV a one-click evaluation will use (EvaluateButton's pick): the only usable one, else the primary.
+  const usable = (cvs.data ?? []).filter(item => item.latest_revision);
+  const scoringCv = usable.length === 1 ? usable[0] : usable.find(item => item.is_primary);
   const jobList = jobs.data ?? [];
   const runList = runs.data ?? [];
   const attention = runList.filter(run => run.status === 'needs_input' || run.status === 'waiting_approval');
@@ -110,7 +113,7 @@ export function OverviewPage() {
       <div className="grid gap-2">
         <p className="text-sm font-medium text-primary">{c.nextStep}</p>
         <h2 id="next-step-heading" className="text-2xl">{copy.title}</h2>
-        <p className="max-w-2xl break-words text-muted-foreground">{copy.body(jobName)}</p>
+        <p className="max-w-2xl break-words text-muted-foreground">{copy.body(jobName, scoringCv?.name)}</p>
       </div>
       <div className="grid justify-items-start gap-2">
         {heroAction(step, copy.title)}
