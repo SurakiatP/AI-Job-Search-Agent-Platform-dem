@@ -7,7 +7,7 @@ One term per concept. "In code" names stay unchanged; this table governs UI copy
 | Immutable CV snapshot | CV version (e.g. "Data Analyst CV · v4") | CV ฉบับที่ 4 | `cv_revision` | CV revision, rev |
 | Immutable job snapshot | Job posting version | ประกาศงาน ฉบับที่ n | `job_revision` | Job rev, revision ID |
 | CV + job pair of an evaluation | Compared using | ใช้เปรียบเทียบ | session `cv_revision_id` + `job_revision_id` | Fixed sources |
-| AI fit result | AI fit, shown as `x / 5` with band | ความเหมาะสมโดย AI `x / 5` | `fit_score` | percent AI score, hiring chance |
+| AI fit result | Fit score shown as `x%` with band (old results: `x / 5`) | คะแนนความเหมาะสม `x%` | `score_percent` | hiring chance |
 | Deterministic keyword coverage | Skills found (n of m, or n%) | ทักษะที่พบ | `keyword_coverage`, `ats` | ATS score, Rule-based coverage |
 | Evaluation session | Evaluation, named by job title · company | การประเมิน | `session` | Evaluation014, session ID |
 | External MCP/A2A client with a grant | Connected assistant | ผู้ช่วยที่เชื่อมต่อ | `grant`, agent | Agent access |

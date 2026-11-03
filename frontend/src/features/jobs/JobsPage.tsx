@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { EmptyState } from '@/components/EmptyState';
-import { FitScore, fitBand } from '@/components/FitScore';
+import { FitScore, FitScoreWhy } from '@/components/FitScore';
 import { PageBack } from '@/components/PageBack';
 import { Markdown } from '@/components/Markdown';
 import { CompanyMark } from '@/components/CompanyMark';
@@ -92,8 +92,6 @@ export function JobsPage() {
   </section>;
 }
 
-const bandView = { success: { variant: 'success', key: 'fitBandStrong' }, warning: { variant: 'warning', key: 'fitBandPossible' }, danger: { variant: 'danger', key: 'fitBandWeak' } } as const;
-
 function SkillsFound({ coverage }: { coverage: SkillCoverage }) {
   const { t } = useTranslation('applicationsWorkspace');
   return <section aria-label={t('skillsFound')} className="grid min-w-0 gap-3">
@@ -158,8 +156,7 @@ export function JobDetailPage() {
   async function markApplied() {
     try { await sendJson(`/projects/${projectId}/jobs/${job!.id}/application-status`, 'PATCH', { application_status: 'applied' }); setAppliedNote(true); result.reload(); } catch { /* the stage select in the panel still works */ }
   }
-  const score = evaluation?.evaluation_result?.score ?? null;
-  const band = bandView[fitBand(score) as keyof typeof bandView];
+  const score = evaluation?.evaluation_result ?? null;
   const card = 'grid min-w-0 content-start gap-4 rounded-lg border border-border bg-card p-5 sm:p-6';
   return <article className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-8 lg:grid-rows-[auto_auto_auto_1fr]">
     <header className="grid min-w-0 gap-3 lg:col-span-2">
@@ -189,8 +186,7 @@ export function JobDetailPage() {
       <h2 id="job-evaluation" className="text-lg font-semibold">{t('evaluation')}</h2>
       {evaluation?.evaluation_result ? <>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <FitScore size="lg" score={score} locale={locale} />
-          {band && <Badge variant={band.variant}>{t(band.key)}</Badge>}
+          <FitScore size="lg" result={score} locale={locale} />
           <AiLabel />
           {/* Hidden when the next-step button already opens this session (draft or practise), so one place has one control. */}
           {!(flow.step.action.type === 'draft' || flow.step.action.type === 'link' && flow.step.action.to !== 'search') && <Link className="min-h-11 lg:min-h-10 content-center text-sm text-primary hover:underline" to={`${base}/sessions/${evaluation.session_id}`}>{t('evaluationSession')}</Link>}
@@ -204,6 +200,7 @@ export function JobDetailPage() {
               : t('sourceCVUnavailable')}</span>
           {evaluationSession.status === 'error' && <button type="button" className="min-h-11 lg:min-h-10 text-primary underline underline-offset-4" onClick={evaluationSession.reload}>{t('retry')}</button>}
         </div>
+        <FitScoreWhy result={score} locale={locale} />
         {evaluation.evaluation_result.skill_coverage && <SkillsFound coverage={evaluation.evaluation_result.skill_coverage} />}
         <div>
           <h3 className="inline-flex flex-wrap items-center gap-2 font-medium">{t('latestEvaluation')}<AiLabel /></h3>

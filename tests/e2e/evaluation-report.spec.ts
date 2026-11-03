@@ -20,8 +20,8 @@ const report = {
   cv_changes: ['Name function calling in your AI Engineer role'],
 };
 
-async function open(page: Page, evaluation: object) {
-  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+async function open(page: Page, evaluation: object, locale: 'en' | 'th' = 'en') {
+  await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
   await useSyntheticApplication(page);
   await page.route(`**/v1/projects/${projectId}/sessions/${sessionId}`, route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({
@@ -84,4 +84,31 @@ test('TC-EVR-04 mobile has no horizontal scroll', async ({ page }) => {
   await open(page, { score: 4.2, report, report_markdown: 'x' });
   await expect(page.getByText(report.verdict)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+const basis = { strong: 3, partial: 2, missing: 1, not_applicable: 0, critical_missing: false, capped: false };
+
+for (const locale of ['en', 'th'] as const) {
+  test(`fit score shows a percent, band text and the calculation (${locale})`, async ({ page }) => {
+    await open(page, { score: null, score_percent: 72, score_band: 'good', score_basis: basis, report, report_markdown: 'x' }, locale);
+    const name = locale === 'th' ? 'คะแนนความเหมาะสม: 72%, เหมาะ' : 'Fit score: 72%, Good fit';
+    await expect(page.getByRole('img', { name })).toBeVisible();
+    const why = page.getByTestId('fit-score-why');
+    await why.getByText(locale === 'th' ? 'คำนวณคะแนนอย่างไร' : 'How the score is calculated').click();
+    await expect(page.getByTestId('fit-score-basis')).toContainText(locale === 'th' ? 'ตรง 3 · ตรงบางส่วน 2 · ไม่พบ 1' : 'Strong 3 · Partial 2 · Missing 1');
+  });
+}
+
+test('a capped score says why', async ({ page }) => {
+  await open(page, { score: null, score_percent: 59, score_band: 'partial', score_basis: { ...basis, critical_missing: true, capped: true }, report, report_markdown: 'x' });
+  await page.getByTestId('fit-score-why').getByText('How the score is calculated').click();
+  await expect(page.getByTestId('fit-score-basis')).toContainText('capped at 59%');
+});
+
+test('a result stored on the old 1-5 scale keeps 4.5/5 with a note and no calculation panel', async ({ page }) => {
+  await open(page, { score: 4.5, report_markdown: 'x' });
+  await expect(page.getByRole('img', { name: 'Fit score: 4.5/5, old scale' })).toBeVisible();
+  await expect(page.getByText('old scale', { exact: true })).toBeVisible();
+  await expect(page.getByText(/%/).filter({ hasText: /^4/ })).toHaveCount(0);
+  await expect(page.getByTestId('fit-score-why')).toHaveCount(0);
 });

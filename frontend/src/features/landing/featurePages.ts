@@ -47,7 +47,7 @@ const th: Pages = {
     lead: 'การประเมินเทียบ CV ฉบับที่เลือกกับประกาศงานฉบับหนึ่ง แล้วให้ผลที่ตรวจย้อนได้ ไม่ใช่แค่ตัวเลขลอย ๆ',
     steps: [
       { title: 'เลือก CV และประกาศงาน', body: 'เริ่มเซสชันประเมินจากผลการค้นหา ระบบจำว่าใช้ CV ฉบับไหนกับประกาศฉบับไหน' },
-      { title: 'AI อ่านและให้คะแนน', body: 'ได้ความเหมาะสมโดย AI เป็น x / 5 พร้อมรายงานเทียบแต่ละข้อกับหลักฐานจาก CV' },
+      { title: 'AI อ่านและให้คะแนน', body: 'ได้คะแนนความเหมาะสมเป็นเปอร์เซ็นต์ (0-100%) ที่ระบบคำนวณจากการตัดสินแต่ละข้อของ AI พร้อมรายงานเทียบแต่ละข้อกับหลักฐานจาก CV' },
       { title: 'นับทักษะที่พบแยกต่างหาก', body: 'ทักษะที่พบ n จาก m นับจากคำสำคัญโดยไม่ใช้ AI และแสดงแยกจากคะแนน AI' },
       { title: 'ดูหลักฐาน', body: 'เปิดดูหลักฐานที่ใช้ตัดสินแต่ละข้อได้ จะได้รู้ว่าจุดแข็งและช่องว่างอยู่ตรงไหน' },
     ],
@@ -159,7 +159,7 @@ const en: Pages = {
     lead: 'An evaluation compares the chosen CV with one job posting and gives a result you can trace back, not a bare number.',
     steps: [
       { title: 'Pick a CV and a posting', body: 'Start an evaluation from search results. The app remembers which CV was used with which posting.' },
-      { title: 'AI reads and scores', body: 'You get an AI fit of x / 5 with a report that checks each requirement against evidence from your CV.' },
+      { title: 'AI reads and scores', body: 'You get a fit score of 0-100%, computed by the platform from the AI judgment of each requirement, with a report that checks each requirement against evidence from your CV.' },
       { title: 'Skills found are counted separately', body: 'Skills found (n of m) are counted from keywords without AI and shown apart from the AI score.' },
       { title: 'Open the evidence', body: 'See the evidence behind each point, so you know where the strengths and gaps are.' },
     ],

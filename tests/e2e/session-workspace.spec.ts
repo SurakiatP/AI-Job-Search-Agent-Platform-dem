@@ -23,7 +23,7 @@ test('paired session synthetic fixture loads', async ({ page }) => {
       operation: 'evaluate_job', status: 'completed', job_revision_id: '33333333-3333-4333-8333-333333333333',
       output_language: 'en', result_file_ids: [], created_at: '2026-10-10T00:00:00Z',
       finished_at: '2026-10-10T00:01:00Z', retry_of_id: null,
-      evaluation_result: { score: 3.6, skill_coverage: { matched: ['Python', 'SQL'], missing: ['dbt'], required: ['Python', 'SQL', 'dbt'], ratio: 2 / 3 }, report_markdown: 'Strong analytical foundation with Python and SQL.\n\n**Next step:** strengthen the dbt evidence.' },
+      evaluation_result: { score: null, score_percent: 78, score_band: 'good', skill_coverage: { matched: ['Python', 'SQL'], missing: ['dbt'], required: ['Python', 'SQL', 'dbt'], ratio: 2 / 3 }, report_markdown: 'Strong analytical foundation with Python and SQL.\n\n**Next step:** strengthen the dbt evidence.' },
     }]),
   }));
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -75,12 +75,12 @@ test('capture paired session desktop, tablet and mobile evidence in Thai and Eng
             id: 'cccccccc-0000-4000-8000-000000000001', project_id: projectId, session_id: sessionId,
             operation: 'evaluate_job', status: 'completed', job_revision_id: '33333333-3333-4333-8333-333333333333',
             output_language: locale, result_file_ids: [], created_at: '2026-10-10T00:00:00Z', finished_at: '2026-10-10T00:01:00Z', retry_of_id: null,
-            evaluation_result: { score: 3.6, skill_coverage: { matched: ['Python', 'SQL'], missing: ['dbt'], required: ['Python', 'SQL', 'dbt'], ratio: 2 / 3 }, report_markdown: 'Strong analytical foundation with Python and SQL.\n\n**Next step:** strengthen the dbt evidence.' },
+            evaluation_result: { score: null, score_percent: 78, score_band: 'good', skill_coverage: { matched: ['Python', 'SQL'], missing: ['dbt'], required: ['Python', 'SQL', 'dbt'], ratio: 2 / 3 }, report_markdown: 'Strong analytical foundation with Python and SQL.\n\n**Next step:** strengthen the dbt evidence.' },
           }]),
         }));
         await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
         await expect(page.getByRole('tab').first()).toBeVisible();
-        await expect(page.getByRole('img', { name: locale === 'th' ? 'คะแนนความเหมาะสม: 3.6 / 5' : 'Fit score: 3.6 / 5' })).toBeVisible();
+        await expect(page.getByRole('img', { name: locale === 'th' ? 'คะแนนความเหมาะสม: 78%, เหมาะ' : 'Fit score: 78%, Good fit' })).toBeVisible();
         await ensureScreenshotFonts(page);
         await page.screenshot({ path: `/tmp/jsp-ux-session/evidence/after-${device}-${locale}-${theme}.png`, fullPage: true });
         await page.close();
@@ -107,7 +107,7 @@ test('paired session keeps exact immutable context, global evaluation and task t
       id: 'cccccccc-0000-4000-8000-000000000001', project_id: projectId, session_id: sessionId,
       operation: 'evaluate_job', status: 'completed', job_revision_id: '33333333-3333-4333-8333-333333333333',
       output_language: 'en', result_file_ids: [], created_at: '2026-10-10T00:00:00Z', finished_at: '2026-10-10T00:01:00Z', retry_of_id: null,
-      evaluation_result: { score: 3.6, skill_coverage: { matched: ['Python', 'SQL'], missing: ['dbt'], required: ['Python', 'SQL', 'dbt'], ratio: 2 / 3 }, report_markdown: 'Strong analytical foundation with Python and SQL.' },
+      evaluation_result: { score: null, score_percent: 78, score_band: 'good', skill_coverage: { matched: ['Python', 'SQL'], missing: ['dbt'], required: ['Python', 'SQL', 'dbt'], ratio: 2 / 3 }, report_markdown: 'Strong analytical foundation with Python and SQL.' },
     }, {
       id: 'cccccccc-0000-4000-8000-000000000002', project_id: projectId, session_id: sessionId,
       operation: 'draft_documents', status: 'failed', job_revision_id: '33333333-3333-4333-8333-333333333333',
@@ -308,7 +308,7 @@ test('SCR-03 evaluations list empty state offers one New evaluation button', asy
 
 test('SCR-04 exactly one primary action per run state; pending tailor proposals are never listed as documents', async ({ browser }) => {
   const proposal = { kind: 'tailor', mode: 'interactive', coverage_before: 0.4, coverage_after: 0.6, proposals: [{ id: 0, find: '', text: 'Pending Airflow proposal text', evidence_ids: ['f1'], status: 'proposed' }] };
-  const evaluation = sessionRun('evaluate_job', 'completed', { evaluation_result: { score: 4.2, report_markdown: 'Strong SQL.', skill_coverage: { matched: ['SQL'], missing: ['dbt'], required: ['SQL', 'dbt'], ratio: 0.5 } } });
+  const evaluation = sessionRun('evaluate_job', 'completed', { evaluation_result: { score: null, score_percent: 84, score_band: 'strong', report_markdown: 'Strong SQL.', skill_coverage: { matched: ['SQL'], missing: ['dbt'], required: ['SQL', 'dbt'], ratio: 0.5 } } });
   const cases: [string, unknown[], string | null][] = [
     ['no run', [], 'Evaluate this job'],
     ['running', [sessionRun('evaluate_job', 'running')], null],
@@ -332,7 +332,7 @@ test('SCR-04 exactly one primary action per run state; pending tailor proposals 
     await expect(page.locator('main button.bg-primary-fill:visible, main a.bg-primary-fill:visible'), name).toHaveCount(label ? 1 : 0);
     if (label) await expect(page.locator('main .bg-primary-fill:visible').filter({ hasText: label }), name).toHaveCount(1);
     if (name === 'completed') {
-      await expect(page.getByText('4.2')).toBeVisible();
+      await expect(page.getByText('84%')).toBeVisible();
       await expect(page.getByText('Strong fit')).toBeVisible();
       await expect(page.getByText(/Not a hiring prediction/)).toBeVisible();
       await expect(page.getByText('1 of 2')).toBeVisible();

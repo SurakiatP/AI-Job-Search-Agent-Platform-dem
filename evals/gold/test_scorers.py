@@ -28,13 +28,14 @@ def test_extract():
 
 
 def test_evaluate():
-    case = D["cases"]["evaluate"][3]  # same-family, band [3, 4]
-    reqs = [{"requirement": s, "match": "strong" if has else "missing"} for s, has in case["requirements_present"].items()]
-    good = json.dumps({"score": 3, "report": {"verdict": "v", "summary": "s", "requirements": reqs}})
-    assert sc("evaluate", good, case) > 95
-    assert sc("evaluate", good.replace('"score": 3', '"score": 5'), case) < 90  # off by one
+    case = D["cases"]["evaluate"][3]  # same-family, band [3, 4] = 40-79 percent
+    reqs = [{"requirement": s, "importance": "high", "match": "strong" if has else "missing"} for s, has in case["requirements_present"].items()]
+    rep = lambda rows: json.dumps({"report": {"verdict": "v", "summary": "s", "requirements": rows}})
+    assert sc("evaluate", rep(reqs), case) > 95  # 4 of 6 strong = 67 percent
+    all_strong = [dict(r, match="strong") for r in reqs]
+    assert sc("evaluate", rep(all_strong), case) < 90  # 100 percent is out of band
     flipped = [dict(r, match="missing" if r["match"] == "strong" else "strong") for r in reqs]
-    assert sc("evaluate", json.dumps({"score": 3, "report": {"verdict": "v", "summary": "s", "requirements": flipped}}), case) < 61
+    assert sc("evaluate", rep(flipped), case) < 61
 
 
 def test_tailor():

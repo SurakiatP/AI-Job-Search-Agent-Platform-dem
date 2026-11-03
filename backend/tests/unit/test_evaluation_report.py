@@ -22,7 +22,8 @@ REPORT = {
 
 def test_tc_evr_01_structured_report_keeps_fields_and_builds_markdown():
     result = parse_evaluation_result(json.dumps({"score": 4.2, "report": REPORT}, ensure_ascii=False))
-    assert result.score == 4.2
+    assert result.score is None  # a model-supplied score is ignored
+    assert result.score_percent == 72 and result.score_band == "good"
     assert result.report is not None and result.report.requirements[1].match == "partial"
     md = result.report_markdown
     assert REPORT["verdict"] in md and REPORT["summary"] in md

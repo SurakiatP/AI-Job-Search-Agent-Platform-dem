@@ -100,7 +100,7 @@ test('job detail presents source, evaluation, and documents before tracking and 
   const tracking = page.getByRole('heading', { name: 'Application tracking' });
   await expect(title).toBeVisible();
   await expect(source).toHaveAttribute('href', 'https://jobs.example.test/northstar-analyst');
-  await expect(page.getByText('3.7')).toBeVisible();
+  await expect(page.getByText('66%')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Northstar cover letter' })).toBeVisible();
   await expect(page.getByText('Stage changes record your tracking. They do not send an application.')).toBeVisible();
   const box = (locator: typeof source) => locator.evaluate(element => { const { top, left } = element.getBoundingClientRect(); return { top, left }; });
@@ -111,7 +111,7 @@ test('job detail presents source, evaluation, and documents before tracking and 
   expect(trackingBox.left).toBeGreaterThan(reportBox.left + 200);
   await expect(page.getByRole('main').getByRole('link', { name: 'Draft cover letter' }).first()).toBeVisible();
   await expect(page.getByRole('region', { name: 'Skills found' })).toContainText('2 / 3');
-  await expect(page.getByText('Possible fit')).toBeVisible();
+  await expect(page.getByText('Good fit')).toBeVisible();
   // Mobile: single column, tracking directly after the evaluation.
   await page.setViewportSize({ width: 390, height: 900 });
   const [mobileReport, mobileTracking, mobileDocs] = await Promise.all([report, tracking, related].map(box));

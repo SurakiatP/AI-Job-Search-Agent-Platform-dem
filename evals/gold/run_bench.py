@@ -157,11 +157,16 @@ def score_evaluate(raw, case, persona, job):
     if not isinstance(payload, dict):
         return 0.0, {"valid": False}
     report = payload.get("report") if isinstance(payload.get("report"), dict) else {}
-    score = payload.get("score")
-    lo, hi = case["score_band"][0], case["score_band"][-1]
+    # The app computes the percent from the requirement rows (services/fit_score.py); the gold 1-5 band maps to 20-point steps.
+    from job_search_platform.workers import executor
+    try:
+        score = executor.parse_evaluation_result(json.dumps({"report": report})).score_percent
+    except ValueError:
+        score = None
+    lo, hi = (case["score_band"][0] - 1) * 20, min(case["score_band"][-1] * 20, 100)
     band = 0.0
     if isinstance(score, (int, float)):
-        band = 1.0 if lo <= score <= hi else 0.5 if lo - 1 <= score <= hi + 1 else 0.0
+        band = 1.0 if lo <= score <= hi else 0.5 if lo - 20 <= score <= hi + 20 else 0.0
     rows = [r for r in report.get("requirements") or [] if isinstance(r, dict)]
     correct = 0
     for skill, has in case["requirements_present"].items():
@@ -372,7 +377,7 @@ def rewrite_step(alias, out, case, persona, key, reasoning):
         return {}
 
 
-REPAIR_SHAPES = {"evaluate": '{"score": 1-5 or null, "report": {"verdict", "summary", "requirements", "strengths", "risks", "interview_prep", "cv_changes"}}',
+REPAIR_SHAPES = {"evaluate": '{"report": {"verdict", "summary", "requirements", "strengths", "risks", "interview_prep", "cv_changes"}}',
                  "extract": '{"items": [{"kind", "text", ...}]}'}  # strings copied from workers/executor.py
 
 

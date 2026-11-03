@@ -1,8 +1,8 @@
 const th = {
   headlineA: 'ให้ AI เทียบ CV กับงาน',
   headlineB: 'แล้วบอกเหตุผลให้คุณ',
-  // source: PRODUCT.md (fit score 1-5 with reasons, tailored drafts, user checks and submits); DESIGN.md (FitScore keeps 1-5 denominator)
-  sub: 'ใส่ CV กับประกาศงาน แล้วรับคะแนนความเหมาะสม 1 ถึง 5 พร้อมเหตุผล และร่าง CV กับจดหมายสมัครงานที่ปรับตามตำแหน่ง คุณตรวจทุกฉบับและสมัครเอง',
+  // source: PRODUCT.md (fit score 0-100% with reasons, tailored drafts, user checks and submits); DESIGN.md (FitScore shows a percentage)
+  sub: 'ใส่ CV กับประกาศงาน แล้วรับคะแนนความเหมาะสม 0-100% พร้อมเหตุผล และร่าง CV กับจดหมายสมัครงานที่ปรับตามตำแหน่ง คุณตรวจทุกฉบับและสมัครเอง',
   cta: 'สร้างบัญชี',
   signup: 'เริ่มใช้งาน',
   login: 'เข้าสู่ระบบ',
@@ -26,7 +26,7 @@ const th = {
       { stage: 'docs', title: 'ปรับ CV และร่างจดหมายสมัครงานแล้ว', note: 'รอคุณตรวจการแก้ CV', state: 'current' },
       { stage: 'track', title: 'ติดตามใบสมัคร', note: 'คุณสมัครเอง แล้วบันทึกสถานะที่นี่', state: 'next' },
     ],
-    score: '4.2 / 5',
+    score: '84%',
     ai: 'AI',
   },
   stepsTitle: 'เริ่มได้ในสามขั้น',
@@ -94,7 +94,7 @@ const th = {
     // source: steps[3].body / steps[7].body (keyword skills and digests do not use AI; verified backend skill_coverage.py has no model, saved_searches.py digests import only mailer/telegram/webhooks) and local.body
     { q: 'ข้อมูล CV ของฉันไปที่ไหน', a: 'CV และงานอยู่ในโปรเจกต์ของคุณ เมื่อใช้ฟีเจอร์ AI ระบบอาจส่งข้อความจาก CV เท่าที่ฟีเจอร์นั้นต้องใช้ไปยังบริการ AI ภายนอก การนับทักษะจากคำสำคัญและสรุปงานใหม่ไม่ใช้ AI' },
     // source: PRODUCT.md line 20 (no hiring probability), steps[3].body (skills from keywords, kept apart from score)
-    { q: 'คะแนน 4.2 จาก 5 หมายถึงอะไร', a: 'เป็นคะแนนความเหมาะสมที่ AI ให้พร้อมเหตุผลให้คุณตรวจ ไม่ใช่โอกาสได้งาน และแยกจากจำนวนทักษะที่ตรงซึ่งนับจากคำสำคัญ' },
+    { q: 'คะแนน 84% หมายถึงอะไร', a: 'เป็นคะแนนความเหมาะสมที่ AI ให้พร้อมเหตุผลให้คุณตรวจ ไม่ใช่โอกาสได้งาน และแยกจากจำนวนทักษะที่ตรงซึ่งนับจากคำสำคัญ' },
     // source: PRODUCT.md line 25 (immutable CV revisions bound to job revision in a session)
     { q: 'ถ้าอัปโหลด CV ใหม่ ผลประเมินเก่าจะเปลี่ยนไหม', a: 'ไม่เปลี่ยน ผลประเมินแต่ละครั้งบอกว่าใช้ CV ฉบับไหนกับประกาศฉบับไหน CV ใหม่จะเป็นฉบับใหม่ ส่วนฉบับเดิมยังอยู่' },
     // source: steps[1].body (build CV with form, template, accent, save as version)
@@ -113,7 +113,7 @@ const th = {
 const en: typeof th = {
   headlineA: 'Let AI match your CV to the job,',
   headlineB: 'and tell you why',
-  sub: 'Add your CV and a job posting. Get a fit score from 1 to 5 with reasons, plus a CV and cover letter drafted for that role. You check every draft and apply yourself.',
+  sub: 'Add your CV and a job posting. Get a fit score from 0 to 100% with reasons, plus a CV and cover letter drafted for that role. You check every draft and apply yourself.',
   cta: 'Create account',
   signup: 'Get started',
   login: 'Log in',
@@ -136,7 +136,7 @@ const en: typeof th = {
       { stage: 'docs', title: 'CV changes and letter drafted', note: 'Waiting for you to review the CV changes', state: 'current' },
       { stage: 'track', title: 'Track your application', note: 'You apply yourself, then record the status here', state: 'next' },
     ],
-    score: '4.2 / 5',
+    score: '84%',
     ai: 'AI',
   },
   stepsTitle: 'Three steps to start',
@@ -200,7 +200,7 @@ const en: typeof th = {
   faq: [
     { q: 'Does the app submit applications for me?', a: 'No. You apply yourself on the employer\'s site or your own channel, then record the status here. Changing a status is only your record.' },
     { q: 'Where does my CV go?', a: 'Your CV and jobs stay in your project. When you use an AI feature, the CV text that feature needs may be sent to an external AI service. Keyword skill counts and digests of new jobs do not use AI.' },
-    { q: 'What does a score of 4.2 out of 5 mean?', a: 'It is the AI\'s fit score, with reasons for you to check. It is not a chance of being hired, and it is kept apart from the count of matched skills, which comes from keywords.' },
+    { q: 'What does a score of 84% mean?', a: 'It is the fit score, worked out by a written formula from the AI\'s judgment of each requirement, with reasons for you to check. It is not a chance of being hired, and it is kept apart from the count of matched skills, which comes from keywords.' },
     { q: 'If I upload a new CV, do old evaluations change?', a: 'No. Each evaluation names the CV version and job version it used. A new CV becomes a new version and the old one stays.' },
     { q: 'Can I start without a CV file?', a: 'Yes. Build a CV in the app with a form, choose a template and accent colour, and save it as a version to evaluate jobs.' },
     { q: 'Can I connect the AI assistant I already use?', a: 'Yes. It is off by default. You set its limits and can revoke it, risky actions wait for your approval unless you turn on auto-approve yourself, and every task shows in the activity page.' },
@@ -235,7 +235,7 @@ export const previewCopy: Record<'th' | 'en', {
     ],
     consoleLabel: 'งานของเอเจนต์',
     runs: [
-      { op: 'ประเมินงาน', job: 'Frontend Developer', status: 'completed', score: 4.2, origin: 'ผู้ช่วย AI' },
+      { op: 'ประเมินงาน', job: 'Frontend Developer', status: 'completed', score: 84, origin: 'ผู้ช่วย AI' },
     ],
   },
   en: {
@@ -251,7 +251,7 @@ export const previewCopy: Record<'th' | 'en', {
     ],
     consoleLabel: 'Agent tasks',
     runs: [
-      { op: 'Evaluate job', job: 'Frontend Developer', status: 'completed', score: 4.2, origin: 'AI assistant' },
+      { op: 'Evaluate job', job: 'Frontend Developer', status: 'completed', score: 84, origin: 'AI assistant' },
     ],
   },
 };

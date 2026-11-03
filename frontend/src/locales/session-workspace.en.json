@@ -102,7 +102,7 @@
       "open": "Open"
     },
     "emptyTitle": "No evaluations yet",
-    "emptyBody": "Pick a saved job and one of your CVs. The agent reads the posting, compares it with your CV, and returns an AI fit score from 1 to 5, the skills it found and a written report.",
+    "emptyBody": "Pick a saved job and one of your CVs. The agent reads the posting, compares it with your CV, and returns a fit score from 0 to 100%, the skills it found and a written report.",
     "options": "Options for {{title}}",
     "delete": {
       "action": "Delete evaluation",
@@ -143,7 +143,7 @@
     "title": "Evaluate this job against your CV",
     "body": "The agent reads the job posting and compares it with your CV. It does not change your CV or contact anyone.",
     "gets": [
-      "An AI fit score from 1 to 5 with a short explanation",
+      "A fit score from 0 to 100% with a short explanation",
       "The skills from the posting that it found in your CV",
       "A written report you can copy"
     ]

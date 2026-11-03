@@ -2495,9 +2495,23 @@ components:
       required: [report_markdown]
       properties:
         report_markdown: {type: string, minLength: 1, maxLength: 200000}
-        score: {type: [number, 'null'], minimum: 1, maximum: 5, description: Career Ops native 1–5 score; absent when not established.}
+        score: {type: [number, 'null'], minimum: 1, maximum: 5, description: 'Legacy 1-5 score; present only on results stored before the percentage rubric. New results leave it null.'}
+        score_percent: {type: [integer, 'null'], minimum: 0, maximum: 100, description: 'Fit score 0-100 computed by the platform from the requirement rows (docs/engineering/fit-score-rubric.md); null when fewer than 3 requirement rows could be scored.'}
+        score_band: {type: [string, 'null'], enum: [strong, good, partial, weak, poor, null], description: 'Band of score_percent: 80-100 strong, 60-79 good, 40-59 partial, 20-39 weak, 0-19 poor.'}
+        score_basis: {anyOf: [{$ref: '#/components/schemas/ScoreBasis'}, {type: 'null'}], description: Requirement rows per match level and whether the critical-missing cap applied.}
         skill_coverage: {anyOf: [{$ref: '#/components/schemas/SkillCoverage'}, {type: 'null'}], description: Deterministic keyword coverage computed by the platform, separate from the AI score.}
         report: {anyOf: [{$ref: '#/components/schemas/EvaluationReport'}, {type: 'null'}], description: 'CR-EVR-01 named report fields; null for reports made before 2026-10-20 or when the AI returned Markdown only. report_markdown is built from these fields.'}
+    ScoreBasis:
+      type: object
+      additionalProperties: false
+      required: [strong, partial, missing, not_applicable, critical_missing, capped]
+      properties:
+        strong: {type: integer, minimum: 0, maximum: 30}
+        partial: {type: integer, minimum: 0, maximum: 30}
+        missing: {type: integer, minimum: 0, maximum: 30}
+        not_applicable: {type: integer, minimum: 0, maximum: 30}
+        critical_missing: {type: boolean}
+        capped: {type: boolean}
     ReportRequirement:
       type: object
       additionalProperties: false
