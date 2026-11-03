@@ -72,27 +72,27 @@ async def test_upload_stops_streaming_at_twenty_mib(upload_context):
 
 
 @pytest.mark.asyncio
-async def test_upload_maps_sandbox_scanned_pdf_error_without_publishing(upload_context, tmp_path):
+async def test_upload_maps_sandbox_parse_error_without_publishing(upload_context, tmp_path):
     from job_search_platform.integrations.hermes_runtime import RuntimeErrorCode
 
-    class ScannedPdfParser:
+    class EncryptedPdfParser:
         def __init__(self):
             self.projects = {}
 
         async def parse_input(self, _project_id: UUID, _path: str):
-            raise RuntimeErrorCode("scanned_pdf_unsupported")
+            raise RuntimeErrorCode("document_encrypted")
 
     files, actor, project_id = upload_context
     workspace = tmp_path / str(project_id)
     (workspace / "inputs").mkdir(parents=True)
-    files.parser = ScannedPdfParser()
+    files.parser = EncryptedPdfParser()
     files.parser.projects[project_id] = type("Project", (), {"workspace": workspace})()
     pdf = b"%PDF-1.7\n% synthetic scanned page\n"
 
     with pytest.raises(ServiceError) as error:
         await files.upload(actor, project_id, io.BytesIO(pdf), "application/pdf", "scan.pdf")
 
-    assert error.value.code == "scanned_pdf_unsupported"
+    assert error.value.code == "document_encrypted"
 
 
 @pytest.mark.native_runtime
