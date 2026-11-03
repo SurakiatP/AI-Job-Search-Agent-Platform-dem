@@ -22,7 +22,8 @@ const copy = {
   en: { title: 'New session', desc: 'Pair one CV with one job posting. The fit evaluation starts right away.', cv: 'CV', job: 'Job posting', saved: 'Application', paste: 'Paste a new job', pick: 'Choose a job', jtitle: 'Job title', company: 'Company (optional)', url: 'Source link (optional)', jdesc: 'Job description', start: 'Start session', starting: 'Creating…', cancel: 'Cancel', noCv: 'No CV yet', noCvBody: 'Add a CV before starting a session.', addCv: 'Go to CV page', exists: 'A session for this CV version and job already exists.', open: 'Open existing session', provider: 'The AI gateway is not configured. Set OPENROUTER_API_KEY, then see Settings > AI gateway.', settings: 'Open settings', failed: 'Could not create the session. Try again.', notFound: 'The CV or job was not found. Reload the page and try again.', loadFailed: 'Could not load data', loading: 'Loading…' },
 };
 
-function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="grid gap-2 text-sm font-medium">{label}{children}</label>; }
+// The label sits inside the control and floats up when it is focused or filled (the control gets an empty placeholder to detect that).
+function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="mui-field text-sm">{children}<span className="mui-label">{label}</span></label>; }
 
 export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectId: string; job?: SessionJob; cvName?: string; onClose: () => void }) {
   const { t, i18n } = useTranslation();
@@ -81,10 +82,10 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
             {effectiveMode === 'saved'
               ? <Select aria-label={c.pick} value={savedId} onChange={event => setSavedPick(event.target.value)}>{saved.map(item => <option key={item.id} value={item.id}>{item.title}{item.company ? ` · ${item.company}` : ''}</option>)}</Select>
               : <div className="grid gap-3">
-                <Field label={c.jtitle}><Input required maxLength={300} value={form.title} onChange={set('title')} /></Field>
-                <Field label={c.company}><Input maxLength={300} value={form.company} onChange={set('company')} /></Field>
-                <Field label={c.url}><Input type="url" maxLength={2048} value={form.source_url} onChange={set('source_url')} /></Field>
-                <Field label={c.jdesc}><Textarea required rows={6} maxLength={50000} value={form.description} onChange={set('description')} /></Field></div>}
+                <Field label={c.jtitle}><Input placeholder=" " required maxLength={300} value={form.title} onChange={set('title')} /></Field>
+                <Field label={c.company}><Input placeholder=" " maxLength={300} value={form.company} onChange={set('company')} /></Field>
+                <Field label={c.url}><Input placeholder=" " type="url" maxLength={2048} value={form.source_url} onChange={set('source_url')} /></Field>
+                <Field label={c.jdesc}><Textarea placeholder=" " required rows={6} maxLength={50000} value={form.description} onChange={set('description')} /></Field></div>}
           </fieldset>
           {existing && <Alert severity="warning" action={<Button asChild size="sm" className="justify-self-start"><Link to={`${base}/sessions/${existing}`} onClick={onClose}>{c.open}</Link></Button>}><p>{c.exists}</p></Alert>}
           {error === 'provider' && <Alert severity="warning" role="alert" action={gatewayHelp.isAdmin && <Button asChild size="sm" className="justify-self-start"><Link to="/app/settings?section=gateway" onClick={onClose}>{c.settings}</Link></Button>}><p>{gatewayHelp.isAdmin ? c.provider : gatewayHelp.contactText}</p></Alert>}

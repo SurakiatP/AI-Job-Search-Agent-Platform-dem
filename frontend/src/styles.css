@@ -392,7 +392,11 @@ input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: n
 .mui-field > .mui-label, .mui-field > .relative ~ .mui-label { position: absolute; inset-inline-start: 12px; top: 50%; max-width: calc(100% - 24px); margin: 0; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1rem; font-weight: 400; line-height: 1.4; color: var(--muted-foreground); pointer-events: none; transform: translateY(-50%); transform-origin: left center; transition: transform 200ms var(--ease-standard), top 200ms var(--ease-standard), color 200ms var(--ease-standard); }
 .mui-field:focus-within > .mui-label, .mui-field:has(input:not(:placeholder-shown)) > .mui-label { top: 0; background: var(--card); transform: translateY(-50%) scale(0.8125); max-width: calc((100% - 24px) / 0.8125); }
 .mui-field:focus-within > .mui-label { color: var(--primary); }
-.mui-field input::placeholder { color: transparent; }
+.mui-field input::placeholder, .mui-field textarea::placeholder { color: transparent; transition: color 200ms var(--ease-standard); }
+.mui-field:focus-within input::placeholder, .mui-field:focus-within textarea::placeholder { color: var(--muted-foreground); }
+.mui-field:has(textarea) > .mui-label { top: 20px; }
+.mui-field:has(textarea:focus) > .mui-label, .mui-field:has(textarea:not(:placeholder-shown)) > .mui-label, .mui-field:has(input[type=date]) > .mui-label, .mui-field:has(input[type=month]) > .mui-label, .mui-field:has(input[type=time]) > .mui-label { top: 0; background: var(--card); transform: translateY(-50%) scale(0.8125); max-width: calc((100% - 24px) / 0.8125); }
+.mui-field > .mui-label { z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .mui-field > .mui-label { transition: none; } }
 
 /* Docs sidebar: the section list opens and closes by animating its row height (0fr to 1fr), slowly enough to follow (500 ms). */

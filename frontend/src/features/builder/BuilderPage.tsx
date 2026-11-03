@@ -285,8 +285,9 @@ export function BuilderPage({ kind }: { kind: Kind }) {
 }
 
 function TextField({ id, label, value, onChange, type = 'text', required = false, placeholder }: { id: string; label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; placeholder?: string }) {
-  return <div className="grid min-w-0 gap-2"><Label htmlFor={id}>{label}{required && <span aria-hidden="true" className="text-destructive"> *</span>}</Label>
-    <Input id={id} type={type} value={value} required={required} placeholder={placeholder} maxLength={type === 'url' ? 500 : 200} onChange={e => onChange(e.target.value)} /></div>;
+  return <div className="mui-field min-w-0">
+    <Input id={id} type={type} value={value} required={required} placeholder={placeholder ?? ' '} maxLength={type === 'url' ? 500 : 200} onChange={e => onChange(e.target.value)} />
+    <Label htmlFor={id} className="mui-label">{label}{required && <span aria-hidden="true" className="text-destructive"> *</span>}</Label></div>;
 }
 
 function SectionEditor({ name, index, count, data, locale, update }: { name: SectionName; index: number; count: number; data: ResumeData; locale: Lang; update: (fn: (d: ResumeData) => ResumeData) => void }) {
