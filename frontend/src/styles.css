@@ -14,23 +14,23 @@
   --shadow-soft: 0 2px 1px -1px rgb(0 0 0 / 0.2), 0 1px 1px 0 rgb(0 0 0 / 0.14), 0 1px 3px 0 rgb(0 0 0 / 0.12); /* MUI elevation 1 (shadows[1]) */
   --overlay: color-mix(in srgb, var(--foreground) 40%, transparent);
   --background: #F3F4EF;
-  --foreground: #1B2550;
+  --foreground: #0F3B38;
   --card: #FFFFFF;
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: #2B45C4;
+  --primary: #287A74;
   --primary-foreground: #FFFFFF;
   /* Solid fills (filled buttons, badges): same as primary in light; a deeper royal blue with white text in dark. */
   --primary-fill: var(--primary);
   --primary-fill-foreground: var(--primary-foreground);
   --destructive-fill: var(--destructive);
   --secondary: #E9EAE2;
-  --secondary-foreground: #1B2550;
+  --secondary-foreground: #0F3B38;
   --muted: #E9EAE2;
   --muted-foreground: #585E70;
-  --accent: #E4E7F4;
-  --accent-foreground: #1B2550;
+  --accent: #E8F7F2;
+  --accent-foreground: #0F3B38;
   --destructive: #AF263E;
   --success: #166445;
   --warning: #805319;
@@ -39,7 +39,7 @@
   --nav-hover: color-mix(in srgb, var(--primary) 4%, transparent); /* MUI hoverOpacity */
   --nav-active: color-mix(in srgb, var(--primary) 8%, var(--sidebar)); /* MUI selectedOpacity */
   --input: #858993;
-  --ring: #2B45C4;
+  --ring: #287A74;
   --sidebar: #EAEBE3;
   --surface-tint: #EDEEE6;
   --ai: var(--primary);
@@ -69,30 +69,30 @@
 }
 :root[data-theme='dark'] {
   --overlay: color-mix(in srgb, var(--background) 72%, transparent);
-  --background: #111A3B;
-  --foreground: #EEF2FF;
-  --card: #1F2C60;
-  --primary: #9DB4FF;
-  --primary-foreground: #0F1738;
+  --background: #0E2B29;
+  --foreground: #E9F7F4;
+  --card: #17403D;
+  --primary: #7DCFC4;
+  --primary-foreground: #0B2623;
   /* Filled controls: white on a deeper royal blue (5.2:1), not dark text on pale periwinkle. */
-  --primary-fill: #4361E0;
+  --primary-fill: #287A74;
   --primary-fill-foreground: #FFFFFF;
   --destructive-fill: #C93A52;
-  --secondary: #2A3970;
-  --secondary-foreground: #EEF2FF;
-  --muted: #2A3970;
-  --muted-foreground: #B4C0E6;
-  --accent: #2E3F7E;
-  --accent-foreground: #EEF2FF;
+  --secondary: #1F4A46;
+  --secondary-foreground: #E9F7F4;
+  --muted: #1F4A46;
+  --muted-foreground: #A8CCC7;
+  --accent: #1D4A45;
+  --accent-foreground: #E9F7F4;
   --destructive: #FF9AAA;
   --success: #79D5AA;
   --warning: #EBC27D;
-  --border: #34447F;
-  --border-strong: #46579A;
-  --input: #7F8FC4;
-  --ring: #9DB4FF;
-  --sidebar: #16224D;
-  --surface-tint: #172250;
+  --border: #2D5C57;
+  --border-strong: #3C7A73;
+  --input: #6FA9A3;
+  --ring: #7DCFC4;
+  --sidebar: #123532;
+  --surface-tint: #143A37;
   --ai: var(--primary);
   --ai-contrast: var(--primary-foreground);
   --ai-foreground: var(--primary);

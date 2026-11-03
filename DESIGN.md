@@ -3,55 +3,55 @@ name: AI Job Search Agent Platform
 description: Bilingual job-search workspaces with clear project and revision context.
 colors:
   background: "#F3F4EF"
-  foreground: "#1B2550"
+  foreground: "#0F3B38"
   card: "#FFFFFF"
-  primary: "#2B45C4"
+  primary: "#287A74"
   primary-foreground: "#FFFFFF"
   secondary: "#E9EAE2"
-  secondary-foreground: "#1B2550"
+  secondary-foreground: "#0F3B38"
   muted: "#E9EAE2"
   muted-foreground: "#585E70"
-  accent: "#E4E7F4"
-  accent-foreground: "#1B2550"
+  accent: "#E8F7F2"
+  accent-foreground: "#0F3B38"
   destructive: "#AF263E"
   success: "#166445"
   warning: "#805319"
   border: "#DCDDD3"
   border-strong: "#C9CBC0"
   input: "#858993"
-  ring: "#2B45C4"
+  ring: "#287A74"
   sidebar: "#EAEBE3"
-  surface-tint: "#E8F1EC"
-  stage-cv: "#0F766E"
-  stage-search: "#2563EB"
-  stage-evaluate: "#7C3AED"
-  stage-docs: "#C2410C"
-  stage-track: "#15803D"
-  dark-background: "#131D42"
-  dark-foreground: "#EEF2FF"
-  dark-card: "#1B2756"
-  dark-primary: "#9DB4FF"
-  dark-primary-foreground: "#0F1738"
-  dark-secondary: "#243266"
-  dark-secondary-foreground: "#EEF2FF"
-  dark-muted: "#243266"
-  dark-muted-foreground: "#B4C0E6"
-  dark-accent: "#2E3F7E"
-  dark-accent-foreground: "#EEF2FF"
+  surface-tint: "#EDEEE6"
+  stage-cv: "#287A74"
+  stage-search: "#287A74"
+  stage-evaluate: "#287A74"
+  stage-docs: "#287A74"
+  stage-track: "#287A74"
+  dark-background: "#0E2B29"
+  dark-foreground: "#E9F7F4"
+  dark-card: "#17403D"
+  dark-primary: "#7DCFC4"
+  dark-primary-foreground: "#0B2623"
+  dark-secondary: "#1F4A46"
+  dark-secondary-foreground: "#E9F7F4"
+  dark-muted: "#1F4A46"
+  dark-muted-foreground: "#A8CCC7"
+  dark-accent: "#1D4A45"
+  dark-accent-foreground: "#E9F7F4"
   dark-destructive: "#FF9AAA"
   dark-success: "#79D5AA"
   dark-warning: "#EBC27D"
-  dark-border: "#34447F"
-  dark-border-strong: "#46579A"
-  dark-input: "#7F8FC4"
-  dark-ring: "#9DB4FF"
-  dark-sidebar: "#16224D"
-  dark-surface-tint: "#134555"
-  dark-stage-cv: "#5EEAD4"
-  dark-stage-search: "#7FA8FF"
-  dark-stage-evaluate: "#B79CFF"
-  dark-stage-docs: "#FFA36B"
-  dark-stage-track: "#6FE09A"
+  dark-border: "#2D5C57"
+  dark-border-strong: "#3C7A73"
+  dark-input: "#6FA9A3"
+  dark-ring: "#7DCFC4"
+  dark-sidebar: "#123532"
+  dark-surface-tint: "#143A37"
+  dark-stage-cv: "#7DCFC4"
+  dark-stage-search: "#7DCFC4"
+  dark-stage-evaluate: "#7DCFC4"
+  dark-stage-docs: "#7DCFC4"
+  dark-stage-track: "#7DCFC4"
 typography:
   display:
     fontFamily: "Noto Serif Thai, Georgia, serif"
@@ -114,14 +114,14 @@ components:
 
 **Creative North Star: "Quiet Ledger"**
 
-Royal blue is action and AI. The page is a warm neutral ground with white hairline cards framed by a tinted sidebar; dark mode is a clearly navy ground. Page titles are Thai serif, everything else Noto Sans Thai. Its signature is the pairing of CV revision and job revision: source context stays near the task that uses it. Written labels always accompany semantic status colours.
+Teal is action and AI. The page is a warm neutral ground with white hairline cards framed by a tinted sidebar; dark mode is a deep teal ground. Page titles are Thai serif, everything else Noto Sans Thai. Its signature is the pairing of CV revision and job revision: source context stays near the task that uses it. Written labels always accompany semantic status colours.
 
 Inspired by visual character only; no code or assets from AGPL-licensed Dossier.
 
 The system is evidenced in `frontend/src/styles.css`, shared UI primitives, and the application shell and workspace pages. This record describes visual implementation; product behavior and API contracts remain in their engineering specifications.
 
 **Key Characteristics:**
-- Warm neutral canvas, white hairline surfaces, restrained royal-blue emphasis. No black or near-black anywhere; ink is navy.
+- Warm neutral canvas, white hairline surfaces, restrained teal emphasis. No black or near-black anywhere; ink is deep teal (`#0F3B38`).
 - Serif page titles, sans-serif reading with generous Thai body leading.
 - Inset work panel, segmented controls, status dots, divided rows.
 
@@ -131,7 +131,7 @@ The light and dark themes use semantic CSS variables so components keep the same
 
 ### Primary
 
-Royal blue (`primary`) marks primary actions, links, and focus. `accent` marks selected surfaces and notices; the active sidebar row uses `--nav-active`, a 12% primary tint (18% in dark) over `sidebar`. Row hover uses `--nav-hover`, a 5% navy tint. In dark mode, use the matching `dark-` values.
+Teal (`primary`, `#287A74`) marks primary actions, links, and focus. `accent` marks selected surfaces and notices; the active sidebar row uses `--nav-active`, an 8% primary tint (16% in dark, Material UI selected opacity) over `sidebar`. Row hover uses `--nav-hover`, a 5% navy tint. In dark mode, use the matching `dark-` values.
 
 ### AI analysis
 
@@ -142,7 +142,7 @@ Royal blue (`primary`) marks primary actions, links, and focus. `accent` marks s
 
 ### Neutral
 
-`background` is the warm page; `card` is the work surface (white); `sidebar` is both the navigation colour and the frame around the page panel. `foreground` (navy) carries reading text, `muted-foreground` secondary information, `border` panel and row separation, and `border-strong` the hairline of outline buttons and active segments. `input` is the stronger stroke inputs need for a 3:1 boundary.
+`background` is the warm page; `card` is the work surface (white); `sidebar` is both the navigation colour and the frame around the page panel. `foreground` (deep teal) carries reading text, `muted-foreground` secondary information, `border` panel and row separation, and `border-strong` the hairline of outline buttons and active segments. `input` is the stronger stroke inputs need for a 3:1 boundary.
 
 ### One surface, no frames
 
