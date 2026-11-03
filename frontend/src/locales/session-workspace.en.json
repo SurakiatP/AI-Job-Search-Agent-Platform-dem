@@ -206,5 +206,13 @@
     "pairExists": "You already have an evaluation for this CV and job, so this one cannot be restored.",
     "openIt": "Open it",
     "restoreFailed": "Could not restore “{{title}}”. Try again."
+  },
+  "failTitle": "The evaluation did not finish",
+  "failReason": "The agent stopped before it finished. Try again. If it keeps failing, check the run history.",
+  "dots": {
+    "done": "Done",
+    "working": "Working",
+    "attention": "Waiting for you",
+    "failed": "Failed"
   }
 }
