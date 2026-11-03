@@ -78,6 +78,7 @@ export async function useApplicationsWorkspaceFixture(page: Page) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(jobRows.map(job => ({ ...job, application_status: statusByJob.get(job.id) ?? 'saved' }))) });
   });
   const evaluationSession = { id: evaluationSessionId, project_id: projectId, title: 'Northstar evaluation', created_at: '2026-10-13T00:00:00Z', cv_revision_id: evaluationCvRevisionId, job_revision_id: jobId, cv_name: 'Healthcare Analytics', cv_revision: 3 };
+  await page.route(`**/v1/projects/${projectId}/cvs`, route => route.request().method() === 'GET' ? route.fulfill({ json: [{ id: '77777777-7777-4777-8777-777777777771', project_id: projectId, name: 'Data CV', is_primary: true, created_at: '2026-10-01T00:00:00Z', latest_revision: { id: evaluationCvRevisionId, revision: 1 } }] }) : route.fallback());
   await page.route(`**/v1/projects/${projectId}/sessions`, route => route.fulfill({ json: [evaluationSession] }));
   await page.route(`**/v1/projects/${projectId}/sessions/${evaluationSessionId}`, route => route.fulfill({ json: evaluationSession }));
   await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), async route => {

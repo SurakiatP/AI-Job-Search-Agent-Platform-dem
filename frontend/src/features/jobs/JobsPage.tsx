@@ -17,14 +17,14 @@ import { PageBack } from '@/components/PageBack';
 import { Markdown } from '@/components/Markdown';
 import { CompanyMark } from '@/components/CompanyMark';
 import { StatusBadge } from '@/components/StatusBadge';
-import type { ApplicationCardView, CVView, DocumentView, JobRevisionView, Locale, RunView, SessionView, SkillCoverage } from '../../lib/api-types';
+import type { ApplicationStage, ApplicationCardView, CVView, DocumentView, JobRevisionView, Locale, RunView, SessionView, SkillCoverage } from '../../lib/api-types';
 import { latestEvaluations } from '../overview/latestEvaluations';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { ApplicationBoard } from '../applications/ApplicationBoard';
 import { ACTIVE_STAGES, CLOSED_STAGES } from '../../lib/applicationStages';
 import { ApplicationPanel } from '../applications/ApplicationPanel';
 import { JobRemoveMenu } from './JobRemoveMenu';
-import { NewSessionButton } from '../sessions/NewSessionDialog';
+import { NextStepButton, jobFlow } from './NextStepButton';
 import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 import { AiLabel } from '@/components/AiMark';
 import { PageHeader } from '@/components/PageHeader';
@@ -35,6 +35,9 @@ export function JobsPage() {
   const { projectId = '' } = useParams();
   const base = `/app/projects/${projectId}`;
   const result = useResource<ApplicationCardView[]>(`/projects/${projectId}/applications`);
+  const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
+  const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
+  const cvs = useResource<CVView[]>(`/projects/${projectId}/cvs`);
   const [title, setTitle] = useDraft(projectId, 'new-job', 'title');
   const [description, setDescription] = useDraft(projectId, 'new-job', 'description');
   const [company, setCompany] = useDraft(projectId, 'new-job', 'company');
@@ -64,7 +67,6 @@ export function JobsPage() {
   }
   return <section className="grid gap-6 lg:gap-8">
     <div className="grid gap-1">
-      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
       <PageHeader icon={Kanban} title={appT('pageTitle')}
         lede={jobs.length > 0 && <>
           <p>{appT('summary', { tracked: jobs.length, active: jobs.filter(job => ACTIVE_STAGES.includes(job.stage)).length, closed: jobs.filter(job => CLOSED_STAGES.includes(job.stage)).length })}</p>
@@ -86,7 +88,7 @@ export function JobsPage() {
       </CardContent>
     </Card>}
     {!jobs.length && <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6"><p className="font-medium">{appT('empty')}</p><p className="text-sm text-muted-foreground">{appT('emptyNext')}</p><Link className="text-sm text-primary hover:underline" to={`${base}/search`}>{appT('findJobs')}</Link></div>}
-    {jobs.length > 0 && <ApplicationBoard projectId={projectId} cards={jobs} onChanged={result.reload} />}
+    {jobs.length > 0 && <ApplicationBoard projectId={projectId} cards={jobs} onChanged={result.reload} flowData={{ cvs: cvs.data, runs: runs.data, sessions: sessions.data }} />}
   </section>;
 }
 
@@ -137,6 +139,7 @@ export function JobDetailPage() {
   const documents = useResource<DocumentView[]>(`/projects/${projectId}/documents`);
   const cvs = useResource<CVView[]>(`/projects/${projectId}/cvs`);
   const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
+  const [appliedNote, setAppliedNote] = useState(false);
   const evaluation = latestEvaluations(runs.data ?? [], sessions.data).get(jobId);
   const evaluationSession = useResource<SessionView>(evaluation ? `/projects/${projectId}/sessions/${evaluation.session_id}` : null);
   if (result.status === 'loading' && !result.data) return <LoadingState />;
@@ -149,10 +152,12 @@ export function JobDetailPage() {
   const jobRuns = (runs.data ?? []).filter(run => run.job_revision_id === job.id);
   const jobRunIds = new Set(jobRuns.map(run => run.id));
   const related = (documents.data ?? []).filter(doc => doc.source_run_id && jobRunIds.has(doc.source_run_id));
-  // The primary button follows the real destination: an existing session, else the dialog that creates one.
-  const sessionId = [...jobRuns].sort((a, b) => b.created_at.localeCompare(a.created_at))[0]?.session_id;
   const usableCvs = (cvs.data ?? []).filter(cv => cv.latest_revision);
   const primaryCv = usableCvs.find(cv => cv.is_primary) ?? usableCvs[0];
+  const flow = jobFlow({ cvs: cvs.data, runs: runs.data, sessions: sessions.data }, job.id, (job.application_status ?? 'saved') as ApplicationStage);
+  async function markApplied() {
+    try { await sendJson(`/projects/${projectId}/jobs/${job!.id}/application-status`, 'PATCH', { application_status: 'applied' }); setAppliedNote(true); result.reload(); } catch { /* the stage select in the panel still works */ }
+  }
   const score = evaluation?.evaluation_result?.score ?? null;
   const band = bandView[fitBand(score) as keyof typeof bandView];
   const card = 'grid min-w-0 content-start gap-4 rounded-lg border border-border bg-card p-5 sm:p-6';
@@ -173,12 +178,11 @@ export function JobDetailPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={job.application_status ?? 'saved'} locale={locale} />
-          {sessionId
-            ? <Button asChild><Link to={`${base}/sessions/${sessionId}`}>{t('continuePrep')}</Link></Button>
-            : <NewSessionButton projectId={projectId} job={{ savedId: job.id }}>{t('prepareDocs')}</NewSessionButton>}
+          <NextStepButton projectId={projectId} jobId={job.id} step={flow.step} waitingSessionId={flow.waitingSessionId} cvName={primaryCv?.name} onApplied={() => void markApplied()} />
           <JobRemoveMenu projectId={projectId} jobId={job.id} title={job.title} onRemoved={() => navigate(`${base}/applications`)} />
         </div>
       </div>
+      {appliedNote && <p role="status" className="text-sm text-muted-foreground">{t('appliedNote')}</p>}
     </header>
 
     <section aria-labelledby="job-evaluation" className={`${card} lg:col-start-1`}>
@@ -206,7 +210,6 @@ export function JobDetailPage() {
         </details>
       </> : <div className="flex flex-col items-start gap-2">
         <p className="font-medium">{t('notEvaluated')}</p><p className="text-sm text-muted-foreground">{t('notEvaluatedNext')}</p>
-        <NewSessionButton variant="outline" projectId={projectId} cvName={primaryCv?.name} job={{ savedId: job.id }}>{primaryCv ? t('evaluateWith', { cv: primaryCv.name }) : t('evaluate')}</NewSessionButton>
       </div>}
     </section>
 

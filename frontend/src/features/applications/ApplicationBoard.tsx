@@ -4,32 +4,32 @@ import { useTranslation } from 'react-i18next';
 import { ArrowRight, ChevronDown, ChevronRight, Columns3, GripVertical, List, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
 import { Alert } from '@/components/ui/alert';
 import { Snackbar } from '@/components/ui/snackbar';
 import { CompanyMark } from '@/components/CompanyMark';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ItemMenu } from '@/components/ItemMenu';
 import type { ApplicationCardView, ApplicationStage } from '../../lib/api-types';
+import { FitScore } from '@/components/FitScore';
+import { NextStepButton, jobFlow, type JobFlowData } from '../jobs/NextStepButton';
 import { ACTIVE_STAGES, CLOSED_STAGES, STAGES, stageLabel } from '../../lib/applicationStages';
 import { cn } from '@/lib/utils';
 import { sendJson } from '../projects/useResource';
 import { dateLocale } from '../../lib/locale';
 
-const rowColumns = 'md:grid-cols-[2rem_minmax(0,1.8fr)_11rem_minmax(0,1.2fr)_8rem_1.5rem]';
-const nextStepKey: Record<ApplicationStage, string> = {
-  saved: 'nextSaved', applied: 'nextApplied', responded: 'nextResponded', interview: 'nextInterview',
-  offer: 'nextOffer', hired: 'nextHired', rejected: 'nextClosed', withdrawn: 'nextClosed',
-};
+const rowColumns = 'md:grid-cols-[2rem_minmax(0,1.6fr)_7rem_11rem_minmax(0,1.2fr)_1.5rem]';
 
-function OpportunityRow({ projectId, card, locale, onMove, updatedLabel }: {
+function OpportunityRow({ projectId, card, locale, onMove, flowData }: {
   projectId: string;
   card: ApplicationCardView;
   locale: 'th' | 'en';
   onMove: (card: ApplicationCardView, stage: ApplicationStage) => void;
-  updatedLabel: (date: string) => string;
+  flowData: JobFlowData;
 }) {
   const { t } = useTranslation('applicationsWorkspace');
+  const flow = jobFlow(flowData, card.job_revision_id, card.stage);
+  const cvs = (flowData.cvs ?? []).filter(cv => cv.latest_revision);
+  const cvName = (cvs.find(cv => cv.is_primary) ?? cvs[0])?.name;
   return <li className={`relative grid min-w-0 grid-cols-[minmax(0,1fr)_1.5rem] items-center gap-x-3 gap-y-2 px-4 py-3 min-h-14 hover:bg-muted/40 md:gap-x-5 ${rowColumns}`}>
     <div className="hidden md:col-start-1 md:row-start-1 md:block"><CompanyMark name={card.company} size={32} /></div>
     <div className="min-w-0 md:col-start-2 md:row-start-1">
@@ -37,7 +37,8 @@ function OpportunityRow({ projectId, card, locale, onMove, updatedLabel }: {
       {card.company && <p className="mt-0.5 break-words text-sm text-muted-foreground">{card.company}</p>}
     </div>
     <ChevronRight className="size-5 text-muted-foreground md:col-start-6 md:row-start-1" aria-hidden="true" />
-    <div className="relative z-10 col-span-2 grid gap-1 md:col-span-1 md:col-start-3 md:row-start-1">
+    <div className="relative z-10 col-span-2 flex items-center gap-2 md:col-span-1 md:col-start-3 md:row-start-1"><FitScore score={flow.score} locale={locale} /></div>
+    <div className="relative z-10 col-span-2 grid gap-1 md:col-span-1 md:col-start-4 md:row-start-1">
       <span className="text-xs text-muted-foreground md:hidden" aria-hidden="true">{t('stage')}</span>
       <span className="relative inline-flex w-fit items-center" data-app-stage={card.stage}>
         <span className="stage-dot pointer-events-none absolute start-3" aria-hidden="true" />
@@ -47,12 +48,13 @@ function OpportunityRow({ projectId, card, locale, onMove, updatedLabel }: {
         </select>
       </span>
     </div>
-    <p className="col-span-2 text-sm text-muted-foreground md:col-span-1 md:col-start-4 md:row-start-1"><span className="md:hidden">{t('nextStep')}: </span>{t(nextStepKey[card.stage])}</p>
-    <p className="col-span-2 whitespace-nowrap text-xs text-muted-foreground md:col-span-1 md:col-start-5 md:row-start-1">{updatedLabel(card.last_activity_at || card.created_at)}</p>
+    <div className="relative z-10 col-span-2 grid justify-items-start gap-1 md:col-span-1 md:col-start-5 md:row-start-1">
+      <NextStepButton projectId={projectId} jobId={card.job_revision_id} step={flow.step} waitingSessionId={flow.waitingSessionId} cvName={cvName} onApplied={() => onMove(card, 'applied')} />
+    </div>
   </li>;
 }
 
-export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: string; cards: ApplicationCardView[]; onChanged: () => void }) {
+export function ApplicationBoard({ projectId, cards, onChanged, flowData = {} }: { projectId: string; cards: ApplicationCardView[]; onChanged: () => void; flowData?: JobFlowData }) {
   const { t, i18n } = useTranslation('applicationsWorkspace');
   const locale = i18n.language.startsWith('th') ? 'th' : 'en';
   const [searchParams, setSearchParams] = useSearchParams();
@@ -63,7 +65,6 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
   const [query, setQuery] = useState('');
   const [closedFilter, setClosedFilter] = useState(false);
   const [stageFilter, setStageFilter] = useState<ApplicationStage | ''>('');
-  const [sort, setSort] = useState<'recent' | 'title'>('recent');
   const [moved, setMoved] = useState<{ card: ApplicationCardView; from: ApplicationStage } | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<ApplicationStage | null>(null);
@@ -151,7 +152,7 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
   const needle = query.trim().toLowerCase();
   const shown = visibleCards
     .filter(card => (!stageFilter || card.stage === stageFilter) && (!closedFilter || CLOSED_STAGES.includes(card.stage)) && (!needle || `${card.title} ${card.company ?? ''}`.toLowerCase().includes(needle)))
-    .sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title, locale) : (b.last_activity_at || b.created_at).localeCompare(a.last_activity_at || a.created_at));
+    .sort((a, b) => (b.last_activity_at || b.created_at).localeCompare(a.last_activity_at || a.created_at));
   const closed = shown.filter(card => CLOSED_STAGES.includes(card.stage));
   const filtering = Boolean(needle || stageFilter || closedFilter);
   const count = (stage: ApplicationStage) => visibleCards.filter(card => card.stage === stage).length;
@@ -176,19 +177,11 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
           <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input type="search" className="ps-10" aria-label={t('searchLabel')} placeholder={t('searchPlaceholder')} value={query} onChange={event => setQuery(event.target.value)} />
         </div>
-        <Select className="sm:w-auto" aria-label={t('stageFilter')} value={stageFilter} onChange={event => { setStageFilter(event.target.value as ApplicationStage | ''); setClosedFilter(false); }}>
-          <option value="">{t('allStages')}</option>
-          {STAGES.map(stage => <option key={stage} value={stage}>{stageLabel[stage][locale]}</option>)}
-        </Select>
-        <Select className="sm:w-auto" aria-label={t('sortLabel')} value={sort} onChange={event => setSort(event.target.value as 'recent' | 'title')}>
-          <option value="recent">{t('sortRecent')}</option>
-          <option value="title">{t('sortTitle')}</option>
-        </Select>
       </div>
     </div>
     {error && <Alert severity="error">{t('moveError')}</Alert>}
     <Snackbar open={!!moved} autoHideDuration={10000} onClose={() => setMoved(null)}
-      message={moved ? t('movedNotice', { title: moved.card.title, stage: stageLabel[moved.card.stage][locale] }) : ''}
+      message={moved ? t('movedNotice', { title: moved.card.title, stage: stageLabel[moved.card.stage][locale] }) + (moved.card.stage === 'applied' ? ` ${t('appliedNote')}` : '') : ''}
       action={moved && <Button type="button" variant="ghost" size="sm" onClick={() => void move(moved.card, moved.from, true)}>{t('undo')}</Button>} />
 
     {shown.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
@@ -196,10 +189,10 @@ export function ApplicationBoard({ projectId, cards, onChanged }: { projectId: s
       {filtering && <Button type="button" variant="outline" size="sm" onClick={() => { setQuery(''); setStageFilter(''); setClosedFilter(false); }}>{t('clearFilters')}</Button>}
     </div> : view === 'list' ? <section aria-label={t('listLabel')} className="min-w-0 overflow-hidden rounded-xl border border-border bg-card">
       <div className={`hidden gap-x-5 border-b px-4 py-3 text-xs font-medium text-muted-foreground md:grid ${rowColumns}`}>
-        <span aria-hidden="true" /><span>{t('opportunity')}</span><span>{t('stage')}</span><span>{t('nextStep')}</span><span>{t('lastActivity')}</span><span className="sr-only">{t('open')}</span>
+        <span aria-hidden="true" /><span>{t('opportunity')}</span><span>{t('fitScoreCol')}</span><span>{t('stage')}</span><span>{t('nextStep')}</span><span className="sr-only">{t('open')}</span>
       </div>
       <ul aria-label={t('listLabel')} className="min-w-0 divide-y">
-        {shown.map(card => <OpportunityRow key={card.job_revision_id} projectId={projectId} card={card} locale={locale} onMove={(row, stage) => void move(row, stage)} updatedLabel={updatedLabel} />)}
+        {shown.map(card => <OpportunityRow key={card.job_revision_id} projectId={projectId} card={card} locale={locale} onMove={(row, stage) => void move(row, stage)} flowData={flowData} />)}
       </ul>
     </section> : <div role="group" className="grid min-w-0 gap-4" aria-label={t('boardLabel')}>
       <p className="text-xs text-muted-foreground max-md:hidden">{t('dragHint')}</p>
