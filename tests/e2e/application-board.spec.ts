@@ -93,6 +93,7 @@ test('job page edits stage and contact, offers mailto, logs correspondence and n
   await expect(page.getByRole('list', { name: 'Activity' }).getByRole('listitem').first()).toContainText('Saved → Interview');
 
   await expect(page.getByRole('link', { name: 'Write email' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Add recruiter contact' }).click();
   await page.getByLabel('Recruiter name').fill('สมหญิง ใจดี');
   await page.getByLabel('Recruiter email').fill('a+jobs@example.co.th');
   await page.getByRole('button', { name: 'Save contact' }).click();

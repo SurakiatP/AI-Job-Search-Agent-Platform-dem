@@ -32,6 +32,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [contactSaved, setContactSaved] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
   const data = result.data;
 
   useEffect(() => {
@@ -73,7 +74,9 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
       <Label htmlFor="application-stage" className="mui-label">{t('stage')}</Label>
     </div>
 
-    <form className="grid gap-3 border-t border-border pt-5" onSubmit={event => { event.preventDefault(); void run(() => sendJson(`${path}/application/contact`, 'PUT', { name: blank(contact.name), email: blank(contact.email), role: blank(contact.role) }), () => setContactSaved(true)); }}>
+    {!(contactOpen || data.contact.name || data.contact.email || data.contact.role)
+      ? <div className="border-t border-border pt-5"><Button type="button" variant="ghost" size="sm" aria-expanded="false" onClick={() => setContactOpen(true)}>{t('addContact')}</Button></div>
+      : <form className="grid gap-3 border-t border-border pt-5" onSubmit={event => { event.preventDefault(); void run(() => sendJson(`${path}/application/contact`, 'PUT', { name: blank(contact.name), email: blank(contact.email), role: blank(contact.role) }), () => setContactSaved(true)); }}>
       <h3 className="text-sm font-semibold">{t('contact')}</h3>
       <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="contact-name" maxLength={200} value={contact.name} onChange={e => setContact({ ...contact, name: e.target.value })} /><Label htmlFor="contact-name" className="mui-label">{t('name')}</Label></div></div>
       <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="contact-email" type="email" maxLength={320} value={contact.email} onChange={e => setContact({ ...contact, email: e.target.value })} /><Label htmlFor="contact-email" className="mui-label">{t('email')}</Label></div></div>
@@ -84,7 +87,7 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
         {data.contact.email && <Button asChild variant="ghost"><a href={mailtoHref(data.contact.email, jobTitle)}><Mail className="size-4" aria-hidden="true" />{t('writeEmail')}</a></Button>}
       </div>
       {data.contact.email && <p className="text-sm text-muted-foreground">{t('writeEmailHelp')}</p>}
-    </form>
+    </form>}
 
     <div className="grid gap-3 border-t border-border pt-5">
       <div className="flex flex-wrap items-center justify-between gap-2">

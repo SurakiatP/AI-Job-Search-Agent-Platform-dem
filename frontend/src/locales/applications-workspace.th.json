@@ -36,7 +36,7 @@
   "evaluation": "ผลประเมิน",
   "latestEvaluation": "รายงานการประเมินล่าสุด",
   "notEvaluated": "ยังไม่ได้ประเมิน",
-  "notEvaluatedNext": "เปิดเซสชันประเมินเพื่อดูความเหมาะสมของงานนี้กับ CV ที่เลือก",
+  "notEvaluatedNext": "ใช้ปุ่มด้านบนเพื่อดูคะแนนความเหมาะสมของงานนี้",
   "evaluate": "ประเมินงานนี้",
   "evaluationSession": "เปิดเซสชันประเมิน",
   "jobDescription": "รายละเอียดงาน",
@@ -87,7 +87,6 @@
   "searchLabel": "ค้นหาใบสมัคร",
   "searchPlaceholder": "ค้นหาตำแหน่งหรือบริษัท",
   "stageFilter": "กรองตามขั้นตอน",
-  "allStages": "ทุกขั้นตอน",
   "sortLabel": "เรียงตาม",
   "sortRecent": "กิจกรรมล่าสุด",
   "sortTitle": "ชื่อตำแหน่ง ก–ฮ",
@@ -130,5 +129,19 @@
   "board": {
     "byStage": "ใบสมัครแยกตามขั้นตอน",
     "closedCount": "รายการที่ปิดแล้วทั้งหมด"
-  }
+  },
+  "step": {
+    "uploadCv": "เพิ่ม CV",
+    "readingCv": "กำลังอ่าน CV",
+    "findJob": "หางานที่จะประเมิน",
+    "getFitScore": "ดูคะแนนความเหมาะสม",
+    "draftLetter": "ร่างจดหมายสมัครงาน",
+    "markApplied": "ฉันสมัครแล้ว",
+    "practise": "ซ้อมสัมภาษณ์งานนี้",
+    "answerAi": "ตอบคำถามของ AI"
+  },
+  "appliedNote": "บันทึกสถานะเท่านั้น ระบบไม่ได้ส่งใบสมัครให้",
+  "addContact": "เพิ่มผู้ติดต่อฝ่ายสรรหา",
+  "editContact": "แก้ไขผู้ติดต่อ",
+  "fitScoreCol": "คะแนนความเหมาะสม"
 }

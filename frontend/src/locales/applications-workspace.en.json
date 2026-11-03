@@ -36,7 +36,7 @@
   "evaluation": "Evaluation",
   "latestEvaluation": "Latest evaluation report",
   "notEvaluated": "Not evaluated yet",
-  "notEvaluatedNext": "Open an evaluation session to assess this opportunity against your selected CV.",
+  "notEvaluatedNext": "Use the button above to get a fit score for this job.",
   "evaluate": "Evaluate this job",
   "evaluationSession": "Open evaluation session",
   "jobDescription": "Job description",
@@ -87,7 +87,6 @@
   "searchLabel": "Search applications",
   "searchPlaceholder": "Search title or company",
   "stageFilter": "Filter by stage",
-  "allStages": "All stages",
   "sortLabel": "Sort by",
   "sortRecent": "Recent activity",
   "sortTitle": "Title A–Z",
@@ -130,5 +129,19 @@
   "board": {
     "byStage": "Applications by stage",
     "closedCount": "All closed applications"
-  }
+  },
+  "step": {
+    "uploadCv": "Add a CV",
+    "readingCv": "Reading your CV",
+    "findJob": "Find a job to score",
+    "getFitScore": "Get fit score",
+    "draftLetter": "Draft cover letter",
+    "markApplied": "I applied",
+    "practise": "Practise this interview",
+    "answerAi": "Answer AI's question"
+  },
+  "appliedNote": "Records stage only. We do not submit anything.",
+  "addContact": "Add recruiter contact",
+  "editContact": "Edit contact",
+  "fitScoreCol": "Fit score"
 }

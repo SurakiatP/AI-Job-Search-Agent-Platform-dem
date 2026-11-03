@@ -17,7 +17,7 @@ test('applications open as a list and keep the board as a URL-backed view', asyn
   await expect(row).not.toContainText('northstar.example');
   await expect(row).not.toContainText('Sirin');
   await expect(row.getByRole('link', { name: 'Senior Data Analyst' })).toHaveAttribute('href', new RegExp(`/jobs/${fixture.jobId}$`));
-  await expect(row).toContainText('Log a reply when you get one');
+  await expect(row.getByRole('link', { name: 'Draft cover letter' })).toBeVisible();
   await expect(page.getByText(/\d+ tracked · \d+ active · \d+ closed/)).toBeVisible();
 
   await page.getByRole('button', { name: 'Board' }).click();
@@ -46,8 +46,8 @@ test('stage changes from the row announce the move and can be undone; search and
   await page.getByLabel('Search applications').fill('no such posting');
   await expect(page.getByText('No applications match')).toBeVisible();
   await page.getByRole('button', { name: 'Clear filters' }).click();
-  await page.getByLabel('Filter by stage').selectOption('rejected');
-  await expect(page.getByRole('list', { name: 'Applications list' }).getByRole('listitem')).toHaveCount(1);
+  await page.getByRole('button', { name: /All closed applications/ }).click();
+  await expect(page.getByRole('list', { name: 'Applications list' }).getByRole('listitem')).toHaveCount(2);
 });
 
 test('untrusted posting titles stay text in the applications list', async ({ page }) => {
@@ -106,7 +106,7 @@ test('job detail presents source, evaluation, and documents before tracking and 
   expect(sourceBox.top).toBeLessThan(reportBox.top);
   expect(reportBox.top).toBeLessThan(docsBox.top);
   expect(trackingBox.left).toBeGreaterThan(reportBox.left + 200);
-  await expect(page.getByRole('link', { name: 'Continue preparation' })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Draft cover letter' }).first()).toBeVisible();
   await expect(page.getByRole('region', { name: 'Skills found' })).toContainText('2 / 3');
   await expect(page.getByText('Possible fit')).toBeVisible();
   // Mobile: single column, tracking directly after the evaluation.
