@@ -1,7 +1,8 @@
-"""Vision fallback for CVs without a usable text layer.
+"""Vision OCR: the only way document text is read.
 
-The sandbox renders PDF pages to JPEG files (infra/hermes/parse_document.py); only here, on the host, are the
-pictures sent as data URIs to a multimodal model through LiteLLM. The host never parses the untrusted PDF itself.
+The sandbox renders every upload (PDF, DOCX, TXT) to page pictures, PNG or JPEG (infra/hermes/parse_document.py); only here,
+on the host, are they sent as data URIs, one request per page, to a multimodal model through LiteLLM. The host never parses
+the untrusted document itself.
 """
 from __future__ import annotations
 
@@ -19,7 +20,8 @@ from job_search_platform.integrations.hermes_runtime import ParsedInput, reasoni
 from job_search_platform.services.errors import ServiceError
 
 log = logging.getLogger(__name__)
-PAGE_PATH = re.compile(r"staging/ocr-[1-4]\.jpg")
+PAGE_PATH = re.compile(r"staging/page-([1-9]|10)\.(png|jpg)")
+MAX_CONCURRENT_PAGES = 5
 MAX_TEXT_BYTES = 1024 * 1024
 MAX_PAGE_BYTES = 4 * 1024 * 1024
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
@@ -28,12 +30,13 @@ PROMPT = ("Transcribe all visible text in this document page exactly as written.
           "Thai tone mark and vowel sign. Do not summarise, translate, correct or add anything. "
           "Output plain text or Markdown only, with no commentary. If the page has no readable text, output exactly NO_TEXT and nothing else.")
 NO_TEXT = "NO_TEXT"
-OCR_TOTAL_SECONDS = 80  # pages run in parallel; keeps the whole upload under typical 100 s proxy limits
+OCR_TOTAL_SECONDS = 45  # 10 pages, 5 at a time; runtime start + render (<= 45 s) + this stays near 90 s, under typical 100 s proxy limits
 
 
 def _call(gateway: GatewaySettings, image: bytes) -> str:
     config = gateway.provider_config("document_ocr")
-    uri = "data:image/jpeg;base64," + base64.b64encode(image).decode()
+    mime = "image/png" if image[:4] == b"\x89PNG" else "image/jpeg"
+    uri = f"data:{mime};base64," + base64.b64encode(image).decode()
     body = {"model": config.model, "temperature": 0, "max_tokens": 8192, "messages": [{"role": "user", "content": [
         {"type": "text", "text": PROMPT}, {"type": "image_url", "image_url": {"url": uri}}]}]}
     effort = reasoning_effort(os.environ, "document_ocr")
@@ -63,8 +66,13 @@ async def transcribe_pages(gateway: GatewaySettings, image_paths: list[Path]) ->
             if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_PAGE_BYTES:
                 raise ServiceError("ocr_unavailable", retryable=True)
         try:
-            parts = await asyncio.wait_for(asyncio.gather(*(asyncio.to_thread(_call, gateway, path.read_bytes())
-                                                            for path in image_paths)), OCR_TOTAL_SECONDS)
+            gate = asyncio.Semaphore(MAX_CONCURRENT_PAGES)
+
+            async def one(path: Path) -> str:
+                async with gate:
+                    return await asyncio.to_thread(_call, gateway, path.read_bytes())
+
+            parts = await asyncio.wait_for(asyncio.gather(*(one(path) for path in image_paths)), OCR_TOTAL_SECONDS)
         except Exception:
             raise ServiceError("ocr_unavailable", retryable=True) from None
     finally:
@@ -78,19 +86,20 @@ async def transcribe_pages(gateway: GatewaySettings, image_paths: list[Path]) ->
 
 
 async def with_vision_text(parsed: ParsedInput, workspace: Path, gateway) -> ParsedInput:
-    """Shared by upload and run-time parsing: turn a needs_vision parse result into a normal one."""
-    if not getattr(parsed, "needs_vision", None):  # test doubles return bare objects
+    """Shared by upload and run-time parsing: turn the sandbox's page pictures into text."""
+    if not getattr(parsed, "pages", None):  # test doubles return bare objects
         return parsed
     root = workspace.resolve(strict=True)
-    gateway = gateway()  # callable, so plain text parses never read gateway settings
-    if not gateway.api_key:
-        # No vision model available: behave as before OCR existed.
-        for name in parsed.pages:
-            (root / name).unlink(missing_ok=True)
-        raise ServiceError("scanned_pdf_unsupported")
     paths = [root / name for name in parsed.pages]
-    if any(not PAGE_PATH.fullmatch(name) or not (root / name).resolve().is_relative_to(root) for name in parsed.pages):
-        raise ServiceError("document_invalid")
-    text = await transcribe_pages(gateway, paths)
-    log.info("cv_text_source=ocr reason=%s pages=%d", parsed.needs_vision, len(paths))
+    try:
+        gateway = gateway()  # callable, so tests and plain flows never read gateway settings early
+        if any(not PAGE_PATH.fullmatch(name) or not path.resolve().is_relative_to(root) for name, path in zip(parsed.pages, paths)):
+            raise ServiceError("document_invalid")
+        if not gateway.api_key:
+            raise ServiceError("ocr_unavailable")  # no text-layer fallback exists
+        text = await transcribe_pages(gateway, paths)
+    finally:
+        for path in paths:
+            path.unlink(missing_ok=True)
+    log.info("cv_text_source=ocr pages=%d", len(paths))
     return ParsedInput(text, parsed.kind, parsed.sha256)

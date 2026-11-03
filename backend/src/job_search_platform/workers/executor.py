@@ -29,6 +29,7 @@ from job_search_platform.services.contracts import EvaluationReport, EvaluationR
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, compute_skill_coverage, extract_skills
 from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.gateway import GatewaySettings
+from job_search_platform.integrations.hermes_runtime import ParsedInput
 from job_search_platform.services.ocr import with_vision_text
 from job_search_platform.services import applications, experience, job_sources, resume, smart_match, tailoring
 from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, claims, fact_claims, require_evidence, summary_claims
@@ -333,7 +334,8 @@ class RunExecutor:
             # per-run reservation before any untrusted input reaches Hermes.
             self.runtime.projects[run.project_id].tool_gate = reserve_tool
             self._record_process(run.id, lease_owner, project)
-            parsed = await self._parse_input(run, cv_path, sandbox)
+            stored = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)  # upload OCR already read it: never OCR twice
+            parsed = ParsedInput(stored, "text", "0" * 64) if stored else await self._parse_input(run, cv_path, sandbox)
             # Free by-product of parsing: remember the CV's skill names (never its text) if not yet stored.
             with contextlib.suppress(Exception):
                 await asyncio.to_thread(self._store_profile, run.cv_revision_id, parsed.text)
@@ -468,6 +470,9 @@ class RunExecutor:
 
     async def _parse_cv_text(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> str:
         """Parse the run's CV inside the sandbox (no LLM); the native project is stopped again before returning."""
+        stored = await asyncio.to_thread(self._stored_cv_text, run.cv_revision_id)
+        if stored:  # upload OCR already read it: never OCR twice
+            return stored
         cv_path = await self._materialize(run, sandbox)
 
         async def reserve_tool(_call_id: str, _tool_name: str) -> bool:
@@ -1439,7 +1444,7 @@ def _safe_message(code: str) -> str:
         "export_failed": "errors.export_failed",
         "gateway_unconfigured": "errors.gateway_unconfigured",
         "ocr_unavailable": "errors.ocr_unavailable",
-        "scanned_pdf_unsupported": "errors.scanned_pdf_unsupported",
+        "document_too_many_pages": "errors.document_too_many_pages",
         "jev_unavailable": "errors.jev_unavailable",
         "jev_failed": "errors.jev_failed",
         "cv_text_empty": "errors.cv_text_empty",

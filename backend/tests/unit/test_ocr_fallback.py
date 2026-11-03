@@ -14,7 +14,6 @@ from job_search_platform.services.ocr import transcribe_pages, with_vision_text
 
 sys.path.insert(0, str(Path(__file__).parents[3] / "infra/hermes"))
 import parse_document  # noqa: E402
-from parse_document import broken_thai  # noqa: E402
 
 
 class _Opener:
@@ -29,13 +28,6 @@ class _Opener:
 
 def _gateway(opener, key="k"):
     return GatewaySettings("http://gw", key, "ai-analyze", "d", opener)
-
-
-def test_broken_thai_detection():
-    assert broken_thai("กขคงจ" * 60)  # consonants, no marks
-    assert not broken_thai("สวัสดีครับ ผู้สมัครงานที่มีประสบการณ์ " * 15)
-    assert not broken_thai("plain english " * 100)
-    assert not broken_thai("กขค")  # too short to judge
 
 
 class _ByImageOpener(_Opener):
@@ -54,7 +46,7 @@ class _ByImageOpener(_Opener):
 
 def test_transcribe_joins_pages_and_deletes_images(tmp_path, monkeypatch):
     monkeypatch.delenv("AI_MODEL_DOCUMENT_OCR", raising=False)
-    pages = [tmp_path / "ocr-1.jpg", tmp_path / "ocr-2.jpg"]
+    pages = [tmp_path / "page-1.jpg", tmp_path / "page-2.jpg"]
     for number, page in enumerate(pages, 1):
         page.write_bytes(b"\xff\xd8fake%d" % number)
     opener = _ByImageOpener({b"\xff\xd8fake1": "page one", b"\xff\xd8fake2": "page two"})
@@ -67,7 +59,7 @@ def test_transcribe_joins_pages_and_deletes_images(tmp_path, monkeypatch):
 
 def test_model_override_and_failure_code(tmp_path, monkeypatch):
     monkeypatch.setenv("AI_MODEL_DOCUMENT_OCR", "vision-x")
-    page = tmp_path / "ocr-1.jpg"
+    page = tmp_path / "page-1.jpg"
     page.write_bytes(b"x")
     opener = _Opener(["ok"])
     asyncio.run(transcribe_pages(_gateway(opener), [page]))
@@ -83,55 +75,67 @@ def test_with_vision_text_passthrough_and_no_key(tmp_path):
     plain = ParsedInput("hello", "pdf", "0" * 64)
     assert asyncio.run(with_vision_text(plain, tmp_path, lambda: None)) is plain
     (tmp_path / "staging").mkdir()
-    (tmp_path / "staging/ocr-1.jpg").write_bytes(b"x")
-    scan = ParsedInput("", "pdf", "0" * 64, "scanned_pdf", ("staging/ocr-1.jpg",))
-    with pytest.raises(ServiceError) as error:
+    (tmp_path / "staging/page-1.jpg").write_bytes(b"x")
+    scan = ParsedInput("", "pdf", "0" * 64, ("staging/page-1.jpg",))
+    with pytest.raises(ServiceError) as error:  # no text-layer fallback exists
         asyncio.run(with_vision_text(scan, tmp_path, lambda: _gateway(_Opener([]), key=None)))
-    assert error.value.code == "scanned_pdf_unsupported"
-    bad = ParsedInput("", "pdf", "0" * 64, "scanned_pdf", ("staging/../x.jpg",))
+    assert error.value.code == "ocr_unavailable"
+    assert not (tmp_path / "staging/page-1.jpg").exists()
+    bad = ParsedInput("", "pdf", "0" * 64, ("staging/../x.jpg",))
     with pytest.raises(ServiceError):
         asyncio.run(with_vision_text(bad, tmp_path, lambda: _gateway(_Opener([]))))
 
 
-def _stub_anydoc(monkeypatch, *, error=None, text="Somchai Example"):
-    stub = type(sys)("anydoc")
-    for name in ("ConvertError", "EncryptedError", "NeedsOcrError", "ResourceLimitError"):
-        setattr(stub, name, type(name, (Exception,) if name == "ConvertError" else (stub.ConvertError,), {}))
-    stub.to_markdown_bytes = lambda data, ocr: (_ for _ in ()).throw(getattr(stub, error)()) if error else text
-    monkeypatch.setitem(sys.modules, "anydoc", stub)
-    return stub
+def test_png_pages_are_sent_as_png(tmp_path):
+    page = tmp_path / "page-1.png"
+    page.write_bytes(b"\x89PNG\r\n\x1a\nx")
+    opener = _Opener(["ok"])
+    asyncio.run(transcribe_pages(_gateway(opener), [page]))
+    assert opener.requests[0]["messages"][0]["content"][1]["image_url"]["url"].startswith("data:image/png;base64,")
 
 
-def _inputs(tmp_path, monkeypatch, body):
+def _inputs(tmp_path, monkeypatch, name, body):
     root = tmp_path / "inputs"
-    root.mkdir()
-    (root / "cv.pdf").write_bytes(body)
+    root.mkdir(exist_ok=True)
+    (root / name).write_bytes(body)
     real = Path
     monkeypatch.setattr(parse_document, "Path", lambda value: real(str(value).replace("/workspace", str(tmp_path))))
-    return root / "cv.pdf"
+    monkeypatch.setattr(parse_document, "STAGING", tmp_path / "staging")
+    return root / name
 
 
-def test_pdf_with_bytes_before_header_is_parsed_as_pdf(tmp_path, monkeypatch):
-    _stub_anydoc(monkeypatch)
-    path = _inputs(tmp_path, monkeypatch, b"\xef\xbb\xbf\r\n  %PDF-1.4\n...")
-    assert parse_document.parse(path)["kind"] == "pdf"
+def test_every_kind_goes_to_pages_never_text(tmp_path, monkeypatch):
+    rendered = []
+    monkeypatch.setattr(parse_document, "render_pdf", lambda pdf: rendered.append(pdf.name) or ["staging/page-1.png"])
+    # PDF with bytes before the header (BOM, blank lines) is still a PDF
+    pdf = _inputs(tmp_path, monkeypatch, "cv.pdf", b"\xef\xbb\xbf\r\n  %PDF-1.4\n...")
+    assert parse_document.parse(pdf) == {"pages": ["staging/page-1.png"], "kind": "pdf", "sha256": parse_document.hashlib.sha256(pdf.read_bytes()).hexdigest()}
+    monkeypatch.setattr(parse_document, "html_to_pdf", lambda body, out: out.write_bytes(b"%PDF"))
+    txt = _inputs(tmp_path, monkeypatch, "cv.txt", "สวัสดี <b>".encode())
+    assert parse_document.parse(txt)["kind"] == "text" and rendered[-1] == "doc.pdf"
+    assert not (tmp_path / "staging/doc.pdf").exists()
 
 
-def test_password_pdf_reports_document_encrypted(tmp_path, monkeypatch):
-    _stub_anydoc(monkeypatch, error="EncryptedError")
-    path = _inputs(tmp_path, monkeypatch, b"%PDF-1.4\n...")
+def test_rejections(tmp_path, monkeypatch):
+    for name, body, code in (("a.txt", b"  \n", "empty_input"), ("a.txt", b"a\0b", "unsupported_input"),
+                             ("a.bin", b"plain", "unsupported_input"), ("a.docx", b"PK\x03\x04junk", "document_invalid"),
+                             ("a.txt", b"x" * 300_001, "document_too_many_pages")):
+        with pytest.raises(ValueError, match=code):
+            parse_document.parse(_inputs(tmp_path, monkeypatch, name, body))
+
+
+def test_page_cap_and_password_pdf(tmp_path, monkeypatch):
+    def fake(out):
+        return lambda cmd, timeout: type("R", (), {"stdout": out})()
+    monkeypatch.setattr(parse_document, "_run", fake("Pages:          11\n"))
+    with pytest.raises(ValueError, match="document_too_many_pages"):
+        parse_document._page_info(tmp_path / "x.pdf")
+
+    def locked(cmd, timeout):
+        raise ValueError("document_encrypted")
+    monkeypatch.setattr(parse_document, "_run", locked)
     with pytest.raises(ValueError, match="document_encrypted"):
-        parse_document.parse(path)
-
-
-def test_pdf_anydoc_cannot_read_falls_back_to_page_images(tmp_path, monkeypatch):
-    _stub_anydoc(monkeypatch, error="ConvertError")
-    path = _inputs(tmp_path, monkeypatch, b"%PDF-1.4\n...")
-    monkeypatch.setattr(parse_document, "render_pages", lambda p, reason, sha: {"needs_vision": True, "reason": reason})
-    assert parse_document.parse(path)["needs_vision"] is True
-    monkeypatch.setattr(parse_document, "render_pages", lambda *a: (_ for _ in ()).throw(ValueError("x")))
-    with pytest.raises(ValueError, match="document_invalid"):  # poppler cannot open it either
-        parse_document.parse(path)
+        parse_document._page_info(tmp_path / "x.pdf")
 
 
 def test_no_text_sentinel_means_empty_page():

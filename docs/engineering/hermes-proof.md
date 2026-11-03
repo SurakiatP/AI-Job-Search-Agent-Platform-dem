@@ -145,15 +145,16 @@ this proof covers native bridge death while the adapter remains alive.
 ## Document operations for CORE-05/08
 
 `parse_input(project_id, "inputs/<snapshot>")` returns
-`ParsedInput(text, kind, sha256)`. It invokes the same declared native converter
-`anydoc.to_markdown_bytes(..., ocr="reject")` inside the execution container.
-Pasted UTF-8 text, text-bearing English/Thai PDF, and DOCX are supported. Inputs are
-limited to 20 MiB; DOCX expansion to 100 MiB, 1000 entries, and ratio 100; extracted
-text to 1 MiB. Unsupported, encrypted, malformed, and empty inputs return stable
-errors. Image-only PDFs and PDFs whose Thai text layer lost its tone marks make the sandbox render up
-to 4 pages to `staging/ocr-N.jpg` (poppler, network off) and return `needs_vision`; the host then
-transcribes them through LiteLLM (`services/ocr.py`, `AI_MODEL_DOCUMENT_OCR`). Without a gateway key
-the code stays `scanned_pdf_unsupported`. Magic bytes identify PDF/DOCX rather than trusting their filename.
+`ParsedInput(text, kind, sha256, pages)`. The sandbox never reads a document's own text layer
+(it came out broken for Thai). It renders every input to page pictures in `staging/page-N.png`
+(JPEG for a page whose PNG exceeds 3 MB): PDF via `pdftoppm`; DOCX via `mammoth` -> HTML -> headless
+chromium print (Noto Sans Thai) -> `pdftoppm`; TXT/MD via an HTML `<pre>` through the same print path.
+Pages are about 120 dpi, long edge at most 1800 px, at most 10 pages (`document_too_many_pages`
+beyond that). The host sends each page to the vision model (`services/ocr.py`,
+`AI_MODEL_DOCUMENT_OCR`, 5 requests at a time) and joins the texts in page order; without a gateway key
+the code is `ocr_unavailable`. Inputs are limited to 20 MiB; DOCX expansion to 100 MiB, 1000 entries,
+and ratio 100. Unsupported, encrypted, malformed, and empty inputs return stable errors. Runs reuse the
+CV text stored at upload (`CVRevisionText`) and OCR again only when none is stored. Magic bytes identify PDF/DOCX rather than trusting their filename.
 
 `export_document(project_id, format, source, output)` accepts relative `staging/`
 paths and returns the output path. Native invocations are:

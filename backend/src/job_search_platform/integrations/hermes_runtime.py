@@ -21,7 +21,7 @@ ERROR_CODES = frozenset({"project_busy", "provider_not_configured", "native_stop
     "native_interface_invalid", "input_path_invalid", "artifact_path_invalid",
     "unsupported_export", "export_failed", "native_bridge_failed"})
 PARSE_ERRORS = frozenset({"input_path_invalid", "input_size_invalid", "document_expansion_limit",
-    "document_invalid", "document_encrypted", "unsupported_input", "scanned_pdf_unsupported",
+    "document_invalid", "document_encrypted", "unsupported_input", "document_too_many_pages",
     "empty_input", "extracted_text_limit"})
 
 # Operations the native bridge has a Career Ops context for (infra/hermes/native_bridge.py CAREER_OPS_FILES).
@@ -82,8 +82,7 @@ class ParsedInput:
     text: str
     kind: Literal["text", "pdf", "docx"]
     sha256: str
-    needs_vision: str | None = None  # "scanned_pdf" | "broken_thai": text is empty, pages hold JPEG paths to transcribe
-    pages: tuple[str, ...] = ()
+    pages: tuple[str, ...] = ()  # sandbox page pictures (staging/page-N.png|jpg) the host sends to the vision model; text is empty until then
 
 @dataclass
 class ProjectRuntime:
@@ -313,20 +312,13 @@ class HermesRuntime:
         if "parse_error" in response:
             code = response["parse_error"]
             raise RuntimeErrorCode(code if isinstance(code, str) and code in PARSE_ERRORS else "document_invalid")
-        if response.get("needs_vision") is True:
-            pages = response.get("pages")
-            if (response.get("reason") not in ("scanned_pdf", "broken_thai") or response.get("kind") != "pdf"
-                    or not isinstance(pages, list) or not 1 <= len(pages) <= 4
-                    or any(not isinstance(p, str) or not re.fullmatch(r"staging/ocr-[1-4]\.jpg", p) for p in pages)
-                    or not isinstance(response.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", response["sha256"])):
-                raise RuntimeErrorCode("native_response_invalid")
-            return ParsedInput("", "pdf", response["sha256"], response["reason"], tuple(pages))
-        if (not isinstance(response.get("text"), str)
-                or len(response["text"].encode()) > 1024 * 1024
+        pages = response.get("pages")
+        if (not isinstance(pages, list) or not 1 <= len(pages) <= 10
+                or any(not isinstance(p, str) or not re.fullmatch(r"staging/page-([1-9]|10)\.(png|jpg)", p) for p in pages)
                 or response.get("kind") not in ("text", "pdf", "docx")
                 or not isinstance(response.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", response["sha256"])):
             raise RuntimeErrorCode("native_response_invalid")
-        return ParsedInput(response["text"], response["kind"], response["sha256"])
+        return ParsedInput("", response["kind"], response["sha256"], tuple(pages))
 
     async def export_document(self, project_id: UUID, format: Literal["pdf", "docx"],
                               source: str, output: str, engine: str = "chromium") -> str:

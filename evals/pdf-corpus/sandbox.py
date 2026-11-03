@@ -12,5 +12,4 @@ for f in sorted(corpus.glob("*.pdf")):
                             "--entrypoint", "python", image, "/opt/runtime/parse_document.py", "/workspace/inputs/x.pdf"], capture_output=True, text=True)
     try: r = json.loads(p.stdout)
     except Exception: r = {"error": "NO_JSON " + p.stderr[-80:]}
-    t = r.get("text")
-    print(f"{f.name:30} {('text %d: %r' % (len(t), t[:60])) if t else r.get('error') or ('VISION ' + r.get('reason', '') + ' %d pages' % len(r['pages']))}")
+    print(f"{f.name:30} {r.get('error') or '%d pages: %s' % (len(r['pages']), ', '.join(r['pages']))}")

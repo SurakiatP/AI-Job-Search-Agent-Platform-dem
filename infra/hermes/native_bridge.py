@@ -377,7 +377,7 @@ def main():
                     raise RuntimeError("input_path_invalid")
                 execution = json.loads(terminal.terminal_tool(
                     "python /opt/runtime/parse_document.py " + shlex.quote("/workspace/" + str(path)),
-                    task_id=task_id, timeout=30))
+                    task_id=task_id, timeout=45))
                 result = json.loads(execution.get("output", ""))
                 if execution.get("exit_code") != 0:
                     result = {"parse_error": result.get("error", "document_invalid")}

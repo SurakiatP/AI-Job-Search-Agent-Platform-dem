@@ -1,39 +1,96 @@
-"""Run only inside the network-disabled execution image."""
+"""Run only inside the network-disabled execution image.
+
+Every upload becomes page pictures for the host's vision OCR; the document's own text layer is never read.
+PDF: pdftoppm. DOCX: mammoth -> HTML -> chromium print -> PDF -> pdftoppm. TXT/MD: HTML <pre> -> same print path.
+"""
 from __future__ import annotations
 import hashlib
+import html
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import zipfile
 
-THAI_MARKS = re.compile("[\u0e31\u0e34-\u0e3a\u0e47-\u0e4e]")
-THAI_CONSONANTS = re.compile("[\u0e01-\u0e2e]")
+MAX_PAGES = 10
+MAX_EDGE_PX = 1800
+DPI = 120
+MAX_PNG_BYTES = 3 * 1024 * 1024  # the host rejects pages over 4 MB; a bigger PNG falls back to JPEG for that page
+MAX_TEXT_BYTES = 300_000  # ~ more than 10 printed pages of text; stops chromium from printing hundreds of pages
+STAGING = Path("/workspace/staging")
+CSS = """@page { size: A4; margin: 14mm; }
+body { font-family: 'Noto Sans Thai', 'Noto Sans', sans-serif; font-size: 11pt; line-height: 1.45; }
+img { max-width: 100%; height: auto; } table { border-collapse: collapse; } td, th { border: 1px solid #888; padding: 2px 4px; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: 'Noto Sans Thai', 'Noto Sans', monospace; margin: 0; }"""
+CSP = "default-src 'none'; img-src data:; style-src 'unsafe-inline'"
 
-def broken_thai(text: str) -> bool:
-    # A Thai text layer with its combining marks lost (bad font encoding) has plenty of consonants and almost no marks.
-    consonants = len(THAI_CONSONANTS.findall(text))
-    return consonants >= 200 and len(THAI_MARKS.findall(text)) / consonants < 0.02
 
-def render_pages(path: Path, reason: str, sha256: str) -> dict:
-    """Render the first pages to JPEG files for the host to send to a vision model. Never returns image bytes."""
-    staging = Path("/workspace/staging")
-    staging.mkdir(mode=0o700, exist_ok=True)
-    for old in staging.glob("ocr-*.jpg"):
-        old.unlink()
-    subprocess.run(["pdftoppm", "-jpeg", "-jpegopt", "quality=70", "-r", "110", "-f", "1", "-l", "4",
-                    str(path), str(staging / "ocr")], check=True, timeout=20, capture_output=True)
-    files = sorted(staging.glob("ocr-*.jpg"))
-    if not files:
+def _run(cmd: list[str], timeout: int, env: dict | None = None) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(cmd, check=True, timeout=timeout, capture_output=True, text=True, errors="replace", env=env)
+    except subprocess.CalledProcessError as exc:
+        if "Incorrect password" in (exc.stderr or ""):
+            raise ValueError("document_encrypted") from None
+        raise ValueError("document_invalid") from None
+    except subprocess.TimeoutExpired:
+        raise ValueError("document_invalid") from None
+
+
+def _page_info(pdf: Path) -> list[tuple[float, float]]:
+    out = _run(["pdfinfo", "-f", "1", "-l", str(MAX_PAGES + 1), str(pdf)], 20).stdout
+    match = re.search(r"^Pages:\s+(\d+)", out, re.M)
+    if not match or int(match[1]) < 1:
         raise ValueError("document_invalid")
+    if int(match[1]) > MAX_PAGES:
+        raise ValueError("document_too_many_pages")
+    sizes = [(float(w), float(h)) for w, h in re.findall(r"^Page\s+\d+ size:\s+([\d.]+) x ([\d.]+) pts", out, re.M)]
+    if len(sizes) != int(match[1]):
+        raise ValueError("document_invalid")
+    return sizes
+
+
+def render_pdf(pdf: Path) -> list[str]:
+    for old in STAGING.glob("page-*"):
+        old.unlink()
     names = []
-    for number, file in enumerate(files, 1):
-        target = staging / f"ocr-{number}.jpg"
-        if file != target:
-            file.rename(target)
+    for number, (width, height) in enumerate(_page_info(pdf), 1):
+        dpi = max(30, min(DPI, int(MAX_EDGE_PX * 72 / max(width, height, 1))))  # long edge stays <= MAX_EDGE_PX
+        stem = STAGING / f"page-{number}"
+        _run(["pdftoppm", "-png", "-gray", "-r", str(dpi), "-f", str(number), "-l", str(number), "-singlefile", str(pdf), str(stem)], 25)
+        target = stem.with_suffix(".png")
+        if target.stat().st_size > MAX_PNG_BYTES:
+            target.unlink()
+            _run(["pdftoppm", "-jpeg", "-jpegopt", "quality=80", "-r", str(dpi), "-f", str(number), "-l", str(number),
+                  "-singlefile", str(pdf), str(stem)], 25)
+            target = stem.with_suffix(".jpg")
         names.append(f"staging/{target.name}")
-    return {"needs_vision": True, "reason": reason, "pages": names, "kind": "pdf", "sha256": sha256}
+    return names
+
+
+def html_to_pdf(body: str, out: Path) -> None:
+    page = STAGING / "doc.html"
+    page.write_text(f'<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="{CSP}">'
+                    f"<style>{CSS}</style>{body}", encoding="utf-8")
+    profile = STAGING / "chrome-profile"
+    try:
+        # HOME and the crash/profile dirs must be writable: the image runs as nobody with a read-only home, and crashpad aborts otherwise.
+        _run(["chromium", "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--no-crashpad",
+              f"--crash-dumps-dir={profile}", "--no-pdf-header-footer", f"--user-data-dir={profile}",
+              f"--print-to-pdf={out}", page.as_uri()], 40, {"PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": str(STAGING)})
+    finally:
+        shutil.rmtree(profile, ignore_errors=True)
+        page.unlink(missing_ok=True)
+    if not out.is_file():
+        raise ValueError("document_invalid")
+
+
+def docx_html(path: Path) -> str:
+    import mammoth
+    with path.open("rb") as handle:
+        return mammoth.convert_to_html(handle).value  # embedded images become data: URIs
+
 
 def parse(path: Path) -> dict:
     root = Path("/workspace/inputs").resolve()
@@ -43,59 +100,50 @@ def parse(path: Path) -> dict:
     if not 0 < size <= 20 * 1024 * 1024:
         raise ValueError("input_size_invalid")
     data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    STAGING.mkdir(mode=0o700, exist_ok=True)
     if b"%PDF-" in data[:1024]:  # mail clients and scanners put a BOM or blank lines before the header; the upload sniff allows it too
-        kind = "pdf"
+        kind, pdf = "pdf", path
     elif data.startswith(b"PK\x03\x04"):
-        kind = "docx"
-        with zipfile.ZipFile(path) as archive:
-            entries = archive.infolist()
-            if len(entries) > 1000 or sum(e.file_size for e in entries) > 100 * 1024 * 1024:
-                raise ValueError("document_expansion_limit")
-            if "word/document.xml" not in archive.namelist():
-                raise ValueError("document_invalid")
-            if any(e.flag_bits & 1 for e in entries):
-                raise ValueError("document_encrypted")
-            if any(e.file_size / max(1, e.compress_size) > 100 for e in entries):
-                raise ValueError("document_expansion_limit")
+        kind, pdf = "docx", STAGING / "doc.pdf"
+        try:
+            with zipfile.ZipFile(path) as archive:
+                entries = archive.infolist()
+                if len(entries) > 1000 or sum(e.file_size for e in entries) > 100 * 1024 * 1024:
+                    raise ValueError("document_expansion_limit")
+                if "word/document.xml" not in archive.namelist():
+                    raise ValueError("document_invalid")
+                if any(e.flag_bits & 1 for e in entries):
+                    raise ValueError("document_encrypted")
+                if any(e.file_size / max(1, e.compress_size) > 100 for e in entries):
+                    raise ValueError("document_expansion_limit")
+        except zipfile.BadZipFile:
+            raise ValueError("document_invalid") from None
+        html_to_pdf(docx_html(path), pdf)
     else:
-        kind = "text"
+        kind, pdf = "text", STAGING / "doc.pdf"
         if path.suffix.lower() not in {".txt", ".md"} or b"\0" in data:
             raise ValueError("unsupported_input")
-    if kind == "text":
+        if len(data) > MAX_TEXT_BYTES:
+            raise ValueError("document_too_many_pages")
         text = data.decode("utf-8")
-    else:
-        import anydoc
-        try:
-            text = anydoc.to_markdown_bytes(data, ocr="reject")
-        except anydoc.EncryptedError:
-            raise ValueError("document_encrypted") from None
-        except anydoc.ResourceLimitError:
-            raise ValueError("document_expansion_limit") from None
-        except anydoc.NeedsOcrError:
-            return render_pages(path, "scanned_pdf", hashlib.sha256(data).hexdigest())
-        except anydoc.ConvertError:
-            # anydoc is stricter than poppler (odd structure, new PDF features): let the vision model read what renders
-            if kind != "pdf":
-                raise
-            try:
-                return render_pages(path, "scanned_pdf", hashlib.sha256(data).hexdigest())
-            except Exception:
-                raise ValueError("document_invalid") from None
-        if kind == "pdf" and broken_thai(text):
-            return render_pages(path, "broken_thai", hashlib.sha256(data).hexdigest())
-    if not isinstance(text, str) or not text.strip():
-        raise ValueError("empty_input")
-    if len(text.encode("utf-8")) > 1024 * 1024:
-        raise ValueError("extracted_text_limit")
-    return {"text": text, "kind": kind, "sha256": hashlib.sha256(data).hexdigest()}
+        if not text.strip():
+            raise ValueError("empty_input")
+        html_to_pdf(f"<pre>{html.escape(text)}</pre>", pdf)
+    try:
+        pages = render_pdf(pdf)
+    finally:
+        if pdf != path:
+            pdf.unlink(missing_ok=True)
+    return {"pages": pages, "kind": kind, "sha256": digest}
+
 
 if __name__ == "__main__":
     try:
         value = parse(Path(sys.argv[1]))
     except Exception as exc:
         allowed = {"input_path_invalid", "input_size_invalid", "document_expansion_limit",
-                   "document_invalid", "document_encrypted", "unsupported_input",
-                   "scanned_pdf_unsupported", "empty_input", "extracted_text_limit"}
+                   "document_invalid", "document_encrypted", "unsupported_input", "document_too_many_pages", "empty_input"}
         code = str(exc) if str(exc) in allowed else "document_invalid"
         print(json.dumps({"error": code}))
         sys.exit(1)

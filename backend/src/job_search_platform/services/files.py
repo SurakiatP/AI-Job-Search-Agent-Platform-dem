@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from job_search_platform.db.models import CV, CVRevision, Document, DocumentRevision, Project, Run, RunArtifact, StoredFile
+from job_search_platform.db.models import CV, CVRevision, CVRevisionText, Document, DocumentRevision, Project, Run, RunArtifact, StoredFile
 from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.integrations.hermes_runtime import PARSE_ERRORS, RuntimeErrorCode
 from job_search_platform.services.ocr import with_vision_text
@@ -28,7 +28,7 @@ from job_search_platform.services.errors import ServiceError
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_STREAM_SECONDS = 60
-MAX_PARSE_SECONDS = 40
+MAX_PARSE_SECONDS = 50
 CHUNK_SIZE = 64 * 1024
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 _MIME_EXTENSIONS = {"text/plain": ".txt", "application/pdf": ".pdf", DOCX_MIME: ".docx"}
@@ -126,7 +126,7 @@ class Files:
                     raise ServiceError("file_unavailable")
                 persisted.publication_state = "published"
                 if kind == "cv_original":
-                    _add_cv_revision(db, project_id, file_id, cv_id=cv_id, new_cv_name=new_cv_name)
+                    _add_cv_revision(db, project_id, file_id, cv_id=cv_id, new_cv_name=new_cv_name, text=parsed.text)
         except Exception:
             # The pending row is durable from the earlier transaction. Reconciliation
             # verifies the object bytes before it can make that row visible.
@@ -517,7 +517,8 @@ def _live_cv(db: Session, project_id: UUID, cv_id: UUID) -> CV:
 
 
 def _add_cv_revision(
-    db: Session, project_id: UUID, file_id: UUID, *, cv_id: UUID | None = None, new_cv_name: str | None = None
+    db: Session, project_id: UUID, file_id: UUID, *, cv_id: UUID | None = None, new_cv_name: str | None = None,
+    text: str | None = None,
 ) -> None:
     """Append a revision to cv_id, to a new CV named new_cv_name, or to the primary CV.
 
@@ -545,7 +546,11 @@ def _add_cv_revision(
     revision = db.scalar(
         select(func.coalesce(func.max(CVRevision.revision), 0) + 1).where(CVRevision.cv_id == cv.id)
     )
-    db.add(CVRevision(project_id=project_id, cv_id=cv.id, revision=revision, file_id=file_id))
+    row = CVRevision(project_id=project_id, cv_id=cv.id, revision=revision, file_id=file_id)
+    db.add(row)
+    if text and text.strip():  # the upload OCR text: runs reuse it instead of OCR-ing the CV again
+        db.flush()
+        db.add(CVRevisionText(cv_revision_id=row.id, project_id=project_id, text=text.replace("\x00", "")[:200_000]))
 
 
 def _authorize_file(db: Session, actor: Actor, project_id: UUID, row: StoredFile) -> None:
