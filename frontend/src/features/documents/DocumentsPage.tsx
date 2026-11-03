@@ -133,10 +133,7 @@ export function DocumentsPage() {
   const title = t('pages.documentsTitle', { defaultValue: 'Documents' });
   // Same header block and rhythm as the populated page; the empty message sits in a card under it.
   if (!documents.length && !undo) return <section className="grid gap-6 lg:gap-8">
-    <div className="grid gap-1">
-      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-      <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
-    </div>
+    <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
     <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-5 sm:p-6">
       <h2 className="text-lg font-semibold">{w('emptyTitle')}</h2>
       <p className="text-sm text-muted-foreground">{w('emptyHelp')}</p>
@@ -144,23 +141,19 @@ export function DocumentsPage() {
     </div>
   </section>;
   const chips: [DocType | 'all', string][] = [['all', c.all], ['cv', documentTypeLabel('cv', t)], ['cover_letter', documentTypeLabel('cover_letter', t)], ['application_message', documentTypeLabel('application_message', t)], ['other', documentTypeLabel('other', t)]];
-  const visible = filter === 'all' ? documents : documents.filter(document => document.document_type === filter);
+  const visible = filter === 'all' || documents.length < 4 ? documents : documents.filter(document => document.document_type === filter);
   async function undoTrash() {
     if (!undo) return;
     try { await restoreDocument(projectId, undo.id); setUndo(null); reloadAll(); } catch { setUndo({ id: undo.id, message: c.undoFailed }); }
   }
   return <section className="grid gap-6 lg:gap-8">
-    <div className="grid gap-1">
-      <PageBack to={`/app/projects/${projectId}/overview`}>{t('nav.overview')}</PageBack>
-      <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
-    </div>
+    <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
     <p className="text-sm text-muted-foreground">{w('count', { count: documents.length })}</p>
-    {documents.length < 3 && filter === 'all' && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4"><p className="min-w-0 text-sm text-muted-foreground">{c.nextDocs}</p><Button asChild variant="outline"><Link to={evaluateHref}>{c.evaluate}</Link></Button></div>}
     {undo && <Alert severity="info" role="status" action={<span className="flex flex-wrap items-center gap-2">
         {undo.id && <Button type="button" size="sm" variant="outline" onClick={() => { void undoTrash(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
         <Link className="inline-flex min-h-11 lg:min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=documents`}>{c.openTrash}</Link>
       </span>}>{undo.message}</Alert>}
-    <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <Button key={value} type="button" size="sm" variant="outline" className={filter === value ? 'border-primary bg-primary/12 font-semibold text-primary' : ''} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</Button>)}</div>
+    {documents.length >= 4 && <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <Button key={value} type="button" size="sm" variant="outline" className={filter === value ? 'border-primary bg-primary/12 font-semibold text-primary' : ''} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</Button>)}</div>}
     {visible.length === 0 ? <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-5"><p className="text-sm text-muted-foreground">{w('emptyFilter')} {w('emptyHelp')}</p><Button asChild variant="outline"><Link to={evaluateHref}>{c.evaluate}</Link></Button></div> :
       <ul aria-label={title} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map(document => {
         const Icon = typeIcon[document.document_type];

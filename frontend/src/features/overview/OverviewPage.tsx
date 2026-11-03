@@ -1,24 +1,19 @@
-import { useEffect, type ReactNode } from 'react';
-import { ArrowRight, FileText, LayoutDashboard, ListChecks, Search, CheckCircle2, Clock3 } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { ArrowRight, LayoutDashboard, ListChecks, Clock3, Upload, Search, Loader2 } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { CvPreviewButton } from '@/components/CvPreview';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FitScore } from '@/components/FitScore';
-import { SkillCount } from '@/components/SkillCoverage';
 import { StatusBadge } from '@/components/StatusBadge';
 import type { ApprovalView, CVView, DocumentView, JobRevisionView, ProjectView, RunView, SessionView } from '@/lib/api-types';
 import { ErrorState } from '../projects/PageStates';
-import { NewSessionButton } from '../sessions/NewSessionDialog';
-import { useResource } from '../projects/useResource';
-import { JobRemoveMenu } from '../jobs/JobRemoveMenu';
+import { sendJson, useResource } from '../projects/useResource';
+import { EvaluateButton } from '../sessions/EvaluateButton';
+import { nextStep, type NextStep } from './nextStep';
 import { useOverviewCopy } from './copy';
-import { GettingStarted, HelpPanel } from './GettingStarted';
-import { JourneyStrip } from './JourneyStrip';
 import { latestEvaluations } from './latestEvaluations';
-import { AiLabel } from '@/components/AiMark';
 import { PageHeader } from '@/components/PageHeader';
 
 function ResourcePanel({ resource, children }: { resource: { status: string; reload: () => void; data?: unknown }; children: ReactNode }) {
@@ -53,25 +48,34 @@ export function OverviewPage() {
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
   const approvals = useResource<ApprovalView[]>(`/projects/${projectId}/approvals`);
   const sessions = useResource<SessionView[]>(`/projects/${projectId}/sessions`);
+  const [stageBusy, setStageBusy] = useState(false);
+  const [stageFailed, setStageFailed] = useState(false);
   const cv = cvs.data?.find(item => item.is_primary) ?? cvs.data?.[0];
-  const revision = cv?.latest_revision;
   const jobList = jobs.data ?? [];
-  const docList = documents.data ?? [];
   const runList = runs.data ?? [];
   const attention = runList.filter(run => run.status === 'needs_input' || run.status === 'waiting_approval');
   const active = runList.filter(run => run.status === 'queued' || run.status === 'running');
   const pending = (approvals.data ?? []).filter(item => !item.consumed_at && !item.decision && Date.parse(item.expires_at) > Date.now());
   const unmatchedApprovals = pending.filter(item => !attention.some(run => run.id === item.run_id));
   const evaluations = latestEvaluations(runList, sessions.data);
-  const recent = [...evaluations.values()].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5);
-  const runHref = (run: RunView) => run.session_id ? `${base}/sessions/${run.session_id}` : `${base}/console?tab=runs`;
+  // Runs such as "Read CV" carry no session_id, so they never link to one.
+  const runHref = (run: RunView) => run.status === 'waiting_approval' ? `${base}/console?tab=approvals` : run.session_id ? `${base}/sessions/${run.session_id}` : `${base}/console?tab=runs`;
+  const opLabel = (run: RunView) => c.ops[run.operation] ?? t(`workspace.operations.${run.operation}`);
   const hasAttention = attention.length > 0 || unmatchedApprovals.length > 0;
   const refreshRuns = runs.reload;
   const refreshApprovals = approvals.reload;
   const hasLiveWork = hasAttention || active.length > 0;
-  // First-run only when the answers are known; while a resource is loading or failed, each section shows its own state.
-  const firstRun = !!cvs.data && !!jobs.data && !!runs.data && evaluations.size === 0 && (!revision || jobList.length === 0);
-  const savedFirst = [...jobList].sort((a, b) => Number((a.application_status ?? 'saved') === 'saved') - Number((b.application_status ?? 'saved') === 'saved'));
+  const recentJobs = [...jobList].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const focus = recentJobs[0];
+  const focusSession = focus ? sessions.data?.find(item => item.job_revision_id === focus.id) : undefined;
+  const drafted = !!focusSession && (documents.data ?? []).some(doc => doc.source_run_id && runList.some(run => run.id === doc.source_run_id && run.session_id === focusSession.id && run.operation === 'draft_documents'));
+  const step: NextStep | null = cvs.data && jobs.data && runs.data ? nextStep({
+    hasCv: !!cv?.latest_revision,
+    extractionRunning: active.some(run => run.operation === 'extract_experience' || run.operation === 'profile_cv'),
+    waitingRunId: attention[0]?.id,
+    job: focus ? { id: focus.id, stage: focus.application_status ?? undefined, session: focusSession ? { id: focusSession.id, scored: evaluations.has(focus.id), drafted } : undefined } : undefined,
+  }) : null;
+  const firstRun = !!step && evaluations.size === 0 && (step.key === 'uploadCv' || step.key === 'readingCv' || step.key === 'findJob');
   useEffect(() => {
     const refresh = () => { if (document.visibilityState !== 'hidden') { refreshRuns(); refreshApprovals(); } };
     window.addEventListener('focus', refresh);
@@ -79,93 +83,75 @@ export function OverviewPage() {
     return () => { window.removeEventListener('focus', refresh); window.clearInterval(timer); };
   }, [projectId, hasLiveWork, refreshRuns, refreshApprovals]);
 
-  const jobsSection = <Section id="jobs-heading" title={c.jobs} viewAll={{ to: `${base}/applications`, label: t('workspace.applications') }}>
+  async function markApplied() {
+    if (!focus || stageBusy) return;
+    setStageBusy(true); setStageFailed(false);
+    try { await sendJson(`/projects/${projectId}/jobs/${focus.id}/application-status`, 'PATCH', { application_status: 'applied' }); jobs.reload(); }
+    catch { setStageFailed(true); } finally { setStageBusy(false); }
+  }
+
+  // Exactly one primary control per state; the "reading" state has none and says so.
+  function heroAction(s: NextStep, label: string) {
+    const a = s.action;
+    if (a.type === 'none') return <p role="status" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Loader2 size={17} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />{label}</p>;
+    if (a.type === 'pickFile') return <Button asChild><Link to={`${base}/profile`}><Upload size={17} aria-hidden="true" />{label}</Link></Button>;
+    if (a.type === 'link') return <Button asChild><Link to={`${base}/${a.to}`}>{a.to === 'search' && <Search size={17} aria-hidden="true" />}{label}</Link></Button>;
+    if (a.type === 'evaluate') return <EvaluateButton projectId={projectId} job={{ savedId: a.jobId }}>{label}</EvaluateButton>;
+    if (a.type === 'draft') return <Button asChild><Link to={`${base}/sessions/${a.sessionId}`}>{label}</Link></Button>;
+    if (a.type === 'setStage') return <Button type="button" busy={stageBusy} onClick={() => void markApplied()}>{label}</Button>;
+    const run = attention.find(item => item.id === a.runId);
+    return <Button asChild><Link to={run ? runHref(run) : `${base}/console?tab=runs`}>{label}</Link></Button>;
+  }
+
+  const hero = step && (() => {
+    const copy = c.hero[step.key];
+    const jobName = focus ? [focus.title, focus.company].filter(Boolean).join(' · ') : '';
+    return <section aria-labelledby="next-step-heading" className="workspace-panel grid gap-4 border-l-4 border-l-primary p-5 sm:p-6">
+      <div className="grid gap-2">
+        <p className="text-sm font-medium text-primary">{c.nextStep}</p>
+        <h2 id="next-step-heading" className="text-2xl">{copy.title}</h2>
+        <p className="max-w-2xl break-words text-muted-foreground">{copy.body(jobName)}</p>
+      </div>
+      <div className="grid justify-items-start gap-2">
+        {heroAction(step, copy.title)}
+        {stageFailed && <p role="alert" className="text-sm text-destructive">{c.failed}</p>}
+      </div>
+    </section>;
+  })();
+
+  const jobsSection = <Section id="jobs-heading" title={c.recentJobs} viewAll={{ to: `${base}/applications`, label: t('workspace.applications') }}>
     <ResourcePanel resource={jobs}>{jobList.length === 0
-      ? <EmptyLine title={c.noJobs} body={c.noJobsFirst}><Button asChild variant="outline"><Link to={`${base}/applications`}>{t('workspace.addJob')}</Link></Button></EmptyLine>
-      : <ul className="divide-y">{savedFirst.slice(0, 6).map(job => {
+      ? <EmptyLine title={c.noJobs} body={c.noJobsFirst} />
+      : <ul className="divide-y">{recentJobs.slice(0, 4).map(job => {
         const evaluation = evaluations.get(job.id);
-        return <li key={job.id} className="min-w-0 px-4 py-4 sm:px-5">
-          <div className="flex items-start justify-between gap-3"><div className="min-w-0"><Link className="break-words text-base font-semibold text-foreground hover:text-primary hover:underline" to={`${base}/jobs/${job.id}`}>{job.title}</Link>{job.company && <p className="mt-1 break-words text-sm text-muted-foreground">{job.company}</p>}</div><StatusBadge status={job.application_status ?? 'saved'} locale={locale} /></div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            {evaluation?.session_id ? <Link className="inline-flex min-h-11 items-center gap-2 text-sm font-medium hover:underline lg:min-h-10" to={`${base}/sessions/${evaluation.session_id}`}>{t('workspace.viewEvaluation')}<ArrowRight size={15} aria-hidden="true" /></Link> :
-              <NewSessionButton size="sm" variant="outline" projectId={projectId} job={{ savedId: job.id }}>{t('workspace.newEvaluation')}</NewSessionButton>}
-            <JobRemoveMenu reveal projectId={projectId} jobId={job.id} title={job.title} onRemoved={jobs.reload} />
-          </div>
-        </li>;
+        const sid = evaluation?.session_id;
+        return <li key={job.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5" to={sid ? `${base}/sessions/${sid}` : `${base}/jobs/${job.id}`}>
+          <div className="min-w-0"><span className="break-words font-semibold">{job.title}</span>{job.company && <p className="mt-1 break-words text-sm text-muted-foreground">{job.company}</p>}</div>
+          <span className="flex items-center gap-3"><StatusBadge status={job.application_status ?? 'saved'} locale={locale} /><FitScore score={evaluation?.evaluation_result?.score ?? null} locale={locale} /><ArrowRight size={17} aria-hidden="true" /></span>
+        </Link></li>;
       })}</ul>}</ResourcePanel>
   </Section>;
 
-  const documentsSection = <Section id="documents-heading" title={t('workspace.docs')} viewAll={{ to: `${base}/documents`, label: t('workspace.documents') }}>
-    <ResourcePanel resource={documents}>{docList.length === 0
-      ? <EmptyLine title={t('workspace.noDocs')} body={t('workspace.noDocsBody')} />
-      : <ul className="divide-y">{docList.slice(0, 4).map(doc => <li key={doc.id} className="flex items-start gap-3 px-4 py-4 sm:px-5"><FileText size={20} className="mt-1 shrink-0 text-muted-foreground" aria-hidden="true" /><div className="min-w-0 flex-1"><Link className="break-words font-medium hover:underline" to={`${base}/documents/${doc.id}`}>{doc.title}</Link><p className="mt-1 text-sm text-muted-foreground">{doc.latest_revision ? `${t('workspace.revision')} ${doc.latest_revision.revision}` : '—'}</p></div>{doc.partial && <Badge variant="warning">{t('workspace.partial')}</Badge>}</li>)}</ul>}</ResourcePanel>
-  </Section>;
-
-  const runningSection = active.length > 0 && <Section id="running-heading" title={c.running}>
-    <ul className="divide-y">{active.slice(0, 5).map(run => <li key={run.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm sm:px-5" to={runHref(run)}><span className="flex items-center gap-2 font-medium"><Clock3 size={16} aria-hidden="true" />{t(`workspace.operations.${run.operation}`)}</span><StatusBadge status={run.status} locale={locale} /></Link></li>)}</ul>
-  </Section>;
-
-  const journey = <JourneyStrip base={base} counts={{ profile: cvs.data?.length, sessions: jobs.data && runs.data ? evaluations.size : undefined, documents: documents.data?.length, applications: jobs.data?.length }} />;
-
   if (project.status === 'error' && !project.data) return <ErrorState onRetry={project.reload} />;
   return <div className="grid min-w-0 gap-6 lg:gap-8">
-    <PageHeader icon={LayoutDashboard} title={project.data?.name ?? t('nav.overview')} lede={firstRun ? c.subtitleFirst : t('workspace.overviewSubtitle')}
-        actions={!firstRun && <Button asChild variant="outline"><Link to={`${base}/search`}><Search size={17} aria-hidden="true" />{t('workspace.findJobs')}</Link></Button>} />
+    <PageHeader icon={LayoutDashboard} title={project.data?.name ?? t('nav.overview')} lede={firstRun ? c.subtitleFirst : t('workspace.overviewSubtitle')} />
 
-    {!firstRun && journey}
+    {hero}
 
     {(hasAttention || approvals.status === 'error') && <section aria-labelledby="attention-heading" className="grid gap-3 rounded-xl border border-warning/40 bg-card p-5 sm:p-6">
       <div className="flex items-center gap-3"><ListChecks size={21} className="text-warning" aria-hidden="true" /><h2 id="attention-heading" className="text-lg font-semibold">{t('workspace.attention')}</h2>{hasAttention && <Badge variant="warning">{attention.length + unmatchedApprovals.length}</Badge>}</div>
       <ul className="divide-y">{attention.map(run => <li key={run.id}><Link to={runHref(run)} className="flex min-h-14 flex-wrap items-center justify-between gap-3 py-3">
-        <div><span className="font-medium">{t(`workspace.operations.${run.operation}`)}</span><p className="text-sm text-muted-foreground">{t(run.status === 'needs_input' ? 'workspace.answer' : 'workspace.review')}</p></div><StatusBadge status={run.status} locale={locale} /><ArrowRight size={17} aria-hidden="true" />
+        <div><span className="font-medium">{opLabel(run)}</span><p className="text-sm text-muted-foreground">{t(run.status === 'needs_input' ? 'workspace.answer' : 'workspace.review')}</p></div><StatusBadge status={run.status} locale={locale} /><ArrowRight size={17} aria-hidden="true" />
       </Link></li>)}{unmatchedApprovals.map(approval => <li key={approval.id}><Link className="flex min-h-14 items-center justify-between gap-3 py-3" to={`${base}/console?tab=approvals`}><span>{t(`workspace.approvalActions.${approval.action}`)}</span><ArrowRight size={17} aria-hidden="true" /></Link></li>)}</ul>
       {approvals.status === 'error' && <ErrorState onRetry={approvals.reload} />}
     </section>}
 
-    {firstRun && runningSection}
+    {active.length > 0 && <Section id="running-heading" title={c.running}>
+      <ul className="divide-y">{active.slice(0, 5).map(run => <li key={run.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm sm:px-5" to={runHref(run)}><span className="flex items-center gap-2 font-medium"><Clock3 size={16} aria-hidden="true" />{opLabel(run)}</span><StatusBadge status={run.status} locale={locale} /></Link></li>)}</ul>
+    </Section>}
 
-    {firstRun ? <>
-      <div className="grid min-w-0 gap-6">
-        <GettingStarted base={base} cv={revision && cv ? { name: cv.name, version: revision.revision } : null} job={jobList[0] ? { title: jobList[0].title, more: jobList.length - 1 } : null} />
-        {/* First run: the next step leads; counts follow, and the empty evaluations list is step 3 of the guide. */}
-        {journey}
-        <HelpPanel hasCv={!!revision} />
-      </div>
-      {jobsSection}
-      {(documents.status === 'error' || docList.length > 0) && documentsSection}
-    </> : <div className="grid min-w-0 gap-6 lg:gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <div className="grid min-w-0 content-start gap-6 lg:gap-8">
-        {jobsSection}
-        <Section id="evaluations-heading" title={c.recentEvaluations} viewAll={{ to: `${base}/sessions`, label: c.evaluations }}>
-          <ResourcePanel resource={runs}>{recent.length === 0 ? <EmptyLine title={c.noEvaluations} body={c.noEvaluationsReturning} /> :
-            <ul className="divide-y">{recent.map(run => {
-              const job = jobList.find(item => item.id === run.job_revision_id);
-              const pair = sessions.data?.find(item => item.id === run.session_id);
-              return <li key={run.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5" to={runHref(run)}>
-                <div className="min-w-0"><span className="break-words font-semibold">{job?.title ?? pair?.job_title ?? t(`workspace.operations.${run.operation}`)}</span>
-                  <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-muted-foreground">{job?.company && <span>{job.company}</span>}{pair?.cv_name && pair.cv_revision != null && <span className="inline-flex min-w-0 items-center gap-1 text-foreground/80"><FileText size={14} className="shrink-0" aria-hidden="true" /><span className="break-words">{c.usedCv(pair.cv_name, pair.cv_revision)}</span></span>}<SkillCount coverage={run.evaluation_result?.skill_coverage} locale={locale} /></p></div>
-                <span className="flex items-center gap-3">{run.evaluation_result?.score != null && <AiLabel className="max-sm:hidden" />}<FitScore score={run.evaluation_result?.score ?? null} locale={locale} /><ArrowRight size={17} aria-hidden="true" /></span>
-              </Link></li>;
-            })}</ul>}</ResourcePanel>
-        </Section>
-      </div>
-      <div className="grid min-w-0 content-start gap-6 lg:gap-8">
-        {runningSection}
-        <Section id="cv-heading" title={t('workspace.cvTitle')}>
-          <div className="p-5 sm:p-6"><ResourcePanel resource={cvs}>{revision && cv ? <div className="grid min-w-0 gap-4">
-            <div className="flex items-start gap-3"><FileText size={23} className="mt-1 shrink-0 text-primary" aria-hidden="true" /><div className="min-w-0"><p className="break-words font-semibold">{cv.name}</p><p className="text-sm text-muted-foreground">{c.version(revision.revision)}</p></div></div>
-            <p className="break-words text-sm text-muted-foreground">{revision.original_filename}</p>
-            <p className="flex items-start gap-2 text-sm"><CheckCircle2 size={17} className="mt-1 shrink-0 text-success" aria-hidden="true" />{t(revision.skill_profile_ready ? 'workspace.cvReady' : 'workspace.cvUploaded')}</p>
-            {revision.skill_profile_ready === false && <p className="text-sm text-muted-foreground">{t('workspace.cvPending')}</p>}
-            <CvPreviewButton projectId={projectId} fileId={revision.file_id} name={cv.name} revision={revision.revision} filename={revision.original_filename} mimeType={revision.mime_type} />
-            <Link className="inline-flex min-h-11 items-center gap-2 text-sm font-medium hover:underline lg:min-h-10" to={`${base}/profile`}>{t('workspace.manageCv')}<ArrowRight size={15} aria-hidden="true" /></Link>
-          </div> : <div className="grid justify-items-start gap-3"><p className="text-sm text-muted-foreground">{t('workspace.chooseCv')}</p><Button asChild variant="outline"><Link to={`${base}/profile`}>{t('workspace.addCv')}</Link></Button></div>}</ResourcePanel></div>
-        </Section>
-        {documentsSection}
-        <HelpPanel hasCv={!!revision} />
-      </div>
-    </div>}
+    {!firstRun && jobsSection}
 
-    {!firstRun && <p className="max-w-3xl border-t pt-5 text-xs text-muted-foreground">{t('workspace.manual')}</p>}
+    <p className="max-w-3xl border-t pt-5 text-xs text-muted-foreground">{t('workspace.manual')}</p>
   </div>;
 }

@@ -13,22 +13,21 @@ test('first-run overview offers one primary action and stable evaluation navigat
   await expect(page.getByRole('heading', { name: 'Synthetic analyst search', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('overview-desktop.png'), fullPage: true });
   await expect(page.getByRole('navigation').getByRole('link', { name: 'Evaluations', exact: true })).toHaveAttribute('href', `/app/projects/${projectId}/sessions`);
-  await expect(page.getByRole('heading', { name: 'Getting started', exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByRole('link', { name: 'Add CV', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Upload your CV', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Upload your CV', exact: true })).toBeVisible();
   await page.getByRole('navigation').getByRole('link', { name: 'Evaluations', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Evaluations', exact: true })).toBeVisible();
   await expect(page.getByRole('main').getByRole('link', { name: /First synthetic session/ })).toBeVisible();
 });
 
-test('one failed overview resource preserves jobs and sessionless required-input attention', async ({ page }) => {
+test('one failed overview resource keeps the page working and sessionless required-input attention', async ({ page }) => {
   await useSyntheticApplication(page);
   await page.route(`**/v1/projects/${projectId}/documents`, route => route.fulfill({ status: 503, json: { code: 'unavailable' } }));
   await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({ json: [{ id: 'input-run', project_id: projectId, session_id: null, operation: 'extract_experience', status: 'needs_input', created_at: '2026-10-16T00:00:00Z' }] }));
   await page.goto(`/app/projects/${projectId}/overview`);
   await expect(page.getByRole('heading', { name: 'Synthetic analyst search', exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByRole('link', { name: 'Synthetic data analyst', exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByRole('link', { name: /Experience extraction/ }).first()).toHaveAttribute('href', `/app/projects/${projectId}/console?tab=runs`);
-  await expect(page.getByRole('main').getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: /Synthetic data analyst/ })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: /Read CV/ }).first()).toHaveAttribute('href', `/app/projects/${projectId}/console?tab=runs`);
   await expect(page.getByRole('main').locator('a[href*="/sessions/null"],a[href*="/sessions/undefined"]')).toHaveCount(0);
 });
 
@@ -43,11 +42,9 @@ test('populated overview shows actual attention, active work, partial material a
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/app/projects/${projectId}/overview`);
   await expect(page.getByRole('heading', { name: 'Needs your attention', exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByText('Product CV', { exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByText('Partial result', { exact: true })).toBeVisible();
   await expect(page.getByRole('main').getByRole('link', { name: /CV profile/ })).toHaveAttribute('href', `/app/projects/${projectId}/console?tab=runs`);
   await expect(page.getByRole('main').getByRole('link', { name: /CV tailoring/ })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Getting started', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('main').getByText('Next step', { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('overview-populated-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: info.outputPath('overview-populated-mobile.png'), fullPage: true });
@@ -83,18 +80,15 @@ for (const width of [390, 768, 1440]) for (const locale of ['th', 'en']) for (co
   });
 }
 
-test('first-run overview marks done steps, says what is blocked and shows no count strip', async ({ page }) => {
+test('first-run overview leads with one next-step card and no count strip', async ({ page }) => {
   await useSyntheticApplication(page);
   await page.goto(`/app/projects/${projectId}/overview`);
-  const steps = page.getByRole('list').filter({ hasText: 'Add your first CV' });
-  await expect(steps.getByRole('listitem')).toHaveCount(3);
-  await expect(steps.getByRole('listitem').nth(1)).toContainText('Synthetic data analyst');
-  await expect(steps.getByRole('listitem').nth(1)).toContainText('Done');
-  await expect(steps.getByRole('listitem').nth(2)).toContainText('Needs a CV first.');
+  const hero = page.getByRole('region', { name: 'Upload your CV' });
+  await expect(hero.getByRole('link')).toHaveCount(1);
+  await expect(hero.getByRole('link', { name: 'Upload your CV' })).toHaveClass(/bg-primary/);
   await expect(page.getByRole('main').locator('a.bg-primary-fill, button.bg-primary-fill')).toHaveCount(1);
-  await expect(page.getByRole('main').getByRole('link', { name: 'Add CV', exact: true }).first()).toHaveClass(/bg-primary/);
-  await expect(page.getByRole('heading', { name: 'Need a hand?' })).toBeVisible();
   await expect(page.getByRole('main').getByText(/^Saved\s*\d/)).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Journey' })).toHaveCount(0);
 });
 
 test('returning overview puts items waiting for the user above everything else', async ({ page }) => {
@@ -104,9 +98,9 @@ test('returning overview puts items waiting for the user above everything else',
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`/app/projects/${projectId}/overview`);
   const needs = await page.getByRole('heading', { name: 'Needs your attention', exact: true }).boundingBox();
-  const recent = await page.getByRole('heading', { name: 'Recent evaluations', exact: true }).boundingBox();
+  const recent = await page.getByRole('heading', { name: 'Recent jobs', exact: true }).boundingBox();
   expect(needs && recent && needs.y < recent.y).toBe(true);
-  await expect(page.getByRole('heading', { name: 'Jobs and applications', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Recent jobs', exact: true })).toBeVisible();
 });
 
 test('overview hides evaluations in the trash and names the CV of each evaluation', async ({ page }) => {
@@ -118,9 +112,8 @@ test('overview hides evaluations in the trash and names the CV of each evaluatio
   const run = (id: string, sid: string, jid: string) => ({ id, project_id: projectId, session_id: sid, operation: 'evaluate_job', status: 'completed', job_revision_id: jid, output_language: 'en', result_file_ids: [], created_at: '2026-10-10T00:00:00Z', finished_at: '2026-10-10T00:01:00Z', retry_of_id: null, evaluation_result: { score: 4, report_markdown: 'x' } });
   await page.route(new RegExp(`(?:\/v1\/projects\/${projectId}\/runs|\/v1\/async\/projects\/${projectId}\/agent\-runs)(?:\\?.*)?$`), route => route.fulfill({ json: [run('r1', sessionId, job), run('r2', trashed, 'j2')] }));
   await page.goto(`/app/projects/${projectId}/overview`);
-  const recent = page.getByRole('region', { name: 'Recent evaluations' });
-  await expect(recent.getByRole('link', { name: /Live job/ })).toBeVisible();
-  await expect(recent.getByRole('link', { name: /Trashed job/ })).toHaveCount(0);
-  await expect(recent.getByRole('link', { name: /Live job/ })).toContainText('CV: Data CV · v4');
+  const recent = page.getByRole('region', { name: 'Recent jobs' });
+  await expect(recent.getByRole('link', { name: /Live job/ })).toHaveAttribute('href', `/app/projects/${projectId}/sessions/${sessionId}`);
+  await expect(recent.getByRole('link', { name: /Trashed job/ })).toHaveAttribute('href', /\/jobs\/j2$/);
   await expect(page.getByRole('main').locator(`a[href$="/sessions/${trashed}"]`)).toHaveCount(0);
 });
