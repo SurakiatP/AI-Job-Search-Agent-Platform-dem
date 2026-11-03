@@ -117,7 +117,7 @@ def test_purge_removes_everything_and_frees_the_email(accounts, sessions):
     _delete(accounts, actor.user_id, EMAIL)
     store = FakeStore(missing={f"k2-{project_id}"})  # a missing object counts as deleted
     assert asyncio.run(accounts.purge_due(store)) == 1
-    assert store.deleted == [f"k1-{project_id}"]
+    assert f"k1-{project_id}" in store.deleted and f"k1-{project_id}.preview" in store.deleted  # a DOCX CV's preview goes with it
     assert purged_counts(sessions, actor.user_id, project_id) == [0] * 6
     assert purged_counts(sessions, other.user_id, other_project)[0] == 1  # untouched
     accounts.signup(EMAIL, PW, "en", "2.2.2.2")

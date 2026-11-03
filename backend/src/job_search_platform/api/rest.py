@@ -42,6 +42,7 @@ from job_search_platform.services.contracts import (
 )
 from job_search_platform.services import applications, experience, job_sources, smart_match
 from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.files import PREVIEW_SUFFIX
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
 from job_search_platform.services.runs import OWNER_ONLY_OPERATIONS, actor_scope
 from job_search_platform.services.skills import SKILL_BY_ID, SKILLS
@@ -67,7 +68,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
     code = error.code
     status_code = {
         "unauthorized": 401, "invalid_launch": 401, "invalid_origin": 403,
-        "forbidden": 403, "invalid_csrf": 403, "not_found": 404,
+        "forbidden": 403, "invalid_csrf": 403, "not_found": 404, "preview_unavailable": 404,
         "project_not_empty": 409, "project_runs_active": 409, "confirmation_mismatch": 422, "session_busy": 409, "session_not_trashed": 409, "idempotency_conflict": 409,
         "retry_not_allowed": 409, "cv_profile_missing": 409, "approval_conflict": 409,
         "job_removed": 409, "cv_in_use": 409, "session_pair_exists": 409, "session_pair_mismatch": 422, "document_in_use": 409, "document_not_trashed": 409, "cv_not_trashed": 409, "practice_set_limit": 409, "practice_set_busy": 409, "practice_not_gradable": 409, "session_pair_required": 409,
@@ -292,6 +293,8 @@ async def force_delete_project(project_id: UUID, body: ProjectForceDelete, actor
     for key in keys:  # rows are gone; an orphaned private object is harmless, so a failed delete never undoes the erase
         with contextlib.suppress(Exception):
             await services.files.object_store.delete(key)
+        with contextlib.suppress(Exception):
+            await services.files.object_store.delete(key + PREVIEW_SUFFIX)
     runtime = services.runtime
     for root in (getattr(runtime, "workspace_root", None), getattr(runtime, "state_root", None)):
         if root is not None:
@@ -1220,6 +1223,8 @@ async def purge_cv(project_id: UUID, cv_id: UUID, actor=Depends(write_actor), se
     for key in keys:  # rows are gone; an orphaned private object is harmless
         with contextlib.suppress(Exception):
             await services.files.object_store.delete(key)
+        with contextlib.suppress(Exception):
+            await services.files.object_store.delete(key + PREVIEW_SUFFIX)
 
 
 @router.get("/projects/{project_id}/files/{file_id}/download", response_class=StreamingResponse,
@@ -1235,6 +1240,16 @@ async def download_file(project_id: UUID, file_id: UUID, actor=Depends(run_actor
                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(row.display_name, safe='')}",
                "X-Content-Type-Options": "nosniff"}
     return StreamingResponse(chunks(), media_type="application/octet-stream", headers=headers)
+
+
+@router.get("/projects/{project_id}/files/{file_id}/preview", response_class=Response,
+            responses={200: {"description": "The file itself, shown inline", "content": {
+                "application/pdf": {"schema": {"type": "string", "format": "binary"}},
+                "text/plain": {"schema": {"type": "string"}}}}})
+async def preview_file(project_id: UUID, file_id: UUID, actor=Depends(run_actor), services: Services = Depends(get_services)):
+    body, media_type = await services.files.preview(actor, project_id, file_id)
+    return Response(body, media_type=media_type, headers={"Cache-Control": "private, no-store", "Content-Disposition": "inline",
+                                                          "X-Content-Type-Options": "nosniff"})
 
 
 @router.get("/projects/{project_id}/runs", response_model=list[RunView])

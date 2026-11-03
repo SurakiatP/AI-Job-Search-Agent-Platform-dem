@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import inspect
 import shutil
@@ -32,6 +33,9 @@ MAX_PARSE_SECONDS = 50
 CHUNK_SIZE = 64 * 1024
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 _MIME_EXTENSIONS = {"text/plain": ".txt", "application/pdf": ".pdf", DOCX_MIME: ".docx"}
+
+
+PREVIEW_SUFFIX = ".preview"  # a DOCX's rendered PDF lives at <storage_key>.preview; no table or migration needed
 
 
 class StorageCommitError(ServiceError):
@@ -115,6 +119,11 @@ class Files:
             self._mark_unavailable(file_id, project_id)
             raise ServiceError("object_store_unavailable", retryable=True) from None
 
+        preview = getattr(parsed, "preview_pdf", None)
+        if preview and mime == DOCX_MIME:  # best effort: no preview only means the dialog offers the download
+            with contextlib.suppress(Exception):
+                await self.object_store.put(storage_key + PREVIEW_SUFFIX, preview, hashlib.sha256(preview).hexdigest())
+
         try:
             with self.sessions.begin() as db:
                 persisted = db.scalar(
@@ -185,6 +194,25 @@ class Files:
         for offset in range(0, len(body), CHUNK_SIZE):
             self._reauthorize_file(actor, project_id, file_id)
             yield body[offset : offset + CHUNK_SIZE]
+
+    async def preview(self, actor: Actor, project_id: UUID, file_id: UUID) -> tuple[bytes, str]:
+        """What the CV dialog shows: the PDF or text itself, or the PDF the sandbox rendered from a DOCX."""
+        row = self._authorized_row(actor, project_id, file_id)
+        if row.mime_type != DOCX_MIME:
+            body = b"".join([chunk async for chunk in self.download_stream(actor, project_id, file_id)])
+            return body, "application/pdf" if row.mime_type == "application/pdf" else "text/plain; charset=utf-8"
+        try:
+            body = await self.object_store.get(row.storage_key + PREVIEW_SUFFIX)
+        except ObjectMissing:
+            raise ServiceError("preview_unavailable") from None
+        except ObjectTooLarge:
+            raise ServiceError("preview_unavailable") from None
+        except Exception:
+            raise ServiceError("object_store_unavailable", retryable=True) from None
+        if not body.startswith(b"%PDF-"):
+            raise ServiceError("preview_unavailable")
+        self._reauthorize_file(actor, project_id, file_id)
+        return body, "application/pdf"
 
     async def reconcile_pending(self) -> int:
         with self.sessions() as db:

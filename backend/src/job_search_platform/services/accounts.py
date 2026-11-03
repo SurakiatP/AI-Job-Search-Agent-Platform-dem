@@ -394,8 +394,9 @@ class Accounts:
 
         def keys_of(user_id):
             with self.sessions() as db:
-                return list(db.scalars(select(StoredFile.storage_key).join(Project, Project.id == StoredFile.project_id)
+                keys = list(db.scalars(select(StoredFile.storage_key).join(Project, Project.id == StoredFile.project_id)
                                        .where(Project.user_id == user_id)))
+                return keys + [key + ".preview" for key in keys]  # a DOCX CV's rendered PDF sits beside it (files.PREVIEW_SUFFIX)
 
         def project_ids(user_id):
             with self.sessions() as db:

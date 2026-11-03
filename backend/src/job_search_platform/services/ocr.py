@@ -85,12 +85,27 @@ async def transcribe_pages(gateway: GatewaySettings, image_paths: list[Path]) ->
     return text.encode()[:MAX_TEXT_BYTES].decode(errors="ignore")
 
 
+MAX_PREVIEW_BYTES = 10 * 1024 * 1024
+
+
+def read_preview(root: Path, name: str) -> bytes | None:
+    """The sandbox's rendered DOCX PDF, or None when absent, oversized or not a PDF. The file is never trusted beyond its header."""
+    path = root / name
+    if name != "staging/preview.pdf" or path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_PREVIEW_BYTES:
+        return None
+    body = path.read_bytes()
+    return body if body.startswith(b"%PDF-") else None
+
+
 async def with_vision_text(parsed: ParsedInput, workspace: Path, gateway) -> ParsedInput:
     """Shared by upload and run-time parsing: turn the sandbox's page pictures into text."""
     if not getattr(parsed, "pages", None):  # test doubles return bare objects
         return parsed
     root = workspace.resolve(strict=True)
     paths = [root / name for name in parsed.pages]
+    preview = read_preview(root, parsed.preview) if parsed.preview else None
+    if parsed.preview:
+        (root / parsed.preview).unlink(missing_ok=True)
     try:
         gateway = gateway()  # callable, so tests and plain flows never read gateway settings early
         if any(not PAGE_PATH.fullmatch(name) or not path.resolve().is_relative_to(root) for name, path in zip(parsed.pages, paths)):
@@ -102,4 +117,4 @@ async def with_vision_text(parsed: ParsedInput, workspace: Path, gateway) -> Par
         for path in paths:
             path.unlink(missing_ok=True)
     log.info("cv_text_source=ocr pages=%d", len(paths))
-    return ParsedInput(text, parsed.kind, parsed.sha256)
+    return ParsedInput(text, parsed.kind, parsed.sha256, preview_pdf=preview)

@@ -1275,6 +1275,31 @@ paths:
               schema: {type: string, format: binary}
         '403': {description: Grant lacks results:read or file kind is owner-only}
         '404': {$ref: '#/components/responses/NotFound'}
+  /projects/{project_id}/files/{file_id}/preview:
+    parameters:
+      - {$ref: '#/components/parameters/project_id'}
+      - name: file_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [files]
+      security: [{ownerSession: []}, {projectGrant: []}]
+      description: >-
+        The file as it should be read, shown inline. PDF returns the original, TXT returns text/plain, DOCX returns the PDF the
+        sandbox rendered at upload (stored beside the file as <storage_key>.preview, no table). Same authorization as download.
+        A DOCX uploaded before previews were kept, or whose render exceeded 10 MB, answers 404 preview_unavailable.
+      responses:
+        '200':
+          description: Authorized file preview
+          headers:
+            Content-Disposition: {schema: {type: string, const: inline}}
+            Cache-Control: {schema: {type: string, const: 'private, no-store'}}
+          content:
+            application/pdf: {schema: {type: string, format: binary}}
+            text/plain: {schema: {type: string}}
+        '403': {description: Grant lacks results:read or file kind owner-only}
+        '404': {description: Not found, or preview_unavailable (no stored preview for this DOCX)}
   /projects/{project_id}/runs:
     parameters: [{$ref: '#/components/parameters/project_id'}]
     get:
