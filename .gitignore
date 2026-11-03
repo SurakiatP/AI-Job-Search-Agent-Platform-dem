@@ -35,3 +35,5 @@ __pycache__/
 
 # Smart-match eval cache
 .cache/
+evals/pdf-corpus/out/
+evals/pdf-corpus/tmp*

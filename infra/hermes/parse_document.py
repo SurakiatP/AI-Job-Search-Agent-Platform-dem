@@ -43,7 +43,7 @@ def parse(path: Path) -> dict:
     if not 0 < size <= 20 * 1024 * 1024:
         raise ValueError("input_size_invalid")
     data = path.read_bytes()
-    if data.startswith(b"%PDF-"):
+    if b"%PDF-" in data[:1024]:  # mail clients and scanners put a BOM or blank lines before the header; the upload sniff allows it too
         kind = "pdf"
     elif data.startswith(b"PK\x03\x04"):
         kind = "docx"
@@ -67,8 +67,20 @@ def parse(path: Path) -> dict:
         import anydoc
         try:
             text = anydoc.to_markdown_bytes(data, ocr="reject")
+        except anydoc.EncryptedError:
+            raise ValueError("document_encrypted") from None
+        except anydoc.ResourceLimitError:
+            raise ValueError("document_expansion_limit") from None
         except anydoc.NeedsOcrError:
             return render_pages(path, "scanned_pdf", hashlib.sha256(data).hexdigest())
+        except anydoc.ConvertError:
+            # anydoc is stricter than poppler (odd structure, new PDF features): let the vision model read what renders
+            if kind != "pdf":
+                raise
+            try:
+                return render_pages(path, "scanned_pdf", hashlib.sha256(data).hexdigest())
+            except Exception:
+                raise ValueError("document_invalid") from None
         if kind == "pdf" and broken_thai(text):
             return render_pages(path, "broken_thai", hashlib.sha256(data).hexdigest())
     if not isinstance(text, str) or not text.strip():

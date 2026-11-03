@@ -26,7 +26,8 @@ MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 PAGE_TIMEOUT_SECONDS = 90
 PROMPT = ("Transcribe all visible text in this document page exactly as written. Keep the reading order and every "
           "Thai tone mark and vowel sign. Do not summarise, translate, correct or add anything. "
-          "Output plain text or Markdown only, with no commentary.")
+          "Output plain text or Markdown only, with no commentary. If the page has no readable text, output nothing.")
+OCR_TOTAL_SECONDS = 80  # pages run in parallel; keeps the whole upload under typical 100 s proxy limits
 
 
 def _call(gateway: GatewaySettings, image: bytes) -> str:
@@ -52,17 +53,17 @@ def _call(gateway: GatewaySettings, image: bytes) -> str:
 
 
 async def transcribe_pages(gateway: GatewaySettings, image_paths: list[Path]) -> str:
-    """One request per page, run in order; page texts are joined by a blank line. Deletes the image files."""
+    """One request per page, run in parallel (results keep page order); page texts are joined by a blank line. Deletes the image files."""
     gateway._key()  # gateway_unconfigured stays its own error
-    parts: list[str] = []
     try:
         for path in image_paths:
             if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_PAGE_BYTES:
                 raise ServiceError("ocr_unavailable", retryable=True)
-            try:
-                parts.append(await asyncio.to_thread(_call, gateway, path.read_bytes()))
-            except Exception:
-                raise ServiceError("ocr_unavailable", retryable=True) from None
+        try:
+            parts = await asyncio.wait_for(asyncio.gather(*(asyncio.to_thread(_call, gateway, path.read_bytes())
+                                                            for path in image_paths)), OCR_TOTAL_SECONDS)
+        except Exception:
+            raise ServiceError("ocr_unavailable", retryable=True) from None
     finally:
         for path in image_paths:
             path.unlink(missing_ok=True)
