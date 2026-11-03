@@ -406,3 +406,18 @@ input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: n
 
 /* A native select always shows a value, so its label stays floated on the border. */
 .mui-field.mui-select > .mui-label { top: 0; background: var(--card); transform: translateY(-50%) scale(0.875); max-width: calc((100% - 24px) / 0.875); }
+
+
+/* Phone tab rows scroll sideways: hide the bar (unlayered, so it beats the global `*` scrollbar rule) and show a soft edge
+   shadow on the side that still has tabs. The `local` layers cover the shadow once that end is reached. */
+@media (max-width: 639px) {
+  .tabs-scroll {
+    scrollbar-width: none;
+    background:
+      linear-gradient(to right, var(--background) 30%, transparent) left / 24px 100% no-repeat local,
+      linear-gradient(to left, var(--background) 30%, transparent) right / 24px 100% no-repeat local,
+      linear-gradient(to right, color-mix(in srgb, var(--foreground) 16%, transparent), transparent) left / 12px 100% no-repeat scroll,
+      linear-gradient(to left, color-mix(in srgb, var(--foreground) 16%, transparent), transparent) right / 12px 100% no-repeat scroll;
+  }
+  .tabs-scroll::-webkit-scrollbar { display: none; }
+}

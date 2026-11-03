@@ -107,6 +107,8 @@ export function SessionPage() {
   const status = workflow.run?.status;
   const runId = workflow.run?.id;
   const { reload: reloadRuns } = runs; const { reload: reloadDocs } = documents; const { reload: reloadTrash } = trashed;
+  // Keep the selected tab inside the scrolling tab row on phones.
+  useEffect(() => { document.querySelector<HTMLElement>('[data-session-tabs] [role=tab][data-state=active]')?.scrollIntoView({ inline: 'nearest', block: 'nearest' }); }, [tab]);
   useEffect(() => { reloadRuns(); if (status && !ACTIVE.includes(status)) { reloadDocs(); reloadTrash(); } }, [runId, status, reloadRuns, reloadDocs, reloadTrash]);
   const [appliedUndo, setAppliedUndo] = useState<string | null>(null);
   // `?start=evaluate`: strip the param first, then start once. The ref stops a second POST on re-render or StrictMode.
@@ -236,11 +238,11 @@ export function SessionPage() {
       </section>
       <Tabs value={tab} onValueChange={setTab} className="grid min-w-0 gap-4">
         <div className="min-w-0 border-b">
-          <TabsList aria-label={c.title} className="h-auto min-w-0 max-w-full justify-start rounded-none max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[scrollbar-width:none] border-b-0 bg-transparent p-0">
+          <TabsList data-session-tabs aria-label={c.title} className="tabs-scroll h-auto min-w-0 max-w-full justify-start rounded-none max-sm:flex-nowrap max-sm:overflow-x-auto border-b-0 bg-transparent p-0">
             <TabsTrigger value="evaluation" className={tabClass}>{t('tabs.evaluation')}{dot(runDot(evalRun))}</TabsTrigger>
             <TabsTrigger value="documents" className={tabClass}>{t('tabs.documents')}{dot(runDot(sessionRuns.find(run => run.operation === 'draft_documents') ?? sessionRuns.find(run => run.operation === 'tailor_cv')))}</TabsTrigger>
             <TabsTrigger value="answers" className={tabClass}>{t('tabs.answers')}{dot(runDot(sessionRuns.find(run => run.operation === 'apply_prepare')))}</TabsTrigger>
-            <TabsTrigger value="practice" className={tabClass}>{practiceCopy[locale].tab}</TabsTrigger>
+            <TabsTrigger value="practice" className={tabClass} aria-label={practiceCopy[locale].tab}><span aria-hidden="true" className="max-sm:hidden">{practiceCopy[locale].tab}</span><span aria-hidden="true" className="sm:hidden">{locale === 'th' ? 'ซ้อม' : 'Practice'}</span></TabsTrigger>
           </TabsList>
         </div>
         <div className="grid min-w-0 gap-4">
