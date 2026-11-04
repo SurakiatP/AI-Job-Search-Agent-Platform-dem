@@ -131,7 +131,7 @@
     "document_encrypted": "This document is password-protected. Remove the password and upload it again.",
     "document_invalid": "We could not read this document. Export a new PDF, DOCX or text file and try again.",
     "empty_input": "This document has no readable text. Add CV text or upload a document containing text.",
-    "document_limits": "This document exceeds the processing limits. Try a smaller or simpler document.",
+    "document_limits": "This document is too large or complex to read. Try a smaller or simpler file.",
     "ocr_unavailable": "Reading the document with AI vision failed. Try again in a moment.",
     "document_too_many_pages": "This document has more than 10 pages. Upload a CV of 10 pages or fewer.",
     "document_parse_timeout": "Reading the document took too long. Try a smaller document or upload it again.",
@@ -256,7 +256,7 @@
     "chooseProject": "Choose a project",
     "projectSetup": "Create the project first, then add a CV. Evaluations begin only after you select a CV revision and a job.",
     "creationUncertain": "We could not confirm creation. The project may have been saved. Check your projects before trying again to avoid duplicates.",
-    "overviewSubtitle": "Your next actions, current opportunities and the material behind them.",
+    "overviewSubtitle": "What to do next, the jobs you are following, and the material behind them.",
     "journey": "Job-search journey",
     "startCv": "Start with your CV",
     "startCvBody": "Add a CV to evaluate opportunities and prepare application documents. You can browse jobs first.",
@@ -317,7 +317,7 @@
       "delete_file": "Review file deletion",
       "submit_application": "Review applied-status record"
     },
-    "projectsIntro": "Choose a workspace to continue, or start a separate search with its own CVs and application history.",
+    "projectsIntro": "Pick a project to continue, or start a new one for a separate search with its own CVs and application history.",
     "accessIntro": "Keep your CVs, opportunities and application preparation together in a project workspace.",
     "providerUnavailable": "AI is unavailable because the gateway is not configured. Open AI gateway settings to check the connection."
   },

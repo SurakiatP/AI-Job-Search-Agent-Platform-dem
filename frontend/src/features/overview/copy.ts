@@ -29,7 +29,7 @@ const en: typeof th = {
   subtitleFirst: 'Start with your CV, then find a job to score.',
   nextStep: 'Next step',
   hero: {
-    uploadCv: { title: 'Upload your CV', body: () => 'Add a PDF, DOCX or TXT. The AI reads it, and you check what it understood.' },
+    uploadCv: { title: 'Upload your CV', body: () => 'Add a PDF, DOCX or TXT. The app reads it, and you check that it read it correctly.' },
     readingCv: { title: 'Reading your CV', body: () => 'This takes a moment. You can leave this page.' },
     findJob: { title: 'Find a job to score', body: () => 'Your CV is ready. Search roles or save a posting you already have.' },
     getFitScore: { title: 'Get a fit score', body: (job, cv) => `Compare ${job} with ${cv ?? 'your CV'}.` },

@@ -47,7 +47,7 @@
     "resultsLabel": "Search results"
   },
   "methods": {
-    "keywordNote": "Deterministic coverage counts recognizable required skills in the posting and selected CV. It is not an AI estimate or an ATS pass prediction.",
+    "keywordNote": "Counts the required skills found in both the posting and the selected CV, using fixed rules. It uses no AI and does not predict whether you pass an ATS.",
     "aiNote": "AI-assisted estimate for this job and the selected CV revision. It may be uncertain and is not a hiring probability.",
     "keywordOnly": "Keyword ranking is shown while AI ranking is pending or unavailable."
   }

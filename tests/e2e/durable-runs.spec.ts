@@ -89,7 +89,7 @@ test('needs_input pack renders per-kind inputs and saving POSTs the answers', as
   await expect(page.getByRole('button', { name: 'Record as applied' })).toBeEnabled();
 });
 
-for (const [locale, label] of [['en', 'Suggested from your facts — confirm'], ['th', 'แนะนำจากข้อเท็จจริงของคุณ — โปรดยืนยัน']] as const) {
+for (const [locale, label] of [['en', 'Suggested from your facts. Check it, then confirm.'], ['th', 'แนะนำจากข้อเท็จจริงของคุณ โปรดตรวจแล้วยืนยัน']] as const) {
   test(`a model-suggested answer is prefilled with the confirm label and saved through input (${locale})`, async ({ page }) => {
     const seen = await mock(page, locale);
     const suggested = { ...pack, missing_required: ['q2'], answers: [pack.answers[0], { ...pack.answers[1], suggestion: true, evidence_ids: ['f1'], reason: 'needs_confirmation' }] };

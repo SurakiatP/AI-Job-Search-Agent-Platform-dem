@@ -8,15 +8,15 @@ type Pages = Record<FeatureSlug, Page>;
 const th: Pages = {
   'add-cv': {
     title: 'ใส่ CV ครั้งเดียว ใช้ได้กับทุกงาน',
-    lead: 'CV เป็นจุดเริ่มต้นของทุกอย่าง อัปโหลดครั้งเดียว แล้วแอปใช้ CV ฉบับนั้นเทียบกับทุกประกาศงานในโปรเจกต์',
+    lead: 'อัปโหลด CV ครั้งเดียว แล้วแอปใช้ CV ฉบับนั้นเทียบกับทุกประกาศงานในโปรเจกต์',
     steps: [
       { title: 'อัปโหลดไฟล์ CV', body: 'รองรับ PDF, DOCX หรือวางเป็นข้อความ ไฟล์อยู่ในโปรเจกต์ของคุณเท่านั้น' },
       { title: 'แอปอ่านทักษะและประสบการณ์', body: 'ดูข้อความและทักษะที่อ่านได้จาก CV ได้ทันที เพื่อเช็กว่าอ่านถูกต้อง' },
       { title: 'สกัดประสบการณ์ด้วย AI', body: 'กด "สกัดประสบการณ์จาก CV ด้วย AI" เพื่อสร้างคลังประสบการณ์ แล้วตรวจและแก้ไขข้อมูลเองได้' },
       { title: 'CV แต่ละฉบับเก็บเป็นเวอร์ชัน', body: 'เมื่อมีการแก้ จะได้เวอร์ชันใหม่ ส่วนเวอร์ชันเดิมและ CV ต้นฉบับของคุณไม่ถูกแก้ไข' },
     ],
-    good: ['การสกัดประสบการณ์ใช้ AI จึงต้องตั้งค่าผู้ให้บริการ AI ก่อน', 'ข้อมูล CV เท่าที่จำเป็นอาจถูกส่งไปยังบริการ AI ภายนอก'],
-    note: 'คลังประสบการณ์คือแหล่งข้อเท็จจริงเดียวที่เอเจนต์ใช้เวลาปรับ CV ให้คุณ',
+    good: ['การสกัดประสบการณ์ใช้ AI จึงต้องตั้งค่าผู้ให้บริการ AI ก่อน', 'ระบบอาจส่งข้อมูล CV เท่าที่จำเป็นไปยังบริการ AI ภายนอก'],
+    note: 'เวลาเอเจนต์ปรับ CV ให้คุณ จะใช้ข้อเท็จจริงจากคลังประสบการณ์เท่านั้น',
   },
   'build-cv': {
     title: 'ไม่มี CV? สร้างในแอปได้เลย',
@@ -28,7 +28,7 @@ const th: Pages = {
       { title: 'ดูตัวอย่าง PDF แล้วบันทึกเป็นเวอร์ชัน', body: 'ร่างบันทึกอัตโนมัติ เมื่อพอใจให้บันทึกเป็นเวอร์ชันใหม่ ใช้ประเมินงานได้ทันที' },
     ],
     good: ['เลือกภาษาของ CV ได้ ไทยหรืออังกฤษ', 'ข้อมูลบุคคลอ้างอิงเป็นข้อมูลของผู้อื่น แอปไม่ส่งให้ AI'],
-    note: 'ขั้นตอนสร้างและแก้ CV ในฟอร์มเป็นการทำเอง ไม่ใช้ AI ส่วนการปรับ CV ให้ตรงตำแหน่งอยู่ในขั้นร่างเอกสาร',
+    note: 'การสร้างและแก้ CV ในฟอร์มคุณทำเองทั้งหมด ไม่ใช้ AI การปรับ CV ให้ตรงตำแหน่งอยู่ในขั้นร่างเอกสาร',
   },
   search: {
     title: 'ค้นประกาศงานจริงในไทย',
@@ -40,11 +40,11 @@ const th: Pages = {
       { title: 'บันทึกหรือประเมินต่อ', body: 'บันทึกงานที่สนใจ เริ่มประเมินงานนั้นกับ CV ของคุณ หรือเปิดประกาศต้นฉบับ' },
     ],
     good: ['ค้นได้เฉพาะงานในไทย', 'Smart match ใช้โทเคน AI จึงไม่ทำงานเองจนกว่าคุณจะกดเริ่ม'],
-    note: 'คำเตือนประกาศเก่าอ้างอิงข้อมูลที่แอปเก็บไว้จริง ไม่ใช่การเดาเจตนาของนายจ้าง',
+    note: 'คำเตือนประกาศเก่าอิงจากข้อมูลที่แอปเก็บไว้ เช่น วันที่ลงประกาศ และผลการตรวจแหล่งงานครั้งล่าสุด',
   },
   evaluate: {
     title: 'คะแนนที่มีเหตุผลให้ตรวจ',
-    lead: 'การประเมินเทียบ CV ฉบับที่เลือกกับประกาศงานฉบับหนึ่ง แล้วให้ผลที่ตรวจย้อนได้ ไม่ใช่แค่ตัวเลขลอย ๆ',
+    lead: 'การประเมินเทียบ CV ฉบับที่เลือกกับประกาศงานฉบับหนึ่ง แล้วให้คะแนนพร้อมเหตุผลและหลักฐานที่คุณตรวจย้อนได้',
     steps: [
       { title: 'เลือก CV และประกาศงาน', body: 'เริ่มเซสชันประเมินจากผลการค้นหา ระบบจำว่าใช้ CV ฉบับไหนกับประกาศฉบับไหน' },
       { title: 'AI อ่านและให้คะแนน', body: 'ได้คะแนนความเหมาะสมเป็นเปอร์เซ็นต์ (0-100%) ที่ระบบคำนวณจากการตัดสินแต่ละข้อของ AI พร้อมรายงานเทียบแต่ละข้อกับหลักฐานจาก CV' },
@@ -64,7 +64,7 @@ const th: Pages = {
       { title: 'ทบทวนความรู้ด้วยแฟลชการ์ด', body: 'พลิกการ์ด ตอบก่อนพลิกแล้วให้ตรวจ หรือทำเครื่องหมายว่าจำได้แล้ว/ยังไม่แม่น แล้วกลับมาทบทวนเฉพาะใบที่ยังไม่แม่น' },
       { title: 'สรุปผลและแผนเตรียมตัว', body: 'AI สรุปจุดแข็ง ทักษะที่ควรเพิ่ม และแผน จากคำตอบในชุดนั้น' },
     ],
-    good: ['คำตอบตัวอย่างใช้เฉพาะข้อเท็จจริงในคลังประสบการณ์ของคุณ ถ้ายังไม่พอ แอปจะบอกว่าไม่มีคำตอบตัวอย่าง', 'สร้างชุดซ้อมใช้โควตา 60 ครั้งต่อวัน และเก็บได้สูงสุด 20 ชุด'],
+    good: ['คำตอบตัวอย่างใช้เฉพาะข้อเท็จจริงในคลังประสบการณ์ของคุณ ถ้ายังไม่พอ แอปจะบอกว่าไม่มีคำตอบตัวอย่าง', 'สร้างชุดซ้อมหนึ่งชุดใช้ 1 ครั้งจากโควตาซ้อม 60 ครั้งต่อวัน และแต่ละเซสชันเก็บได้สูงสุด 20 ชุด'],
     note: 'ความเห็นและสรุปเป็นค่าประมาณจาก AI ใช้ฝึกตัว ไม่ได้ทำนายโอกาสได้งาน และต้องตั้งค่าผู้ให้บริการ AI ก่อน',
   },
   draft: {
@@ -104,23 +104,23 @@ const th: Pages = {
     note: 'สรุปบอกว่ามีงานใหม่ที่ตรงตัวกรอง ไม่ได้ประเมินว่างานเหมาะกับคุณ ต้องกดประเมินเอง',
   },
   connect: {
-    title: 'ต่อกับ agent ที่คุณใช้อยู่',
+    title: 'ต่อกับเอเจนต์ที่คุณใช้อยู่',
     lead: 'ให้ผู้ช่วย AI ภายนอกที่คุณใช้อยู่ช่วยงานในโปรเจกต์ของคุณ โดยคุณคุมสิทธิ์และอนุมัติงานเสี่ยงเอง',
     steps: [
       { title: 'เปิดหน้าเชื่อมต่อ', body: 'ในหน้ากิจกรรมเอเจนต์ แท็บ "เชื่อมต่อ" แสดงที่อยู่สำหรับ MCP, agent card และ A2A พร้อมตัวอย่างการตั้งค่า' },
-      { title: 'ให้สิทธิ์เท่าที่ต้องใช้', body: 'agent ขอสิทธิ์ผ่านหน้าอนุญาต คุณเห็นว่าขอสิทธิ์อะไร กับโปรเจกต์ไหน และเลือกอนุญาตหรือปฏิเสธเอง' },
-      { title: 'ดูงานของ agent ทั้งหมด', body: 'งานทุกชิ้นที่ agent ทำแสดงในหน้ากิจกรรม พร้อมขั้นตอนและสถานะ' },
-      { title: 'อนุมัติหรือเพิกถอนได้ทันที', body: 'งานที่มีความเสี่ยงต้องรอคุณอนุมัติ และคุณเพิกถอนสิทธิ์ของ agent ได้จากหน้าบัญชี' },
+      { title: 'ให้สิทธิ์เท่าที่ต้องใช้', body: 'เอเจนต์ขอสิทธิ์ผ่านหน้าอนุญาต คุณเห็นว่าขอสิทธิ์อะไร กับโปรเจกต์ไหน แล้วเลือกอนุญาตหรือปฏิเสธเอง' },
+      { title: 'ดูงานของเอเจนต์ทั้งหมด', body: 'งานทุกชิ้นที่เอเจนต์ทำแสดงในหน้ากิจกรรม พร้อมขั้นตอนและสถานะ' },
+      { title: 'อนุมัติหรือเพิกถอนได้ทันที', body: 'งานที่มีความเสี่ยงต้องรอคุณอนุมัติ และคุณเพิกถอนสิทธิ์ของเอเจนต์ได้จากหน้าบัญชี' },
     ],
-    good: ['สิทธิ์ที่เขียนข้อมูลต้องเลือกอนุญาตเองทีละอย่าง', 'ข้อมูลของแต่ละโปรเจกต์แยกจากกัน agent เข้าถึงเฉพาะโปรเจกต์ที่คุณอนุญาต'],
-    note: 'ประกาศงานและเอกสารที่ agent อ่านเป็นข้อมูลที่ไม่น่าเชื่อถือ ไม่มีผลต่อสิทธิ์หรือการตั้งค่าของคุณ',
+    good: ['สิทธิ์ที่เขียนข้อมูลต้องเลือกอนุญาตเองทีละอย่าง', 'ข้อมูลของแต่ละโปรเจกต์แยกจากกัน เอเจนต์เข้าถึงได้เฉพาะโปรเจกต์ที่คุณอนุญาต'],
+    note: 'แอปถือว่าประกาศงานและเอกสารที่เอเจนต์อ่านเป็นข้อมูลภายนอกที่ไม่ไว้ใจ ข้อความในนั้นจึงเปลี่ยนสิทธิ์หรือการตั้งค่าของคุณไม่ได้',
   },
 };
 
 const en: Pages = {
   'add-cv': {
     title: 'Add your CV once, use it for every job',
-    lead: 'Your CV is where everything starts. Upload it once and the app compares that CV with every job posting in the project.',
+    lead: 'Upload your CV once and the app compares it with every job posting in the project.',
     steps: [
       { title: 'Upload your CV file', body: 'PDF, DOCX or pasted text. The file stays in your project only.' },
       { title: 'The app reads skills and experience', body: 'See the text and skills it read from your CV straight away, to check it was read correctly.' },
@@ -128,7 +128,7 @@ const en: Pages = {
       { title: 'Each CV is kept as a version', body: 'Edits create a new version. Earlier versions and your original CV are never changed.' },
     ],
     good: ['Extraction uses AI, so an AI provider must be set up first.', 'The CV data needed may be sent to an external AI service.'],
-    note: 'The experience bank is the single source of facts the agent uses when it tailors your CV.',
+    note: 'When the agent tailors your CV, it uses facts from your experience bank only.',
   },
   'build-cv': {
     title: 'No CV yet? Build one in the app',
@@ -152,11 +152,11 @@ const en: Pages = {
       { title: 'Save or evaluate next', body: 'Save a job, start evaluating it with your CV, or open the original posting.' },
     ],
     good: ['Search covers jobs in Thailand only.', 'Smart match uses AI tokens, so it never runs until you press start.'],
-    note: 'Old-listing warnings come from data the app actually stores, not from guessing the employer’s intent.',
+    note: 'Old-listing warnings come from data the app stores, such as the posting date and the last source check.',
   },
   evaluate: {
     title: 'A score with reasons you can check',
-    lead: 'An evaluation compares the chosen CV with one job posting and gives a result you can trace back, not a bare number.',
+    lead: 'An evaluation compares the chosen CV with one job posting and gives a score with reasons and evidence you can trace back.',
     steps: [
       { title: 'Pick a CV and a posting', body: 'Start an evaluation from search results. The app remembers which CV was used with which posting.' },
       { title: 'AI reads and scores', body: 'You get a fit score of 0-100%, computed by the platform from the AI judgment of each requirement, with a report that checks each requirement against evidence from your CV.' },
@@ -185,7 +185,7 @@ const en: Pages = {
     steps: [
       { title: 'Choose what to draft', body: 'A cover letter, an application message, or a CV tailored to the job. You choose the document language.' },
       { title: 'Choose a CV mode', body: 'Automatic: the agent tailors and saves a new version straight away. Manual: you say what to change and how much, then pick proposals before saving.' },
-      { title: 'The evidence gate stops overclaiming', body: 'A proposal that cites something not in your experience bank is blocked and cannot be picked.' },
+      { title: 'An evidence check blocks overclaiming', body: 'A proposal that cites something not in your experience bank is blocked and cannot be picked.' },
       { title: 'Review before any use', body: 'Each document is kept as a version. You open it and decide whether to use it.' },
     ],
     good: ['If a job needs a skill you do not have, the app will not add it. It tells you to add that skill once you really have it.', 'The app never submits an application for you.'],

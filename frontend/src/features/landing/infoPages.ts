@@ -15,7 +15,7 @@ const th: Record<InfoSlug, InfoPage> = {
         { title: 'ผู้ให้บริการ AI', body: 'ฟีเจอร์ที่ใช้ AI (สกัดประสบการณ์ ประเมิน ร่างเอกสาร Smart match) ต้องตั้งค่าผู้ให้บริการ AI ก่อน การค้นหางานปกติไม่ต้องใช้' },
       ] },
       { heading: 'ลำดับการทำงาน', items: [
-        { title: '1. เพิ่ม CV', body: 'อัปโหลด CV แล้วสกัดประสบการณ์เก็บเป็นคลังข้อเท็จจริงของคุณ' },
+        { title: '1. เพิ่ม CV', body: 'อัปโหลด CV แล้วกดสกัด CV เพื่อเก็บประสบการณ์เป็นคลังข้อเท็จจริงของคุณ' },
         { title: '2. ค้นหางาน', body: 'ค้นประกาศงานจริงในไทย ดูอายุประกาศ และให้ Smart match จัดอันดับตาม CV เมื่อคุณกดเริ่ม' },
         { title: '3. ประเมิน', body: 'เทียบ CV กับประกาศหนึ่งฉบับ ได้ความเหมาะสมโดย AI พร้อมเหตุผล และทักษะที่พบที่นับจากคำสำคัญ' },
         { title: '4. ร่างเอกสาร', body: 'ปรับ CV และร่างจดหมาย โดยอ้างเฉพาะข้อเท็จจริงในคลังประสบการณ์ของคุณ' },
@@ -25,23 +25,23 @@ const th: Record<InfoSlug, InfoPage> = {
     note: 'แอปไม่ส่งใบสมัครอัตโนมัติ คุณตรวจเองและสมัครเองทุกครั้ง',
   },
   data: {
-    title: 'ข้อมูลของคุณและการเชื่อมต่อกับ agent',
-    lead: 'บอกตรง ๆ ว่าข้อมูลอยู่ที่ไหน อะไรอาจถูกส่งออกไป และคุณคุมอะไรได้บ้าง',
+    title: 'ข้อมูลของคุณและการเชื่อมต่อกับเอเจนต์',
+    lead: 'ข้อมูลของคุณอยู่ที่ไหน อะไรอาจถูกส่งออกไป และคุณควบคุมอะไรได้บ้าง',
     sections: [
       { heading: 'ข้อมูลของคุณ', items: [
         { title: 'แยกตามโปรเจกต์', body: 'CV ผลประเมิน และเอกสารของแต่ละโปรเจกต์แยกจากกัน' },
         { title: 'CV ต้นฉบับไม่ถูกแก้', body: 'การปรับ CV สร้างเป็นเวอร์ชันใหม่เสมอ' },
-        { title: 'บริการ AI ภายนอก', body: 'เมื่อใช้ฟีเจอร์ AI ข้อมูล CV เท่าที่จำเป็นอาจถูกส่งไปยังบริการ AI ที่ตั้งค่าไว้' },
+        { title: 'บริการ AI ภายนอก', body: 'เมื่อใช้ฟีเจอร์ AI ระบบอาจส่งข้อมูล CV เท่าที่จำเป็นไปยังบริการ AI ที่ตั้งค่าไว้' },
         { title: 'ลบบัญชีได้เอง', body: 'ยืนยันด้วยรหัสทางอีเมล ข้อมูลส่วนบุคคล CV บทสนทนา และโทเคนจะถูกลบหรือทำให้ไม่ระบุตัวตนภายใน 30 วัน' },
       ] },
-      { heading: 'เชื่อมกับ agent ภายนอก', items: [
-        { title: 'คุณกำหนดขอบเขต', body: 'agent ขอสิทธิ์ผ่านหน้าอนุญาต คุณเห็นว่าขออะไร กับโปรเจกต์ไหน' },
+      { heading: 'เชื่อมกับเอเจนต์ภายนอก', items: [
+        { title: 'คุณกำหนดขอบเขต', body: 'เอเจนต์ขอสิทธิ์ผ่านหน้าอนุญาต คุณเห็นว่าขออะไร กับโปรเจกต์ไหน' },
         { title: 'งานเสี่ยงรอคุณอนุมัติ', body: 'สิทธิ์ที่เขียนข้อมูลปิดไว้เป็นค่าเริ่มต้น และต้องเลือกอนุญาตเอง' },
-        { title: 'เพิกถอนได้ทันที', body: 'ดูรายชื่อ agent ที่ได้สิทธิ์และเพิกถอนได้จากหน้าบัญชี' },
-        { title: 'ข้อความจากภายนอกไม่ใช่คำสั่ง', body: 'ประกาศงานและเอกสารที่ agent อ่านเป็นข้อมูลที่ไม่น่าเชื่อถือ ไม่เปลี่ยนสิทธิ์หรือการตั้งค่าของคุณ' },
+        { title: 'เพิกถอนได้ทันที', body: 'ดูรายชื่อเอเจนต์ที่ได้สิทธิ์และเพิกถอนได้จากหน้าบัญชี' },
+        { title: 'ข้อความจากภายนอกไม่ใช่คำสั่ง', body: 'แอปถือว่าประกาศงานและเอกสารที่เอเจนต์อ่านเป็นข้อมูลภายนอกที่ไม่ไว้ใจ ข้อความในนั้นจึงเปลี่ยนสิทธิ์หรือการตั้งค่าของคุณไม่ได้' },
       ] },
     ],
-    note: 'ใช้ได้ทั้งการอนุญาตผ่านหน้าอนุญาตและโทเคนสำรอง โดยโทเคนและการให้สิทธิ์ต้องใช้บัญชีที่ยืนยันอีเมลแล้ว',
+    note: 'เชื่อมต่อได้ทั้งผ่านหน้าอนุญาตและด้วยโทเคนสำรอง ทั้งสองแบบต้องใช้บัญชีที่ยืนยันอีเมลแล้ว',
   },
 };
 
@@ -67,7 +67,7 @@ const en: Record<InfoSlug, InfoPage> = {
   },
   data: {
     title: 'Your data and connecting an agent',
-    lead: 'Plainly: where your data lives, what may leave it, and what you control.',
+    lead: 'Where your data lives, what may leave it, and what you control.',
     sections: [
       { heading: 'Your data', items: [
         { title: 'Separate per project', body: 'The CV, evaluations and documents of each project are kept apart.' },
@@ -82,7 +82,7 @@ const en: Record<InfoSlug, InfoPage> = {
         { title: 'Outside text is not an instruction', body: 'Job postings and documents an agent reads are untrusted data. They cannot change your permissions or settings.' },
       ] },
     ],
-    note: 'Both consent-page access and a fallback token work. Tokens and grants need an account with a verified email.',
+    note: 'You can connect through the consent page or with a fallback token. Both need an account with a verified email.',
   },
 };
 

@@ -39,14 +39,14 @@ const th = {
   tourTitle: 'แต่ละส่วนของแอปทำอะไร',
   tourLabel: 'ขั้นตอนการใช้งาน',
   steps: [
-    { tab: 'ใส่ CV', eyebrow: 'ใส่ CV ครั้งเดียว', title: 'แนบ CV ครั้งเดียว ใช้ได้กับทุกงาน', body: 'อัปโหลด CV แล้วแอปอ่านทักษะให้ และให้ AI ดึงประสบการณ์เป็นข้อเท็จจริงที่คุณตรวจได้ CV ต้นฉบับของคุณจะไม่ถูกแก้ไข' },
+    { tab: 'ใส่ CV', eyebrow: 'ใส่ CV ครั้งเดียว', title: 'แนบ CV ครั้งเดียว ใช้ได้กับทุกงาน', body: 'อัปโหลด CV แล้วแอปอ่านทักษะให้ เมื่อกดสกัด AI จะดึงประสบการณ์ออกมาเป็นข้อเท็จจริงให้คุณตรวจ แอปไม่แก้ CV ต้นฉบับของคุณ' },
     { tab: 'สร้าง CV', eyebrow: 'ไม่มีไฟล์ก็เริ่มได้', title: 'สร้าง CV ในแอปด้วยแบบฟอร์ม', body: 'กรอกแบบฟอร์ม เลือกเทมเพลตและสีเน้น แล้วดู PDF จริงระหว่างแก้ไข เมื่อพอใจก็บันทึกเป็นเวอร์ชันและใช้ประเมินงานต่อได้' },
-    { tab: 'ค้นหางาน', eyebrow: 'ค้นหางานจริงในไทย', title: 'ค้นประกาศงานจริงในไทย', body: 'ค้นหาประกาศงานจริง ดูอายุประกาศ รับคำเตือนเมื่อเป็นประกาศเก่าที่อาจปิดรับแล้ว และเปิดประกาศต้นฉบับได้ ส่วนการจับคู่ด้วย AI ช่วยเรียงงานที่เหมาะกับ CV ของคุณ' },
-    { tab: 'ประเมิน', eyebrow: 'ประเมินด้วย AI + ทักษะ', title: 'คะแนนที่มีเหตุผลให้ตรวจ', body: 'AI อ่านประกาศเทียบกับ CV แล้วให้คะแนนพร้อมเหตุผล ส่วนทักษะที่ตรงคำนวณจากคำสำคัญโดยไม่ใช้ AI และแยกจากคะแนนอย่างชัดเจน' },
+    { tab: 'ค้นหางาน', eyebrow: 'ค้นหางานจริงในไทย', title: 'ค้นประกาศงานจริงในไทย', body: 'ค้นหาประกาศงานจริง ดูอายุประกาศ รับคำเตือนเมื่อเป็นประกาศเก่าที่อาจปิดรับแล้ว และเปิดประกาศต้นฉบับได้ ถ้าต้องการ ให้ AI ช่วยเรียงงานตามความเหมาะสมกับ CV ของคุณ' },
+    { tab: 'ประเมิน', eyebrow: 'ประเมินด้วย AI + ทักษะ', title: 'คะแนนที่มีเหตุผลให้ตรวจ', body: 'AI อ่านประกาศเทียบกับ CV แล้วให้คะแนนพร้อมเหตุผล ทักษะที่ตรงนับจากคำสำคัญโดยไม่ใช้ AI และแสดงแยกจากคะแนน' },
     { tab: 'ซ้อมสัมภาษณ์', eyebrow: 'ซ้อมกับงานที่ประเมินแล้ว', title: 'ซ้อมสัมภาษณ์ให้ตรงกับงานนั้น', body: 'สร้างชุดคำถามจาก CV คลังประสบการณ์ และประกาศงาน ซ้อมตอบ ทบทวนด้วยแฟลชการ์ด และขอความเห็นจาก AI ไม่มีการทำนายโอกาสได้งาน' },
-    { tab: 'ร่างเอกสาร', eyebrow: 'ร่างเอกสารที่ปรับแล้ว', title: 'ร่าง CV และ Cover letter ตามตำแหน่ง', body: 'ได้ฉบับร่างที่ปรับตามประกาศ แยกเวอร์ชัน ให้คุณตรวจก่อนใช้ และไม่ส่งใบสมัครแทนคุณ' },
+    { tab: 'ร่างเอกสาร', eyebrow: 'ร่างเอกสารที่ปรับแล้ว', title: 'ร่าง CV และ Cover letter ตามตำแหน่ง', body: 'ได้ฉบับร่างที่ปรับตามประกาศ เก็บแยกเป็นเวอร์ชันให้คุณตรวจก่อนใช้ แอปไม่ส่งใบสมัครแทนคุณ' },
     { tab: 'ติดตามสมัคร', eyebrow: 'ติดตามใบสมัครของคุณ', title: 'ติดตามทุกใบสมัครไว้ที่เดียว', body: 'ย้ายงานระหว่างสถานะบนบอร์ด เก็บผู้ติดต่อ โน้ต และบันทึกอีเมลของแต่ละงาน การเปลี่ยนสถานะเป็นเพียงบันทึกของคุณ ไม่ได้ส่งใบสมัคร' },
-    { tab: 'แจ้งเตือนงาน', eyebrow: 'รับสรุปงานใหม่', title: 'รับสรุปงานใหม่ที่ตรงกับการค้นหา', body: 'บันทึกการค้นหาไว้ แล้วรับสรุปงานใหม่ทุกวันหรือทุกสัปดาห์ทางอีเมล Telegram หรือ webhook ส่วนสรุปนี้ไม่ใช้ AI' },
+    { tab: 'แจ้งเตือนงาน', eyebrow: 'รับสรุปงานใหม่', title: 'รับสรุปงานใหม่ที่ตรงกับการค้นหา', body: 'บันทึกการค้นหาไว้ แล้วรับสรุปงานใหม่ทุกวันหรือทุกสัปดาห์ทางอีเมล Telegram หรือ webhook สรุปนี้ไม่ใช้ AI' },
     { tab: 'เชื่อมผู้ช่วย', eyebrow: 'เชื่อมผู้ช่วย AI ของคุณ', title: 'ต่อกับผู้ช่วยที่คุณใช้อยู่', body: 'เชื่อมผู้ช่วย AI ที่คุณใช้อยู่ให้ช่วยงานในโปรเจกต์ของคุณ งานทุกชิ้นแสดงในหน้ากิจกรรม และงานเสี่ยงต้องรอคุณอนุมัติ ปิดไว้เป็นค่าเริ่มต้น' },
   ],
   panel: {
@@ -71,7 +71,7 @@ const th = {
     title: 'พื้นที่ทำงานและ AI ของคุณ',
     // source: previous local.body (owner-approved) and PRODUCT.md (project isolation)
     body: 'แต่ละโปรเจกต์เก็บ CV งาน เอกสาร และกิจกรรมของตัวเอง เมื่อใช้ฟีเจอร์ AI ระบบอาจส่งข้อความจาก CV เท่าที่จำเป็นไปยังบริการ AI ภายนอก',
-    rows: ['ข้อมูลแต่ละโปรเจกต์แยกจากกัน', 'ใช้ AI ช่วยประเมินและร่างเอกสาร', 'ข้อมูล CV ที่จำเป็นอาจถูกส่งไปยังบริการ AI'],
+    rows: ['ข้อมูลแต่ละโปรเจกต์แยกจากกัน', 'ใช้ AI ช่วยประเมินและร่างเอกสาร', 'ระบบอาจส่งข้อมูล CV ที่จำเป็นไปยังบริการ AI'],
     submit: 'ส่งใบสมัคร',
     submitNote: 'ไม่ส่งแทนคุณ',
   },
@@ -106,7 +106,7 @@ const th = {
   closing: 'เริ่มจาก CV หนึ่งไฟล์กับงานหนึ่งตำแหน่ง',
   closingSub: 'สร้างบัญชี ใส่ CV แล้วเลือกงานจากการค้นหาหรือเพิ่มงานเอง จากนั้นเริ่มประเมินงานแรก',
   footer: { label: 'ลิงก์ท้ายหน้า' },
-  controlTitle: 'สิ่งที่อยู่ในมือคุณเสมอ',
+  controlTitle: 'สิ่งที่คุณควบคุมเอง',
   control: ['คุณตรวจทุกอย่างก่อนนำไปใช้', 'คุณสมัครเอง ระบบไม่ส่งแทน', 'ข้อมูลแต่ละโปรเจกต์แยกกัน'],
 };
 
@@ -149,12 +149,12 @@ const en: typeof th = {
   tourTitle: 'What each part of the app does',
   tourLabel: 'Steps',
   steps: [
-    { tab: 'Add CV', eyebrow: 'Add your CV once', title: 'Attach your CV once, use it for every job', body: 'Upload a CV and the app reads your skills; AI can then pull your experience into facts you check. Your original CV is never edited.' },
+    { tab: 'Add CV', eyebrow: 'Add your CV once', title: 'Attach your CV once, use it for every job', body: 'Upload a CV and the app reads your skills. When you press extract, AI pulls your experience into facts you check. The app never edits your original CV.' },
     { tab: 'Build CV', eyebrow: 'No file? Start here', title: 'Build a CV in the app with a form', body: 'Fill in a form, pick a template and accent colour, and see the real PDF while you edit. When you are happy, save it as a version and use it to evaluate jobs.' },
-    { tab: 'Search', eyebrow: 'Find real jobs in Thailand', title: 'Search real listings in Thailand', body: 'Search real job postings, see how old each one is, get warned when a listing looks stale, and open the original. AI matching ranks the jobs that fit your CV.' },
+    { tab: 'Search', eyebrow: 'Find real jobs in Thailand', title: 'Search real listings in Thailand', body: 'Search real job postings, see how old each one is, get warned when a listing looks stale, and open the original. If you want, AI can rank the jobs by fit to your CV.' },
     { tab: 'Evaluate', eyebrow: 'Evaluate with AI + skills', title: 'A score with reasons you can check', body: 'The AI reads the posting against your CV and scores it with reasons. Matched skills are counted from keywords, without AI, and kept apart from the score.' },
     { tab: 'Interview practice', eyebrow: 'Practise for evaluated jobs', title: 'Practise for the interview at that job', body: 'Create a question set from your CV, experience bank and the posting. Practise answers, review with flashcards and get AI feedback. It never predicts your chances.' },
-    { tab: 'Draft', eyebrow: 'Draft tailored documents', title: 'A CV and cover letter for the role', body: 'Get drafts tailored to the posting, versioned, for you to review before use. The app never submits an application for you.' },
+    { tab: 'Draft', eyebrow: 'Draft tailored documents', title: 'A CV and cover letter for the role', body: 'Get drafts tailored to the posting, each saved as a version for you to review before use. The app never submits an application for you.' },
     { tab: 'Track', eyebrow: 'Track your applications', title: 'Track every application in one place', body: 'Move jobs between stages on a board and keep contacts, notes and logged emails per job. Changing a stage only records your tracking. It submits nothing.' },
     { tab: 'Job alerts', eyebrow: 'Get digests of new jobs', title: 'Get new jobs that match a saved search', body: 'Save a search and receive new matches daily or weekly by email, Telegram or webhook. These digests do not use AI.' },
     { tab: 'Connect', eyebrow: 'Connect your assistant', title: 'Plug in the assistant you already use', body: 'Let the AI assistant you already use help in your projects. Every task shows in the activity page and risky ones wait for your approval. Off by default.' },
