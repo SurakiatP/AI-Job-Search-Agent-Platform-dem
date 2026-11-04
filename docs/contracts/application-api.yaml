@@ -1529,6 +1529,14 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResetPasswordRequest'}}}}
       responses:
         '204': {description: Done}
+  /auth/password/change:
+    post:
+      tags: [auth]
+      description: Session and CSRF. Checks the current password, sets the new one, keeps this session and revokes the user's other sessions. Sends no mail; agent grants stay. 401 invalid_credentials, 422 weak_password, 429 rate_limited.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ChangePasswordRequest'}}}}
+      responses:
+        '204': {description: Done}
+        '429': {$ref: '#/components/responses/RateLimited'}
   /account:
     get:
       tags: [account]
@@ -3173,6 +3181,13 @@ components:
       required: [email]
       properties:
         email: {type: string, maxLength: 254}
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [current_password, new_password]
+      properties:
+        current_password: {type: string, maxLength: 256}
+        new_password: {type: string, maxLength: 256}
     ResetPasswordRequest:
       type: object
       additionalProperties: false

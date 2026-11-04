@@ -53,6 +53,7 @@ const AdminRunsPage = lazy(() => import('../features/admin/RunsPage').then(modul
 const AdminUsagePage = lazy(() => import('../features/admin/UsagePage').then(module => ({ default: module.UsagePage })));
 const AdminModelsPage = lazy(() => import('../features/admin/ModelsPage').then(module => ({ default: module.ModelsPage })));
 const AdminSystemPage = lazy(() => import('../features/admin/SystemPage').then(module => ({ default: module.SystemPage })));
+const AdminAccountPage = lazy(() => import('../features/admin/AccountPage').then(module => ({ default: module.AccountPage })));
 const AdminAuditPage = lazy(() => import('../features/admin/AuditPage').then(module => ({ default: module.AuditPage })));
 
 type Project = { id: string; name: string };
@@ -180,7 +181,7 @@ export function AppRoutes() {
     <Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route path="/verify-email" element={<VerifyEmailPage />} /><Route path="/digest/unsubscribe" element={<DigestUnsubscribePage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/reset-password" element={<ResetPasswordPage />} />
     <Route element={<OwnerGate />}>
-    <Route element={<AdminGate />}><Route element={<AdminLayout />}><Route path="/admin" element={<AdminOverviewPage />} /><Route path="/admin/users" element={<AdminUsersPage />} /><Route path="/admin/runs" element={<AdminRunsPage />} /><Route path="/admin/usage" element={<AdminUsagePage />} /><Route path="/admin/models" element={<AdminModelsPage />} /><Route path="/admin/system" element={<AdminSystemPage />} /><Route path="/admin/audit" element={<AdminAuditPage />} /></Route></Route>
+    <Route element={<AdminGate />}><Route element={<AdminLayout />}><Route path="/admin" element={<AdminOverviewPage />} /><Route path="/admin/users" element={<AdminUsersPage />} /><Route path="/admin/runs" element={<AdminRunsPage />} /><Route path="/admin/usage" element={<AdminUsagePage />} /><Route path="/admin/models" element={<AdminModelsPage />} /><Route path="/admin/system" element={<AdminSystemPage />} /><Route path="/admin/audit" element={<AdminAuditPage />} /><Route path="/admin/account" element={<AdminAccountPage />} /></Route></Route>
     <Route element={<WorkspaceGate />}><Route path="/app" element={<AppStart />} /><Route path="/app/search" element={<AppSearchStart />} />
     <Route path="/app/oauth/consent" element={<ConsentPage />} />
     <Route path="/app/account" element={<AppWorkspace />}><Route index element={<AccountPage />} /></Route>

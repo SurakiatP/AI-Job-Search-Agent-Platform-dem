@@ -23,9 +23,10 @@ from ..integrations.hermes_runtime import env_effort
 from .contracts import AdminBenchmark, AdminBenchmarkCase, AdminBenchmarkSummary
 from .errors import ServiceError
 
-# app operation -> gold task. document_ocr / interview_grade / interview_report have no gold task.
+# app operation -> gold task (evals/gold/run_bench.py TASKS). Operations not listed have no gold test.
 TASK_OF = {"evaluate_job": "evaluate", "draft_documents": "draft", "extract_experience": "extract",
-           "tailor_cv": "tailor", "apply_prepare": "apply", "interview_generate": "practice"}
+           "tailor_cv": "tailor", "apply_prepare": "apply", "interview_generate": "practice",
+           "interview_grade": "grade", "interview_report": "report", "document_ocr": "ocr"}
 SUPPORTED_OPERATIONS = set(TASK_OF)
 MAX_TOKENS = 16000
 RED_DROP = 2.0  # quality points below the baseline that turn the verdict red

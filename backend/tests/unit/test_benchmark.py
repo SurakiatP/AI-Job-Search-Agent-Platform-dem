@@ -9,8 +9,8 @@ from job_search_platform.services.errors import ServiceError
 
 def test_supported_operations_map_to_gold_tasks():
     assert benchmark.SUPPORTED_OPERATIONS == {"evaluate_job", "draft_documents", "extract_experience", "tailor_cv",
-                                              "apply_prepare", "interview_generate"}
-    assert not {"document_ocr", "interview_grade", "interview_report"} & benchmark.SUPPORTED_OPERATIONS
+                                              "apply_prepare", "interview_generate", "interview_grade",
+                                              "interview_report", "document_ocr"}
     assert set(benchmark.TASK_OF.values()) <= set(benchmark._gold().TASKS)
 
 
@@ -37,7 +37,7 @@ def test_summary_counts_errors_truncations_and_cost():
 
 
 def test_unsupported_operation_is_refused_before_anything_else():
-    for op in ("document_ocr", "interview_report", "nope"):
+    for op in ("nope", "apply_submit"):
         with pytest.raises(ServiceError) as err:
             benchmark.start(MagicMock(), None, op, "m/x", "low")
         assert err.value.code == "not_found"

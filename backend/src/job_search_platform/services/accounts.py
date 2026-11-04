@@ -21,7 +21,7 @@ from sqlalchemy import delete, select, update
 from botocore.exceptions import ClientError
 from sqlalchemy.exc import IntegrityError
 
-from job_search_platform.db.models import Grant, Project, RateLimitEvent, Run, StoredFile, User, UserToken
+from job_search_platform.db.models import Grant, OwnerSession, Project, RateLimitEvent, Run, StoredFile, User, UserToken
 from job_search_platform.integrations.mailer import Mail
 from job_search_platform.integrations.object_store import _is_missing
 from job_search_platform.services import rate_limits
@@ -336,6 +336,28 @@ class Accounts:
             db.execute(update(Grant).where(
                 Grant.project_id.in_(select(Project.id).where(Project.user_id == user.id)),
                 Grant.revoked_at.is_(None)).values(revoked_at=now))
+
+    def change_password(self, user_id: UUID, session_id: UUID | None, current: str, new: str) -> None:
+        """Signed-in change: needs the current password, keeps this session, ends the others, sends no mail."""
+        check_policy(new)
+        with self.sessions.begin() as db:
+            hit = rate_limits.hit(db, "password_change", str(user_id))
+        with self.sessions() as db:
+            user = db.get(User, user_id)
+            stored = user.password_hash if user is not None and user.disabled_at is None else None
+        if stored is None:
+            verify_dummy(current)
+            raise ServiceError("invalid_credentials")
+        if not verify_password(current, stored):
+            raise ServiceError("invalid_credentials")
+        new_hash = hash_password(new)
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            db.execute(delete(RateLimitEvent).where(RateLimitEvent.id == hit))
+            db.get(User, user_id).password_hash = new_hash
+            db.execute(update(OwnerSession).where(
+                OwnerSession.user_id == user_id, OwnerSession.id != session_id, OwnerSession.revoked_at.is_(None),
+            ).values(revoked_at=now))
 
     # -- account ---------------------------------------------------------------------------------
     def account(self, user_id: UUID) -> dict:

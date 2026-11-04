@@ -12,9 +12,35 @@
     "system": "System",
     "audit": "Audit log"
   },
-  "group": { "people": "Users and runs", "ai": "AI", "system": "System" },
+  "group": {
+    "people": "Users and runs",
+    "ai": "AI",
+    "system": "System"
+  },
   "menu": "Menu",
   "menuTitle": "Admin menu",
   "close": "Close menu",
-  "comingSoon": "This page is not built yet."
+  "comingSoon": "This page is not built yet.",
+  "account": "My account",
+  "accountPage": {
+    "title": "My account",
+    "lede": "Your sign-in details. Admin accounts are created and removed in GitLab, so there is no delete option here.",
+    "basics": "Account",
+    "role": "Role",
+    "since": "Created",
+    "emailLabel": "Email",
+    "password": {
+      "title": "Change password",
+      "hint": "Other devices you are signed in on are signed out. This one stays.",
+      "current": "Current password",
+      "new": "New password",
+      "confirm": "Confirm new password",
+      "rule": "10 to 128 characters.",
+      "save": "Save new password",
+      "saved": "Password changed. Other devices were signed out.",
+      "wrongCurrent": "The current password is not correct.",
+      "mismatch": "The two new passwords do not match.",
+      "same": "Choose a password different from the current one."
+    }
+  }
 }

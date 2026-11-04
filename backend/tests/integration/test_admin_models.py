@@ -206,7 +206,8 @@ def test_tasks_list_and_apply_rule(web, monkeypatch):
         assert db.get(TaskModelSetting, "tailor_cv").model == "acme/fast"
 
 
-def test_task_without_gold_task_needs_phrase_and_a_known_model(web):
+def test_task_without_gold_task_needs_phrase_and_a_known_model(web, monkeypatch):
+    monkeypatch.setattr(benchmark, "SUPPORTED_OPERATIONS", benchmark.SUPPORTED_OPERATIONS - {"document_ocr"})  # every real task has a gold test now
     c = web.client
     c.post("/v1/admin/models", json={"model": "acme/fast"})
     path = "/v1/admin/tasks/document_ocr"

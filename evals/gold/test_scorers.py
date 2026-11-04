@@ -119,3 +119,36 @@ def test_ocr():
     assert s("garbage", th, None, None)[0] < 20 and s("", th, None, None)[0] == 0
     assert s(en["text"], en, None, None)[1]["marks"] is None and s(en["text"], en, None, None)[0] > 99
     assert s(en["text"].replace(en["facts"][1], "000-000-0000"), en, None, None)[1]["facts"] < 1
+
+
+def test_grade_and_report_scorers():
+    for task, ok_kind in (("grade", "good"), ("report", "mixed")):
+        assert len(D["cases"][task]) == len(D["cases"]["practice"])
+    scores = {"structure": 4, "relevance": 5, "evidence": 4, "clarity": 4, "company_fit": 4}
+    for case in D["cases"]["grade"]:
+        quote = case["answer"].split(".")[0].split(" ")[0]
+        up = lambda s: json.dumps({"scores": s, "summary": "ok", "add": ["name the result"], "star": [{"part": "A", "quote": quote}]})
+        good_in_band = {**scores} if case["kind"] == "good" else {k: (3 if k != "evidence" else 2) for k in scores}
+        if case["kind"] == "offtopic":
+            good_in_band = {k: 2 for k in scores}
+        wrong = {k: 1 for k in scores} if case["kind"] == "good" else {k: 5 for k in scores}
+        assert sc("grade", up(good_in_band), case) > 90, case["id"]
+        assert sc("grade", up(wrong), case) < 60, case["id"]
+        assert sc("grade", "not json", case) == 0
+    for case in D["cases"]["report"]:
+        level = lambda i: [{"section": s, "level": a[i % len(a)], "note": "n"} for s, a in case["expect"].items()]
+        terms = case["weak_terms"][-1:] or ["x"]
+        body = {"strengths": ["s"], "skills_to_build": ["work on " + terms[0]], "plan": ["p"], "readiness": level(0)}
+        assert sc("report", json.dumps(body), case) > 95, case["id"]
+        wrong = [{"section": s, "level": "ready" if "ready" not in a else "not_yet", "note": "n"} for s, a in case["expect"].items()]
+        assert sc("report", json.dumps({**body, "readiness": wrong, "skills_to_build": ["other"]}), case) <= 60, case["id"]  # a strong set has no weak area to name
+        assert sc("report", "not json", case) == 0
+
+
+def test_ocr_holdout_pages_are_shipped_and_exact_text_scores_100():
+    H = json.loads(rb.HOLDOUT.read_text())
+    for case in H["cases"]["ocr"]:
+        assert rb.build_ocr.render(case).parent == rb.build_ocr.SHIPPED  # no Chrome needed
+        assert rb.SCORERS["ocr"](case["text"], case, None, None)[0] > 99
+    for task in ("grade", "report"):
+        assert len(H["cases"][task]) == 20

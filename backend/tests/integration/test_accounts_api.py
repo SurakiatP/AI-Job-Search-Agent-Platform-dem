@@ -242,3 +242,44 @@ def test_check_email_says_when_the_server_sends_no_mail(ctx):
     body = {"email": "nobody@example.test", "password": PW, "locale": "en"}
     assert ctx.client.post("/v1/auth/signup", json=body).json() == {"status": "check_email", "mail_enabled": False}
     assert ctx.client.post("/v1/auth/password/forgot", json={"email": "nobody@example.test"}).json()["mail_enabled"] is False
+
+
+def test_change_password_keeps_this_session_ends_others_and_sends_no_mail(ctx):
+    first = verified_login(ctx)
+    cookie_a = ctx.client.cookies.get("jsp_owner_session")
+    second = ctx.client.post("/v1/auth/login", json={"email": "alice@example.test", "password": PW})
+    cookie_b = ctx.client.cookies.get("jsp_owner_session")
+    assert first.status_code == second.status_code == 200 and cookie_a != cookie_b
+    sent = len(ctx.mailer.sent)
+    h = {"Origin": ctx.origin, "X-CSRF-Token": second.json()["csrf_token"]}
+    ok = ctx.client.post("/v1/auth/password/change", headers=h, json={"current_password": PW, "new_password": "brand-new-password"})
+    assert ok.status_code == 204 and len(ctx.mailer.sent) == sent
+    assert ctx.client.get("/v1/account").status_code == 200  # this session stays
+    ctx.client.cookies.set("jsp_owner_session", cookie_a)
+    assert ctx.client.get("/v1/account").status_code == 401  # the other one is revoked
+    ctx.client.cookies.clear()
+    assert ctx.client.post("/v1/auth/login", json={"email": "alice@example.test", "password": PW}).status_code == 401
+    assert ctx.client.post("/v1/auth/login", json={"email": "alice@example.test", "password": "brand-new-password"}).status_code == 200
+
+
+def test_change_password_wrong_current_weak_new_and_rate_limit(ctx):
+    csrf = verified_login(ctx).json()["csrf_token"]
+    h = {"Origin": ctx.origin, "X-CSRF-Token": csrf}
+    wrong = ctx.client.post("/v1/auth/password/change", headers=h, json={"current_password": "not-the-password", "new_password": "brand-new-password"})
+    assert wrong.status_code == 401 and wrong.json()["code"] == "invalid_credentials"
+    weak = ctx.client.post("/v1/auth/password/change", headers=h, json={"current_password": PW, "new_password": "short"})
+    assert weak.status_code == 422 and weak.json()["code"] == "weak_password"
+    relogin = ctx.client.post("/v1/auth/login", json={"email": "alice@example.test", "password": PW})
+    assert relogin.status_code == 200  # nothing changed
+    h = {"Origin": ctx.origin, "X-CSRF-Token": relogin.json()["csrf_token"]}
+    for _ in range(9):
+        ctx.client.post("/v1/auth/password/change", headers=h, json={"current_password": "not-the-password", "new_password": "brand-new-password"})
+    blocked = ctx.client.post("/v1/auth/password/change", headers=h, json={"current_password": PW, "new_password": "brand-new-password"})
+    assert blocked.status_code == 429 and blocked.json()["code"] == "rate_limited"
+
+
+def test_change_password_needs_a_session_and_csrf(ctx):
+    body = {"current_password": PW, "new_password": "brand-new-password"}
+    assert ctx.client.post("/v1/auth/password/change", json=body).status_code == 401
+    verified_login(ctx)
+    assert ctx.client.post("/v1/auth/password/change", headers={"Origin": ctx.origin}, json=body).status_code in (400, 403)

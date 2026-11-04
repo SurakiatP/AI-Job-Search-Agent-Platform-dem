@@ -162,18 +162,15 @@ test('TC-ADM-MD-08: a test that cannot start because another is running says so 
   await expect(sheet(page).getByRole('button', { name: 'Start test' })).toBeEnabled();
 });
 
-test('TC-ADM-MD-09: a task with no test set goes straight to the typed phrase and never starts a benchmark', async ({ page }) => {
+test('TC-ADM-MD-09: answer grading has a test set now, so a change starts a benchmark instead of asking for the phrase', async ({ page }) => {
   const m = await open(page);
   await page.getByRole('button', { name: 'Change the model for Answer grading' }).click();
   await sheet(page).getByRole('radio', { name: /openai\/gpt-6-luna/ }).click();
-  await expect(sheet(page).getByText('This task has no test set. You will confirm by typing a phrase.')).toBeVisible();
-  await sheet(page).getByRole('button', { name: 'Continue' }).click();
-  await expect(sheet(page).getByText('This task has no test set, so nothing was tested.')).toBeVisible();
-  await sheet(page).getByLabel('Type the phrase to confirm').fill(PHRASE);
-  await sheet(page).getByRole('button', { name: 'Use this model' }).click();
-  await expect(sheet(page).getByText('Changed. New runs use it at once.')).toBeVisible();
-  expect(writes(m)).toEqual(['PUT /tasks/interview_grade']);
-  expect(m.calls[0].body).toMatchObject({ model: 'openai/gpt-6-luna', confirm: PHRASE });
+  await expect(sheet(page).getByText('This task has no test set. You will confirm by typing a phrase.')).toHaveCount(0);
+  await sheet(page).getByRole('button', { name: 'Start test' }).click();
+  await expect(sheet(page).getByText('Holdout v1 · 20 cases')).toBeVisible();
+  expect(writes(m)).toEqual(['POST /benchmarks']);
+  expect(m.calls[0].body).toMatchObject({ operation: 'interview_grade', model: 'openai/gpt-6-luna' });
 });
 
 test('TC-ADM-MD-10: a rejected apply (benchmark_required) shows its message in the sheet', async ({ page }) => {
@@ -190,7 +187,6 @@ test('TC-ADM-MD-11: Use one model for every task: choose the pair once, then tes
   await sheet(page).getByRole('radio', { name: /openai\/gpt-6-luna/ }).first().click();
   await sheet(page).getByRole('button', { name: 'Continue' }).click();
   await expect(sheet(page).getByRole('button', { name: 'Test openai/gpt-6-luna on Job evaluation' })).toBeVisible();
-  await expect(sheet(page).getByText('No test set').first()).toBeVisible();
   await sheet(page).getByRole('button', { name: 'Test openai/gpt-6-luna on Job evaluation' }).click();
   await sheet(page).getByRole('button', { name: 'Use for Job evaluation' }).click({ timeout: 12_000 });
   await expect(sheet(page).getByText('Changed', { exact: true })).toBeVisible();

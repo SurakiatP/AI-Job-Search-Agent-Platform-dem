@@ -2,6 +2,7 @@
 
     python3 evals/gold/build_ocr.py build      # writes the `ocr` cases into gold.v1.json (5) and gold.holdout.v1.json (20)
     python3 evals/gold/build_ocr.py render     # renders every case's PNG into evals/gold/.cache/ocr/ (git-ignored)
+    python3 evals/gold/build_ocr.py ship       # re-renders the holdout pages into evals/gold/data/ocr-holdout-v1/ (macOS: Chrome + sips)
 
 Cases are generated from fixed seeds (Thai-only, English-only, mixed; 1-column, 2-column, education table, small dense
 bullets; clean or "scan": tilt, blur, noise, low resolution). Images come from headless Google Chrome (HTML+CSS), so no new
@@ -23,6 +24,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 CACHE = HERE / ".cache" / "ocr"
+SHIPPED = HERE / "data" / "ocr-holdout-v1"  # holdout pages rendered once on macOS and committed, so the Linux app image needs no Chrome
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 PROMPT = ("Transcribe all visible text in this document page exactly as written. Keep the reading order and every "
           "Thai tone mark and vowel sign. Do not summarise, translate, correct or add anything. "
@@ -161,12 +163,14 @@ def html(case):
             f"</style><div class=page>{body}</div>{noise}")
 
 
-def render(case, force=False):
-    CACHE.mkdir(parents=True, exist_ok=True)
-    png = CACHE / f"{case['id']}.jpg"  # the app sends JPEG pages
+def render(case, force=False, out=CACHE):
+    if not force and (SHIPPED / f"{case['id']}.jpg").exists():
+        return SHIPPED / f"{case['id']}.jpg"
+    out.mkdir(parents=True, exist_ok=True)
+    png = out / f"{case['id']}.jpg"  # the app sends JPEG pages
     if png.exists() and not force:
         return png
-    src = CACHE / f"{case['id']}.html"
+    src = out / f"{case['id']}.html"
     src.write_text(html(case), encoding="utf-8")
     scale = "0.9" if case["scan"] else "1.6"  # scans are low resolution
     shot = png.with_suffix(".shot.png")
@@ -176,6 +180,7 @@ def render(case, force=False):
     subprocess.run(["sips", "-s", "format", "jpeg", "-s", "formatOptions", "70" if case["scan"] else "85", str(shot), "--out", str(png)],
                    check=True, capture_output=True)
     shot.unlink()
+    src.unlink()
     return png
 
 
@@ -250,6 +255,9 @@ def main():
             data["cases"]["ocr"] = cases(spec, prefix, base)
             path.write_text(json.dumps(data, ensure_ascii=False, indent=1))
             print(fn, len(data["cases"]["ocr"]), "ocr cases")
+    elif cmd == "ship":
+        for c in json.loads((HERE / "data" / "gold.holdout.v1.json").read_text())["cases"]["ocr"]:
+            print(render(c, force=True, out=SHIPPED))
     else:
         for fn in ("gold.v1.json", "gold.holdout.v1.json"):
             for c in json.loads((HERE / "data" / fn).read_text())["cases"]["ocr"]:

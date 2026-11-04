@@ -25,6 +25,8 @@ COPY scripts/ scripts/
 # admin benchmark runner: gold scorers + the synthetic holdout cases (no user data)
 COPY evals/gold/*.py evals/gold/
 COPY evals/gold/data/gold.holdout.v1.json evals/gold/data/gold.holdout.v1.json
+# OCR holdout pages, rendered once on macOS (the image has no Chrome)
+COPY evals/gold/data/ocr-holdout-v1/ evals/gold/data/ocr-holdout-v1/
 COPY --from=frontend /src/frontend/dist frontend/dist
 RUN uv sync --locked --project backend --no-dev
 COPY deploy/entrypoint.sh /app/deploy/entrypoint.sh

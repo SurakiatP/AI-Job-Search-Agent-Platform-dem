@@ -6,7 +6,7 @@ import { ApiError, type AdminModelCatalogItem } from '@/lib/api-types';
 import { dateLocale } from '@/lib/locale';
 
 /** Tasks that have a gold test set (backend services/benchmark.py TASK_OF). The other tasks go straight to the typed confirmation. */
-export const TESTABLE = new Set(['evaluate_job', 'draft_documents', 'extract_experience', 'tailor_cv', 'apply_prepare', 'interview_generate']);
+export const TESTABLE = new Set(['evaluate_job', 'draft_documents', 'extract_experience', 'tailor_cv', 'apply_prepare', 'interview_generate', 'interview_grade', 'interview_report', 'document_ocr']);
 /** The phrase PUT /tasks/{op} expects when the verdict is not green. Same text in Thai and English. */
 export const CONFIRM = 'ใช้โมเดลนี้';
 export const EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'default'] as const;

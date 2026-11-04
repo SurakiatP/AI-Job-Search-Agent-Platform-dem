@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import * as Drawer from '@radix-ui/react-dialog';
-import { Activity, LayoutDashboard, LogOut, Menu, Monitor, Moon, Receipt, ScrollText, Server, SlidersHorizontal, Sun, Users, X, type LucideIcon } from 'lucide-react';
+import { Activity, LayoutDashboard, LogOut, Menu, Monitor, Moon, Receipt, ScrollText, Server, SlidersHorizontal, Sun, UserCog, Users, X, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { useTheme, type Theme } from '../../app/theme';
@@ -42,7 +42,7 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
   </nav>;
 }
 
-// Admins have no workspace, so the menu holds only appearance and sign out (the app's AccountMenu links to pages they cannot open).
+// Admins have no workspace, so the menu holds my account, appearance and sign out (the app's AccountMenu links to pages they cannot open).
 function AdminAccount({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   const shell = useTranslation('admin-shell').t;
@@ -57,6 +57,7 @@ function AdminAccount({ compact = false }: { compact?: boolean }) {
     </DropdownMenuTrigger>
     <DropdownMenuContent align={compact ? 'end' : 'start'} side={compact ? 'bottom' : 'top'} className="min-w-56">
       <DropdownMenuItem onSelect={event => { event.preventDefault(); setTheme(next); }}><ThemeIcon aria-hidden="true" />{t('appearance')}<span className="ms-auto text-xs text-muted-foreground">{t(theme)}</span></DropdownMenuItem>
+      <DropdownMenuItem asChild><Link to="/admin/account"><UserCog aria-hidden="true" />{shell('account')}</Link></DropdownMenuItem>
       <div role="separator" className="my-1 h-px bg-border" />
       <DropdownMenuItem onSelect={() => void logout()}><LogOut aria-hidden="true" />{t('auth.logout')}</DropdownMenuItem>
     </DropdownMenuContent>

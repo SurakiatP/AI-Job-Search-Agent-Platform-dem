@@ -19,6 +19,7 @@ LIMITS: dict[str, tuple[int, int]] = {
     # one IP, so until SEC-B02 (trusted proxy setting) is done every per-IP bucket (login_ip 10/15 min, forgot_ip
     # 100/h, signup_ip, ...) is effectively site-wide: enough failed logins from anyone lock all logins for 15 min.
     "login_email_any": (30, 900),  # failed logins per email from all IPs: a backstop against wide spraying
+    "password_change": (10, 900),  # failed current-password checks per signed-in user; a success takes its hit back
     "resend_email": (3, 3600),
     "otp_attempt": (5, 600),  # wrong or right: at most 5 tries per 10 minutes for one account and purpose
     "otp_send": (3, 3600),
