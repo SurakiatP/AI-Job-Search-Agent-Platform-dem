@@ -35,8 +35,8 @@ export function Brand({ compact = false, rail = false }: { compact?: boolean; ra
   return <RailTip rail={rail} label={`${t('brand')} ${t('badge')}`}>
     <Link to="/" aria-label={`${t('brand')} ${t('badge')}: ${t('home')}`} className={`flex min-h-11 min-w-0 items-center gap-2 rounded-lg text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-10 ${rail ? 'justify-center' : ''}`}>
       <BrandIcon />
-      <span className={`flex min-w-0 ${compact ? 'items-center gap-2' : 'flex-col items-start gap-0.5'} ${hide}`}>
-        <span className={`min-w-0 truncate font-heading text-lg font-medium leading-none ${compact ? 'hidden sm:inline' : ''}`}>{t('brand')}</span>
+      <span className={`flex ${compact ? 'min-w-0 items-center gap-2' : 'shrink-0 flex-col items-start gap-0.5'} ${hide}`}>
+        <span className={`whitespace-nowrap font-heading text-lg font-medium leading-none ${compact ? 'hidden sm:inline' : ''}`}>{t('brand')}</span>
         <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs font-medium leading-none text-accent-foreground">{t('badge')}</span>
       </span>
     </Link>
