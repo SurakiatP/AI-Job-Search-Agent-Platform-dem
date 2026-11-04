@@ -102,7 +102,7 @@ create-test-users:
     - |
       set -eu
       test -s "$TEST_USERS"
-      while read -r email password; do
+      while read -r email password || [ -n "$email" ]; do  # also reads a last line without a newline
         [ -n "$email" ] || continue
         printf '%s\n' "$password" | docker exec -i jobsearch-web /app/backend/.venv/bin/python /app/scripts/accounts.py create-user --email "$email" || echo "skipped $email (exists or rejected)"
       done < "$TEST_USERS"
@@ -127,7 +127,7 @@ create-admin-users:
     - |
       set -eu
       test -s "$ADMIN_USERS"
-      while read -r email password; do
+      while read -r email password || [ -n "$email" ]; do  # also reads a last line without a newline
         [ -n "$email" ] || continue
         printf '%s\n' "$password" | docker exec -i jobsearch-web /app/backend/.venv/bin/python /app/scripts/accounts.py create-user --admin --email "$email" || echo "skipped $email (exists or rejected)"
       done < "$ADMIN_USERS"
