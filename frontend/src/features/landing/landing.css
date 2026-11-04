@@ -94,7 +94,7 @@
 .tour-stage [role='tab'][data-state='active'] { box-shadow: none; }
 
 /* Hero stage: chips straddle the frame edge (wide screens only). Float and tilt are motion-only; without them the frame is flat. */
-.hero-stage { perspective: 1600px; }
+.hero-stage { perspective: 1200px; }
 .hero-chip { position: absolute; z-index: 1; transition: transform 0.4s var(--ease-out); }
 @media (prefers-reduced-motion: no-preference) {
   .hero-float { animation: chip-float 6s ease-in-out infinite; animation-delay: var(--f, 0s); }
@@ -104,4 +104,4 @@
 }
 @keyframes chip-float { 50% { transform: translateY(-4px); } 0%, 100% { transform: translateY(4px); } }
 /* Follows the scroll both ways: leans back as it enters from below, flat while centred, leans forward as it leaves above. */
-@keyframes frame-flat { 0% { transform: rotateX(9deg) scale(0.97); } 38%, 58% { transform: rotateX(0deg) scale(1); } 100% { transform: rotateX(-7deg) scale(0.98); } }
+@keyframes frame-flat { 0% { transform: rotateX(18deg) scale(0.95); } 38%, 58% { transform: rotateX(0deg) scale(1); } 100% { transform: rotateX(-14deg) scale(0.96); } }
