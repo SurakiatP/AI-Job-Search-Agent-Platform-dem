@@ -2,7 +2,7 @@ const th = {
   headlineA: 'ให้ AI เทียบ CV กับงาน',
   headlineB: 'แล้วบอกเหตุผลให้คุณ',
   // source: PRODUCT.md (fit score 0-100% with reasons, tailored drafts, user checks and submits); DESIGN.md (FitScore shows a percentage)
-  sub: 'ใส่ CV กับประกาศงาน แล้วรับคะแนนความเหมาะสม 0-100% พร้อมเหตุผล และร่าง CV กับจดหมายสมัครงานที่ปรับตามตำแหน่ง คุณตรวจทุกฉบับและสมัครเอง',
+  sub: 'ใส่ CV กับประกาศงาน แล้วรับคะแนนความเหมาะสม 0⁠–⁠100% พร้อมเหตุผล และร่าง CV กับจดหมายสมัครงานที่ปรับตามตำแหน่ง คุณตรวจทุกฉบับและสมัครเอง',
   cta: 'สร้างบัญชี',
   signup: 'เริ่มใช้งาน',
   login: 'เข้าสู่ระบบ',
@@ -28,6 +28,11 @@ const th = {
     ],
     score: '84%',
     ai: 'AI',
+    fit: {
+      reqs: [['SQL และการทำรายงาน', 'full'], ['Power BI หรือ Tableau', 'part'], ['Python สำหรับวิเคราะห์ข้อมูล', 'none']] as [string, string][],
+      match: { full: 'ตรง', part: 'บางส่วน', none: 'ยังไม่พบ' } as Record<string, string>,
+      chips: ['บันทึกงานแล้ว', 'ทักษะตรง 8/11', 'ร่างจดหมายแล้ว'] as [string, string, string],
+    },
   },
   stepsTitle: 'เริ่มได้ในสามขั้น',
   how: [
@@ -138,6 +143,11 @@ const en: typeof th = {
     ],
     score: '84%',
     ai: 'AI',
+    fit: {
+      reqs: [['SQL and reporting', 'full'], ['Power BI or Tableau', 'part'], ['Python for analysis', 'none']] as [string, string][],
+      match: { full: 'Match', part: 'Partial', none: 'Not found' } as Record<string, string>,
+      chips: ['Job saved', 'Skills matched 8/11', 'Letter drafted'] as [string, string, string],
+    },
   },
   stepsTitle: 'Three steps to start',
   how: [

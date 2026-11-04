@@ -31,23 +31,23 @@ export function LandingPage() {
     <main id="main" tabIndex={-1} className="grid grid-cols-[minmax(0,1fr)] pb-12 focus-visible:outline-none sm:pb-16">
       <div className="landing-hero relative isolate">
         <div className="hero-glow" aria-hidden="true" />
-        <section className={`${wrap} grid items-center justify-items-center gap-10 pt-12 sm:gap-12 sm:pt-16 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:justify-items-start lg:gap-12 lg:pt-20`}>
-          <div className="hero-in grid max-w-3xl justify-items-center gap-6 text-center lg:justify-items-start lg:text-left">
+        <section className={`${wrap} grid justify-items-center gap-12 pt-12 sm:gap-16 sm:pt-16 lg:pt-20`}>
+          <div className="hero-in grid max-w-4xl justify-items-center gap-6 text-center">
             <h1 className="landing-hero-title text-4xl tracking-tight not-italic [text-wrap:balance] sm:text-5xl xl:text-[3.5rem]">
               <span className="block">{c.headlineA.split('AI').flatMap((part, index) => index === 0 ? [part] : [<span key={index} className="landing-ai">AI</span>, part])}</span><span>{c.headlineB}</span>
             </h1>
-            <p className="max-w-xl text-base text-muted-foreground [text-wrap:pretty] sm:text-lg">{c.sub}</p>
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 lg:justify-start">
+            <p className="max-w-2xl text-base text-muted-foreground [text-wrap:pretty] sm:text-lg">{c.sub}</p>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
               {cta('lg', 'shadow-lift')}
               <a href="#how" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline lg:min-h-10">{c.secondary}<ArrowDown className="size-4" aria-hidden="true" /></a>
             </div>
-            <ul aria-label={c.controlTitle} className="flex flex-wrap justify-center gap-2 text-sm lg:justify-start text-muted-foreground">
+            <ul aria-label={c.controlTitle} className="flex flex-wrap justify-center gap-2 text-sm text-muted-foreground">
               {c.control.map(item => <li key={item} className="flex items-center gap-2 rounded-full border bg-card/70 py-1 pl-1 pr-3">
                 <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary-fill text-primary-fill-foreground"><Tick className="size-3" /></span>{item}
               </li>)}
             </ul>
           </div>
-          <div className="hero-rise w-full min-w-0 max-w-2xl"><DemoCard /></div>
+          <div className="hero-rise w-full min-w-0"><DemoCard /></div>
         </section>
       </div>
 

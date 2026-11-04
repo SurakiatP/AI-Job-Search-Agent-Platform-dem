@@ -1,6 +1,7 @@
-import type { CSSProperties, ReactNode } from 'react';
-import { Bell, Check, ClipboardList, Clock, Download, FileText, FileUser, Search, Sparkles } from 'lucide-react';
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { Bell, Bookmark, Check, ClipboardList, Clock, Download, FileText, FileUser, Search, Sparkles } from 'lucide-react';
 import { useLocale } from '../../app/providers';
+import { AiLabel, GemSparkle } from '../../components/AiMark';
 import { FitScore } from '../../components/FitScore';
 import { SkillCoverage } from '../../components/SkillCoverage';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -10,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { stageLabel } from '../../lib/applicationStages';
 import { landingCopy, previewCopy } from './copy';
 import { featureSlugs } from './featurePages';
-import { Tick, useSeen } from './Reveal';
+import { Tick, prefersReducedMotion, useSeen } from './Reveal';
 
 const coverage = {
   required: ['React', 'TypeScript', 'Tailwind', 'Git', 'REST', 'Vite', 'Jest', 'Playwright', 'Docker', 'CI/CD', 'GraphQL', 'Next.js', 'AWS', 'Figma'],
@@ -131,48 +132,99 @@ export function StepPanel({ index }: { index: number }) {
 
 const stageIcon = { cv: FileUser, search: Search, evaluate: Sparkles, docs: FileText, track: ClipboardList } as const;
 
-/** Hero card: one job's journey through the app's five stages. Illustrative: nothing here is read from an account.
- *  Plays once when it is on screen (ticks draw, steps rise in turn, the strip fills, the score settles). */
+const chip = 'flex items-center gap-2 whitespace-nowrap rounded-full border bg-card px-3 py-2 text-sm font-medium shadow-[var(--shadow-lift)]';
+const matchBadge = { full: 'success', part: 'warning', none: 'outline' } as const;
+
+/** Chips drift up to 8px against the pointer. Fine pointers only, one rAF per frame, transform only. */
+function usePointerDrift<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const stage = ref.current;
+    if (!stage || prefersReducedMotion() || !matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    const layers = [...stage.querySelectorAll<HTMLElement>('[data-depth]')];
+    let frame = 0, x = 0, y = 0;
+    const paint = () => { frame = 0; for (const el of layers) el.style.transform = `translate3d(${(x * Number(el.dataset.depth)).toFixed(1)}px, ${(y * Number(el.dataset.depth)).toFixed(1)}px, 0)`; };
+    const queue = () => { frame ||= requestAnimationFrame(paint); };
+    const move = (e: PointerEvent) => { const r = stage.getBoundingClientRect(); x = ((e.clientX - r.left) / r.width - 0.5) * -2; y = ((e.clientY - r.top) / r.height - 0.5) * -2; queue(); };
+    const leave = () => { x = y = 0; queue(); };
+    stage.addEventListener('pointermove', move); stage.addEventListener('pointerleave', leave);
+    return () => { stage.removeEventListener('pointermove', move); stage.removeEventListener('pointerleave', leave); cancelAnimationFrame(frame); };
+  }, []);
+  return ref;
+}
+
+/** Hero stage: a browser-style frame holding one job's journey and its fit result. Illustrative: nothing here is read from an
+ *  account. The journey plays once when on screen (ticks draw, steps rise in turn, the strip fills, the score settles). */
 export function DemoCard() {
   const { locale } = useLocale();
-  const d = landingCopy[locale].demo;
+  const c = landingCopy[locale];
+  const d = c.demo;
   const [ref, play] = useSeen<HTMLElement>(0.1);
-  return <div className="grid min-w-0 gap-3"><section ref={ref} data-play={play} aria-label={d.label} className="demo-card gem-border grid min-w-0 gap-6 rounded-2xl bg-card p-6 shadow-[var(--shadow-lift)] sm:p-8">
-    <div className="grid gap-1">
-      <p className="font-heading text-2xl font-semibold leading-snug not-italic">{d.title}</p>
-      <p className="text-sm text-muted-foreground">{d.company}</p>
-    </div>
-    <div className="grid gap-2">
-      <span className="text-sm font-medium tabular-nums text-primary">{d.progress}</span>
-      <div aria-hidden="true" className="grid grid-cols-5 gap-2">
-        {d.steps.map((step, index) => <span key={step.stage} style={{ '--i': index } as CSSProperties} className={cn('demo-seg h-2 rounded-full', step.state === 'done' && 'bg-primary', step.state === 'current' && 'bg-warning/70', step.state === 'next' && 'bg-muted')} />)}
+  const stage = usePointerDrift<HTMLDivElement>();
+  return <div className="grid min-w-0 gap-4">
+    <div ref={stage} className="hero-stage relative">
+      <div className="hero-frame gem-border overflow-hidden rounded-2xl shadow-[var(--shadow-lift)]">
+        <div aria-hidden="true" className="flex items-center gap-3 border-b bg-muted/60 px-4 py-3">
+          <span className="flex gap-1"><span className="size-2 rounded-full bg-border" /><span className="size-2 rounded-full bg-border" /><span className="size-2 rounded-full bg-border" /></span>
+          <span className="mx-auto w-full max-w-xs truncate rounded-full bg-card px-4 py-1 text-center text-xs text-muted-foreground">jobsearch.app</span>
+          <span className="hidden w-10 sm:block" />
+        </div>
+        <section ref={ref} data-play={play} aria-label={d.label} className="demo-card grid min-w-0 bg-card lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+          <div className="grid min-w-0 content-start gap-6 p-6 sm:p-8">
+            <div className="grid gap-1">
+              <p className="font-heading text-2xl font-semibold leading-snug not-italic">{d.title}</p>
+              <p className="text-sm text-muted-foreground">{d.company}</p>
+            </div>
+            <div className="grid gap-2">
+              <span className="text-sm font-medium tabular-nums text-primary">{d.progress}</span>
+              <div aria-hidden="true" className="grid grid-cols-5 gap-2">
+                {d.steps.map((step, index) => <span key={step.stage} style={{ '--i': index } as CSSProperties} className={cn('demo-seg h-2 rounded-full', step.state === 'done' && 'bg-primary', step.state === 'current' && 'bg-warning/70', step.state === 'next' && 'bg-muted')} />)}
+              </div>
+            </div>
+            <ol aria-label={d.list} className="grid">
+              {d.steps.map((step, index) => {
+                const Icon = stageIcon[step.stage as keyof typeof stageIcon];
+                const last = index === d.steps.length - 1;
+                return <li key={step.stage} style={{ '--i': index } as CSSProperties} aria-current={step.state === 'current' ? 'step' : undefined} className="demo-step relative grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3">
+                  {!last && <span aria-hidden="true" className={cn('absolute left-[1.0625rem] top-9 h-[calc(100%-1.75rem)] w-0.5 rounded-full', step.state === 'done' ? 'bg-primary/35' : 'bg-border')} />}
+                  <span aria-hidden="true" className={cn('grid size-9 place-items-center rounded-full',
+                    step.state === 'done' && 'bg-primary-fill text-primary-fill-foreground',
+                    step.state === 'current' && 'bg-warning/15 text-warning ring-2 ring-warning ring-offset-2 ring-offset-card',
+                    step.state === 'next' && 'bg-muted text-muted-foreground')}>
+                    {step.state === 'done' ? <Tick draw /> : <Icon className="size-4" />}
+                  </span>
+                  <div className={cn('grid min-w-0 gap-0.5 pb-5', last && 'pb-0')}>
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium leading-snug">
+                      <span>{step.title}</span>{' '}
+                      {(step.stage === 'evaluate' || step.stage === 'docs') && <Badge variant="secondary" className="gap-1"><Sparkles className="size-3" aria-hidden="true" />{d.ai}</Badge>}
+                      {step.stage === 'evaluate' && <Badge variant="success" className="demo-score tabular-nums">{d.score}</Badge>}
+                    </p>
+                    <p className={cn('text-sm leading-relaxed [overflow-wrap:anywhere]', step.state === 'current' ? 'flex items-center gap-2 font-medium text-warning' : 'text-muted-foreground')}>
+                      {step.state === 'current' && <Clock className="size-4 shrink-0" aria-hidden="true" />}{step.note}
+                    </p>
+                  </div>
+                </li>;
+              })}
+            </ol>
+          </div>
+          <div className="grid min-w-0 content-start gap-5 border-t bg-muted/40 p-6 sm:p-8 lg:border-l lg:border-t-0">
+            <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold">{c.panel.labels[3]}</span><AiLabel /></div>
+            <div className="demo-fit"><FitScore result={{ score: null, score_percent: 84, score_band: 'strong' }} size="lg" locale={locale} /></div>
+            <ul className="grid gap-2">
+              {d.fit.reqs.map(([name, kind], index) => <li key={name} style={{ '--i': index } as CSSProperties} className="demo-req flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 text-sm">
+                <span className="min-w-0 [overflow-wrap:anywhere]">{name}</span>
+                <Badge variant={matchBadge[kind as keyof typeof matchBadge]} className="shrink-0">{d.fit.match[kind]}</Badge>
+              </li>)}
+            </ul>
+          </div>
+        </section>
+      </div>
+      <div aria-hidden="true" className="pointer-events-none hidden sm:block">
+        <div data-depth="8" className="hero-chip -top-4 left-8 lg:left-16"><div style={{ '--f': '0s' } as CSSProperties} className={cn('hero-float', chip)}><Bookmark className="size-4 text-primary" />{d.fit.chips[0]}</div></div>
+        <div data-depth="6" className="hero-chip -right-4 top-2/3 lg:-right-8"><div style={{ '--f': '-2s' } as CSSProperties} className={cn('hero-float', chip)}><Check className="size-4 text-success" />{d.fit.chips[1]}</div></div>
+        <div data-depth="10" className="hero-chip -bottom-4 right-8 lg:right-16"><div style={{ '--f': '-4s' } as CSSProperties} className={cn('hero-float', chip)}><GemSparkle className="size-4" />{d.fit.chips[2]}<AiLabel check className="-mr-1" /></div></div>
       </div>
     </div>
-    <ol aria-label={d.list} className="grid">
-      {d.steps.map((step, index) => {
-        const Icon = stageIcon[step.stage as keyof typeof stageIcon];
-        const last = index === d.steps.length - 1;
-        return <li key={step.stage} style={{ '--i': index } as CSSProperties} aria-current={step.state === 'current' ? 'step' : undefined} className="demo-step relative grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3">
-          {!last && <span aria-hidden="true" className={cn('absolute left-[1.0625rem] top-9 h-[calc(100%-1.75rem)] w-0.5 rounded-full', step.state === 'done' ? 'bg-primary/35' : 'bg-border')} />}
-          <span aria-hidden="true" className={cn('grid size-9 place-items-center rounded-full',
-            step.state === 'done' && 'bg-primary-fill text-primary-fill-foreground',
-            step.state === 'current' && 'bg-warning/15 text-warning ring-2 ring-warning ring-offset-2 ring-offset-card',
-            step.state === 'next' && 'bg-muted text-muted-foreground')}>
-            {step.state === 'done' ? <Tick draw /> : <Icon className="size-4" />}
-          </span>
-          <div className={cn('grid min-w-0 gap-0.5 pb-5', last && 'pb-0')}>
-            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium leading-snug">
-              <span>{step.title}</span>{' '}
-              {(step.stage === 'evaluate' || step.stage === 'docs') && <Badge variant="secondary" className="gap-1"><Sparkles className="size-3" aria-hidden="true" />{d.ai}</Badge>}
-              {step.stage === 'evaluate' && <Badge variant="success" className="demo-score tabular-nums">{d.score}</Badge>}
-            </p>
-            <p className={cn('text-sm leading-relaxed [overflow-wrap:anywhere]', step.state === 'current' ? 'flex items-center gap-2 font-medium text-warning' : 'text-muted-foreground')}>
-              {step.state === 'current' && <Clock className="size-4 shrink-0" aria-hidden="true" />}{step.note}
-            </p>
-          </div>
-        </li>;
-      })}
-    </ol>
-  </section>
-  <p className="text-center text-sm text-muted-foreground">{d.label}</p></div>;
+    <p className="text-center text-sm text-muted-foreground">{d.label}</p>
+  </div>;
 }

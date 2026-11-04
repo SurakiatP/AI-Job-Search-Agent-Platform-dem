@@ -13,8 +13,9 @@ const tone: Record<Severity, { fill: string; text: string; Icon: typeof Info }> 
 export function Alert({ severity = 'info', action, className, children, ...props }: ComponentProps<'div'> & { severity?: Severity; action?: ReactNode }) {
   const { fill, text, Icon } = tone[severity];
   return <div role={severity === 'error' ? 'alert' : 'status'} className={cn('flex items-start gap-3 rounded-lg px-4 py-1.5 text-sm text-foreground', fill, className)} {...props}>
-    <Icon className={cn('mt-0.5 size-5 shrink-0', text)} aria-hidden="true" />
-    <div className="min-w-0 flex-1 py-2 [overflow-wrap:anywhere]">{children}</div>
+    {/* The icon box is one text line tall (py-2 + line-height) so it centres on the first line of any message. */}
+    <span className="flex h-[1.5rem] shrink-0 items-center self-start mt-2"><Icon className={cn('size-5', text)} aria-hidden="true" /></span>
+    <div className="min-w-0 flex-1 py-2 leading-6 [overflow-wrap:anywhere]">{children}</div>
     {action && <div className="shrink-0">{action}</div>}
   </div>;
 }
