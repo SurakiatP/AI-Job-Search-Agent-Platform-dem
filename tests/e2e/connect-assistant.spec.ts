@@ -76,3 +76,13 @@ test('the Connect tab fits a phone in Thai', async ({ page }) => {
   await expect(page.getByRole('status').filter({ hasText: 'พร้อมเชื่อมต่อ' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('a loopback share address is shown with the host the page was opened from; a public one is kept', async ({ page }) => {
+  const { shareForThisHost } = await import('../../frontend/src/features/console/shareHost');
+  expect(shareForThisHost('http://127.0.0.1:8011', { hostname: 'jobs.example.test' })).toBe('http://jobs.example.test:8011');
+  expect(shareForThisHost('http://127.0.0.1:8011', { hostname: '192.168.1.20' })).toBe('http://192.168.1.20:8011');
+  expect(shareForThisHost('http://127.0.0.1:8011', { hostname: '127.0.0.1' })).toBe('http://127.0.0.1:8011');
+  expect(shareForThisHost('http://127.0.0.1:8011', { hostname: 'localhost' })).toBe('http://127.0.0.1:8011');
+  expect(shareForThisHost('https://agents.example.test', { hostname: 'jobs.example.test' })).toBe('https://agents.example.test');
+  expect(shareForThisHost(null, { hostname: 'jobs.example.test' })).toBeNull();
+});

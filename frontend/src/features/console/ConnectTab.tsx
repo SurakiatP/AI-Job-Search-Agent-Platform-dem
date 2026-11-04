@@ -11,6 +11,7 @@ import { useResource } from '../projects/useResource';
 import type { Copy } from './copy';
 import { CopyButton } from './shared';
 import { clients, type Client, type Lang } from './clients';
+import { shareForThisHost } from './shareHost';
 
 const PICK_KEY = 'connect.client';
 const isLocal = (origin: string) => /^https?:\/\/(127\.|localhost|\[::1\])/.test(origin) || origin.startsWith('http://');
@@ -61,7 +62,7 @@ export function ConnectTab({ c, lang, projectId, onIssue }: { c: Copy; lang: Lan
   const info = useResource<Info>('/connect');
   if (info.status === 'error') return <ErrorState onRetry={info.reload} />;
   if (!info.data) return <LoadingState />;
-  const share = info.data.share_origin;
+  const share = shareForThisHost(info.data.share_origin, window.location);
   const api = `${window.location.origin}/v1`;
   if (!share) return <div className="grid gap-6">
     <p className="max-w-prose text-sm text-muted-foreground">{c.connectIntro}</p>
