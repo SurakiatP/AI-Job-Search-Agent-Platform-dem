@@ -56,7 +56,7 @@ export function StepPanel({ index }: { index: number }) {
     </li>)}</ul>
   </Shell>;
   if (slug === 'evaluate') return <Shell label={label}>
-    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
+    <div className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
       <FitScore result={{ score: null, score_percent: 84, score_band: 'strong' }} size="lg" locale={locale} />
       <ul className="grid gap-2 pl-4 text-sm text-muted-foreground [overflow-wrap:anywhere]">{p.reasons.map(r => <li className="list-disc" key={r}>{r}</li>)}</ul>
     </div>

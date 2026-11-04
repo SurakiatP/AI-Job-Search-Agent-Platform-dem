@@ -92,7 +92,7 @@ export function EvaluationReportView({ report, score, extra }: { report: Evaluat
   const { t } = useTranslation('sessionWorkspace');
   const icon = 'size-4 shrink-0';
   return <div className="grid gap-6" data-testid="ai-report">
-    <div className={`grid gap-4 rounded-3xl bg-ai-soft p-5 sm:p-6 lg:gap-x-8 lg:p-8 ${score ? 'lg:grid-cols-[auto_minmax(0,1fr)]' : 'lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]'}`}>
+    <div className={`gem-border grid gap-4 rounded-3xl [--gem-fill:color-mix(in_srgb,var(--ai-soft)_55%,var(--card))] p-5 sm:p-6 lg:gap-x-8 lg:p-8 ${score ? 'lg:grid-cols-[auto_minmax(0,1fr)]' : 'lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]'}`}>
       <AiLabel className="lg:col-span-2" />
       {score}
       <div className="grid min-w-0 content-start gap-3">

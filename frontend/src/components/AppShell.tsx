@@ -38,7 +38,7 @@ export function AppShell({ children, projects, projectId, sessionId, onReload }:
           {projectId ? <ProjectSwitcher {...sidebarProps} compact /> : <HomeLink />}
           <div className="flex shrink-0 items-center gap-2"><RunIndicator projectId={projectId} compact /><LanguageToggle /><AccountMenu projectId={projectId} /></div>
         </header>
-        <div className="min-w-0 lg:min-h-[calc(100dvh-16px)] lg:overflow-clip lg:rounded-xl lg:border lg:bg-background">
+        <div className="min-w-0 lg:min-h-[calc(100dvh-16px)] lg:overflow-clip lg:rounded-2xl lg:border lg:bg-background ambient-surface">
         <VerifyBanner />
         <main id="main-content" data-stage={stage} className={`${projectId ? 'pb-24 lg:pb-10 ' : ''}mx-auto w-full min-w-0 max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 xl:px-10 xl:py-10`} tabIndex={-1}><div key={pathname} className="page-enter">{children}</div></main>
         </div>

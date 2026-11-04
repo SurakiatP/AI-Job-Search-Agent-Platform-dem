@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { CountUp } from '@/components/CountUp';
+import { GemSparkle } from '@/components/AiMark';
 import { ArrowRight, LayoutDashboard, ListChecks, Clock3, Upload, Search, Loader2 } from 'lucide-react';
 import { Link, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -111,7 +113,7 @@ export function OverviewPage() {
     return <Button asChild className={heroBtn}><Link to={run ? runHref(run) : `${base}/console?tab=runs`}>{label}</Link></Button>;
   }
 
-  const stats = jobs.data && !firstRun ? [
+  const stats = jobs.data && runs.data && sessions.data && !firstRun ? [
     { key: 'saved', n: jobList.length },
     { key: 'evaluated', n: evaluations.size },
     { key: 'applied', n: jobList.filter(job => APPLIED_OR_LATER.includes(job.application_status ?? '')).length },
@@ -119,7 +121,7 @@ export function OverviewPage() {
   ] as const : null;
   const statRow = stats && <dl aria-label={c.stats.label} className="grid grid-cols-2 divide-x divide-y rounded-2xl border bg-card shadow-[var(--shadow-soft)] sm:grid-cols-4 sm:divide-y-0">
     {stats.map(stat => <div key={stat.key} className="grid min-w-0 content-start gap-1 p-5 sm:p-6">
-      <dd className="order-1 text-4xl font-semibold tabular-nums tracking-tight">{stat.n}</dd>
+      <dd className="order-1 text-4xl font-semibold tabular-nums tracking-tight"><CountUp value={stat.n} /></dd>
       <dt className="order-2 break-words text-sm text-muted-foreground">{c.stats[stat.key]}</dt>
     </div>)}
   </dl>;
@@ -127,9 +129,10 @@ export function OverviewPage() {
   const hero = step && (() => {
     const copy = c.hero[step.key];
     const jobName = focus ? [focus.title, focus.company].filter(Boolean).join(' · ') : '';
-    return <section aria-labelledby="next-step-heading" className="grid gap-5 rounded-3xl bg-hero p-6 text-hero-foreground shadow-[var(--shadow-lift)] sm:p-8">
+    return <section aria-labelledby="next-step-heading" className="aurora grid gap-5 rounded-3xl bg-hero p-6 text-hero-foreground shadow-[var(--shadow-lift)] sm:p-8">
+      <span className="aurora-glow" aria-hidden="true" />
       <div className="grid gap-2">
-        <p className="text-sm font-medium text-hero-accent">{c.nextStep}</p>
+        <p className="flex items-center gap-2 text-sm font-medium text-hero-accent"><GemSparkle className="size-4" />{c.nextStep}</p>
         <h2 id="next-step-heading" className="break-words text-3xl font-semibold tracking-tight">{copy.title}</h2>
         <p className="max-w-2xl break-words text-hero-muted">{copy.body(jobName, scoringCv?.name)}</p>
       </div>

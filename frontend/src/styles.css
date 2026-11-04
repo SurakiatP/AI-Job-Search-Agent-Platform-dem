@@ -3,6 +3,7 @@
 @import '@fontsource/noto-sans-thai/600.css';
 @import '@fontsource/noto-serif-thai/500.css';
 @import '@fontsource/manrope/400.css';
+@import '@fontsource-variable/google-sans-flex';
 @import 'tailwindcss';
 
 /* Shared workspace semantic tokens. */
@@ -12,49 +13,49 @@
   --radius: 0.5rem; /* MUI shape.borderRadius is 4px; owner asked for a little rounder (2026-11-03) */
   --shadow-xs: 0 1px 2px rgb(27 37 80 / 0.04);
   /* Soft layered card shadow in the teal ink, never black (2026-11-04 visual refresh). */
-  --shadow-soft: 0 1px 2px rgb(15 59 56 / 0.05), 0 6px 20px -10px rgb(15 59 56 / 0.16);
-  --shadow-lift: 0 2px 4px rgb(15 59 56 / 0.06), 0 14px 32px -14px rgb(15 59 56 / 0.24);
+  --shadow-soft: 0 1px 2px rgb(23 32 51 / 0.05), 0 6px 20px -10px rgb(23 32 51 / 0.16);
+  --shadow-lift: 0 2px 4px rgb(23 32 51 / 0.06), 0 14px 32px -14px rgb(23 32 51 / 0.24);
   /* The one bold surface per page: the deep teal "next step" card. */
-  --hero: #0F3B38;
+  --hero: #101C3D;
   --hero-foreground: #FFFFFF;
-  --hero-muted: #BFDCD7;
-  --hero-accent: #8FD3C8;
+  --hero-muted: #C9D6F5;
+  --hero-accent: #A8C7FA;
   --overlay: color-mix(in srgb, var(--foreground) 40%, transparent);
-  --background: #F3F4EF;
-  --foreground: #0F3B38;
+  --background: #EEF2F8;
+  --foreground: #172033;
   --card: #FFFFFF;
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: #287A74;
+  --primary: #0A50C2;
   --primary-foreground: #FFFFFF;
   /* Solid fills (filled buttons, badges): same as primary in light; a deeper royal blue with white text in dark. */
   --primary-fill: var(--primary);
   --primary-fill-foreground: var(--primary-foreground);
   --destructive-fill: var(--destructive);
-  --secondary: #E9EAE2;
-  --secondary-foreground: #0F3B38;
-  --muted: #E9EAE2;
-  --muted-foreground: #585E70;
-  --accent: #E8F7F2;
-  --accent-foreground: #0F3B38;
-  --destructive: #AF263E;
-  --success: #166445;
-  --warning: #805319;
-  --border: #DCDDD3;
-  --border-strong: #C9CBC0;
+  --secondary: #E3E9F2;
+  --secondary-foreground: #172033;
+  --muted: #E3E9F2;
+  --muted-foreground: #4A5568;
+  --accent: #D6E4FB;
+  --accent-foreground: #0B2A5C;
+  --destructive: #B3261E;
+  --success: #146C2E;
+  --warning: #8C5000;
+  --border: #D5DCE7;
+  --border-strong: #BCC6D4;
   --nav-hover: color-mix(in srgb, var(--primary) 4%, transparent); /* MUI hoverOpacity */
   --nav-active: color-mix(in srgb, var(--primary) 8%, var(--sidebar)); /* MUI selectedOpacity */
-  --input: #858993;
-  --ring: #287A74;
-  --sidebar: #EAEBE3;
-  --surface-tint: #EDEEE6;
+  --input: #6B7689;
+  --ring: #0A50C2;
+  --sidebar: #E6ECF5;
+  --surface-tint: #E9EEF6;
   --ai: var(--primary);
   --ai-contrast: var(--primary-foreground);
   --ai-foreground: var(--primary);
   --ai-soft: var(--accent);
   --ai-border: var(--border-strong);
-  --font-sans: 'Noto Sans Thai', Manrope, sans-serif;
+  --font-sans: 'Google Sans Flex Variable', 'Noto Sans Thai', Manrope, sans-serif;
   --font-serif: 'Noto Serif Thai', serif;
   --font-document: Manrope, 'Noto Sans Thai', sans-serif;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -68,44 +69,44 @@
   --stage-evaluate: var(--primary);
   --stage-docs: var(--primary);
   --stage-track: var(--primary);
-  --font-heading: 'Noto Sans Thai', Manrope, sans-serif; /* friendly sans headings; the serif stack stays in --font-serif */
+  --font-heading: 'Google Sans Flex Variable', 'Noto Sans Thai', Manrope, sans-serif; /* friendly sans headings; the serif stack stays in --font-serif */
   --font-display: var(--font-heading);
   --surface: var(--card);
   --surface-subtle: var(--muted);
   color-scheme: light;  color-scheme: light;
 }
 :root[data-theme='dark'] {
-  --shadow-soft: 0 1px 2px rgb(5 14 13 / 0.3), 0 8px 24px -12px rgb(5 14 13 / 0.5);
-  --shadow-lift: 0 2px 4px rgb(5 14 13 / 0.35), 0 16px 36px -14px rgb(5 14 13 / 0.6);
-  --hero: #1F5A54;
+  --shadow-soft: 0 1px 2px rgb(4 8 18 / 0.3), 0 8px 24px -12px rgb(4 8 18 / 0.5);
+  --shadow-lift: 0 2px 4px rgb(4 8 18 / 0.35), 0 16px 36px -14px rgb(4 8 18 / 0.6);
+  --hero: #1B2D63;
   --hero-foreground: #FFFFFF;
-  --hero-muted: #CFE6E2;
-  --hero-accent: #A6E0D6;
+  --hero-muted: #C9D6F5;
+  --hero-accent: #A8C7FA;
   --overlay: color-mix(in srgb, var(--background) 72%, transparent);
-  --background: #151F1E;
-  --foreground: #D9E4E1;
-  --card: #212F2E;
-  --primary: #86C9BF;
-  --primary-foreground: #10231F;
+  --background: #121826;
+  --foreground: #E3E8F2;
+  --card: #1C2333;
+  --primary: #A8C7FA;
+  --primary-foreground: #062E6F;
   /* Filled controls: white on a deeper royal blue (5.2:1), not dark text on pale periwinkle. */
-  --primary-fill: #2C7A72;
+  --primary-fill: #0B57D0;
   --primary-fill-foreground: #FFFFFF;
-  --destructive-fill: #C93A52;
-  --secondary: #253533;
-  --secondary-foreground: #D9E4E1;
-  --muted: #253533;
-  --muted-foreground: #9CB0AC;
-  --accent: #233B38;
-  --accent-foreground: #D9E4E1;
-  --destructive: #FF9AAA;
-  --success: #79D5AA;
-  --warning: #EBC27D;
-  --border: #364A48;
-  --border-strong: #4A6563;
-  --input: #6E8582;
-  --ring: #86C9BF;
-  --sidebar: #111A19;
-  --surface-tint: #192524;
+  --destructive-fill: #C5362C;
+  --secondary: #252E40;
+  --secondary-foreground: #E3E8F2;
+  --muted: #252E40;
+  --muted-foreground: #A3AEC2;
+  --accent: #22355C;
+  --accent-foreground: #E3E8F2;
+  --destructive: #F2B8B5;
+  --success: #6DD58C;
+  --warning: #F0C36A;
+  --border: #2F3A50;
+  --border-strong: #44516A;
+  --input: #7A879E;
+  --ring: #A8C7FA;
+  --sidebar: #141B2A;
+  --surface-tint: #171E2D;
   --ai: var(--primary);
   --ai-contrast: var(--primary-foreground);
   --ai-foreground: var(--primary);
@@ -274,8 +275,8 @@ main[data-stage='brand'] { --stage: var(--primary); }
 }
 
 @layer components {
-  .segmented { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius); background: var(--muted); }
-  .segmented > * { border-radius: calc(var(--radius) - 2px); color: var(--muted-foreground); }
+  .segmented { display: inline-flex; gap: 2px; padding: 3px; border-radius: 9999px; background: var(--muted); }
+  .segmented > * { border-radius: 9999px; color: var(--muted-foreground); }
   .muted { color: var(--muted-foreground); }
   .landing-headline { font-family: var(--font-display); font-size: 32px; line-height: 1.4; max-width: 720px; }
   @media (min-width: 640px) { .landing-headline { font-size: 36px; } }
@@ -441,3 +442,51 @@ input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: n
   }
   .tabs-scroll::-webkit-scrollbar { display: none; }
 }
+
+/* ---- Gemini-style effects (owner request 2026-11-04). The four brand hues are only used for AI marks,
+   the hero aurora and the AI border; text never sits on a gradient. ---- */
+:root {
+  --gem-blue: #3186FF; --gem-violet: #8B6FD6; --gem-rose: #E0627A; --gem-amber: #FFB619; --gem-green: #00B95C;
+  --gem-line: linear-gradient(115deg, #4796E3 0%, #8B6FD6 45%, #CA6673 100%);
+  --ambient: radial-gradient(90% 55% at 50% 115%, rgb(49 134 255 / 0.16), transparent 70%),
+             radial-gradient(45% 35% at 92% 100%, rgb(139 111 214 / 0.10), transparent 70%);
+}
+:root[data-theme='dark'] {
+  --ambient: radial-gradient(90% 55% at 50% 115%, rgb(49 134 255 / 0.20), transparent 70%),
+             radial-gradient(45% 35% at 92% 100%, rgb(139 111 214 / 0.14), transparent 70%);
+}
+@property --gem-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
+/* Soft blue light rising from the bottom of the work area, like the Gemini home screen. */
+.ambient-surface { background-image: var(--ambient); background-attachment: fixed; background-repeat: no-repeat; }
+
+/* Hero: deep indigo with three slow drifting colour clouds. Text stays on the solid part (AA checked on --hero). */
+.aurora { position: relative; isolation: isolate; overflow: hidden; }
+.aurora::before, .aurora::after { content: ''; position: absolute; z-index: -1; border-radius: 9999px; filter: blur(48px); opacity: 0.55; pointer-events: none; }
+.aurora::before { width: 46%; height: 140%; right: -8%; top: -50%; background: radial-gradient(circle, var(--gem-blue), transparent 65%); }
+.aurora::after { width: 40%; height: 120%; right: 18%; bottom: -70%; background: radial-gradient(circle, var(--gem-violet), transparent 65%); }
+.aurora > .aurora-glow { position: absolute; z-index: -1; width: 28%; height: 90%; right: -4%; bottom: -40%; border-radius: 9999px; filter: blur(48px); opacity: 0.45; background: radial-gradient(circle, var(--gem-rose), transparent 65%); pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .aurora::before { animation: aurora-a 18s ease-in-out infinite alternate; }
+  .aurora::after { animation: aurora-b 22s ease-in-out infinite alternate; }
+  .aurora > .aurora-glow { animation: aurora-a 26s ease-in-out infinite alternate-reverse; }
+}
+@keyframes aurora-a { to { transform: translate(-18%, 22%) scale(1.15); } }
+@keyframes aurora-b { to { transform: translate(24%, -18%) scale(0.9); } }
+
+/* AI surfaces: a thin Gemini gradient edge around the panel's own fill. */
+.gem-border { border: 1px solid transparent; background: linear-gradient(var(--gem-fill, var(--card)), var(--gem-fill, var(--card))) padding-box, var(--gem-line) border-box; }
+
+/* Turning four-colour ring while the AI is working. */
+.gem-ring { background: conic-gradient(from var(--gem-angle), var(--gem-blue), var(--gem-violet), var(--gem-rose), var(--gem-amber), var(--gem-green), var(--gem-blue));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); }
+@media (prefers-reduced-motion: no-preference) { .gem-ring { animation: gem-turn 1.4s linear infinite; } }
+@keyframes gem-turn { to { --gem-angle: 360deg; } }
+
+/* Clickable cards: lift plus a faint gradient edge on hover. */
+.lift-card { transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out); }
+.lift-card:hover { box-shadow: var(--shadow-lift); border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); }
+@media (prefers-reduced-motion: no-preference) { .lift-card:hover { transform: translateY(-2px); } }
+
+::selection { background: color-mix(in srgb, var(--primary) 22%, transparent); }
+@media (max-width: 639px) { .aurora::before, .aurora::after, .aurora > .aurora-glow { opacity: 0.3; } }

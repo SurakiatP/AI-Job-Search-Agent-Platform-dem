@@ -6,7 +6,7 @@ import { ripple } from '@/lib/ripple';
 import { Spinner } from './spinner';
 
 export const buttonVariants = cva(
-  'relative inline-flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:border-primary/40 [&_svg]:pointer-events-none [&_svg]:shrink-0',
+  'relative inline-flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:border-primary/40 [&_svg]:pointer-events-none [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -21,8 +21,8 @@ export const buttonVariants = cva(
         default: 'min-h-11 px-4 py-2 lg:min-h-10 pointer-coarse:min-h-12',
         sm: 'min-h-11 px-3 text-sm lg:min-h-9 pointer-coarse:min-h-11',
         lg: 'min-h-12 px-6 text-base [&_svg]:size-5',
-        icon: 'size-11 rounded-lg lg:size-10 pointer-coarse:size-12',
-        'icon-sm': 'size-11 rounded-lg lg:size-9 pointer-coarse:size-11',
+        icon: 'size-11 rounded-full lg:size-10 pointer-coarse:size-12',
+        'icon-sm': 'size-11 rounded-full lg:size-9 pointer-coarse:size-11',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },
