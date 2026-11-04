@@ -744,6 +744,8 @@ class RunExecutor:
                 "stop_reason": stop_reason, "rounds": rounds, "proposals": proposals,
                 "coverage_before": coverages[0], "coverage_after": coverages[0] if interactive else coverages[-1],
                 "structured": data is not None,
+                # Skills the job names that the CV text still lacks: the owner sees what could not be added and why.
+                "missing_skills": (coverage or {}).get("missing", []),
             }
             artifact_ids: tuple[uuid.UUID, ...] = ()
             if not interactive and not full and data is not None:

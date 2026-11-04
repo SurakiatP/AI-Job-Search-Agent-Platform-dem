@@ -111,7 +111,7 @@ export type ReportRequirement = { requirement: string; importance: 'critical' | 
 export type EvaluationReport = { verdict: string; summary: string; requirements?: ReportRequirement[]; strengths?: string[]; risks?: string[]; interview_prep?: string[]; cv_changes?: string[] };
 export type EvaluationResult = { report_markdown: string; score: number | null; score_percent?: number | null; score_band?: 'strong' | 'good' | 'partial' | 'weak' | 'poor' | null; score_basis?: { strong: number; partial: number; missing: number; not_applicable: number; critical_missing: boolean; capped: boolean } | null; skill_coverage?: SkillCoverage | null; report?: EvaluationReport | null };
 export type TailorProposal = { id: number; find: string; text: string; evidence_ids: string[]; status: 'proposed' | 'applied' | 'rejected_by_gate' };
-export type TailorPayload = { kind: 'tailor'; mode: 'autopilot' | 'interactive'; base_revision_id?: string | null; stop_reason?: string | null; rounds?: { round: number; accepted: number; rejected: number; coverage: number | null }[]; proposals?: TailorProposal[]; coverage_before?: number | null; coverage_after?: number | null };
+export type TailorPayload = { kind: 'tailor'; mode: 'autopilot' | 'interactive'; base_revision_id?: string | null; stop_reason?: string | null; rounds?: { round: number; accepted: number; rejected: number; coverage: number | null }[]; proposals?: TailorProposal[]; coverage_before?: number | null; coverage_after?: number | null; missing_skills?: string[] };
 export type TailorMode = 'autopilot' | 'interactive';
 export type RunView = {
   id: string;
