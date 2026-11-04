@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Job Search icon — dark mode</title>
+  <rect width="64" height="64" rx="14" fill="#091A36"/>
+  <path d="M42 16.5 56 8v26.5c0 17.6-8.8 25.7-24 25.7-10 0-17.4-4.1-22-11.1l10.1-8.5c2.9 4.1 6.4 6.3 11.2 6.3 7.2 0 10.7-4.1 10.7-12.5V16.5Z" fill="#F8FAFF"/>
+  <path d="M42 16.5 56 8v18.9c-3.8 3.4-8.3 6.3-14 8.9V16.5Z" fill="#23D5E5"/>
+</svg>

@@ -497,3 +497,5 @@ input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: n
 @media (max-width: 639px) { .aurora::before, .aurora::after, .aurora > .aurora-glow { opacity: 0.3; } }
 /* Manual "related topics" lists: a link that is the whole list item gets a 24px+ target (WCAG 2.5.8). */
 .manual-body li > a:only-child { display: inline-flex; align-items: center; min-height: 28px; }
+/* Sign-in pages: the same soft ambient light as the landing hero, behind the cards only. */
+.auth-stage { background-image: radial-gradient(60% 50% at 20% 10%, rgb(49 134 255 / 0.12), transparent 70%), radial-gradient(50% 45% at 90% 90%, rgb(139 111 214 / 0.10), transparent 70%); }

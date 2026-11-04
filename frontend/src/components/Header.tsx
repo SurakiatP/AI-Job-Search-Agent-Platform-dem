@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { House, Sparkles } from 'lucide-react';
+import { House } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useLocale } from '../app/providers';
@@ -8,10 +8,18 @@ import { Avatar } from './Avatar';
 import { useOwnerSession } from '../lib/api';
 import { Button } from './ui/button';
 
+// App icon: the light or dark file follows the theme; decorative, the name is written beside it or on the link.
+export function BrandIcon({ className = 'size-8' }: { className?: string }) {
+  return <>
+    <img src="/brand/job-search-icon-light.svg" alt="" aria-hidden="true" width={32} height={32} className={`${className} shrink-0 rounded-lg dark:hidden`} />
+    <img src="/brand/job-search-icon-dark.svg" alt="" aria-hidden="true" width={32} height={32} className={`${className} hidden shrink-0 rounded-lg dark:block`} />
+  </>;
+}
+
 export function Wordmark({ compact = false }: { compact?: boolean }) {
   return <span className="flex min-w-0 items-center gap-2 text-sm font-semibold leading-snug">
-    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary-fill text-primary-fill-foreground"><Sparkles aria-hidden="true" size={16} /></span>
-    {!compact && <span className="hidden min-w-0 font-heading font-medium [overflow-wrap:anywhere] sm:inline">AI Job Search Agent Platform</span>}
+    <BrandIcon />
+    {!compact && <span className="hidden min-w-0 font-heading font-medium [overflow-wrap:anywhere] sm:inline">Job Search</span>}
   </span>;
 }
 

@@ -6,7 +6,7 @@ const th = {
   signupSide: { title: 'สามขั้นสู่คะแนนความเหมาะสมแรก', steps: [
     { title: 'สร้างบัญชีและยืนยันอีเมล', body: 'เราส่งลิงก์ยืนยันไปที่อีเมลของคุณ' },
     { title: 'สร้างโปรเจกต์และเพิ่ม CV', body: 'อัปโหลดไฟล์ CV (PDF, DOCX หรือข้อความ) หรือสร้างในแอปด้วยแบบฟอร์ม' },
-    { title: 'ค้นหาและประเมินงาน', body: 'AI ให้คะแนนความเหมาะสม 1 ถึง 5 พร้อมเหตุผลให้ตรวจ คุณสมัครเองและบันทึกสถานะไว้' },
+    { title: 'ค้นหาและประเมินงาน', body: 'AI ให้คะแนนความเหมาะสม 0–100% พร้อมเหตุผลให้ตรวจ คุณสมัครเองและบันทึกสถานะไว้' },
   ] },
   passwordRule: 'ยาว 10–128 ตัวอักษร',
   passwordRuleLong: 'ยาวเกิน 128 ตัวอักษร',
@@ -41,7 +41,7 @@ const en: typeof th = {
   signupSide: { title: 'Three steps to your first fit score.', steps: [
     { title: 'Create an account and confirm your email', body: 'We send a confirmation link to your address.' },
     { title: 'Create a project and add your CV', body: 'Upload a CV file (PDF, DOCX or text) or build one with a form in the app.' },
-    { title: 'Find and evaluate jobs', body: 'AI scores the fit from 1 to 5 with reasons you can check. You apply yourself and record the status.' },
+    { title: 'Find and evaluate jobs', body: 'AI scores the fit from 0 to 100% with reasons you can check. You apply yourself and record the status.' },
   ] },
   passwordRule: '10–128 characters',
   passwordRuleLong: 'At most 128 characters',

@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeft, Check, CheckCircle2, Circle, ClipboardCheck, FileText, MailCheck, Sparkles, TriangleAlert } from 'lucide-react';
 import { useLocale } from '../../app/providers';
-import { Header } from '../../components/Header';
+import { BrandIcon } from '../../components/Header';
+import { PublicHeader } from '../landing/LandingNav';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { PasswordInput } from '../../components/PasswordInput';
@@ -19,20 +20,20 @@ const linkClass = 'rounded-sm font-medium text-primary underline-offset-4 hover:
 
 // One layout for all five pages: shared header, then a split panel (login, sign up) or a single centred card (recovery, verify).
 export function AuthLayout({ title, intro, side, icon, children }: { title: string; intro?: string; side?: ReactNode; icon?: ReactNode; children: ReactNode }) {
-  const body = <div className={`grid content-center gap-4 p-6 sm:p-10${side ? ' rounded-xl border bg-card text-card-foreground' : ''}`}>
+  const body = <div className={`grid content-center gap-4 p-6 sm:p-10${side ? ' rounded-3xl border bg-card text-card-foreground shadow-[var(--shadow-lift)]' : ''}`}>
     <div className="grid gap-2">
       {icon}
-      <h1 className="font-serif text-2xl font-medium leading-snug [overflow-wrap:anywhere] sm:text-3xl">{title}</h1>
+      <h1 className="font-heading text-2xl font-semibold leading-snug tracking-tight [overflow-wrap:anywhere] [text-wrap:balance] sm:text-3xl">{title}</h1>
       {intro && <p className="text-sm leading-relaxed text-muted-foreground">{intro}</p>}
     </div>
     {children}
   </div>;
   return <div className="flex min-h-dvh flex-col [&_button:disabled]:opacity-60 [&_input:disabled]:opacity-60">
-    <Header />
-    <main id="main-content" tabIndex={-1} className="flex flex-1 items-start justify-center px-4 py-8 sm:py-12 lg:items-center">
-      <div className={`w-full ${side ? 'grid max-w-4xl gap-6 lg:grid-cols-2' : 'max-w-md rounded-xl border bg-card text-card-foreground'}`}>
+    <PublicHeader />
+    <main id="main-content" tabIndex={-1} className="auth-stage flex flex-1 items-start justify-center px-4 py-8 sm:py-12 lg:items-center">
+      <div className={`w-full ${side ? 'grid max-w-5xl gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-6' : 'max-w-md rounded-3xl border bg-card text-card-foreground shadow-[var(--shadow-lift)]'}`}>
         {body}
-        {side && <aside className="grid content-center gap-6 rounded-xl border bg-surface-tint p-6 text-sm text-muted-foreground sm:p-10 lg:order-first">{side}</aside>}
+        {side && <aside className="aurora grid content-center gap-6 rounded-3xl bg-hero p-6 text-sm text-hero-muted shadow-[var(--shadow-lift)] sm:p-10 lg:order-first"><span className="aurora-glow" aria-hidden="true" /><span className="flex items-center gap-3 text-base font-semibold text-hero-foreground"><BrandIcon className="size-10" />Job Search</span>{side}</aside>}
       </div>
     </main>
   </div>;
@@ -102,7 +103,7 @@ function useUrlToken(): string | null {
 
 function SidePoints({ title, children }: { title: string; children: ReactNode }) {
   return <>
-    <p className="font-serif text-2xl font-medium leading-snug text-foreground [overflow-wrap:anywhere]">{title}</p>
+    <p className="font-heading text-2xl font-semibold leading-snug tracking-tight text-hero-foreground [overflow-wrap:anywhere] [text-wrap:balance] sm:text-3xl">{title}</p>
     {children}
   </>;
 }
@@ -119,8 +120,8 @@ export function LoginPage() {
   const { busy, error, fieldError, setError, submit } = useSubmit(() => login(email.trim(), password));
   if (session.status === 'ready') return <Navigate to={next} replace />;
   return <AuthLayout title={c.loginTitle} intro={t('auth.loginIntro')} side={<SidePoints title={c.loginSide.title}>
-    <ul className="grid gap-4">{c.loginSide.points.map((point, index) => { const Icon = [FileText, Sparkles, ClipboardCheck][index] ?? Check; return <li key={point} className="flex items-start gap-3 text-base leading-relaxed text-foreground">
-      <Icon className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" /><span className="min-w-0">{point}</span>
+    <ul className="grid gap-4">{c.loginSide.points.map((point, index) => { const Icon = [FileText, Sparkles, ClipboardCheck][index] ?? Check; return <li key={point} className="flex items-start gap-3 text-base leading-relaxed text-hero-foreground">
+      <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-hero-foreground/10"><Icon className="size-4 text-hero-accent" aria-hidden="true" /></span><span className="min-w-0">{point}</span>
     </li>; })}</ul>
   </SidePoints>}>
     {params.get('notice') === 'password-reset' && <p role="status" className="text-sm text-success">{c.loginNotice}</p>}
@@ -177,8 +178,8 @@ export function SignupPage() {
   </AuthLayout>;
   return <AuthLayout title={c.signupTitle} intro={t('auth.signupIntro')} side={<SidePoints title={c.signupSide.title}>
     <ol className="grid gap-4">{c.signupSide.steps.map((step, index) => <li key={step.title} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3">
-      <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-card text-sm font-semibold text-primary">{index + 1}</span>
-      <span className="grid gap-0.5"><span className="font-medium leading-snug">{step.title}</span><span className="text-sm text-muted-foreground">{step.body}</span></span>
+      <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-hero-foreground/10 text-sm font-semibold text-hero-foreground">{index + 1}</span>
+      <span className="grid gap-0.5"><span className="font-medium leading-snug text-hero-foreground">{step.title}</span><span className="text-sm text-hero-muted">{step.body}</span></span>
     </li>)}</ol>
   </SidePoints>}>
     <form className="grid gap-4" onSubmit={event => { if (!email.trim() || !password) { event.preventDefault(); setError(c.fillIn); return; } if (password.length < 10 || password.length > 128) { event.preventDefault(); setError(c.passwordShort); return; } void submit(event); }} noValidate>

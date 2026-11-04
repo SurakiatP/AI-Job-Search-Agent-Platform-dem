@@ -148,7 +148,7 @@ export function LandingPage() {
           <li><Link to="/docs" className={footerLink}>{c.docs}</Link></li>
         </ul>
       </nav>
-      <span>AI Job Search Agent Platform · {new Date().getFullYear()}</span>
+      <span>Job Search · {new Date().getFullYear()}</span>
     </footer>
   </div>;
 }
