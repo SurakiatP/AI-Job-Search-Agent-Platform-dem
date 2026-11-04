@@ -25,8 +25,8 @@ export function FitScore({ result, size = 'sm', locale }: { result: FitInput; si
   const value = kind === 'percent' ? `${result!.score_percent}%` : kind === 'legacy' ? `${result!.score!.toFixed(1)}/5` : '—';
   const old = locale === 'th' ? 'มาตราเก่า' : 'old scale';
   const label = kind === 'none' ? (locale === 'th' ? 'ยังไม่มีคะแนน' : 'No score') : `${value}${band ? `, ${fitBandText(band, locale)}` : ''}${kind === 'legacy' ? `, ${old}` : ''}`;
-  return <div className={cn('inline-flex shrink-0 flex-wrap items-baseline gap-x-2 rounded-lg border border-[color:var(--border-strong)] bg-card px-3 py-1 tabular-nums', band ? BAND_COLOR[band] : 'text-muted-foreground')} role="img" aria-label={`${prefix}: ${label}`}>
-    <span aria-hidden="true" className={cn('font-semibold', size === 'lg' ? 'text-3xl' : 'text-base')}>{value}</span>
+  return <div className={cn('inline-flex shrink-0 flex-wrap items-center gap-x-2 rounded-lg border border-[color:var(--border-strong)] bg-card px-3 py-1 tabular-nums', band ? BAND_COLOR[band] : 'text-muted-foreground')} role="img" aria-label={`${prefix}: ${label}`}>
+    <span aria-hidden="true" className={cn('font-semibold leading-tight', size === 'lg' ? 'text-3xl' : 'text-base')}>{value}</span>
     {band && <span aria-hidden="true" className="text-sm font-medium">{fitBandText(band, locale)}</span>}
     {kind === 'legacy' && <span aria-hidden="true" className="text-xs text-muted-foreground">{old}</span>}
   </div>;
