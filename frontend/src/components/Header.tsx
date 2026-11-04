@@ -25,7 +25,7 @@ export function Wordmark({ compact = false }: { compact?: boolean }) {
 
 export function HomeLink({ onClick, compact = false }: { onClick?: () => void; compact?: boolean }) {
   const { i18n } = useTranslation();
-  return <Link to="/" onClick={onClick} aria-label={i18n.language.startsWith('th') ? 'หน้าแรก' : 'Home'} className="inline-flex min-h-11 min-w-0 items-center rounded-md lg:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Wordmark compact={compact} /></Link>;
+  return <Link to="/" onClick={onClick} aria-label={i18n.language.startsWith('th') ? 'หน้าแรก' : 'Home'} className="inline-flex min-h-11 shrink-0 items-center rounded-md lg:min-h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Wordmark compact={compact} /></Link>;
 }
 
 // Collapsed-sidebar rail: a plain home icon (like ChatGPT) that clearly reads as "back to the landing page".
