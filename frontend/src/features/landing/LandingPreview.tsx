@@ -189,7 +189,7 @@ export function DemoCard() {
                   {!last && <span aria-hidden="true" className={cn('absolute left-[1.0625rem] top-9 h-[calc(100%-1.75rem)] w-0.5 rounded-full', step.state === 'done' ? 'bg-primary/35' : 'bg-border')} />}
                   <span aria-hidden="true" className={cn('grid size-9 place-items-center rounded-full',
                     step.state === 'done' && 'bg-primary-fill text-primary-fill-foreground',
-                    step.state === 'current' && 'bg-warning/15 text-warning ring-2 ring-warning ring-offset-2 ring-offset-card',
+                    step.state === 'current' && 'demo-now relative bg-warning/15 text-warning ring-2 ring-warning ring-offset-2 ring-offset-card',
                     step.state === 'next' && 'bg-muted text-muted-foreground')}>
                     {step.state === 'done' ? <Tick draw /> : <Icon className="size-4" />}
                   </span>
@@ -209,11 +209,11 @@ export function DemoCard() {
           </div>
           <div className="grid min-w-0 content-start gap-5 border-t bg-muted/40 p-6 sm:p-8 lg:border-l lg:border-t-0">
             <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold">{c.panel.labels[3]}</span><AiLabel /></div>
-            <div className="demo-fit"><FitScore result={{ score: null, score_percent: 84, score_band: 'strong' }} size="lg" locale={locale} /></div>
+            <div className="demo-fit"><FitScore key={String(play)} countUp={play ? 340 : undefined} result={{ score: null, score_percent: 84, score_band: 'strong' }} size="lg" locale={locale} /></div>
             <ul className="grid gap-2">
               {d.fit.reqs.map(([name, kind], index) => <li key={name} style={{ '--i': index } as CSSProperties} className="demo-req flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 text-sm">
                 <span className="min-w-0 [overflow-wrap:anywhere]">{name}</span>
-                <Badge variant={matchBadge[kind as keyof typeof matchBadge]} className="shrink-0">{d.fit.match[kind]}</Badge>
+                <Badge variant={matchBadge[kind as keyof typeof matchBadge]} className="demo-pill shrink-0">{d.fit.match[kind]}</Badge>
               </li>)}
             </ul>
           </div>

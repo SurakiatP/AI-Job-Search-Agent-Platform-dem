@@ -18,7 +18,21 @@
 .demo-req, .demo-fit { transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out); transition-delay: calc(var(--i, 0) * 120ms + 700ms); }
 .demo-fit { --i: -3; }
 .demo-score { transition: opacity 0.4s var(--ease-out), transform 0.5s var(--ease-out); transition-delay: 1.35s; }
+/* Small extras once the card has played: score counts up and catches one light sweep, match pills pop in, the current step breathes. */
+.demo-card[data-play='false'] .demo-pill { opacity: 0; transform: scale(0.7); }
+.demo-pill { transition: opacity 0.3s var(--ease-out), transform 0.4s var(--ease-out); transition-delay: calc(var(--i, 0) * 120ms + 1100ms); }
+.demo-fit > [role='img'] { position: relative; overflow: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .demo-card[data-play='true'] .demo-fit > [role='img']::after { content: ''; position: absolute; inset: 0; pointer-events: none; transform: translateX(-130%);
+    background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.55) 50%, transparent 62%); animation: demo-shine 0.9s var(--ease-out) 1.35s 1 forwards; }
+  .demo-card[data-play='true'] .demo-now::after { content: ''; position: absolute; inset: -2px; border-radius: 9999px; border: 2px solid var(--warning); opacity: 0; pointer-events: none;
+    animation: demo-breathe 2.6s ease-out 2.2s infinite; }
+}
+@keyframes demo-shine { to { transform: translateX(130%); } }
+@keyframes demo-breathe { 0% { transform: scale(1); opacity: 0.55; } 70%, 100% { transform: scale(1.55); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
+  .demo-card[data-play='false'] .demo-pill { opacity: 1; transform: none; }
+  .demo-pill { transition: none; opacity: 1; transform: none; }
   .demo-card[data-play='false'] .demo-step, .demo-card[data-play='false'] .demo-req, .demo-card[data-play='false'] .demo-fit, .demo-card[data-play='false'] .demo-seg, .demo-card[data-play='false'] .demo-score { opacity: 1; transform: none; }
   .demo-card[data-play='false'] .landing-tick-draw { stroke-dashoffset: 0; }
   .demo-step, .demo-req, .demo-fit, .demo-step .landing-tick-draw, .demo-seg, .demo-score { transition: none; opacity: 1; transform: none; animation: none; }

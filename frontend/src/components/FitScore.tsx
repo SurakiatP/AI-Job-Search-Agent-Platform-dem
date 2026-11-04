@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { CountUp } from './CountUp';
 import type { EvaluationResult } from '@/lib/api-types';
 
 export type FitInput = Pick<EvaluationResult, 'score' | 'score_percent' | 'score_band' | 'score_basis'> | null | undefined;
@@ -19,7 +20,7 @@ export function fitKind(result: FitInput): 'percent' | 'legacy' | 'none' {
   return result?.score != null ? 'legacy' : 'none';
 }
 
-export function FitScore({ result, size = 'sm', locale }: { result: FitInput; size?: 'sm' | 'lg'; locale: Locale }) {
+export function FitScore({ result, size = 'sm', locale, countUp }: { result: FitInput; size?: 'sm' | 'lg'; locale: Locale; countUp?: number }) {
   const kind = fitKind(result);
   const band = kind === 'percent' ? result?.score_band ?? null : null;
   const prefix = locale === 'th' ? 'คะแนนความเหมาะสม' : 'Fit score';
@@ -28,7 +29,7 @@ export function FitScore({ result, size = 'sm', locale }: { result: FitInput; si
   const label = kind === 'none' ? (locale === 'th' ? 'ยังไม่มีคะแนน' : 'No score') : `${value}${band ? `, ${fitBandText(band, locale)}` : ''}${kind === 'legacy' ? `, ${old}` : ''}`;
   const lg = size === 'lg';
   return <div className={cn('inline-flex shrink-0 flex-wrap items-center tabular-nums', lg ? 'gap-x-3 gap-y-1 rounded-2xl px-5 py-3' : 'min-h-8 gap-x-2 rounded-full px-3', band ? [BAND_COLOR[band], BAND_FILL[band]] : 'bg-muted text-muted-foreground')} role="img" aria-label={`${prefix}: ${label}`}>
-    <span aria-hidden="true" className={cn('font-semibold leading-none tracking-tight', lg ? 'text-5xl' : 'text-base')}>{value}</span>
+    <span aria-hidden="true" className={cn('font-semibold leading-none tracking-tight', lg ? 'text-5xl' : 'text-base')}>{countUp != null && kind === 'percent' ? <><CountUp value={result!.score_percent!} delay={countUp} duration={900} />%</> : value}</span>
     {band && <span aria-hidden="true" className={cn('font-medium', lg ? 'text-lg' : 'text-sm')}>{fitBandText(band, locale)}</span>}
     {kind === 'legacy' && <span aria-hidden="true" className="text-xs text-muted-foreground">{old}</span>}
   </div>;
