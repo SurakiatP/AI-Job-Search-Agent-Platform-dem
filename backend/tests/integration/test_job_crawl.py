@@ -218,7 +218,7 @@ def bkk_state(sessions):
 
 @pytest.mark.integration
 def test_jobbkk_head_pages_and_sweep_finish_at_all_old_page(sessions):
-    site = bkk_site({1: [item(1)], 2: [item(2)], 3: [item(3)], 4: [item(4), item(5, created_days=95)], 5: OLD_PAGE})
+    site = bkk_site({1: [item(1)], 2: [item(2)], 3: [item(3)], 4: [item(4), item(5, created_days=35)], 5: OLD_PAGE})
     result = crawl(sessions, "jobbkk", site)
     assert result["state"] == "ok" and set(stored(sessions, "jobbkk")) == {"1", "2", "3", "4"}
     assert f"{BKK}/jobs/detail/7/5" not in site.requested and f"{BKK}/jobs/detail/7/900" not in site.requested

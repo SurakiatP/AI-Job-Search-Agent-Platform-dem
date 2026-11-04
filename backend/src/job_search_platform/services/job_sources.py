@@ -17,7 +17,7 @@ from job_search_platform.services.errors import ServiceError
 CACHE_TTL_SECONDS = 300
 CACHE_MAX_ENTRIES = 128
 DESCRIPTION_MAX = 50000
-STALE_AFTER_DAYS = 60
+STALE_AFTER_DAYS = 21  # postings are kept 30 days (job_store.MAX_AGE); flag the last third
 RETRIEVE = ["slug", "title", "company", "location", "cities", "work_mode", "skills", "category", "posted_at",
             "posted_ts", "source_url", "description_markdown", "reality_stale", "missed_runs"]
 FACETS = ["category", "provinces", "seniority", "employment_type", "company_type", "skills", "posting_language"]

@@ -87,7 +87,7 @@ Result handling:
 - `total` = `estimatedTotalHits`, which is exhaustive under `maxTotalHits`.
 - Each hit maps to the current item shape.
 - `age_days` is computed at query time from `posted_at`.
-- `stale` (FR-J04) is true when `reality_stale` (freehire's evidence) is set, or when `age_days > 60` (the age evidence every source has). The 60-day threshold is a named constant.
+- `stale` (FR-J04) is true when `reality_stale` (freehire's evidence) is set, or when `age_days > 21` (the age evidence every source has). The 21-day threshold is a named constant.
 - `description_markdown` comes from the document, so the result payload never touches Postgres (FR-J01).
 
 `job_facets` is one search with `limit=0` and `facets=[category, cities, seniority, employment_type, company_type, skills, posting_language]`. It returns the same keys as today: `total`, top-N lists and `thai_postings`. A second `limit=0` query with the `posted_within_days=7` filter gives `new_7d`. Results keep the existing 300 s in-process cache, so the public landing endpoint stays cheap.

@@ -1,4 +1,4 @@
-"""WP5 retention (spec D6, D9 as amended 2026-10-14): delete, 90-day age limit, tombstones. Synthetic rows only."""
+"""WP5 retention (spec D6, D9 as amended 2026-10-14): delete, 30-day age limit, tombstones. Synthetic rows only."""
 from __future__ import annotations
 
 import uuid
@@ -70,17 +70,17 @@ def test_failed_board_never_deletes(migrated_engine):
 
 
 @pytest.mark.integration
-def test_posting_older_than_90_days_is_never_inserted(db_session):
+def test_posting_older_than_30_days_is_never_inserted(db_session):
     counts = job_store.apply_board(db_session, "greenhouse", "acme",
-                                   [_gh(1, posted=T0 - timedelta(days=91))], T0)
+                                   [_gh(1, posted=T0 - timedelta(days=31))], T0)
     assert counts["skipped_old"] == 1 and counts["created"] == 0 and _rows(db_session) == {}
 
 
 @pytest.mark.integration
 def test_existing_row_now_too_old_is_deleted_with_tombstone(db_session):
-    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, posted=T0 - timedelta(days=89))], T0)
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, posted=T0 - timedelta(days=29))], T0)
     pid = _rows(db_session)["1"].id
-    counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, posted=T0 - timedelta(days=89))],
+    counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, posted=T0 - timedelta(days=29))],
                                    T0 + timedelta(days=2))
     assert counts["skipped_old"] == 1 and counts["deleted"] == 1 and _rows(db_session) == {}
     tomb = db_session.scalars(select(JobPostingTombstone)).one()
@@ -96,10 +96,20 @@ def test_future_posted_at_is_stored_and_survives_retire(db_session):
 
 
 @pytest.mark.integration
-def test_retire_deletes_aged_rows_and_writes_tombstone(db_session):
-    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(2)], T0 - timedelta(days=91))
+def test_retire_uses_posted_at_not_first_seen(db_session):
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(2)], T0)
     rows = _rows(db_session)
-    rows["2"].first_seen_at = T0 - timedelta(days=89)
+    rows["1"].posted_at, rows["1"].first_seen_at = T0 - timedelta(days=31), T0  # new to us, old posting
+    rows["2"].posted_at, rows["2"].first_seen_at = T0 - timedelta(days=29), T0 - timedelta(days=40)  # old to us, fresh posting
+    db_session.flush()
+    assert job_store.retire(db_session, T0) == 1 and set(_rows(db_session)) == {"2"}
+
+
+@pytest.mark.integration
+def test_retire_deletes_aged_rows_and_writes_tombstone(db_session):
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1), _gh(2)], T0 - timedelta(days=31))
+    rows = _rows(db_session)
+    rows["2"].first_seen_at = T0 - timedelta(days=29)
     old = rows["1"].id
     assert job_store.retire(db_session, T0) == 1
     assert set(_rows(db_session)) == {"2"}
@@ -110,13 +120,13 @@ def test_retire_deletes_aged_rows_and_writes_tombstone(db_session):
 
 @pytest.mark.integration
 def test_retire_prefers_posted_at_over_first_seen(db_session):
-    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, posted=T0 - timedelta(days=89))], T0 - timedelta(days=200))
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1, posted=T0 - timedelta(days=29))], T0 - timedelta(days=200))
     assert job_store.retire(db_session, T0) == 0
 
 
 @pytest.mark.integration
 def test_tombstone_blocks_reinsert_and_refreshes_last_seen(db_session):
-    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0 - timedelta(days=91))
+    job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], T0 - timedelta(days=31))
     job_store.retire(db_session, T0)
     later = T0 + timedelta(hours=1)
     counts = job_store.apply_board(db_session, "greenhouse", "acme", [_gh(1)], later)

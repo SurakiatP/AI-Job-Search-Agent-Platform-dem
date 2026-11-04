@@ -20,7 +20,7 @@ from job_search_platform.services import job_index
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.job_mapping import map_posting
 
-MAX_AGE = timedelta(days=90)
+MAX_AGE = timedelta(days=30)
 DELETE_AFTER_MISSES = 2
 TOMBSTONE_UNSEEN = timedelta(days=7)
 TOMBSTONE_MAX = timedelta(days=180)
@@ -175,7 +175,7 @@ def miss_unseen(db: Session, source: str, since: datetime, now: datetime) -> int
 
 
 def tombstone_ids(db: Session, source: str, external_ids: list[str], now: datetime) -> None:
-    """Crawler: a detail page with no live posting (removed, expired, older than 90 days) is not fetched again."""
+    """Crawler: a detail page with no live posting (removed, expired, older than 30 days) is not fetched again."""
     ids = sorted(set(external_ids))  # one row per key: ON CONFLICT DO UPDATE cannot touch a row twice
     if ids:
         db.execute(pg_insert(JobPostingTombstone).values(

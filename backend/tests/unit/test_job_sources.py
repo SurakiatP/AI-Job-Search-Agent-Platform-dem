@@ -81,11 +81,11 @@ def test_hit_maps_to_current_item_shape_and_stale_rule():
     assert item["slug"] == "fe-1" and item["category"] == "frontend" and item["age_days"] == 10 and item["stale"] is False
     assert len(item["skills"]) == 8 and len(item["description_markdown"]) == 50000
     assert item["source_url"] == "https://jobs.example.com/a?id=1"
-    assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 61 * DAY}, NOW)["stale"] is True
-    assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 60 * DAY}, NOW)["stale"] is False
+    assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 22 * DAY}, NOW)["stale"] is True
+    assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 21 * DAY}, NOW)["stale"] is False
     assert job_sources.hit_to_item({**HIT, "reality_stale": True}, NOW)["stale"] is True
     assert item["ghost_signals"] == []
-    assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 61 * DAY}, NOW)["ghost_signals"] == ["old"]
+    assert job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 22 * DAY}, NOW)["ghost_signals"] == ["old"]
     assert job_sources.hit_to_item({**HIT, "reality_stale": True}, NOW)["ghost_signals"] == ["source_flagged"]
     both = job_sources.hit_to_item({**HIT, "posted_ts": NOW_TS - 70 * DAY, "missed_runs": 1}, NOW)
     assert both["ghost_signals"] == ["old", "unlisted"] and both["stale"] is True

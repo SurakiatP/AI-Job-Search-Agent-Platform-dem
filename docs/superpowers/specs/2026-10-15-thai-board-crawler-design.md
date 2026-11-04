@@ -12,7 +12,7 @@ The owner ordered an hourly crawl of the Thai job boards. The client accepts the
 
 Done means:
 - the hourly `ingest run` crawls both sites within strict robots.txt rules;
-- only postings from the last 90 days are stored;
+- only postings from the last 30 days are stored;
 - a posting the site removed or expired is deleted from the store and the index.
 
 ## Decisions
@@ -24,8 +24,8 @@ Done means:
 | C3 | Strict robots.txt compliance, listed under "Politeness rules". |
 | C4 | Sites run one after the other, after the ATS boards, each with its own budget: 15 minutes and 300 requests. The whole run now has a 50-minute deadline (the ATS phase keeps its own 20-minute limit). |
 | C5 | Kill switch: the `"crawl"` list in `data/job_boards.json`. A site not in the list is never contacted. A missing key means no crawling. The committed file lists `["jobtopgun", "jobbkk"]`. |
-| C6 | Only postings from the last 90 days are fetched and stored (part-1 `MAX_AGE`). |
-| C7 | Delete rules for both sites: the detail page has no JobPosting (a soft-404 with HTTP 200), the posting is gone from two complete discovery passes, `validThrough` has passed, or it is older than 90 days. |
+| C6 | Only postings from the last 30 days are fetched and stored (part-1 `MAX_AGE`). |
+| C7 | Delete rules for both sites: the detail page has no JobPosting (a soft-404 with HTTP 200), the posting is gone from two complete discovery passes, `validThrough` has passed, or it is older than 30 days. |
 | C8 | Contact details that appear in a posting (phone, email) are kept as written. Nothing is fetched from outside the posting, such as a company profile page. |
 | C9 | Stored postings are not re-fetched to refresh their content. A posting keeps the content of its first fetch until it is deleted. |
 
@@ -73,7 +73,7 @@ Facts from the 2026-10-14 probe:
 - Items carry `jobpost_id`, `company_id`, `created_at` and `updated_at` as `YYYY-MM-DD HH:MM:SS`, read as Bangkok time (+07:00). The list is sorted by `updated_at`, newest first. The order is not fully stable, and some timestamps are about 7 hours off.
 - A detail page `/jobs/detail/{company_id}/{jobpost_id}` carries one JobPosting JSON-LD block. An expired page returns 200 without it.
 
-A **sweep** reads listing pages until a page whose items all have `updated_at` older than 91 days (90 days plus 1 day of clock skew), or a page with no items. A posting created within 90 days was updated no earlier than it was created, so a finished sweep has seen every live posting. A sweep can span several runs.
+A **sweep** reads listing pages until a page whose items all have `updated_at` older than 31 days (30 days plus 1 day of clock skew), or a page with no items. A posting created within 30 days was updated no earlier than it was created, so a finished sweep has seen every live posting. A sweep can span several runs.
 
 Each run:
 1. Read the **head pages** 1–3, so new postings are picked up every hour.
@@ -136,7 +136,7 @@ Code layout:
 
 - Crawled HTML is untrusted content (backend invariant). Pages are parsed only with `json.loads` on the JSON-LD and listing blocks, and `html.parser` through the existing `html_to_markdown`. Nothing is executed.
 - Hosts are allowlisted and URLs are built from validated ids (`^j\d+-\d+$`, numeric JobBKK ids), so page content cannot steer a request elsewhere.
-- Recruiter phone numbers and emails in postings are personal data. They are stored only as part of the posting, are never fetched from elsewhere, and are deleted with the posting (90 days at most). ADR-016 records this.
+- Recruiter phone numbers and emails in postings are personal data. They are stored only as part of the posting, are never fetched from elsewhere, and are deleted with the posting (30 days at most). ADR-016 records this.
 - Protego is a new dependency. It is pinned in `pyproject.toml` and `uv.lock`, exported to `requirements.txt`, audited with `pip-audit`, and recorded in `docs/engineering/dependencies.md` (DELIVERY.md).
 
 ## Testing
@@ -164,7 +164,7 @@ Unit tests, no network, with **synthetic** fixture pages that copy only the real
 
 Integration tests (Postgres, marked `integration`), each with a fake site transport:
 - JobTopGun:
-  - the floor stops a company after its first posting older than 90 days;
+  - the floor stops a company after its first posting older than 30 days;
   - two complete snapshots without a posting delete it;
   - an incomplete snapshot counts no misses;
   - soft-404 and expired `validThrough` tombstone the id, and it is not fetched again;

@@ -59,7 +59,7 @@ def _save_state(db, source: str, state: dict, now: datetime) -> None:
 
 
 def _classify(source: str, external_id: str, url: str, page: str, now: datetime) -> tuple[str, dict | None]:
-    """('store', row) for a live posting from the last 90 days, ('old', None) past 90 days, ('gone', None) otherwise."""
+    """('store', row) for a live posting from the last 30 days, ('old', None) past 30 days, ('gone', None) otherwise."""
     posting = crawler.job_posting(page)
     row = map_posting(source, None, {"id": external_id, "url": url, "posting": posting}) if posting else None
     if row is None:
@@ -124,7 +124,7 @@ def _jobtopgun(sessions, client, clock, counts) -> None:
             if counts["fetched"] >= MAX_DETAILS:
                 break
             if n <= floors.get(company, -1):
-                continue  # an older-than-90-days posting of this company was found earlier in this run
+                continue  # an older-than-30-days posting of this company was found earlier in this run
             external_id = f"j{company}-{n}"
             url = f"{JTG}/th/jobs/{external_id}"
             page = client.get(url)
