@@ -2132,7 +2132,7 @@ paths:
         '403': {$ref: '#/components/responses/AdminForbidden'}
     post:
       tags: [admin]
-      description: Admin only. Starts a test on the synthetic gold set (20 cases, 3 repeats). 409 benchmark_busy while another runs; 422 price_invalid when the model has no price. Audited.
+      description: Admin only. Starts a test on the synthetic gold set (20 cases of the task). Runs the current pair first when it has no finished test. 409 benchmark_busy while another runs. Audited.
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/AdminBenchmarkCreate'}}}

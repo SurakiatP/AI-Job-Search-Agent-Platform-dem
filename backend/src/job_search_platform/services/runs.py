@@ -7,7 +7,7 @@ import json
 from uuid import uuid4
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, get_args
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -33,11 +33,13 @@ from job_search_platform.db.models import (
     RunEvent as RunEventRow,
 )
 from job_search_platform.integrations.gateway import GatewaySettings
+from job_search_platform.services import admin_audit
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
     Actor,
     DocumentEdit,
     MatchRunRequest,
+    Operation,
     RunEvent,
     RunEventData,
     RunEventView,
@@ -219,11 +221,32 @@ class RunService:
         with self.sessions.begin() as db:
             return self._submit_in_transaction(db, actor, project_id, request, now=now, scope=scope)
 
+    def retry_as_admin(self, run_id: UUID, actor: Actor) -> RunView:
+        """Re-queues a failed, interrupted or cancelled run for an admin: no project authorize, the owner's actor_scope
+        is kept, key ``admin-retry:<id>``. Same checks as the owner's retry (``_retry_source``, gates, document busy)."""
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            source = db.scalar(select(Run).where(Run.id == run_id))
+            if source is None:
+                raise ServiceError("not_found")
+            if source.operation not in get_args(Operation) or source.session_id is None:
+                raise ServiceError("retry_not_allowed")  # internal operations have no retry path
+            questions = source.input_snapshot.get("questions") if source.operation == "apply_prepare" else None
+            request = RunRequest(session_id=source.session_id, operation=source.operation,
+                                 output_language=source.output_language, retry_of_id=source.id,
+                                 idempotency_key=f"admin-retry:{source.id}", questions=questions)
+            view = self._submit_in_transaction(db, actor, source.project_id, request, now=now,
+                                               scope=source.actor_scope, admin=True)
+            admin_audit.record(db, actor.user_id, "run.retry", "run", source.id,
+                               {"new_run_id": str(view.id), "operation": source.operation})
+            return view
+
     def _submit_in_transaction(
         self, db: Session, actor: Actor, project_id: UUID, request: RunRequest,
-        *, now: datetime, scope: str,
+        *, now: datetime, scope: str, admin: bool = False,
     ) -> RunView:
-        authorize(db, actor, project_id, "write", request.operation)
+        if not admin:  # admin retry (retry_as_admin) runs on the owner's project without owning it
+            authorize(db, actor, project_id, "write", request.operation)
         if actor.kind != "user" and request.owner_instructions:
             raise ServiceError("unauthorized")
         project = db.scalar(select(Project).where(Project.id == project_id).with_for_update())
@@ -389,7 +412,7 @@ class RunService:
         if previous is not None:
             if previous.request_digest != digest:
                 raise ServiceError("idempotency_conflict")
-            return self._authorized_view(db, actor, previous)
+            return run_view(previous) if admin else self._authorized_view(db, actor, previous)
 
         # Replays above stay valid; a removed job cannot start new work.
         enforce_run_gates(db, project_id, now=now)
@@ -505,7 +528,7 @@ class RunService:
         db.add(run)
         db.flush()
         append_event(db, run, "run_queued", {"status": "queued"}, now=now)
-        return self._authorized_view(db, actor, run)
+        return run_view(run) if admin else self._authorized_view(db, actor, run)
 
     @staticmethod
     def _application_checks(db: Session, project_id: UUID, job: JobRevision, request: RunRequest) -> Run | None:

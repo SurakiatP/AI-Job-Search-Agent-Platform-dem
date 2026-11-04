@@ -22,6 +22,9 @@ RUN uv sync --locked --project backend --no-dev --no-install-project
 COPY backend/ backend/
 COPY infra/hermes/ infra/hermes/
 COPY scripts/ scripts/
+# admin benchmark runner: gold scorers + the synthetic holdout cases (no user data)
+COPY evals/gold/*.py evals/gold/
+COPY evals/gold/data/gold.holdout.v1.json evals/gold/data/gold.holdout.v1.json
 COPY --from=frontend /src/frontend/dist frontend/dist
 RUN uv sync --locked --project backend --no-dev
 COPY deploy/entrypoint.sh /app/deploy/entrypoint.sh

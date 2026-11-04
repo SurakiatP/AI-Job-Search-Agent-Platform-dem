@@ -1,4 +1,69 @@
 {
   "title": "Users",
-  "lede": "Accounts on this deployment with their status and recent activity. Metadata only."
+  "lede": "Accounts on this deployment with their status and recent activity. Metadata only.",
+  "count_one": "{{count}} account",
+  "count_other": "{{count}} accounts",
+  "countMore": "{{count}}+ accounts",
+  "search": "Search by email",
+  "statusLabel": "Status",
+  "status": { "all": "All", "active": "Active", "suspended": "Suspended", "deleting": "Deleting" },
+  "rangeLabel": "Runs in range",
+  "range": { "7d": "Last 7 days", "30d": "Last 30 days", "90d": "Last 90 days", "all": "All time" },
+  "tableLabel": "Accounts",
+  "col": { "email": "Email", "status": "Status", "verified": "Verified", "created": "Created", "lastSeen": "Last seen", "runs": "Runs in range" },
+  "adminBadge": "Admin",
+  "verified": "Verified",
+  "unverified": "Not verified",
+  "never": "Never",
+  "loadMore": "Load more",
+  "loadMoreFailed": "Could not load more accounts.",
+  "retry": "Retry",
+  "listFailed": "Could not load accounts.",
+  "listFailedHint": "Check the connection and try again.",
+  "emptyTitle": "No accounts match",
+  "emptyFiltered": "Nothing matches these filters. Clear the search or choose another status.",
+  "emptyAll": "Accounts appear here once someone signs up.",
+  "privacy": "Admins see account details and counts only. CVs, chats and documents are never shown here.",
+  "sheet": {
+    "close": "Close",
+    "created": "Created",
+    "lastSeen": "Last seen",
+    "verified": "Email",
+    "projects": "Projects",
+    "cvs": "CVs",
+    "runs": "Runs (all time)",
+    "countsNote": "Counts only. The content stays private.",
+    "detailFailed": "Could not load the counts."
+  },
+  "action": {
+    "suspend": "Suspend account",
+    "suspendHint": "Signs the user out everywhere and blocks login until you enable the account again.",
+    "enable": "Enable account",
+    "enableHint": "Lets the user log in again.",
+    "reset": "Send password reset link",
+    "resetHint": "The user gets an email with a link to choose a new password. You never see the password or the link.",
+    "delete": "Delete account",
+    "deleteHint": "Closes the account now and signs the user out. Their account, projects and documents are removed in the next cleanup. This cannot be undone.",
+    "typeEmail": "Type the email to confirm",
+    "matched": "Matches",
+    "confirmDelete": "Delete permanently",
+    "cancel": "Cancel"
+  },
+  "locked": {
+    "self": "This is your account. Admin accounts cannot be suspended, reset or deleted here.",
+    "admin": "Admin accounts cannot be suspended, reset or deleted here.",
+    "deleting": "Deletion is in progress. The data is removed in the next cleanup."
+  },
+  "done": {
+    "suspend": "Suspended. {{email}} is signed out.",
+    "enable": "Enabled. {{email}} can log in again.",
+    "reset": "Reset link sent to {{email}}.",
+    "delete": "Deletion started for {{email}}. The account is closed now."
+  },
+  "error": {
+    "admin_target_forbidden": "Admin accounts cannot be changed here.",
+    "confirmation_mismatch": "The email you typed does not match this account.",
+    "account_deleting": "This account is being deleted, so it cannot be enabled.",
+    "generic": "That did not work. Try again."
+  }
 }

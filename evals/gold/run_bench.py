@@ -37,7 +37,8 @@ DATA = Path(__file__).parent / "data" / "gold.v1.json"
 HOLDOUT = Path(__file__).parent / "data" / "gold.holdout.v1.json"
 CURRENT_MODE = "low"
 SAVE_TEXT = False  # set by --save-text: keep the raw model reply in the results file
-MODES = {"app": None, "default": None, "low": {"effort": "low"}, "off": {"enabled": False}, "none": {"effort": "none"}, "minimal": {"effort": "minimal"}}
+MODES = {"app": None, "default": None, "low": {"effort": "low"}, "off": {"enabled": False}, "none": {"effort": "none"}, "minimal": {"effort": "minimal"},
+         "medium": {"effort": "medium"}, "high": {"effort": "high"}}
 TASKS = ["evaluate", "draft", "extract", "tailor", "apply", "practice", "ocr"]
 # --reasoning app: per-task effort from the app's own env (AI_REASONING_<OPERATION>, services' reasoning_effort()).
 APP_OPS = {"evaluate": "evaluate_job", "draft": "draft_documents", "extract": "extract_experience", "tailor": "tailor_cv",

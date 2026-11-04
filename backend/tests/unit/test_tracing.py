@@ -32,9 +32,9 @@ def test_spans_carry_only_identifiers_and_numbers(monkeypatch):
 
 def test_runtime_usage_validation_nulls_anything_malformed():
     from job_search_platform.integrations.hermes_runtime import _usage
-    assert _usage({"model": "m", "input_tokens": 5, "output_tokens": 6}) == {"model": "m", "input_tokens": 5, "output_tokens": 6}
-    assert _usage(None) == {"model": None, "input_tokens": None, "output_tokens": None}
-    assert _usage({"model": "x" * 121, "input_tokens": -1, "output_tokens": True}) == {"model": None, "input_tokens": None, "output_tokens": None}
+    assert _usage({"model": "m", "input_tokens": 5, "output_tokens": 6}) == {"model": "m", "input_tokens": 5, "output_tokens": 6, "cached_tokens": None, "api_calls": None}
+    assert _usage(None) == {"model": None, "input_tokens": None, "output_tokens": None, "cached_tokens": None, "api_calls": None}
+    assert _usage({"model": "x" * 121, "input_tokens": -1, "output_tokens": True}) == {"model": None, "input_tokens": None, "output_tokens": None, "cached_tokens": None, "api_calls": None}
 
 
 class _FakeExporter:

@@ -104,9 +104,11 @@ def upgrade() -> None:
         sa.Column("checked_at", sa.DateTime(timezone=True), primary_key=True),
         sa.Column("components", postgresql.JSONB(), nullable=False),
     )
+    op.create_index("ix_runs_created_at", "runs", ["created_at"])  # admin overview windows scan runs by time
 
 
 def downgrade() -> None:
+    op.drop_index("ix_runs_created_at", table_name="runs")
     for table in ("health_probes", "task_model_settings", "benchmark_runs", "model_prices", "llm_calls"):
         op.drop_table(table)
     op.execute("DROP TABLE admin_audit_log")

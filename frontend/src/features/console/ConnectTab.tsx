@@ -5,7 +5,6 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAccount } from '../../lib/api';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import type { Copy } from './copy';
@@ -40,7 +39,6 @@ function ClientPicker({ c, lang, list, local }: { c: Copy; lang: Lang; list: Cli
   </div>;
 }
 
-const START = 'uv run --locked --project backend python scripts/run_local.py --enable-sharing --share-host 127.0.0.1 --share-port 8011';
 type Info = { share_origin: string | null; oauth: boolean };
 
 function Block({ text, c, label, where }: { text: string; c: Copy; label: string; where?: string }) {
@@ -58,7 +56,6 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 }
 
 export function ConnectTab({ c, lang, projectId, onIssue }: { c: Copy; lang: Lang; projectId: string; onIssue: () => void }) {
-  const isAdmin = useAccount()?.is_admin === true; // only whoever runs the server can open the listener
   const info = useResource<Info>('/connect');
   if (info.status === 'error') return <ErrorState onRetry={info.reload} />;
   if (!info.data) return <LoadingState />;
@@ -66,9 +63,7 @@ export function ConnectTab({ c, lang, projectId, onIssue }: { c: Copy; lang: Lan
   const api = `${window.location.origin}/v1`;
   if (!share) return <div className="grid gap-6">
     <p className="max-w-prose text-sm text-muted-foreground">{c.connectIntro}</p>
-    <Alert severity="warning">{isAdmin ? c.offAdmin : c.offUser}</Alert>
-    {isAdmin && <Card><CardHeader><CardTitle>{c.startTitle}</CardTitle><p className="text-sm text-muted-foreground">{c.startNote}</p></CardHeader>
-      <CardContent><Block text={START} c={c} label={c.startTitle} /></CardContent></Card>}
+    <Alert severity="warning">{c.offUser}</Alert>
   </div>;
   return <div className="grid gap-6">
     <p className="max-w-prose text-sm text-muted-foreground">{c.connectIntro}</p>

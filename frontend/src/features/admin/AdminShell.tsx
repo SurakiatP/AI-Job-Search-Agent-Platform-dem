@@ -94,8 +94,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </Drawer.Portal>
         </Drawer.Root>
         <div className="min-w-0 bg-background ambient-surface lg:min-h-[calc(100dvh-16px)] lg:overflow-clip lg:rounded-2xl lg:border">
-          <main id="main-content" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-[1360px] px-4 py-6 sm:px-6 lg:px-12 lg:py-8 xl:px-28">
-            <div key={pathname} className="page-enter grid min-w-0 gap-8">{children}</div>
+          <main id="main-content" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-[1360px] px-4 py-6 sm:px-6 sm:py-8 xl:px-10 xl:py-10">
+            <div key={pathname} className="page-enter grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:gap-8">{children}</div>
           </main>
         </div>
       </div>

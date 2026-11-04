@@ -1,10 +1,24 @@
 import { expect, test } from '@playwright/test';
 import { mockAdminAccount, mockNormalAccount } from '../fixtures/admin';
+import type { Page } from '@playwright/test';
+import { mockOverview } from '../fixtures/admin-overview';
+import { mockAdminUsers } from '../fixtures/admin-users';
+import { mockAdminRuns } from '../fixtures/admin-runs';
+import { mockAdminUsage } from '../fixtures/admin-usage';
+import { mockAdminModels } from '../fixtures/admin-models';
+import { mockAudit, mockSystem } from '../fixtures/admin-system';
+
+// Each page's own mock goes in just before the page opens: a later route wins over earlier catch-alls.
+const pageMocks: Record<string, (page: Page) => Promise<unknown>> = {
+  '/admin': p => mockOverview(p), '/admin/users': p => mockAdminUsers(p), '/admin/runs': p => mockAdminRuns(p),
+  '/admin/usage': p => mockAdminUsage(p), '/admin/models': p => mockAdminModels(p), '/admin/system': p => mockSystem(p), '/admin/audit': p => mockAudit(p),
+};
 
 const pages = [['Overview', '/admin'], ['Users', '/admin/users'], ['AI runs', '/admin/runs'], ['Usage and cost', '/admin/usage'], ['AI models', '/admin/models'], ['System', '/admin/system'], ['Audit log', '/admin/audit']] as const;
 
 test('TC-ADM-SH-01: an admin lands on /admin and sees the seven pages in order', async ({ page }) => {
   await mockAdminAccount(page);
+  await mockOverview(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/app');
   await expect(page).toHaveURL(/\/admin$/);
@@ -17,10 +31,12 @@ test('TC-ADM-SH-01: an admin lands on /admin and sees the seven pages in order',
 
 test('TC-ADM-SH-02: each sidebar link opens its page and marks it current; the account menu signs out', async ({ page }) => {
   await mockAdminAccount(page);
+  await mockOverview(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/admin');
   const nav = page.getByRole('navigation', { name: 'Admin navigation' });
   for (const [name, path] of pages) {
+    await pageMocks[path](page);
     await nav.getByRole('link', { name }).click();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
@@ -32,6 +48,7 @@ test('TC-ADM-SH-02: each sidebar link opens its page and marks it current; the a
 
 test('TC-ADM-SH-03: an admin opening a workspace URL is sent to /admin', async ({ page }) => {
   await mockAdminAccount(page);
+  await mockOverview(page);
   await page.goto('/app/projects');
   await expect(page).toHaveURL(/\/admin$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
@@ -47,9 +64,11 @@ test('TC-ADM-SH-04: a normal user opening /admin is sent to the workspace', asyn
 
 test('on a phone the menu opens a drawer, closes after a choice, and the page does not scroll sideways', async ({ page }) => {
   await mockAdminAccount(page);
+  await mockOverview(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin');
   await expect(page.getByRole('navigation', { name: 'Admin navigation' })).toHaveCount(0);
+  await mockAdminUsers(page);
   await page.getByRole('button', { name: 'Admin menu' }).click();
   await page.getByRole('dialog').getByRole('link', { name: 'Users' }).click();
   await expect(page).toHaveURL(/\/admin\/users$/);

@@ -135,11 +135,12 @@ test('every page supports direct links, back/forward, locale changes and respons
   await expect(page).toHaveURL(`/app/projects/${projectId}/documents/${documentId}`);
   await page.goto('/app/settings');
   const sections = page.getByRole('navigation', { name: 'Settings sections' });
-  await expect(sections.getByRole('button', { name: 'Tools' })).toBeVisible();
-  await sections.getByRole('button', { name: 'Tools' }).click();
-  await expect(sections.getByRole('button', { name: 'Tools' })).toHaveAttribute('aria-current', 'page');
+  await expect(sections.getByRole('button', { name: 'Project sharing' })).toBeVisible();
+  await expect(sections.getByRole('button', { name: 'Tools' })).toHaveCount(0);
+  await sections.getByRole('button', { name: 'Project sharing' }).click();
+  await expect(sections.getByRole('button', { name: 'Project sharing' })).toHaveAttribute('aria-current', 'page');
   await toggleLanguage(page);
-  await expect(page.getByRole('navigation', { name: 'หมวดการตั้งค่า' }).getByRole('button', { name: 'เครื่องมือ' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('navigation', { name: 'หมวดการตั้งค่า' }).getByRole('button', { name: 'การแชร์โปรเจกต์' })).toHaveAttribute('aria-current', 'page');
   await toggleLanguage(page);
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto('/');

@@ -58,6 +58,7 @@ class ProviderConfig:
     model: str
     base_url: str
     api_key: str = field(repr=False)
+    effort: str | None = None  # none|minimal|low|medium|high|default; None leaves the bridge's own defaults
 
 def _usage(raw) -> dict:
     """Validate bridge usage; anything malformed becomes null fields."""
@@ -67,7 +68,8 @@ def _usage(raw) -> dict:
         return n if isinstance(n, int) and not isinstance(n, bool) and 0 <= n <= 10_000_000 else None
     model = raw.get("model")
     return {"model": model if isinstance(model, str) and 0 < len(model) <= 120 else None,
-            "input_tokens": count("input_tokens"), "output_tokens": count("output_tokens")}
+            "input_tokens": count("input_tokens"), "output_tokens": count("output_tokens"),
+            "cached_tokens": count("cached_tokens"), "api_calls": count("api_calls")}
 
 @dataclass(frozen=True)
 class NativeEvent:
@@ -304,6 +306,7 @@ class HermesRuntime:
         project.terminal_received = False
         response = await self._request(project, "submit", session_id=str(session_id),
             prompt=prompt, instructions=instructions, operation=operation,
+            reasoning=None if provider is None else provider.effort,
             provider=None if provider is None else {"provider": provider.provider,
                 "model": provider.model, "base_url": provider.base_url, "api_key": provider.api_key})
         if response.get("accepted") is not True:

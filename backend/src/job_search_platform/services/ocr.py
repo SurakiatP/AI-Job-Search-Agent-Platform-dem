@@ -10,14 +10,15 @@ import asyncio
 import base64
 import json
 import logging
-import os
+import time
 import re
 from pathlib import Path
 from urllib.request import Request
 
 from job_search_platform.integrations.gateway import GatewaySettings
-from job_search_platform.integrations.hermes_runtime import ParsedInput, reasoning_effort
+from job_search_platform.integrations.hermes_runtime import ParsedInput
 from job_search_platform.services.errors import ServiceError
+from job_search_platform.services.pricing import record_call
 
 log = logging.getLogger(__name__)
 PAGE_PATH = re.compile(r"staging/page-([1-9]|10)\.(png|jpg)")
@@ -33,21 +34,38 @@ NO_TEXT = "NO_TEXT"
 OCR_TOTAL_SECONDS = 45  # 10 pages, 5 at a time; runtime start + render (<= 45 s) + this stays near 90 s, under typical 100 s proxy limits
 
 
-def _call(gateway: GatewaySettings, image: bytes) -> str:
+def call_recorder(sessions, *, run_id=None, user_id=None):
+    """Callable the OCR calls report to: writes one llm_calls row per page (counts and price only, never content)."""
+    def record(model: str, usage: dict, latency_ms: int) -> None:
+        try:
+            with sessions.begin() as db:
+                record_call(db, run_id=run_id, user_id=user_id, operation="document_ocr", model=model, latency_ms=latency_ms,
+                            input_tokens=usage.get("prompt_tokens"), output_tokens=usage.get("completion_tokens"),
+                            cached_tokens=(usage.get("prompt_tokens_details") or {}).get("cached_tokens"))
+        except Exception:
+            log.warning("llm_call_not_recorded operation=document_ocr", exc_info=True)
+    return record
+
+
+def _call(gateway: GatewaySettings, image: bytes, record=None) -> str:
     config = gateway.provider_config("document_ocr")
     mime = "image/png" if image[:4] == b"\x89PNG" else "image/jpeg"
     uri = f"data:{mime};base64," + base64.b64encode(image).decode()
     body = {"model": config.model, "temperature": 0, "max_tokens": 8192, "messages": [{"role": "user", "content": [
         {"type": "text", "text": PROMPT}, {"type": "image_url", "image_url": {"url": uri}}]}]}
-    effort = reasoning_effort(os.environ, "document_ocr")
+    effort = getattr(config, "effort", None)
     if effort == "none":
         body["reasoning"] = {"enabled": False}
     elif effort and effort != "default":
         body["reasoning"] = {"effort": effort}
     request = Request(config.base_url + "/chat/completions", data=json.dumps(body).encode(), method="POST",
                       headers={"Authorization": f"Bearer {config.api_key}", "Content-Type": "application/json"})
+    started = time.monotonic()
     with gateway.opener.open(request, timeout=PAGE_TIMEOUT_SECONDS) as response:
-        choice = json.loads(response.read(MAX_RESPONSE_BYTES))["choices"][0]
+        reply = json.loads(response.read(MAX_RESPONSE_BYTES))
+    choice = reply["choices"][0]
+    if record is not None and isinstance(reply.get("usage"), dict):
+        record(config.model, reply["usage"], int((time.monotonic() - started) * 1000))
     if choice.get("finish_reason") == "length":  # cut off (often all tokens spent on reasoning): never keep half a page
         raise ValueError("ocr_truncated")
     content = choice["message"]["content"]
@@ -58,7 +76,7 @@ def _call(gateway: GatewaySettings, image: bytes) -> str:
     return "" if content.strip("`*_ .\n").upper() == NO_TEXT else content
 
 
-async def transcribe_pages(gateway: GatewaySettings, image_paths: list[Path]) -> str:
+async def transcribe_pages(gateway: GatewaySettings, image_paths: list[Path], record=None) -> str:
     """One request per page, run in parallel (results keep page order); page texts are joined by a blank line. Deletes the image files."""
     gateway._key()  # gateway_unconfigured stays its own error
     try:
@@ -70,7 +88,7 @@ async def transcribe_pages(gateway: GatewaySettings, image_paths: list[Path]) ->
 
             async def one(path: Path) -> str:
                 async with gate:
-                    return await asyncio.to_thread(_call, gateway, path.read_bytes())
+                    return await asyncio.to_thread(_call, gateway, path.read_bytes(), record)
 
             parts = await asyncio.wait_for(asyncio.gather(*(one(path) for path in image_paths)), OCR_TOTAL_SECONDS)
         except Exception:
@@ -97,7 +115,7 @@ def read_preview(root: Path, name: str) -> bytes | None:
     return body if body.startswith(b"%PDF-") else None
 
 
-async def with_vision_text(parsed: ParsedInput, workspace: Path, gateway) -> ParsedInput:
+async def with_vision_text(parsed: ParsedInput, workspace: Path, gateway, record=None) -> ParsedInput:
     """Shared by upload and run-time parsing: turn the sandbox's page pictures into text."""
     if not getattr(parsed, "pages", None):  # test doubles return bare objects
         return parsed
@@ -112,7 +130,7 @@ async def with_vision_text(parsed: ParsedInput, workspace: Path, gateway) -> Par
             raise ServiceError("document_invalid")
         if not gateway.api_key:
             raise ServiceError("ocr_unavailable")  # no text-layer fallback exists
-        text = await transcribe_pages(gateway, paths)
+        text = await transcribe_pages(gateway, paths, record)
     finally:
         for path in paths:
             path.unlink(missing_ok=True)

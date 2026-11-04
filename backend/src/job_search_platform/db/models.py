@@ -464,6 +464,7 @@ class Run(Base):
         CheckConstraint("active_seconds >= 0", name="ck_runs_active_seconds"),
         CheckConstraint("tool_calls BETWEEN 0 AND 30", name="ck_runs_tool_calls"),
         CheckConstraint("resume_count >= 0", name="ck_runs_resume_count"),
+        Index("ix_runs_created_at", "created_at"),
         Index("uq_runs_one_active_per_project", "project_id", unique=True, postgresql_where=(status.in_(["running", "waiting_approval"]) & (operation != "apply_submit"))),
     )
 

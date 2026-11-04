@@ -53,8 +53,9 @@ test('facts empty states and Thai at 320px', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
   const section = page.getByRole('region', { name: 'ข้อเท็จจริงของฉัน' });
-  await expect(section.getByText('ยังไม่ได้ตั้งค่า AI gateway')).toBeVisible();
-  await expect(section.getByRole('link', { name: 'ไปที่การตั้งค่า' })).toHaveAttribute('href', '/app/settings?section=gateway');
+  // Users are never admins now; they are told to contact the administrator, with no settings link.
+  await expect(section.getByText('ตอนนี้ยังใช้ AI ไม่ได้ โปรดติดต่อผู้ดูแลระบบ')).toBeVisible();
+  await expect(section.getByRole('link', { name: 'ไปที่การตั้งค่า' })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 

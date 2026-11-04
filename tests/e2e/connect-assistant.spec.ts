@@ -59,14 +59,6 @@ test('when sharing is off a user is told to ask the administrator', async ({ pag
   await expect(page.getByText(/--enable-sharing/)).toHaveCount(0);
 });
 
-test('when sharing is off an administrator gets the start command', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
-  await useSyntheticApplication(page, { admin: true });
-  await connectInfo(page, null);
-  await page.goto(url);
-  await expect(page.locator('pre[aria-label="Open the connection channel (administrator)"]')).toContainText('--enable-sharing');
-});
-
 test('the Connect tab fits a phone in Thai', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await useSyntheticApplication(page);

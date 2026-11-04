@@ -2,37 +2,30 @@ import { Select } from '@/components/ui/select';
 import { useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Brush, ChevronRight, FileCog, Lock, Settings, Share2, Sparkles, Webhook, Wrench } from 'lucide-react';
+import { Brush, ChevronRight, FileCog, Lock, Settings, Share2, Webhook } from 'lucide-react';
 import { PageBack } from '@/components/PageBack';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { useAccount } from '../../lib/api';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { useResource } from '../projects/useResource';
 import { AppearanceSettings } from './AppearanceSettings';
-import { GatewaySettings } from './GatewaySettings';
 import { ProjectSharing } from './ProjectSharing';
 import { TelegramSettings } from './TelegramSettings';
 import { WebhookSettings } from './WebhookSettings';
-import { ToolSettings } from './ToolSettings';
 import { ProjectPreferences } from '../profile/ProjectPreferences';
 import { PageHeader } from '@/components/PageHeader';
 
 // Grouped by who is affected; the third entry picks the plain-words label from settings:scopeLabel.
-const sections = [['appearance', Brush, 'browser'], ['preferences', FileCog, 'project'], ['tools', Wrench, 'project'], ['sharing', Share2, 'project'], ['webhooks', Webhook, 'project'], ['gateway', Sparkles, 'app']] as const;
-const groups = [{ id: 'you', ids: ['appearance'] }, { id: 'project', ids: ['preferences', 'tools', 'sharing', 'webhooks'] }, { id: 'admin', ids: ['gateway'] }] as const;
+const sections = [['appearance', Brush, 'browser'], ['preferences', FileCog, 'project'], ['sharing', Share2, 'project'], ['webhooks', Webhook, 'project']] as const;
+const groups = [{ id: 'you', ids: ['appearance'] }, { id: 'project', ids: ['preferences', 'sharing', 'webhooks'] }] as const;
 type Section = (typeof sections)[number][0];
-// Operator-only: the shared AI gateway and the document-tool switch. The backend enforces the gateway check too.
-const adminOnly: readonly string[] = ['gateway', 'tools'];
 
 export function SettingsPage() {
   const { t } = useTranslation();
   const { t: ts } = useTranslation('settings');
   const [params, setParams] = useSearchParams();
-  const isAdmin = useAccount()?.is_admin === true;
-  const visible = sections.filter(([id]) => isAdmin || !adminOnly.includes(id));
   const requested = params.get('section');
-  const section: Section = visible.some(([id]) => id === requested) ? requested as Section : 'appearance';
+  const section: Section = sections.some(([id]) => id === requested) ? requested as Section : 'appearance';
   const projects = useResource<Array<{ id: string; name: string }>>('/projects');
   const activeSection = useRef<HTMLButtonElement>(null);
   useEffect(() => { activeSection.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [section, projects.status]);
@@ -51,16 +44,16 @@ export function SettingsPage() {
       <div className="grid gap-2 lg:hidden">
         <Label htmlFor="settings-section">{ts('navLabel')}</Label>
         <Select id="settings-section" value={section} onChange={event => { const id = event.target.value; setParams(previous => { const next = new URLSearchParams(previous); next.set('section', id); return next; }, { replace: true }); }}>
-          {groups.filter(group => visible.some(([id]) => (group.ids as readonly string[]).includes(id))).map(group => <optgroup key={group.id} label={ts(`groups.${group.id}`)}>
-            {visible.filter(([id]) => (group.ids as readonly string[]).includes(id)).map(([id]) => <option key={id} value={id}>{ts(`nav.${id}`)}</option>)}
+          {groups.map(group => <optgroup key={group.id} label={ts(`groups.${group.id}`)}>
+            {sections.filter(([id]) => (group.ids as readonly string[]).includes(id)).map(([id]) => <option key={id} value={id}>{ts(`nav.${id}`)}</option>)}
           </optgroup>)}
         </Select>
       </div>
       <nav aria-label={ts('navLabel')} className="hidden min-w-0 gap-4 lg:sticky lg:top-4 lg:grid">
-        {groups.filter(group => visible.some(([id]) => (group.ids as readonly string[]).includes(id))).map(group => <div key={group.id} role="group" aria-labelledby={`settings-group-${group.id}`} className="grid min-w-0 gap-1">
+        {groups.map(group => <div key={group.id} role="group" aria-labelledby={`settings-group-${group.id}`} className="grid min-w-0 gap-1">
           <p id={`settings-group-${group.id}`} className="px-3 text-xs font-medium text-muted-foreground">{ts(`groups.${group.id}`)}</p>
           <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-            {visible.filter(([id]) => (group.ids as readonly string[]).includes(id)).map(([id, Icon, scope]) => <li key={id} className="shrink-0">
+            {sections.filter(([id]) => (group.ids as readonly string[]).includes(id)).map(([id, Icon, scope]) => <li key={id} className="shrink-0">
               <button ref={section === id ? activeSection : undefined} type="button" aria-label={ts(`nav.${id}`)} aria-describedby={`settings-scope-${id}`} aria-current={section === id ? 'page' : undefined} onClick={() => setParams(previous => { const next = new URLSearchParams(previous); next.set('section', id); return next; }, { replace: true })}
                 className={cn('flex min-h-11 w-full items-center gap-2 whitespace-nowrap rounded-md border px-3 py-2 text-start text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:border-primary aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground lg:border-transparent')}>
                 <Icon className="size-4 shrink-0" aria-hidden="true" />
@@ -76,7 +69,7 @@ export function SettingsPage() {
         </Link>
       </nav>
       <div className="grid min-w-0 gap-4">
-        {(section === 'preferences' || section === 'tools' || section === 'sharing' || section === 'webhooks') && <div className="grid gap-2 sm:max-w-xs">
+        {section !== 'appearance' && <div className="grid gap-2 sm:max-w-xs">
           <Label htmlFor="settings-project">{ts('projectScope')}</Label>
           <Select id="settings-project" value={projectId} onChange={event => setParams(previous => { const next = new URLSearchParams(previous); next.set('project', event.target.value); return next; }, { replace: true })}>
             {!projectId && <option value="">{t('workspace.chooseProject')}</option>}
@@ -87,8 +80,7 @@ export function SettingsPage() {
         {section === 'appearance' && <AppearanceSettings />}
         {section === 'webhooks' && <p className="text-sm text-muted-foreground">{ts('telegramScope')}</p>}
         {section === 'webhooks' && <TelegramSettings />}
-        {section === 'gateway' && <GatewaySettings />}
-        {(section === 'preferences' || section === 'tools' || section === 'sharing' || section === 'webhooks') && projectId && (section === 'preferences' ? <ProjectPreferences key={`preferences:${projectId}`} projectId={projectId} /> : section === 'tools' ? <ToolSettings key={`tools:${projectId}`} projectId={projectId} /> : section === 'sharing' ? <ProjectSharing key={`sharing:${projectId}`} projectId={projectId} /> : <WebhookSettings key={`webhooks:${projectId}`} projectId={projectId} />)}
+        {section !== 'appearance' && projectId && (section === 'preferences' ? <ProjectPreferences key={`preferences:${projectId}`} projectId={projectId} /> : section === 'sharing' ? <ProjectSharing key={`sharing:${projectId}`} projectId={projectId} /> : <WebhookSettings key={`webhooks:${projectId}`} projectId={projectId} />)}
       </div>
     </div>
   </section>;

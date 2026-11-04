@@ -1,4 +1,268 @@
 {
   "title": "Overview",
-  "lede": "How the system is doing: AI runs, active users, failures and cost."
+  "lede": "How the system is doing: AI runs, active users, failures and cost.",
+  "updated": "Refreshes every {{seconds}} seconds. Last update {{time}}.",
+  "range": {
+    "menu": "Time range",
+    "1m": "Last 1 minute",
+    "5m": "Last 5 minutes",
+    "10m": "Last 10 minutes",
+    "15m": "Last 15 minutes",
+    "30m": "Last 30 minutes",
+    "1h": "Last hour",
+    "4h": "Last 4 hours",
+    "10h": "Last 10 hours",
+    "7d": "Last 7 days",
+    "30d": "Last 30 days",
+    "90d": "Last 90 days",
+    "all": "Since the start"
+  },
+  "actions": {
+    "customize": "Customize",
+    "export": "Export CSV",
+    "exporting": "Preparing file",
+    "exported": "Downloaded {{file}}. It holds totals only, no user details.",
+    "exportFailed": "The CSV could not be downloaded. Try again.",
+    "retry": "Try again",
+    "close": "Close"
+  },
+  "error": {
+    "title": "The overview could not be loaded",
+    "body": "The server did not answer. Check your connection, then try again."
+  },
+  "issue": {
+    "title": "{{component}} is down",
+    "detail": "Users are affected until it is back. Other parts of the system may still work.",
+    "how": "How to fix"
+  },
+  "component": {
+    "postgres": "The database",
+    "object_store": "File storage",
+    "llm_gateway": "The AI gateway",
+    "sandbox": "The AI run environment"
+  },
+  "fix": {
+    "title": "{{component}} is down",
+    "badge": "Affects users now",
+    "component": "Component",
+    "since": "Down since",
+    "sinceUnknown": "Not known yet",
+    "lastChecked": "Last checked",
+    "stepsTitle": "Fixes that usually work",
+    "systemLink": "Open the System page",
+    "postgres": {
+      "steps": [
+        "Check that the database container or service is running.",
+        "Check free disk space on the database host.",
+        "Restart the database, then wait for the next check (every 5 minutes)."
+      ]
+    },
+    "object_store": {
+      "steps": [
+        "Check that the file storage service is running and reachable from the app.",
+        "Check the storage credentials and the bucket name in the settings.",
+        "Restart the storage service, then wait for the next check."
+      ]
+    },
+    "llm_gateway": {
+      "steps": [
+        "Check that LiteLLM is running and answers on its health address.",
+        "Check the provider keys have not expired or run out of credit.",
+        "Restart the gateway, then run the test-ai job in GitLab to see which step fails."
+      ]
+    },
+    "sandbox": {
+      "steps": [
+        "Check that Docker is running on the machine that runs the app.",
+        "Run the test-ai job in GitLab to see which step fails.",
+        "If the agent image is missing, deploy again from the latest tag."
+      ]
+    },
+    "note": "Queued runs start by themselves when the component is back. Users do not need to press anything."
+  },
+  "kpi": {
+    "tabs": "Choose the number shown in the chart",
+    "runs": "AI runs",
+    "active_users": "Active users",
+    "failure_rate": "Failure rate",
+    "cost_usd": "AI cost",
+    "vs": "Previous period: {{value}}",
+    "up": "Up {{pct}}% from the previous period",
+    "down": "Down {{pct}}% from the previous period",
+    "flat": "No change from the previous period",
+    "costNote": "Includes models whose price was entered by hand, so the amount is approximate."
+  },
+  "trend": {
+    "title": "Trend",
+    "question": {
+      "runs": "How many AI runs happened over time?",
+      "active_users": "How many people were active over time?",
+      "failure_rate": "How many AI runs failed over time?",
+      "cost_usd": "How much did AI cost over time?"
+    },
+    "series": {
+      "runs": "Runs",
+      "active_users": "Active users",
+      "failure_rate": "Failed runs",
+      "cost_usd": "Cost"
+    },
+    "unit": {
+      "runs": "{{n}} runs",
+      "active_users": "{{n}} users",
+      "failure_rate": "{{n}} failed runs"
+    },
+    "now": "This period",
+    "before": "Previous period",
+    "fromPrevious": "from the previous period",
+    "summary": "{{label}}: {{total}} in total. The busiest point is {{peak}} with {{peakValue}}.",
+    "slider": "Move between points with the arrow keys. Press Enter to see the details.",
+    "empty": "Nothing has happened in this period yet. Points appear here when people run AI tasks.",
+    "byTask": "By task",
+    "byTaskFailed": "Failed runs by task",
+    "byModel": "Cost by model",
+    "tip": "{{label}}: {{share}}"
+  },
+  "bucket": {
+    "parts": "By task",
+    "failureParts": "Failure rate by task",
+    "costParts": "Cost by task",
+    "empty": "Nothing was recorded in this period.",
+    "error": "The breakdown could not be loaded."
+  },
+  "attention": {
+    "title": "Needs attention",
+    "empty": "Nothing needs attention",
+    "emptyHint": "If runs fail or part of the system stops, it shows up here.",
+    "failed_runs": "{{count}} {{operation}} runs failed in the last {{hours}} hours",
+    "health_down": "{{component}} is down",
+    "ingest_failed": "Job board {{board}} could not be fetched",
+    "ingest_partial": "Job board {{board}} was fetched only in part",
+    "dead_webhooks": "{{count}} webhook deliveries gave up",
+    "why": {
+      "failed_runs": "Open the runs list filtered to failed runs to see why.",
+      "health_down": "Users are affected until it is back.",
+      "ingest": "The next fetch will try again.",
+      "dead_webhooks": "The receiving server kept failing. Check it, then resend."
+    },
+    "error": "Error code: {{error}}",
+    "open": {
+      "failed_runs": "View failed runs",
+      "ingest_failed": "Open System",
+      "ingest_partial": "Open System",
+      "dead_webhooks": "Open System",
+      "health_down": "How to fix"
+    },
+    "sevBad": "Affects users",
+    "sevWarn": "Warning"
+  },
+  "weekday": {
+    "title": "Busiest weekdays",
+    "aria": "{{day}}: {{value}} runs a day on average",
+    "ariaGroup": "Average runs per weekday over the last 90 days",
+    "quiet": "{{day}} is the quietest day. It suits maintenance.",
+    "empty": "There is no run in the last 90 days yet."
+  },
+  "speed": {
+    "title": "Runs finished within 30 seconds",
+    "caption": "Target {{target}}%, {{gap}} points short",
+    "captionOver": "Target {{target}}%, {{gap}} points over",
+    "captionOn": "Target {{target}}% reached",
+    "aria": "{{value}}% of completed runs finished within 30 seconds. The target is {{target}}%.",
+    "empty": "No run has finished in this period yet."
+  },
+  "tasks": {
+    "title": "Tasks that use AI the most",
+    "task": "Task",
+    "share": "Share",
+    "runs": "Runs",
+    "failed": "Failed",
+    "p50": "Typical time",
+    "cost": "Cost",
+    "seconds": "{{n}} s",
+    "empty": "No runs in this period. Tasks appear here with their share, failures, time and cost."
+  },
+  "activity": {
+    "title": "Latest admin actions",
+    "empty": "No admin action has been recorded yet.",
+    "unknown": "Unknown action",
+    "on": "{{what}} {{target}}",
+    "action": {
+      "user_suspend": "Suspended user",
+      "user_enable": "Enabled user",
+      "user_reset_password": "Reset password of user",
+      "user_delete": "Deleted user",
+      "run_cancel": "Cancelled run",
+      "run_retry": "Retried run",
+      "model_add": "Added model",
+      "model_price": "Changed price of model",
+      "model_use_official_price": "Used the official price of model",
+      "task_model": "Changed the model of task",
+      "benchmark_start": "Started a test of",
+      "webhook_resend": "Resent webhook"
+    }
+  },
+  "models": {
+    "title": "Cost by model",
+    "empty": "No priced model calls in this period.",
+    "manual": "Price entered by hand"
+  },
+  "customize": {
+    "title": "Customize the overview",
+    "hint": "Choose which widgets to show. The choice is saved for your account.",
+    "shown": "Shown",
+    "add": "Add",
+    "saveError": "The choice could not be saved. It was put back.",
+    "hidden": "Hid “{{name}}”. Add it back from Customize.",
+    "options": "Options for {{name}}",
+    "hide": "Hide this widget",
+    "widgets": {
+      "trend": {
+        "name": "Trend",
+        "desc": "The chart of the number you picked above, against the previous period."
+      },
+      "attention": {
+        "name": "Needs attention",
+        "desc": "Things you need to look at, with those that affect users first."
+      },
+      "weekday": {
+        "name": "Busiest weekdays",
+        "desc": "Average runs per weekday. Use it to pick a quiet day for maintenance."
+      },
+      "speed": {
+        "name": "Fast runs",
+        "desc": "Share of runs finished within 30 seconds, against the target."
+      },
+      "tasks": {
+        "name": "Top tasks",
+        "desc": "Runs, failures, time and cost of each task."
+      },
+      "activity": {
+        "name": "Admin activity",
+        "desc": "The latest actions admins took, from the audit log."
+      },
+      "models": {
+        "name": "Cost by model",
+        "desc": "Which model takes the most budget in the period."
+      }
+    }
+  },
+  "op": {
+    "evaluate_job": "Evaluate job",
+    "draft_documents": "Draft documents",
+    "tailor_cv": "Tailor CV",
+    "apply_prepare": "Prepare application",
+    "apply_submit": "Submit application",
+    "draft_follow_up": "Draft follow-up",
+    "extract_experience": "Extract experience",
+    "profile_cv": "Profile CV",
+    "export_document": "Export document",
+    "match_jobs": "Match jobs",
+    "interview_generate": "Interview questions",
+    "interview_grade": "Interview grading",
+    "interview_report": "Interview report",
+    "document_ocr": "Read documents (OCR)"
+  },
+  "loading": "Loading the overview",
+  "allHidden": "All widgets are hidden",
+  "allHiddenHint": "Use Customize to show the ones you need."
 }

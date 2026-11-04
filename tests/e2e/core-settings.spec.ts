@@ -12,7 +12,7 @@ test('settings navigation carries explicit project scope through section changes
   await page.getByRole('button', { name: /^Account/ }).click();
   await page.getByRole('menuitem', { name: 'Settings', exact: true }).click();
   await expect(page).toHaveURL(`/app/settings?project=${secondProjectId}`);
-  await page.getByRole('button', { name: 'Tools', exact: true }).click();
+  await page.getByRole('button', { name: 'Webhooks', exact: true }).click();
   await expect(page.locator('#settings-project')).toHaveValue(secondProjectId);
   expect(new URL(page.url()).searchParams.get('project')).toBe(secondProjectId);
   await page.getByRole('button', { name: 'Project sharing', exact: true }).click();
