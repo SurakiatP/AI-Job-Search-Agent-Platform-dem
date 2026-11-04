@@ -940,7 +940,7 @@ class AdminModelCost(DTO):
 class AdminAuditEntry(DTO):
     id: UUID
     created_at: datetime
-    actor_email: str
+    actor_email: str | None  # null once the actor's account is purged
     action: str
     target_type: Literal["user", "run", "model", "task", "benchmark", "webhook"] | None
     target_id: str | None

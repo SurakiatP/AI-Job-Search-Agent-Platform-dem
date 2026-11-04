@@ -28,6 +28,7 @@ from job_search_platform.db.models import (
     RunArtifact,
     StoredFile,
     ToolConnectorConfiguration,
+    User,
 )
 from job_search_platform.db.models import (
     RunEvent as RunEventRow,
@@ -231,6 +232,9 @@ class RunService:
                 raise ServiceError("not_found")
             if source.operation not in get_args(Operation) or source.session_id is None:
                 raise ServiceError("retry_not_allowed")  # internal operations have no retry path
+            owner = db.scalar(select(User).join(Project, Project.user_id == User.id).where(Project.id == source.project_id))
+            if owner is None or owner.disabled_at is not None or owner.deletion_requested_at is not None:
+                raise ServiceError("owner_unavailable")  # not "unauthorized": that 401 would sign the admin out
             questions = source.input_snapshot.get("questions") if source.operation == "apply_prepare" else None
             request = RunRequest(session_id=source.session_id, operation=source.operation,
                                  output_language=source.output_language, retry_of_id=source.id,

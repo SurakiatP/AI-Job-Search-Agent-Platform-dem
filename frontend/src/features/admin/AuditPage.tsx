@@ -62,7 +62,7 @@ export function AuditPage() {
             <DataTable label={t('log.title')} head={head}>
               {items.map(e => <Tr key={e.id}>
                 <Td label={t('col.when')}><span className="tabular-nums">{when.full(e.created_at)}</span></Td>
-                <Td label={t('col.who')}>{e.actor_email}</Td>
+                <Td label={t('col.who')}>{e.actor_email ?? <span className="text-muted-foreground">{t('deletedActor')}</span>}</Td>
                 <Td label={t('col.action')}><span className="font-medium">{t(`actions.${e.action}`, { defaultValue: e.action })}</span></Td>
                 <Td label={t('col.target')}>{e.target_type ? <>{t(`targets.${e.target_type}`)} <code className="text-xs">{e.target_id ? shortId(e.target_id) : ''}</code></> : <span className="text-muted-foreground">–</span>}</Td>
                 <Td label={t('col.detail')}><span className="text-muted-foreground">{summarise(e.detail) || '–'}</span></Td>

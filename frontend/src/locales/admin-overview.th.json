@@ -185,6 +185,7 @@
     "title": "admin ทำอะไรไปล่าสุด",
     "empty": "ยังไม่มีการกระทำของ admin ในบันทึก",
     "unknown": "การกระทำที่ไม่รู้จัก",
+    "deletedActor": "บัญชีที่ถูกลบ",
     "on": "{{what}} {{target}}",
     "action": {
       "user_suspend": "ระงับบัญชีผู้ใช้",

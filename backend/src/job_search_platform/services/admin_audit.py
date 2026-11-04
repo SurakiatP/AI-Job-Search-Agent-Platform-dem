@@ -54,8 +54,7 @@ def list(session, filters: dict | None = None, cursor: str | None = None, limit:
         query = query.where(tuple_(AdminAuditLog.created_at, AdminAuditLog.id) < tuple_(*_decode(cursor)))
     rows = session.execute(query).all()
     page = rows[:limit]
-    items = [{"id": str(r.id), "actor_user_id": None if r.actor_user_id is None else str(r.actor_user_id),
-              "actor_email": email, "action": r.action, "target_type": r.target_type, "target_id": r.target_id,
+    items = [{"id": str(r.id), "actor_email": email, "action": r.action, "target_type": r.target_type, "target_id": r.target_id,
               "detail": r.detail, "created_at": r.created_at.isoformat()} for r, email in page]
     last = page[-1][0] if len(rows) > limit else None
     nxt = base64.urlsafe_b64encode(f"{last.created_at.isoformat()}|{last.id}".encode()).decode() if last else None

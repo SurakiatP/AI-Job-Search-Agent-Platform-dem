@@ -127,6 +127,8 @@
   "err": {
     "run_finished": "This run already finished, so it cannot be cancelled.",
     "retry_not_allowed": "This run cannot be retried.",
+    "owner_unavailable": "The owner's account is suspended or being deleted, so this run cannot be retried.",
+    "email_unverified": "The owner has not verified their email, so this run cannot be retried.",
     "not_found": "This run no longer exists.",
     "forbidden": "Your account cannot do this.",
     "quota_exceeded": "The owner has reached their run limit.",

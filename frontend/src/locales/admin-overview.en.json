@@ -185,6 +185,7 @@
     "title": "Latest admin actions",
     "empty": "No admin action has been recorded yet.",
     "unknown": "Unknown action",
+    "deletedActor": "Deleted account",
     "on": "{{what}} {{target}}",
     "action": {
       "user_suspend": "Suspended user",

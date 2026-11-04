@@ -19,6 +19,7 @@ from job_search_platform.api.rest import _http_error
 from job_search_platform.db.models import AdminAuditLog, User
 from job_search_platform.services import admin_audit
 from job_search_platform.services.accounts import is_admin
+from job_search_platform.services.contracts import AdminAuditPage
 from job_search_platform.services.errors import ServiceError
 
 NOW = datetime.now(timezone.utc)
@@ -76,6 +77,8 @@ def test_audit_log_is_append_only_and_outlives_the_account(db_session):
             db_session.execute(text("DELETE FROM admin_audit_log"))
     db_session.execute(text("DELETE FROM users WHERE id = :id"), {"id": actor.user_id})
     assert db_session.get(AdminAuditLog, row.id) is not None
+    page = AdminAuditPage.model_validate(admin_audit.list(db_session))  # the response model must accept a purged actor
+    assert page.items[0].actor_email is None
 
 
 @pytest.mark.integration

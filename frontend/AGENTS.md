@@ -7,10 +7,10 @@ Not here: backend code, API contract definitions (`docs/contracts/`), browser te
 
 - `src/main.tsx` - entry; `src/styles.css` - Tailwind and tokens.
 - `src/app/` - `router.tsx`, `providers.tsx` (i18next setup), `theme.ts`, `drafts.tsx`, `routes.css`.
-- `src/features/` - one folder per area: `account`, `applications`, `auth`, `chat`, `console`, `digest`, `documents`, `jobs`, `landing`, `oauth`, `overview`, `profile`, `projects`, `search`, `sessions`, `settings`. Keep a feature's code inside its folder.
+- `src/features/` - one folder per area: `account`, `admin`, `applications`, `auth`, `chat`, `console`, `digest`, `documents`, `jobs`, `landing`, `oauth`, `overview`, `profile`, `projects`, `search`, `sessions`, `settings`. Keep a feature's code inside its folder. `features/admin/` is the admin console (`AdminGate`, `AdminShell`, and pages for overview, users, runs, usage, models, system, audit); admin accounts use only these routes.
 - `src/components/` - shared UI; `src/components/ui/` - primitives.
 - `src/lib/` - `api.ts` (API client), `api-types.ts` (API types), `run-events.ts`, `applicationStages.ts`, `accountGate.ts`, `utils.ts`.
-- `src/locales/` - `common.{th,en}.json`, `settings.{th,en}.json`.
+- `src/locales/` - `common.{th,en}.json`, `settings.{th,en}.json`, and one namespace per area, including `admin-shell`, `admin-overview`, `admin-users`, `admin-runs`, `admin-usage`, `admin-models`, `admin-system`, `admin-audit` (each `.{th,en}.json`).
 - `tests/shell.html`, `tests/shell.tsx` - synthetic shell served by Vite for Playwright.
 
 ## Commands (run from repo root)

@@ -24,7 +24,8 @@ def upgrade() -> None:
         sa.Column("target_type", sa.String(32), nullable=False),
         sa.Column("target_id", sa.String(64)),
         sa.Column("detail", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=_NOW),
+        # clock_timestamp, not now(): rows written in one transaction must still sort in write order
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("clock_timestamp()")),
     )
     op.execute("CREATE INDEX ix_admin_audit_created ON admin_audit_log (created_at DESC, id DESC)")
     op.execute("""CREATE FUNCTION reject_admin_audit_mutation() RETURNS trigger AS $$

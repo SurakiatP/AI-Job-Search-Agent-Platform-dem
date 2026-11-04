@@ -240,6 +240,22 @@ def test_retry_requeues_with_owner_scope_and_audit_and_refuses_completed(ctx):
     assert ctx.client.post(f"/v1/admin/runs/{uuid4()}/retry", headers=headers).status_code == 404
 
 
+def test_retry_refuses_suspended_or_deleting_owner_without_401(ctx):
+    # a 401 "unauthorized" would sign the admin out in the SPA; the owner state must answer 409 owner_unavailable
+    seeded = seed(ctx)
+    headers = as_admin(ctx)
+    real = asyncio.run(_submit_as_owner(ctx, seeded))
+    for column in ("disabled_at", "deletion_requested_at"):
+        with ctx.sessions.begin() as db:
+            db.get(Run, real).status = "failed"
+            db.get(User, seeded.user_id).disabled_at = None
+            db.get(User, seeded.user_id).deletion_requested_at = None
+            setattr(db.get(User, seeded.user_id), column, datetime.now(timezone.utc))
+        refused = ctx.client.post(f"/v1/admin/runs/{real}/retry", headers=headers)
+        assert refused.status_code == 409 and refused.json()["code"] == "owner_unavailable", column
+    assert audit_rows(ctx, "run.retry") == []
+
+
 async def _submit_as_owner(ctx, seeded):
     now = datetime.now(timezone.utc)
     sid = uuid4()

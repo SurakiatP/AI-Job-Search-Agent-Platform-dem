@@ -250,7 +250,7 @@ export type AdminModelCost = { model: string; calls: number; cost_usd: number; h
 export type AdminAuditEntry = {
   id: string;
   created_at: string;
-  actor_email: string;
+  actor_email: string | null;
   action: string;
   target_type: 'user' | 'run' | 'model' | 'task' | 'benchmark' | 'webhook' | null;
   target_id: string | null;

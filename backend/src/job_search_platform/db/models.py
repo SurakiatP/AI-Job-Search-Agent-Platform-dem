@@ -887,7 +887,7 @@ class AdminAuditLog(Base):
     target_type: Mapped[str] = mapped_column(String(32), nullable=False)
     target_id: Mapped[str | None] = mapped_column(String(64))
     detail: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.clock_timestamp(), nullable=False)
     __table_args__ = (Index("ix_admin_audit_created", text("created_at DESC"), text("id DESC")),)
 
 

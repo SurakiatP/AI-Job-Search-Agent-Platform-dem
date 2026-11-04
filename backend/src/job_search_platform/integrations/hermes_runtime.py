@@ -37,6 +37,16 @@ def reasoning_effort(env, operation: str) -> str | None:
     return value if value in EFFORTS else None
 
 
+# What the native bridge really runs when nothing sets an effort (infra/hermes/native_bridge.py REASONING; a unit test keeps them equal).
+BRIDGE_DEFAULT_EFFORT = {"interview_generate": "low", "interview_grade": "low", "interview_report": "low"}
+
+
+def env_effort(env, operation: str) -> str:
+    """The effort an operation runs at with no stored admin setting: AI_REASONING_<OP>, else the bridge's own default,
+    else "default" (the model's own)."""
+    return reasoning_effort(env, operation) or BRIDGE_DEFAULT_EFFORT.get(operation, "default")
+
+
 def reasoning_overrides(env) -> dict[str, str]:
     """Thinking effort per native operation; see reasoning_effort."""
     return {op: v for op in NATIVE_OPERATIONS if (v := reasoning_effort(env, op))}

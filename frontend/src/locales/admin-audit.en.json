@@ -2,6 +2,7 @@
   "title": "Audit log",
   "lede": "Every admin action: who did it, to what, and when.",
   "retry": "Try again",
+  "deletedActor": "Deleted account",
   "loading": "Loading…",
   "filter": { "action": "Action", "allActions": "All actions", "since": "Since", "clear": "Clear filters" },
   "log": { "title": "Admin actions", "description": "Newest first. Times are Bangkok time. Details hold ids, codes and numbers only." },

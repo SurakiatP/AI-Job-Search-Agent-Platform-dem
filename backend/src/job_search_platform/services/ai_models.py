@@ -18,7 +18,7 @@ from sqlalchemy import select
 
 from job_search_platform.db.models import ModelPrice, TaskModelSetting, User
 from job_search_platform.integrations.gateway import _OPENER, GatewaySettings, default_private_dir, read_private_file
-from job_search_platform.integrations.hermes_runtime import NATIVE_OPERATIONS
+from job_search_platform.integrations.hermes_runtime import NATIVE_OPERATIONS, env_effort
 from job_search_platform.services import admin_audit
 from job_search_platform.services.contracts import (
     AdminModelCatalogItem, AdminModelCreate, AdminModelPrice, AdminOfficialPrice, AdminRegisteredModel, AdminTaskSetting,
@@ -172,8 +172,7 @@ def current_pair(operation: str, row: TaskModelSetting | None) -> tuple[str, str
     model = os.environ.get("AI_MODEL_" + operation.upper(), "").strip()
     if not MODEL_ID.fullmatch(model):
         model = os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze"
-    effort = os.environ.get("AI_REASONING_" + operation.upper(), "").strip().lower()
-    return model, effort if effort in EFFORTS else "default", "env"
+    return model, env_effort(os.environ, operation), "env"
 
 
 def _used_by(session) -> dict[str, list[str]]:

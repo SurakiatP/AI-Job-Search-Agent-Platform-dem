@@ -141,7 +141,8 @@ def test_overview_aggregates_kpis_series_and_widgets(ctx, admin):
     assert body["bucket_seconds"] == 86400 and len(body["series"]) == 7
     assert body["kpis"]["runs"] == {"value": 5, "previous": 1}
     assert body["kpis"]["failure_rate"] == {"value": 0.2, "previous": 0}
-    assert body["kpis"]["active_users"]["value"] == 2  # the admin's login session and the owner's two (one user)
+    assert body["kpis"]["active_users"]["value"] == 1  # the owner's two sessions count once; the admin's login does not
+    assert sum(p["active_users"] for p in body["series"]) == 1
     assert body["kpis"]["cost_usd"]["value"] == pytest.approx(0.05) and body["kpis"]["cost_has_manual"] is True
     assert sum(p["runs"] for p in body["series"]) == 5 and sum(p["failures"] for p in body["series"]) == 1
     assert sum(p["cost_usd"] for p in body["series"]) == pytest.approx(0.05)
@@ -208,8 +209,10 @@ def test_bucket_breakdown_per_task(ctx, admin):
     assert fail["value"] == pytest.approx(1 / 3) and fail["parts"] == [{"operation": "evaluate_job", "value": 0.5}]
     cost = ctx.client.get("/v1/admin/overview/bucket", params={**wide, "metric": "cost_usd"}).json()
     assert cost["value"] == 0.5 and cost["parts"] == [{"operation": "tailor_cv", "value": 0.5}]
+    with ctx.sessions.begin() as db:  # the admin's own login session must not count
+        db.add(OwnerSession(user_id=owner, session_hash=b"o" * 32, csrf_hash=b"c" * 32, expires_at=NOW() + timedelta(days=1), last_seen_at=NOW() - timedelta(hours=1)))
     users = ctx.client.get("/v1/admin/overview/bucket", params={**wide, "metric": "active_users"}).json()
-    assert users["value"] >= 1 and {p["operation"] for p in users["parts"]} == {"evaluate_job", "tailor_cv"}
+    assert users["value"] == 1 and {p["operation"] for p in users["parts"]} == {"evaluate_job", "tailor_cv"}
 
 
 def test_csv_has_bucket_rows_and_no_personal_data(ctx, admin):

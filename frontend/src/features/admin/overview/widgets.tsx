@@ -166,7 +166,7 @@ export function ActivityBody({ data, fmt, t }: { data: AdminOverview; fmt: Fmt; 
     const target = a.target_id ? (UUID.test(a.target_id) ? a.target_id.slice(0, 8) : a.target_id) : '';
     return <li key={a.id} className="grid gap-0.5 px-5 py-3 max-sm:px-4">
       <p className="text-sm leading-snug [overflow-wrap:anywhere]">{what}{target ? <> <span className="font-medium tabular-nums">{target}</span></> : null}</p>
-      <p className="text-xs text-muted-foreground tabular-nums [overflow-wrap:anywhere]">{a.actor_email} · {fmt.dateTime(a.created_at)}</p>
+      <p className="text-xs text-muted-foreground tabular-nums [overflow-wrap:anywhere]">{a.actor_email ?? t('activity.deletedActor')} · {fmt.dateTime(a.created_at)}</p>
     </li>;
   })}</ul>;
 }

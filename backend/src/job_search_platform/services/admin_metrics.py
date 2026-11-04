@@ -5,6 +5,7 @@ Day, week and weekday buckets follow Asia/Bangkok (a fixed UTC+7 since 1920, so 
 """
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -98,10 +99,17 @@ def _first_seen(db) -> datetime | None:
     return min(first) if first else None
 
 
+def _active_users(*columns, where=()):
+    """Distinct non-admin users with a session seen in the window; admins are operators, not users (matches admin_listed)."""
+    listed = {i.strip().lower() for i in os.environ.get("ADMIN_EMAILS", "").split(",") if i.strip()}
+    return (select(*columns, func.count(func.distinct(OwnerSession.user_id))).join(User, User.id == OwnerSession.user_id)
+            .where(User.is_admin.is_(False), func.lower(User.email).not_in(listed), *where))
+
+
 def _totals(db, w: Window) -> dict:
     runs, failed = db.execute(select(func.count(), func.count().filter(Run.status == "failed"))
                               .where(*_in(Run.created_at, w))).one()
-    users = db.scalar(select(func.count(func.distinct(OwnerSession.user_id))).where(*_in(OwnerSession.last_seen_at, w)))
+    users = db.scalar(_active_users(where=_in(OwnerSession.last_seen_at, w)))
     cost = db.scalar(select(func.sum(LlmCall.cost_usd)).where(*_in(LlmCall.created_at, w)))
     return {"runs": runs, "active_users": users, "failure_rate": failed / runs if runs else 0.0, "cost_usd": _f(cost)}
 
@@ -114,8 +122,7 @@ def _series(db, w: Window) -> list[dict]:
                                       .where(*_in(Run.created_at, w)).group_by(i)):
         points[k]["runs"], points[k]["failures"] = runs, failed
     i = _index(OwnerSession.last_seen_at, w)
-    for k, users in db.execute(select(i, func.count(func.distinct(OwnerSession.user_id)))
-                               .where(*_in(OwnerSession.last_seen_at, w)).group_by(i)):
+    for k, users in db.execute(_active_users(i, where=_in(OwnerSession.last_seen_at, w)).group_by(i)):
         points[k]["active_users"] = users
     i = _index(LlmCall.created_at, w)
     for k, cost in db.execute(select(i, func.sum(LlmCall.cost_usd)).where(*_in(LlmCall.created_at, w)).group_by(i)):
@@ -216,7 +223,7 @@ def _attention(db, now: datetime, components: dict) -> list[dict]:
 
 
 def _activity(db) -> list[dict]:
-    return [{**item, "actor_email": item["actor_email"] or ""} for item in admin_audit.list(db, limit=5)["items"]]
+    return admin_audit.list(db, limit=5)["items"]
 
 
 def overview(db, range_: str, now: datetime, components: dict) -> dict:
@@ -254,8 +261,7 @@ def bucket(db, range_: str, metric: str, start: datetime) -> dict:
     elif metric == "active_users":
         parts = [(op, n) for op, n in db.execute(select(Run.operation, func.count(func.distinct(Project.user_id)))
                                                   .join(Project, Project.id == Run.project_id).where(*in_run).group_by(Run.operation))]
-        value = db.scalar(select(func.count(func.distinct(OwnerSession.user_id)))
-                          .where(OwnerSession.last_seen_at >= start, OwnerSession.last_seen_at < end))
+        value = db.scalar(_active_users(where=(OwnerSession.last_seen_at >= start, OwnerSession.last_seen_at < end)))
     else:
         rows = db.execute(select(Run.operation, func.count(), func.count().filter(Run.status == "failed")).where(*in_run).group_by(Run.operation)).all()
         total, failed = sum(r[1] for r in rows), sum(r[2] for r in rows)

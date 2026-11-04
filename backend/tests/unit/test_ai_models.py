@@ -75,3 +75,4 @@ def test_current_pair_falls_back_to_env(monkeypatch):
     monkeypatch.setenv("AI_REASONING_TAILOR_CV", "HIGH")
     assert ai_models.current_pair("tailor_cv", None) == ("acme/fast", "high", "env")
     assert ai_models.current_pair("evaluate_job", None) == ("ai-analyze", "default", "env")
+    assert ai_models.current_pair("interview_grade", None)[1] == "low"  # the bridge's real default, not "default"

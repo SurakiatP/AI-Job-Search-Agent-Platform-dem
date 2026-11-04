@@ -174,7 +174,7 @@ function ConfirmAction({ kind, run, onClose, onDone, onStale }: {
       const code = caught instanceof ApiError ? caught.code : '';
       setError(t(`err.${code}`, { defaultValue: t('err.request') }));
       setBusy(false);
-      if (code === 'run_finished' || code === 'retry_not_allowed' || code === 'not_found') { setStale(true); onStale(); } // the run moved on: no second try, and the sheet behind reloads
+      if (code === 'run_finished' || code === 'retry_not_allowed' || code === 'owner_unavailable' || code === 'not_found') { setStale(true); onStale(); } // the run moved on: no second try, and the sheet behind reloads
     }
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>

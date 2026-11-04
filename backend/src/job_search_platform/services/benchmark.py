@@ -19,6 +19,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import sessionmaker
 
 from ..db.models import BenchmarkRun, TaskModelSetting
+from ..integrations.hermes_runtime import env_effort
 from .contracts import AdminBenchmark, AdminBenchmarkCase, AdminBenchmarkSummary
 from .errors import ServiceError
 
@@ -107,8 +108,7 @@ def current_pair(session, operation: str) -> tuple[str, str]:
     model = os.environ.get("AI_MODEL_" + operation.upper(), "").strip()
     if not re.fullmatch(r"[A-Za-z0-9._:/-]{1,120}", model):
         model = os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze"
-    effort = os.environ.get("AI_REASONING_" + operation.upper(), "").strip().lower()
-    return model, effort if effort in ("none", "minimal", "low", "medium", "high", "default") else "default"
+    return model, env_effort(os.environ, operation)
 
 
 def start(session, actor_id, operation: str, model: str, effort: str) -> AdminBenchmark:

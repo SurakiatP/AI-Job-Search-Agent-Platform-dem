@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from job_search_platform.integrations.hermes_runtime import reasoning_effort
+from job_search_platform.integrations.hermes_runtime import BRIDGE_DEFAULT_EFFORT, env_effort, reasoning_effort
 from job_search_platform.services.ocr import transcribe_pages
 from test_ocr_fallback import _gateway, _Opener
 
@@ -23,6 +23,19 @@ def test_ocr_reasoning_field(tmp_path, monkeypatch, raw, sent):
 def test_effort_helper():
     assert reasoning_effort({"AI_REASONING_TAILOR_CV": " None "}, "tailor_cv") == "none"
     assert reasoning_effort({"AI_REASONING_TAILOR_CV": "x"}, "tailor_cv") is None
+
+
+def test_env_effort_reports_the_bridge_default_and_matches_the_bridge(monkeypatch):
+    import json, os, pathlib
+    monkeypatch.delenv("PLATFORM_REASONING", raising=False)
+    src = (pathlib.Path(__file__).parents[3] / "infra/hermes/native_bridge.py").read_text()
+    ns = {"os": os, "json": json}
+    exec(src[src.index("REASONING = {"):src.index("CAREER_OPS_FILES")], ns)
+    ran = {op: v["extra_body"]["reasoning"]["effort"] for op, v in ns["REASONING"].items()}
+    assert ran == BRIDGE_DEFAULT_EFFORT  # what the bridge runs with no setting is what the console reports
+    assert env_effort({}, "interview_grade") == "low" and env_effort({}, "tailor_cv") == "default"
+    assert env_effort({"AI_REASONING_INTERVIEW_GRADE": "default"}, "interview_grade") == "default"
+    assert env_effort({"AI_REASONING_INTERVIEW_GRADE": "high"}, "interview_grade") == "high"
 
 
 def test_bridge_none_maps_to_disabled(monkeypatch):
@@ -52,3 +65,19 @@ def test_ocr_truncated_reply_is_an_error():
     import pytest
     with pytest.raises(ValueError, match="ocr_truncated"):
         ocr._call(Gateway(), b"x")
+
+
+def test_bridge_usage_input_includes_cached_tokens():
+    import pathlib
+    from types import SimpleNamespace
+    src = (pathlib.Path(__file__).parents[3] / "infra/hermes/native_bridge.py").read_text()
+    ns = {}
+    exec(src[src.index("def _usage(agent)"):src.index("def _system_message")], ns)  # bridge runs on import; take only this function
+    agent = SimpleNamespace(model="m", session_input_tokens=200, session_output_tokens=50, session_cache_read_tokens=800,
+                            session_cache_write_tokens=100, session_api_calls=3)
+    usage = ns["_usage"](agent)
+    assert usage["input_tokens"] == 1100 and usage["cached_tokens"] == 800  # whole prompt, cache hits inside it
+    from decimal import Decimal
+    from job_search_platform.services.pricing import cost_usd
+    price = (Decimal(1), Decimal(2), Decimal("0.1"), "manual")
+    assert cost_usd(price, usage["input_tokens"], 50, usage["cached_tokens"]) == Decimal("0.00048000")  # 300*1 + 800*0.1 + 50*2 per 1M

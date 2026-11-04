@@ -2039,7 +2039,7 @@ paths:
         '200': {description: New run, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRunDetail'}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {description: Run is not failed, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '409': {description: Run is not failed (retry_not_allowed) or its owner is suspended or being deleted (owner_unavailable), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /admin/usage:
     get:
       tags: [admin]
@@ -3392,7 +3392,7 @@ components:
       properties:
         id: {type: string, format: uuid}
         created_at: {type: string, format: date-time}
-        actor_email: {type: string}
+        actor_email: {type: [string, 'null'], description: Null once the actor's account is purged}
         action: {type: string, description: 'Dotted code, for example user.suspend, run.retry, model.price_set, task.model_set'}
         target_type: {type: [string, 'null'], enum: [user, run, model, task, benchmark, webhook, null]}
         target_id: {type: [string, 'null'], description: User short id, run id, model id, operation or delivery id}

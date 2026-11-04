@@ -76,7 +76,8 @@ def test_bridge_usage_reports_cache_reads_and_api_calls():
     exec(source[source.index("def _usage("):source.index("def _system_message")], namespace)
     agent = SimpleNamespace(model="m", session_input_tokens=100, session_output_tokens=7,
                             session_cache_read_tokens=60, session_api_calls=4)
-    assert namespace["_usage"](agent) == {"model": "m", "input_tokens": 100, "output_tokens": 7,
+    # Hermes input excludes cache reads; the bridge reports the whole prompt (100 + 60) so pricing subtracts cached once.
+    assert namespace["_usage"](agent) == {"model": "m", "input_tokens": 160, "output_tokens": 7,
                                           "cached_tokens": 60, "api_calls": 4}
     assert namespace["_usage"](SimpleNamespace(model="m"))["cached_tokens"] is None
 

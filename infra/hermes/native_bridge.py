@@ -183,9 +183,13 @@ def _usage(agent):
         n = getattr(agent, name, None)
         return n if isinstance(n, int) and not isinstance(n, bool) and 0 <= n <= 10_000_000 else None
     model = getattr(agent, "model", None)
+    # Hermes counts input WITHOUT cache hits and writes; the platform prices input as the whole prompt with the cached
+    # part inside it (pricing.cost_usd), so add them back here or cached tokens get subtracted twice.
+    parts = [count(name) for name in ("session_input_tokens", "session_cache_read_tokens", "session_cache_write_tokens")]
     return {"model": model[:120] if isinstance(model, str) and model else None,
-            "input_tokens": count("session_input_tokens"), "output_tokens": count("session_output_tokens"),
-            "cached_tokens": count("session_cache_read_tokens"), "api_calls": count("session_api_calls")}
+            "input_tokens": None if parts[0] is None else sum(p or 0 for p in parts),
+            "output_tokens": count("session_output_tokens"),
+            "cached_tokens": parts[1], "api_calls": count("session_api_calls")}
 
 
 def _system_message(instructions: object, career_ops_context: str) -> str:
