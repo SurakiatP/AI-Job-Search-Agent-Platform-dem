@@ -99,8 +99,9 @@
 @media (prefers-reduced-motion: no-preference) {
   .hero-float { animation: chip-float 6s ease-in-out infinite; animation-delay: var(--f, 0s); }
   @supports (animation-timeline: view()) {
-    .hero-frame { transform-origin: 50% 0; animation: frame-flat linear both; animation-timeline: view(); animation-range: entry 20% cover 35%; }
+    .hero-frame { transform-origin: 50% 50%; animation: frame-flat linear both; animation-timeline: view(); animation-range: cover 0% cover 100%; }
   }
 }
 @keyframes chip-float { 50% { transform: translateY(-4px); } 0%, 100% { transform: translateY(4px); } }
-@keyframes frame-flat { from { transform: rotateX(9deg) scale(0.97); } to { transform: none; } }
+/* Follows the scroll both ways: leans back as it enters from below, flat while centred, leans forward as it leaves above. */
+@keyframes frame-flat { 0% { transform: rotateX(9deg) scale(0.97); } 38%, 58% { transform: rotateX(0deg) scale(1); } 100% { transform: rotateX(-7deg) scale(0.98); } }
