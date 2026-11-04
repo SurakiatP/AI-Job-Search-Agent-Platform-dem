@@ -54,22 +54,22 @@ colors:
   dark-stage-track: "#A8C7FA"
 typography:
   display:
-    fontFamily: "Noto Serif Thai, Georgia, serif"
+    fontFamily: "Google Sans Flex, Anuphan, sans-serif"
     fontSize: "36px"
     fontWeight: 500
     lineHeight: 1.4
   headline:
-    fontFamily: "Noto Serif Thai, Georgia, serif"
+    fontFamily: "Google Sans Flex, Anuphan, sans-serif"
     fontSize: "20px"
     fontWeight: 500
     lineHeight: 1.45
   body:
-    fontFamily: "Noto Sans Thai, Manrope, sans-serif"
+    fontFamily: "Google Sans Flex, Anuphan, sans-serif"
     fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.7
   label:
-    fontFamily: "Noto Sans Thai, Manrope, sans-serif"
+    fontFamily: "Google Sans Flex, Anuphan, sans-serif"
     fontSize: "14px"
     fontWeight: 500
     lineHeight: 1.6
@@ -114,7 +114,7 @@ components:
 
 **Creative North Star: "Quiet Ledger"**
 
-Teal is action and AI. The page is a warm neutral ground with white hairline cards framed by a tinted sidebar; dark mode is a soft grey-green ground (low saturation, text 11:1 not 14:1, to avoid glare). Page titles are Thai serif, everything else Noto Sans Thai. Its signature is the pairing of CV revision and job revision: source context stays near the task that uses it. Written labels always accompany semantic status colours.
+Blue is action and AI. The page is a cool blue-grey ground with white cards framed by a tinted sidebar; dark mode is a deep navy ground (low saturation, text 11:1 not 14:1, to avoid glare). Type is one sans family: Google Sans Flex for Latin, Anuphan for Thai. Its signature is the pairing of CV revision and job revision: source context stays near the task that uses it. Written labels always accompany semantic status colours.
 
 Inspired by visual character only; no code or assets from AGPL-licensed Dossier.
 
@@ -122,7 +122,7 @@ The system is evidenced in `frontend/src/styles.css`, shared UI primitives, and 
 
 **Key Characteristics:**
 - Cool blue-grey canvas, white cards with soft navy shadows, Gemini blue emphasis. No black or near-black anywhere; ink is navy (`#172033`).
-- Serif page titles, sans-serif reading with generous Thai body leading.
+- One sans family for titles and reading (Google Sans Flex for Latin, Anuphan for Thai), generous Thai body leading.
 - Inset work panel, segmented controls, status dots, divided rows.
 
 ## Colors
@@ -160,14 +160,14 @@ Each step of the search owns a hue: `stage-cv`, `stage-search`, `stage-evaluate`
 
 ## Typography
 
-**Heading Font:** Noto Serif Thai 500 (with Georgia as load-failure fallback)  
-**Body Font:** Noto Sans Thai, Manrope, sans-serif  
-**Character:** Serif is for `h1` and for `h2` authored at 20px or larger (including dialog titles), always weight 500, letter-spacing 0. Markdown output (AI answers) stays sans. `h3`, body, controls and small headings (kanban column, sidebar labels) are Noto Sans Thai. `CardTitle` is authored `text-lg`, which `styles.css` sets to 20px, so it renders serif. Manrope is the English document fallback. Prompt is no longer used.
+**Heading and body font:** Google Sans Flex (variable, Latin) with Anuphan (variable, Thai), then Noto Sans Thai as the load-failure fallback. Headings weight 600, tracking slightly tight (`tracking-tight`) at 24px and up; body 400; labels 500.
+**Why this pair (compared 2026-11-04 against Noto Sans Thai, IBM Plex Sans Thai, Noto Sans Thai Looped):** Anuphan is loopless and round like Google Sans, and its Thai x-height sits closest to the Latin x-height, so mixed Thai/English lines (CV, AI, job titles) read as one face. Noto Sans Thai ran slightly larger and wider than the Latin; Plex looked condensed next to Google Sans; Looped reads well but looks dated for this product.
+**Documents:** generated document previews keep Manrope + Noto Sans Thai 400 (`--font-document`) so they look like the exported file. The Thai serif is retired; `--font-serif` is an alias of the heading font.
 
 ### Hierarchy
 
-- **Page title** (serif 500, 30px, 36px from 768px, 1.35; the largest text in the app): `PageHeader` h1.
-- **Section title** (serif 500, 20px, 1.45): card and dialog `h2`. 20px is the serif floor, except the header wordmark.
+- **Page title** (sans 600, 30px, 36px from 768px, 1.3; the largest text in the app): `PageHeader` h1.
+- **Section title** (sans 600, 20px, 1.45): card and dialog `h2`.
 - **Body** (sans 400, 16px, 1.7): default interface and form text; inputs use 16px.
 - **Label** (sans 500, 14px, 1.6): buttons, navigation rows, tabs, labels.
 - **Micro** (sans 500, 12px): sidebar group labels, table headers, counts.
@@ -214,7 +214,7 @@ cd frontend/src && grep -rnE "(^|[ \"'])(sm:|md:|lg:|xl:)?(-?m[tbxylrse]?|p[tbxy
 
 ## Elevation & Depth
 
-Theme change (owner decision 2026-11-04, second round): the palette follows Gemini, a little darker. Light: page `#EEF2F8`, card white, ink `#172033` (navy, never black), primary `#0A50C2` (7.1:1 on white), accent `#D6E4FB`, sidebar `#E6ECF5`. Dark: page `#121826`, card `#1C2333`, primary `#A8C7FA`, filled controls `#0B57D0` with white. The hero card is deep indigo `--hero` (`#101C3D` light, `#1B2D63` dark) with a slow three-colour aurora behind it (blue, violet, rose; still under reduced motion). Gemini hues (`--gem-*`) appear only in the AI sparkle (`GemSparkle`, `AiMark`, `AiLabel`), the turning ring while AI works (`AiSpinner`, `.gem-ring`), the gradient edge of AI panels (`.gem-border`) and the soft blue light at the bottom of the work area (`.ambient-surface`). Text never sits on a gradient and gradient text is not used. Latin type is Google Sans Flex (OFL, self-hosted via `@fontsource-variable/google-sans-flex`); Thai stays Noto Sans Thai. Buttons and segmented controls are pills; inputs 12px radius. Stat numbers count up once from 0 (400 ms, skipped under reduced motion) and show only after their data has loaded.
+Theme change (owner decision 2026-11-04, second round): the palette follows Gemini, a little darker. Light: page `#EEF2F8`, card white, ink `#172033` (navy, never black), primary `#0A50C2` (7.1:1 on white), accent `#D6E4FB`, sidebar `#E6ECF5`. Dark: page `#121826`, card `#1C2333`, primary `#A8C7FA`, filled controls `#0B57D0` with white. The hero card is deep indigo `--hero` (`#101C3D` light, `#1B2D63` dark) with a slow three-colour aurora behind it (blue, violet, rose; still under reduced motion). Gemini hues (`--gem-*`) appear only in the AI sparkle (`GemSparkle`, `AiMark`, `AiLabel`), the turning ring while AI works (`AiSpinner`, `.gem-ring`), the gradient edge of AI panels (`.gem-border`) and the soft blue light at the bottom of the work area (`.ambient-surface`). Text never sits on a gradient and gradient text is not used. Latin type is Google Sans Flex and Thai is Anuphan (both OFL, self-hosted via `@fontsource-variable/*`). Buttons and segmented controls are pills; inputs 12px radius. Stat numbers count up once from 0 (400 ms, skipped under reduced motion) and show only after their data has loaded.
 
 Public pages and the remaining app pages (owner decision 2026-11-04, third round): `PublicHeader` is a floating pill (sticky, inset from the edges, translucent card with backdrop blur, soft shadow); the Features menu is a two-column panel of icon tiles with title and description. Landing, feature, how-it-works and data pages use soft ambient hero panels, bento cards, a deep-indigo aurora statement band and closing CTA, and scroll reveals (fade + 12px rise, 400-500 ms, 60 ms stagger, once, skipped under reduced motion). Find jobs opens with one tinted search hero (pill search input 56px desktop / 48px phone, the filter, save-search and chips in one toolbar). CV and Documents use card grids with a coloured file-kind tile (PDF / DOCX / TXT, the kind also written). The manual (docs) pages are not part of this round.
 
@@ -228,7 +228,7 @@ The base radius is 8px: controls 8px, `xl` 12px, cards and panels `2xl` 16px, th
 
 ### Landing (Persuade surface)
 
-The public page persuades; the app operates. Section order: skip link, hero, three steps (numbered text columns; the tour carries the sample panels, so the steps do not repeat them), static tagline, tour, data and control, FAQ, closing, footer. Every public page (landing, feature, info, manual) uses one `PublicHeader`: Features menu, How it works, Data & connections, Manual, then Log in and Get started (Open app when signed in). Feature, info and manual lists are one bordered card with divided rows and a serif primary-blue numeral, never grids of cards or icon tiles. The page has one primary action (create account, or open app when signed in), repeated unchanged in the hero and the closing card; the only other hero action is a text link. The tagline is a static two-tone statement between hairlines (muted first line, foreground second), with no scroll animation. The tour is a vertical index (Up and Down keys) beside one panel, never a pill strip and never a card inside a card. Objections are answered in a FAQ ledger of native `details` rows. The one authored motion is the hero demo card, played once on `--ease-out`; reduced motion shows its end state. No icon tiles, no pills outside the list above, no shadows on page cards, no gradient text. Proof comes only from true product facts and real UI states: no statistics, testimonials, logos, user counts, prices, awards or odds. Footer links go only to pages that exist.
+The public page persuades; the app operates. Section order: skip link, hero, three steps (numbered text columns; the tour carries the sample panels, so the steps do not repeat them), static tagline, tour, data and control, FAQ, closing, footer. Every public page (landing, feature, info, manual) uses one `PublicHeader`: Features menu, How it works, Data & connections, Manual, then Log in and Get started (Open app when signed in). Feature, info and manual lists are one bordered card with divided rows and a primary-blue numeral, never grids of cards or icon tiles. The page has one primary action (create account, or open app when signed in), repeated unchanged in the hero and the closing card; the only other hero action is a text link. The tagline is a static two-tone statement between hairlines (muted first line, foreground second), with no scroll animation. The tour is a vertical index (Up and Down keys) beside one panel, never a pill strip and never a card inside a card. Objections are answered in a FAQ ledger of native `details` rows. The one authored motion is the hero demo card, played once on `--ease-out`; reduced motion shows its end state. No icon tiles, no pills outside the list above, no shadows on page cards, no gradient text. Proof comes only from true product facts and real UI states: no statistics, testimonials, logos, user counts, prices, awards or odds. Footer links go only to pages that exist.
 
 ### Buttons
 
@@ -240,7 +240,7 @@ Use `components/ui/button.tsx`; `components/Button.tsx` is its compatibility ada
 
 ### Page title block
 
-`components/PageHeader.tsx`: an outline icon in the page's stage hue, the serif title, a muted lede (16px, max 42rem; title 30px, 36px from 768px, line-height 1.35) and actions on the right. Existing back links stay above it.
+`components/PageHeader.tsx`: an outline icon in the page's stage hue, the title, a muted lede (16px, max 42rem; title 30px, 36px from 768px, line-height 1.35) and actions on the right. Existing back links stay above it.
 
 ### Status dot and stage chip
 
@@ -288,5 +288,4 @@ Keep task destinations grouped under the active project, with the project switch
 - Replace the next action with decorative KPI cards.
 - Add stage-coloured gradients, excessive nested cards, or unnecessary animation.
 - Name backend services, data sources or providers in user-facing copy.
-- Use serif below 20px (the 14px header wordmark is the one exception), or on Markdown output.
 - Use black or near-black for any colour, shadow or button.

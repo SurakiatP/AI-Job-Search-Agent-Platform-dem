@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { sendJson } from '../projects/useResource';
 import { dateLocale } from '../../lib/locale';
 
-const rowColumns = 'md:grid-cols-[2rem_minmax(0,1.6fr)_7rem_11rem_minmax(0,1.2fr)_1.5rem]';
+const rowColumns = 'md:grid-cols-[2rem_minmax(0,1.6fr)_8.5rem_11rem_minmax(0,1.2fr)_1.5rem]';
 
 function OpportunityRow({ projectId, card, locale, onMove, flowData }: {
   projectId: string;

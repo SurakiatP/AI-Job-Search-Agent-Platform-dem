@@ -51,3 +51,28 @@
 }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } }
 @keyframes hero-drift { to { transform: translate3d(0, 1.5rem, 0) scale(1.06); } }
+
+/* Feature tour: a tinted stage with a soft Gemini glow; the active tab is one gliding pill; panels ease in. */
+.tour-stage {
+  background:
+    radial-gradient(60% 70% at 100% 0%, color-mix(in srgb, var(--gem-violet) 12%, transparent), transparent 70%),
+    radial-gradient(50% 60% at 0% 100%, color-mix(in srgb, var(--gem-blue) 12%, transparent), transparent 70%),
+    color-mix(in srgb, var(--card) 55%, var(--background));
+}
+.tour-pill { opacity: 0; }
+.tour-pill[data-ready='true'] { opacity: 1; }
+.tour-card { --gem-fill: var(--card); }
+.tour-card > * { border-color: transparent; }
+[role='tab'][data-state='active'] .tour-icon { color: var(--primary); }
+@media (prefers-reduced-motion: no-preference) {
+  .tour-pill[data-ready='true'] { transition: transform 0.28s var(--ease-out), width 0.28s var(--ease-out), height 0.28s var(--ease-out); }
+  .tour-panel[data-state='active'] .tour-copy, .tour-panel[data-state='active'] .tour-card { animation: tour-in 0.28s var(--ease-out) both; }
+  .tour-panel[data-state='active'] .tour-card { animation-delay: 60ms; }
+  .tour-icon { transition: color 0.2s var(--ease-out); }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .tour-card { transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out); }
+  .tour-card:hover { transform: translateY(-2px); }
+}
+@keyframes tour-in { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } }
+.tour-stage [role='tab'][data-state='active'] { box-shadow: none; }

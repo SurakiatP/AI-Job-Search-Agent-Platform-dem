@@ -1,9 +1,9 @@
-@import '@fontsource/noto-sans-thai/400.css';
-@import '@fontsource/noto-sans-thai/500.css';
-@import '@fontsource/noto-sans-thai/600.css';
-@import '@fontsource/noto-serif-thai/500.css';
-@import '@fontsource/manrope/400.css';
+/* Latin: Google Sans Flex. Thai UI: Anuphan (loopless, round, x-height close to Google Sans; compared 2026-11-04
+   against Noto Sans Thai, IBM Plex Sans Thai and Noto Sans Thai Looped). Documents keep Manrope + Noto Sans Thai. */
 @import '@fontsource-variable/google-sans-flex';
+@import '@fontsource-variable/anuphan';
+@import '@fontsource/noto-sans-thai/400.css';
+@import '@fontsource/manrope/400.css';
 @import 'tailwindcss';
 
 /* Shared workspace semantic tokens. */
@@ -55,8 +55,8 @@
   --ai-foreground: var(--primary);
   --ai-soft: var(--accent);
   --ai-border: var(--border-strong);
-  --font-sans: 'Google Sans Flex Variable', 'Noto Sans Thai', Manrope, sans-serif;
-  --font-serif: 'Noto Serif Thai', serif;
+  --font-sans: 'Google Sans Flex Variable', 'Anuphan Variable', 'Noto Sans Thai', sans-serif;
+  --font-serif: var(--font-heading); /* serif retired 2026-11-04; kept as an alias so old classes still render */
   --font-document: Manrope, 'Noto Sans Thai', sans-serif;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-fast: 150ms;
@@ -69,7 +69,7 @@
   --stage-evaluate: var(--primary);
   --stage-docs: var(--primary);
   --stage-track: var(--primary);
-  --font-heading: 'Google Sans Flex Variable', 'Noto Sans Thai', Manrope, sans-serif; /* friendly sans headings; the serif stack stays in --font-serif */
+  --font-heading: 'Google Sans Flex Variable', 'Anuphan Variable', 'Noto Sans Thai', sans-serif; /* friendly sans headings; the serif stack stays in --font-serif */
   --font-display: var(--font-heading);
   --surface: var(--card);
   --surface-subtle: var(--muted);
