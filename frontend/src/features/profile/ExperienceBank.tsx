@@ -1,6 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { BusyNote } from '@/components/BusyNote';
 import { useGatewayHelp, useRunGate } from '../../lib/accountGate';
+import { GateNote } from '@/components/GateNote';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
@@ -110,6 +111,7 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
       {extraction && active && <BusyNote announce={false} bar label={status === 'queued' ? c.queued : c.running} action={<Button size="sm" variant="outline" onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/agent-runs/${extraction.run_id}/cancel`, { method: 'POST' })).catch(() => undefined)}>{c.stop}</Button>} />}
       {extraction?.status === 'completed' && extraction.summary && <p>{c.done(extraction.summary)}</p>}
       {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && <p className="flex flex-wrap items-center gap-2">{c.failed}{cvForRun && <Button size="sm" variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}>{c.retry}</Button>}</p>}
+      {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && cvForRun && <GateNote />}
     </div>
     {error && <Alert severity="error" role="alert">{error}</Alert>}
     {bank.status === 'error' && <Alert severity="error" role="alert" action={<Button size="sm" variant="outline" onClick={bank.reload}>{c.retry}</Button>}>{c.loadError}</Alert>}
@@ -145,6 +147,6 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
       onConfirm={() => apiRequest(base + '/' + removing.id, { method: 'DELETE' }).then(() => undefined)}
       onDone={() => { setRemoving(null); bank.reload(); }} onClose={() => setRemoving(null)} />}
     <FactForm c={c} initial={blank} submitLabel={c.add} onSubmit={d => act(() => sendJson(base, 'POST', toBody(d)))} />
-    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}><Sparkles className="size-4" aria-hidden="true" />{extraction ? c.extract : c.extractFirst}</Button></div>}
+    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}><Sparkles className="size-4" aria-hidden="true" />{extraction ? c.extract : c.extractFirst}</Button><GateNote className="mt-2" /></div>}
   </section>;
 }

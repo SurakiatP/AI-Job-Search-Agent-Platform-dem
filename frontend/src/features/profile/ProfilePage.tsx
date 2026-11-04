@@ -1,5 +1,6 @@
 import { BusyNote } from '@/components/BusyNote';
 import { useRunGate } from '../../lib/accountGate';
+import { GateNote } from '@/components/GateNote';
 import { useEffect, useRef, useState } from 'react';
 import { CvPreviewButton, FileKindTile } from '@/components/CvPreview';
 import { Link, useParams, useSearchParams } from 'react-router';
@@ -227,6 +228,7 @@ export function ProfilePage() {
                   {latest && bank.data?.provider_configured && <Button type="button" size="sm" variant="outline" aria-label={`${w(latest.extracted_at ? 'extractAgain' : 'extractFacts')}: ${cv.name}`} disabled={gate.blocked} title={gate.title} onClick={() => void extract(cv)}><Sparkles className="size-4" aria-hidden="true" />{w(latest.extracted_at ? 'extractAgain' : 'extractFacts')}</Button>}
                   <CvRowMenu cv={cv} c={c} label={w('rowMenu', { name: cv.name })} help={w('makePrimaryHelp')} onMakePrimary={() => void makePrimary(cv)} onRename={() => setRename(cv)} onDelete={() => setRemove(cv)} />
                 </div>
+                {latest && bank.data?.provider_configured && <GateNote />}
                 {showHistory && <div className="grid gap-2">
                   <Button type="button" size="sm" variant="ghost" className="w-fit" aria-expanded={historyOpen === cv.id} onClick={() => setHistoryOpen(historyOpen === cv.id ? null : cv.id)}>
                     {historyOpen === cv.id ? <ChevronUp className="size-4" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}{historyOpen === cv.id ? w('versionsClose') : w('versionsOpen', { count: history.length })}</Button>
@@ -245,6 +247,7 @@ export function ProfilePage() {
                   {readFailed || notStarted ? <span className="font-medium">{readFailed ? w('readFailed') : w('notStarted')}</span> : <><span className="text-xl font-semibold tabular-nums">{factCount}</span><span className="font-medium">{w('readCount', { count: factCount })}</span></>}
                 </p>}
                 {!extracting && notStarted && <p className="text-sm text-muted-foreground">{notStartedWhy}</p>}
+                {!extracting && readFailed && !!bank.data?.provider_configured && <GateNote />}
                 {!extracting && !notStarted && !readFailed && skillNames.length > 0 && <ul className="flex flex-wrap gap-1">{skillNames.map(name => <li key={name}><Badge variant="muted">{name}</Badge></li>)}</ul>}
               </div>
               {!extracting && readFailed

@@ -117,8 +117,7 @@ test('paired session keeps exact immutable context, global evaluation and task t
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Synthetic data analyst', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Data CV · v4' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Synthetic data analyst · Example Co' })).toBeVisible();
-  await expect(page.getByText('Version 7', { exact: true })).toBeVisible();
+  await expect(page.getByText('Job posting · version 7')).toBeVisible(); // the job page header names the posting version
   await expect(page.getByRole('tab', { name: 'Evaluation' })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Prepare documents' })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Application answers' })).toBeVisible();
@@ -358,6 +357,7 @@ test('SCR-04 header, language label and rich empty state', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   await page.route(`**/v1/projects/${projectId}/sessions/${sessionId}`, route => route.fulfill(json(pairedSession)));
+  await page.route(`**/v1/projects/${projectId}/jobs`, route => route.request().method() === 'GET' ? route.fulfill(json([])) : route.fallback()); // no saved job: the standalone session page keeps its header
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Senior Data Analyst', exact: true })).toBeVisible();
   await expect(page.getByText('Northstar · Evaluation 014')).toBeVisible();
@@ -466,6 +466,7 @@ test('SCR-03 evaluation trash: restore, restore blocked by a newer pair, delete 
 test('session header names the CV so sessions of the same job are told apart', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
+  await page.route(`**/v1/projects/${projectId}/jobs`, route => route.request().method() === 'GET' ? route.fulfill(json([])) : route.fallback()); // standalone session page
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await expect(page.getByRole('main').locator('header')).toContainText('Example Co · First synthetic session · CV: Data CV · v1');
 });
@@ -505,7 +506,8 @@ test('Get fit score from the job page: one session POST, then exactly one evalua
   await page.route(new RegExp(`/v1/projects/${projectId}/runs(\\?.*)?$`), route => route.fulfill(json([])));
   await page.goto(`/app/projects/${projectId}/jobs/${jobId}`);
   await page.getByRole('main').getByRole('button', { name: 'Get fit score' }).click();
-  await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}$`));
+  // CH-05: the session address redirects to the job page.
+  await expect(page).toHaveURL(new RegExp(`/jobs/${jobId}\\?session=${sessionId}$`));
   await expect.poll(() => runPosts.length).toBe(1);
   expect(sessionPosts).toEqual([{ cv_revision_id: 'c1', job_revision_id: jobId }]);
   expect(runPosts[0]).toMatchObject({ session_id: sessionId, operation: 'evaluate_job' });

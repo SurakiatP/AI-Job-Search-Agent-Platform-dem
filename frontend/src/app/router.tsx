@@ -79,8 +79,8 @@ function AppWorkspace() {
   return <AppShell projects={navigation} projectId={projectId} sessionId={sessionId} onReload={() => { projects.reload(); sessions.reload(); }}><Suspense fallback={<LoadingState />}><Outlet /></Suspense></AppShell>;
 }
 
-// First visit with no project: create "My job search" so the person lands on Today instead of an empty list.
-function AppStart() {
+// Opens the person's first project, creating "My job search" on a first visit so they never land on an empty project list.
+function FirstProject({ to }: { to: (projectId: string) => string }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { locale } = useLocale();
@@ -92,14 +92,14 @@ function AppStart() {
     if (creating.current) return;
     creating.current = true; setFailed(false);
     sendJson<Project>('/projects', 'POST', { name: locale === 'th' ? 'การหางานของฉัน' : 'My job search' })
-      .then(project => navigate(`/app/projects/${project.id}/overview`, { replace: true }))
+      .then(project => navigate(to(project.id), { replace: true }))
       .catch(() => { creating.current = false; setFailed(true); });
-  }, [locale, navigate]);
+  }, [locale, navigate, to]);
   useEffect(() => {
     if (projects.status !== 'ready') return;
-    if (firstProjectId) navigate(`/app/projects/${firstProjectId}/overview`, { replace: true });
+    if (firstProjectId) navigate(to(firstProjectId), { replace: true });
     else create();
-  }, [create, firstProjectId, navigate, projects.status]);
+  }, [create, firstProjectId, navigate, projects.status, to]);
   if (projects.status === 'error') return <AppShell><ErrorState onRetry={projects.reload} /></AppShell>;
   if (failed) return <AppShell><Alert severity="error" className="mx-auto my-8 w-full max-w-xl" action={<Button variant="outline" size="sm" className="bg-card" onClick={create}>{t('firstRun.retry')}</Button>}>
     <p className="font-medium">{t('firstRun.failTitle')}</p>
@@ -108,18 +108,14 @@ function AppStart() {
   return <AppShell><LoadingState /></AppShell>;
 }
 
-// Landing search teaser lands here: pick the first project and carry the query over.
+const toOverview = (projectId: string) => `/app/projects/${projectId}/overview`;
+function AppStart() { return <FirstProject to={toOverview} />; }
+
+// Landing search teaser lands here: pick the first project (creating it if needed) and carry the query over.
 function AppSearchStart() {
-  const navigate = useNavigate();
   const { search } = useLocation();
-  const projects = useResource<Project[]>('/projects');
-  const firstProjectId = projects.data?.[0]?.id;
-  useEffect(() => {
-    if (projects.status !== 'ready') return;
-    navigate(firstProjectId ? `/app/projects/${firstProjectId}/search${search}` : '/app/projects', { replace: true });
-  }, [firstProjectId, navigate, projects.status, search]);
-  if (projects.status === 'error') return <AppShell><ErrorState onRetry={projects.reload} /></AppShell>;
-  return <AppShell><LoadingState /></AppShell>;
+  const to = useCallback((projectId: string) => `/app/projects/${projectId}/search${search}`, [search]);
+  return <FirstProject to={to} />;
 }
 
 function ProjectHome() {

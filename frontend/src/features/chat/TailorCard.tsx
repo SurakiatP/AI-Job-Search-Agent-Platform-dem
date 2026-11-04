@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { accountErrorText, useGatewayHelp, useRunGate } from '../../lib/accountGate';
+import { GateNote } from '@/components/GateNote';
 import { apiRequest } from '../../lib/api';
 import { ApiError, type Locale, type RunView, type TailorMode, type TailorPayload } from '../../lib/api-types';
 
@@ -63,7 +64,7 @@ export function TailorCard({ projectId, sessionId, locale, outputLanguage, busy,
       <Textarea id={`tailor-wish-${sessionId}`} value={wish} maxLength={1000} rows={3} disabled={busy || working} onChange={event => setWish(event.target.value)} aria-describedby={`tailor-wish-hint-${sessionId}`} />
       <p id={`tailor-wish-hint-${sessionId}`} className="text-xs text-muted-foreground">{c.wishHint}</p>
     </div>}
-    <div><Button type="button" variant="outline" busy={working} disabled={busy || working || gate.blocked} title={gate.title} onClick={() => void start()}>{c.start}</Button></div>
+    <div className="grid gap-2"><div><Button type="button" variant="outline" busy={working} disabled={busy || working || gate.blocked} title={gate.title} onClick={() => void start()}>{c.start}</Button></div><GateNote /></div>
     {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className={`text-sm ${message.kind === 'error' ? 'text-destructive' : ''}`}>{message.text}{message.kind === 'ok' && <> <Link className="text-primary hover:underline" to={`/app/projects/${projectId}/documents`}>{c.docs}</Link></>}</p>}
     {run?.status === 'needs_input' && <p role="status" className="text-sm font-medium">{c.waitingChoice}</p>}
     {payload && <section aria-labelledby={`tailor-result-${run?.id}`} className="grid gap-3 border-t pt-4">

@@ -75,6 +75,10 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
       </Select>
       <Label htmlFor="application-stage" className="mui-label">{t('stage')}</Label>
     </div>
+    {/* CH-05: contact and activity stay one click away so the job page keeps one clear next action above the fold. */}
+    <details className="group/track border-t border-border pt-4">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg text-sm font-medium hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-10 [&::-webkit-details-marker]:hidden"><span>{t('trackingDetails', { count: data.events.length })}</span><ChevronDown className="size-4 transition-transform group-open/track:rotate-180" aria-hidden="true" /></summary>
+      <div className="mt-4 grid gap-6">
 
     {!contactOpen && !hasContact
       ? <div className="border-t border-border pt-5"><Button type="button" variant="ghost" size="sm" aria-expanded="false" onClick={() => setContactOpen(true)}>{t('addContact')}</Button></div>
@@ -132,5 +136,6 @@ export function ApplicationPanel({ projectId, jobId, jobTitle, onStageChanged, c
           <p className="text-xs text-muted-foreground">{t(event.actor === 'user' ? 'you' : event.actor)} · {when.format(new Date(event.created_at))}</p>
         </li>)}</ol>}
     </div>
+    </div></details>
   </section>;
 }

@@ -101,6 +101,7 @@ test('the project list stays empty when someone opens it on purpose', async ({ p
   await page.getByLabel('Password', { exact: true }).fill('x');
   await page.getByRole('button', { name: 'Log in', exact: true }).click();
   await page.waitForURL(/\/app/);
+  await expect.poll(() => state.posts.length).toBe(1); // let the first-visit project finish before the reset
   state.posts.length = 0; state.projects.length = 0;
   await page.goto('/app/projects');
   await expect(page).toHaveURL(/\/app\/projects$/);

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTranslation } from 'react-i18next';
 import { accountErrorText, useGatewayHelp, useRunGate } from '../../lib/accountGate';
+import { GateNote } from '@/components/GateNote';
 import { apiRequest } from '../../lib/api';
 import { APPLIED_ONWARD } from '../../lib/applicationStages';
 import { ApiError, type ApplyPack, type ApplyQuestion, type JobRevisionView, type Locale, type RunOperation, type RunView } from '../../lib/api-types';
@@ -130,6 +131,7 @@ export function ApplyCard({ projectId, jobId, sessionId, locale, outputLanguage,
         <Button type="button" variant="outline" disabled={disabled || rows.length >= 40} title={gate.title} onClick={() => setRows(current => [...current, blank()])}>{c.add}</Button>
         <Button type="submit" variant="outline" disabled={disabled} title={gate.title}>{c.prepare}</Button>
       </div>
+      <GateNote />
     </form>
     <div className="grid gap-2 border-t pt-4">
       <div className="flex flex-wrap gap-2">

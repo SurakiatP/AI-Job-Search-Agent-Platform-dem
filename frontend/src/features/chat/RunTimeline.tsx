@@ -12,6 +12,15 @@ const statuses: Record<Locale, Record<RunStatus, string>> = {
   en: { queued: 'Queued', running: 'Running', waiting_approval: 'Waiting for approval', needs_input: 'Needs input', completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled', interrupted: 'Interrupted' },
 };
 
+// CH-06 usual durations, from completed runs on the local API (2026-11-04): evaluate_job 21 s and 42 s (2 runs); drafts, tailoring and answers had no completed runs, so they carry a wide range.
+// Shown as a range, never as a countdown or a percentage.
+const usual: Record<string, Record<Locale, string>> = {
+  evaluate_job: { th: 'ปกติใช้ราว 20 ถึง 60 วินาที', en: 'Usually takes 20 to 60 seconds' },
+  draft_documents: { th: 'ปกติใช้ราว 30 วินาทีถึง 2 นาที', en: 'Usually takes 30 seconds to 2 minutes' },
+  tailor_cv: { th: 'ปกติใช้ราว 30 วินาทีถึง 2 นาที', en: 'Usually takes 30 seconds to 2 minutes' },
+  apply_prepare: { th: 'ปกติใช้ราว 30 วินาทีถึง 2 นาที', en: 'Usually takes 30 seconds to 2 minutes' },
+};
+
 export function RunTimeline({ locale, run, events, cancellationPending, historical = false }: { locale: Locale; run: RunView | null; events: RunEvent[]; cancellationPending?: boolean; historical?: boolean }) {
   const { t: translate } = useTranslation();
   if (!run) return null;
@@ -24,7 +33,8 @@ export function RunTimeline({ locale, run, events, cancellationPending, historic
   const working = !historical && (run.status === 'queued' || run.status === 'running');
   const hasPercent = progress !== null && progress !== undefined;
   const busyLabel = run.status === 'queued' ? (locale === 'th' ? `เอเจนต์รับงานแล้ว รอคิว: ${operation}` : `The agent has the task and is queued: ${operation}`) : (locale === 'th' ? `เอเจนต์กำลังประมวลผล: ${operation}` : `The agent is processing: ${operation}`);
-  const busyDetail = locale === 'th' ? 'หน้านี้อัปเดตเองเมื่อมีความคืบหน้า ไม่ต้องรีเฟรช' : 'This page updates by itself as work progresses, no need to refresh';
+  const updates = locale === 'th' ? 'หน้านี้อัปเดตเองเมื่อมีความคืบหน้า ไม่ต้องรีเฟรช' : 'This page updates by itself as work progresses, no need to refresh';
+  const busyDetail = usual[run.operation] ? `${usual[run.operation][locale]}. ${updates}` : updates;
   return <section aria-labelledby={headingId} className="grid gap-3">
     <div className="flex flex-wrap items-start justify-between gap-2">
       <div className="min-w-0"><p className="text-xs text-muted-foreground">{title}</p><h3 id={headingId} className="break-words text-base font-semibold">{operation}</h3></div>

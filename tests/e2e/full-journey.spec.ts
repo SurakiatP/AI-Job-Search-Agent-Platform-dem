@@ -109,7 +109,10 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
     output_language: 'en',
   });
 
+  // CH-09: on the job page a draft opens in the side panel first; the full page is one link away.
   await page.getByTitle('Open document').click();
+  await expect(page.getByTestId('document-sheet')).toContainText('Synthetic English cover letter');
+  await page.getByTestId('document-sheet').getByRole('link', { name: 'Open full page' }).click();
   await expect(page.getByRole('heading', { name: 'Synthetic English cover letter' })).toBeVisible();
   await expect(page.getByTestId('document-language')).toContainText('English');
   await expect(page.getByRole('status').filter({ hasText: /\S/ })).toHaveText('Partial document');
@@ -118,7 +121,7 @@ test('synthetic Thai and English journey keeps drafts, output language, and rout
   await expect(page.getByTestId('document-language')).toContainText('English');
   await expect(page.getByTestId('document-content')).toHaveText('Synthetic English draft for review.');
   await page.goBack();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/sessions/${sessionId}`));
+  await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/jobs/[^?]+\\?session=${sessionId}`));
   await page.goto('/app/settings');
   // Theme cycles light, dark, system from the account menu.
   await page.getByRole('button', { name: /^บัญชี/ }).click();

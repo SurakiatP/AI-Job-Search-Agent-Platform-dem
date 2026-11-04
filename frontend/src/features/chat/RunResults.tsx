@@ -52,14 +52,14 @@ function SkillsFound({ coverage }: { coverage: SkillCoverage }) {
 }
 
 // Only persisted documents are listed; a pending tailor proposal lives in the run payload and never appears here.
-export function RelatedDocuments({ projectId, documents }: { projectId: string; documents: DocumentView[] }) {
+export function RelatedDocuments({ projectId, documents, onOpen }: { projectId: string; documents: DocumentView[]; onOpen?: (document: DocumentView) => void }) {
   const { t } = useTranslation('sessionWorkspace');
   const id = useId();
-  return <section aria-labelledby={id} className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6">
+  return <section aria-labelledby={id} data-testid="related-documents" className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6">
     <h2 id={id} className="text-lg font-semibold">{t('result.related')}</h2>
     {documents.length === 0 ? <p className="text-sm text-muted-foreground">{t('result.relatedNone')}</p> : <ul className="grid divide-y">{documents.map(document => <li key={document.id} className="grid gap-1 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4">
       <div className="min-w-0">
-        <p className="flex flex-wrap items-center gap-2 font-medium"><span className="min-w-0 break-words">{document.title}</span>{document.latest_revision && <span className="text-sm font-normal text-muted-foreground">{t('result.version', { n: document.latest_revision.revision })}</span>}{document.partial && <Badge variant="warning" role="status">{t('result.partialDoc')}</Badge>}</p>
+        <p className="flex flex-wrap items-center gap-2 font-medium">{onOpen ? <button type="button" className="min-h-11 min-w-0 break-words text-start text-primary hover:underline lg:min-h-10" onClick={() => onOpen(document)}>{document.title}</button> : <span className="min-w-0 break-words">{document.title}</span>}{document.latest_revision && <span className="text-sm font-normal text-muted-foreground">{t('result.version', { n: document.latest_revision.revision })}</span>}{document.partial && <Badge variant="warning" role="status">{t('result.partialDoc')}</Badge>}</p>
         {/* ponytail: raw markdown stripped of punctuation, not rendered; render markdown if previews need formatting */}
         {document.content_markdown && <p className="mt-1 line-clamp-2 break-words text-sm text-muted-foreground">{document.content_markdown.replace(/[#>*_`~]/g, '')}</p>}
       </div>
@@ -68,7 +68,7 @@ export function RelatedDocuments({ projectId, documents }: { projectId: string; 
   </section>;
 }
 
-export function RunResults({ projectId, locale, run, documents, trashedDocuments = [], showDocuments = true }: { projectId: string; locale: Locale; run: RunView | null; documents: DocumentView[]; trashedDocuments?: DocumentView[]; showDocuments?: boolean }) {
+export function RunResults({ projectId, locale, run, documents, trashedDocuments = [], showDocuments = true, scoredAgainst }: { scoredAgainst?: { name: string; revision?: number | null }; projectId: string; locale: Locale; run: RunView | null; documents: DocumentView[]; trashedDocuments?: DocumentView[]; showDocuments?: boolean }) {
   const { t } = useTranslation('sessionWorkspace');
   const headingId = useId();
   if (!run) return null;
@@ -91,6 +91,7 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
         const score = <div className="grid min-w-0 content-start gap-2">
           <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">{!evaluation.report && <AiMark size="sm" />}{t('result.aiFit')}</p>
           <div className="flex flex-wrap items-center gap-3"><FitScore result={evaluation} size="lg" locale={locale} /></div>
+          {scoredAgainst && <p data-testid="evaluation-provenance" className="break-words text-sm text-muted-foreground">{t('result.scoredAgainst', { name: scoredAgainst.name, revision: scoredAgainst.revision ?? '-' })}</p>}
           <FitScoreWhy result={evaluation} locale={locale} />
           <p className="max-w-prose text-sm text-muted-foreground">{t('result.notPrediction')}</p>
         </div>;

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { accountErrorText, useGatewayHelp, useRunGate } from '@/lib/accountGate';
 import { CvPreviewButton } from '@/components/CvPreview';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router';
 import { PracticeTab } from '../practice/PracticeTab';
 import { practiceCopy } from '../practice/copy';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +18,7 @@ import { ErrorState, LoadingState, MissingResource } from '../projects/PageState
 import { sendJson, useResource } from '../projects/useResource';
 import { NewSessionButton } from '../sessions/NewSessionDialog';
 import { apiRequest } from '../../lib/api';
-import { ApiError, PRACTICE_OPERATIONS, type DocumentView, type Locale, type RunOperation, type RunView, type SessionView } from '../../lib/api-types';
+import { ApiError, PRACTICE_OPERATIONS, type DocumentView, type JobRevisionView, type Locale, type RunOperation, type RunView, type SessionView } from '../../lib/api-types';
 import { useRun } from './useRun';
 import { RunTimeline } from './RunTimeline';
 import { RelatedDocuments, RunResults } from './RunResults';
@@ -30,6 +30,7 @@ import { SkillAdvice } from './SkillAdvice';
 import { TailorCard } from './TailorCard';
 import { ApplyCard } from './ApplyCard';
 import { BusyNote } from '@/components/BusyNote';
+import { GateNote } from '@/components/GateNote';
 import { Alert } from '@/components/ui/alert';
 import { CompanyMark } from '@/components/CompanyMark';
 import { Select } from '@/components/ui/select';
@@ -59,15 +60,18 @@ function ReviseBox({ c, projectId, docId, busy, onSubmit }: { c: typeof copy.en;
   </div>;
 }
 
-function DocCard({ c, base, projectId, doc, busy, onRevise }: { c: typeof copy.en; base: string; projectId: string; doc: DocumentView; busy: boolean; onRevise: (text: string) => Promise<boolean> }) {
+function DocCard({ c, base, projectId, doc, busy, onRevise, onOpen }: { c: typeof copy.en; base: string; projectId: string; doc: DocumentView; busy: boolean; onRevise: (text: string) => Promise<boolean>; onOpen?: (doc: DocumentView) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   // The document list omits content; the latest revision carries it.
   const revisions = useResource<{ revision: number; content_markdown?: string | null }[]>(`/projects/${projectId}/documents/${doc.id}/revisions`);
   const content = doc.content_markdown ?? [...(revisions.data ?? [])].sort((a, b) => b.revision - a.revision)[0]?.content_markdown ?? null;
   return <Card><CardContent className="grid gap-3 p-4">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="min-w-0 break-words font-semibold">{doc.title}{doc.latest_revision ? <span className="ms-2 text-sm font-normal text-muted-foreground">{c.version} {doc.latest_revision.revision}</span> : null}</h3>{doc.source_run_id && <AiLabel check />}</div>
-    {content && <Link to={`${base}/documents/${doc.id}`} className="relative block max-h-28 overflow-hidden rounded-md text-foreground no-underline" title={c.open}>
-      <div ref={ref}><Markdown>{content}</Markdown></div><div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-card/80" aria-hidden="true" /></Link>}
+    {content && (() => {
+      const cls = 'relative block max-h-28 w-full overflow-hidden rounded-md text-start text-foreground no-underline';
+      const body = <><div ref={ref}><Markdown>{content}</Markdown></div><div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-card/80" aria-hidden="true" /></>;
+      return onOpen ? <button type="button" className={cls} title={c.open} onClick={() => onOpen(doc)}>{body}</button> : <Link to={`${base}/documents/${doc.id}`} className={cls} title={c.open}>{body}</Link>;
+    })()}
     <div className="flex flex-wrap items-center gap-2">
       <Button asChild size="sm" variant="outline" ><Link to={`${base}/documents/${doc.id}?edit=1`}><Pencil className="size-4" aria-hidden="true" />{c.edit}</Link></Button>
       {content && <CopyButton source={ref} markdown={content} />}
@@ -76,18 +80,35 @@ function DocCard({ c, base, projectId, doc, busy, onRevise }: { c: typeof copy.e
   </CardContent></Card>;
 }
 
+type WorkspaceProps = { projectId: string; sessionId: string; embedded?: boolean; defaultTab?: string; onOpenDocument?: (doc: DocumentView) => void; onRunSettled?: () => void };
+
+// CH-05: a session that belongs to a saved job lives on the job page. Sessions without a job (or whose job was removed) keep this page.
 export function SessionPage() {
+  const { projectId = '', sessionId = '' } = useParams();
+  const { search, hash } = useLocation();
+  const session = useResource<SessionView>(`/projects/${projectId}/sessions/${sessionId}`);
+  const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
+  if ((session.status === 'loading' && !session.data) || (jobs.status === 'loading' && !jobs.data)) return <LoadingState />;
+  const jobId = session.data?.job_revision_id;
+  if (jobId && jobs.data?.some(job => job.id === jobId)) {
+    const query = new URLSearchParams(search);
+    query.set('session', sessionId);
+    return <Navigate replace to={`/app/projects/${projectId}/jobs/${jobId}?${query}${hash}`} />;
+  }
+  return <SessionWorkspace projectId={projectId} sessionId={sessionId} />;
+}
+
+export function SessionWorkspace({ projectId, sessionId, embedded = false, defaultTab, onOpenDocument, onRunSettled }: WorkspaceProps) {
   const { t, i18n } = useTranslation('sessionWorkspace');
   const locale: Locale = i18n.language.startsWith('th') ? 'th' : 'en';
   const gatewayHelp = useGatewayHelp(locale);
   const c = { ...copy[locale], title: t('title'), eval: t('evaluation'), evalNone: t('evalNone'), draft: t('draft'), draftBody: t('draftBody'), letter: t('letter'), message: t('message'), lang: t('lang'), docs: t('docs'), noDocs: t('noDocs'), open: t('open'), revise: t('revise'), reviseHint: t('reviseHint'), send: t('send'), cancel: t('cancel'), retry: t('retry'), refresh: t('refresh'), settings: t('settings'), version: t('version'), cvPage: t('cvPage'), jobPage: t('jobPage'), letterAsk: t('letterAsk'), messageAsk: t('messageAsk'), readOnly: t('readOnly'), unpaired: t('unpaired'), unpairedBody: t('unpairedBody'), startPaired: t('startPaired'), outdated: t('outdated'), outdatedBody: t('outdatedBody'), outdatedBtn: t('outdatedBtn'), redraft: t('redraft'), redraftConfirm: t('redraftConfirm'), redraftBody: t('redraftBody'), confirm: t('confirm'), dismiss: t('dismiss'), edit: t('edit'), reviseAi: t('reviseAi') };
-  const { projectId = '', sessionId = '' } = useParams();
   const base = `/app/projects/${projectId}`;
   const session = useResource<SessionView>(`/projects/${projectId}/sessions/${sessionId}`);
   const documents = useResource<DocumentView[]>(`/projects/${projectId}/documents`);
   const trashed = useResource<DocumentView[]>(`/projects/${projectId}/documents/trash`);
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
-  const jobs = useResource<import('../../lib/api-types').JobRevisionView[]>(`/projects/${projectId}/jobs`);
+  const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
   const workflow = useRun(projectId, sessionId);
   const [outputLanguage, setOutputLanguage] = useState<Locale>(locale);
   const outputLanguageId = useId();
@@ -98,7 +119,10 @@ export function SessionPage() {
   const initialTab = params.get('tab');
   const startParam = params.get('start');
   const autoStarted = useRef(false);
-  const [tab, setTab] = useState(initialTab && ['evaluation', 'documents', 'answers', 'practice'].includes(initialTab) ? initialTab : 'evaluation');
+  const tabs = ['evaluation', 'documents', 'answers', 'practice'];
+  const [tab, setTab] = useState(initialTab && tabs.includes(initialTab) ? initialTab : defaultTab ?? 'evaluation');
+  // A link on this page can change ?tab= without remounting (the next-step button goes through the session redirect).
+  useEffect(() => { if (initialTab && tabs.includes(initialTab)) setTab(initialTab); }, [initialTab]); // eslint-disable-line react-hooks/exhaustive-deps
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [accountError, setAccountError] = useState('');
@@ -110,7 +134,7 @@ export function SessionPage() {
   const { reload: reloadRuns } = runs; const { reload: reloadDocs } = documents; const { reload: reloadTrash } = trashed;
   // Keep the selected tab inside the scrolling tab row on phones.
   useEffect(() => { document.querySelector<HTMLElement>('[data-session-tabs] [role=tab][data-state=active]')?.scrollIntoView({ inline: 'nearest', block: 'nearest' }); }, [tab]);
-  useEffect(() => { reloadRuns(); if (status && !ACTIVE.includes(status)) { reloadDocs(); reloadTrash(); } }, [runId, status, reloadRuns, reloadDocs, reloadTrash]);
+  useEffect(() => { reloadRuns(); if (status && !ACTIVE.includes(status)) { reloadDocs(); reloadTrash(); onRunSettled?.(); } }, [runId, status, reloadRuns, reloadDocs, reloadTrash]); // eslint-disable-line react-hooks/exhaustive-deps
   const [appliedUndo, setAppliedUndo] = useState<string | null>(null);
   // `?start=evaluate`: strip the param first, then start once. The ref stops a second POST on re-render or StrictMode.
   useEffect(() => {
@@ -204,13 +228,13 @@ export function SessionPage() {
   const languagePicker = <div className="grid gap-1"><div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-medium"><label htmlFor={outputLanguageId}>{t('outputLanguage')}</label><Select id={outputLanguageId} aria-describedby={`${outputLanguageId}-hint`} className="w-40 max-w-full" value={outputLanguage} onChange={event => setOutputLanguage(event.target.value === 'en' ? 'en' : 'th')} disabled={busy}><option value="th">{t('thai')}</option><option value="en">{t('english')}</option></Select></div>
     <p id={`${outputLanguageId}-hint`} className="text-xs text-muted-foreground">{t('outputLanguageHint')}</p></div>;
   return <section className="flex min-w-0 flex-col gap-6 lg:gap-8">
-    <div className="grid gap-1">
+    {!embedded && <div className="grid gap-1">
     <header className="flex min-w-0 items-start gap-4">{paired && current.job_company && <span className="max-sm:hidden"><CompanyMark name={current.job_company} size={48} /></span>}<div className="min-w-0"><h1 className="break-words text-3xl font-semibold tracking-tight">{headline}</h1>{subline && <p className="mt-1 break-words text-muted-foreground">{subline}</p>}</div></header>
-    </div>
+    </div>}
     {paired ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
       <p className="text-sm font-semibold sm:col-span-2 lg:col-span-1">{t('pair.label')}</p>
       <div className="flex min-w-0 flex-wrap items-center gap-2"><FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="text-sm text-muted-foreground">{t('pair.cv')}</span><Link className="inline-flex min-h-11 items-center break-words font-medium text-primary hover:underline lg:min-h-10" to={`${base}/profile`} title={c.cvPage}>{current.cv_name} · v{current.cv_revision}</Link><CvPreviewButton projectId={projectId} fileId={current.cv_file_id} name={current.cv_name ?? 'CV'} revision={current.cv_revision} variant="ghost" className="h-8 px-2" /></div>
-      <div className="flex min-w-0 flex-wrap items-center gap-2"><Briefcase className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="text-sm text-muted-foreground">{t('pair.job')}</span><Link className="inline-flex min-h-11 items-center break-words font-medium text-primary hover:underline lg:min-h-10" to={`${base}/jobs/${current.job_revision_id}`} title={c.jobPage}>{current.job_title}{current.job_company ? ` · ${current.job_company}` : ''}</Link><Badge variant="outline">{jobRevision ? t('pair.version', { n: jobRevision.revision }) : `${t('identity.unknownRevision')} ${current.job_revision_id}`}</Badge></div>
+      {!embedded && <div className="flex min-w-0 flex-wrap items-center gap-2"><Briefcase className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="text-sm text-muted-foreground">{t('pair.job')}</span><Link className="inline-flex min-h-11 items-center break-words font-medium text-primary hover:underline lg:min-h-10" to={`${base}/jobs/${current.job_revision_id}`} title={c.jobPage}>{current.job_title}{current.job_company ? ` · ${current.job_company}` : ''}</Link><Badge variant="outline">{jobRevision ? t('pair.version', { n: jobRevision.revision }) : `${t('identity.unknownRevision')} ${current.job_revision_id}`}</Badge></div>}
     </div> : <Badge variant="outline" className="w-fit">{c.unpaired}</Badge>}
 
     {!paired && <Card><CardContent className="grid gap-3 p-4"><p className="text-sm">{c.unpairedBody}</p><NewSessionButton projectId={projectId} className="justify-self-start">{c.startPaired}</NewSessionButton></CardContent></Card>}
@@ -234,6 +258,7 @@ export function SessionPage() {
           {appliedUndo && jobRevision?.application_status === 'applied' && <Button type="button" variant="ghost" onClick={() => void setStage(appliedUndo as 'saved').then(() => setAppliedUndo(null))} disabled={busy}>{c.undo}</Button>}
           {active && <Button type="button" variant="outline" disabled={workflow.submitting || workflow.cancellationPending} onClick={() => void workflow.cancel()}>{t('cancel')}</Button>}
         </div>
+        {primary?.disabled && gate.blocked && <GateNote />}
         {primary?.note && <p className="text-xs text-muted-foreground">{primary.note}</p>}
         {primary && status === 'needs_input' && operation === 'tailor_cv' && <p className="text-xs text-muted-foreground">{t('panel.reviewHint')}</p>}
       </section>
@@ -249,9 +274,9 @@ export function SessionPage() {
         <div className="grid min-w-0 gap-4">
             <TabsContent value="evaluation" forceMount tabIndex={-1} className={`grid gap-4 ${tab === 'evaluation' ? '' : 'hidden'}`}>
               {evalRun ? <>
-                <RunResults projectId={projectId} locale={locale} run={evalRun} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} showDocuments={false} />
+                <RunResults projectId={projectId} locale={locale} run={evalRun} scoredAgainst={current.cv_name ? { name: current.cv_name, revision: current.cv_revision } : undefined} documents={documents.data ?? []} trashedDocuments={trashed.data ?? []} showDocuments={false} />
                 {evalRun.status === 'completed' && evalRun.evaluation_result?.skill_coverage && <SkillAdvice projectId={projectId} locale={locale} coverage={evalRun.evaluation_result.skill_coverage} />}
-                <RelatedDocuments projectId={projectId} documents={relatedDocs} />
+                <RelatedDocuments projectId={projectId} documents={relatedDocs} onOpen={onOpenDocument} />
               </> : <section aria-labelledby="eval-empty-heading" className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6">
                 <div className="grid gap-2"><h2 id="eval-empty-heading" className="text-lg font-semibold">{t('empty.title')}</h2><p className="max-w-xl text-muted-foreground">{t('empty.body')}</p></div>
                 <ul className="grid max-w-xl gap-2 text-sm">{(t('empty.gets', { returnObjects: true }) as string[]).map(line => <li key={line} className="flex items-start gap-2"><Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" /><span className="min-w-0 break-words">{line}</span></li>)}</ul>
@@ -259,10 +284,10 @@ export function SessionPage() {
               </section>}
             </TabsContent>
             <TabsContent value="documents" forceMount className={`grid gap-4 ${tab === 'documents' ? '' : 'hidden'}`}>
-              <section className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6"><h2 className="text-lg font-semibold">{c.draft}</h2><p className="text-sm text-muted-foreground">{c.draftBody}</p>{tab === 'documents' && languagePicker}<div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button><Button type="button" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button></div></section>
+              <section className="grid gap-3 rounded-xl border bg-card p-5 sm:p-6"><h2 className="text-lg font-semibold">{c.draft}</h2><p className="text-sm text-muted-foreground">{c.draftBody}</p>{tab === 'documents' && languagePicker}<div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('cover_letter')}>{draftLabel('cover_letter')}</Button><Button type="button" variant="outline" disabled={busy || gate.blocked} title={gate.title} onClick={() => askDraft('application_message')}>{draftLabel('application_message')}</Button></div><GateNote /></section>
               <ReportListCard kind="cvChanges" items={evalReport?.cv_changes} />
               <TailorCard projectId={projectId} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} run={sessionRuns.find(run => run.operation === 'tailor_cv') ?? null} onChanged={() => { reloadRun(); reloadRuns(); }} />
-              <section className="grid gap-3"><h2 className="text-lg font-semibold">{c.docs}</h2>{drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <DocCard key={doc.id} c={c} base={base} projectId={projectId} doc={doc} busy={busy || gate.blocked} onRevise={text => startRun('draft_documents', text, doc.id)} />)}</section>
+              <section className="grid gap-3"><h2 className="text-lg font-semibold">{c.docs}</h2>{drafted.length === 0 ? <p className="text-sm text-muted-foreground">{c.noDocs}</p> : drafted.map(doc => <DocCard key={doc.id} onOpen={onOpenDocument} c={c} base={base} projectId={projectId} doc={doc} busy={busy || gate.blocked} onRevise={text => startRun('draft_documents', text, doc.id)} />)}</section>
             </TabsContent>
             <TabsContent value="answers" forceMount className={`grid gap-4 ${tab === 'answers' ? '' : 'hidden'}`}>{tab === 'answers' && languagePicker}{current.job_revision_id && <ApplyCard projectId={projectId} jobId={current.job_revision_id} sessionId={sessionId} locale={locale} outputLanguage={outputLanguage} busy={busy} runs={sessionRuns} onChanged={() => { reloadRun(); reloadRuns(); }} />}</TabsContent>
             <TabsContent value="practice" forceMount className={`grid gap-4 ${tab === 'practice' ? '' : 'hidden'}`}><PracticeTab projectId={projectId} sessionId={sessionId} locale={locale} prep={evalReport?.interview_prep} /></TabsContent>

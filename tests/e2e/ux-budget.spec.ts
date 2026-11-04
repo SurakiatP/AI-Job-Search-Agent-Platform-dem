@@ -16,7 +16,7 @@ async function count(page: Page, scope: string) {
     return [...root.querySelectorAll<HTMLElement>(selector)].filter(el => {
       const r = el.getBoundingClientRect();
       const s = getComputedStyle(el);
-      return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && r.top < innerHeight && r.bottom > 0;
+      return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && el.checkVisibility() && r.top < innerHeight && r.bottom > 0;
     }).length;
   }, { scope, selector: INTERACTIVE });
 }
@@ -52,8 +52,10 @@ const screens: Array<{ name: string; route: string; target: number; perRow?: num
   { name: 'Find jobs', route: `${base}/search?q=data`, target: 11, // 10 -> 11 (CH-04): one "Paste a posting" link beside the search tools
      setup: stubSearch },
   { name: 'My jobs', route: `${base}/applications`, target: 11, perRow: 2, setup: useApplicationsWorkspaceFixture },
-  { name: 'Job detail', route: `${base}/jobs/${jobId}`, target: 8, setup: useApplicationsWorkspaceFixture },
-  { name: 'Session', route: `${base}/sessions/${sessionId}`, target: 8 },
+  // One job page (CH-05) replaces two pages, "Job detail <= 8" and "Session <= 8" (16 controls across two screens and a
+  // navigation). Above the fold at 1440: header 3 (back, posting, options), CV link, next step, 4 tabs + tablist, stage,
+  // "contact and activity" summary, 2 result summaries = 14. Contact edit and activity live behind that summary.
+  { name: 'Job page', route: `${base}/jobs/${jobId}`, target: 14, setup: useApplicationsWorkspaceFixture },
   { name: 'CV (empty)', route: `${base}/profile`, target: 3, setup: p => useMaterialsFixture(p, { emptyCvs: true }) },
   { name: 'Documents', route: `${base}/documents`, target: 7, setup: useMaterialsFixture },
 ];
