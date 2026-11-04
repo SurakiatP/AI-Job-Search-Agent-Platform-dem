@@ -136,8 +136,8 @@ const stageIcon = { cv: FileUser, search: Search, evaluate: Sparkles, docs: File
 export function DemoCard() {
   const { locale } = useLocale();
   const d = landingCopy[locale].demo;
-  const [ref, play] = useSeen<HTMLElement>(0.3);
-  return <div className="grid min-w-0 gap-3"><section ref={ref} data-play={play} aria-label={d.label} className="demo-card grid min-w-0 gap-6 rounded-xl border bg-card p-6">
+  const [ref, play] = useSeen<HTMLElement>(0.1);
+  return <div className="grid min-w-0 gap-3"><section ref={ref} data-play={play} aria-label={d.label} className="demo-card gem-border grid min-w-0 gap-6 rounded-2xl bg-card p-6 shadow-[var(--shadow-lift)] sm:p-8">
     <div className="grid gap-1">
       <p className="font-heading text-2xl font-semibold leading-snug not-italic">{d.title}</p>
       <p className="text-sm text-muted-foreground">{d.company}</p>
@@ -174,5 +174,5 @@ export function DemoCard() {
       })}
     </ol>
   </section>
-  <p className="text-sm text-muted-foreground">{d.label}</p></div>;
+  <p className="text-center text-sm text-muted-foreground">{d.label}</p></div>;
 }

@@ -23,3 +23,31 @@
 }
 /* Colour only: the word carries no chip. */
 .landing-ai { color: var(--ai-foreground); }
+
+/* Hero: a soft blue/violet/rose light behind the headline. Decoration only; it fades out before the demo card ends. */
+.hero-glow {
+  position: absolute; z-index: -1; inset: -4rem 0 auto 0; height: 44rem; pointer-events: none;
+  background:
+    radial-gradient(40% 50% at 28% 30%, color-mix(in srgb, var(--gem-blue) 22%, transparent), transparent 70%),
+    radial-gradient(36% 46% at 72% 24%, color-mix(in srgb, var(--gem-violet) 20%, transparent), transparent 70%),
+    radial-gradient(30% 36% at 52% 62%, color-mix(in srgb, var(--gem-rose) 12%, transparent), transparent 70%);
+  -webkit-mask-image: linear-gradient(#000 55%, transparent);
+  mask-image: linear-gradient(#000 55%, transparent);
+}
+.landing-hero-title { font-family: var(--font-display); line-height: 1.25; }
+.step-card { transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out); }
+@media (hover: hover) { .step-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lift); } }
+
+/* Motion only for visitors who have not asked for less: hero rises in once, sections lift in on first sight. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-glow { animation: hero-drift 24s ease-in-out infinite alternate; }
+  .hero-in > *, .hero-rise { animation: rise 0.5s var(--ease-out) both; }
+  .hero-in > :nth-child(2) { animation-delay: 60ms; }
+  .hero-in > :nth-child(3) { animation-delay: 120ms; }
+  .hero-in > :nth-child(4) { animation-delay: 180ms; }
+  .hero-rise { animation-delay: 260ms; }
+  .reveal { transition: opacity 0.45s var(--ease-out) var(--d, 0ms), transform 0.45s var(--ease-out) var(--d, 0ms); }
+  .reveal[data-seen='false'] { opacity: 0; transform: translateY(12px); }
+}
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+@keyframes hero-drift { to { transform: translate3d(0, 1.5rem, 0) scale(1.06); } }

@@ -62,14 +62,14 @@ export function TrashView({ projectId, items, typeLabel, onChanged }: { projectI
     setFailure(failed.length ? (th ? `ลบถาวรไม่สำเร็จ ${failed.length} รายการ (อาจมีคำขออนุมัติค้างอยู่): ${failed.join(', ')}` : `${failed.length} could not be deleted (an approval may be pending): ${failed.join(', ')}`) : '');
     setEmptying(false); onChanged();
   }
-  if (!items.length) return <p id="documents-trash" tabIndex={-1} className="text-sm outline-none text-muted-foreground">{th ? 'ไม่มีเอกสารในถังขยะ เอกสารที่ย้ายมาไว้ที่นี่กู้คืนได้' : 'No documents in the trash. Documents you move here can be restored.'}</p>;
+  if (!items.length) return <p id="documents-trash" tabIndex={-1} className="rounded-3xl border-2 border-dashed bg-card p-6 text-sm text-muted-foreground outline-none">{th ? 'ไม่มีเอกสารในถังขยะ เอกสารที่ย้ายมาไว้ที่นี่กู้คืนได้' : 'No documents in the trash. Documents you move here can be restored.'}</p>;
   return <div id="documents-trash" tabIndex={-1} className="grid gap-4 outline-none">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm text-muted-foreground">{th ? 'เอกสารในถังขยะซ่อนอยู่จากผลลัพธ์ที่แชร์ กู้คืนหรือลบถาวรได้ที่นี่' : 'Trashed documents are hidden from shared results. Restore or delete them permanently here.'}</p>
       <Button type="button" variant="outline" size="sm" onClick={() => setEmptying(true)}><Trash2 className="size-4" aria-hidden="true" />{th ? 'ลบทั้งหมดถาวร' : 'Empty trash'}</Button>
     </div>
     {failure && <Alert severity="error">{failure}</Alert>}
-    <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map(item => <li key={item.id}><Card className="h-full"><CardHeader>
+    <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map(item => <li key={item.id}><Card className="h-full rounded-2xl"><CardHeader>
       <CardTitle className="min-w-0 break-words text-base"><Link className="hover:underline" to={`/app/projects/${projectId}/documents/${item.id}`}>{item.title}</Link></CardTitle>
     </CardHeader><CardContent className="grid gap-3">
       <p className="text-sm text-muted-foreground">{typeLabel(item.document_type)}{item.trashed_at && <> · {th ? 'ย้ายไปถังขยะ' : 'Trashed'} <time dateTime={item.trashed_at}>{relativeTime(item.trashed_at, locale)}</time></>}</p>

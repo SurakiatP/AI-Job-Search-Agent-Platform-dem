@@ -1,7 +1,7 @@
 import { BusyNote } from '@/components/BusyNote';
 import { useRunGate } from '../../lib/accountGate';
 import { useEffect, useRef, useState } from 'react';
-import { CvPreviewButton } from '@/components/CvPreview';
+import { CvPreviewButton, FileKindTile } from '@/components/CvPreview';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, Check, ChevronDown, ChevronUp, FileText, MoreHorizontal, Pencil, Plus, Star, Trash2, Upload, Sparkles, UserRound, X } from 'lucide-react';
@@ -201,8 +201,8 @@ export function ProfilePage() {
         <TabsTrigger className="grow sm:grow-0" value="experience">{w('tabBank')}</TabsTrigger>
       </TabsList>}
       <TabsContent value="library" className="grid gap-6">
-        {list.length === 0 ? <div {...dropProps} className={cn('grid justify-items-center gap-3 rounded-xl border-2 border-dashed p-6 text-center sm:p-12', dragging && 'border-primary bg-accent')}>
-          <FileText className="size-10 text-muted-foreground" aria-hidden="true" />
+        {list.length === 0 ? <div {...dropProps} className={cn('grid justify-items-center gap-4 rounded-3xl border-2 border-dashed bg-card p-6 text-center shadow-[var(--shadow-soft)] motion-safe:transition-[transform,border-color,background-color] motion-safe:duration-200 hover:border-primary/60 sm:p-12', dragging && 'border-primary bg-accent motion-safe:scale-[1.01]')}>
+          <span className="grid size-16 place-items-center rounded-2xl bg-accent text-primary" aria-hidden="true"><FileText className="size-8" /></span>
           <div className="grid gap-1"><h2 className="text-lg font-semibold">{dragging ? w('dropActive') : w('dropTitle')}</h2><p className="mx-auto max-w-md text-sm text-muted-foreground">{w('firstUploadHelp')}</p></div>
           <div className="flex flex-wrap justify-center gap-2"><Button type="button" busy={busy} disabled={busy} onClick={() => addInput.current?.click()}><Upload className="size-4" aria-hidden="true" />{w('firstUpload')}</Button><BuildCvButton projectId={projectId} /></div>
           <p className="text-sm text-muted-foreground">{w('dropHere')} · {w('accepted')}</p>
@@ -215,9 +215,9 @@ export function ProfilePage() {
               const meta = latest
                 ? [latest.original_filename, dateTime.format(new Date(latest.created_at)), formatSize(latest.size_bytes)]
                 : Number.isNaN(new Date(cv.created_at).getTime()) ? [] : [w('createdAt', { date: dateTime.format(new Date(cv.created_at)) })];
-              return <li key={cv.id} className={cn('grid content-start gap-3 rounded-xl border bg-card p-4', cv.is_primary && 'border-primary')}>
+              return <li key={cv.id} className={cn('grid content-start gap-4 rounded-2xl border bg-card p-5 shadow-[var(--shadow-soft)] motion-safe:transition-[transform,box-shadow] motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]', cv.is_primary && 'border-primary')}>
                 <div className="flex min-w-0 items-start gap-3">
-                  <FileText className="mt-1 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <FileKindTile mimeType={latest?.mime_type} filename={latest?.original_filename} />
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">{rename?.id === cv.id ? <InlineName key={cv.id} cv={cv} c={c} projectId={projectId} onClose={() => setRename(null)} onDone={() => { setRename(null); cvs.reload(); }} />
                       : <h3 className="min-w-0 break-words text-base font-semibold [overflow-wrap:anywhere]" title={c.rename} onDoubleClick={() => setRename(cv)}>{cv.name}</h3>}{cv.is_primary && <Badge><Star className="me-1 size-3" aria-hidden="true" />{c.primary}</Badge>}</div>
@@ -244,7 +244,7 @@ export function ProfilePage() {
             <p className="text-sm text-muted-foreground">{w('primaryNote')}</p>
           </section>}
         {list.length > 0 && <>
-          <Card><CardContent className="grid gap-2 p-5 sm:p-6">
+          <Card className="rounded-3xl"><CardContent className="grid gap-2 p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="grid min-w-0 gap-2" aria-live="polite">
                 {extracting && <BusyNote bar label={w('reading')} />}

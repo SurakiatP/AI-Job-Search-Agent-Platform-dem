@@ -107,16 +107,16 @@ export function SavedSearchesPanel({ projectId, params, onApply }: {
   }
   const notice = message && <p role={message.ok ? 'status' : 'alert'} className={`text-sm ${message.ok ? 'text-success' : 'text-destructive'}`}>{message.text}</p>;
 
-  return <section aria-labelledby="saved-searches-title" className="grid min-w-0 gap-3">
-    <div className="flex flex-wrap items-center justify-between gap-2">
+  return <section aria-labelledby="saved-searches-title" className={`grid min-w-0 gap-3 ${items.length > 0 || !savable ? 'basis-full sm:basis-auto sm:flex-1' : ''}`}>
+    <div className="flex flex-wrap items-center gap-3">
       <h2 id="saved-searches-title" tabIndex={-1} className={items.length > 0 ? "text-base font-semibold" : "sr-only"}>{c.title}</h2>
       {savable && <Button variant="outline" onClick={openSave}><Bookmark className="size-4" aria-hidden="true" />{c.save}</Button>}
     </div>
-    {!savable && items.length === 0 && <p className="text-sm text-muted-foreground">{c.hint}</p>}
+    {!savable && items.length === 0 && <p className="-mt-2 text-xs text-muted-foreground">{c.hint}</p>}
     {status && !status.email_verified && <Alert severity="warning">{c.unverified}</Alert>}
     {status && status.email_verified && !status.notifications_enabled && <Alert severity="warning">{c.notificationsOff}</Alert>}
     {!saveOpen && notice}
-    {items.length > 0 && <ul className="grid gap-2">{items.map(item => <li key={item.id} className="grid min-w-0 gap-2 rounded-md bg-muted/40 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    {items.length > 0 && <ul className="grid gap-2">{items.map(item => <li key={item.id} className="grid min-w-0 gap-2 rounded-xl border bg-card/70 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="min-w-0">
         <button type="button" className="min-h-11 lg:min-h-10 max-w-full break-words text-left font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => onApply(paramsFromFilters(item.filters))}>{item.name}</button>
         <p className="text-xs text-muted-foreground">{item.digest_enabled ? c.next(when.format(new Date(item.next_run_at))) : c.off}</p>

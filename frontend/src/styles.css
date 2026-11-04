@@ -282,6 +282,9 @@ main[data-stage='brand'] { --stage: var(--primary); }
 @layer components {
   .segmented { display: inline-flex; gap: 2px; padding: 3px; border-radius: 9999px; background: var(--muted); }
   .segmented > * { border-radius: 9999px; color: var(--muted-foreground); }
+  /* Multi-row or vertical segmented lists (landing tour) are a rounded tray, never a stretched oval. */
+  .segmented.grid { border-radius: 1.25rem; padding: 4px; }
+  .segmented.grid > * { border-radius: 0.875rem; }
   .muted { color: var(--muted-foreground); }
   .landing-headline { font-family: var(--font-display); font-size: 32px; line-height: 1.4; max-width: 720px; }
   @media (min-width: 640px) { .landing-headline { font-size: 36px; } }

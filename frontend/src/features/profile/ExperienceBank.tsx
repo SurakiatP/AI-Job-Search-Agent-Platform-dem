@@ -113,13 +113,13 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
     </div>
     {error && <Alert severity="error" role="alert">{error}</Alert>}
     {bank.status === 'error' && <Alert severity="error" role="alert" action={<Button size="sm" variant="outline" onClick={bank.reload}>{c.retry}</Button>}>{c.loadError}</Alert>}
-    {bank.data && bank.data.items.length === 0 && <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{c.empty}</p>}
+    {bank.data && bank.data.items.length === 0 && <p className="rounded-3xl border-2 border-dashed bg-card p-6 text-sm text-muted-foreground">{c.empty}</p>}
     {bank.data && bank.data.years_of_experience > 0 && <p className="w-fit rounded-lg border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">{c.years(bank.data.years_of_experience)}</p>}
     {byKind.map(({ kind, items }) => <div key={kind} className="grid gap-3">
-      <h3 className="flex items-baseline gap-2 border-b pb-2 text-base font-semibold">{c.kinds[kind]}<span className="text-sm font-normal text-muted-foreground">{c.count(items.length)}</span></h3>
+      <h3 className="flex items-center gap-2 text-base font-semibold"><span className="rounded-full bg-accent px-3 py-0.5 text-sm text-primary">{c.kinds[kind]}</span><span className="text-sm font-normal text-muted-foreground">{c.count(items.length)}</span></h3>
       {sections(kind, items).map(group => <div key={group.title} className="grid gap-2">
         {group.title && <h4 className="flex items-baseline gap-2 break-words text-sm font-medium [overflow-wrap:anywhere]">{group.title}{group.counted && <span className="text-xs font-normal text-muted-foreground">{c.count(group.items.length)}</span>}</h4>}
-        <ul className={kind === 'skill' ? 'grid gap-2 sm:grid-cols-2' : 'grid gap-2'}>{group.items.map(item => <li key={item.id} className="rounded-lg bg-muted p-3">
+        <ul className={kind === 'skill' ? 'grid gap-2 sm:grid-cols-2' : 'grid gap-2'}>{group.items.map(item => <li key={item.id} className="rounded-2xl border bg-card p-4 shadow-[var(--shadow-soft)]">
           {editing === item.id
             ? <FactForm c={c} submitLabel={c.save} onCancel={() => setEditing(null)} initial={fromItem(item)}
                 onSubmit={d => act(() => sendJson(base + '/' + item.id, 'PUT', toBody(d))).then(() => setEditing(null))} />

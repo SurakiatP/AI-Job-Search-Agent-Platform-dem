@@ -31,7 +31,6 @@ import { SavedSearchesPanel } from './SavedSearches';
 import { ADV_KEYS, AdvancedFilters, advValueLabel, splitList, type Facet } from './AdvancedFilters';
 import { BuildCvButton } from '../builder/BuildCvButton';
 import { CompanyMark } from '@/components/CompanyMark';
-import { PageHeader } from '@/components/PageHeader';
 
 export type JobSearchItem = {
   slug: string; title: string; company: string | null; location: string | null; cities: string[];
@@ -209,7 +208,7 @@ function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, s
     <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
       <CompanyMark name={job.company} size={48} />
       <div className="min-w-0">
-      <h2 className="break-words text-2xl font-semibold leading-snug tracking-tight">{job.title}</h2>
+      <h2 className="break-words text-xl font-semibold leading-snug tracking-tight sm:text-2xl">{job.title}</h2>
       <p className="mt-1 flex items-start gap-1 break-words text-sm text-muted-foreground"><Building2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{job.company ?? c.untitled}</span></p>
       {placeText && <p className="flex items-start gap-1 break-words text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{placeText}{modeLabel ? ` · ${modeLabel}` : ''}</span></p>}
       </div>
@@ -543,21 +542,24 @@ export function SearchPage() {
           + (job.salary_currency ? ` ${job.salary_currency}` : '') + (job.salary_period ? `/${job.salary_period}` : '')
         : null;
       const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
-      const meta = [placeOf(job), modeLabel, job.age_days != null ? c.age(job.age_days) : null, salary].filter(Boolean) as string[];
-      return <li key={job.slug} className={`relative grid min-w-0 gap-3 rounded-2xl border bg-card p-5 pe-12 shadow-[var(--shadow-soft)] transition-[box-shadow,transform] duration-200 hover:shadow-[var(--shadow-lift)] motion-safe:hover:-translate-y-0.5 [&:has([data-job-slug]:focus-visible)]:ring-2 [&:has([data-job-slug]:focus-visible)]:ring-ring ${isSel ? 'ring-2 ring-primary' : ''} ${smartActive ? 'sm:pe-28' : ''}`}>
+      const chips = [salary, modeLabel, job.age_days != null ? c.age(job.age_days) : null, ...job.skills].filter(Boolean) as string[];
+      const place = placeOf(job);
+      return <li key={job.slug} className={`relative grid min-w-0 gap-2 rounded-2xl border bg-card p-4 pe-12 shadow-[var(--shadow-soft)] transition-[box-shadow,transform] duration-200 hover:shadow-[var(--shadow-lift)] motion-safe:hover:-translate-y-0.5 [&:has([data-job-slug]:focus-visible)]:ring-2 [&:has([data-job-slug]:focus-visible)]:ring-ring ${isSel ? 'ring-2 ring-primary' : ''} ${smartActive ? 'sm:pe-20' : ''}`}>
         <button type="button" aria-pressed={isSel} aria-current={isSel ? 'true' : undefined} onClick={() => {
           if (!wide) selectionScroll.current = window.scrollY;
           setSelectedSlug(wide || !isSel ? job.slug : null);
         }} data-job-slug={job.slug}
           className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 text-left focus-visible:outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']">
-          <CompanyMark name={job.company} size={48} />
-          <span className="grid min-w-0 content-start gap-3">
-          <span className="grid min-w-0 gap-1">
-          <span id={`job-title-${job.slug}`} className="line-clamp-2 break-words text-lg font-semibold leading-snug">{job.title}</span>
-          <span className="break-words text-sm text-muted-foreground">{job.company ?? c.untitled}</span>
+          <CompanyMark name={job.company} size={40} />
+          <span className="grid min-w-0 content-start gap-2">
+          <span className="grid min-w-0 gap-0.5">
+          <span id={`job-title-${job.slug}`} className="line-clamp-2 break-words text-base font-semibold leading-snug">{job.title}</span>
+          <span className="line-clamp-1 break-words text-sm text-muted-foreground">{[job.company ?? c.untitled, place].filter(Boolean).join(' · ')}</span>
           </span>
-          {meta.length > 0 && <span className="flex flex-wrap gap-2">{meta.map(m => <span key={m} className="inline-flex min-h-7 max-w-full items-center break-words rounded-full bg-muted px-3 text-xs text-muted-foreground sm:text-sm">{m}</span>)}</span>}
-          {job.skills.length > 0 && <span className="flex flex-wrap gap-1">{job.skills.slice(0, 3).map(s => <Badge key={s} variant="muted" className="break-words font-normal">{s}</Badge>)}</span>}
+          {chips.length > 0 && <span className="flex min-w-0 flex-wrap gap-1">
+            {chips.slice(0, 2).map(m => <span key={m} className="inline-flex min-h-6 max-w-full items-center break-words rounded-full bg-muted px-3 text-xs text-muted-foreground">{m}</span>)}
+            {chips.length > 2 && <span title={chips.slice(2).join(', ')} className="inline-flex min-h-6 shrink-0 items-center rounded-full bg-muted px-2 text-xs text-muted-foreground">+{chips.length - 2}</span>}
+          </span>}
           {(smartActive || ai?.uncertain || job.stale) && <span className="flex flex-wrap items-center gap-2">
             {smartActive && ai && <BandBadge ai={ai} c={c} aiLabel={tSearch('controls.aiFit')} />}
             {smartActive && <MatchBadge match={job.match} c={c} />}
@@ -586,53 +588,30 @@ export function SearchPage() {
   const hasMore = smartActive ? nextOffset < Math.min(total, 1001) : items.length < Math.min(total, 1001);  // the service serves offsets up to 1000
   const capped = !sample && !smartActive && total > 1000 && !hasMore;
 
-  return <section className="grid gap-3 sm:gap-6 lg:gap-8">
-    <div className="grid gap-1">
-      <PageHeader icon={Search} title={c.title} lede={grandTotal != null ? (!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
-        ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))) : undefined} actions={
-        <Select aria-label={c.modeLabel} className="w-fit max-w-full" value={smart ? 'match' : 'search'} onChange={e => setSearchMode(e.target.value as 'search' | 'match')}>
-          <option value="match">{c.modeMatch}</option><option value="search">{c.modeSearch}</option>
-        </Select>} />
-    </div>
-
-    <div className="grid gap-2 sm:gap-5">
-    <div className="grid gap-2 sm:gap-3">
-    {smartActive && ai?.status !== 'unavailable' && <p className="text-xs text-muted-foreground">{c.privacy}</p>}
-    {smartActive && gate.blocked && gate.title && <Alert severity="warning">{gate.title}</Alert>}
-    </div>
-
-    {smartActive && usable.length > 0 && <div className="flex flex-wrap items-end gap-3 rounded-lg bg-card p-4">
-      <div className="grid min-w-0 gap-2 sm:w-72">
-        <Label htmlFor="match-cv">{c.cvLabel}</Label>
-        <Select id="match-cv" value={cv?.id ?? ''} onChange={e => setCvPick(e.target.value)}>
-          {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}{(k => k ? ` · ${k}` : '')(fileKind(item.latest_revision?.original_filename, item.latest_revision?.mime_type))}</option>)}
-        </Select>
+  return <section className="grid gap-4 sm:gap-6">
+    <div className="relative grid gap-4 rounded-3xl border bg-[radial-gradient(60%_90%_at_0%_0%,rgb(49_134_255/0.14),transparent_70%),radial-gradient(50%_80%_at_100%_100%,rgb(139_111_214/0.12),transparent_70%)] bg-card p-4 shadow-[var(--shadow-soft)] sm:gap-5 sm:p-6 lg:p-8">
+      <div className="min-w-0">
+        <h1 className="flex items-center gap-3 text-2xl font-semibold leading-[1.3] tracking-tight sm:text-3xl lg:text-4xl">
+          <Search className="hidden size-6 shrink-0 text-primary sm:block lg:size-7" strokeWidth={1.5} aria-hidden="true" /><span className="min-w-0 break-words">{c.title}</span>
+        </h1>
+        {grandTotal != null && <p className="mt-1 max-w-2xl text-sm text-muted-foreground sm:text-base">{!sample && facetsRes.data?.new_7d != null && facetsRes.data.thai_postings != null
+          ? c.stats(number.format(grandTotal), number.format(facetsRes.data.new_7d), number.format(facetsRes.data.thai_postings)) : c.subtitle(number.format(grandTotal))}</p>}
       </div>
-      {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="outline" />}
-      <p className="flex min-h-11 min-w-0 items-center gap-2 text-sm text-muted-foreground"><Info className="size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{tSearch('controls.cvChangeNote')}</span></p>
-    </div>}
-
-    {sample && <Card className="border-transparent bg-accent text-accent-foreground">
-      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-        <p className="min-w-0 break-words text-sm"><Badge variant="outline" className="mr-2">{c.sampleBanner}</Badge>{c.sampleBody}</p>
-        <Button variant="outline" size="sm" onClick={() => { setSample(false); setSelectedSlug(null); }}>{c.backLive}</Button>
-      </CardContent>
-    </Card>}
-
-    <div role="search" aria-label={tSearch('controls.searchBand')} className="grid items-start gap-3 rounded-xl border bg-card p-4 sm:gap-4 sm:p-5">
-      <div className="grid min-w-0 gap-2">
-        <Label htmlFor="job-search" className="text-sm text-muted-foreground">{c.searchLabel}</Label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input id="job-search" type="search" className="py-0 pl-10" value={qInput} placeholder={c.searchPlaceholder} onChange={e => setQInput(e.target.value)} />
+      <div role="search" aria-label={tSearch('controls.searchBand')} className="grid gap-2">
+        <Label htmlFor="job-search" className="sr-only">{c.searchLabel}</Label>
+        <div className="grid gap-2 rounded-3xl border bg-card p-2 shadow-[var(--shadow-lift)] focus-within:border-ring sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+          <Select aria-label={c.modeLabel} className="h-12 w-full rounded-2xl border-transparent bg-muted font-medium sm:w-44" value={smart ? 'match' : 'search'} onChange={e => setSearchMode(e.target.value as 'search' | 'match')}>
+            <option value="match">{c.modeMatch}</option><option value="search">{c.modeSearch}</option>
+          </Select>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-primary" aria-hidden="true" />
+            <Input id="job-search" type="search" className="h-12 rounded-2xl border-transparent py-0 pl-12 text-base hover:border-transparent focus-visible:ring-0 sm:h-14 lg:text-lg" value={qInput} placeholder={c.searchPlaceholder} onChange={e => setQInput(e.target.value)} />
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground">{tSearch(smart ? 'controls.modeHintMatch' : 'controls.modeHintSearch')}</p>
+        <p className="px-2 text-sm text-muted-foreground">{tSearch(smart ? 'controls.modeHintMatch' : 'controls.modeHintSearch')}</p>
       </div>
-    </div>
-
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
-    <div className="grid min-w-0 gap-3 sm:gap-5">
-    {!sample && <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+      <div className="flex flex-wrap items-start gap-3">
+    {!sample && <div className="shrink-0">
       <AdvancedFilters extraCount={(city ? 1 : 0) + (mode ? 1 : 0)} extra={<div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
       <div className="grid min-w-0 gap-2">
         <Label htmlFor="job-city" className="text-sm text-muted-foreground">{tSearch('controls.location')}</Label>
@@ -651,6 +630,8 @@ export function SearchPage() {
       </div>} locale={locale} get={get} setMany={setMany} facets={facetsRes.data ?? undefined} number={number} categories={categories} catLabel={catLabel}
         labels={{ categories: c.categories, posted: c.posted, anyPosted: c.anyPosted, days: c.days }} />
     </div>}
+      <SavedSearchesPanel projectId={projectId} params={params} onApply={changes => { setQInput(changes.q ?? ''); setMany(changes); }} />
+      </div>
     {activeFilterChips.length > 0 && <div role="group" className="flex flex-wrap items-center gap-2" aria-label={tSearch('controls.activeFilters')}>
       {activeFilterChips.map(chip => <Button key={`${chip.key}:${chip.label}`} type="button" variant="secondary" size="sm" className="h-auto max-w-full whitespace-normal text-left" aria-label={tSearch('controls.removeFilter', { label: chip.label })} onClick={() => removeFilter(chip.key)}>
         <span className="break-words">{chip.label}</span><X className="size-3.5 shrink-0" aria-hidden="true" />
@@ -658,11 +639,25 @@ export function SearchPage() {
       <Button type="button" variant="link" className="h-auto p-0" onClick={clear}>{tSearch('controls.clearFilters')}</Button>
     </div>}
     </div>
-    <SavedSearchesPanel projectId={projectId} params={params} onApply={changes => { setQInput(changes.q ?? ''); setMany(changes); }} />
-    </div>
+    {smartActive && ai?.status !== 'unavailable' && <p className="text-xs text-muted-foreground">{c.privacy}</p>}
+    {smartActive && gate.blocked && gate.title && <Alert severity="warning">{gate.title}</Alert>}
+    {smartActive && usable.length > 0 && <div className="flex flex-wrap items-end gap-3 rounded-lg bg-card p-4">
+      <div className="grid min-w-0 gap-2 sm:w-72">
+        <Label htmlFor="match-cv">{c.cvLabel}</Label>
+        <Select id="match-cv" value={cv?.id ?? ''} onChange={e => setCvPick(e.target.value)}>
+          {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}{(k => k ? ` · ${k}` : '')(fileKind(item.latest_revision?.original_filename, item.latest_revision?.mime_type))}</option>)}
+        </Select>
+      </div>
+      {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="outline" />}
+      <p className="flex min-h-11 min-w-0 items-center gap-2 text-sm text-muted-foreground"><Info className="size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{tSearch('controls.cvChangeNote')}</span></p>
+    </div>}
 
-
-    </div>
+    {sample && <Card className="border-transparent bg-accent text-accent-foreground">
+      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+        <p className="min-w-0 break-words text-sm"><Badge variant="outline" className="mr-2">{c.sampleBanner}</Badge>{c.sampleBody}</p>
+        <Button variant="outline" size="sm" onClick={() => { setSample(false); setSelectedSlug(null); }}>{c.backLive}</Button>
+      </CardContent>
+    </Card>}
 
     {failed ? <Card role="alert"><CardContent className="grid gap-4 p-6">
       <h2 className="flex items-start gap-2 break-words font-semibold"><AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" aria-hidden="true" /><span className="min-w-0">{profileFailed ? c.analyzeError : c.errTitle}</span></h2>
@@ -709,7 +704,7 @@ export function SearchPage() {
         }}><ArrowLeft className="size-4" aria-hidden="true" />{tSearch('controls.backToResults')}</Button>
         <div className="min-w-0 rounded-2xl border bg-card p-5 shadow-[var(--shadow-soft)]">{detail(selected)}</div>
       </section> : <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
-        <div className="grid min-w-0 gap-3 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-1">
+        <div className="grid min-w-0 content-start gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:p-1">
           {list}
           {capped && <p role="status" className="text-sm text-muted-foreground">{c.capNote}</p>}
           {!sample && hasMore && <div className="grid justify-items-start gap-2">
@@ -719,7 +714,7 @@ export function SearchPage() {
             </Button>
           </div>}
         </div>
-        {wide && selected && <Card className="sticky top-4 min-w-0 rounded-3xl lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"><CardContent className="p-6">{detail(selected)}</CardContent></Card>}
+        {wide && selected && <Card className="sticky top-4 min-w-0 rounded-3xl border bg-card shadow-[var(--shadow-soft)] lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"><CardContent className="p-6 lg:p-8">{detail(selected)}</CardContent></Card>}
       </div>}
       {smartActive && hiddenCount > 0 && <div><Button type="button" variant="link" className="h-auto p-0" onClick={() => setHiddenOpen(true)}>{c.hiddenLink(hiddenCount)}</Button></div>}
     </div>}

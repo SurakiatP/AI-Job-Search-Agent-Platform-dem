@@ -134,7 +134,8 @@ export function DocumentsPage() {
   // Same header block and rhythm as the populated page; the empty message sits in a card under it.
   if (!documents.length && !undo) return <section className="grid gap-6 lg:gap-8">
     <PageHeader icon={FileText} title={title} lede={w('subtitle')} />
-    <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-5 sm:p-6">
+    <div className="grid justify-items-start gap-4 rounded-3xl border-2 border-dashed bg-card p-6 shadow-[var(--shadow-soft)] sm:p-10">
+      <span className="grid size-14 place-items-center rounded-2xl bg-accent text-primary" aria-hidden="true"><FileText className="size-7" /></span>
       <h2 className="text-lg font-semibold">{w('emptyTitle')}</h2>
       <p className="text-sm text-muted-foreground">{w('emptyHelp')}</p>
       <Button asChild><Link to={evaluateHref}>{c.evaluate}</Link></Button>
@@ -154,13 +155,13 @@ export function DocumentsPage() {
         <Link className="inline-flex min-h-11 lg:min-h-10 items-center font-medium text-primary hover:underline" to={`${base}/trash?tab=documents`}>{c.openTrash}</Link>
       </span>}>{undo.message}</Alert>}
     {documents.length >= 4 && <div className="flex flex-wrap gap-2" role="group" aria-label={c.filter}>{chips.map(([value, label]) => <Button key={value} type="button" size="sm" variant="outline" className={filter === value ? 'border-primary bg-primary/12 font-semibold text-primary' : ''} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</Button>)}</div>}
-    {visible.length === 0 ? <div className="grid justify-items-start gap-3 rounded-xl border border-dashed bg-card p-5"><p className="text-sm text-muted-foreground">{w('emptyFilter')} {w('emptyHelp')}</p><Button asChild variant="outline"><Link to={evaluateHref}>{c.evaluate}</Link></Button></div> :
-      <ul aria-label={title} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map(document => {
+    {visible.length === 0 ? <div className="grid justify-items-start gap-3 rounded-3xl border-2 border-dashed bg-card p-6"><p className="text-sm text-muted-foreground">{w('emptyFilter')} {w('emptyHelp')}</p><Button asChild variant="outline"><Link to={evaluateHref}>{c.evaluate}</Link></Button></div> :
+      <ul aria-label={title} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{visible.map(document => {
         const Icon = typeIcon[document.document_type];
         const session = sessionFor(document);
         const job = session?.job_title ? [session.job_title, session.job_company].filter(Boolean).join(' · ') : w('noJob');
-        return <li key={document.id} className="grid min-w-0 content-between gap-4 rounded-xl border bg-card p-5">
-          <div className="flex min-w-0 items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[color-mix(in_srgb,var(--stage-docs)_12%,var(--card))] text-[color:var(--stage-docs)]" aria-hidden="true"><Icon className="size-5" /></span>
+        return <li key={document.id} className="grid min-w-0 content-between gap-4 rounded-2xl border bg-card p-5 shadow-[var(--shadow-soft)] motion-safe:transition-[transform,box-shadow] motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]">
+          <div className="flex min-w-0 items-start gap-3"><span className="grid size-12 shrink-0 place-items-center rounded-xl bg-[color-mix(in_srgb,var(--stage-docs)_12%,var(--card))] text-[color:var(--stage-docs)]" aria-hidden="true"><Icon className="size-6" /></span>
             <div className="grid min-w-0 gap-1"><h2 className="break-words font-sans text-base font-semibold [overflow-wrap:anywhere]">{document.title}</h2>
               <p className="text-sm text-muted-foreground">{documentTypeLabel(document.document_type, t)}{document.output_language && ` · ${document.output_language === 'th' ? 'ไทย' : 'English'}`}</p>
               <p className="break-words text-sm [overflow-wrap:anywhere]"><span className="text-muted-foreground">{w('colJob')}: </span>{job}</p>

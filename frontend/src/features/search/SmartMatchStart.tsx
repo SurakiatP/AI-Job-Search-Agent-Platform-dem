@@ -23,7 +23,7 @@ export function SmartMatchStart({ locale, cvName, disabled, title, onStart }: { 
   const icons = [FileText, ListOrdered, Brain];
   const stages = ['cv', 'search', 'evaluate'];
   // Header spans the card; steps and the start action share one row so the button lines up with the steps.
-  return <section aria-labelledby="smart-start-title" className="grid gap-4 rounded-xl border border-ai-border bg-card p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_15rem] lg:gap-x-6">
+  return <section aria-labelledby="smart-start-title" className="grid gap-4 rounded-3xl border border-ai-border bg-card bg-[radial-gradient(60%_90%_at_0%_0%,rgb(49_134_255/0.12),transparent_70%),radial-gradient(50%_80%_at_100%_100%,rgb(139_111_214/0.12),transparent_70%)] p-5 shadow-[var(--shadow-soft)] sm:p-6 lg:grid-cols-[minmax(0,1fr)_15rem] lg:gap-x-6">
     <div className="flex items-start gap-3 lg:col-span-2">
       <AiMark className="size-10" />
       <div className="min-w-0"><h2 id="smart-start-title" className="text-lg font-semibold">{c.title}</h2><p className="mt-0.5 max-w-2xl text-sm text-muted-foreground">{c.body}</p></div>

@@ -9,12 +9,13 @@ async function open(page: Page, width: number, height: number) {
 }
 const height = async (page: Page, selector: string) => (await page.locator(selector).first().boundingBox())!.height;
 
-for (const [width, expected] of [[1440, 40], [390, 44]] as const) {
+// The main search box is the page's hero input (56px desktop, 48px phone, owner refresh 2026-11-04); other controls keep 40/44.
+for (const [width, expected, hero] of [[1440, 40, 56], [390, 44, 48]] as const) {
   test(`search controls are ${expected}px high at ${width}px`, async ({ page }) => {
     await open(page, width, 900);
     await expect(page.locator('#job-search')).toBeVisible();
-    expect(await height(page, '#job-search')).toBeGreaterThanOrEqual(expected - 1);
-    expect(await height(page, '#job-search')).toBeLessThanOrEqual(expected + 1);
+    expect(await height(page, '#job-search')).toBeGreaterThanOrEqual(hero - 1);
+    expect(await height(page, '#job-search')).toBeLessThanOrEqual(hero + 1);
     await page.getByRole('button', { name: /^(More filters|ตัวกรองเพิ่มเติม)/ }).click(); // location sits in the filter dialog
     await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running')); // the dialog scales in
     expect(await height(page, '#job-city')).toBeGreaterThanOrEqual(expected - 1);

@@ -39,6 +39,18 @@ export function useFilePreview(url: string | null, mimeType: string) {
   return preview;
 }
 
+const kindTone = { pdf: '--gem-rose', word: '--gem-blue', text: '--gem-amber' } as const;
+// Rounded tile coloured by file kind; the label stays visible text so colour is never the only cue.
+export function FileKindTile({ mimeType, filename, className }: { mimeType?: string | null; filename?: string | null; className?: string }) {
+  const name = (filename ?? '').toLowerCase(), mime = mimeType ?? '';
+  const kind = mime.includes('word') || name.endsWith('.docx') ? 'word' : mime.startsWith('text/') || name.endsWith('.txt') ? 'text' : 'pdf';
+  const label = { pdf: 'PDF', word: 'DOCX', text: 'TXT' }[kind];
+  return <span aria-hidden="true" className={`grid size-12 shrink-0 place-content-center justify-items-center gap-0 rounded-xl text-foreground ${className ?? ''}`} style={{ background: `color-mix(in srgb, var(${kindTone[kind]}) 16%, var(--card))`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(${kindTone[kind]}) 30%, transparent)` }}>
+    <FileText className="size-5" style={{ color: `color-mix(in srgb, var(${kindTone[kind]}) 75%, var(--foreground))` }} />
+    <span className="text-[10px] font-semibold leading-none tracking-wide">{label}</span>
+  </span>;
+}
+
 export function PreviewBody({ url, mimeType, title, c }: { url: string; mimeType: string; title: string; c: typeof copy.en }) {
   const preview = useFilePreview(url, mimeType);
   if (preview.status === 'pdf') return <iframe title={title} src={`${preview.url}#view=FitH&toolbar=1`} className="size-full rounded-lg border bg-white" />;
