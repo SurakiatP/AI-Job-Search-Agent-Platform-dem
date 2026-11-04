@@ -48,22 +48,31 @@ def test_non_admin_cannot_resend(ctx):
 def test_system_on_an_empty_database_probes_live(ctx, admin):
     body = ctx.client.get("/v1/admin/system").json()
     assert body["health"]["components"] == {"postgres": "ok", "object_store": "ok", "llm_gateway": "ok", "sandbox": "ok"}
-    assert body["probes"] == [] and body["ingest"] == [] and body["webhooks"] == {"pending": 0, "delivered": 0, "dead": 0}
+    assert len(body["probes"]) == 120 and {c["status"] for p in body["probes"] for c in p["components"].values()} == {"unknown"} and body["ingest"] == [] and body["webhooks"] == {"pending": 0, "delivered": 0, "dead": 0}
     assert body["gateway"]["configured"] is True and body["gateway"]["reachable"] is False
     assert "sk-test-gateway" not in str(body) and len(body["tools"]["tools"]) == 13
 
 
-def test_record_probe_writes_a_row_and_prunes_after_24_hours(ctx, admin, monkeypatch):
+def test_record_probe_writes_timed_row_prunes_after_90_days_and_buckets_old_rows(ctx, admin, monkeypatch):
+    old = {"postgres": "ok", "object_store": "ok", "llm_gateway": "down", "sandbox": "ok"}  # rows written before response times
     with ctx.sessions.begin() as db:
-        db.add(HealthProbe(checked_at=NOW() - timedelta(hours=25), components={"postgres": "ok"}))
-        db.add(HealthProbe(checked_at=NOW() - timedelta(hours=23), components={"postgres": "ok", "object_store": "ok", "llm_gateway": "down", "sandbox": "ok"}))
+        db.add(HealthProbe(checked_at=NOW() - timedelta(days=91), components={"postgres": "ok"}))
+        db.add(HealthProbe(checked_at=NOW() - timedelta(minutes=20), components=old))
     components = asyncio.run(health.record_probe(ctx.sessions, _Stub(), _Stub()))
     assert components == {"postgres": "ok", "object_store": "ok", "llm_gateway": "ok", "sandbox": "ok"}
     with ctx.sessions() as db:
-        assert db.query(HealthProbe).count() == 2  # the 25 h row is gone
-    body = ctx.client.get("/v1/admin/system").json()
-    assert len(body["probes"]) == 2 and body["probes"][-1]["components"] == components
+        rows = db.query(HealthProbe).order_by(HealthProbe.checked_at).all()
+        assert len(rows) == 2  # the 91-day row is gone
+        assert rows[-1].components["postgres"]["status"] == "ok" and isinstance(rows[-1].components["postgres"]["ms"], int)
+    body = ctx.client.get("/v1/admin/system").json()  # default range 1h: 120 buckets of 30 s
+    assert body["range"] == "1h" and body["bucket_seconds"] == 30 and len(body["probes"]) == 120
     assert body["health"]["components"] == components  # newest probe is fresh: no live probe needed
+    cells = [p["components"]["llm_gateway"] for p in body["probes"]]
+    assert [c["status"] for c in cells].count("down") == 1 and [c["status"] for c in cells].count("ok") == 1
+    assert sum(c["checks"] for c in cells) == 2
+    assert next(p for p in body["probes"] if p["components"]["llm_gateway"]["status"] == "down")["components"]["llm_gateway"]["ms"] is None  # old row: no timing
+    timed = next(p for p in body["probes"] if p["components"]["postgres"]["ms"] is not None)["components"]["postgres"]
+    assert timed["failed"] == 0 and timed["checks"] == 1
 
     def down():
         raise OSError("http://10.9.8.7:4000 refused")
@@ -123,3 +132,31 @@ def test_webhook_list_shows_host_only_and_resend_requeues_with_audit(ctx, admin)
     assert ctx.client.post(f"/v1/admin/webhooks/{dead}/resend").status_code == 403  # no CSRF header
     with ctx.sessions() as db:
         assert db.query(AdminAuditLog).count() == 2  # the refused and missing ones wrote nothing
+
+
+@pytest.mark.parametrize("range_,size,count", [("1m", 30, 2), ("5m", 30, 10), ("1h", 30, 120), ("4h", 120, 120), ("10h", 300, 120),
+                                                ("7d", 3600, 168), ("30d", 21600, 120), ("90d", 86400, 90), ("all", 86400, 90)])
+def test_system_probe_buckets_follow_the_range(ctx, admin, range_, size, count):
+    body = ctx.client.get("/v1/admin/system", params={"range": range_}).json()
+    assert body["bucket_seconds"] == size and len(body["probes"]) == count and body["range"] == range_
+    starts = [datetime.fromisoformat(p["checked_at"]).timestamp() for p in body["probes"]]
+    assert all(b - a == size for a, b in zip(starts, starts[1:]))
+    assert ctx.client.get("/v1/admin/system", params={"range": "2h"}).status_code == 422
+
+
+def test_probe_bucket_marks_a_failed_check_down_and_keeps_the_slowest_ms(ctx, admin):
+    now = NOW()
+    at = now - timedelta(seconds=10)
+    cell = lambda status, ms: {"status": status, "ms": ms}  # noqa: E731
+    with ctx.sessions.begin() as db:
+        db.add(HealthProbe(checked_at=at - timedelta(seconds=1), components={k: cell("ok", 20) for k in health.COMPONENTS}))
+        db.add(HealthProbe(checked_at=at, components={**{k: cell("ok", 70) for k in health.COMPONENTS}, "sandbox": cell("down", 2000)}))
+    with ctx.sessions() as db:
+        size, buckets = health.probe_buckets(db, "1m", now)
+    got = [b for b in buckets if b["components"]["postgres"]["checks"]]
+    assert size == 30 and 1 <= len(got) <= 2
+    total = {k: sum(b["components"][k]["checks"] for b in got) for k in ("postgres", "sandbox")}
+    assert total == {"postgres": 2, "sandbox": 2}
+    sandbox = [b["components"]["sandbox"] for b in got]
+    assert any(c["status"] == "down" and c["failed"] == 1 and c["ms"] == 2000 for c in sandbox)
+    assert max(b["components"]["postgres"]["ms"] for b in got) == 70

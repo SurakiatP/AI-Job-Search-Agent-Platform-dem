@@ -14,18 +14,19 @@ from job_search_platform.api.dependencies import Services, get_services
 from job_search_platform.api.rest import tools_view
 from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.services import admin_metrics, health
-from job_search_platform.services.contracts import AdminSystem, AdminWebhookDelivery
+from job_search_platform.services.contracts import AdminRange, AdminSystem, AdminWebhookDelivery
 
 router = APIRouter()
 
 
 @router.get("/system", response_model=AdminSystem)
-async def get_system(_actor=Depends(admin_actor), services: Services = Depends(get_services)):
+async def get_system(range: AdminRange = "1h", _actor=Depends(admin_actor), services: Services = Depends(get_services)):
     components, now = await health_now(services), datetime.now(timezone.utc)
 
     def run():
         with services.sessions() as db:
-            return {"probes": [{"checked_at": p.checked_at, "components": p.components} for p in health.probes(db, now)],
+            size, probes = health.probe_buckets(db, range, now)
+            return {"range": range, "bucket_seconds": size, "probes": probes,
                     "ingest": admin_metrics.ingest_history(db), "webhooks": admin_metrics.webhook_counts(db)}
     data = await asyncio.to_thread(run)
     return {"generated_at": now, "health": {"components": components}, **data,

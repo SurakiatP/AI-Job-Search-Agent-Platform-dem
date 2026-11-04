@@ -58,13 +58,20 @@ def test_ingest_boards_keep_error_codes_only():
     assert boards["lever:y"]["status"] == "partial" and "index" not in boards
 
 
-def test_supervisor_runs_the_probe_with_housekeeping_and_survives_its_failure():
+def test_supervisor_probes_in_its_own_loop_and_survives_a_failing_probe():
     calls = []
 
     async def probe():
         calls.append(1)
         raise RuntimeError("probe down")
 
-    supervisor = WorkerSupervisor(None, None, None, None, probe=probe)  # sessions=None: rate-limit prune fails inside its own guard
-    asyncio.run(supervisor._purge_step())
-    assert calls == [1]
+    async def run():
+        supervisor = WorkerSupervisor(None, None, None, None, probe=probe, probe_interval=0.01)
+        task = asyncio.create_task(supervisor._probe_loop())
+        await asyncio.sleep(0.1)
+        assert not task.done()  # the failure did not end the loop
+        supervisor._closing.set()
+        await asyncio.wait_for(task, 1)
+        await supervisor._purge_step()  # housekeeping no longer runs the probe
+    asyncio.run(run())
+    assert len(calls) >= 3 and WorkerSupervisor(None, None, None, None, probe=probe).probe_interval == 30

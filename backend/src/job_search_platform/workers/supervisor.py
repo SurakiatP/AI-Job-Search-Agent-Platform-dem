@@ -129,6 +129,7 @@ class WorkerSupervisor:
         telegram_poll: Callable[[], Awaitable[int]] | None = None,
         telegram_interval: float = 3.0,
         probe: Callable[[], Awaitable[object]] | None = None,
+        probe_interval: float = 30.0,
     ) -> None:
         self.sessions = sessions
         self.queue = queue
@@ -142,7 +143,9 @@ class WorkerSupervisor:
         self._deliveries = deliveries
         self.deliveries_interval = deliveries_interval
         self._prune_deliveries = prune_deliveries
-        self._probe = probe  # health probe row, every purge_interval (300 s)
+        self._probe = probe  # health probe row, every probe_interval (30 s) in its own task so a slow check never delays dispatch
+        self.probe_interval = probe_interval
+        self._probe_task: asyncio.Task | None = None
         self._delivery_task: asyncio.Task | None = None
         self._telegram_poll = telegram_poll
         self.telegram_interval = telegram_interval
@@ -160,6 +163,8 @@ class WorkerSupervisor:
             self._delivery_task = asyncio.create_task(self._delivery_loop())
         if self._telegram_poll is not None and self._telegram_task is None:
             self._telegram_task = asyncio.create_task(self._telegram_loop())
+        if self._probe is not None and self._probe_task is None:
+            self._probe_task = asyncio.create_task(self._probe_loop())
 
     async def _dispatch_loop(self) -> None:
         last_purge = time.monotonic()
@@ -195,11 +200,16 @@ class WorkerSupervisor:
                 await self._prune_deliveries()
             except Exception as exc:  # noqa: BLE001 - pruning must never stop dispatch
                 logger.warning("webhook_prune_failed", extra={"error": type(exc).__name__})
-        if self._probe is not None:
+    async def _probe_loop(self) -> None:
+        while not self._closing.is_set():
             try:
                 await self._probe()
-            except Exception as exc:  # noqa: BLE001 - a probe failure must never stop dispatch
+            except Exception as exc:  # noqa: BLE001 - a probe failure must never stop the worker
                 logger.warning("health_probe_failed", extra={"error": type(exc).__name__})
+            try:
+                await asyncio.wait_for(self._closing.wait(), timeout=self.probe_interval)
+            except asyncio.TimeoutError:
+                pass
 
     async def _telegram_loop(self) -> None:
         while not self._closing.is_set():
@@ -258,6 +268,10 @@ class WorkerSupervisor:
             self._delivery_task.cancel()
             await asyncio.gather(self._delivery_task, return_exceptions=True)
             self._delivery_task = None
+        if self._probe_task is not None:
+            self._probe_task.cancel()
+            await asyncio.gather(self._probe_task, return_exceptions=True)
+            self._probe_task = None
         if self._telegram_task is not None:
             self._telegram_task.cancel()
             await asyncio.gather(self._telegram_task, return_exceptions=True)

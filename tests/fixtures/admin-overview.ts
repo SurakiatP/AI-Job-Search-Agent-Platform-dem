@@ -49,7 +49,7 @@ export interface OverviewMock {
 }
 
 /** Admin session plus the Overview endpoints. `overview` may be a function of the requested range. */
-export async function mockOverview(page: Page, opts: { overview?: Json | ((range: string) => Json); widgets?: string[]; failPrefs?: boolean; probes?: unknown[] } = {}): Promise<OverviewMock> {
+export async function mockOverview(page: Page, opts: { overview?: Json | ((range: string) => Json); widgets?: string[]; failPrefs?: boolean; fxFail?: boolean; probes?: unknown[] } = {}): Promise<OverviewMock> {
   await mockAdminAccount(page);
   const seen: OverviewMock = { ranges: [], prefsPut: [], csvUrls: [], bucketUrls: [] };
   let widgets = opts.widgets ?? ['trend', 'attention', 'weekday', 'speed', 'tasks'];
@@ -77,8 +77,11 @@ export async function mockOverview(page: Page, opts: { overview?: Json | ((range
       widgets = body.widgets as string[];
       return json(route, body);
     }
-    return json(route, { widgets, thb_rate: 35 });
+    return json(route, { widgets });
   });
+  await page.route('**/v1/admin/fx', route => opts.fxFail
+    ? route.fulfill({ status: 503, json: { code: 'fx_unavailable', message_key: 'errors.fx_unavailable', retryable: true } })
+    : json(route, { rate: 35, source: 'Frankfurter (European Central Bank reference rates)', source_url: 'https://frankfurter.dev', as_of: '2026-11-03', fetched_at: '2026-11-04T07:00:00Z', stale: false }));
   await page.route('**/v1/admin/system', route => json(route, {
     generated_at: '2026-11-04T07:30:00Z', health: { components: healthyComponents },
     probes: opts.probes ?? [], ingest: [], webhooks: { pending: 0, delivered: 0, dead: 0 },

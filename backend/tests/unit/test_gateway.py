@@ -47,7 +47,7 @@ def stub(monkeypatch):
 def test_provider_config_is_custom_openai_compatible_v1():
     config = GatewaySettings.from_env().provider_config()
     assert (config.provider, config.model, config.base_url, config.api_key) == (
-        "custom", "ai-analyze", "http://127.0.0.1:54000/v1", KEY)
+        "custom", "openai/gpt-6-luna", "http://127.0.0.1:54000/v1", KEY)
 
 
 def test_missing_key_raises_gateway_unconfigured(no_gateway_key):
@@ -67,7 +67,7 @@ def test_key_file_fallback_needs_private_mode(no_gateway_key, tmp_path):
 
 async def test_status_reachable_lists_models_and_hides_key(stub):
     view = await GatewaySettings.from_env().status()
-    assert view.configured and view.reachable and view.models == ["ai-analyze", "other"]
+    assert view.configured and view.reachable and view.models == ["other"]  # the old alias is hidden
     assert view.base_url == f"http://127.0.0.1:{stub.server_port}"
     assert _Stub.seen == [("/v1/models", f"Bearer {KEY}")]
     assert KEY not in view.model_dump_json()

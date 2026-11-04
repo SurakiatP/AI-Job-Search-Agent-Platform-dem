@@ -281,7 +281,8 @@ export type AdminBucket = {
   value: number;
   parts: { operation: string; value: number }[];
 };
-export type AdminPrefs = { widgets: string[]; thb_rate: number };
+export type AdminPrefs = { widgets: string[] };
+export type AdminFxRate = { rate: number; source: string; source_url: string; as_of: string; fetched_at: string; stale: boolean };
 export type AdminUserStatus = 'active' | 'suspended' | 'deleting';
 export type AdminUserItem = {
   id: string;
@@ -294,7 +295,7 @@ export type AdminUserItem = {
   last_seen_at: string | null;
   runs_in_range: number;
 };
-export type AdminUserPage = { items: AdminUserItem[]; next_cursor: string | null };
+export type AdminUserPage = { items: AdminUserItem[]; total: number; page: number; page_size: number };
 export type AdminUserDetail = { user: AdminUserItem; project_count: number; cv_count: number; run_count: number };
 export type AdminRunEvent = {
   sequence: number;
@@ -340,7 +341,7 @@ export type AdminRunItem = {
   failure_key: string | null;
   retry_of_id: string | null;
 };
-export type AdminRunPage = { items: AdminRunItem[]; next_cursor: string | null };
+export type AdminRunPage = { items: AdminRunItem[]; total: number; page: number; page_size: number };
 export type AdminRunDetail = { run: AdminRunItem; events: AdminRunEvent[]; calls: AdminLlmCall[] };
 export type AdminUsageGroup = 'task' | 'model' | 'day' | 'user';
 export type AdminUsageRow = {
@@ -416,7 +417,8 @@ export type AdminBenchmark = {
   started_at: string | null;
   finished_at: string | null;
 };
-export type AdminProbe = { checked_at: string; components: AdminHealthComponents };
+export type AdminProbeCell = { status: 'ok' | 'down' | 'unknown'; ms: number | null; failed: number; checks: number };
+export type AdminProbe = { checked_at: string; components: { postgres: AdminProbeCell; object_store: AdminProbeCell; llm_gateway: AdminProbeCell; sandbox: AdminProbeCell } };
 export type AdminIngestRun = {
   board: string;
   at: string;
@@ -430,6 +432,8 @@ export type AdminGatewayStatus = { configured: boolean; reachable: boolean; base
 export type AdminToolDescriptor = { name: string; description: string; required_capability: string };
 export type AdminSystem = {
   generated_at: string;
+  range: AdminRange;
+  bucket_seconds: number;
   health: AdminHealth;
   probes: AdminProbe[];
   ingest: AdminIngestRun[];
@@ -449,6 +453,7 @@ export type AdminWebhookDelivery = {
   delivered_at: string | null;
 };
 export type AdminListQuery = { cursor?: string | null };
-export type AdminRunsQuery = AdminListQuery & { status?: AdminRunStatus; operation?: string; model?: string; since?: string; until?: string };
-export type AdminUsersQuery = AdminListQuery & { q?: string; status?: AdminUserStatus; range?: AdminRange };
+export type AdminPageQuery = { page?: number; page_size?: number };
+export type AdminRunsQuery = AdminPageQuery & { status?: AdminRunStatus; operation?: string; model?: string; since?: string; until?: string };
+export type AdminUsersQuery = AdminPageQuery & { q?: string; status?: AdminUserStatus; range?: AdminRange };
 export type AdminAuditQuery = AdminListQuery & { action?: string; actor?: string; since?: string };

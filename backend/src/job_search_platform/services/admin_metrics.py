@@ -12,8 +12,9 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from sqlalchemy import Integer, cast, func, literal_column, select
+from sqlalchemy import Integer, cast, func, literal_column, select, case
 
+from job_search_platform.integrations.gateway import LEGACY_ALIAS, default_model_id
 from job_search_platform.db.models import (
     A2APushConfig, IngestRun, LlmCall, OwnerSession, Project, Run, User, WebhookDelivery, WebhookEndpoint,
 )
@@ -28,7 +29,7 @@ RANGES = {"1m": (60, 5), "5m": (300, 15), "10m": (600, 30), "15m": (900, 60), "3
           "4h": (14400, 600), "10h": (36000, 1800), "7d": (7 * DAY, DAY), "30d": (30 * DAY, DAY),
           "90d": (90 * DAY, DAY), "all": (None, WEEK)}  # ponytail: "all" stays weekly; the spec's monthly step after 2 years is not built
 WIDGETS = ("trend", "attention", "weekday", "speed", "tasks", "activity", "models")
-DEFAULT_PREFS = {"widgets": ["trend", "attention", "weekday", "speed", "tasks"], "thb_rate": 35.0}
+DEFAULT_PREFS = {"widgets": ["trend", "attention", "weekday", "speed", "tasks"]}
 SPEED_TARGET_SECONDS = 30
 SPEED_TARGET_SHARE = 0.9
 FAILED_WINDOW = timedelta(hours=24)
@@ -50,6 +51,10 @@ class Window:
 
     def bucket_start(self, index: int) -> datetime:
         return self.start + timedelta(seconds=index * self.bucket)
+
+# Calls recorded before the console named real models say ai-analyze: show the model that alias stands for.
+_MODEL = case((LlmCall.model == LEGACY_ALIAS, default_model_id()), else_=LlmCall.model)
+
 
 
 def _midnight(moment: datetime) -> datetime:
@@ -166,8 +171,8 @@ def _top_tasks(db, w: Window) -> list[dict]:
 
 def _cost_by_model(db, w: Window) -> list[dict]:
     total = func.coalesce(func.sum(LlmCall.cost_usd), 0)
-    rows = db.execute(select(LlmCall.model, func.count(), total, func.count().filter(LlmCall.price_source == "manual"))
-                      .where(*_in(LlmCall.created_at, w)).group_by(LlmCall.model).order_by(total.desc(), LlmCall.model).limit(10)).all()
+    rows = db.execute(select(_MODEL, func.count(), total, func.count().filter(LlmCall.price_source == "manual"))
+                      .where(*_in(LlmCall.created_at, w)).group_by(_MODEL).order_by(total.desc(), _MODEL).limit(10)).all()
     return [{"model": m, "calls": n, "cost_usd": _f(c), "has_manual": manual > 0} for m, n, c, manual in rows]
 
 
@@ -276,16 +281,16 @@ def bucket(db, range_: str, metric: str, start: datetime) -> dict:
 
 def get_prefs(db, user_id: UUID) -> dict:
     stored = db.scalar(select(User.admin_prefs).where(User.id == user_id)) or {}
-    return {"widgets": stored.get("widgets", DEFAULT_PREFS["widgets"]), "thb_rate": stored.get("thb_rate", DEFAULT_PREFS["thb_rate"])}
+    return {"widgets": stored.get("widgets", DEFAULT_PREFS["widgets"])}
 
 
-def set_prefs(db, user_id: UUID, widgets: list[str], thb_rate: float) -> dict:
+def set_prefs(db, user_id: UUID, widgets: list[str]) -> dict:
     if any(w not in WIDGETS for w in widgets):
         raise ServiceError("invalid_prefs")
     user = db.get(User, user_id)
     if user is None:
         raise ServiceError("not_found")
-    user.admin_prefs = {"widgets": list(dict.fromkeys(widgets)), "thb_rate": thb_rate}
+    user.admin_prefs = {"widgets": list(dict.fromkeys(widgets))}
     return get_prefs(db, user_id)
 
 
@@ -298,7 +303,7 @@ def _usage_row(key: str, requests: int, tin, tout, tcache, cost, costed: int, ma
 
 def usage(db, range_: str, group_by: str, now: datetime) -> dict:
     w = window(range_, now, _first_seen(db) if range_ == "all" else None)
-    key = {"task": LlmCall.operation, "model": LlmCall.model, "user": LlmCall.user_id,
+    key = {"task": LlmCall.operation, "model": _MODEL, "user": LlmCall.user_id,
            "day": func.to_char(func.date_trunc("day", _bkk(LlmCall.created_at)), literal_column("'YYYY-MM-DD'"))}[group_by]
     fields = (func.count(), func.sum(LlmCall.input_tokens), func.sum(LlmCall.output_tokens), func.sum(LlmCall.cached_tokens),
               func.sum(LlmCall.cost_usd), func.count(LlmCall.cost_usd), func.count().filter(LlmCall.price_source == "manual"))

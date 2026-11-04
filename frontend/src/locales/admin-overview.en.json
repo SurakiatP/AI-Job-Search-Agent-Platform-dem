@@ -90,7 +90,8 @@
     "up": "Up {{pct}}% from the previous period",
     "down": "Down {{pct}}% from the previous period",
     "flat": "No change from the previous period",
-    "costNote": "Includes models whose price was entered by hand, so the amount is approximate."
+    "costNote": "Includes models whose price was entered by hand, so the amount is approximate.",
+    "fxDown": "Cost is shown in US dollars because the exchange rate could not be loaded."
   },
   "trend": {
     "title": "Trend",

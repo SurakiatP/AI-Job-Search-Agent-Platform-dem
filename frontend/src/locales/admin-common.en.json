@@ -1,0 +1,9 @@
+{
+  "pager": {
+    "label": "Change page",
+    "range": "Showing {{from}}–{{to}} of {{total}}",
+    "page": "Page {{page}} of {{pages}}",
+    "prev": "Previous",
+    "next": "Next"
+  }
+}

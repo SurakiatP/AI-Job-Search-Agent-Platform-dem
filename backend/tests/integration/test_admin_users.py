@@ -119,11 +119,16 @@ def test_list_search_status_range_and_pages(ctx):
 
     from job_search_platform.services import admin_users
     with ctx.sessions() as db:
-        first = admin_users.list_users(db, limit=3)
-        second = admin_users.list_users(db, cursor=first["next_cursor"], limit=3)
+        first = admin_users.list_users(db, page_size=3)
+        second = admin_users.list_users(db, page=1, page_size=3)
+        beyond = admin_users.list_users(db, page=5, page_size=3)
     assert len(first["items"]) == 3 and [i["email"] for i in second["items"]] == ["carol@example.test"]
-    assert second["next_cursor"] is None
-    assert ctx.client.get("/v1/admin/users?cursor=junk").status_code == 400
+    assert (first["total"], second["total"], second["page"], second["page_size"]) == (4, 4, 1, 3)
+    assert beyond["items"] == second["items"] and beyond["page"] == 1  # out of range: last page
+    assert ctx.client.get("/v1/admin/users?status=suspended").json()["total"] == 1  # total follows the filters
+    assert ctx.client.get("/v1/admin/users?page=-1").status_code == 422
+    assert ctx.client.get("/v1/admin/users?page_size=51").status_code == 422
+    assert ctx.client.get("/v1/admin/users").json()["page_size"] == 10
 
 
 def test_detail_counts(ctx):

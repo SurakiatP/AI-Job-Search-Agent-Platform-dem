@@ -878,7 +878,7 @@ def test_provider_routes_are_gone_and_gateway_status_is_admin_only(api_context, 
     assert owner_view.status_code == 200
     body = owner_view.json()
     assert body["configured"] is True and body["reachable"] is False  # nothing listens on the fake base URL
-    assert body["analyze_model"] == "ai-analyze" and body["decision_model"] == "typesafe/jev-1.13"
+    assert body["analyze_model"] == "openai/gpt-6-luna" and body["decision_model"] == "typesafe/jev-1.13"
     assert "sk-test-gateway" not in owner_view.text
     pid, _ = _removal_project(api_context, csrf)
     token = client.post(f"/v1/projects/{pid}/grants", headers=headers, json={

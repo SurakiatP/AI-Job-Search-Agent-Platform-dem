@@ -75,3 +75,27 @@ test('on a phone the menu opens a drawer, closes after a choice, and the page do
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('TC-ADM-SH-05: the sidebar collapses to an icon rail, keeps names and the current page, and remembers the choice', async ({ page }) => {
+  await mockAdminAccount(page);
+  await mockOverview(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/admin');
+  const nav = page.getByRole('navigation', { name: 'Admin navigation' });
+  const aside = page.locator('aside');
+  const toggle = page.getByRole('button', { name: 'Toggle sidebar' });
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect.poll(async () => (await aside.boundingBox())?.width).toBe(248);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect.poll(async () => (await aside.boundingBox())?.width).toBe(64);
+  await expect(nav.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page');
+  await expect(nav.getByText('Users and runs')).toHaveCount(0);
+  await nav.getByRole('link', { name: 'Users' }).hover();
+  await expect(page.getByRole('tooltip', { name: 'Users' })).toBeVisible();
+  await page.reload();
+  await expect.poll(async () => (await aside.boundingBox())?.width).toBe(64);
+  await page.keyboard.press('ControlOrMeta+Shift+S');
+  await expect.poll(async () => (await aside.boundingBox())?.width).toBe(248);
+  await expect(page.getByRole('button', { name: /^Account: ops@example\.test/ }).first()).toBeVisible();
+});

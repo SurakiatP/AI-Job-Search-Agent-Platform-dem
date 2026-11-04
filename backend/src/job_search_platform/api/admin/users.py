@@ -18,11 +18,11 @@ router = APIRouter()
 @router.get("/users", response_model=AdminUserPage)
 async def get_users(q: str | None = Query(None, max_length=200),
                     status: Literal["active", "suspended", "deleting"] | None = None,
-                    range_: AdminRange | None = Query(None, alias="range"), cursor: str | None = Query(None, max_length=200),
+                    range_: AdminRange | None = Query(None, alias="range"), page: int = Query(0, ge=0, le=100_000), page_size: int = Query(10, ge=1, le=50),
                     _actor=Depends(admin_actor), services: Services = Depends(get_services)):
     def run():
         with services.sessions() as db:
-            return admin_users.list_users(db, q, status, range_, cursor)
+            return admin_users.list_users(db, q, status, range_, page, page_size)
     return await asyncio.to_thread(run)
 
 

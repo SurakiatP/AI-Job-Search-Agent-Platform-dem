@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 
 from sqlalchemy import select
 
+from job_search_platform.integrations.gateway import LEGACY_ALIAS, default_model_id, real_model
 from job_search_platform.db.models import ModelPrice, TaskModelSetting, User
 from job_search_platform.integrations.gateway import _OPENER, GatewaySettings, default_private_dir, read_private_file
 from job_search_platform.integrations.hermes_runtime import NATIVE_OPERATIONS, env_effort
@@ -168,10 +169,10 @@ def _register(model: str) -> None:
 def current_pair(operation: str, row: TaskModelSetting | None) -> tuple[str, str, str]:
     """(model, effort, source): the stored setting, else AI_MODEL_<OP> / AI_REASONING_<OP> from the environment."""
     if row is not None:
-        return row.model, row.effort, "stored"
+        return real_model(row.model), row.effort, "stored"
     model = os.environ.get("AI_MODEL_" + operation.upper(), "").strip()
     if not MODEL_ID.fullmatch(model):
-        model = os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze"
+        model = default_model_id()
     return model, env_effort(os.environ, operation), "env"
 
 
@@ -243,6 +244,25 @@ def catalog(session, q: str | None) -> list[AdminModelCatalogItem]:
     return out
 
 
+def _fill_prices(session, rows: dict, missing: list[str], info: dict) -> None:
+    """Models in the gateway or used by a task with no row yet: take OpenRouter's price, else LiteLLM's. Nothing found stays unpriced.
+    Existing rows (manual ones included) are never touched."""
+    if not missing:
+        return
+    try:
+        items = catalog_items()
+    except ServiceError:
+        items = []  # OpenRouter down: LiteLLM's own price may still fill it
+    for name in missing:
+        price = resolve_price(name, items, info)
+        if price is None:
+            continue
+        rows[name] = ModelPrice(model=name, price_in=price["price_in"], price_out=price["price_out"], price_cache=price["price_cache"], source=price["source"],
+                                is_free=price["source"] == "openrouter" and price["price_in"] == 0 and price["price_out"] == 0, updated_at=_now())
+        session.add(rows[name])
+    session.flush()
+
+
 def list_models(session) -> list[AdminRegisteredModel]:
     try:
         refresh_prices(session)
@@ -250,7 +270,8 @@ def list_models(session) -> list[AdminRegisteredModel]:
         pass  # OpenRouter down: show what we have
     rows = {r.model: r for r in session.scalars(select(ModelPrice))}
     info, used = _litellm_info(), _used_by(session)
-    names = sorted(set(rows) | set(info) | set(used))
+    names = sorted((set(rows) | set(info) | set(used)) - {LEGACY_ALIAS})  # the old alias is the default model under another name
+    _fill_prices(session, rows, [n for n in names if n not in rows], info)
     return [_model_view(n, rows.get(n), used, info.get(n)) for n in names]
 
 
@@ -276,6 +297,36 @@ def create_model(session, actor_id, body: AdminModelCreate) -> AdminRegisteredMo
     return _get_view(session, model)
 
 
+def delete_model(session, actor_id, model: str) -> None:
+    """Removes the model from the gateway and our price table. Refused (model_in_use) while a task or the default uses it.
+    Past usage and costs live in the run records and are kept as they are."""
+    model = model.strip()
+    if not MODEL_ID.fullmatch(model):
+        raise ServiceError("model_invalid")
+    if model in _used_by(session) or model == default_model_id():
+        raise ServiceError("model_in_use")
+    row, key, gateway = session.get(ModelPrice, model), _master_key(), GatewaySettings.from_env()
+    entries: list[dict] = []
+    if key:
+        try:
+            data = _http("GET", gateway.base_url + "/model/info", token=key, local=True).get("data", [])
+            entries = [m for m in data if isinstance(m, dict) and m.get("model_name") == model]
+            for m in entries:
+                if mid := (m.get("model_info") or {}).get("id"):
+                    _http("POST", gateway.base_url + "/model/delete", {"id": mid}, key, local=True)
+            if entries and gateway.api_key and gateway.api_key != key:
+                allowed = sorted({m.get("model_name") for m in data if isinstance(m, dict)} - {model, None})
+                _http("POST", gateway.base_url + "/key/update", {"key": gateway.api_key, "models": [n for n in allowed if isinstance(n, str) and not n.startswith("gold-")]}, key, local=True)
+        except (OSError, ValueError, AttributeError) as exc:
+            raise ServiceError("service_unavailable", retryable=True) from exc
+    if row is None and not entries:
+        raise ServiceError("not_found")
+    if row is not None:
+        session.delete(row)
+        session.flush()
+    admin_audit.record(session, actor_id, "model.delete", "model", model, {"price_source": row.source if row else None, "in_gateway": bool(entries)})
+
+
 def _row_or_404(session, model: str) -> ModelPrice:
     row = session.get(ModelPrice, model)
     if row is None:
@@ -285,13 +336,19 @@ def _row_or_404(session, model: str) -> ModelPrice:
 
 def set_price(session, actor_id, body: AdminModelPrice) -> AdminRegisteredModel:
     price = manual_price(body.price_in, body.price_out, body.price_cache, body.is_free)
-    row = _row_or_404(session, body.model)
+    model = body.model.strip()
+    if not MODEL_ID.fullmatch(model):
+        raise ServiceError("model_invalid")
+    row = session.get(ModelPrice, model)
+    if row is None:  # a model the gateway or a task already uses can get its first price here
+        row = ModelPrice(model=model)
+        session.add(row)
     row.price_in, row.price_out, row.price_cache, row.source = price["price_in"], price["price_out"], price["price_cache"], "manual"
     row.is_free, row.official_available, row.updated_at = body.is_free, None, _now()
     session.flush()
-    admin_audit.record(session, actor_id, "model.price", "model", body.model,
+    admin_audit.record(session, actor_id, "model.price", "model", model,
                        {"source": "manual", "price_in": price["price_in"], "price_out": price["price_out"]})
-    return _get_view(session, body.model)
+    return _get_view(session, model)
 
 
 def use_official_price(session, actor_id, model: str) -> AdminRegisteredModel:

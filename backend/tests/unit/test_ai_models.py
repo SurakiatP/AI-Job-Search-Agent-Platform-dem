@@ -74,5 +74,18 @@ def test_current_pair_falls_back_to_env(monkeypatch):
     monkeypatch.setenv("AI_MODEL_TAILOR_CV", "acme/fast")
     monkeypatch.setenv("AI_REASONING_TAILOR_CV", "HIGH")
     assert ai_models.current_pair("tailor_cv", None) == ("acme/fast", "high", "env")
-    assert ai_models.current_pair("evaluate_job", None) == ("ai-analyze", "default", "env")
+    assert ai_models.current_pair("evaluate_job", None) == ("openai/gpt-6-luna", "default", "env")
     assert ai_models.current_pair("interview_grade", None)[1] == "low"  # the bridge's real default, not "default"
+
+
+def test_delete_refuses_a_used_or_default_model_before_any_call(monkeypatch):
+    monkeypatch.setattr(ai_models, "_used_by", lambda session: {"acme/fast": ["tailor_cv"]})
+    monkeypatch.setattr(ai_models, "_http", lambda *a, **k: pytest.fail("no gateway call expected"))
+    monkeypatch.setenv("AI_ANALYZE_MODEL", "acme/default")
+    for model in ("acme/fast", "acme/default"):
+        with pytest.raises(ServiceError) as err:
+            ai_models.delete_model(None, None, model)
+        assert err.value.code == "model_in_use"
+    with pytest.raises(ServiceError) as err:
+        ai_models.delete_model(None, None, "bad id!")
+    assert err.value.code == "model_invalid"

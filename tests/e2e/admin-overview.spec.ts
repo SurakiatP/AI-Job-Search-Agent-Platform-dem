@@ -19,6 +19,13 @@ test('TC-ADM-OV-01: the four KPI cards show their values and change chips', asyn
   await expect(runs).toHaveAttribute('aria-selected', 'true');
 });
 
+test('TC-ADM-OV-01b: if the exchange rate cannot load, cost shows in USD with a note', async ({ page }) => {
+  await mockOverview(page, { fxFail: true });
+  await page.goto('/admin');
+  await expect(page.getByRole('tab', { name: /AI cost/ })).toContainText('$12.50');
+  await expect(page.getByText('Cost is shown in US dollars because the exchange rate could not be loaded.')).toBeVisible();
+});
+
 test('TC-ADM-OV-02: compare=false hides the change chips and the previous-period line', async ({ page }) => {
   await mockOverview(page, { overview: overviewBody({ compare: false, previous_series: [], kpis: {
     runs: { value: 1204, previous: null }, active_users: { value: 96, previous: null }, failure_rate: { value: 0.05, previous: null }, cost_usd: { value: 12.5, previous: null }, cost_has_manual: false } }) });
@@ -106,14 +113,16 @@ test('TC-ADM-OV-08: Export CSV requests the chosen range, shows busy, then a sta
   await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
 });
 
+const cells = (c: Record<string, string>) => Object.fromEntries(Object.entries(c).map(([k, status]) => [k, { status, ms: 40, failed: status === 'ok' ? 0 : 1, checks: 1 }]));
+
 test('TC-ADM-OV-09: a down component shows the red strip and the fix sheet with since-when from probes', async ({ page }) => {
   const down = { ...healthyComponents, sandbox: 'down' };
   await mockOverview(page, {
     overview: overviewBody({ health: { components: down }, attention: [{ kind: 'health_down', severity: 'bad', title_key: 'attention.health_down', params: { component: 'sandbox' }, target: '/admin/system' }] }),
     probes: [
-      { checked_at: '2026-11-04T06:50:00Z', components: healthyComponents },
-      { checked_at: '2026-11-04T07:00:00Z', components: down },
-      { checked_at: '2026-11-04T07:25:00Z', components: down },
+      { checked_at: '2026-11-04T06:50:00Z', components: cells(healthyComponents) },
+      { checked_at: '2026-11-04T07:00:00Z', components: cells(down) },
+      { checked_at: '2026-11-04T07:25:00Z', components: cells(down) },
     ],
   });
   await page.goto('/admin');

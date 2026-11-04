@@ -6,24 +6,91 @@ const card = (page: Page, name: string) => page.getByRole('heading', { level: 2,
 
 test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1440, height: 1000 }); });
 
-test('TC-ADM-SY-01: health shows each component in words, a 24 h strip and a tooltip per slot', async ({ page }) => {
+const chart = (page: Page, name: string, range = 'Last hour') => page.getByRole('group', { name: new RegExp(`^${name}, ${range}: `) });
+
+test('TC-ADM-SY-01: health shows each component in words, one bar chart per component and the 30 second check', async ({ page }) => {
   await mockSystem(page);
   await page.goto('/admin/system');
   await expect(page.getByRole('heading', { level: 1, name: 'System' })).toBeVisible();
   await expect(page.getByText('All four components are working.')).toBeVisible();
   const health = card(page, 'Health');
+  await expect(health.getByText('Checked every 30 seconds')).toBeVisible();
+  await expect(health.getByRole('button', { name: 'Time range: Last hour' })).toBeVisible();
   for (const name of ['Database', 'File storage', 'AI gateway', 'Sandbox']) await expect(health.getByText(name, { exact: true }).first()).toBeVisible();
   await expect(health.getByText('Working', { exact: true })).toHaveCount(4);
-  const strip = page.getByRole('img', { name: /^AI gateway, last 24 hours: 279 of 288 checks passed$/ });
-  await expect(strip.locator('i')).toHaveCount(48);
-  await strip.locator('i').nth(41).hover();
-  await expect(page.getByRole('tooltip')).toHaveText(/10:30–11:00 · Down$/);
-  await strip.locator('i').nth(40).hover();
-  await expect(page.getByRole('tooltip')).toHaveText(/10:00–10:30 · Down for part of this time$/);
-  await strip.locator('i').nth(10).hover();
-  await expect(page.getByRole('tooltip')).toHaveText(/ · Working$/);
-  await expect(page.getByText('96.9% up')).toBeVisible();
-    await page.screenshot({ path: 'test-results/admin-system-desktop.png', fullPage: true });
+  const gateway = chart(page, 'AI gateway');
+  await expect(gateway).toHaveAccessibleName('AI gateway, Last hour: 116 of 117 checks passed');
+  await expect(gateway.locator('[data-status]')).toHaveCount(120); // 1 h in 30 s buckets
+  await expect(gateway.locator('[data-status="none"]')).toHaveCount(3);
+  await expect(health.getByText('99.1% up · last 150 ms')).toBeVisible();
+  await expect(health.getByText('99.1% up · last 150 ms')).toHaveCount(1);
+  await gateway.locator('[data-status]').nth(60).hover();
+  await expect(page.getByRole('tooltip')).toHaveText(/^\d\d:\d\d:\d\d–\d\d:\d\d:\d\d · Working · 150 ms$/);
+  await gateway.locator('[data-status]').nth(1).hover();
+  await expect(page.getByRole('tooltip')).toHaveText(/ · No check$/);
+  await page.screenshot({ path: 'test-results/admin-system-desktop.png', fullPage: true });
+});
+
+test('TC-ADM-SY-14: choosing a range refetches with ?range=, keeps it in the URL and draws that many bars', async ({ page }) => {
+  const { ranges } = await mockSystem(page);
+  await page.goto('/admin/system');
+  await expect(chart(page, 'Database').locator('[data-status]')).toHaveCount(120);
+  expect(ranges).toContain('1h');
+  const health = card(page, 'Health');
+  await health.getByRole('button', { name: 'Time range: Last hour' }).click();
+  await expect(page.getByRole('menuitemradio')).toHaveCount(12); // the same 12 options as the Overview
+  await page.getByRole('menuitemradio', { name: 'Last 7 days' }).click();
+  await expect(page).toHaveURL(/\/admin\/system\?range=7d/);
+  await expect(chart(page, 'Database', 'Last 7 days').locator('[data-status]')).toHaveCount(168);
+  expect(ranges).toContain('7d');
+  await expect(page.getByRole('heading', { level: 2, name: 'Job ingest' })).toBeVisible(); // the rest of the page stayed
+  await page.reload();
+  await expect(health.getByRole('button', { name: 'Time range: Last 7 days' })).toBeVisible();
+  await expect(chart(page, 'Database', 'Last 7 days').locator('[data-status]')).toHaveCount(168);
+});
+
+test('TC-ADM-SY-15: a down bar is red and full height with a tooltip, a slow one is amber, keyboard reads each bar', async ({ page }) => {
+  await mockSystem(page);
+  await page.goto('/admin/system');
+  const gateway = chart(page, 'AI gateway');
+  const bad = gateway.locator('[data-status="down"]');
+  await expect(bad).toHaveCount(1);
+  const [barBox, rowBox] = await Promise.all([bad.locator('i').boundingBox(), gateway.locator('[data-status]').first().boundingBox()]);
+  expect(Math.abs(barBox!.height - rowBox!.height)).toBeLessThan(2); // full height
+  const colour = (loc: ReturnType<Page['locator']>) => loc.locator('i').evaluate(el => getComputedStyle(el).backgroundColor);
+  const red = await colour(bad);
+  const green = await colour(gateway.locator('[data-status="ok"]').first());
+  expect(red).not.toBe(green);
+  await expect(bad.locator('i')).toHaveClass(/bg-destructive-fill/);
+  await bad.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('13:50:30–13:51:00 · Not responding (1 of 1 checks failed)');
+  const sandbox = chart(page, 'Sandbox');
+  await expect(sandbox.locator('[data-status="slow"] i')).toHaveClass(/bg-warning/);
+  await sandbox.locator('[data-status="slow"]').hover();
+  await expect(page.getByRole('tooltip')).toHaveText(/Working, but slow · 2\.5 s$/);
+  await page.mouse.move(0, 0);
+  await gateway.getByRole('slider').focus();
+  await page.keyboard.press('End');
+  await expect(page.getByRole('tooltip')).toHaveText(/14:00:00–14:00:30 · Working · 150 ms$/);
+  await page.keyboard.press('ArrowLeft');
+  await expect(gateway.getByRole('slider')).toHaveAttribute('aria-valuenow', '119');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+});
+
+test('TC-ADM-SY-16: the charts refresh every 30 seconds without replaying the draw-in', async ({ page }) => {
+  await page.clock.install();
+  const { ranges } = await mockSystem(page);
+  await page.goto('/admin/system');
+  await expect(chart(page, 'Database').locator('[data-status]')).toHaveCount(120);
+  const before = ranges.length;
+  const bar = chart(page, 'Database').locator('[data-bar="ok"]').first();
+  await page.clock.fastForward(1000);
+  await bar.evaluate(el => { el.setAttribute('data-seen', '1'); });
+  await page.clock.fastForward(30_000);
+  await expect.poll(() => ranges.length).toBeGreaterThan(before);
+  await expect(chart(page, 'Database').locator('[data-status]')).toHaveCount(120);
+  expect(await bar.evaluate(el => getComputedStyle(el).transform)).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/); // still fully drawn, not restarted from scaleY(0)
 });
 
 test('TC-ADM-SY-02: a component that is down is named and marked in words, not colour alone', async ({ page }) => {
@@ -118,7 +185,7 @@ test('TC-ADM-SY-07: the AI gateway and Tools sections work on the System page', 
 
 test('TC-ADM-SY-08: an unconfigured gateway shows the key hint (Thai) and no LiteLLM link', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
-  await mockSystem(page, { gateway: { configured: false, reachable: false, base_url: null, analyze_model: 'ai-analyze', decision_model: 'ai-decide', models: [] } });
+  await mockSystem(page, { gateway: { configured: false, reachable: false, base_url: null, analyze_model: 'openai/gpt-6-luna', decision_model: 'ai-decide', models: [] } });
   await page.goto('/admin/system');
   await expect(page.getByText('ยังไม่ได้ตั้งค่า AI gateway')).toBeVisible();
   await expect(page.getByText('OPENROUTER_API_KEY')).toBeVisible();
@@ -157,8 +224,8 @@ test('TC-ADM-SY-11: loading failure offers Retry, and empty boards and probes sa
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByText('No ingest run has finished yet.')).toBeVisible();
   await expect(page.getByText('No failed deliveries.')).toBeVisible();
-  await expect(page.getByText('No checks yet')).toHaveCount(4);
-  await expect(page.getByRole('img', { name: /0 of 0 checks passed/ }).first().locator('i')).toHaveCount(48);
+  await expect(page.getByText('No checks yet')).toHaveCount(8); // each component: its summary and its empty chart
+  await expect(page.getByText('No checks in this range yet. Bars appear here after the first check.')).toBeVisible();
 });
 
 test('TC-ADM-SY-12: the page fits a 390 px phone without sideways scroll, in English and Thai', async ({ page }) => {
@@ -173,8 +240,31 @@ test('TC-ADM-SY-12: the page fits a 390 px phone without sideways scroll, in Eng
     await page.evaluate(() => localStorage.setItem('ui.locale', 'en'));
   }
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
-  await page.goto('/admin/system');
+  await page.goto('/admin/system?range=7d');
   await expect(page.getByText('ทั้ง 4 ส่วนทำงานปกติ')).toBeVisible();
+  await expect(page.getByText('ตรวจทุก 30 วินาที')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'ช่วงเวลา: 7 วันล่าสุด' })).toBeVisible();
+  const bars = page.getByRole('group', { name: /^เกตเวย์ AI 7 วันล่าสุด: / }).locator('[data-status]');
+  await expect(bars).toHaveCount(168);
+  await bars.nth(100).dispatchEvent('pointerdown'); // a tap
+  await expect(page.getByRole('tooltip')).toContainText('ทำงานปกติ');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.getByRole('heading', { name: 'การดึงงาน' })).toBeVisible();
   await page.screenshot({ path: 'test-results/admin-system-mobile-th.png', fullPage: true });
+});
+
+test('TC-ADM-SY-13: the ingest table shows 10 boards per page and pages with next and previous', async ({ page }) => {
+  const boards = Array.from({ length: 23 }, (_, i) => ({ board: `lever:b${String(i).padStart(2, '0')}`, at: `2026-11-04T06:${String(59 - i).padStart(2, '0')}:00Z`, status: 'complete', jobs_total: i, jobs_new: 0, error_code: null }));
+  await mockSystem(page, { ingest: boards });
+  await page.goto('/admin/system');
+  const table = page.getByRole('table', { name: 'Job ingest' });
+  await expect(table.getByRole('row')).toHaveCount(11); // header + 10
+  await expect(page.getByText('Showing 1–10 of 23')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Previous' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByText('Showing 11–20 of 23')).toBeVisible();
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(table.getByRole('row')).toHaveCount(4); // header + 3
+  await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled();
+  await expect(page.getByText('Page 3 of 3')).toBeVisible();
 });

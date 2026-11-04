@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockAdminAccount } from '../fixtures/admin';
-import { ada, baseUsers, bo, mockAdminUsers, otherAdmin, selfUser } from '../fixtures/admin-users';
+import { ada, baseUsers, bo, manyUsers, mockAdminUsers, otherAdmin, selfUser } from '../fixtures/admin-users';
 
 const open = async (page: Page, opts: Parameters<typeof mockAdminUsers>[1] = {}) => {
   await mockAdminAccount(page);
@@ -53,16 +53,54 @@ test('TC-ADM-US-02: search is debounced, status and range filters go to the API'
   await expect(page.getByRole('menuitemradio')).toHaveText(['Last 7 days', 'Last 30 days', 'Last 90 days', 'All time']);
 });
 
-test('TC-ADM-US-03: Load more appends the next page with the cursor', async ({ page }) => {
-  const mock = await open(page, { pageSize: 2 });
-  await expect(page.getByText('2+ accounts')).toBeVisible();
-  await page.getByRole('button', { name: 'Load more' }).click();
-  await expect(page.getByRole('row', { name: /ada@example\.test/ })).toBeVisible();
-  expect(mock.requests.at(-1)!.searchParams.get('cursor')).toBe('2');
-  await page.getByRole('button', { name: 'Load more' }).click();
-  await expect(page.getByRole('row', { name: /cy@example\.test/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Load more' })).toHaveCount(0);
-  await expect(page.getByText('5 accounts')).toBeVisible();
+test('TC-ADM-US-03: 10 rows per page; Next and Previous page through, the page lives in the URL and filters reset it', async ({ page }) => {
+  const mock = await open(page, { users: [...baseUsers, ...manyUsers(18)] }); // 23 accounts
+  const rows = page.locator('tbody tr');
+  await expect(rows).toHaveCount(10);
+  await expect(page.getByText('23 accounts')).toBeVisible();
+  await expect(page.getByText('Showing 1–10 of 23')).toBeVisible();
+  await expect(page.getByText('Page 1 of 3')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Previous' })).toBeDisabled();
+  expect(mock.requests[0].searchParams.get('page')).toBe('0');
+  expect(mock.requests[0].searchParams.get('page_size')).toBe('10');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByText('Showing 11–20 of 23')).toBeVisible();
+  await expect(page).toHaveURL(/[?&]page=2(&|$)/);
+  expect(mock.requests.at(-1)!.searchParams.get('page')).toBe('1');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByText('Showing 21–23 of 23')).toBeVisible();
+  await expect(rows).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Previous' }).click();
+  await expect(page.getByText('Page 2 of 3')).toBeVisible();
+  // A reload keeps the page.
+  await page.reload();
+  await page.waitForTimeout(500); // longer than the search debounce, which must not reset the page
+  await expect(page.getByText('Showing 11–20 of 23')).toBeVisible();
+  // A filter change goes back to the first page.
+  await page.getByRole('button', { name: 'Suspended' }).click();
+  await expect(page).not.toHaveURL(/page=/);
+  await expect.poll(() => mock.requests.at(-1)!.searchParams.get('page')).toBe('0');
+});
+
+test('TC-ADM-US-03b: a page beyond the end falls back to the last page; one page of rows shows no pager', async ({ page }) => {
+  await open(page, { users: [...baseUsers, ...manyUsers(18)] });
+  await page.goto('/admin/users?page=9');
+  await expect(page.getByText('Showing 21–23 of 23')).toBeVisible();
+  await expect(page).toHaveURL(/[?&]page=3(&|$)/);
+  await page.getByRole('button', { name: 'Suspended' }).click();
+  await expect(page.getByRole('navigation', { name: 'Change page' })).toHaveCount(0);
+});
+
+test('TC-ADM-US-03c: at 390 px the pager fits and its buttons are reachable', async ({ page }) => {
+  await open(page, { users: [...baseUsers, ...manyUsers(18)] });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const next = page.getByRole('button', { name: 'Next' });
+  await next.scrollIntoViewIfNeeded();
+  await expect(next).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await next.click();
+  await expect(page.getByText('Page 2 of 3')).toBeVisible();
 });
 
 test('TC-ADM-US-04: a row opens the sheet with dates and counts, never content', async ({ page }) => {
@@ -199,4 +237,15 @@ test('TC-ADM-US-13: Thai renders labels, relative time and Buddhist-era dates', 
   await page.getByRole('button', { name: ada.email }).click();
   await expect(sheet(page).getByRole('button', { name: 'ส่งลิงก์ตั้งรหัสผ่านใหม่' })).toBeVisible();
   await expect(sheet(page).getByText('คุณไม่เห็นรหัสผ่านและไม่เห็นลิงก์')).toBeVisible();
+});
+
+test('TC-ADM-US-14: Thai pager reads in Thai', async ({ page }) => {
+  await mockAdminAccount(page);
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await mockAdminUsers(page, { users: [...baseUsers, ...manyUsers(18)] });
+  await page.goto('/admin/users');
+  await expect(page.getByText('แสดง 1–10 จาก 23 รายการ')).toBeVisible();
+  await expect(page.getByText('หน้า 1 จาก 3')).toBeVisible();
+  await page.getByRole('button', { name: 'ถัดไป' }).click();
+  await expect(page.getByText('หน้า 2 จาก 3')).toBeVisible();
 });

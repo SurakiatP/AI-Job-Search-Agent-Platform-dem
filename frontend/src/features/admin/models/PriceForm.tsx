@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { priceState, type PriceDraft } from './lib';
 
 /** Manual price for a model neither OpenRouter nor LiteLLM prices. A price of 0 needs the free box. */
-export function PriceForm({ value, onChange }: { value: PriceDraft; onChange: (v: PriceDraft) => void }) {
+export function PriceForm({ value, onChange, warn }: { value: PriceDraft; onChange: (v: PriceDraft) => void; warn?: { title: string; body: string } }) {
   const { t } = useTranslation('admin-models');
   const needFree = priceState(value) === 'needs_free';
   const field = (key: 'in' | 'out' | 'cache', placeholder?: string) => <label className="grid gap-1.5 text-sm font-medium">{t(`price.${key}`)}
@@ -17,7 +17,7 @@ export function PriceForm({ value, onChange }: { value: PriceDraft; onChange: (v
   return <div className="grid gap-3 rounded-xl bg-warning/10 p-4">
     <div className="flex gap-3 text-sm leading-relaxed">
       <TriangleAlert className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden="true" />
-      <div><strong>{t('price.warnTitle')}</strong> {t('price.warnBody')}</div>
+      <div><strong>{warn?.title ?? t('price.warnTitle')}</strong> {warn?.body ?? t('price.warnBody')}</div>
     </div>
     <div className="grid gap-3 sm:grid-cols-3">{field('in')}{field('out')}{field('cache', t('price.cachePlaceholder'))}</div>
     <label className="flex items-center gap-2 text-sm">

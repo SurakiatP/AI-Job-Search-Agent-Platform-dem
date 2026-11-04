@@ -5,6 +5,7 @@ export { DeltaChip, KpiCard, KpiTabs, type DeltaChipProps, type KpiCardProps } f
 export { CountUp, useCountUp, useDrawn, useReducedMotion } from './motion';
 export { HBar, MetricPair, ShareBar, type HBarProps, type MetricPairProps } from './bars';
 export { DEFAULT_RANGE, RANGES, RANGE_BUCKET_SECONDS, RANGE_SECONDS, formatBucketLabel, isRangeKey, rangeHasComparison, rangeRefreshMs, type RangeKey } from './range';
+export { PAGE_SIZE, Pager, pageFromParam, pageToParam, usePagerLabels, type PagerLabels } from './Pager';
 export { RangeMenu, type RangeMenuProps } from './RangeMenu';
 export { Segmented, type SegmentedProps } from './Segmented';
 export { Sheet, type SheetProps } from './Sheet';

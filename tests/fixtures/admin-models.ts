@@ -16,6 +16,8 @@ export const baseTasks = () => [
 ];
 export const baseModels = () => [
   model('openai/gpt-6-luna', { used_by: ['draft_documents'] }),
+  model('acme/spare', { used_by: [] }),
+  model('acme/unpriced', { price_in: null, price_out: null, price_cache: null, price_source: null, used_by: [] }),
   model('qwen/qwen3.7-flash', { price_in: 0.05, price_out: 0.2, price_cache: null, price_source: 'manual', official_price: { price_in: 0.06, price_out: 0.24, price_cache: null, source: 'openrouter' }, used_by: ['evaluate_job', 'interview_grade', 'document_ocr'] }),
 ];
 export const baseCatalog = () => [
@@ -44,12 +46,19 @@ export interface ModelsMock {
   failTasks: boolean;
   /** Make PUT /tasks/{op} fail with this code. */
   putError: string | null;
+  /** Make the catalog search fail until set false. */
+  failCatalog: boolean;
+  /** Milliseconds the catalog search takes to answer. */
+  catalogDelay: number;
+  /** Make DELETE /models and PUT /models/price answer 409 or 422 with this code. */
+  deleteError: string | null;
+  priceError: string | null;
 }
 
 /** Mocks the admin AI-model endpoints on top of an admin session. Every write is recorded in `calls`. */
 export async function mockAdminModels(page: Page, overrides: Partial<ModelsMock> = {}): Promise<ModelsMock> {
   await mockAdminAccount(page);
-  const m: ModelsMock = { calls: [], tasks: baseTasks(), models: baseModels(), history: baseHistory(), verdict: 'green', busy: false, failTasks: false, putError: null, ...overrides };
+  const m: ModelsMock = { calls: [], tasks: baseTasks(), models: baseModels(), history: baseHistory(), verdict: 'green', busy: false, failTasks: false, putError: null, failCatalog: false, catalogDelay: 0, deleteError: null, priceError: null, ...overrides };
   let polls = 0;
   const err = (route: Route, status: number, code: string) => route.fulfill({ status, json: { code, message_key: `errors.${code}`, retryable: false } });
   await page.route('**/v1/admin/**', async route => {
@@ -61,7 +70,25 @@ export async function mockAdminModels(page: Page, overrides: Partial<ModelsMock>
     if (method !== 'GET') m.calls.push({ method, path, body });
     if (path === '/tasks' && method === 'GET') return m.failTasks ? err(route, 500, 'internal_error') : route.fulfill({ json: m.tasks });
     if (path === '/models' && method === 'GET') return route.fulfill({ json: m.models });
-    if (path === '/models/catalog') { const q = (url.searchParams.get('q') ?? '').toLowerCase(); return route.fulfill({ json: baseCatalog().filter(i => i.id.includes(q) || i.name.toLowerCase().includes(q)) }); }
+    if (path === '/models/catalog') {
+      const q = (url.searchParams.get('q') ?? '').toLowerCase();
+      if (m.catalogDelay) await new Promise(r => setTimeout(r, m.catalogDelay));
+      if (m.failCatalog) return err(route, 503, 'service_unavailable');
+      if (q === 'many') return route.fulfill({ json: Array.from({ length: 25 }, (_, i) => ({ id: `many/model-${i + 1}`, name: `Many ${i + 1}`, price_in: 0.1, price_out: 0.2, price_cache: null, context_length: 128000, registered: false })) });
+      return route.fulfill({ json: baseCatalog().filter(i => i.id.includes(q) || i.name.toLowerCase().includes(q)) });
+    }
+    if (path === '/models' && method === 'DELETE') {
+      if (m.deleteError) return err(route, 409, m.deleteError);
+      m.models = m.models.filter(x => x.model !== body!.model);
+      return route.fulfill({ status: 204, body: '' });
+    }
+    if (path === '/models/price' && method === 'PUT') {
+      if (m.priceError) return err(route, 422, m.priceError);
+      let row = m.models.find(x => x.model === body!.model);
+      if (!row) { row = model(body!.model); m.models.push(row); }
+      Object.assign(row, { price_in: body!.price_in, price_out: body!.price_out, price_cache: body!.price_cache ?? null, is_free: !!body!.is_free, price_source: 'manual', official_price: null });
+      return route.fulfill({ json: row });
+    }
     if (path === '/models' && method === 'POST') {
       const price = body!.price_in != null ? { price_in: body!.price_in, price_out: body!.price_out, price_cache: body!.price_cache ?? null, price_source: 'manual', is_free: !!body!.is_free } : { price_source: 'openrouter' };
       const row = model(body!.model, price);

@@ -1931,7 +1931,7 @@ paths:
   /admin/prefs:
     get:
       tags: [admin]
-      description: Admin only. Overview widgets and USD to THB rate saved on the calling admin account.
+      description: Admin only. Overview widgets saved on the calling admin account.
       responses:
         '200': {description: Prefs, content: {application/json: {schema: {$ref: '#/components/schemas/AdminPrefs'}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
@@ -1943,16 +1943,25 @@ paths:
       responses:
         '200': {description: Saved prefs, content: {application/json: {schema: {$ref: '#/components/schemas/AdminPrefs'}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
-        '422': {description: Invalid widget id or rate, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid widget id, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/fx:
+    get:
+      tags: [admin]
+      description: Admin only. USD to THB reference rate fetched live from a free exchange-rate API (Frankfurter, fallback ExchangeRate-API open access), cached one hour.
+      responses:
+        '200': {description: Rate, content: {application/json: {schema: {$ref: '#/components/schemas/AdminFxRate'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '503': {description: No provider answered and no earlier value exists (fx_unavailable), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /admin/users:
     get:
       tags: [admin]
-      description: Admin only. Account metadata only (D5); newest first, cursor paged.
+      description: Admin only. Account metadata only (D5); newest first, offset paged (page, page_size).
       parameters:
         - {name: q, in: query, schema: {type: string, maxLength: 200}, description: Substring of the email}
         - {name: status, in: query, schema: {type: string, enum: [active, suspended, deleting]}}
         - {$ref: '#/components/parameters/admin_range'}
-        - {$ref: '#/components/parameters/admin_cursor'}
+        - {$ref: '#/components/parameters/admin_page'}
+        - {$ref: '#/components/parameters/admin_page_size'}
       responses:
         '200': {description: Users, content: {application/json: {schema: {$ref: '#/components/schemas/AdminUserPage'}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
@@ -2008,14 +2017,15 @@ paths:
   /admin/runs:
     get:
       tags: [admin]
-      description: Admin only. Run metadata only (status, operation, timings, model, tokens, cost); never input or result content. Newest first, cursor paged.
+      description: Admin only. Run metadata only (status, operation, timings, model, tokens, cost); never input or result content. Newest first, offset paged (page, page_size).
       parameters:
         - {name: status, in: query, schema: {type: string, enum: [queued, running, waiting_approval, needs_input, completed, failed, cancelled, interrupted]}}
         - {name: operation, in: query, schema: {type: string, maxLength: 60}}
         - {name: model, in: query, schema: {type: string, maxLength: 160}}
         - {name: since, in: query, schema: {type: string, format: date-time}}
         - {name: until, in: query, schema: {type: string, format: date-time}}
-        - {$ref: '#/components/parameters/admin_cursor'}
+        - {$ref: '#/components/parameters/admin_page'}
+        - {$ref: '#/components/parameters/admin_page_size'}
       responses:
         '200': {description: Runs, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRunPage'}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
@@ -2069,7 +2079,7 @@ paths:
   /admin/models:
     get:
       tags: [admin]
-      description: Admin only. Registered models with prices per 1M tokens.
+      description: Admin only. Registered models with prices per 1M tokens. A model in the gateway or used by a task with no price row gets OpenRouter's, then LiteLLM's price filled in; with neither it stays unpriced (null prices).
       responses:
         '200': {description: Registered models, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AdminRegisteredModel'}}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
@@ -2083,17 +2093,27 @@ paths:
         '201': {description: Registered, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRegisteredModel'}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
         '422': {description: price_invalid, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+    delete:
+      tags: [admin]
+      description: Admin only. Removes the model from the gateway (LiteLLM /model/delete, then the app key's allowed list) and from the price table. Past requests keep their recorded cost. 409 model_in_use while a task or the default model uses it; 404 when the model is in neither the gateway nor the price table; 503 when the gateway cannot be reached. Audited as model.delete.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AdminModelRef'}}}
+      responses:
+        '204': {description: Removed}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: model_in_use, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /admin/models/price:
     put:
       tags: [admin]
-      description: Admin only. Sets a manual price (source becomes manual). Empty price_cache means the input price. 422 price_invalid. Audited.
+      description: Admin only. Sets a manual price (source becomes manual) and creates the price row when the model has none yet. Empty price_cache means the input price. New price applies to future requests only. 422 price_invalid, 422 model_invalid. Audited.
       requestBody:
         required: true
         content: {application/json: {schema: {$ref: '#/components/schemas/AdminModelPrice'}}}
       responses:
         '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRegisteredModel'}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
-        '404': {$ref: '#/components/responses/NotFound'}
         '422': {description: price_invalid, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /admin/models/use-official-price:
     post:
@@ -2161,7 +2181,8 @@ paths:
   /admin/system:
     get:
       tags: [admin]
-      description: Admin only. Health now, probes of the last 24 hours, job ingest history and webhook counts.
+      description: Admin only. Health now, probe buckets of the range (default 1h), job ingest history and webhook counts.
+      parameters: [{$ref: '#/components/parameters/admin_range'}]
       responses:
         '200': {description: System, content: {application/json: {schema: {$ref: '#/components/schemas/AdminSystem'}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
@@ -2219,6 +2240,17 @@ components:
       in: query
       required: false
       schema: {type: string, maxLength: 200}
+    admin_page:
+      name: page
+      in: query
+      required: false
+      description: Zero-based page number
+      schema: {type: integer, minimum: 0, default: 0}
+    admin_page_size:
+      name: page_size
+      in: query
+      required: false
+      schema: {type: integer, minimum: 1, maximum: 50, default: 10}
     admin_user_id:
       name: user_id
       in: path
@@ -3459,10 +3491,20 @@ components:
     AdminPrefs:
       type: object
       additionalProperties: false
-      required: [widgets, thb_rate]
+      required: [widgets]
       properties:
         widgets: {type: array, maxItems: 20, items: {type: string, pattern: '^[a-z_]{1,40}$'}, description: Ids of the visible overview widgets, in order}
-        thb_rate: {type: number, exclusiveMinimum: 0, maximum: 1000, description: Baht per US dollar used on the usage page}
+    AdminFxRate:
+      type: object
+      additionalProperties: false
+      required: [rate, source, source_url, as_of, fetched_at, stale]
+      properties:
+        rate: {type: number, description: Baht per US dollar}
+        source: {type: string, description: Name of the provider that supplied the rate}
+        source_url: {type: string}
+        as_of: {type: string, description: Date the provider published the rate (daily reference rate)}
+        fetched_at: {type: string, format: date-time}
+        stale: {type: boolean, description: True when both providers failed and the last good value is older than one hour}
     AdminUserItem:
       type: object
       additionalProperties: false
@@ -3480,10 +3522,12 @@ components:
     AdminUserPage:
       type: object
       additionalProperties: false
-      required: [items, next_cursor]
+      required: [items, total, page, page_size]
       properties:
         items: {type: array, items: {$ref: '#/components/schemas/AdminUserItem'}}
-        next_cursor: {type: [string, 'null']}
+        total: {type: integer, minimum: 0, description: Rows matching the same filters}
+        page: {type: integer, minimum: 0}
+        page_size: {type: integer, minimum: 1, maximum: 50}
     AdminUserDetail:
       type: object
       additionalProperties: false
@@ -3555,10 +3599,12 @@ components:
     AdminRunPage:
       type: object
       additionalProperties: false
-      required: [items, next_cursor]
+      required: [items, total, page, page_size]
       properties:
         items: {type: array, items: {$ref: '#/components/schemas/AdminRunItem'}}
-        next_cursor: {type: [string, 'null']}
+        total: {type: integer, minimum: 0, description: Rows matching the same filters}
+        page: {type: integer, minimum: 0}
+        page_size: {type: integer, minimum: 1, maximum: 50}
     AdminRunDetail:
       type: object
       additionalProperties: false
@@ -3725,8 +3771,26 @@ components:
       additionalProperties: false
       required: [checked_at, components]
       properties:
-        checked_at: {type: string, format: date-time}
-        components: {$ref: '#/components/schemas/AdminHealthComponents'}
+        checked_at: {type: string, format: date-time, description: Start of the bucket}
+        components: {$ref: '#/components/schemas/AdminProbeComponents'}
+    AdminProbeCell:
+      type: object
+      additionalProperties: false
+      required: [status, ms, failed, checks]
+      properties:
+        status: {type: string, enum: [ok, down, unknown], description: down when any check of the bucket failed; unknown when there was none}
+        ms: {type: [integer, 'null'], description: Slowest response time in the bucket, in milliseconds; null without a timed check (rows written before response times were kept)}
+        failed: {type: integer, description: Checks of the bucket that failed}
+        checks: {type: integer, description: Checks made in the bucket}
+    AdminProbeComponents:
+      type: object
+      additionalProperties: false
+      required: [postgres, object_store, llm_gateway, sandbox]
+      properties:
+        postgres: {$ref: '#/components/schemas/AdminProbeCell'}
+        object_store: {$ref: '#/components/schemas/AdminProbeCell'}
+        llm_gateway: {$ref: '#/components/schemas/AdminProbeCell'}
+        sandbox: {$ref: '#/components/schemas/AdminProbeCell'}
     AdminIngestRun:
       type: object
       additionalProperties: false
@@ -3749,11 +3813,13 @@ components:
     AdminSystem:
       type: object
       additionalProperties: false
-      required: [generated_at, health, probes, ingest, webhooks, gateway, tools]
+      required: [generated_at, range, bucket_seconds, health, probes, ingest, webhooks, gateway, tools]
       properties:
         generated_at: {type: string, format: date-time}
+        range: {type: string, enum: ['1m', '5m', '10m', '15m', '30m', '1h', '4h', '10h', 7d, 30d, 90d, all]}
+        bucket_seconds: {type: integer, description: Width of one probe bucket; 30 s probes, so 30 for the shortest ranges}
         health: {$ref: '#/components/schemas/AdminHealth'}
-        probes: {type: array, items: {$ref: '#/components/schemas/AdminProbe'}, description: Periodic probes of the last 24 hours, oldest first}
+        probes: {type: array, items: {$ref: '#/components/schemas/AdminProbe'}, description: One bucket per bar of the range (empty buckets included), oldest first. Probes are kept 90 days; `all` is those 90 days.}
         ingest: {type: array, items: {$ref: '#/components/schemas/AdminIngestRun'}, description: Latest ingest runs per board, newest first}
         webhooks: {$ref: '#/components/schemas/AdminWebhookCounts'}
         gateway: {$ref: '#/components/schemas/GatewayStatusView'}

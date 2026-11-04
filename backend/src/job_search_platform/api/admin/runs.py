@@ -22,12 +22,12 @@ RunStatusFilter = Literal["queued", "running", "waiting_approval", "needs_input"
 @router.get("/runs", response_model=AdminRunPage)
 async def get_runs(status: RunStatusFilter | None = None, operation: str | None = Query(None, max_length=60),
                    model: str | None = Query(None, max_length=160), since: datetime | None = None,
-                   until: datetime | None = None, cursor: str | None = Query(None, max_length=200),
+                   until: datetime | None = None, page: int = Query(0, ge=0, le=100_000), page_size: int = Query(10, ge=1, le=50),
                    _actor=Depends(admin_actor), services: Services = Depends(get_services)):
     def run():
         with services.sessions() as db:
             return admin_runs.list_runs(db, {"status": status, "operation": operation, "model": model,
-                                             "since": since, "until": until}, cursor)
+                                             "since": since, "until": until}, page, page_size)
     return await asyncio.to_thread(run)
 
 

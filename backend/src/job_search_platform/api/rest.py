@@ -77,14 +77,14 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
         "object_store_unavailable": 503, "service_unavailable": 503,
-        "secret_store_unavailable": 503,
+        "secret_store_unavailable": 503, "fx_unavailable": 503,
         "jev_unavailable": 409, "gateway_unconfigured": 409, "ocr_unavailable": 503, "document_too_many_pages": 400,
         "duplicate": 409, "bank_full": 409,
         "email_unverified": 403, "quota_exceeded": 429, "rate_limited": 429, "invalid_credentials": 401,
         "invalid_token": 400, "invalid_code": 400, "invalid_image": 422, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
         "saved_search_limit": 409, "invalid_webhook_url": 422, "webhook_limit": 409, "delivery_not_dead": 409, "saved_search_name_taken": 409, "mail_unavailable": 503,
         "telegram_disabled": 404, "telegram_not_linked": 409, "telegram_unavailable": 503,
-        "admin_target_forbidden": 403, "invalid_prefs": 422, "benchmark_required": 409, "benchmark_busy": 409, "price_invalid": 422, "official_price_unavailable": 409, "model_invalid": 422, "account_deleting": 409, "owner_unavailable": 409, "run_finished": 409,
+        "admin_target_forbidden": 403, "invalid_prefs": 422, "benchmark_required": 409, "benchmark_busy": 409, "price_invalid": 422, "official_price_unavailable": 409, "model_invalid": 422, "model_in_use": 409, "account_deleting": 409, "owner_unavailable": 409, "run_finished": 409,
         "draft_conflict": 409, "theme_invalid": 422, "theme_in_use": 409, "theme_limit": 409, "resume_invalid": 422, "resume_incomplete": 422, "render_failed": 502,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
-import { ShareBar } from '../ui';
+import { PAGE_SIZE, Pager, ShareBar, usePagerLabels } from '../ui';
 import type { AdminUsage, AdminUsageRow } from '../../../lib/api-types';
 import { count, dayLabel, money, type Currency } from './format';
 
@@ -11,6 +11,9 @@ type SortKey = 'cost' | 'requests';
 export function UsageTable({ data, currency, rate, lang }: { data: AdminUsage; currency: Currency; rate: number; lang: string }) {
   const { t, i18n } = useTranslation('admin-usage');
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' } | null>(null);
+  const labels = usePagerLabels();
+  const top = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(0);
   const total = data.totals.cost_usd ?? 0;
   const value = (r: AdminUsageRow, k: SortKey) => (k === 'cost' ? r.cost_usd : r.requests);
   // Rows without a cost ("—") always sort last. Without a sort the server order stands (cost desc; day ascending).
@@ -19,7 +22,8 @@ export function UsageTable({ data, currency, rate, lang }: { data: AdminUsage; c
     if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
     return sort.dir === 'asc' ? x - y : y - x;
   }) : data.rows;
-  const toggle = (key: SortKey) => setSort(s => (s?.key === key && s.dir === 'desc' ? { key, dir: 'asc' } : { key, dir: 'desc' }));
+  const shown = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const toggle = (key: SortKey) => { setPage(0); setSort(s => (s?.key === key && s.dir === 'desc' ? { key, dir: 'asc' } : { key, dir: 'desc' })); };
   const name = (r: AdminUsageRow) => !r.key ? t('unknown')
     : data.group_by === 'task' ? i18n.t(`workspace.operations.${r.key}`, { ns: 'common', defaultValue: r.key })
     : data.group_by === 'day' ? dayLabel(r.key, lang) : r.key;
@@ -36,7 +40,7 @@ export function UsageTable({ data, currency, rate, lang }: { data: AdminUsage; c
   const num = 'px-2 py-3 text-end tabular-nums sm:px-3';
   const cell = (usd: number | null, approx: boolean) => usd == null ? <span className="text-muted-foreground" aria-label="—">—</span> : `${approx ? '≈ ' : ''}${money(usd, currency, rate, lang)}`;
 
-  return <div className="overflow-x-auto">
+  return <><div ref={top} className="overflow-x-auto">
     <table className="w-full sm:min-w-[640px] border-collapse text-sm" aria-label={t('tableLabel', { group: t(`groupBy.${data.group_by}`) })}>
       <thead><tr className="border-b">
         <th scope="col" className={`${th} text-start`}>{t(`groupBy.${data.group_by}`)}</th>
@@ -48,7 +52,7 @@ export function UsageTable({ data, currency, rate, lang }: { data: AdminUsage; c
         {sortable('cost', t('cols.cost'))}
         <th scope="col" className={`${th} text-end`}>{t('cols.perRequest')}</th>
       </tr></thead>
-      <tbody>{rows.map(r => {
+      <tbody>{shown.map(r => {
         const share = r.cost_usd != null && total > 0 ? r.cost_usd / total : 0;
         const pct = r.cost_usd == null ? '—' : share > 0 && share < 0.01 ? '<1%' : `${Math.round(share * 100)}%`;
         return <tr key={r.key} className="border-b last:border-b-0 hover:bg-primary/[0.03]">
@@ -66,5 +70,6 @@ export function UsageTable({ data, currency, rate, lang }: { data: AdminUsage; c
         </tr>;
       })}</tbody>
     </table>
-  </div>;
+  </div>
+  <Pager page={page} total={rows.length} onPage={setPage} labels={labels} anchor={top} /></>;
 }

@@ -105,10 +105,10 @@ def current_pair(session, operation: str) -> tuple[str, str]:
     """Stored task setting, else the env default (AI_MODEL_<OP> / AI_ANALYZE_MODEL, AI_REASONING_<OP>)."""
     row = session.get(TaskModelSetting, operation)
     if row is not None:
-        return row.model, row.effort
+        return real_model(row.model), row.effort
     model = os.environ.get("AI_MODEL_" + operation.upper(), "").strip()
     if not re.fullmatch(r"[A-Za-z0-9._:/-]{1,120}", model):
-        model = os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze"
+        model = default_model_id()
     return model, env_effort(os.environ, operation)
 
 

@@ -48,7 +48,7 @@ export function ModelsPage() {
               <TabsTrigger key={k} value={k}>{t(`tabs.${k}`)}<span className="ms-2 rounded-full bg-muted px-2 text-xs leading-5 text-muted-foreground tabular-nums">{n}</span></TabsTrigger>)}
           </TabsList>
           <TabsContent value="tasks"><TasksTab tasks={data.tasks} models={data.models} onChange={task => open(task)} /></TabsContent>
-          <TabsContent value="library"><LibraryTab models={data.models} onAdd={() => setAdding(true)} onChanged={reload} /></TabsContent>
+          <TabsContent value="library"><LibraryTab models={data.models} onAdd={() => setAdding(true)} onChanged={reload} onShowTasks={() => setTab('tasks')} /></TabsContent>
           <TabsContent value="history"><HistoryTab items={data.history} tasks={data.tasks} /></TabsContent>
         </Tabs>
       </> : null}

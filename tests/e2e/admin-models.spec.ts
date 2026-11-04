@@ -245,3 +245,165 @@ test('TC-ADM-MD-14: the page renders in Thai', async ({ page }) => {
   await expect(page.getByText('ไม่ผ่านเกณฑ์')).toBeVisible();
   await expect(page.getByText('ผ่าน · ใช้แล้ว')).toBeVisible();
 });
+
+async function openLibrary(page: Page, overrides: Partial<ModelsMock> = {}) {
+  const m = await open(page, overrides);
+  await page.getByRole('tab', { name: /^Model library and prices/ }).click();
+  return m;
+}
+const libRow = (page: Page, model: string) => page.getByRole('listitem').filter({ has: page.getByRole('button', { name: `Remove ${model}` }) });
+
+test('TC-ADM-MD-15: the add sheet walks through start, loading skeleton, results as cards, count, clear and keyboard', async ({ page }) => {
+  await openLibrary(page, { catalogDelay: 600 });
+  await page.getByRole('button', { name: 'Add model from OpenRouter' }).click();
+  const search = sheet(page).getByLabel('Search OpenRouter models');
+  await expect(sheet(page).getByText('Search the OpenRouter list')).toBeVisible();
+  await expect(search).toHaveAttribute('placeholder', 'Type a model name, for example qwen or gpt');
+  await search.fill('luna');
+  await expect(sheet(page).locator('.animate-pulse').first()).toBeVisible();
+  const cards = sheet(page).getByRole('list', { name: 'Search results' });
+  await expect(cards).toBeVisible();
+  await expect(sheet(page).getByText('Found 3 models')).toBeVisible();
+  const mini = cards.getByRole('listitem').filter({ hasText: 'gpt-6-luna-mini' });
+  await expect(mini).toContainText('$0.08');
+  await expect(mini).toContainText('$0.32');
+  await expect(mini).toContainText('100K context');
+  await expect(cards.getByRole('listitem').filter({ hasText: 'GPT-6 Luna' }).first()).toContainText('Already registered');
+  await expect(cards.getByRole('listitem').filter({ hasText: 'luna-thai-7b' })).toContainText('No price — enter it');
+  await search.press('ArrowDown');
+  await expect(sheet(page).getByRole('button', { name: 'Add openai/gpt-6-luna-mini' })).toBeFocused();
+  await search.fill('zzzz');
+  await expect(sheet(page).getByText('No model matches "zzzz"')).toBeVisible();
+  await sheet(page).getByRole('button', { name: 'Clear the search' }).click();
+  await expect(search).toHaveValue('');
+  await expect(sheet(page).getByText('Search the OpenRouter list')).toBeVisible();
+});
+
+test('TC-ADM-MD-16: the add sheet caps the list at 20 and says so; a failed search offers Try again', async ({ page }) => {
+  const m = await openLibrary(page);
+  await page.getByRole('button', { name: 'Add model from OpenRouter' }).click();
+  await sheet(page).getByLabel('Search OpenRouter models').fill('many');
+  await expect(sheet(page).getByText('Found 25 models, showing the first 20.', { exact: false })).toBeVisible();
+  await expect(sheet(page).getByRole('list', { name: 'Search results' }).getByRole('listitem')).toHaveCount(20);
+  m.failCatalog = true;
+  await sheet(page).getByLabel('Search OpenRouter models').fill('luna');
+  await expect(sheet(page).getByText('Could not reach the OpenRouter list. Try again in a minute.')).toBeVisible();
+  m.failCatalog = false;
+  await sheet(page).getByRole('button', { name: 'Try again' }).click();
+  await expect(sheet(page).getByRole('list', { name: 'Search results' })).toBeVisible();
+});
+
+test('TC-ADM-MD-17: Remove model: the dialog names the model, then the row goes and a message says past costs are kept', async ({ page }) => {
+  const m = await openLibrary(page);
+  await page.getByRole('button', { name: 'Remove acme/spare' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: 'Remove acme/spare?' })).toBeVisible();
+  await expect(dialog).toContainText('Past requests keep their recorded cost');
+  await dialog.getByRole('button', { name: 'Remove model' }).click();
+  await expect(page.getByText('acme/spare was removed. Past costs are kept.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove acme/spare' })).toHaveCount(0);
+  expect(m.calls).toEqual([{ method: 'DELETE', path: '/models', body: { model: 'acme/spare' } }]);
+});
+
+test('TC-ADM-MD-18: a model a task uses cannot be removed: the dialog lists the tasks and leads to the Tasks tab', async ({ page }) => {
+  const m = await openLibrary(page);
+  await page.getByRole('button', { name: 'Remove qwen/qwen3.7-flash' }).click({ force: true }); // aria-disabled, still opens the explanation
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Job evaluation');
+  await expect(dialog).toContainText('Answer grading');
+  await expect(dialog.getByRole('button', { name: 'Remove model' })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Change those tasks first' }).click();
+  await expect(page.getByRole('tab', { name: /^Task models/ })).toHaveAttribute('aria-selected', 'true');
+  expect(m.calls).toEqual([]);
+});
+
+test('TC-ADM-MD-19: a refused delete (model_in_use) shows its message in the dialog and keeps the row', async ({ page }) => {
+  await openLibrary(page, { deleteError: 'model_in_use' });
+  await page.getByRole('button', { name: 'Remove acme/spare' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove model' }).click();
+  await expect(page.getByRole('dialog')).toContainText('A task still uses this model, or it is the default model.');
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('button', { name: 'Remove acme/spare' })).toBeVisible();
+});
+
+test('TC-ADM-MD-20: edit price: prefilled, validation, free box for 0, saves a manual price and says it applies to new requests', async ({ page }) => {
+  const m = await openLibrary(page);
+  await page.getByRole('button', { name: 'Edit the price of openai/gpt-6-luna' }).click();
+  const save = sheet(page).getByRole('button', { name: 'Save price' });
+  await expect(sheet(page).getByLabel('Input per 1M tokens')).toHaveValue('0.35');
+  await expect(sheet(page).getByText('A new price applies to future requests.', { exact: false })).toBeVisible();
+  await expect(sheet(page).getByText('You are setting this price by hand.')).toBeVisible();
+  await sheet(page).getByLabel('Input per 1M tokens').fill('abc');
+  await expect(save).toBeDisabled();
+  await sheet(page).getByLabel('Input per 1M tokens').fill('0');
+  await expect(sheet(page).getByText('A price of 0 needs the free box ticked.')).toBeVisible();
+  await expect(save).toBeDisabled();
+  await sheet(page).getByLabel('Input per 1M tokens').fill('0.4');
+  await sheet(page).getByLabel('Output per 1M tokens').fill('1.5');
+  await expect(save).toBeEnabled();
+  await save.click();
+  await expect(page.getByText('Price saved for openai/gpt-6-luna. It applies to new requests.')).toBeVisible();
+  expect(m.calls).toEqual([{ method: 'PUT', path: '/models/price', body: { model: 'openai/gpt-6-luna', price_in: 0.4, price_out: 1.5, price_cache: 0.04, is_free: false } }]);
+  await expect(page.getByRole('listitem').filter({ hasText: 'openai/gpt-6-luna' }).first()).toContainText('$0.40');
+});
+
+test('TC-ADM-MD-21: a model with no price shows Set price instead of dashes, and the sheet can switch to the OpenRouter price', async ({ page }) => {
+  const m = await openLibrary(page);
+  const row = page.getByRole('listitem').filter({ hasText: 'acme/unpriced' });
+  await expect(row).toContainText('No price yet');
+  await row.getByRole('button', { name: 'Set the price of acme/unpriced' }).click();
+  await expect(sheet(page).getByLabel('Input per 1M tokens')).toHaveValue('');
+  await expect(sheet(page).getByRole('button', { name: 'Save price' })).toBeDisabled();
+  await sheet(page).getByLabel('Input per 1M tokens').fill('1');
+  await sheet(page).getByLabel('Output per 1M tokens').fill('2');
+  await sheet(page).getByRole('button', { name: 'Save price' }).click();
+  await expect(page.getByText('Price saved for acme/unpriced.', { exact: false })).toBeVisible();
+  expect(m.calls[0]).toEqual({ method: 'PUT', path: '/models/price', body: { model: 'acme/unpriced', price_in: 1, price_out: 2, price_cache: null, is_free: false } });
+  await page.getByRole('button', { name: 'Edit the price of qwen/qwen3.7-flash' }).click();
+  await expect(sheet(page).getByText('OpenRouter lists $0.06 input and $0.24 output.')).toBeVisible();
+  await sheet(page).getByRole('button', { name: 'Use OpenRouter price' }).click();
+  expect(m.calls[1]).toEqual({ method: 'POST', path: '/models/use-official-price', body: { model: 'qwen/qwen3.7-flash' } });
+});
+
+test('TC-ADM-MD-22: a rejected price shows its message in the sheet', async ({ page }) => {
+  await openLibrary(page, { priceError: 'price_invalid' });
+  await page.getByRole('button', { name: 'Edit the price of acme/spare' }).click();
+  await sheet(page).getByRole('button', { name: 'Save price' }).click();
+  await expect(sheet(page).getByText('Check the prices:', { exact: false })).toBeVisible();
+});
+
+test('TC-ADM-MD-23: at 390 px the library rows, the add sheet and the edit sheet do not scroll sideways', async ({ page }) => {
+  await mockAdminModels(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/models');
+  await page.getByRole('tab', { name: /^Model library and prices/ }).click();
+  await expect(page.getByRole('button', { name: 'Remove acme/spare' })).toBeVisible();
+  expect(await noSideScroll(page)).toBe(true);
+  await page.getByRole('button', { name: 'Add model from OpenRouter' }).click();
+  await sheet(page).getByLabel('Search OpenRouter models').fill('luna');
+  await expect(sheet(page).getByRole('list', { name: 'Search results' })).toBeVisible();
+  expect(await noSideScroll(page)).toBe(true);
+  const box = await sheet(page).boundingBox();
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Edit the price of acme/spare' }).click();
+  await expect(sheet(page).getByLabel('Input per 1M tokens')).toBeVisible();
+  expect(await noSideScroll(page)).toBe(true);
+});
+
+test('TC-ADM-MD-24: add sheet, price sheet and remove dialog render in Thai', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
+  await mockAdminModels(page);
+  await page.goto('/admin/models');
+  await page.getByRole('tab', { name: /^คลังโมเดลและราคา/ }).click();
+  await page.getByRole('button', { name: 'ตั้งราคาของ acme/unpriced' }).click();
+  await expect(sheet(page).getByText('ราคาใหม่ใช้กับ request ถัดจากนี้', { exact: false })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'ลบ qwen/qwen3.7-flash' }).click({ force: true });
+  await expect(sheet(page)).toContainText('ยังมีงานใช้อยู่');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'เพิ่มโมเดลจาก OpenRouter' }).click();
+  await expect(sheet(page).getByLabel('ค้นหาโมเดลจาก OpenRouter')).toHaveAttribute('placeholder', 'พิมพ์ชื่อโมเดล เช่น qwen หรือ gpt');
+  await sheet(page).getByLabel('ค้นหาโมเดลจาก OpenRouter').fill('luna');
+  await expect(sheet(page).getByText('พบ 3 โมเดล')).toBeVisible();
+});

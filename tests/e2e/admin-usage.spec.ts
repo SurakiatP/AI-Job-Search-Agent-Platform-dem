@@ -31,7 +31,7 @@ test('TC-ADM-UG-02: switching Group by sends a new request and renders model, da
   const mock = await open(page);
   await expect(names(page)).toHaveCount(3);
   await page.getByRole('group', { name: 'Group by' }).getByRole('button', { name: 'Model' }).click();
-  await expect(names(page).nth(0)).toContainText('ai-analyze');
+  await expect(names(page).nth(0)).toContainText('openai/gpt-6-luna');
   expect(mock.requests.at(-1)).toBe('/v1/admin/usage?range=7d&group_by=model');
   await page.getByRole('group', { name: 'Group by' }).getByRole('button', { name: 'Day' }).click();
   await expect(names(page).nth(0)).toContainText('1 Oct 2026');
@@ -51,32 +51,23 @@ test('TC-ADM-UG-03: the range lives in the URL and is sent to the API', async ({
   await expect.poll(() => mock.requests.at(-1)).toContain('range=30d');
 });
 
-test('TC-ADM-UG-04: saving the THB rate stores it and converts every amount', async ({ page }) => {
-  const mock = await open(page);
+test('TC-ADM-UG-04: the live rate converts every amount to THB', async ({ page }) => {
+  await open(page, { rate: 40 });
   await expect(page.getByLabel('Totals for this range')).toContainText('$4.80');
-  const rate = page.getByLabel('1 USD =');
-  await expect(rate).toHaveValue('35');
-  await rate.fill('40');
-  await page.getByRole('button', { name: 'Save rate' }).click();
-  await expect(page.getByText('Rate saved.')).toBeVisible();
-  expect(mock.puts).toEqual([{ widgets: ['trend', 'tasks'], thb_rate: 40 }]);
   await page.getByRole('group', { name: 'Currency' }).getByRole('button', { name: 'THB' }).click();
   await expect(page.getByLabel('Totals for this range')).toContainText('฿192.00');
   await expect(page.locator('tbody tr').nth(0)).toContainText('฿144.00');
   await expect(page.getByLabel('Totals for this range')).not.toContainText('$');
 });
 
-test('TC-ADM-UG-05: a rate of 0 or less is rejected and not sent', async ({ page }) => {
-  const mock = await open(page);
-  const rate = page.getByLabel('1 USD =');
-  await rate.fill('0');
-  await expect(page.getByText('Enter a rate above 0, up to 1,000.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Save rate' })).toBeDisabled();
-  await rate.fill('-5');
-  await expect(page.getByRole('button', { name: 'Save rate' })).toBeDisabled();
-  await rate.fill('');
-  await expect(page.getByRole('button', { name: 'Save rate' })).toBeDisabled();
-  expect(mock.puts).toEqual([]);
+test('TC-ADM-UG-05: the rate shows its source and date, and there is no input or save button', async ({ page }) => {
+  const mock = await open(page, { rate: 35.12 });
+  await expect(page.getByTestId('usage-rate')).toHaveText('1 USD = 35.12 THB');
+  await expect(page.getByRole('link', { name: 'Frankfurter (European Central Bank reference rates)' })).toHaveAttribute('href', 'https://frankfurter.dev/');
+  await expect(page.getByText(/3 Nov 2026\. Daily reference rate, not live/)).toBeVisible();
+  await expect(page.getByRole('spinbutton')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Save rate' })).toHaveCount(0);
+  expect(mock.prefsCalls).toEqual([]);
 });
 
 test('TC-ADM-UG-06: ≈ and a "Manual price" badge show when a manual price is involved, and the tip says why', async ({ page }) => {
@@ -126,11 +117,17 @@ test('TC-ADM-UG-10: a failed load shows an error and Retry loads the data', asyn
   expect(mock.requests).toHaveLength(2);
 });
 
-test('TC-ADM-UG-11: if the saved rate cannot load, THB is hidden and Retry brings it back', async ({ page }) => {
-  await open(page, { prefsFail: true });
-  await expect(page.getByText('Could not load the saved rate.')).toBeVisible();
+test('TC-ADM-UG-11: if the rate cannot load, THB is hidden and a message says costs are in USD', async ({ page }) => {
+  await open(page, { fxFail: true });
+  await expect(page.getByText('Could not load the exchange rate, so costs are shown in USD only.')).toBeVisible();
   await expect(page.getByRole('group', { name: 'Currency' }).getByRole('button')).toHaveText(['USD']);
   await expect(names(page)).toHaveCount(3);
+});
+
+test('TC-ADM-UG-14: a stale rate shows a warning', async ({ page }) => {
+  await open(page, { stale: true });
+  await expect(page.getByText('Could not refresh the rate. Showing the last one fetched.')).toBeVisible();
+  await expect(page.getByTestId('usage-rate')).toBeVisible();
 });
 
 test('TC-ADM-UG-12: at 390 px nothing overflows the page and cost stays in view', async ({ page }) => {
@@ -143,7 +140,7 @@ test('TC-ADM-UG-12: at 390 px nothing overflows the page and cost stays in view'
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   }
   await page.getByRole('group', { name: 'Group by' }).getByRole('button', { name: 'Task' }).click();
-  await expect(page.getByRole('button', { name: 'Save rate' })).toBeVisible();
+  await expect(page.getByTestId('usage-rate')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sort by Cost' })).toBeInViewport();
   await expect(page.getByRole('columnheader', { name: 'Per request' })).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -153,8 +150,40 @@ test('TC-ADM-UG-13: Thai renders labels, the badge and Buddhist-era days', async
   await open(page, {}, '/admin/usage', 'th');
   await expect(page.getByRole('heading', { level: 1, name: 'การใช้งานและค่าใช้จ่าย' })).toBeVisible();
   await expect(page.getByText('ราคากรอกเอง').first()).toBeVisible();
-  await expect(page.getByText('บาท', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('usage-rate')).toContainText('บาท');
   await expect(page.getByRole('button', { name: /ช่วงเวลา: 7 วันที่ผ่านมา/ })).toBeVisible();
   await page.getByRole('group', { name: 'แยกตาม' }).getByRole('button', { name: 'วัน' }).click();
   await expect(names(page).nth(0)).toContainText('2569');
+  await expect(page.getByText(/อัตราของวันที่ 3 พ\.ย\. 2569/)).toBeVisible();
+});
+
+test('TC-ADM-UG-14: the table pages 10 rows at a time on the client; sorting and Group by go back to page 1', async ({ page }) => {
+  const mock = await open(page, { manyModels: 23 });
+  await page.getByRole('group', { name: 'Group by' }).getByRole('button', { name: 'Model' }).click();
+  await expect(names(page)).toHaveCount(10);
+  await expect(page.getByText('Showing 1–10 of 23')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Previous' })).toBeDisabled();
+  const before = mock.requests.length;
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByText('Showing 11–20 of 23')).toBeVisible();
+  await expect(names(page).nth(0)).toContainText('vendor/model-11');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(names(page)).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled();
+  expect(mock.requests.length).toBe(before); // paging is client-side: no new request
+  await page.getByRole('button', { name: 'Sort by Requests' }).click();
+  await expect(page.getByText('Page 1 of 3')).toBeVisible();
+  await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByRole('group', { name: 'Group by' }).getByRole('button', { name: 'Task' }).click();
+  await expect(page.getByRole('navigation', { name: 'Change page' })).toHaveCount(0);
+});
+
+test('TC-ADM-UG-15: at 390 px the pager fits without sideways scroll', async ({ page }) => {
+  await open(page, { manyModels: 23 });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('group', { name: 'Group by' }).getByRole('button', { name: 'Model' }).click();
+  const next = page.getByRole('button', { name: 'Next' });
+  await next.scrollIntoViewIfNeeded();
+  await expect(next).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

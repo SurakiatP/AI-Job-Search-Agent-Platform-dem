@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockAdminAccount } from '../fixtures/admin';
-import { baseRuns, ids, mockAdminRuns, run } from '../fixtures/admin-runs';
+import { baseRuns, ids, manyRuns, mockAdminRuns, run } from '../fixtures/admin-runs';
 
 async function open(page: Page, path = '/admin/runs', options: Parameters<typeof mockAdminRuns>[1] = {}) {
   await mockAdminAccount(page);
@@ -160,15 +160,46 @@ test('TC-ADM-RN-10: cost shows ≈ for a hand-entered price and a dash when no p
   await expect(free.getByRole('cell').last()).not.toContainText('$');
 });
 
-test('TC-ADM-RN-11: Load more appends the next page and then goes away', async ({ page }) => {
-  const more = run({ id: '11111111-0000-4000-8000-0000000000a1', operation: 'match_jobs', status: 'completed', created_at: '2026-11-03T07:00:00Z' });
-  const log = await open(page, '/admin/runs', { page2: [more] });
-  await expect(table(page).getByRole('row')).toHaveCount(baseRuns.length + 1);
-  await page.getByRole('button', { name: 'Load more' }).click();
-  await expect(table(page).getByRole('row')).toHaveCount(baseRuns.length + 2);
-  await expect(table(page).getByRole('row').filter({ hasText: 'Job matching' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Load more' })).toHaveCount(0);
-  expect(log.lists.at(-1)!.searchParams.get('cursor')).toBe('page2');
+test('TC-ADM-RN-11: 10 rows per page; Next and Previous page through and the page lives in the URL', async ({ page }) => {
+  const log = await open(page, '/admin/runs', { runs: [...baseRuns, ...manyRuns(17)] }); // 23 runs
+  await expect(table(page).getByRole('row')).toHaveCount(11);
+  await expect(page.getByText('Showing 1–10 of 23')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Previous' })).toBeDisabled();
+  expect(log.lists[0].searchParams.get('page')).toBe('0');
+  expect(log.lists[0].searchParams.get('page_size')).toBe('10');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByText('Showing 11–20 of 23')).toBeVisible();
+  await expect(page).toHaveURL(/[?&]page=2(&|$)/);
+  expect(log.lists.at(-1)!.searchParams.get('page')).toBe('1');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(table(page).getByRole('row')).toHaveCount(4);
+  await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled();
+  await page.reload();
+  await expect(page.getByText('Showing 21–23 of 23')).toBeVisible();
+  await page.getByRole('button', { name: 'Previous' }).click();
+  await expect(page.getByText('Page 2 of 3')).toBeVisible();
+});
+
+test('TC-ADM-RN-11b: a filter change goes back to the first page; a page beyond the end shows the last page', async ({ page }) => {
+  const log = await open(page, '/admin/runs?page=3', { runs: [...baseRuns, ...manyRuns(17)] });
+  await expect(page.getByText('Showing 21–23 of 23')).toBeVisible();
+  await page.getByLabel('Status').selectOption('completed');
+  await expect(page).not.toHaveURL(/page=/);
+  await expect.poll(() => log.lists.at(-1)!.searchParams.get('page')).toBe('0');
+  await page.goto('/admin/runs?page=99');
+  await expect(page.getByText('Showing 21–23 of 23')).toBeVisible();
+  await expect(page).toHaveURL(/[?&]page=3(&|$)/);
+});
+
+test('TC-ADM-RN-11c: no pager when the runs fit on one page; at 390 px the pager fits', async ({ page }) => {
+  await open(page);
+  await expect(page.getByRole('navigation', { name: 'Change page' })).toHaveCount(0);
+  await open(page, '/admin/runs', { runs: [...baseRuns, ...manyRuns(17)] });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const next = page.getByRole('button', { name: 'Next' });
+  await next.scrollIntoViewIfNeeded();
+  await expect(next).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test('TC-ADM-RN-12: the list refreshes every 10 seconds while a visible run is queued or running', async ({ page }) => {
