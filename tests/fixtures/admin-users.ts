@@ -13,14 +13,15 @@ export const ada = make(1, { email: 'ada@example.test', runs_in_range: 12 });
 export const bo = make(2, { email: 'bo@example.test', status: 'suspended', email_verified: false, last_seen_at: null, runs_in_range: 0 });
 export const cy = make(3, { email: 'cy@example.test', status: 'deleting' });
 export const baseUsers = [selfUser, otherAdmin, ada, bo, cy];
+/** `n` extra active accounts, newest first like the backend order, for paging specs. */
+export const manyUsers = (n: number): User[] => Array.from({ length: n }, (_, i) => make(100 + i, { email: `member${String(i + 1).padStart(2, '0')}@example.test` }));
 
 export type AdminUsersMock = { requests: URL[]; posts: { path: string; body: unknown }[]; users: User[]; failList: boolean };
 
-/** Mocks only /v1/admin/users*. Search, status and cursor paging behave like the backend. `failList` can be flipped mid-test (React StrictMode mounts twice, so a fail-once counter would be spent by the first mount). Counts are fixed: 3 projects, 2 CVs, 41 runs. */
-export async function mockAdminUsers(page: Page, opts: { users?: User[]; pageSize?: number; failList?: boolean; actionError?: Record<string, string> } = {}): Promise<AdminUsersMock> {
+/** Mocks only /v1/admin/users*. Search, status and offset paging (page, page_size; out of range answers the last page) behave like the backend. `failList` can be flipped mid-test (React StrictMode mounts twice, so a fail-once counter would be spent by the first mount). Counts are fixed: 3 projects, 2 CVs, 41 runs. */
+export async function mockAdminUsers(page: Page, opts: { users?: User[]; failList?: boolean; actionError?: Record<string, string> } = {}): Promise<AdminUsersMock> {
   const mock: AdminUsersMock = { requests: [], posts: [], users: (opts.users ?? baseUsers).map(u => ({ ...u })), failList: opts.failList ?? false };
-  const size = opts.pageSize ?? 50;
-  const detail = (u: User) => ({ user: u, project_count: 3, cv_count: 2, run_count: 41 });
+    const detail = (u: User) => ({ user: u, project_count: 3, cv_count: 2, run_count: 41 });
   await page.route(url => url.pathname.startsWith('/v1/admin/users'), async route => {
     const req = route.request();
     const url = new URL(req.url());
@@ -28,9 +29,10 @@ export async function mockAdminUsers(page: Page, opts: { users?: User[]; pageSiz
     if (req.method() === 'GET' && path === '') {
       mock.requests.push(url);
       if (mock.failList) { await route.fulfill({ status: 503, json: { code: 'unavailable', message_key: 'service.unavailable', retryable: true } }); return; }
-      const q = (url.searchParams.get('q') ?? '').toLowerCase(), status = url.searchParams.get('status'), start = Number(url.searchParams.get('cursor') ?? 0);
+      const q = (url.searchParams.get('q') ?? '').toLowerCase(), status = url.searchParams.get('status'), size = Number(url.searchParams.get('page_size') ?? 10);
       const rows = mock.users.filter(u => u.email.includes(q) && (!status || u.status === status));
-      await route.fulfill({ json: { items: rows.slice(start, start + size), next_cursor: start + size < rows.length ? String(start + size) : null } });
+      const last = Math.max(0, Math.ceil(rows.length / size) - 1), at = Math.min(Number(url.searchParams.get('page') ?? 0), last);
+      await route.fulfill({ json: { items: rows.slice(at * size, (at + 1) * size), total: rows.length, page: at, page_size: size } });
       return;
     }
     const [, userId, action] = path.split('/');

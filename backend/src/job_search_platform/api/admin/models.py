@@ -42,6 +42,11 @@ async def post_models(body: AdminModelCreate, actor=Depends(admin_writer), servi
     return await _write(services, ai_models.create_model, actor.user_id, body)
 
 
+@router.delete("/models", status_code=204)
+async def delete_models(body: AdminModelRef, actor=Depends(admin_writer), services: Services = Depends(get_services)):
+    await _write(services, ai_models.delete_model, actor.user_id, body.model)
+
+
 @router.put("/models/price", response_model=AdminRegisteredModel)
 async def put_models_price(body: AdminModelPrice, actor=Depends(admin_writer), services: Services = Depends(get_services)):
     return await _write(services, ai_models.set_price, actor.user_id, body)

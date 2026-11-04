@@ -12,7 +12,7 @@
   },
   "health": {
     "title": "Health",
-    "description": "Checked every 5 minutes. Each bar is 30 minutes of the last 24 hours.",
+    "description": "A check of each part, and how long it took to answer. Each bar is one slice of the time range you choose.",
     "allOk": "All four components are working.",
     "someDown_one": "{{count}} component is not responding: {{names}}.",
     "someDown_other": "{{count}} components are not responding: {{names}}.",
@@ -20,15 +20,7 @@
     "down": "Not responding",
     "uptime": "{{percent}}% up",
     "noData": "No checks yet",
-    "stripLabel": "{{name}}, last 24 hours: {{ok}} of {{total}} checks passed",
-    "axisStart": "24 hours ago",
     "axisEnd": "Now",
-    "slot": {
-      "ok": "Working",
-      "warn": "Down for part of this time",
-      "bad": "Down",
-      "none": "No check"
-    },
     "components": {
       "postgres": {
         "name": "Database",
@@ -45,6 +37,29 @@
       "sandbox": {
         "name": "Sandbox",
         "hint": "Where AI agents run"
+      }
+    },
+    "every": "Checked every 30 seconds",
+    "stale": "The latest update did not load. The chart shows the last data we have.",
+    "seconds": "{{value}} s",
+    "ms": "{{value}} ms",
+    "last": "last {{time}}",
+    "lastNone": "no timing yet",
+    "sliderLabel": "Move between bars with the arrow keys",
+    "chartLabel": "{{name}}, {{range}}: {{ok}} of {{total}} checks passed",
+    "empty": "No checks in this range yet. Bars appear here after the first check.",
+    "legend": "Bar colours",
+    "tip": {
+      "ok": "Working",
+      "slow": "Working, but slow",
+      "down": "Not responding ({{failed}} of {{checks}} checks failed)",
+      "none": "No check",
+      "noMs": "no response time",
+      "legend": {
+        "ok": "Answered",
+        "slow": "Answered in over 2 seconds",
+        "down": "Check failed",
+        "none": "No check in this slot"
       }
     }
   },
@@ -130,12 +145,5 @@
     "copy": "Copy",
     "copied": "Copied.",
     "copyFailed": "Could not copy. Select the command and copy it by hand."
-  },
-  "pager": {
-    "label": "Change page",
-    "range": "Showing {{from}}–{{to}} of {{total}}",
-    "page": "Page {{page}} of {{pages}}",
-    "prev": "Previous",
-    "next": "Next"
   }
 }

@@ -113,14 +113,16 @@ test('TC-ADM-OV-08: Export CSV requests the chosen range, shows busy, then a sta
   await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
 });
 
+const cells = (c: Record<string, string>) => Object.fromEntries(Object.entries(c).map(([k, status]) => [k, { status, ms: 40, failed: status === 'ok' ? 0 : 1, checks: 1 }]));
+
 test('TC-ADM-OV-09: a down component shows the red strip and the fix sheet with since-when from probes', async ({ page }) => {
   const down = { ...healthyComponents, sandbox: 'down' };
   await mockOverview(page, {
     overview: overviewBody({ health: { components: down }, attention: [{ kind: 'health_down', severity: 'bad', title_key: 'attention.health_down', params: { component: 'sandbox' }, target: '/admin/system' }] }),
     probes: [
-      { checked_at: '2026-11-04T06:50:00Z', components: healthyComponents },
-      { checked_at: '2026-11-04T07:00:00Z', components: down },
-      { checked_at: '2026-11-04T07:25:00Z', components: down },
+      { checked_at: '2026-11-04T06:50:00Z', components: cells(healthyComponents) },
+      { checked_at: '2026-11-04T07:00:00Z', components: cells(down) },
+      { checked_at: '2026-11-04T07:25:00Z', components: cells(down) },
     ],
   });
   await page.goto('/admin');

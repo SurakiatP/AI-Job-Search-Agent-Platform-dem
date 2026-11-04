@@ -14,11 +14,11 @@ import { WIDGET_ORDER, type WidgetId } from './useOverview';
 
 /** Start of the unbroken run of "down" probes that ends at the newest probe, or null when the newest probe is fine or there are none. */
 export function downSince(probes: AdminProbe[], component: keyof AdminHealthComponents): { since: string; last: string } | null {
-  const sorted = [...probes].sort((a, b) => a.checked_at.localeCompare(b.checked_at));
+  const sorted = probes.filter(p => p.components[component].status !== 'unknown').sort((a, b) => a.checked_at.localeCompare(b.checked_at)); // buckets without a check say nothing
   const newest = sorted[sorted.length - 1];
-  if (!newest || newest.components[component] !== 'down') return null;
+  if (!newest || newest.components[component].status !== 'down') return null;
   let since = newest.checked_at;
-  for (let i = sorted.length - 2; i >= 0 && sorted[i].components[component] === 'down'; i--) since = sorted[i].checked_at;
+  for (let i = sorted.length - 2; i >= 0 && sorted[i].components[component].status === 'down'; i--) since = sorted[i].checked_at;
   return { since, last: newest.checked_at };
 }
 

@@ -156,3 +156,34 @@ test('TC-ADM-UG-13: Thai renders labels, the badge and Buddhist-era days', async
   await expect(names(page).nth(0)).toContainText('2569');
   await expect(page.getByText(/อัตราของวันที่ 3 พ\.ย\. 2569/)).toBeVisible();
 });
+
+test('TC-ADM-UG-14: the table pages 10 rows at a time on the client; sorting and Group by go back to page 1', async ({ page }) => {
+  const mock = await open(page, { manyModels: 23 });
+  await page.getByRole('group', { name: 'Group by' }).getByRole('button', { name: 'Model' }).click();
+  await expect(names(page)).toHaveCount(10);
+  await expect(page.getByText('Showing 1–10 of 23')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Previous' })).toBeDisabled();
+  const before = mock.requests.length;
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByText('Showing 11–20 of 23')).toBeVisible();
+  await expect(names(page).nth(0)).toContainText('vendor/model-11');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(names(page)).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled();
+  expect(mock.requests.length).toBe(before); // paging is client-side: no new request
+  await page.getByRole('button', { name: 'Sort by Requests' }).click();
+  await expect(page.getByText('Page 1 of 3')).toBeVisible();
+  await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByRole('group', { name: 'Group by' }).getByRole('button', { name: 'Task' }).click();
+  await expect(page.getByRole('navigation', { name: 'Change page' })).toHaveCount(0);
+});
+
+test('TC-ADM-UG-15: at 390 px the pager fits without sideways scroll', async ({ page }) => {
+  await open(page, { manyModels: 23 });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('group', { name: 'Group by' }).getByRole('button', { name: 'Model' }).click();
+  const next = page.getByRole('button', { name: 'Next' });
+  await next.scrollIntoViewIfNeeded();
+  await expect(next).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

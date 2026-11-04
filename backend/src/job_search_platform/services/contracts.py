@@ -1010,7 +1010,9 @@ class AdminUserItem(DTO):
 
 class AdminUserPage(DTO):
     items: list[AdminUserItem]
-    next_cursor: str | None
+    total: int
+    page: int
+    page_size: int
 
 
 class AdminUserDetail(DTO):
@@ -1073,7 +1075,9 @@ class AdminRunItem(DTO):
 
 class AdminRunPage(DTO):
     items: list[AdminRunItem]
-    next_cursor: str | None
+    total: int
+    page: int
+    page_size: int
 
 
 class AdminRunDetail(DTO):
@@ -1207,9 +1211,23 @@ class AdminBenchmark(DTO):
     finished_at: datetime | None
 
 
+class AdminProbeCell(DTO):
+    status: Literal["ok", "down", "unknown"]
+    ms: int | None
+    failed: int
+    checks: int
+
+
+class AdminProbeComponents(DTO):
+    postgres: AdminProbeCell
+    object_store: AdminProbeCell
+    llm_gateway: AdminProbeCell
+    sandbox: AdminProbeCell
+
+
 class AdminProbe(DTO):
     checked_at: datetime
-    components: AdminHealthComponents
+    components: AdminProbeComponents
 
 
 class AdminIngestRun(DTO):
@@ -1229,6 +1247,8 @@ class AdminWebhookCounts(DTO):
 
 class AdminSystem(DTO):
     generated_at: datetime
+    range: AdminRange
+    bucket_seconds: int
     health: AdminHealth
     probes: list[AdminProbe]
     ingest: list[AdminIngestRun]

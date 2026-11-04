@@ -17,7 +17,7 @@ EXPECTED = {
     "/admin/runs": {"get"}, "/admin/runs/{run_id}": {"get"},
     "/admin/runs/{run_id}/cancel": {"post"}, "/admin/runs/{run_id}/retry": {"post"},
     "/admin/usage": {"get"}, "/admin/fx": {"get"},
-    "/admin/models/catalog": {"get"}, "/admin/models": {"get", "post"}, "/admin/models/price": {"put"},
+    "/admin/models/catalog": {"get"}, "/admin/models": {"get", "post", "delete"}, "/admin/models/price": {"put"},
     "/admin/models/use-official-price": {"post"},
     "/admin/tasks": {"get"}, "/admin/tasks/{operation}": {"put"},
     "/admin/benchmarks": {"get", "post"}, "/admin/benchmarks/{benchmark_id}": {"get"},

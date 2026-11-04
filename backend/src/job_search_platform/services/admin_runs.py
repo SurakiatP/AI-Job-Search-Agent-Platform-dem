@@ -1,24 +1,22 @@
 """Admin AI runs: list, detail, cancel, retry. Metadata only (PDPA): never snapshots, payloads or event text."""
 from __future__ import annotations
 
-import base64
 import re
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import and_, exists, func, or_, select, tuple_
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 
 from job_search_platform.integrations.gateway import real_model
 from job_search_platform.db.models import LlmCall, Project, Run
 from job_search_platform.db.models import RunEvent as RunEventRow
 from job_search_platform.services import admin_audit
-from job_search_platform.services.admin_audit import _decode
 from job_search_platform.services.admin_users import short_id
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.runs import RunService
 
-PAGE = 50
+PAGE = 10
 _KEY = re.compile(r"[a-z][a-z0-9_.]{0,119}")
 _FAILURE_EVENTS = ("run_failed", "run_interrupted")
 _CANCELLABLE = {"queued", "running", "waiting_approval", "needs_input"}
@@ -78,8 +76,8 @@ def _item(row) -> dict:
     }
 
 
-def list_runs(db, filters: dict, cursor: str | None = None, limit: int = PAGE) -> dict:
-    """Newest first. filters: status, operation, model, since, until."""
+def list_runs(db, filters: dict, page: int = 0, page_size: int = PAGE) -> dict:
+    """Newest first, offset paged; `total` counts the same filters. filters: status, operation, model, since, until."""
     query, _calls, snapshot_model = _query()
     if filters.get("status"):
         query = query.where(Run.status == filters["status"])
@@ -94,13 +92,10 @@ def list_runs(db, filters: dict, cursor: str | None = None, limit: int = PAGE) -
         query = query.where(Run.created_at >= filters["since"])
     if filters.get("until"):
         query = query.where(Run.created_at < filters["until"])
-    if cursor:
-        query = query.where(tuple_(Run.created_at, Run.id) < tuple_(*_decode(cursor)))
-    rows = db.execute(query.order_by(Run.created_at.desc(), Run.id.desc()).limit(limit + 1)).all()
-    page = rows[:limit]
-    last = page[-1].Run if len(rows) > limit else None
-    nxt = base64.urlsafe_b64encode(f"{last.created_at.isoformat()}|{last.id}".encode()).decode() if last else None
-    return {"items": [_item(r) for r in page], "next_cursor": nxt}
+    total = db.scalar(select(func.count()).select_from(query.with_only_columns(Run.id).order_by(None).subquery())) or 0
+    page = min(page, max(0, -(-total // page_size) - 1))  # out of range: the last page
+    rows = db.execute(query.order_by(Run.created_at.desc(), Run.id.desc()).limit(page_size).offset(page * page_size)).all()
+    return {"items": [_item(r) for r in rows], "total": total, "page": page, "page_size": page_size}
 
 
 def detail(db, run_id: UUID) -> dict:

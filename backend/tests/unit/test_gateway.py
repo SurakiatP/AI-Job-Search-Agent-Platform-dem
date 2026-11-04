@@ -67,7 +67,7 @@ def test_key_file_fallback_needs_private_mode(no_gateway_key, tmp_path):
 
 async def test_status_reachable_lists_models_and_hides_key(stub):
     view = await GatewaySettings.from_env().status()
-    assert view.configured and view.reachable and view.models == ["ai-analyze", "other"]
+    assert view.configured and view.reachable and view.models == ["other"]  # the old alias is hidden
     assert view.base_url == f"http://127.0.0.1:{stub.server_port}"
     assert _Stub.seen == [("/v1/models", f"Bearer {KEY}")]
     assert KEY not in view.model_dump_json()

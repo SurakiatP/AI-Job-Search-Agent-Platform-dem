@@ -24,6 +24,9 @@ export function run(over: Partial<RunRow> & Pick<RunRow, 'id' | 'operation' | 's
   };
 }
 
+/** `n` more completed runs, older than baseRuns, for paging specs. */
+export const manyRuns = (n: number): RunRow[] => Array.from({ length: n }, (_, i) => run({ id: `33333333-0000-4000-8000-${String(i).padStart(12, '0')}`, operation: 'match_jobs', status: 'completed', created_at: `2026-11-03T07:${String(59 - i).padStart(2, '0')}:00Z` }));
+
 export const baseRuns: RunRow[] = [
   run({ id: ids.failed, operation: 'tailor_cv', status: 'failed', failure_key: 'errors.execution_failed', created_at: '2026-11-04T07:40:00Z' }),
   run({ id: ids.running, operation: 'evaluate_job', status: 'running', finished_at: null, duration_seconds: 41, user_short_id: 'u_41bc…9d0', created_at: '2026-11-04T07:35:00Z' }),
@@ -49,8 +52,6 @@ export const failedCalls: CallRow[] = [
 
 type Options = {
   runs?: RunRow[];
-  /** Rows returned for `cursor=page2`; when set, the first page answers next_cursor=page2. */
-  page2?: RunRow[];
   events?: Record<string, RunEventRow[]>;
   calls?: Record<string, CallRow[]>;
   /** List requests answer 500 until the spec sets `log.failing = false`. */
@@ -75,9 +76,9 @@ export async function mockAdminRuns(page: Page, options: Options = {}) {
       log.lists.push(url);
       if (log.failing) { return route.fulfill({ status: 500, json: { code: 'internal_error', message_key: 'errors.internal_error', retryable: true } }); }
       const q = url.searchParams;
-      if (q.get('cursor') === 'page2') return route.fulfill({ json: { items: options.page2 ?? [], next_cursor: null } });
       const items = rows.filter(r => (!q.get('status') || r.status === q.get('status')) && (!q.get('operation') || r.operation === q.get('operation')) && (!q.get('model') || r.model === q.get('model')));
-      return route.fulfill({ json: { items, next_cursor: options.page2 ? 'page2' : null } });
+      const size = Number(q.get('page_size') ?? 10), last = Math.max(0, Math.ceil(items.length / size) - 1), at = Math.min(Number(q.get('page') ?? 0), last);
+      return route.fulfill({ json: { items: items.slice(at * size, (at + 1) * size), total: items.length, page: at, page_size: size } });
     }
     const target = rows.find(r => r.id === parts[3]);
     if (!target) return problem(route, 404, 'not_found');

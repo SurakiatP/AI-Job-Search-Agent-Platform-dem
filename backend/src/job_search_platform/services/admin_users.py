@@ -1,18 +1,17 @@
 """Admin view of accounts: metadata and counts only (spec D5), plus suspend, enable, reset link and delete (D6)."""
 from __future__ import annotations
 
-import base64
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import func, select, tuple_
+from sqlalchemy import func, select
 
 from job_search_platform.db.models import CV, OwnerSession, Project, Run, User
 from job_search_platform.services import admin_audit
 from job_search_platform.services.accounts import Accounts, admin_listed, suspend_user
 from job_search_platform.services.errors import ServiceError
 
-PAGE = 50
+PAGE = 10
 WINDOWS = {"1m": timedelta(minutes=1), "5m": timedelta(minutes=5), "10m": timedelta(minutes=10),
            "15m": timedelta(minutes=15), "30m": timedelta(minutes=30), "1h": timedelta(hours=1),
            "4h": timedelta(hours=4), "10h": timedelta(hours=10), "7d": timedelta(days=7),
@@ -41,29 +40,28 @@ def _runs_in_range(since: datetime | None):
 
 
 def list_users(db, q: str | None = None, status: str | None = None, range_: str | None = None,
-               cursor: str | None = None, limit: int = PAGE) -> dict:
+               page: int = 0, page_size: int = PAGE) -> dict:
+    """Newest first, offset paged. `total` counts the same filters; an out-of-range page is the last page."""
     window = WINDOWS[range_ or "7d"]
     seen = select(OwnerSession.user_id.label("user_id"), func.max(OwnerSession.last_seen_at).label("at")).group_by(
         OwnerSession.user_id).subquery()
     runs = _runs_in_range(datetime.now(timezone.utc) - window if window else None)
-    query = (select(User, seen.c.at, func.coalesce(runs.c.n, 0))
-             .outerjoin(seen, seen.c.user_id == User.id).outerjoin(runs, runs.c.user_id == User.id)
-             .order_by(User.created_at.desc(), User.id.desc()).limit(limit + 1))
+    where = []
     if q and q.strip():
-        query = query.where(User.email.contains(q.strip().lower(), autoescape=True))
+        where.append(User.email.contains(q.strip().lower(), autoescape=True))
     if status == "deleting":
-        query = query.where(User.deletion_requested_at.is_not(None))
+        where.append(User.deletion_requested_at.is_not(None))
     elif status == "suspended":
-        query = query.where(User.disabled_at.is_not(None), User.deletion_requested_at.is_(None))
+        where += [User.disabled_at.is_not(None), User.deletion_requested_at.is_(None)]
     elif status == "active":
-        query = query.where(User.disabled_at.is_(None), User.deletion_requested_at.is_(None))
-    if cursor:
-        query = query.where(tuple_(User.created_at, User.id) < tuple_(*admin_audit._decode(cursor)))
-    rows = db.execute(query).all()
-    page = rows[:limit]
-    last = page[-1][0] if len(rows) > limit else None
-    nxt = base64.urlsafe_b64encode(f"{last.created_at.isoformat()}|{last.id}".encode()).decode() if last else None
-    return {"items": [_item(u, at, n) for u, at, n in page], "next_cursor": nxt}
+        where += [User.disabled_at.is_(None), User.deletion_requested_at.is_(None)]
+    total = db.scalar(select(func.count(User.id)).where(*where)) or 0
+    page = min(page, max(0, -(-total // page_size) - 1))
+    query = (select(User, seen.c.at, func.coalesce(runs.c.n, 0))
+             .outerjoin(seen, seen.c.user_id == User.id).outerjoin(runs, runs.c.user_id == User.id).where(*where)
+             .order_by(User.created_at.desc(), User.id.desc()).limit(page_size).offset(page * page_size))
+    return {"items": [_item(u, at, n) for u, at, n in db.execute(query).all()], "total": total,
+            "page": page, "page_size": page_size}
 
 
 def _user(db, user_id: UUID) -> User:

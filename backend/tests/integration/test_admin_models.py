@@ -1,6 +1,7 @@
 """Admin AI models routes against real PostgreSQL. OpenRouter and LiteLLM calls are replaced; synthetic data only."""
 from __future__ import annotations
 
+import copy
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
@@ -39,7 +40,7 @@ def web(db_session, migrated_engine, monkeypatch):
     db_session.commit()
     sessions = sessionmaker(bind=migrated_engine, expire_on_commit=False)
     current = {"actor": admin}
-    state = SimpleNamespace(calls=[], catalog=list(CAT), gateway=[{"model_name": "ai-analyze", "model_info": {}}], down=False)
+    state = SimpleNamespace(calls=[], catalog=copy.deepcopy(CAT), gateway=[{"model_name": "ai-analyze", "model_info": {}}], down=False)
 
     def http(method, url, body=None, token=None, local=False):
         state.calls.append((method, url, body))
@@ -49,6 +50,8 @@ def web(db_session, migrated_engine, monkeypatch):
             return {"data": state.catalog}
         if url.endswith("/model/info"):
             return {"data": state.gateway}
+        if url.endswith("/model/delete"):
+            state.gateway[:] = [m for m in state.gateway if (m.get("model_info") or {}).get("id") != body["id"]]
         return {}
     monkeypatch.setattr(ai_models, "_http", http)
     app = FastAPI()
@@ -81,6 +84,7 @@ def test_non_admin_is_refused_everywhere(web):
     assert c.get("/v1/admin/models/catalog").status_code == 403
     assert c.get("/v1/admin/models").status_code == 403
     assert c.post("/v1/admin/models", json={"model": "acme/fast"}).status_code == 403
+    assert c.request("DELETE", "/v1/admin/models", json={"model": "acme/fast"}).status_code == 403
     assert c.put("/v1/admin/tasks/tailor_cv", json={"model": "acme/fast", "effort": "low"}).status_code == 403
     assert c.get("/v1/admin/benchmarks").status_code == 403
     assert web.state.calls == []
@@ -115,8 +119,8 @@ def test_add_model_uses_openrouter_price_registers_it_and_audits(web):
     free = web.client.post("/v1/admin/models", json={"model": "acme/free"}).json()
     assert free["is_free"] is True and free["price_in"] == 0
     names = {m["model"]: m for m in web.client.get("/v1/admin/models").json()}
-    assert {"acme/fast", "acme/free", "ai-analyze"} <= set(names)
-    assert names["acme/fast"]["used_by"] == [] and "tailor_cv" in names["ai-analyze"]["used_by"]
+    assert {"acme/fast", "acme/free", "openai/gpt-6-luna"} <= set(names)  # the legacy alias is hidden; the default model stands for it
+    assert names["acme/fast"]["used_by"] == [] and "tailor_cv" in names["openai/gpt-6-luna"]["used_by"]
 
 
 def test_add_model_without_official_price_needs_a_valid_manual_one(web):
@@ -140,7 +144,7 @@ def test_litellm_price_is_the_second_source(web):
 def test_manual_price_then_official_appears_then_use_it(web):
     c = web.client
     c.post("/v1/admin/models", json={"model": "acme/unpriced", "price_in": 1, "price_out": 2})
-    assert c.put("/v1/admin/models/price", json={"model": "nope", "price_in": 1, "price_out": 1}).status_code == 404
+    assert c.put("/v1/admin/models/price", json={"model": "bad id!", "price_in": 1, "price_out": 1}).json()["code"] == "model_invalid"
     assert c.put("/v1/admin/models/price", json={"model": "acme/unpriced", "price_in": 0, "price_out": 1}).json()["code"] == "price_invalid"
     r = c.put("/v1/admin/models/price", json={"model": "acme/unpriced", "price_in": 3, "price_out": 4}).json()
     assert (r["price_in"], r["price_cache"], r["price_source"], r["official_price"]) == (3.0, None, "manual", None)
@@ -238,3 +242,94 @@ def test_benchmark_routes_call_the_service_and_audit(web, monkeypatch):
     assert len(c.get("/v1/admin/benchmarks").json()) == 1 and c.get("/v1/admin/benchmarks?operation=evaluate_job").json() == []
     assert c.get("/v1/admin/benchmarks/00000000-0000-0000-0000-000000000000").status_code == 404
     assert c.post("/v1/admin/benchmarks", json={"operation": "tailor_cv", "model": "acme/fast"}).status_code == 422
+
+
+def test_set_price_creates_the_row_for_a_model_that_has_none(web):
+    c = web.client
+    r = c.put("/v1/admin/models/price", json={"model": "acme/unseen", "price_in": 1, "price_out": 2, "price_cache": 0.5})
+    assert r.status_code == 200
+    assert (r.json()["price_in"], r.json()["price_out"], r.json()["price_cache"], r.json()["price_source"]) == (1.0, 2.0, 0.5, "manual")
+    assert c.put("/v1/admin/models/price", json={"model": "acme/zero", "price_in": 0, "price_out": 1}).json()["code"] == "price_invalid"
+    assert c.put("/v1/admin/models/price", json={"model": "acme/zero", "price_in": 0, "price_out": 0, "is_free": True}).json()["is_free"] is True
+    assert [a[:3] for a in audit(web)] == [("model.price", "model", "acme/unseen"), ("model.price", "model", "acme/zero")]
+    with web.sessions() as db:
+        assert db.get(ModelPrice, "acme/unseen") is not None
+
+
+def test_listing_fills_missing_prices_and_never_touches_manual_rows(web, monkeypatch):
+    monkeypatch.setenv("AI_MODEL_TAILOR_CV", "acme/fast")  # used by a task, no row yet
+    web.state.gateway += [{"model_name": "acme/local", "model_info": {"input_cost_per_token": 2e-6, "output_cost_per_token": 4e-6}},
+                          {"model_name": "acme/blank", "model_info": {}}]
+    with web.sessions.begin() as db:
+        db.add(ModelPrice(model="acme/free", price_in=7, price_out=8, source="manual", is_free=False))
+    rows = {m["model"]: m for m in web.client.get("/v1/admin/models").json()}
+    assert (rows["acme/fast"]["price_in"], rows["acme/fast"]["price_source"]) == (0.15, "openrouter")
+    assert (rows["acme/local"]["price_in"], rows["acme/local"]["price_source"]) == (2.0, "litellm")
+    assert rows["acme/blank"]["price_in"] is None and rows["acme/blank"]["price_source"] is None  # nothing found: still unpriced
+    web.state.gateway.append({"model_name": "acme/free", "model_info": {}})
+    assert {m["model"]: m for m in web.client.get("/v1/admin/models").json()}["acme/free"]["price_in"] == 7.0  # manual untouched
+    with web.sessions() as db:
+        assert db.get(ModelPrice, "acme/fast").source == "openrouter"
+        assert db.get(ModelPrice, "acme/blank") is None
+
+
+def test_listing_still_works_when_openrouter_is_down(web):
+    web.state.down = True
+    web.state.gateway.append({"model_name": "acme/local", "model_info": {"input_cost_per_token": 2e-6, "output_cost_per_token": 4e-6}})
+    rows = {m["model"]: m for m in web.client.get("/v1/admin/models").json()}
+    assert rows["acme/local"]["price_source"] == "litellm"
+
+
+def test_delete_model_removes_it_from_the_gateway_and_the_price_table(web):
+    c = web.client
+    web.state.gateway.append({"model_name": "acme/fast", "model_info": {"id": "mid-1"}})
+    c.post("/v1/admin/models", json={"model": "acme/fast"})
+    r = c.request("DELETE", "/v1/admin/models", json={"model": "acme/fast"})
+    assert r.status_code == 204 and r.content == b""
+    gone = [x for x in web.state.calls if x[1].endswith("/model/delete")]
+    assert gone == [("POST", gone[0][1], {"id": "mid-1"})]
+    key = [x for x in web.state.calls if x[1].endswith("/key/update")][-1]
+    assert "acme/fast" not in key[2]["models"] and "ai-analyze" in key[2]["models"]
+    with web.sessions() as db:
+        assert db.get(ModelPrice, "acme/fast") is None
+    assert "acme/fast" not in {m["model"] for m in c.get("/v1/admin/models").json()}
+    assert audit(web)[-1][:3] == ("model.delete", "model", "acme/fast")
+    assert c.request("DELETE", "/v1/admin/models", json={"model": "acme/fast"}).status_code == 404  # already gone
+
+
+def test_delete_model_with_only_a_price_row_removes_the_row(web):
+    web.client.put("/v1/admin/models/price", json={"model": "acme/solo", "price_in": 1, "price_out": 1})
+    assert web.client.request("DELETE", "/v1/admin/models", json={"model": "acme/solo"}).status_code == 204
+    assert not [x for x in web.state.calls if x[1].endswith("/model/delete")]
+
+
+def test_delete_model_refuses_models_that_a_task_or_the_default_uses(web, monkeypatch):
+    c = web.client
+    monkeypatch.setenv("AI_MODEL_TAILOR_CV", "acme/fast")
+    web.state.gateway.append({"model_name": "acme/fast", "model_info": {"id": "mid-1"}})
+    for model in ("acme/fast", "openai/gpt-6-luna"):  # a task's model; the default model
+        r = c.request("DELETE", "/v1/admin/models", json={"model": model})
+        assert r.status_code == 409 and r.json()["code"] == "model_in_use"
+    assert not [x for x in web.state.calls if x[1].endswith("/model/delete")] and audit(web) == []
+    done_benchmark(web, "tailor_cv", "acme/free", "low", "green")
+    assert c.put("/v1/admin/tasks/tailor_cv", json={"model": "acme/free", "effort": "low"}).status_code == 200  # frees acme/fast
+    assert c.request("DELETE", "/v1/admin/models", json={"model": "acme/fast"}).status_code == 204
+
+
+def test_delete_model_validates_and_reports_a_down_gateway(web):
+    c = web.client
+    assert c.request("DELETE", "/v1/admin/models", json={"model": "bad id!"}).json()["code"] == "model_invalid"
+    assert c.request("DELETE", "/v1/admin/models", json={"model": "acme/none"}).json()["code"] == "not_found"
+    web.state.gateway.append({"model_name": "acme/fast", "model_info": {"id": "mid-1"}})
+    original = ai_models._http
+
+    def failing(method, url, body=None, token=None, local=False):
+        if url.endswith("/model/delete"):
+            raise OSError("down")
+        return original(method, url, body, token, local)
+    ai_models._http = failing
+    try:
+        assert c.request("DELETE", "/v1/admin/models", json={"model": "acme/fast"}).status_code == 503
+    finally:
+        ai_models._http = original
+    assert audit(web) == []

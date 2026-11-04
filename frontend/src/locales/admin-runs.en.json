@@ -58,9 +58,6 @@
   "queuedNotStarted": "Not started",
   "list": "AI runs",
   "loading": "Loading runs",
-  "loadMore": "Load more",
-  "loadingMore": "Loading",
-  "loadMoreFailed": "Could not load more runs.",
   "live": "Refreshes every 10 seconds while a run is queued or running.",
   "empty": {
     "title": "No runs yet",

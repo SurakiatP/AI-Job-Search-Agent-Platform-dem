@@ -32,6 +32,8 @@ import adminSystemEn from '../locales/admin-system.en.json';
 import adminSystemTh from '../locales/admin-system.th.json';
 import adminAuditEn from '../locales/admin-audit.en.json';
 import adminAuditTh from '../locales/admin-audit.th.json';
+import adminCommonEn from '../locales/admin-common.en.json';
+import adminCommonTh from '../locales/admin-common.th.json';
 import { DraftProvider } from './drafts';
 import { readPreference, savePreference, ThemeProvider } from './theme';
 
@@ -44,7 +46,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     const instance = i18next.createInstance();
     void instance.init({
       lng: locale, fallbackLng: 'th', fallbackNS: 'common', initAsync: false,
-      resources: { th: { common: th, settings: settingsTh, searchWorkspace: searchTh, sessionWorkspace: sessionTh, materialsWorkspace: materialsTh, applicationsWorkspace: applicationsTh, utilitiesWorkspace: utilitiesTh, 'admin-shell': adminShellTh, 'admin-overview': adminOverviewTh, 'admin-users': adminUsersTh, 'admin-runs': adminRunsTh, 'admin-usage': adminUsageTh, 'admin-models': adminModelsTh, 'admin-system': adminSystemTh, 'admin-audit': adminAuditTh }, en: { common: en, settings: settingsEn, searchWorkspace: searchEn, sessionWorkspace: sessionEn, materialsWorkspace: materialsEn, applicationsWorkspace: applicationsEn, utilitiesWorkspace: utilitiesEn, 'admin-shell': adminShellEn, 'admin-overview': adminOverviewEn, 'admin-users': adminUsersEn, 'admin-runs': adminRunsEn, 'admin-usage': adminUsageEn, 'admin-models': adminModelsEn, 'admin-system': adminSystemEn, 'admin-audit': adminAuditEn } },
+      resources: { th: { common: th, settings: settingsTh, searchWorkspace: searchTh, sessionWorkspace: sessionTh, materialsWorkspace: materialsTh, applicationsWorkspace: applicationsTh, utilitiesWorkspace: utilitiesTh, 'admin-shell': adminShellTh, 'admin-overview': adminOverviewTh, 'admin-users': adminUsersTh, 'admin-runs': adminRunsTh, 'admin-usage': adminUsageTh, 'admin-models': adminModelsTh, 'admin-system': adminSystemTh, 'admin-audit': adminAuditTh, 'admin-common': adminCommonTh }, en: { common: en, settings: settingsEn, searchWorkspace: searchEn, sessionWorkspace: sessionEn, materialsWorkspace: materialsEn, applicationsWorkspace: applicationsEn, utilitiesWorkspace: utilitiesEn, 'admin-shell': adminShellEn, 'admin-overview': adminOverviewEn, 'admin-users': adminUsersEn, 'admin-runs': adminRunsEn, 'admin-usage': adminUsageEn, 'admin-models': adminModelsEn, 'admin-system': adminSystemEn, 'admin-audit': adminAuditEn, 'admin-common': adminCommonEn } },
       defaultNS: 'common', interpolation: { escapeValue: false },
     });
     return instance;

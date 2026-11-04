@@ -142,19 +142,24 @@ def test_list_aggregates_and_filters(ctx):
     assert ids(since=cut) == ["c", "b", "a"] and ids(until=cut) == []
     assert ids(since=b["created_at"], until=c["created_at"]) == ["b"]
     assert ctx.client.get("/v1/admin/runs", params={"status": "nope"}).status_code == 422
-    assert ctx.client.get("/v1/admin/runs", params={"cursor": "not-a-cursor"}).status_code == 400
+    assert ctx.client.get("/v1/admin/runs", params={"page": -1}).status_code == 422
 
 
-def test_cursor_pages_newest_first(ctx):
+def test_offset_pages_newest_first(ctx):
     seed(ctx)
     with ctx.sessions() as db:
-        first = admin_runs.list_runs(db, {}, limit=2)
-        assert len(first["items"]) == 2 and first["next_cursor"]
-        second = admin_runs.list_runs(db, {}, first["next_cursor"], limit=2)
-        assert len(second["items"]) == 1 and second["next_cursor"] is None
-        assert len({i["id"] for i in first["items"] + second["items"]}) == 3
+        first = admin_runs.list_runs(db, {}, 0, 2)
+        second = admin_runs.list_runs(db, {}, 1, 2)
+        beyond = admin_runs.list_runs(db, {}, 9, 2)
+        failed = admin_runs.list_runs(db, {"status": "failed"}, 0, 2)
+    assert len(first["items"]) == 2 and len(second["items"]) == 1 and beyond["items"] == second["items"] and beyond["page"] == 1  # out of range: last page
+    assert first["total"] == second["total"] == beyond["total"] == 3 and (second["page"], second["page_size"]) == (1, 2)
+    assert failed["total"] == 1  # total follows the filters
+    assert len({i["id"] for i in first["items"] + second["items"]}) == 3
     as_admin(ctx)
-    assert ctx.client.get("/v1/admin/runs").json()["next_cursor"] is None
+    body = ctx.client.get("/v1/admin/runs").json()
+    assert (body["total"], body["page"], body["page_size"]) == (3, 0, 10)
+    assert ctx.client.get("/v1/admin/runs", params={"page_size": 51}).status_code == 422
 
 
 def test_responses_carry_no_snapshots_payloads_or_event_text(ctx):

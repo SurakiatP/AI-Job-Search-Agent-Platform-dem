@@ -3,16 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import type { AdminIngestRun } from '@/lib/api-types';
 import { SectionCard } from '../../settings/Field';
-import { Sheet } from '../ui';
+import { PAGE_SIZE, Pager, Sheet, usePagerLabels } from '../ui';
 import { DataTable, Td, Tr } from './DataTable';
 import { useWhen } from './format';
-import { PAGE_SIZE, Pager } from './Pager';
 
 const variant = { complete: 'success', partial: 'warning', failed: 'danger' } as const;
 
 export function IngestCard({ ingest }: { ingest: AdminIngestRun[] }) {
   const { t } = useTranslation('admin-system');
   const when = useWhen();
+  const labels = usePagerLabels();
   const [open, setOpen] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [hpage, setHpage] = useState(0);
@@ -34,7 +34,7 @@ export function IngestCard({ ingest }: { ingest: AdminIngestRun[] }) {
           <Td label={t('ingest.when')}><span className="tabular-nums">{when.full(r.at)}</span></Td>
         </Tr>)}
       </DataTable>}
-    <Pager page={page} total={latest.length} onPage={setPage} />
+    <Pager page={page} total={latest.length} onPage={setPage} labels={labels} />
     <Sheet open={open !== null} onOpenChange={o => { if (!o) setOpen(null); }} title={t('ingest.historyTitle', { board: open ?? '' })} subtitle={t('ingest.historyNote')} closeLabel={t('close')}>
       <DataTable label={t('ingest.historyTitle', { board: open ?? '' })} head={[t('ingest.when'), t('ingest.statusHead'), t('ingest.found'), t('ingest.new'), t('ingest.error')]}>
         {history.slice(hpage * PAGE_SIZE, (hpage + 1) * PAGE_SIZE).map(r => <Tr key={r.at}>
@@ -45,7 +45,7 @@ export function IngestCard({ ingest }: { ingest: AdminIngestRun[] }) {
           <Td label={t('ingest.error')}>{r.error_code ? <code className="text-xs">{r.error_code}</code> : <span className="text-muted-foreground">–</span>}</Td>
         </Tr>)}
       </DataTable>
-      <Pager page={hpage} total={history.length} onPage={setHpage} />
+      <Pager page={hpage} total={history.length} onPage={setHpage} labels={labels} />
     </Sheet>
   </SectionCard>;
 }

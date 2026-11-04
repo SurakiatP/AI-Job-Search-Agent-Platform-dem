@@ -13,7 +13,7 @@ const rows = {
 const totals = { ...row('all', 172, 370000, 140900, 10000, 4.8, { has_manual: true, uncosted_requests: 12 }), cost_per_request_usd: 0.03 };
 
 export type UsageMock = { requests: string[]; prefsCalls: string[] };
-export type UsageOptions = { empty?: boolean; failFirst?: boolean; rate?: number; stale?: boolean; fxFail?: boolean };
+export type UsageOptions = { empty?: boolean; failFirst?: boolean; rate?: number; stale?: boolean; fxFail?: boolean; manyModels?: number };
 
 /** Mocks GET /v1/admin/usage and GET /v1/admin/fx on top of mockAdminAccount(page). `requests` collects each usage URL (path and query). */
 export async function mockAdminUsage(page: Page, opts: UsageOptions = {}): Promise<UsageMock> {
@@ -26,7 +26,7 @@ export async function mockAdminUsage(page: Page, opts: UsageOptions = {}): Promi
     const group = url.searchParams.get('group_by') as keyof typeof rows;
     const body = opts.empty
       ? { range: '7d', group_by: group, generated_at: '2026-11-04T05:00:00Z', totals: row('all', 0, 0, 0, 0, null, { uncosted_requests: 0 }), rows: [] }
-      : { range: url.searchParams.get('range'), group_by: group, generated_at: '2026-11-04T05:00:00Z', totals, rows: rows[group] };
+      : { range: url.searchParams.get('range'), group_by: group, generated_at: '2026-11-04T05:00:00Z', totals, rows: group === 'model' && opts.manyModels ? Array.from({ length: opts.manyModels }, (_, i) => row(`vendor/model-${String(i + 1).padStart(2, '0')}`, 10, 1000, 500, 0, 1 - i / 100)) : rows[group] };
     return route.fulfill({ json: body });
   });
   await page.route(/\/v1\/admin\/prefs$/, route => { mock.prefsCalls.push(route.request().method()); return route.fulfill({ json: { widgets: ['trend', 'tasks'] } }); });

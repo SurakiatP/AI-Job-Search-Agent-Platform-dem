@@ -65,7 +65,7 @@ export function UsagePage() {
         {stat(t('totals.perRequest'), cost(totals.cost_per_request_usd, totals.has_manual))}
       </dl>
       <section className="mt-4 rounded-2xl border bg-card p-2 shadow-[var(--shadow-soft)] sm:p-3">
-        <UsageTable key={group} data={d} currency={cur} rate={rate} lang={lang} />
+        <UsageTable key={`${group}:${range}`} data={d} currency={cur} rate={rate} lang={lang} />
       </section>
       {totals.uncosted_requests > 0 && <p className="mt-3 text-sm text-muted-foreground">{t('uncosted', { n: count(totals.uncosted_requests, lang) })}</p>}
     </>}

@@ -172,9 +172,9 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 }
 
 // Admin console. Every route answers 403 forbidden to non-admins; 403 admin_target_forbidden when the target is an admin account.
-function adminQuery(params: Record<string, string | null | undefined>): string {
+function adminQuery(params: Record<string, string | number | null | undefined>): string {
   const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) if (value) query.set(key, value);
+  for (const [key, value] of Object.entries(params)) if (value || value === 0) query.set(key, String(value));
   const text = query.toString();
   return text ? `?${text}` : '';
 }
@@ -201,6 +201,7 @@ export const admin = {
   modelCatalog: (q?: string) => apiRequest<AdminModelCatalogItem[]>(`/admin/models/catalog${adminQuery({ q })}`),
   models: () => apiRequest<AdminRegisteredModel[]>('/admin/models'),
   addModel: (body: AdminModelCreate) => apiRequest<AdminRegisteredModel>('/admin/models', adminJson('POST', body)),
+  deleteModel: (model: string) => apiRequest<void>('/admin/models', adminJson('DELETE', { model })),
   setModelPrice: (body: AdminModelPrice) => apiRequest<AdminRegisteredModel>('/admin/models/price', adminJson('PUT', body)),
   useOfficialPrice: (model: string) => apiRequest<AdminRegisteredModel>('/admin/models/use-official-price', adminJson('POST', { model })),
   tasks: () => apiRequest<AdminTaskSetting[]>('/admin/tasks'),
@@ -208,7 +209,7 @@ export const admin = {
   benchmarks: (operation?: string) => apiRequest<AdminBenchmark[]>(`/admin/benchmarks${adminQuery({ operation })}`),
   benchmark: (id: string) => apiRequest<AdminBenchmark>(`/admin/benchmarks/${id}`),
   startBenchmark: (body: AdminBenchmarkCreate) => apiRequest<AdminBenchmark>('/admin/benchmarks', adminJson('POST', body)),
-  system: () => apiRequest<AdminSystem>('/admin/system'),
+  system: (range?: AdminRange) => apiRequest<AdminSystem>(`/admin/system${adminQuery({ range })}`),
   webhooks: (status?: AdminWebhookDelivery['status']) => apiRequest<AdminWebhookDelivery[]>(`/admin/webhooks${adminQuery({ status })}`),
   resendWebhook: (id: string) => apiRequest<AdminWebhookDelivery>(`/admin/webhooks/${id}/resend`, adminJson('POST')),
   audit: (query: AdminAuditQuery = {}) => apiRequest<AdminAuditPage>(`/admin/audit${adminQuery({ ...query })}`),
