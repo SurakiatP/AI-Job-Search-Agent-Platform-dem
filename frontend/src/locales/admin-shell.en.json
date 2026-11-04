@@ -42,5 +42,6 @@
       "mismatch": "The two new passwords do not match.",
       "same": "Choose a password different from the current one."
     }
-  }
+  },
+  "home": "Back to the home page"
 }

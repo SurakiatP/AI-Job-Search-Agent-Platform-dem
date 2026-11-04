@@ -99,3 +99,14 @@ test('TC-ADM-SH-05: the sidebar collapses to an icon rail, keeps names and the c
   await expect.poll(async () => (await aside.boundingBox())?.width).toBe(248);
   await expect(page.getByRole('button', { name: /^Account: ops@example\.test/ }).first()).toBeVisible();
 });
+
+test('TC-ADM-SH-06: the logo in the admin sidebar goes to the landing page', async ({ page }) => {
+  await mockAdminAccount(page);
+  await mockOverview(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/admin');
+  const logo = page.getByRole('link', { name: /Job Search Admin/ }).first();
+  await expect(logo).toHaveAttribute('href', '/');
+  await logo.click();
+  await expect(page).toHaveURL(/\/$/);
+});
