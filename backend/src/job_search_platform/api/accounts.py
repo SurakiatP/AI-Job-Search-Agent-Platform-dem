@@ -2,15 +2,16 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, write_actor
+from job_search_platform.services import notifications
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import COOKIE_NAME
 
@@ -279,3 +280,45 @@ async def telegram_link(actor=Depends(write_actor), services: Services = Depends
 async def telegram_unlink(actor=Depends(write_actor), services: Services = Depends(get_services)):
     await asyncio.to_thread(_telegram(services).unlink, actor.user_id)
     return Response(status_code=204)
+
+
+class NotificationView(_Body):
+    id: UUID
+    project_id: UUID
+    kind: Literal["run_completed", "run_failed", "run_needs_input", "run_waiting_approval", "digest_ready"]
+    run_id: UUID | None = None
+    data: dict
+    created_at: datetime
+    read_at: datetime | None = None
+
+
+class NotificationList(_Body):
+    items: list[NotificationView]
+    unread_count: int
+
+
+class UnreadCount(_Body):
+    unread_count: int
+
+
+class MarkReadRequest(_Body):
+    ids: list[UUID] | None = Field(default=None, max_length=200)
+    all: bool = False
+
+
+@router.get("/notifications", response_model=NotificationList)
+async def list_notifications(limit: int = Query(30, ge=1, le=50), actor=Depends(owner_actor), services: Services = Depends(get_services)):
+    def read():
+        with services.sessions() as db:
+            return notifications.list_for_user(db, actor.user_id, limit)
+    return await asyncio.to_thread(read)
+
+
+@router.post("/notifications/read", response_model=UnreadCount)
+async def read_notifications(body: MarkReadRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    if body.all == (body.ids is not None):
+        raise ServiceError("invalid_request")
+    def write():
+        with services.sessions.begin() as db:
+            return notifications.mark_read(db, actor.user_id, None if body.all else body.ids, datetime.now(timezone.utc))
+    return await asyncio.to_thread(write)

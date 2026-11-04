@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useResource } from '../features/projects/useResource';
 import type { RunView } from '../lib/api-types';
+import { RUN_SETTLED_EVENT } from './NotificationBell';
 
 // Shows only while a run is working or waiting for the person; links to where it is handled.
 export function RunIndicator({ projectId, compact = false }: { projectId?: string; compact?: boolean }) {
@@ -13,6 +14,8 @@ export function RunIndicator({ projectId, compact = false }: { projectId?: strin
   const needs = list.filter(run => run.status === 'needs_input' || run.status === 'waiting_approval').length;
   const working = list.filter(run => run.status === 'queued' || run.status === 'running').length;
   const live = needs + working > 0;
+  const wasLive = useRef(false);
+  useEffect(() => { if (wasLive.current && !live) window.dispatchEvent(new Event(RUN_SETTLED_EVENT)); wasLive.current = live; }, [live]);
   useEffect(() => {
     if (!projectId || !live) return;
     const timer = window.setInterval(reload, 8000);

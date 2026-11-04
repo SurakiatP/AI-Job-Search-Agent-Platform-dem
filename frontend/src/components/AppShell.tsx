@@ -5,6 +5,7 @@ import { HomeIconLink, HomeLink, LanguageToggle } from './Header';
 import { AccountMenu } from './AccountMenu';
 import { BottomNav } from './BottomNav';
 import { RunIndicator } from './RunIndicator';
+import { NotificationBell, NotificationsProvider } from './NotificationBell';
 import { isSidebarShortcut, SidebarToggle } from './SidebarToggle';
 import { readPreference, savePreference } from '../app/theme';
 import { ProjectSidebar, ProjectSwitcher } from './ProjectSidebar';
@@ -27,7 +28,7 @@ export function AppShell({ children, projects, projectId, sessionId, onReload }:
   }, []);
   const stage = STAGE_BY_SECTION[pathname.split('/')[4] ?? ''];
   const sidebarProps = { projects, projectId, sessionId, onReload };
-  return <>
+  return <NotificationsProvider>
     <a href="#main-content" className="skip-link">{t('skipToContent')}</a>
     <div className={open ? 'min-h-dvh lg:grid lg:grid-cols-[248px_minmax(0,1fr)] lg:bg-sidebar' : 'min-h-dvh lg:grid lg:grid-cols-[64px_minmax(0,1fr)] lg:bg-sidebar'}>
       {open
@@ -36,7 +37,7 @@ export function AppShell({ children, projects, projectId, sessionId, onReload }:
       <div className="min-w-0 lg:p-2 lg:ps-0">
         <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-2 border-b bg-background/90 px-4 py-2 backdrop-blur lg:hidden">
           {projectId ? <ProjectSwitcher {...sidebarProps} compact /> : <HomeLink />}
-          <div className="flex shrink-0 items-center gap-2"><RunIndicator projectId={projectId} compact /><LanguageToggle /><AccountMenu projectId={projectId} /></div>
+          <div className="flex shrink-0 items-center gap-2"><RunIndicator projectId={projectId} compact /><NotificationBell /><LanguageToggle /><AccountMenu projectId={projectId} /></div>
         </header>
         <div className="min-w-0 lg:min-h-[calc(100dvh-16px)] lg:overflow-clip lg:rounded-2xl lg:border lg:bg-background ambient-surface">
         <VerifyBanner />
@@ -45,5 +46,5 @@ export function AppShell({ children, projects, projectId, sessionId, onReload }:
       </div>
     </div>
     {projectId && <BottomNav projectId={projectId} />}
-  </>;
+  </NotificationsProvider>;
 }

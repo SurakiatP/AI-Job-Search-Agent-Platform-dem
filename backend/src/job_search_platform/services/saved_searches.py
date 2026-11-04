@@ -22,6 +22,7 @@ from job_search_platform.db.models import (
     Project, ProjectPreference, SavedSearch, SavedSearchSeen, TelegramLink, User,
 )
 from job_search_platform.integrations.mailer import Mail
+from job_search_platform.services import notifications as inapp
 from job_search_platform.services import job_sources, rate_limits, telegram, webhooks
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
@@ -324,6 +325,7 @@ class SavedSearches:
                             raise _SendFailed  # email failed and no other channel could take over: retry in an hour
                         row.next_run_at = next_slot(now, row.frequency)
                         return row_id, 0
+                    inapp.record_digest(db, row.project_id, row.id, row.name, len(items), now)
                     db.execute(pg_insert(SavedSearchSeen).values(
                         [{"saved_search_id": row_id, "slug": item["slug"], "seen_at": now} for item in items]
                     ).on_conflict_do_nothing())
@@ -371,6 +373,7 @@ class SavedSearches:
     def prune_seen(self, now: datetime | None = None) -> int:
         now = now or datetime.now(timezone.utc)
         with self.sessions.begin() as db:
+            inapp.prune(db, now)
             return db.execute(delete(SavedSearchSeen).where(SavedSearchSeen.seen_at < now - SEEN_RETENTION)).rowcount
 
     async def housekeeping(self) -> int:

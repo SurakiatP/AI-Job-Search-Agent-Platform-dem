@@ -1,5 +1,6 @@
 import { AccountMenu } from './AccountMenu';
 import { RunIndicator } from './RunIndicator';
+import { NotificationBell } from './NotificationBell';
 import { useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, FileText, FolderOpen, Kanban, LayoutDashboard, Search, UserRound, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +55,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
       : <li className="min-w-0"><NavItem to="/app/projects" icon={FolderOpen} active={inside('/app/projects')} onNavigate={onNavigate}>{t('nav.allProjects')}</NavItem></li>}</ul></nav>
     <div className="mt-auto grid min-w-0 gap-2 border-t pt-3">
       <RunIndicator projectId={projectId} />
-      <AccountMenu projectId={projectId} wide />
+      <div className="flex min-w-0 items-center gap-1"><div className="min-w-0 flex-1"><AccountMenu projectId={projectId} wide /></div><NotificationBell /></div>
     </div>
   </div>;
 }

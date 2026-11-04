@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import boto3
 import pytest
@@ -27,7 +27,7 @@ from job_search_platform.api.dependencies import Services
 from job_search_platform.integrations import logging as jsp_logging
 from job_search_platform.db.models import (
     Base, User,
-    Approval, CVRevision, ConversationSession, Document, DocumentRevision, Grant, JobRevision, Message, Project, Run, RunArtifact, StoredFile,
+    Approval, CVRevision, ConversationSession, Document, DocumentRevision, Grant, JobRevision, Message, Notification, Project, Run, RunArtifact, StoredFile,
 )
 from job_search_platform.integrations.hermes_runtime import ParsedInput
 from job_search_platform.services.contracts import Actor
@@ -573,7 +573,7 @@ def _object_exists(api_context, key: str) -> bool:
     return any(item["Key"] == key for item in api_context.s3.list_objects_v2(Bucket=api_context.bucket).get("Contents", []))
 
 
-def _seed_completed_run(api_context, pid: str, sid: str, *, status="completed", key="doc-run"):
+def _seed_completed_run(api_context, pid: str, sid: str, *, status="completed", key="doc-run", operation="draft_documents"):
     with api_context.sessions.begin() as db:
         cv_id = db.scalar(select(CVRevision.id).where(CVRevision.project_id == UUID(pid)))
         provider_id = provider_config_id(db, UUID(pid))
@@ -581,7 +581,7 @@ def _seed_completed_run(api_context, pid: str, sid: str, *, status="completed", 
         db.add(job)
         db.flush()
         run = Run(project_id=UUID(pid), actor_scope="owner", idempotency_key=key, request_digest="b" * 64,
-                  session_id=UUID(sid), operation="draft_documents", cv_revision_id=cv_id, job_revision_id=job.id,
+                  session_id=UUID(sid), operation=operation, cv_revision_id=cv_id, job_revision_id=job.id,
                   provider_configuration_id=provider_id, input_snapshot={}, config_snapshot={},
                   output_language="en", status=status)
         db.add(run)
@@ -997,3 +997,97 @@ def test_connect_info_tells_the_owner_where_external_agents_connect(api_context,
     assert api_context.client.get("/v1/connect").json() == {"share_origin": None, "oauth": False}
     monkeypatch.setenv("SHARE_PUBLIC_ORIGIN", "http://127.0.0.1:8011/")
     assert api_context.client.get("/v1/connect").json() == {"share_origin": "http://127.0.0.1:8011", "oauth": False}
+
+
+def _notify_events(api_context, run_id, *event_types):
+    from job_search_platform.services import runs as run_service
+    with api_context.sessions.begin() as db:
+        run = db.get(Run, run_id)
+        for event_type in event_types:
+            run_service.append_event(db, run, event_type, {})
+
+
+@pytest.mark.integration
+def test_ntf_01_run_events_create_one_notification_per_run_and_kind(api_context):
+    """TC-NTF-01: completed, failed, needs_input create rows; repeats, cancelled and quick operations do not."""
+    csrf = _owner(api_context)
+    pid, sid = _removal_project(api_context, csrf)
+    run_id = _seed_completed_run(api_context, pid, sid)
+    with api_context.sessions.begin() as db:
+        db.get(Run, run_id).status = "running"
+    _notify_events(api_context, run_id, "run_completed", "run_completed", "run_cancelled")
+    body = api_context.client.get("/v1/notifications").json()
+    assert body["unread_count"] == 1 and len(body["items"]) == 1
+    item = body["items"][0]
+    assert item["kind"] == "run_completed" and item["run_id"] == str(run_id) and item["read_at"] is None
+    assert item["data"]["job_title"] == "Doc job" and item["data"]["operation"] == "draft_documents"
+    assert item["data"]["session_id"] == sid
+    _notify_events(api_context, run_id, "run_needs_input")
+    assert [row["kind"] for row in api_context.client.get("/v1/notifications").json()["items"]] == ["run_needs_input", "run_completed"]
+    pid2, sid2 = _removal_project(api_context, csrf)
+    quick = _seed_completed_run(api_context, pid2, sid2, operation="export_document")
+    _notify_events(api_context, quick, "run_completed")
+    assert len(api_context.client.get("/v1/notifications").json()["items"]) == 2
+
+
+@pytest.mark.integration
+def test_ntf_02_owner_scope_trim_retention_and_no_user_projects(api_context):
+    """TC-NTF-02: rows belong to the project's user; 200 per user; 30-day retention."""
+    from job_search_platform.services import notifications
+    csrf = _owner(api_context)
+    pid, _ = _removal_project(api_context, csrf)
+    now = datetime.now(timezone.utc)
+    with api_context.sessions.begin() as db:
+        for i in range(205):
+            notifications.record_digest(db, UUID(pid), uuid4(), f"s{i}", 1, now + timedelta(seconds=i))
+        legacy = Project(name="legacy")
+        db.add(legacy)
+        db.flush()
+        notifications.record_digest(db, legacy.id, uuid4(), "none", 1, now)
+        assert db.scalar(select(func.count()).select_from(Notification)) == 200
+        assert notifications.prune(db, now + timedelta(days=31)) == 200
+        assert db.scalar(select(func.count()).select_from(Notification)) == 0
+
+
+@pytest.mark.integration
+def test_ntf_03_list_and_mark_read_are_owner_scoped_and_csrf_protected(api_context):
+    """TC-NTF-03: GET lists newest first with unread count; POST read marks ids or all; foreign ids are ignored."""
+    from job_search_platform.services import notifications
+    csrf = _owner(api_context)
+    client, headers = api_context.client, _write_headers(csrf)
+    pid, _ = _removal_project(api_context, csrf)
+    now = datetime.now(timezone.utc)
+    with api_context.sessions.begin() as db:
+        for i in range(3):
+            notifications.record_digest(db, UUID(pid), uuid4(), f"s{i}", 2, now + timedelta(seconds=i))
+    ids = [row["id"] for row in client.get("/v1/notifications?limit=2").json()["items"]]
+    assert len(ids) == 2 and client.get("/v1/notifications").json()["unread_count"] == 3
+    assert client.get("/v1/notifications?limit=51").status_code == 422
+    assert client.post("/v1/notifications/read", json={"ids": ids}, headers={"Origin": "http://127.0.0.1:8765"}).status_code == 403
+    assert client.post("/v1/notifications/read", json={"ids": [str(uuid4())]}, headers=headers).json() == {"unread_count": 3}
+    assert client.post("/v1/notifications/read", json={"ids": ids}, headers=headers).json() == {"unread_count": 1}
+    assert client.post("/v1/notifications/read", json={}, headers=headers).status_code == 400
+    assert client.post("/v1/notifications/read", json={"all": True}, headers=headers).json() == {"unread_count": 0}
+    with api_context.sessions.begin() as db:
+        other_id = helpers_user(db, email="ntf-other@example.test").user_id
+    saved = dict(client.cookies)
+    cookie, _ = login_cookie(client.app.state.services, other_id)
+    client.cookies.set("jsp_owner_session", cookie)
+    assert client.get("/v1/notifications").json() == {"items": [], "unread_count": 0}
+    client.cookies.clear()
+    client.cookies.update(saved)
+
+
+@pytest.mark.integration
+def test_ntf_04_digest_notification_carries_name_and_count(api_context):
+    """TC-NTF-04: a digest with new jobs creates digest_ready with the saved-search name and count."""
+    from job_search_platform.services import notifications
+    csrf = _owner(api_context)
+    pid, _ = _removal_project(api_context, csrf)
+    search_id = uuid4()
+    with api_context.sessions.begin() as db:
+        notifications.record_digest(db, UUID(pid), search_id, "Backend BKK", 4, datetime.now(timezone.utc))
+        notifications.record_digest(db, UUID(pid), search_id, "empty", 0, datetime.now(timezone.utc))
+    item = api_context.client.get("/v1/notifications").json()["items"]
+    assert len(item) == 1 and item[0]["kind"] == "digest_ready" and item[0]["run_id"] is None
+    assert item[0]["data"] == {"saved_search_id": str(search_id), "saved_search_name": "Backend BKK", "count": 4}

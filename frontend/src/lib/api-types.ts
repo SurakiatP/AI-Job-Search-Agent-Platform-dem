@@ -216,3 +216,11 @@ export type PracticeQuestion = {
 };
 export type PracticeSetDetail = PracticeSet & { reverse_questions: string[]; questions: PracticeQuestion[]; report: PracticeReport | null };
 export type ProjectPracticeSet = PracticeSet & { job_title: string | null; job_company: string | null };
+
+export type NotificationKind = 'run_completed' | 'run_failed' | 'run_needs_input' | 'run_waiting_approval' | 'digest_ready';
+export type NotificationView = {
+  id: string; project_id: string; kind: NotificationKind; run_id: string | null;
+  data: { operation?: RunOperation; session_id?: string; job_title?: string; job_company?: string; practice_set_id?: string; saved_search_name?: string; count?: number; [key: string]: unknown };
+  created_at: string; read_at: string | null;
+};
+export type NotificationList = { items: NotificationView[]; unread_count: number };
