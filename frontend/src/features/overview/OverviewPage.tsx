@@ -96,6 +96,13 @@ export function OverviewPage() {
     const timer = hasLiveWork ? window.setInterval(refresh, 15000) : undefined;
     return () => { window.removeEventListener('focus', refresh); window.clearInterval(timer); };
   }, [projectId, hasLiveWork, refreshRuns, refreshApprovals]);
+  // A run that leaves the active list changed what it worked on (CV read, score, draft): reload those lists too.
+  const activeKey = active.map(run => run.id).sort().join(',');
+  const [seenActive, setSeenActive] = useState(activeKey);
+  if (seenActive !== activeKey) {
+    setSeenActive(activeKey);
+    if (seenActive.split(',').some(id => id && !activeKey.split(',').includes(id))) { cvs.reload(); jobs.reload(); sessions.reload(); documents.reload(); }
+  }
 
   async function markApplied() {
     if (!focus || stageBusy) return;

@@ -129,7 +129,7 @@ function CreateDialog({ c, api, projectId, sessionId, locale, defaultName, onClo
                 onChange={event => setCounts(current => ({ ...current, [section]: event.target.checked ? DEFAULTS[section] ?? 2 : 0 }))} />
               <label htmlFor={`${id}-${section}`} className="grid min-w-0 cursor-pointer gap-0.5"><span className="text-sm font-medium">{c.sections[section]}</span><span id={`${id}-${section}-hint`} className="text-xs text-muted-foreground">{c.sectionHints[section]}</span></label>
               <Input type="number" min={1} max={6} disabled={!on} aria-label={c.countLabel(c.sections[section])} value={on ? counts[section] : ''}
-                onChange={event => setCounts(current => ({ ...current, [section]: Math.min(6, Math.max(1, Number(event.target.value) || 1)) }))}
+                onChange={event => setCounts(current => ({ ...current, [section]: Math.min(6, Math.max(1, Number(event.target.value.slice(-1)) || 1)) }))}
                 className="w-16 px-2 text-center tabular-nums" />
             </li>;
           })}</ul>

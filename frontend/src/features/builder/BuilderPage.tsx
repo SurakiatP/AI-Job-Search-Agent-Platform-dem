@@ -73,7 +73,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     try {
       const value = await apiRequest<Draft>(base);
       const loaded = { ...value, resume_data: normalize(value.resume_data) };
-      latest.current = loaded; setDraft(loaded); setSave('saved');
+      latest.current = loaded; pending.current = false; setDraft(loaded); setSave('saved');
     } catch { setLoadError(true); return; }
     try {
       const kept = localStorage.getItem(stashKey);
@@ -117,7 +117,8 @@ export function BuilderPage({ kind }: { kind: Kind }) {
       try {
         const saved = await sendJson<Draft>(base, 'PUT', { resume_data: current.resume_data, template_id: current.template_id, accent: current.accent, document_language: current.document_language, updated_at: current.updated_at });
         const unchanged = latest.current === current;
-        latest.current = { ...(unchanged ? saved : latest.current!), updated_at: saved.updated_at };
+        // Keep what is on screen: the server trims spaces, and swapping in its copy would eat a space the user just typed.
+        latest.current = { ...latest.current!, updated_at: saved.updated_at };
         setDraft(latest.current);
         try { localStorage.removeItem(stashKey); } catch { /* storage blocked */ }
         setSavedAt(new Date()); setSave(unchanged ? 'saved' : 'dirty');
@@ -126,7 +127,11 @@ export function BuilderPage({ kind }: { kind: Kind }) {
         return unchanged ? 'saved' : 'dirty';
       } catch (error) {
         pending.current = true;
-        if (error instanceof ApiError && error.code === 'draft_conflict') { setSave('conflict'); return 'draft_conflict'; }
+        if (error instanceof ApiError && error.code === 'draft_conflict') {
+          // Loading the newer draft replaces these edits; keep them so the restore banner can bring them back.
+          try { localStorage.setItem(stashKey, JSON.stringify(current)); } catch { /* storage full or blocked */ }
+          setSave('conflict'); return 'draft_conflict';
+        }
         if (error instanceof ApiError && error.code === 'resume_invalid') { setSave('invalid'); setInvalidPath(String(error.fields?.path ?? '')); return 'resume_invalid'; }
         setSave('offline');
         try { localStorage.setItem(stashKey, JSON.stringify(current)); } catch { /* storage full or blocked */ }
@@ -362,7 +367,7 @@ function FieldInput({ field, item, locale, prefix, onChange }: { field: Field; i
         onChange={e => onChange(field.kind === 'lines' ? e.target.value.split('\n').slice(0, 20) : e.target.value)} /></div>;
   }
   if (field.kind === 'keywords') return <KeywordsInput id={id} label={label} value={(value as string[]) ?? []} onChange={onChange} />;
-  return <TextField id={id} label={label} value={String(value ?? '')} placeholder={placeholder} type={field.kind === 'month' ? 'month' : field.kind === 'url' ? 'url' : 'text'} onChange={onChange} />;
+  return <TextField id={id} label={label} value={String(value ?? '')} placeholder={placeholder ?? (field.kind === 'month' ? 'YYYY-MM' : undefined)} type={field.kind === 'month' ? 'month' : field.kind === 'url' ? 'url' : 'text'} onChange={onChange} />;
 }
 
 const parseKeywords = (text: string) => text.split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);

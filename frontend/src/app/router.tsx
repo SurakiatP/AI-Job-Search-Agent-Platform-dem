@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useNavigationType, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from '../components/AppShell';
 import type { SidebarProject } from '../components/ProjectSidebar';
@@ -130,7 +130,8 @@ function OwnerGate() {
   const { t } = useTranslation();
   const location = useLocation();
   if (session.status === 'loading') return <RouteLoading />;
-  if (session.status === 'anonymous') return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  // After signing out, the next person to log in should not be sent to the previous person's page.
+  if (session.status === 'anonymous') return <Navigate to={session.loggedOut ? '/login' : `/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   if (session.status === 'error') {
     return <AppShell><Card className="mx-auto mt-12 max-w-xl"><CardHeader><h1 className="text-xl font-semibold">{t('auth.sessionExpiredTitle')}</h1></CardHeader><CardContent className="grid gap-4"><p className="text-muted-foreground">{t('auth.sessionExpiredBody')}</p><div><Button asChild><Link to="/login">{t('auth.loginAction')}</Link></Button></div></CardContent></Card></AppShell>;
   }
@@ -141,8 +142,16 @@ function RouteLoading() {
   return <main id="main-content" tabIndex={-1} className="min-h-dvh bg-background p-6"><LoadingState /></main>;
 }
 
+// A link to another page opens it at the top; back/forward (POP) leaves scroll to the browser.
+function ScrollReset() {
+  const { pathname, hash } = useLocation();
+  const type = useNavigationType();
+  useEffect(() => { if (type !== 'POP' && !hash) window.scrollTo(0, 0); }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
 export function AppRoutes() {
-  return <Suspense fallback={<RouteLoading />}><Routes>
+  return <Suspense fallback={<RouteLoading />}><ScrollReset /><Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/docs" element={<DocsPage />} /><Route path="/docs/:topic" element={<DocsTopicPage />} /><Route path="/features/:slug" element={<FeaturePage />} /><Route path="/how-it-works" element={<InfoPage slug="how-it-works" />} /><Route path="/data" element={<InfoPage slug="data" />} />
     <Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route path="/verify-email" element={<VerifyEmailPage />} /><Route path="/digest/unsubscribe" element={<DigestUnsubscribePage />} />

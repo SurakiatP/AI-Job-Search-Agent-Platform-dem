@@ -343,6 +343,8 @@ test('SCR-04 exactly one primary action per run state; pending tailor proposals 
       await expect(page.getByRole('alert').filter({ hasText: 'The evaluation did not finish' })).toContainText('The agent stopped before it finished.');
     }
     if (name === 'tailor needs input') {
+      // Waiting for the user is not a failure.
+      await expect(page.getByText(/did not finish/)).toHaveCount(0);
       await expect(page.getByText('Pending Airflow proposal text')).toBeHidden();
       await expect(page.getByRole('link', { name: 'Open document' })).toHaveCount(1);
       await page.getByRole('button', { name: 'Review proposed CV changes' }).click();

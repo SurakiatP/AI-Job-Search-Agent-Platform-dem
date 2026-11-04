@@ -1,7 +1,8 @@
 import { apiRequest, initializeOwnerSession } from './api';
 import { ApiError, type RunEvent, type RunEventView } from './api-types';
 
-const TERMINAL_EVENTS = new Set(['run_completed', 'run_failed', 'run_cancelled', 'run_interrupted']);
+// Same set as the server (api/sse.py), which closes the stream after any of these.
+const TERMINAL_EVENTS = new Set(['run_completed', 'run_failed', 'run_cancelled', 'run_interrupted', 'run_needs_input']);
 
 function decodeEvent(raw: string): RunEventView | null {
   try {

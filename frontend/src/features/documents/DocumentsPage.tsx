@@ -204,6 +204,8 @@ export function DocumentDetailPage() {
   const sessions = useResource<SessionItem[]>(`/projects/${projectId}/sessions`);
   const runs = useResource<RunView[]>(`/projects/${projectId}/runs`);
   const jobs = useResource<JobRevisionView[]>(`/projects/${projectId}/jobs`);
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const w = (key: string, options?: Record<string, unknown>) => t(`documents.${key}`, { ns: 'materialsWorkspace', ...options });
   if (docs.status === 'loading') return <LoadingState />;
   if (docs.status === 'error') {
@@ -240,7 +242,9 @@ export function DocumentDetailPage() {
   const jobLabel = (job?: { title?: string | null; company?: string | null } | null) => [job?.title, job?.company].filter(Boolean).join(' · ');
   const sourceCvRevision = viewed?.source_cv_revision_id && cvRevisions.status === 'ready' ? cvRevisions.data?.find(item => item.id === viewed.source_cv_revision_id) : undefined;
   const viewedNumber = viewed ? viewed.revision ?? versions.indexOf(viewed) + 1 : 0;
-  const requestHref = sessions.status === 'ready' && sessions.data?.[0] ? `${base}/sessions/${sessions.data[0].id}` : null;
+  // Ask for changes on the job this document was written for; fall back to the newest job only when that is unknown.
+  const requestSession = sourceSession ?? (sessions.status === 'ready' ? sessions.data?.[0] : undefined);
+  const requestHref = requestSession ? `${base}/sessions/${requestSession.id}` : null;
 
   const canEdit = !isTrashed && preview !== null;
   const isCv = document.document_type === 'cv' && !isTrashed;
@@ -251,6 +255,7 @@ export function DocumentDetailPage() {
       let run = await sendJson<RunView>(`/async/projects/${projectId}/documents/${documentId}/revisions/${revisionId}/restore`, 'POST', {});
       while (run.status === 'queued' || run.status === 'running' || run.status === 'waiting_approval') {
         await new Promise(resolve => window.setTimeout(resolve, 1500));
+        if (!alive.current) return; // left the page: stop polling
         run = await apiRequest<RunView>(`/projects/${projectId}/runs/${run.id}`);
       }
       if (run.status !== 'completed') throw new Error('restore_failed');

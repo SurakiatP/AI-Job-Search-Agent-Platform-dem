@@ -24,5 +24,9 @@ export async function uploadCvFile(projectId: string, file: File, path = '/cvs',
     const body = new FormData(); body.set('file', file); if (name) body.set('name', name);
     await apiRequest(`/projects/${projectId}${path}`, { method: 'POST', body });
     return null;
-  } catch (error) { return error instanceof ApiError ? uploadMessages[error.code] ?? 'pages.loadError' : 'pages.loadError'; }
+  } catch (error) {
+    if (!(error instanceof ApiError)) return 'errors.network_error';
+    // A proxy may reject a big file with a bare 413 before the API sees it.
+    return uploadMessages[error.code] ?? (error.status === 413 ? 'pages.uploadTooLarge' : 'errors.request_failed');
+  }
 }

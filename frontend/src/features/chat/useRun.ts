@@ -45,6 +45,7 @@ export function useRun(projectId: string, sessionId: string) {
   const intent = useRef<Intent | null>(null);
   const lastIntent = useRef<Intent | null>(null);
   const lastEventSequence = useRef(0);
+  const cursorRunId = useRef<string | null>(null); // the run lastEventSequence belongs to
   const operationInFlight = useRef(false);
   const reconciliation = useRef(0);
 
@@ -99,6 +100,8 @@ export function useRun(projectId: string, sessionId: string) {
   const activeRunStatus = state.run?.status;
   useEffect(() => {
     if (!activeRunId || !activeRunStatus || isTerminal(activeRunStatus)) return;
+    // A different run (e.g. one started from a card, picked up by reload) starts reading its events from the beginning.
+    if (cursorRunId.current !== activeRunId) { cursorRunId.current = activeRunId; lastEventSequence.current = 0; }
     return watchRun(projectId, activeRunId, lastEventSequence.current, event => {
       lastEventSequence.current = Math.max(lastEventSequence.current, event.sequence);
       setState(current => {

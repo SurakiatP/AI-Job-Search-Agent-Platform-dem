@@ -59,8 +59,12 @@ export function PracticeSetPage() {
   const current = rounds.find(r => r.id === round) ?? rounds[0];
   const update = useCallback((id: string, patch: Partial<PracticeQuestion>, body: object) => {
     setOverrides(all => ({ ...all, [id]: { ...all[id], ...patch } }));
-    void sendJson(`/projects/${projectId}/practice-questions/${id}`, 'PATCH', body).catch(() => setFailure(c.failedAction));
-  }, [projectId, c.failedAction]);
+    void sendJson(`/projects/${projectId}/practice-questions/${id}`, 'PATCH', body).catch(() => {
+      // Not saved: drop the optimistic value so the screen shows what the server has.
+      setOverrides(all => { const { [id]: _dropped, ...rest } = all; return rest; });
+      setFailure(c.failedAction); reload();
+    });
+  }, [projectId, c.failedAction, reload]);
   const call = useCallback(async (fn: () => Promise<unknown>) => { setFailure(''); try { await fn(); reload(); } catch { setFailure(c.failedAction); } }, [reload, c.failedAction]);
   const askFeedback = useCallback((attemptId: string) => call(() => apiRequest(`/async/projects/${projectId}/practice-attempts/${attemptId}/feedback`, { method: 'POST' })), [call, projectId]);
   const checkCard = useCallback((id: string, answer: string) => call(async () => {
@@ -70,7 +74,8 @@ export function PracticeSetPage() {
 
   if (detail.status === 'loading' && !detail.data) return <LoadingState />;
   if (detail.errorStatus === 404) return <MissingResource />;
-  if (detail.status === 'error' || !detail.data) return <ErrorState onRetry={reload} />;
+  // A failed poll keeps the page (and the card the user is on); only a first load failure replaces it.
+  if (!detail.data) return <ErrorState onRetry={reload} />;
   const set = detail.data;
   const base = `/app/projects/${projectId}`;
   const sessionHref = `${base}/sessions/${sessionId}?tab=practice`;
@@ -97,7 +102,7 @@ export function PracticeSetPage() {
       </div>
     </header>
     </div>
-    {failure && <Alert severity="error">{failure}</Alert>}
+    {(failure || detail.status === 'error') && <Alert severity="error">{failure || c.failedAction}</Alert>}
 
     {set.status !== 'ready' ? <div className="grid justify-items-start gap-3 rounded-3xl border bg-card p-6 shadow-[var(--shadow-soft)]">
       {set.status === 'generating' ? <><BusyNote bar label={c.generating} /><p className="text-sm text-muted-foreground">{c.generatingBody}</p></>

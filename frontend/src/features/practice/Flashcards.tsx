@@ -42,7 +42,7 @@ export function Flashcards({ cards, c, onRate, onCheck }: { cards: PracticeQuest
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
-      if (done || !target || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(target.tagName) || target.isContentEditable) return;
+      if (done || event.defaultPrevented || !target || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(target.tagName) || target.isContentEditable || target.closest('[role=dialog]')) return;
       if (event.key === ' ') { event.preventDefault(); setFlipped(value => !value); }
       else if (event.key === 'ArrowRight') go(index + 1);
       else if (event.key === 'ArrowLeft') go(index - 1);
@@ -77,7 +77,7 @@ export function Flashcards({ cards, c, onRate, onCheck }: { cards: PracticeQuest
   return <div className="grid gap-6">
     <div className="grid items-center gap-6 md:grid-cols-[6rem_minmax(0,1fr)_6rem]">
       {pile(c.learning, learning.length, 'learning')}
-      <div ref={stage} tabIndex={-1} className="outline-none [perspective:1600px]"
+      <div ref={stage} tabIndex={-1} className="touch-pan-y outline-none [perspective:1600px]"
         onPointerDown={event => { swipe.current = { x: event.clientX, moved: false }; }}
         onPointerMove={event => { if (swipe.current && Math.abs(event.clientX - swipe.current.x) > 12) swipe.current.moved = true; }}
         onPointerUp={event => {

@@ -17,7 +17,7 @@ export const themeList = () => ({
   custom: [],
 });
 
-export type State = { draft: any; puts: any[]; previews: number; publishes: number; failPut: boolean; created: boolean; renames: any[]; pdf: string; times: Record<string, number[]>; themePosts: number };
+export type State = { draft: any; puts: any[]; trimPut?: boolean; previews: number; publishes: number; failPut: boolean; created: boolean; renames: any[]; pdf: string; times: Record<string, number[]>; themePosts: number };
 
 export async function builderApi(page: Page, start: Partial<State> = {}) {
   const state: State = { draft: { id: 'd1', cv_id: cvId, document_id: null, name: 'CV ของฉัน', resume_data: empty(), template_id: 'onyx', accent: 'indigo', document_language: 'th', ats_safe: true, updated_at: '2026-10-19T00:00:00.000Z' },
@@ -38,6 +38,8 @@ export async function builderApi(page: Page, start: Partial<State> = {}) {
       const body = request.postDataJSON();
       state.puts.push(body);
       state.draft = { ...state.draft, ...body, updated_at: `2026-10-19T00:00:${String(state.puts.length).padStart(2, '0')}.000Z` };
+      // trimPut: answer like the real API, which strips spaces from every text field.
+      if (state.trimPut) state.draft = JSON.parse(JSON.stringify(state.draft), (_key, value) => typeof value === 'string' ? value.trim() : value);
       return json(200, state.draft);
     }
     if (path.endsWith('/draft/preview')) { state.previews += 1; state.times.preview.push(Date.now()); return route.fulfill({ status: 200, contentType: 'application/pdf', body: state.pdf }); }

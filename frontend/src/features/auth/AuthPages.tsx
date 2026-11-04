@@ -79,6 +79,8 @@ function Alert({ id, children }: { id?: string; children: ReactNode }) {
 function safeNext(value: string | null): string {
   return value && /^\/app(\/|\?|$)/.test(value) ? value : '/app';
 }
+// Carries a pending `next` (e.g. an OAuth consent) between the login and sign-up pages.
+const withNext = (path: string, next: string) => next === '/app' ? path : `${path}?next=${encodeURIComponent(next)}`;
 
 function useSubmit(action: () => Promise<void>) {
   const errorText = useErrorText();
@@ -133,7 +135,7 @@ export function LoginPage() {
       <Button type="submit" size="lg" busy={busy} disabled={busy}>{busy ? t('auth.working') : t('auth.loginAction')}</Button>
     </form>
     <p className="text-sm"><Link className={`${linkClass} inline-flex min-h-11 items-center lg:min-h-10`} to="/forgot-password">{t('auth.forgotLink')}</Link></p>
-    <p className="border-t pt-4 text-sm text-muted-foreground">{t('auth.noAccount')} <Link className={linkClass} to="/signup">{t('auth.toSignup')}</Link></p>
+    <p className="border-t pt-4 text-sm text-muted-foreground">{t('auth.noAccount')} <Link className={linkClass} to={withNext('/signup', next)}>{t('auth.toSignup')}</Link></p>
   </AuthLayout>;
 }
 
@@ -156,17 +158,19 @@ export function SignupPage() {
   const [mailOff, setMailOff] = useState(false);
   const [code, setCode] = useState('');
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = safeNext(params.get('next'));
   const { busy, error, fieldError, setError, submit } = useSubmit(async () => { const r = await signup(email.trim(), password, locale); setMailOff(r.mail_enabled === false); setSent(true); });
   // The password stays in this component's state only; once the code works we use it once to sign in.
   const verify = useSubmit(async () => {
     await verifyEmailCode(email.trim(), code);
-    try { await login(email.trim(), password); navigate('/app', { replace: true }); }
-    catch { navigate(`/login?notice=verified&email=${encodeURIComponent(email.trim())}`, { replace: true }); }
+    try { await login(email.trim(), password); navigate(next, { replace: true }); }
+    catch { navigate(`${withNext('/login', next)}${next === '/app' ? '?' : '&'}notice=verified&email=${encodeURIComponent(email.trim())}`, { replace: true }); }
   });
   const otp = locale === 'th'
     ? { label: 'รหัส 6 หลักจากอีเมล', hint: 'กรอกรหัสที่เราส่งให้ หรือกดลิงก์ในอีเมลก็ได้ รหัสหมดอายุใน 10 นาที', action: 'ยืนยันอีเมล' }
     : { label: '6-digit code from the email', hint: 'Enter the code we sent, or use the link in the email. The code expires in 10 minutes.', action: 'Verify email' };
-  if (session.status === 'ready') return <Navigate to="/app" replace />;
+  if (session.status === 'ready') return <Navigate to={next} replace />;
   if (sent && mailOff) return <MailOffNotice c={c} onBack={() => setSent(false)} />;
   if (sent) return <AuthLayout title={t('auth.checkEmailTitle')} intro={t('auth.checkEmailBody')} icon={<MailCheck className="size-8 text-primary" aria-hidden="true" />}>
     <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{c.sentTo} <span className="font-medium text-foreground">{email.trim()}</span></p>
@@ -194,7 +198,7 @@ export function SignupPage() {
       <Button type="submit" size="lg" busy={busy} disabled={busy}>{busy ? t('auth.working') : t('auth.signupAction')}</Button>
       <p className="text-sm text-muted-foreground">{c.next}</p>
     </form>
-    <p className="border-t pt-4 text-sm text-muted-foreground">{t('auth.haveAccount')} <Link className={linkClass} to="/login">{t('auth.toLogin')}</Link></p>
+    <p className="border-t pt-4 text-sm text-muted-foreground">{t('auth.haveAccount')} <Link className={linkClass} to={withNext('/login', next)}>{t('auth.toLogin')}</Link></p>
   </AuthLayout>;
 }
 

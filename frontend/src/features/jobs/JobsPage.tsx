@@ -138,8 +138,10 @@ export function JobDetailPage() {
   const [opened, setOpened] = useState<DocumentView | null>(null);
   const { reload: reloadRuns } = runs; const { reload: reloadSessions } = sessions;
   const settled = useCallback(() => { reloadRuns(); reloadSessions(); }, [reloadRuns, reloadSessions]);
-  if (result.status === 'loading' && !result.data) return <LoadingState />;
-  if (result.status === 'error') return <ErrorState onRetry={result.reload} />;
+  // Wait for all four lists: with only the job loaded the page would claim "not evaluated" and pick a wrong next step.
+  const needed = [result, runs, cvs, sessions];
+  if (needed.some(item => item.status === 'loading' && !item.data)) return <LoadingState />;
+  if (needed.some(item => item.status === 'error' && !item.data)) return <ErrorState onRetry={() => needed.forEach(item => item.reload())} />;
   const job = result.data?.find(item => item.id === jobId);
   if (!job) return <EmptyState title={t('removedTitle')} description={t('removedBody')}><Button asChild><Link to={`${base}/applications`}>{t('backToApplications')}</Link></Button></EmptyState>;
   const source = safeHttpUrl(job.source_url);

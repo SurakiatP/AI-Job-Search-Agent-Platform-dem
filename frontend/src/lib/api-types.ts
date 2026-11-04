@@ -59,7 +59,7 @@ export type AccountAgent = {
 
 export type OwnerSessionState =
   | { status: 'loading' }
-  | { status: 'anonymous' }
+  | { status: 'anonymous'; loggedOut?: boolean } // loggedOut: the person signed out (not an expired session)
   | { status: 'ready'; expires_at: string; user: Account }
   | { status: 'error'; error: ApiError };
 

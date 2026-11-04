@@ -17,9 +17,9 @@ const PICK_KEY = 'connect.client';
 const isLocal = (origin: string) => /^https?:\/\/(127\.|localhost|\[::1\])/.test(origin) || origin.startsWith('http://');
 
 function ClientPicker({ c, lang, list, local }: { c: Copy; lang: Lang; list: Client[]; local: boolean }) {
-  const [id, setId] = useState(() => localStorage.getItem(PICK_KEY) ?? list[0].id);
+  const [id, setId] = useState(() => { try { return localStorage.getItem(PICK_KEY) ?? list[0].id; } catch { return list[0].id; } });
   const client = list.find(item => item.id === id) ?? list[0];
-  const pick = (value: string) => { setId(value); localStorage.setItem(PICK_KEY, value); };
+  const pick = (value: string) => { setId(value); try { localStorage.setItem(PICK_KEY, value); } catch { /* storage blocked */ } };
   return <div className="grid gap-6">
     <div className="grid gap-2">
       <Label htmlFor="connect-client">{c.pickClient}</Label>

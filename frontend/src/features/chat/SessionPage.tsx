@@ -148,7 +148,8 @@ export function SessionWorkspace({ projectId, sessionId, embedded = false, defau
   const resources = [session, documents, runs];
   if (resources.some(item => item.status === 'loading' && item.data === undefined) || workflow.loading) return <LoadingState />;
   if (session.errorStatus === 404) return <MissingResource />;
-  if (resources.some(item => item.status === 'error')) return <ErrorState onRetry={() => resources.forEach(item => item.reload())} />;
+  // A failed background reload keeps what is on screen (open forms, tabs); only a first load failure replaces the page.
+  if (resources.some(item => item.status === 'error' && item.data === undefined)) return <ErrorState onRetry={() => resources.forEach(item => item.reload())} />;
   const current = session.data;
   if (!current) return <MissingResource />;
   const paired = Boolean(current.cv_revision_id && current.job_revision_id);
@@ -179,11 +180,15 @@ export function SessionWorkspace({ projectId, sessionId, embedded = false, defau
       return false;
     } finally { setSubmitting(false); }
   }
+  // Retry only rebuilds a run this page started (same operation), or an evaluation, which needs no extra input.
+  // Tailor and apply runs are started from their own cards, so `last` may describe a different operation.
+  const retryable = last.current && last.current.operation === workflow.run?.operation ? last.current
+    : workflow.run?.operation === 'evaluate_job' ? { operation: 'evaluate_job' as const, instructions: '' } : null;
   const retry = () => {
-    const previous = last.current ?? (workflow.run?.operation === 'evaluate_job' ? { operation: 'evaluate_job' as const, instructions: '' } : null);
-    if (previous && workflow.run) void startRun(previous.operation, previous.instructions, previous.documentId, workflow.run.id, previous.draftKind);
+    if (retryable && workflow.run) void startRun(retryable.operation, retryable.instructions, retryable.documentId, workflow.run.id, retryable.draftKind);
   };
-  const failed = status && !ACTIVE.includes(status) && status !== 'completed' && workflow.run?.operation !== 'export_document';
+  // needs_input is a run waiting for the user, not a failure.
+  const failed = status && !ACTIVE.includes(status) && status !== 'completed' && status !== 'needs_input' && workflow.run?.operation !== 'export_document';
   const liveDoc = (kind: DraftKind) => drafted.find(doc => doc.document_type === kind);
   const draftNow = (kind: DraftKind) => { setConfirmKind(null); void startRun('draft_documents', kind === 'cover_letter' ? c.letterAsk : c.messageAsk, undefined, undefined, kind); };
   const askDraft = (kind: DraftKind) => liveDoc(kind) ? setConfirmKind(kind) : draftNow(kind);
@@ -209,7 +214,7 @@ export function SessionWorkspace({ projectId, sessionId, embedded = false, defau
   const primary: PrimaryAction | null = workflow.pendingApproval ? null
     : status === 'waiting_approval' ? { label: c.refresh, onClick: reloadRun }
     : status === 'needs_input' ? (tab === needsTab ? null : { label: operation === 'tailor_cv' ? t('panel.reviewChanges') : operation === 'apply_prepare' ? t('panel.answerQuestions') : t('run.openDocuments'), onClick: () => setTab(needsTab) })
-    : failed && (last.current || operation === 'evaluate_job') ? { label: c.retry, onClick: retry, disabled: blocked, title: gate.title }
+    : failed && retryable ? { label: c.retry, onClick: retry, disabled: blocked, title: gate.title }
     : active ? null
     : step.key === 'getFitScore' ? { label: t('evaluate'), onClick: () => void startRun('evaluate_job', ''), disabled: blocked, title: gate.title }
     : step.key === 'draftLetter' ? { label: c.draftCta, onClick: () => askDraft('cover_letter'), disabled: blocked, title: gate.title }
@@ -249,7 +254,7 @@ export function SessionWorkspace({ projectId, sessionId, embedded = false, defau
       <section aria-labelledby="next-heading" className={cn('grid min-w-0 gap-3 rounded-xl border bg-card p-4 sm:p-5', urgent && 'border-primary')}>
         <h2 id="next-heading" className="sr-only">{t('panel.title')}</h2>
         {workflow.run && <RunTimeline locale={locale} run={workflow.run} events={workflow.events} cancellationPending={workflow.cancellationPending} />}
-        {failed && <Alert severity="error" role="alert"><p className="font-medium">{t('failTitle')}</p><p className="text-sm">{failReason}</p></Alert>}
+        {failed && <Alert severity="error" role="alert"><p className="font-medium">{t(operation === 'evaluate_job' ? 'failTitle' : 'failTitleOther')}</p><p className="text-sm">{failReason}</p></Alert>}
         {status === 'needs_input' && <Alert severity="warning" className="font-medium">{t('run.needsInput')}</Alert>}
         {workflow.error && <Alert severity="error" action={<Button type="button" variant="outline" size="sm" onClick={reloadRun}>{t('refresh')}</Button>}>{t(workflow.error, { defaultValue: t('pages.loadError') })}</Alert>}
         <ApprovalCard approval={workflow.pendingApproval} locale={locale} busy={workflow.submitting} onDecision={(id, decision) => void workflow.decideApproval(id, decision)} onRefresh={reloadRun} />

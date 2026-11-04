@@ -26,7 +26,7 @@ import { EvaluateButton } from '../sessions/EvaluateButton';
 import { safeHttpUrl, sendJson, useResource } from '../projects/useResource';
 import { Markdown } from '@/components/Markdown';
 import { sampleJobs } from './sampleJobs';
-import { highlightSegments } from './highlight';
+import { rehypeHighlight } from './highlight';
 import { categoryLabel } from './categories';
 import { SavedSearchesPanel } from './SavedSearches';
 import { ADV_KEYS, AdvancedFilters, advValueLabel, splitList, type Facet } from './AdvancedFilters';
@@ -166,15 +166,18 @@ function useSavedJobs(projectId: string) {
   const saved = useResource<SavedJob[]>(`/projects/${projectId}/jobs`);
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState<{ slug: string; card: boolean } | null>(null);
+  // Jobs saved here count as saved at once, so a second click before the list reloads cannot save a duplicate.
+  const [added, setAdded] = useState<SavedJob[]>([]);
   const find = (job: JobSearchItem) => {
     const source = safeHttpUrl(job.source_url);
-    return (saved.data ?? []).find(item => (source && item.source_url === source) || (item.title === job.title && (item.company ?? '') === (job.company ?? '')));
+    return [...(saved.data ?? []), ...added].find(item => (source && item.source_url === source) || (item.title === job.title && (item.company ?? '') === (job.company ?? '')));
   };
   async function save(job: JobSearchItem, card: boolean) {
     if (busy) return;
     setBusy(job.slug); setFailed(null);
     try {
-      await sendJson(`/projects/${projectId}/jobs`, 'POST', { title: job.title.slice(0, 300), company: job.company?.slice(0, 300) || null, source_url: safeHttpUrl(job.source_url) ?? null, description: job.description_markdown.slice(0, 50000) || job.title });
+      const created = await sendJson<SavedJob>(`/projects/${projectId}/jobs`, 'POST', { title: job.title.slice(0, 300), company: job.company?.slice(0, 300) || null, source_url: safeHttpUrl(job.source_url) ?? null, description: job.description_markdown.slice(0, 50000) || job.title });
+      setAdded(list => [...list, created]);
       saved.reload();
     } catch { setFailed({ slug: job.slug, card }); }
     setBusy(null);
@@ -239,12 +242,8 @@ function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, s
     </ul>}
     <div className="grid gap-2 border-t pt-4">
       <h3 className="text-sm font-semibold">{c.description}</h3>
-      {job.highlight && (Object.keys(job.highlight.matched).length || Object.keys(job.highlight.missing).length)
-        ? <div className="grid gap-3 break-words text-sm leading-relaxed">{job.description_markdown.split(/\n{2,}/).map((para, i) => <p key={i} className="whitespace-pre-wrap">
-          {highlightSegments(para, job.highlight!).map((seg, j) => seg.kind === 'plain' ? seg.text
-            : <mark key={j} className={seg.kind === 'matched' ? 'rounded bg-success/15 px-0.5 text-success' : 'rounded bg-destructive/12 px-0.5 text-destructive'}>{seg.text}<span className="sr-only"> {seg.kind === 'matched' ? c.inCv : c.notInCv}</span></mark>)}
-        </p>)}</div>
-        : <Markdown className="text-sm">{job.description_markdown}</Markdown>}
+      <Markdown className="text-sm" rehypePlugins={job.highlight && (Object.keys(job.highlight.matched).length || Object.keys(job.highlight.missing).length)
+        ? [rehypeHighlight(job.highlight, { matched: c.inCv, missing: c.notInCv })] : undefined}>{job.description_markdown}</Markdown>
     </div>
   </div>;
 }

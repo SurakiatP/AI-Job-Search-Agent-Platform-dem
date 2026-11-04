@@ -209,6 +209,7 @@
     "restoreFailed": "Could not restore “{{title}}”. Try again."
   },
   "failTitle": "The evaluation did not finish",
+  "failTitleOther": "This task did not finish",
   "failReason": "The agent stopped before it finished. Try again. If it keeps failing, check the run history.",
   "dots": {
     "done": "Done",

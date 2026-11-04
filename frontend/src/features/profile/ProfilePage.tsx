@@ -116,6 +116,10 @@ export function ProfilePage() {
   const bank = useResource<ExperienceView>(`/projects/${projectId}/experience`);
   const extractionStatus = bank.data?.extraction?.status;
   const extracting = extractionStatus === 'queued' || extractionStatus === 'running';
+  // One extraction at a time: buttons stay off from the click until the reloaded bank shows the run.
+  const [starting, setStarting] = useState(false);
+  const [bankSeen, setBankSeen] = useState(bank.data);
+  if (bankSeen !== bank.data) { setBankSeen(bank.data); setStarting(false); }
   // Reload the bank when a CV revision is added.
   const revisionKey = cvs.data?.map(cv => cv.latest_revision?.id ?? '').join() ?? null;
   const seenRevisionKey = useRef<string | null>(null);
@@ -153,8 +157,9 @@ export function ProfilePage() {
     catch { setUndoFailed(true); }
   }
   async function extract(cv: CVView, revisionId?: string) {
-    setExtractError(false);
-    try { await apiRequest(`/async/projects/${projectId}/cvs/${cv.id}/experience-extractions${revisionId ? `?revision_id=${revisionId}` : ''}`, { method: 'POST' }); bank.reload(); cvs.reload(); primaryRevisions.reload(); } catch { setExtractError(true); }
+    if (extracting || starting) return;
+    setExtractError(false); setStarting(true);
+    try { await apiRequest(`/async/projects/${projectId}/cvs/${cv.id}/experience-extractions${revisionId ? `?revision_id=${revisionId}` : ''}`, { method: 'POST' }); bank.reload(); cvs.reload(); primaryRevisions.reload(); } catch { setExtractError(true); setStarting(false); }
   }
   const date = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium' });
   const dateTime = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium', timeStyle: 'short' });
@@ -225,7 +230,7 @@ export function ProfilePage() {
                   {cv.has_builder_draft
                     ? <Button asChild size="sm" variant="outline"><Link to={`/app/projects/${projectId}/cvs/${cv.id}/builder`}><Pencil className="size-4" aria-hidden="true" />{c.editBuilder}</Link></Button>
                     : <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { versionTarget.current = cv.id; versionInput.current?.click(); }}><Upload className="size-4" aria-hidden="true" />{c.upload}</Button>}
-                  {latest && bank.data?.provider_configured && <Button type="button" size="sm" variant="outline" aria-label={`${w(latest.extracted_at ? 'extractAgain' : 'extractFacts')}: ${cv.name}`} disabled={gate.blocked} title={gate.title} onClick={() => void extract(cv)}><Sparkles className="size-4" aria-hidden="true" />{w(latest.extracted_at ? 'extractAgain' : 'extractFacts')}</Button>}
+                  {latest && bank.data?.provider_configured && <Button type="button" size="sm" variant="outline" aria-label={`${w(latest.extracted_at ? 'extractAgain' : 'extractFacts')}: ${cv.name}`} disabled={gate.blocked || extracting || starting} title={gate.title} onClick={() => void extract(cv)}><Sparkles className="size-4" aria-hidden="true" />{w(latest.extracted_at ? 'extractAgain' : 'extractFacts')}</Button>}
                   <CvRowMenu cv={cv} c={c} label={w('rowMenu', { name: cv.name })} help={w('makePrimaryHelp')} onMakePrimary={() => void makePrimary(cv)} onRename={() => setRename(cv)} onDelete={() => setRemove(cv)} />
                 </div>
                 {latest && bank.data?.provider_configured && <GateNote />}
@@ -251,7 +256,7 @@ export function ProfilePage() {
                 {!extracting && !notStarted && !readFailed && skillNames.length > 0 && <ul className="flex flex-wrap gap-1">{skillNames.map(name => <li key={name}><Badge variant="muted">{name}</Badge></li>)}</ul>}
               </div>
               {!extracting && readFailed
-                ? retryCv && bank.data?.provider_configured && <Button type="button" className="sm:ms-auto" disabled={gate.blocked} title={gate.title} onClick={() => void extract(retryCv)}><Sparkles className="size-4" aria-hidden="true" />{w('retry')}</Button>
+                ? retryCv && bank.data?.provider_configured && <Button type="button" className="sm:ms-auto" disabled={gate.blocked || extracting || starting} title={gate.title} onClick={() => void extract(retryCv)}><Sparkles className="size-4" aria-hidden="true" />{w('retry')}</Button>
                 : !extracting && !notStarted && !!factCount && <Button type="button" variant="outline" className="sm:ms-auto" onClick={() => showTab('experience')}>{w('bankReview')}<ArrowRight className="size-4" aria-hidden="true" /></Button>}
             </div>
           </CardContent></Card>

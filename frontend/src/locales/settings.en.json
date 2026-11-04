@@ -12,6 +12,7 @@
   },
   "loading": "Loading…",
   "loadError": "We could not load settings.",
+  "saveFailed": "Could not save. Try again.",
   "retry": "Try again",
   "tools": {
     "description": "Enable only the supported Career Ops connector for this project. Availability depends on the local installation."

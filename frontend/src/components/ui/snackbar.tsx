@@ -9,7 +9,8 @@ export function Snackbar({ open, message, action, onClose, autoHideDuration = 60
   const timer = useRef<number | undefined>(undefined);
   const hold = useRef(false);
   const start = () => { window.clearTimeout(timer.current); if (open && !hold.current) timer.current = window.setTimeout(onClose, autoHideDuration); };
-  useEffect(() => { start(); return () => window.clearTimeout(timer.current); }, [open, message]);
+  // Closing (e.g. by its own Undo button) skips pointer-leave/blur, so release the hover/focus hold here.
+  useEffect(() => { if (!open) hold.current = false; start(); return () => window.clearTimeout(timer.current); }, [open, message]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!open) return null;
   return <div role="status" className={cn('snackbar fixed inset-x-4 bottom-4 z-50 flex min-h-12 items-center gap-4 rounded bg-foreground px-4 py-1.5 text-sm text-background shadow-[var(--shadow-8)] sm:inset-x-auto sm:start-6 sm:bottom-6 sm:min-w-72 sm:max-w-lg', className)}
     onPointerEnter={() => { hold.current = true; window.clearTimeout(timer.current); }} onPointerLeave={() => { hold.current = false; start(); }}

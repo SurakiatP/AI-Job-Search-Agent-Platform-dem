@@ -22,3 +22,21 @@ export function highlightSegments(text: string, terms: { matched: Record<string,
   if (last < text.length) out.push({ text: text.slice(last), kind: 'plain' });
   return out;
 }
+
+type HastNode = { type: string; value?: string; tagName?: string; properties?: Record<string, unknown>; children?: HastNode[] };
+const MARK_CLASS = { matched: 'rounded bg-success/15 px-0.5 text-success', missing: 'rounded bg-destructive/12 px-0.5 text-destructive' };
+
+// Rehype plugin: marks skill terms inside rendered markdown text, so headings and lists keep their shape.
+export function rehypeHighlight(terms: Parameters<typeof highlightSegments>[1], labels: { matched: string; missing: string }) {
+  const walk = (node: HastNode) => {
+    if (!node.children || node.tagName === 'code' || node.tagName === 'pre') return;
+    node.children = node.children.flatMap(child => {
+      if (child.type !== 'text') { walk(child); return [child]; }
+      return highlightSegments(child.value ?? '', terms).map(seg => seg.kind === 'plain' ? { type: 'text', value: seg.text } : {
+        type: 'element', tagName: 'mark', properties: { className: MARK_CLASS[seg.kind] },
+        children: [{ type: 'text', value: seg.text }, { type: 'element', tagName: 'span', properties: { className: 'sr-only' }, children: [{ type: 'text', value: ` ${labels[seg.kind]}` }] }],
+      });
+    });
+  };
+  return () => (tree: HastNode) => { walk(tree); };
+}

@@ -41,7 +41,7 @@ function FactForm({ c, initial, submitLabel, onSubmit, onCancel }: { c: Copy; in
   const [draft, setDraft] = useState(initial);
   const [busy, setBusy] = useState(false);
   const set = (key: keyof Draft) => (event: { target: { value: string } }) => setDraft(d => ({ ...d, [key]: event.target.value }));
-  const text = (key: keyof Draft, label: string, max: number, type = 'text') => <label className="grid content-start gap-2 text-sm font-medium"><span>{label}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Input type={type} value={draft[key] as string} maxLength={max} onChange={set(key)} /></label>;
+  const text = (key: keyof Draft, label: string, max: number, type = 'text') => <label className="grid content-start gap-2 text-sm font-medium"><span>{label}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Input type={type} placeholder={type === 'month' ? 'YYYY-MM' : undefined} value={draft[key] as string} maxLength={max} onChange={set(key)} /></label>;
   const area = (key: keyof Draft, label: string, max: number) => <label className="grid content-start gap-2 text-sm font-medium sm:col-span-2"><span>{label}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Textarea rows={3} value={draft[key] as string} maxLength={max} onChange={set(key)} /></label>;
   return <form className="grid gap-3 sm:grid-cols-2" onSubmit={async event => { event.preventDefault(); if (!draft.text.trim() || busy) return; setBusy(true); try { await onSubmit(draft); setDraft(initial); } catch { /* the parent shows the error; keep the draft */ } finally { setBusy(false); } }}>
     <label className="grid content-start gap-2 text-sm font-medium sm:col-span-2">{c.fact}<Input value={draft.text} maxLength={1000} onChange={set('text')} /></label>
@@ -57,7 +57,7 @@ function FactForm({ c, initial, submitLabel, onSubmit, onCancel }: { c: Copy; in
         {text('location', c.location, 200)}
         {text('industry', c.industry, 200)}
         {text('start_date', c.start, 7, 'month')}
-        <label className="grid content-start gap-2 text-sm font-medium"><span>{c.end}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Input type="month" value={draft.is_current ? '' : draft.end_date} disabled={draft.is_current} onChange={set('end_date')} /></label>
+        <label className="grid content-start gap-2 text-sm font-medium"><span>{c.end}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Input type="month" placeholder="YYYY-MM" value={draft.is_current ? '' : draft.end_date} disabled={draft.is_current} onChange={set('end_date')} /></label>
         <label className="flex min-h-11 lg:min-h-10 items-center gap-2 self-end text-sm"><input type="checkbox" className="size-5 shrink-0 accent-primary" checked={draft.is_current} onChange={event => setDraft(d => ({ ...d, is_current: event.target.checked, end_date: event.target.checked ? '' : d.end_date }))} />{c.current}</label>
         {area('responsibilities', c.duties, 2000)}
         {area('achievements', c.wins, 2000)}
@@ -86,10 +86,14 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
   const active = status === 'queued' || status === 'running';
   // The page polls while an extraction is queued or running.
 
+  // Blocks the run buttons from the click until the reloaded bank arrives, so a double click cannot start two runs.
+  const [acting, setActing] = useState(false);
+  const [bankSeen, setBankSeen] = useState(bank.data);
+  if (bankSeen !== bank.data) { setBankSeen(bank.data); setActing(false); }
   async function act(work: () => Promise<unknown>) {
-    setError(null);
+    setError(null); setActing(true);
     try { await work(); bank.reload(); }
-    catch (e) { setError(e instanceof ApiError && e.code === 'duplicate' ? c.duplicate : e instanceof ApiError && e.code === 'bank_full' ? c.full : c.failedAction); throw e; }
+    catch (e) { setActing(false); setError(e instanceof ApiError && e.code === 'duplicate' ? c.duplicate : e instanceof ApiError && e.code === 'bank_full' ? c.full : c.failedAction); throw e; }
   }
   const base = `/projects/${projectId}/experience`;
   const extraction = bank.data?.extraction;
@@ -108,9 +112,9 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
     <div><h2 id="experience-bank-title" tabIndex={-1} className="text-lg font-semibold">{c.title}</h2><p className="text-sm text-muted-foreground">{c.hint}</p></div>
     <div role="status" aria-live="polite" className="text-sm">
       {bank.data && !bank.data.provider_configured && <p className="flex flex-wrap items-center gap-2">{gatewayHelp.isAdmin ? c.noProvider : gatewayHelp.contactText} {gatewayHelp.isAdmin && <Link className="underline" to="/app/settings?section=gateway">{c.settings}</Link>}</p>}
-      {extraction && active && <BusyNote announce={false} bar label={status === 'queued' ? c.queued : c.running} action={<Button size="sm" variant="outline" onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/agent-runs/${extraction.run_id}/cancel`, { method: 'POST' })).catch(() => undefined)}>{c.stop}</Button>} />}
+      {extraction && active && <BusyNote announce={false} bar label={status === 'queued' ? c.queued : c.running} action={<Button size="sm" variant="outline" disabled={acting} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/agent-runs/${extraction.run_id}/cancel`, { method: 'POST' })).catch(() => undefined)}>{c.stop}</Button>} />}
       {extraction?.status === 'completed' && extraction.summary && <p>{c.done(extraction.summary)}</p>}
-      {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && <p className="flex flex-wrap items-center gap-2">{c.failed}{cvForRun && <Button size="sm" variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}>{c.retry}</Button>}</p>}
+      {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && <p className="flex flex-wrap items-center gap-2">{c.failed}{cvForRun && <Button size="sm" variant="outline" disabled={gate.blocked || acting} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}>{c.retry}</Button>}</p>}
       {extraction && ['failed', 'interrupted', 'cancelled'].includes(extraction.status) && cvForRun && <GateNote />}
     </div>
     {error && <Alert severity="error" role="alert">{error}</Alert>}
@@ -147,6 +151,6 @@ export function ExperienceBank({ projectId, locale, primaryCvId, bank }: { proje
       onConfirm={() => apiRequest(base + '/' + removing.id, { method: 'DELETE' }).then(() => undefined)}
       onDone={() => { setRemoving(null); bank.reload(); }} onClose={() => setRemoving(null)} />}
     <FactForm c={c} initial={blank} submitLabel={c.add} onSubmit={d => act(() => sendJson(base, 'POST', toBody(d)))} />
-    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" disabled={gate.blocked} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}><Sparkles className="size-4" aria-hidden="true" />{extraction ? c.extract : c.extractFirst}</Button><GateNote className="mt-2" /></div>}
+    {cvForRun && bank.data?.provider_configured && !active && <div><Button variant="outline" disabled={gate.blocked || acting} title={gate.title} onClick={() => void act(() => apiRequest(`/async/projects/${projectId}/cvs/${cvForRun}/experience-extractions`, { method: 'POST' })).catch(() => undefined)}><Sparkles className="size-4" aria-hidden="true" />{extraction ? c.extract : c.extractFirst}</Button><GateNote className="mt-2" /></div>}
   </section>;
 }

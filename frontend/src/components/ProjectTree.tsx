@@ -163,19 +163,22 @@ export function ProjectTree({ projects, projectId, sessionId, onNavigate, onRelo
   useEffect(() => { if (projectId) setExpanded(new Set([projectId])); }, [projectId]);
   const refresh = () => { setVersion(value => value + 1); onReload?.(); };
   const [undo, setUndo] = useState<{ projectId: string; id: string; message: string; retry: boolean } | null>(null);
+  const [undoing, setUndoing] = useState(false);
+  // Both the undo offer and a failure message clear themselves after 8 s.
   useEffect(() => {
-    if (!undo?.retry) return;
+    if (!undo) return;
     const timer = window.setTimeout(() => setUndo(null), 8000);
     return () => window.clearTimeout(timer);
   }, [undo]);
   async function undoDelete() {
-    if (!undo) return;
+    if (!undo || undoing) return;
+    setUndoing(true);
     try {
       await apiRequest(`/projects/${undo.projectId}/sessions/${undo.id}/restore`, { method: 'POST' });
       setUndo(null); refresh();
     } catch (caught) {
       setUndo({ ...undo, retry: false, message: caught instanceof ApiError && caught.code === 'session_pair_exists' ? c.session_pair_exists : c.undoFailed });
-    }
+    } finally { setUndoing(false); }
   }
   function done(state: NonNullable<DialogState>, hidden?: boolean) {
     setDialog(null); refresh();
@@ -202,7 +205,7 @@ export function ProjectTree({ projects, projectId, sessionId, onNavigate, onRelo
     </ul>)}
     {undo && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted px-3 py-2 text-sm">
       <span className="[overflow-wrap:anywhere]">{undo.message}</span>
-      {undo.retry && <Button type="button" size="sm" variant="outline" onClick={() => { void undoDelete(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
+      {undo.retry && <Button type="button" size="sm" variant="outline" busy={undoing} disabled={undoing} onClick={() => { void undoDelete(); }}><RotateCcw className="size-4" aria-hidden="true" />{c.undo}</Button>}
     </div>}
     {dialog && <ItemDialog key={`${dialog.mode}:${dialog.target.id}`} state={dialog} onClose={() => setDialog(null)} onDone={done} />}
   </section>;

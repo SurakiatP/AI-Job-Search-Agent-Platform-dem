@@ -1,4 +1,4 @@
-import ReactMarkdown, { type Components } from 'react-markdown';
+import ReactMarkdown, { type Components, type Options } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { safeHttpUrl } from '../features/projects/useResource';
@@ -27,8 +27,8 @@ const components: Components = {
   td: ({ node: _n, ...props }) => <td className="border border-border px-3 py-2 align-top" {...props} />,
 };
 
-export function Markdown({ children, className, ...props }: { children: string; className?: string; 'data-testid'?: string }) {
+export function Markdown({ children, className, rehypePlugins, ...props }: { children: string; className?: string; rehypePlugins?: Options['rehypePlugins']; 'data-testid'?: string }) {
   return <div data-markdown="" className={cn('min-w-0 break-words leading-relaxed', className)} {...props}>
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components} disallowedElements={['img']}>{children}</ReactMarkdown>
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components} rehypePlugins={rehypePlugins} disallowedElements={['img']}>{children}</ReactMarkdown>
   </div>;
 }
