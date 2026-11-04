@@ -24,3 +24,13 @@ test('signing out sends the next login to the start page, not the last page', as
   await page.getByRole('main').getByRole('button', { name: 'Log out' }).click();
   await expect(page).toHaveURL(/\/login$/);
 });
+
+test('a CV with no builder draft explains it and links back instead of offering a retry', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
+  await useSyntheticApplication(page);
+  await page.route(`**/v1/projects/${projectId}/cvs/${cvId}/draft`, route => route.fulfill({ status: 404, json: { code: 'not_found', message_key: 'errors.not_found', retryable: false } }));
+  await page.goto(`/app/projects/${projectId}/cvs/${cvId}/builder`);
+  await expect(page.getByRole('heading', { name: 'This CV has no builder draft' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0);
+  await expect(page.getByRole('main').getByRole('link', { name: 'CV & experience' })).toHaveAttribute('href', `/app/projects/${projectId}/profile`);
+});

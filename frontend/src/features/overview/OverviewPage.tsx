@@ -44,6 +44,16 @@ function EmptyLine({ title, body, children }: { title: string; body: string; chi
   return <div className="grid justify-items-start gap-2 p-5 sm:p-6"><p className="font-medium">{title}</p><p className="text-sm text-muted-foreground">{body}</p>{children}</div>;
 }
 
+function OverviewSkeleton({ label }: { label: string }) {
+  return <div role="status" className="grid min-w-0 gap-6 lg:gap-8">
+    <span className="sr-only">{label}</span>
+    <div className="grid gap-3"><Skeleton className="h-10 w-64 max-w-full" /><Skeleton className="h-5 w-96 max-w-full" /></div>
+    <Skeleton className="h-56 rounded-3xl" />
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-4">{[0, 1, 2, 3].map(i => <div key={i} className="grid gap-2 bg-card p-5 sm:p-6"><Skeleton className="h-10 w-12" /><Skeleton className="h-4 w-20" /></div>)}</div>
+    <div className="grid gap-3"><Skeleton className="h-8 w-40" /><div className="grid gap-4 sm:grid-cols-2"><Skeleton className="h-36 rounded-2xl" /><Skeleton className="h-36 rounded-2xl" /></div></div>
+  </div>;
+}
+
 export function OverviewPage() {
   const { projectId = '' } = useParams();
   const { t, i18n } = useTranslation();
@@ -174,6 +184,12 @@ export function OverviewPage() {
   </Section>;
 
   if (project.status === 'error' && !project.data) return <ErrorState onRetry={project.reload} />;
+  // First load: one placeholder in the page's final shape, then everything at once. Drawing each list as it arrives
+  // made the page jump three times (title, lone job card, hero card pushing it down).
+  // Documents and approvals only add detail; without them the page still works.
+  const firstLoad = [project, cvs, jobs, runs, sessions];
+  if ([...firstLoad, documents, approvals].some(item => item.status === 'loading' && !item.data)) return <OverviewSkeleton label={t('pages.loading')} />;
+  if (firstLoad.some(item => item.status === 'error' && !item.data)) return <ErrorState onRetry={() => firstLoad.forEach(item => { if (!item.data) item.reload(); })} />;
   return <div className="grid min-w-0 gap-6 lg:gap-8">
     <PageHeader icon={LayoutDashboard} title={project.data?.name ?? t('nav.overview')} lede={startCard ? c.subtitleFirst : t('workspace.overviewSubtitle')} />
 

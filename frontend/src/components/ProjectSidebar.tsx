@@ -30,7 +30,7 @@ export function ProjectSwitcher({ projects = [], projectId, sessionId, onReload,
   const close = () => { setSwitching(false); onNavigate?.(); };
   return <>
     <Button ref={trigger} variant="outline" className={compact ? 'min-h-11 min-w-0 max-w-[55vw] justify-between gap-2 px-3 text-start' : 'min-h-12 w-full min-w-0 justify-between whitespace-normal px-3 text-start'} onClick={() => setSwitching(true)} aria-label={t('workspace.projectSwitchLabel', { name: project?.name ?? t('nav.allProjects') })}>
-      <span className={compact ? 'min-w-0 truncate' : 'min-w-0 break-words line-clamp-2'}>{project?.name ?? t('workspace.chooseProject')}</span><ChevronDown size={16} className="shrink-0" aria-hidden="true" />
+      <span className={compact ? 'min-w-0 truncate' : 'min-w-0 break-words line-clamp-2'}>{project?.name ?? (projects.length ? t('workspace.chooseProject') : '\u00a0')}</span><ChevronDown size={16} className="shrink-0" aria-hidden="true" />
     </Button>
     <Dialog open={switching} onOpenChange={setSwitching}><DialogContent onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus(); }} aria-describedby={undefined} className="max-h-[85dvh] overflow-y-auto"><DialogTitle>{t('workspace.switchProject')}</DialogTitle>
       <ProjectTree projects={projects} projectId={projectId} sessionId={sessionId} onReload={onReload} onNavigate={close} preserveUndo />

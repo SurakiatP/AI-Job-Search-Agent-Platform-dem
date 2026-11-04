@@ -65,7 +65,9 @@ function AppWorkspace() {
     reloadProjects();
   }, [projectId, projectList, reloadProjects]);
   // Keep the page mounted during background reloads (rename/delete): only block on the first load.
-  if ((projects.status === 'loading' && !projects.data) || (projectId && ((project.status === 'loading' && !project.data) || (sessions.status === 'loading' && !sessions.data)))) return <AppShell><LoadingState /></AppShell>;
+  // First load: draw the shell for this project and let the page show its own placeholder, in the same tree as the
+  // loaded state, so nothing swaps shape (a generic loading block, then the page's own placeholder) on the way in.
+  if ((projects.status === 'loading' && !projects.data) || (projectId && ((project.status === 'loading' && !project.data) || (sessions.status === 'loading' && !sessions.data)))) return <AppShell projectId={projectId} sessionId={sessionId}><Suspense fallback={<PageCodeLoading />}><Outlet /></Suspense></AppShell>;
   if (projects.status === 'error') return <AppShell><ErrorState onRetry={projects.reload} /></AppShell>;
   if (projectId && project.status === 'error') {
     if (project.errorStatus === 404) return <AppShell><MissingResource /></AppShell>;
@@ -76,7 +78,7 @@ function AppWorkspace() {
     id: item.id, name: item.name, href: `/app/projects/${item.id}/overview`,
     sessions: item.id === projectId ? (sessions.data ?? []).map(session => ({ id: session.id, name: session.title, href: `/app/projects/${item.id}/sessions/${session.id}` })) : [],
   }));
-  return <AppShell projects={navigation} projectId={projectId} sessionId={sessionId} onReload={() => { projects.reload(); sessions.reload(); }}><Suspense fallback={<LoadingState />}><Outlet /></Suspense></AppShell>;
+  return <AppShell projects={navigation} projectId={projectId} sessionId={sessionId} onReload={() => { projects.reload(); sessions.reload(); }}><Suspense fallback={<PageCodeLoading />}><Outlet /></Suspense></AppShell>;
 }
 
 // Opens the person's first project, creating "My job search" on a first visit so they never land on an empty project list.
@@ -121,6 +123,14 @@ function AppSearchStart() {
 function ProjectHome() {
   const { projectId } = useParams();
   return <Navigate to={`/app/projects/${projectId}/overview`} replace />;
+}
+
+// Page code still downloading: stay blank for a moment so a quick load goes straight to the page's own placeholder
+// instead of flashing a differently shaped loading block first.
+function PageCodeLoading() {
+  const [show, setShow] = useState(false);
+  useEffect(() => { const timer = window.setTimeout(() => setShow(true), 400); return () => window.clearTimeout(timer); }, []);
+  return show ? <LoadingState /> : null;
 }
 
 function NotFoundPage() { return <AppShell><MissingResource /></AppShell>; }

@@ -1,7 +1,7 @@
 import type { AccentId, SectionName, TemplateId } from './sections';
 
 type Copy = {
-  title: string; titleDoc: string; backCv: string; backDoc: string; loading: string; loadError: string; retry: string; reload: string;
+  title: string; titleDoc: string; backCv: string; backDoc: string; loading: string; loadError: string; noDraft: string; noDraftBody: string; retry: string; reload: string;
   saved: string; savedAt: (time: string) => string; saving: string; offline: string; offlineLong: string; conflict: string; conflictLong: string; invalid: (path: string) => string;
   stashFound: string; restore: string; discard: string; preview: string; updatePreview: string; previewFailed: string; rendering: string; edit: string;
   template: string; templates: Record<TemplateId, string>; accent: string; accents: Record<AccentId, string>; docLanguage: string; atsWarning: string; withPhoto: string;
@@ -20,7 +20,7 @@ type Copy = {
 
 export const copy: Record<'th' | 'en', Copy> = {
   th: {
-    title: 'สร้าง CV', titleDoc: 'แก้ไข CV ที่ปรับแล้ว', backCv: 'CV และประสบการณ์', backDoc: 'กลับไปที่เอกสาร', loading: 'กำลังโหลด…', loadError: 'โหลดร่าง CV ไม่สำเร็จ', retry: 'ลองอีกครั้ง', reload: 'โหลดร่างล่าสุด',
+    title: 'สร้าง CV', titleDoc: 'แก้ไข CV ที่ปรับแล้ว', backCv: 'CV และประสบการณ์', backDoc: 'กลับไปที่เอกสาร', loading: 'กำลังโหลด…', loadError: 'โหลดร่าง CV ไม่สำเร็จ', noDraft: 'ไม่มีร่าง CV นี้ในตัวสร้าง CV', noDraftBody: 'CV นี้อัปโหลดเป็นไฟล์ หรือร่างถูกลบไปแล้ว เริ่มสร้างใหม่ได้จากหน้า CV และประสบการณ์', retry: 'ลองอีกครั้ง', reload: 'โหลดร่างล่าสุด',
     saved: 'บันทึกแล้ว', savedAt: t => `บันทึกแล้ว · ${t}`, saving: 'กำลังบันทึก…', offline: 'ยังไม่ได้บันทึก',
     offlineLong: 'บันทึกไม่สำเร็จ ข้อมูลที่กรอกเก็บไว้ในเบราว์เซอร์นี้ชั่วคราว ลองบันทึกอีกครั้งเมื่อเชื่อมต่อได้', conflict: 'ร่างถูกแก้จากที่อื่น',
     conflictLong: 'ร่างนี้ถูกแก้จากแท็บหรือเครื่องอื่น โหลดร่างล่าสุดก่อนแก้ต่อ', invalid: p => `ข้อมูลบางช่องไม่ถูกต้อง${p ? ` (${p})` : ''}`,
@@ -58,7 +58,7 @@ export const copy: Record<'th' | 'en', Copy> = {
       draft_conflict: 'ร่างนี้ถูกแก้จากที่อื่น โหลดร่างล่าสุดแล้วลองอีกครั้ง', resume_invalid: 'ข้อมูลบางช่องไม่ถูกต้อง', document_busy: 'เอกสารนี้กำลังถูกประมวลผลอยู่ ลองอีกครั้งในอีกสักครู่', generic: 'บันทึกไม่สำเร็จ ลองอีกครั้ง' },
   },
   en: {
-    title: 'Build a CV', titleDoc: 'Edit tailored CV', backCv: 'CV & experience', backDoc: 'Back to document', loading: 'Loading…', loadError: 'Could not load the CV draft', retry: 'Try again', reload: 'Load latest draft',
+    title: 'Build a CV', titleDoc: 'Edit tailored CV', backCv: 'CV & experience', backDoc: 'Back to document', loading: 'Loading…', loadError: 'Could not load the CV draft', noDraft: 'This CV has no builder draft', noDraftBody: 'It was uploaded as a file, or its draft was removed. Start a new one from CV & experience.', retry: 'Try again', reload: 'Load latest draft',
     saved: 'Saved', savedAt: t => `Saved · ${t}`, saving: 'Saving…', offline: 'Not saved',
     offlineLong: 'Saving failed. What you typed is kept in this browser for now; try again when you are back online.', conflict: 'Changed elsewhere',
     conflictLong: 'This draft was changed in another tab or device. Load the latest draft before you continue.', invalid: p => `Some fields are not valid${p ? ` (${p})` : ''}`,

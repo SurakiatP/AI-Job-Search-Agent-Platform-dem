@@ -1,3 +1,4 @@
+import { EmptyPage } from '../projects/PageStates';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Alert } from '@/components/ui/alert';
 import { Link, useParams } from 'react-router';
@@ -42,7 +43,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
   const { locale } = useLocale();
   const c = copy[locale];
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<false | 'failed' | 'missing'>(false);
   const [save, setSave] = useState<SaveState>('saved');
   const [invalidPath, setInvalidPath] = useState('');
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -74,7 +75,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
       const value = await apiRequest<Draft>(base);
       const loaded = { ...value, resume_data: normalize(value.resume_data) };
       latest.current = loaded; pending.current = false; setDraft(loaded); setSave('saved');
-    } catch { setLoadError(true); return; }
+    } catch (error) { setLoadError(error instanceof ApiError && error.status === 404 ? 'missing' : 'failed'); return; } // 404: no draft, retrying cannot help
     try {
       const kept = localStorage.getItem(stashKey);
       if (kept) { const old = JSON.parse(kept) as Draft; setStash({ ...old, resume_data: normalize(old.resume_data) }); }
@@ -181,6 +182,7 @@ export function BuilderPage({ kind }: { kind: Kind }) {
     } finally { setPublishing(false); }
   }
 
+  if (loadError === 'missing') return <EmptyPage title={c.noDraft} description={c.noDraftBody} href={`/app/projects/${projectId}/${kind === 'cv' ? 'profile' : `documents/${documentId}`}`} action={kind === 'cv' ? c.backCv : c.backDoc} />;
   if (loadError) return <div className="grid gap-3 p-6"><p role="alert">{c.loadError}</p><Button className="w-fit" onClick={() => void load()}>{c.retry}</Button></div>;
   if (!draft) return <div className="p-6"><BusyNote locale={locale} label={c.loading} /></div>;
   const r = draft.resume_data;

@@ -186,9 +186,14 @@ test('job text renders safely and rejects a javascript source URL', async ({ pag
 
 test('new-project redirect can retry after the session list fails', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
-  await useSyntheticApplication(page, { sessionErrorOnce: true });
+  await useSyntheticApplication(page);
+  // The layout and the page both ask for the session list; fail every request until the person retries.
+  let failing = true;
+  await page.route(`**/v1/projects/${projectId}/sessions`, route => failing && route.request().method() === 'GET'
+    ? route.fulfill({ status: 503, json: { code: 'unavailable', message_key: 'service.unavailable', retryable: true } }) : route.fallback());
   await page.goto('/app');
   await expect(page.getByRole('alert')).toContainText('We could not load this information.');
+  failing = false;
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page).toHaveURL(new RegExp(`/app/projects/${projectId}/overview`));
 });
