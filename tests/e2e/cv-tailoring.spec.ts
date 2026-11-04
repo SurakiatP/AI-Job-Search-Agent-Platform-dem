@@ -73,3 +73,14 @@ test('autopilot result shows the backend stop reason in words', async ({ page })
   await page.getByRole('button', { name: 'Tailor CV', exact: true }).click();
   await expect(page.getByText('Every required skill is covered')).toBeVisible();
 });
+
+test('autopilot with every edit rejected says why nothing changed and lists the missing skills', async ({ page }) => {
+  const rejected = [0, 1, 2].map(id => ({ id, find: '', text: `Used Docker ${id}`, evidence_ids: ['f1'], status: 'rejected_by_gate' }));
+  await mock(page, 'en', { ...payload, mode: 'autopilot', stop_reason: 'no_gain', coverage_before: 0.6, coverage_after: 0.6, proposals: rejected, missing_skills: ['Docker', 'Kubernetes'] });
+  await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`); await page.getByRole("tab").nth(1).click();
+  await page.getByRole('button', { name: 'Tailor CV', exact: true }).click();
+  await expect(page.getByText('Could not tailor the CV yet')).toBeVisible();
+  await expect(page.getByText(/none is backed by your facts/)).toBeVisible();
+  await expect(page.getByText('Kubernetes', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Add to My facts' })).toHaveAttribute('href', `/app/projects/${projectId}/profile`);
+});

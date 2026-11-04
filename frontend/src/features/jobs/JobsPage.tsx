@@ -2,10 +2,10 @@ import { useCallback, useState } from 'react';
 import { useDraft } from '../../app/drafts';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Check, ChevronDown, ChevronUp, ExternalLink, Kanban, Plus } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, ExternalLink, Kanban, Plus, X } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,7 +47,6 @@ export function JobsPage() {
   if (result.status === 'loading' && !result.data) return <LoadingState />;
   if (result.status === 'error' && !result.data) return <ErrorState onRetry={result.reload} />;
   const jobs = result.data ?? [];
-  const showForm = open;
   async function save() {
     if (busy) return;
     if (!title.trim() || !description.trim()) { setError('missing'); return; }
@@ -71,21 +70,27 @@ export function JobsPage() {
           <p>{appT('summary', { tracked: jobs.length, active: jobs.filter(job => ACTIVE_STAGES.includes(job.stage)).length, closed: jobs.filter(job => CLOSED_STAGES.includes(job.stage)).length })}</p>
           <p className="mt-1 text-sm">{appT('recordingNote')}</p>
         </>}
-        actions={<Button variant={showForm ? 'outline' : 'default'} aria-expanded={showForm} aria-controls="add-job-form" onClick={() => setOpen(value => !value)}>{showForm ? appT('closeForm') : <><Plus className="size-4" aria-hidden="true" />{appT('addPosting')}</>}</Button>} />
+        actions={<Button aria-haspopup="dialog" onClick={() => setOpen(true)}><Plus className="size-4" aria-hidden="true" />{appT('addPosting')}</Button>} />
     </div>
-    {showForm && <Card id="add-job-form">
-      <CardHeader><CardTitle>{appT('addPostingTitle')}</CardTitle></CardHeader>
-      <CardContent>
-        <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void save(); }}>
+    <Dialog open={open} onOpenChange={next => { if (!busy) setOpen(next); }}>
+      <DialogContent id="add-job-form" className="max-h-[min(44rem,calc(100dvh-2rem))] w-[calc(100vw-2rem)] max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0">
+        <div className="flex items-center justify-between gap-3 border-b px-6 py-4">
+          <div className="min-w-0"><DialogTitle>{appT('addPostingTitle')}</DialogTitle><DialogDescription className="sr-only">{appT('recordingNote')}</DialogDescription></div>
+          <Button type="button" variant="ghost" size="icon" aria-label={appT('closeForm')} disabled={busy} onClick={() => setOpen(false)}><X className="size-5" aria-hidden="true" /></Button>
+        </div>
+        <form id="add-job-form-fields" className="grid min-h-0 content-start gap-4 overflow-y-auto px-6 py-5" onSubmit={event => { event.preventDefault(); void save(); }}>
           <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="job-title" value={title} maxLength={300} aria-invalid={error === 'missing' && !title.trim()} aria-describedby={error === 'missing' ? 'job-error' : undefined} onChange={event => { setTitle(event.target.value); if (error === 'missing') setError(null); }} required /><Label htmlFor="job-title" className="mui-label">{t('workflow.jobTitle')}</Label></div></div>
           <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="job-company" value={company} maxLength={300} onChange={event => setCompany(event.target.value)} /><Label htmlFor="job-company" className="mui-label">{t('workflow.company')}</Label></div></div>
           <div className="grid gap-2"><div className="mui-field"><Input placeholder=" " id="job-source-url" type="text" inputMode="url" aria-invalid={error === 'source'} value={sourceUrl} maxLength={2048} onChange={event => { setSourceUrl(event.target.value); if (error === 'source') setError(null); }} /><Label htmlFor="job-source-url" className="mui-label">{t('workflow.sourceUrl')}</Label></div></div>
           <div className="grid gap-2"><div className="mui-field"><Textarea placeholder=" " id="job-description" rows={8} maxLength={50000} value={description} aria-invalid={error === 'missing' && !description.trim()} aria-describedby={error === 'missing' ? 'job-error' : undefined} onChange={event => { setDescription(event.target.value); if (error === 'missing') setError(null); }} required /><Label htmlFor="job-description" className="mui-label">{t('workflow.posting')}</Label></div></div>
           {error && <Alert severity="error" id="job-error" role="alert">{appT(error === 'source' ? 'invalidSource' : error === 'missing' ? 'missingFields' : 'savePostingError')}</Alert>}
-          <div><Button type="submit" busy={busy} disabled={busy}>{appT('savePosting')}</Button></div>
         </form>
-      </CardContent>
-    </Card>}
+        <div className="flex flex-wrap justify-end gap-2 border-t px-6 py-4">
+          <Button type="button" variant="outline" disabled={busy} onClick={() => setOpen(false)}>{t('account.cancel')}</Button>
+          <Button type="submit" form="add-job-form-fields" busy={busy} disabled={busy}>{appT('savePosting')}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
     {!jobs.length && <div className="flex flex-col items-start gap-2 rounded-2xl border border-dashed p-6"><p className="font-medium">{appT('empty')}</p><p className="text-sm text-muted-foreground">{appT('emptyNext')}</p><Link className="text-sm text-primary hover:underline" to={`${base}/search`}>{appT('findJobs')}</Link></div>}
     {jobs.length > 0 && <ApplicationBoard projectId={projectId} cards={jobs} onChanged={result.reload} flowData={{ cvs: cvs.data, runs: runs.data, sessions: sessions.data }} />}
   </section>;
