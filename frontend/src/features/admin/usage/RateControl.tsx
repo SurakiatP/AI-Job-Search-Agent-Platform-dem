@@ -1,42 +1,19 @@
-import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { admin } from '../../../lib/api';
-import type { AdminPrefs } from '../../../lib/api-types';
+import type { AdminFxRate } from '../../../lib/api-types';
+import { safeHttpUrl } from '../../projects/useResource';
+import { dayLabel } from './format';
 
-const valid = (n: number) => Number.isFinite(n) && n > 0 && n <= 1000;
-
-/** "1 USD = [rate] THB": saves thb_rate in the admin's prefs (the PUT also carries the stored widgets). */
-export function RateControl({ prefs, loadFailed, onRetry, onSaved }: { prefs?: AdminPrefs; loadFailed: boolean; onRetry: () => void; onSaved: (p: AdminPrefs) => void }) {
+/** Read-only "1 USD = 35.12 THB" with where the rate comes from (fetched live by the backend; nobody can edit it). */
+export function RateControl({ fx, loadFailed, onRetry, lang }: { fx?: AdminFxRate; loadFailed: boolean; onRetry: () => void; lang: string }) {
   const { t } = useTranslation('admin-usage');
-  const [draft, setDraft] = useState('');
-  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  useEffect(() => { if (prefs) setDraft(String(prefs.thb_rate)); }, [prefs?.thb_rate]);
-  const n = Number(draft);
-  const bad = draft.trim() === '' || !valid(n);
-  const changed = !!prefs && n !== prefs.thb_rate;
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!prefs || bad || !changed) return;
-    setState('saving');
-    try { onSaved(await admin.savePrefs({ ...prefs, thb_rate: n })); setState('saved'); } catch { setState('error'); }
-  };
-
   if (loadFailed) return <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{t('rate.loadError')}
     <Button type="button" variant="outline" size="sm" onClick={onRetry}>{t('rate.retry')}</Button></p>;
-  return <form onSubmit={submit} className="grid gap-1.5" noValidate>
-    <div className="flex flex-wrap items-center gap-2">
-      <label htmlFor="usage-rate" className="text-sm font-medium">{t('rate.label')}</label>
-      <Input id="usage-rate" type="number" inputMode="decimal" step="any" min="0" className="w-28" value={draft} disabled={!prefs}
-        aria-invalid={draft !== '' && bad ? true : undefined} aria-describedby="usage-rate-note"
-        onChange={e => { setDraft(e.target.value); setState('idle'); }} />
-      <span className="text-sm text-muted-foreground">{t('rate.unit')}</span>
-      <Button type="submit" variant="outline" size="sm" disabled={!prefs || bad || !changed || state === 'saving'}>{t('rate.save')}</Button>
-    </div>
-    <p id="usage-rate-note" role={state === 'error' ? 'alert' : 'status'} className={`min-h-5 text-xs ${state === 'error' || (draft !== '' && bad) ? 'text-destructive' : 'text-muted-foreground'}`}>
-      {state === 'error' ? t('rate.saveError') : draft !== '' && bad ? t('rate.invalid') : state === 'saved' ? t('rate.saved') : ''}
-    </p>
-  </form>;
+  if (!fx) return null;
+  const href = safeHttpUrl(fx.source_url);
+  return <div className="grid gap-1 text-sm">
+    <p className="m-0 font-medium tabular-nums" data-testid="usage-rate">{t('rate.label')} {fx.rate.toFixed(2)} {t('rate.unit')}</p>
+    <p className="m-0 text-xs text-muted-foreground">{t('rate.source')} {href ? <a href={href} target="_blank" rel="noreferrer" className="underline underline-offset-2">{fx.source}</a> : fx.source}. {t('rate.asOf', { date: dayLabel(fx.as_of, lang) })}</p>
+    {fx.stale ? <p role="status" className="m-0 text-xs text-destructive">{t('rate.stale')}</p> : null}
+  </div>;
 }

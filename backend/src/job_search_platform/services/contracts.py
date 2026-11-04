@@ -985,7 +985,15 @@ class AdminBucket(DTO):
 
 class AdminPrefs(DTO):
     widgets: Annotated[list[Annotated[str, StringConstraints(pattern=r"^[a-z_]{1,40}$")]], Field(max_length=20)]
-    thb_rate: Annotated[float, Field(gt=0, le=1000)]
+
+
+class AdminFxRate(DTO):
+    rate: float
+    source: str
+    source_url: str
+    as_of: str
+    fetched_at: datetime
+    stale: bool
 
 
 class AdminUserItem(DTO):

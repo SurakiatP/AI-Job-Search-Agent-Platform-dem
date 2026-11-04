@@ -12,7 +12,7 @@ const probes = Array.from({ length: 288 }, (_, j) => ({
   components: { ...up, llm_gateway: j >= 36 && j <= 44 ? 'down' : 'ok' },
 }));
 
-export const gateway = { configured: true, reachable: true, base_url: 'http://127.0.0.1:54000', analyze_model: 'ai-analyze', decision_model: 'typesafe/jev-1.13', models: ['ai-analyze', 'ai-extra'] };
+export const gateway = { configured: true, reachable: true, base_url: 'http://127.0.0.1:54000', analyze_model: 'openai/gpt-6-luna', decision_model: 'typesafe/jev-1.13', models: ['openai/gpt-6-luna', 'ai-extra'] };
 export const tools = [
   { name: 'evaluate_job', description: 'Evaluate a job posting against a CV.', required_capability: 'jobs:evaluate' },
   { name: 'get_run', description: 'Read an authorized Project run and its published result view.', required_capability: 'results:read' },

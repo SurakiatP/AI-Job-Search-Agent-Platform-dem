@@ -47,7 +47,7 @@ def stub(monkeypatch):
 def test_provider_config_is_custom_openai_compatible_v1():
     config = GatewaySettings.from_env().provider_config()
     assert (config.provider, config.model, config.base_url, config.api_key) == (
-        "custom", "ai-analyze", "http://127.0.0.1:54000/v1", KEY)
+        "custom", "openai/gpt-6-luna", "http://127.0.0.1:54000/v1", KEY)
 
 
 def test_missing_key_raises_gateway_unconfigured(no_gateway_key):

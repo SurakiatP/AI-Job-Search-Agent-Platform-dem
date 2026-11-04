@@ -77,7 +77,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "job_source_unavailable": 502,
         "queue_full": 429, "submission_rate_limited": 429,
         "object_store_unavailable": 503, "service_unavailable": 503,
-        "secret_store_unavailable": 503,
+        "secret_store_unavailable": 503, "fx_unavailable": 503,
         "jev_unavailable": 409, "gateway_unconfigured": 409, "ocr_unavailable": 503, "document_too_many_pages": 400,
         "duplicate": 409, "bank_full": 409,
         "email_unverified": 403, "quota_exceeded": 429, "rate_limited": 429, "invalid_credentials": 401,

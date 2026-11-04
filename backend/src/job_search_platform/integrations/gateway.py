@@ -49,6 +49,23 @@ def read_private_file(private_dir: Path, name: str) -> str | None:
     except OSError:
         return None
 
+LEGACY_ALIAS = "ai-analyze"  # the old gateway alias; LiteLLM still knows it, but the app shows and records real model names
+
+
+def default_model_id(env=os.environ) -> str:
+    """The model behind every task without its own AI_MODEL_<TASK>: AI_ANALYZE_MODEL, else the upstream model of
+    AI_ANALYZE_UPSTREAM_MODEL (its LiteLLM name, without openrouter/), else openai/gpt-6-luna. Matches infra/litellm/seed.py."""
+    explicit = (env.get("AI_ANALYZE_MODEL") or "").strip()
+    if explicit and explicit != LEGACY_ALIAS:
+        return explicit
+    return (env.get("AI_ANALYZE_UPSTREAM_MODEL") or "").strip().removeprefix("openrouter/") or "openai/gpt-6-luna"
+
+
+def real_model(name: str, env=os.environ) -> str:
+    """Old runs and settings may still say ai-analyze; show the model it stands for."""
+    return default_model_id(env) if name == LEGACY_ALIAS else name
+
+
 
 @dataclass(frozen=True)
 class GatewaySettings:
@@ -65,7 +82,7 @@ class GatewaySettings:
         env = os.environ
         key = (env.get("LITELLM_API_KEY") or "").strip() or read_private_file(private_dir or default_private_dir(), "litellm_app_key")
         return cls((env.get("LITELLM_BASE_URL") or DEFAULT_BASE_URL).rstrip("/"), key,
-                   env.get("AI_ANALYZE_MODEL") or "ai-analyze",
+                   default_model_id(env),
                    env.get("AI_DECISION_MODEL") or "typesafe/jev-1.13")
 
     def _key(self) -> str:
@@ -103,7 +120,7 @@ class GatewaySettings:
             if response.status != 200:
                 raise ValueError
             data = json.loads(response.read(MAX_MODELS_BYTES))["data"]
-        return sorted({item["id"] for item in data if isinstance(item, dict) and isinstance(item.get("id"), str)})
+        return sorted({item["id"] for item in data if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"] != LEGACY_ALIAS})  # the old alias is the default model under another name
 
     async def status(self) -> GatewayStatusView:
         configured = bool(self.api_key)

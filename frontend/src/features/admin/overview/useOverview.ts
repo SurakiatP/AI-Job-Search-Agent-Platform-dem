@@ -5,7 +5,7 @@ import { rangeRefreshMs } from '../ui';
 
 export const WIDGET_ORDER = ['trend', 'attention', 'weekday', 'speed', 'tasks', 'activity', 'models'] as const;
 export type WidgetId = (typeof WIDGET_ORDER)[number];
-export const DEFAULT_PREFS: AdminPrefs = { widgets: ['trend', 'attention', 'weekday', 'speed', 'tasks'], thb_rate: 35 };
+export const DEFAULT_PREFS: AdminPrefs = { widgets: ['trend', 'attention', 'weekday', 'speed', 'tasks'] };
 
 /** The overview of one range, refreshed in the background (10 s up to 15 minutes, 30 s beyond). A failed refresh keeps the last data. */
 export function useOverview(range: AdminRange) {
@@ -25,9 +25,9 @@ export function useOverview(range: AdminRange) {
   return { data: current.data, failed: current.failed === true, retry: useCallback(() => setAttempt(n => n + 1), []) };
 }
 
-const valid = (p: unknown): p is AdminPrefs => !!p && Array.isArray((p as AdminPrefs).widgets) && typeof (p as AdminPrefs).thb_rate === 'number';
+const valid = (p: unknown): p is AdminPrefs => !!p && Array.isArray((p as AdminPrefs).widgets);
 
-/** Widget choice and THB rate of this admin. Falls back to the defaults when the server does not answer. */
+/** Widget choice of this admin. Falls back to the defaults when the server does not answer. */
 export function usePrefs() {
   const [prefs, setPrefs] = useState<AdminPrefs | null>(null);
   useEffect(() => {

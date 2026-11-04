@@ -1931,7 +1931,7 @@ paths:
   /admin/prefs:
     get:
       tags: [admin]
-      description: Admin only. Overview widgets and USD to THB rate saved on the calling admin account.
+      description: Admin only. Overview widgets saved on the calling admin account.
       responses:
         '200': {description: Prefs, content: {application/json: {schema: {$ref: '#/components/schemas/AdminPrefs'}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
@@ -1943,7 +1943,15 @@ paths:
       responses:
         '200': {description: Saved prefs, content: {application/json: {schema: {$ref: '#/components/schemas/AdminPrefs'}}}}
         '403': {$ref: '#/components/responses/AdminForbidden'}
-        '422': {description: Invalid widget id or rate, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: Invalid widget id, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/fx:
+    get:
+      tags: [admin]
+      description: Admin only. USD to THB reference rate fetched live from a free exchange-rate API (Frankfurter, fallback ExchangeRate-API open access), cached one hour.
+      responses:
+        '200': {description: Rate, content: {application/json: {schema: {$ref: '#/components/schemas/AdminFxRate'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '503': {description: No provider answered and no earlier value exists (fx_unavailable), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
   /admin/users:
     get:
       tags: [admin]
@@ -3459,10 +3467,20 @@ components:
     AdminPrefs:
       type: object
       additionalProperties: false
-      required: [widgets, thb_rate]
+      required: [widgets]
       properties:
         widgets: {type: array, maxItems: 20, items: {type: string, pattern: '^[a-z_]{1,40}$'}, description: Ids of the visible overview widgets, in order}
-        thb_rate: {type: number, exclusiveMinimum: 0, maximum: 1000, description: Baht per US dollar used on the usage page}
+    AdminFxRate:
+      type: object
+      additionalProperties: false
+      required: [rate, source, source_url, as_of, fetched_at, stale]
+      properties:
+        rate: {type: number, description: Baht per US dollar}
+        source: {type: string, description: Name of the provider that supplied the rate}
+        source_url: {type: string}
+        as_of: {type: string, description: Date the provider published the rate (daily reference rate)}
+        fetched_at: {type: string, format: date-time}
+        stale: {type: boolean, description: True when both providers failed and the last good value is older than one hour}
     AdminUserItem:
       type: object
       additionalProperties: false

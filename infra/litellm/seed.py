@@ -1,4 +1,4 @@
-"""First-start LiteLLM seed: ai-analyze model and the job-search-app virtual key. Stdlib only, idempotent."""
+"""First-start LiteLLM seed: the default model (named by its real id, plus the old ai-analyze alias) and the job-search-app virtual key. Stdlib only, idempotent."""
 
 import json
 import os
@@ -11,18 +11,19 @@ import urllib.request
 BASE = os.environ.get("LITELLM_URL", "http://litellm:4000")
 MASTER_KEY_FILE = os.environ.get("LITELLM_MASTER_KEY_FILE", "/run/secrets/litellm-master-key")
 KEY_OUT = os.environ.get("LITELLM_APP_KEY_FILE") or (sys.argv[1] if len(sys.argv) > 1 else "/out/litellm_app_key")
-MODEL = {
-    "model_name": "ai-analyze",
-    "litellm_params": {"model": os.environ.get("AI_ANALYZE_UPSTREAM_MODEL") or "openrouter/openai/gpt-6-luna", "api_key": "os.environ/OPENROUTER_API_KEY"},
-}
+UPSTREAM = os.environ.get("AI_ANALYZE_UPSTREAM_MODEL") or "openrouter/openai/gpt-6-luna"
+ALIAS = "ai-analyze"  # old name, kept so existing keys and scripts keep working
+DEFAULT_NAME = UPSTREAM.removeprefix("openrouter/")  # the name the app and the admin console show (gateway.default_model_id)
+DEFAULTS = [DEFAULT_NAME, ALIAS]
+MODELS = [{"model_name": n, "litellm_params": {"model": UPSTREAM, "api_key": "os.environ/OPENROUTER_API_KEY"}} for n in DEFAULTS]
 KEY_ALIAS = "job-search-app"
 
 
 def task_models():
-    """Models named by AI_MODEL_<TASK> (one per AI task, see .env.example) besides the default ai-analyze alias.
+    """Models named by AI_MODEL_<TASK> (one per AI task, see .env.example) besides the default model (and its old ai-analyze alias).
     A value is a LiteLLM model name; a bare OpenRouter id such as `qwen/qwen3.7-flash` is routed through OpenRouter."""
     names = {v.strip() for k, v in os.environ.items() if k.startswith("AI_MODEL_") and v.strip()}
-    return sorted(n for n in names if n != MODEL["model_name"] and len(n) <= 120)
+    return sorted(n for n in names if n not in DEFAULTS and len(n) <= 120)
 
 
 def upstream(name):
@@ -79,7 +80,7 @@ def seed_model():
         print("model_check_failed", flush=True)
         return False
     ok = True
-    for spec in [MODEL] + [{"model_name": n, "litellm_params": {"model": upstream(n), "api_key": "os.environ/OPENROUTER_API_KEY", "drop_params": True}} for n in task_models()]:
+    for spec in MODELS + [{"model_name": n, "litellm_params": {"model": upstream(n), "api_key": "os.environ/OPENROUTER_API_KEY", "drop_params": True}} for n in task_models()]:
         name = spec["model_name"]
         current = [m for m in info.get("data", []) if m.get("model_name") == name]
         if current and all(m.get("litellm_params", {}).get("model") == spec["litellm_params"]["model"]
@@ -107,7 +108,7 @@ def seed_key():
             status, info = call("GET", "/key/info?key=" + urllib.parse.quote(existing))
             kept = (info.get("info") or {}).get("models") if status == 200 else None
             if status == 200 and isinstance(kept, list):
-                call("POST", "/key/update", {"key": existing, "models": sorted({"ai-analyze", *task_models(), *(m for m in kept if isinstance(m, str))})})
+                call("POST", "/key/update", {"key": existing, "models": sorted({*DEFAULTS, *task_models(), *(m for m in kept if isinstance(m, str))})})
             print("app_key_present", flush=True)
             return True
         if status not in (401, 403):  # transient failure: never touch a possibly working key
@@ -115,7 +116,7 @@ def seed_key():
             return False
     call("POST", "/key/delete", {"key_aliases": [KEY_ALIAS]})  # a stale or lost key cannot be recovered
     status, created = call(
-        "POST", "/key/generate", {"key_alias": KEY_ALIAS, "models": ["ai-analyze"] + task_models(), "metadata": {"allowed_passthrough_routes": ["/jev/decisions"]}}
+        "POST", "/key/generate", {"key_alias": KEY_ALIAS, "models": DEFAULTS + task_models(), "metadata": {"allowed_passthrough_routes": ["/jev/decisions"]}}
     )
     if status == 200 and created.get("key"):
         write_key(created["key"])

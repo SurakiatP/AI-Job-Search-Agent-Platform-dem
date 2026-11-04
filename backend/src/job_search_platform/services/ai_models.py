@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 
 from sqlalchemy import select
 
+from job_search_platform.integrations.gateway import LEGACY_ALIAS, default_model_id, real_model
 from job_search_platform.db.models import ModelPrice, TaskModelSetting, User
 from job_search_platform.integrations.gateway import _OPENER, GatewaySettings, default_private_dir, read_private_file
 from job_search_platform.integrations.hermes_runtime import NATIVE_OPERATIONS, env_effort
@@ -168,10 +169,10 @@ def _register(model: str) -> None:
 def current_pair(operation: str, row: TaskModelSetting | None) -> tuple[str, str, str]:
     """(model, effort, source): the stored setting, else AI_MODEL_<OP> / AI_REASONING_<OP> from the environment."""
     if row is not None:
-        return row.model, row.effort, "stored"
+        return real_model(row.model), row.effort, "stored"
     model = os.environ.get("AI_MODEL_" + operation.upper(), "").strip()
     if not MODEL_ID.fullmatch(model):
-        model = os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze"
+        model = default_model_id()
     return model, env_effort(os.environ, operation), "env"
 
 
@@ -250,7 +251,7 @@ def list_models(session) -> list[AdminRegisteredModel]:
         pass  # OpenRouter down: show what we have
     rows = {r.model: r for r in session.scalars(select(ModelPrice))}
     info, used = _litellm_info(), _used_by(session)
-    names = sorted(set(rows) | set(info) | set(used))
+    names = sorted((set(rows) | set(info) | set(used)) - {LEGACY_ALIAS})  # the old alias is the default model under another name
     return [_model_view(n, rows.get(n), used, info.get(n)) for n in names]
 
 

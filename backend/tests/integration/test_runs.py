@@ -62,7 +62,7 @@ def test_idempotent_replay_keeps_original_implicit_cv_and_config_snapshot(db_ses
         assert saved.cv_revision_id == cv.id
         assert saved.provider_configuration_id is None
         assert saved.input_snapshot["cv_revision_id"] == str(cv.id)
-        assert saved.config_snapshot["gateway"]["analyze_model"] == "ai-analyze"
+        assert saved.config_snapshot["gateway"]["analyze_model"] == "openai/gpt-6-luna"
         assert db.scalar(select(RunEvent.sequence).where(RunEvent.run_id == first.id)) == 1
 
     with pytest.raises(ServiceError, match="idempotency_conflict"):
@@ -437,5 +437,5 @@ def test_admission_needs_gateway_key_not_a_provider_row(db_session, tmp_path, mo
     for r in (ra, rb):
         run = db_session.get(Run, r.id)
         assert run.provider_configuration_id is None
-        assert run.config_snapshot["gateway"] == {"analyze_model": "ai-analyze", "decision_model": "typesafe/jev-1.13"}
+        assert run.config_snapshot["gateway"] == {"analyze_model": "openai/gpt-6-luna", "decision_model": "typesafe/jev-1.13"}
         assert "sk-test-gateway" not in str(run.config_snapshot)

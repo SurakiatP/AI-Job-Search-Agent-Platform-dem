@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends
 
 from job_search_platform.api.admin.deps import admin_actor
 from job_search_platform.api.dependencies import Services, get_services
-from job_search_platform.services import admin_metrics
-from job_search_platform.services.contracts import AdminRange, AdminUsage
+from job_search_platform.services import admin_metrics, fx
+from job_search_platform.services.contracts import AdminFxRate, AdminRange, AdminUsage
 
 router = APIRouter()
 
@@ -22,3 +22,8 @@ async def get_usage(group_by: Literal["task", "model", "day", "user"], range: Ad
         with services.sessions() as db:
             return admin_metrics.usage(db, range, group_by, datetime.now(timezone.utc))
     return await asyncio.to_thread(run)
+
+
+@router.get("/fx", response_model=AdminFxRate)
+async def get_fx(_actor=Depends(admin_actor)):
+    return await asyncio.to_thread(fx.usd_thb)

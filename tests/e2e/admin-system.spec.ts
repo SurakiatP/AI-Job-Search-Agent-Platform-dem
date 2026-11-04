@@ -118,7 +118,7 @@ test('TC-ADM-SY-07: the AI gateway and Tools sections work on the System page', 
 
 test('TC-ADM-SY-08: an unconfigured gateway shows the key hint (Thai) and no LiteLLM link', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
-  await mockSystem(page, { gateway: { configured: false, reachable: false, base_url: null, analyze_model: 'ai-analyze', decision_model: 'ai-decide', models: [] } });
+  await mockSystem(page, { gateway: { configured: false, reachable: false, base_url: null, analyze_model: 'openai/gpt-6-luna', decision_model: 'ai-decide', models: [] } });
   await page.goto('/admin/system');
   await expect(page.getByText('ยังไม่ได้ตั้งค่า AI gateway')).toBeVisible();
   await expect(page.getByText('OPENROUTER_API_KEY')).toBeVisible();
@@ -177,4 +177,20 @@ test('TC-ADM-SY-12: the page fits a 390 px phone without sideways scroll, in Eng
   await expect(page.getByText('ทั้ง 4 ส่วนทำงานปกติ')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'การดึงงาน' })).toBeVisible();
   await page.screenshot({ path: 'test-results/admin-system-mobile-th.png', fullPage: true });
+});
+
+test('TC-ADM-SY-13: the ingest table shows 10 boards per page and pages with next and previous', async ({ page }) => {
+  const boards = Array.from({ length: 23 }, (_, i) => ({ board: `lever:b${String(i).padStart(2, '0')}`, at: `2026-11-04T06:${String(59 - i).padStart(2, '0')}:00Z`, status: 'complete', jobs_total: i, jobs_new: 0, error_code: null }));
+  await mockSystem(page, { ingest: boards });
+  await page.goto('/admin/system');
+  const table = page.getByRole('table', { name: 'Job ingest' });
+  await expect(table.getByRole('row')).toHaveCount(11); // header + 10
+  await expect(page.getByText('Showing 1–10 of 23')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Previous' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByText('Showing 11–20 of 23')).toBeVisible();
+  await page.getByRole('button', { name: 'Next' }).click();
+  await expect(table.getByRole('row')).toHaveCount(4); // header + 3
+  await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled();
+  await expect(page.getByText('Page 3 of 3')).toBeVisible();
 });

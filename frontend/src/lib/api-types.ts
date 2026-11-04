@@ -281,7 +281,8 @@ export type AdminBucket = {
   value: number;
   parts: { operation: string; value: number }[];
 };
-export type AdminPrefs = { widgets: string[]; thb_rate: number };
+export type AdminPrefs = { widgets: string[] };
+export type AdminFxRate = { rate: number; source: string; source_url: string; as_of: string; fetched_at: string; stale: boolean };
 export type AdminUserStatus = 'active' | 'suspended' | 'deleting';
 export type AdminUserItem = {
   id: string;

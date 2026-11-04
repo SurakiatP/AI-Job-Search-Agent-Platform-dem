@@ -6,7 +6,10 @@
   "retry": "Try again",
   "loading": "Loading…",
   "close": "Close",
-  "loadError": { "title": "We could not load the system status.", "hint": "The server did not answer. Check the connection, then try again." },
+  "loadError": {
+    "title": "We could not load the system status.",
+    "hint": "The server did not answer. Check the connection, then try again."
+  },
   "health": {
     "title": "Health",
     "description": "Checked every 5 minutes. Each bar is 30 minutes of the last 24 hours.",
@@ -20,12 +23,29 @@
     "stripLabel": "{{name}}, last 24 hours: {{ok}} of {{total}} checks passed",
     "axisStart": "24 hours ago",
     "axisEnd": "Now",
-    "slot": { "ok": "Working", "warn": "Down for part of this time", "bad": "Down", "none": "No check" },
+    "slot": {
+      "ok": "Working",
+      "warn": "Down for part of this time",
+      "bad": "Down",
+      "none": "No check"
+    },
     "components": {
-      "postgres": { "name": "Database", "hint": "Accounts, projects and runs" },
-      "object_store": { "name": "File storage", "hint": "CVs and generated documents" },
-      "llm_gateway": { "name": "AI gateway", "hint": "Calls to AI models" },
-      "sandbox": { "name": "Sandbox", "hint": "Where AI agents run" }
+      "postgres": {
+        "name": "Database",
+        "hint": "Accounts, projects and runs"
+      },
+      "object_store": {
+        "name": "File storage",
+        "hint": "CVs and generated documents"
+      },
+      "llm_gateway": {
+        "name": "AI gateway",
+        "hint": "Calls to AI models"
+      },
+      "sandbox": {
+        "name": "Sandbox",
+        "hint": "Where AI agents run"
+      }
     }
   },
   "ingest": {
@@ -38,7 +58,11 @@
     "error": "Error code",
     "when": "When",
     "open": "Show history of {{board}}",
-    "status": { "complete": "Complete", "partial": "Partial", "failed": "Failed" },
+    "status": {
+      "complete": "Complete",
+      "partial": "Partial",
+      "failed": "Failed"
+    },
     "empty": "No ingest run has finished yet.",
     "emptyHint": "Each job board appears here after the first scheduled run.",
     "historyTitle": "{{board}} history",
@@ -54,7 +78,11 @@
     "statusHead": "Status",
     "created": "Created",
     "user": "User {{id}}",
-    "status": { "pending": "Pending", "delivered": "Delivered", "dead": "Failed" },
+    "status": {
+      "pending": "Pending",
+      "delivered": "Delivered",
+      "dead": "Failed"
+    },
     "attempts_one": "{{count}} attempt",
     "attempts_other": "{{count}} attempts",
     "code": "HTTP {{code}}",
@@ -65,7 +93,11 @@
     "notDead": "Only failed deliveries can be sent again. Refresh the list.",
     "resendFailed": "Could not resend. Try again.",
     "loadError": "We could not load the deliveries.",
-    "empty": { "dead": "No failed deliveries.", "pending": "No pending deliveries.", "all": "No deliveries yet." },
+    "empty": {
+      "dead": "No failed deliveries.",
+      "pending": "No pending deliveries.",
+      "all": "No deliveries yet."
+    },
     "emptyHint": {
       "dead": "A delivery that fails after all retries appears here, and you can send it again.",
       "pending": "Deliveries waiting for their first or next attempt appear here.",
@@ -98,5 +130,12 @@
     "copy": "Copy",
     "copied": "Copied.",
     "copyFailed": "Could not copy. Select the command and copy it by hand."
+  },
+  "pager": {
+    "label": "Change page",
+    "range": "Showing {{from}}–{{to}} of {{total}}",
+    "page": "Page {{page}} of {{pages}}",
+    "prev": "Previous",
+    "next": "Next"
   }
 }

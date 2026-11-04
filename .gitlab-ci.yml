@@ -331,11 +331,11 @@ test-ai:
           return json.load(urllib.request.urlopen(req, timeout=90))
       def models():
           ids = [m["id"] for m in call("/v1/models")["data"]]
-          model = os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze"
+          model = os.environ.get("AI_ANALYZE_MODEL") or (os.environ.get("AI_ANALYZE_UPSTREAM_MODEL") or "openrouter/openai/gpt-6-luna").removeprefix("openrouter/")
           assert model in ids, f"{model} not in {ids}"
           return ids
       def chat():
-          r = call("/v1/chat/completions", {"model": os.environ.get("AI_ANALYZE_MODEL") or "ai-analyze",
+          r = call("/v1/chat/completions", {"model": model,
               "messages": [{"role": "user", "content": "Reply with the single word: pong"}], "max_tokens": 200})
           return repr(r["choices"][0]["message"]["content"])[:80]
       for n, f in (("1 docker socket", socket), ("2 agent image", runtime), ("3 agent start + path", agent_start),

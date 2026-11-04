@@ -8,6 +8,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from job_search_platform.integrations.gateway import real_model
 from job_search_platform.db.models import LlmCall, ModelPrice, Project, Run
 
 log = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ _PREFIX = "openrouter/"
 def price_for(session: Session, model: str) -> tuple[Decimal, Decimal, Decimal | None, str] | None:
     """(price_in, price_out, price_cache, source) per 1M tokens, or None when unpriced. A model may be stored with
     or without the openrouter/ prefix. A free model prices at zero."""
+    model = real_model(model)
     bare = model.removeprefix(_PREFIX)
     rows = {r.model: r for r in session.scalars(select(ModelPrice).where(ModelPrice.model.in_({model, bare, _PREFIX + bare})))}
     row = rows.get(model) or rows.get(bare) or rows.get(_PREFIX + bare)

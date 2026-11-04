@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import and_, exists, func, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 
+from job_search_platform.integrations.gateway import real_model
 from job_search_platform.db.models import LlmCall, Project, Run
 from job_search_platform.db.models import RunEvent as RunEventRow
 from job_search_platform.services import admin_audit
@@ -66,7 +67,7 @@ def _item(row) -> dict:
         "id": run.id, "user_id": row.user_id,
         "user_short_id": None if row.user_id is None else short_id(row.user_id),
         "operation": run.operation, "status": run.status,
-        "model": models[0] if models else row.snapshot_model, "effort": row.effort,
+        "model": real_model(models[0] if models else row.snapshot_model) if (models or row.snapshot_model) else None, "effort": row.effort,
         "created_at": run.created_at, "started_at": row.started_at, "finished_at": finished,
         "duration_seconds": None if finished is None else max(0.0, (finished - run.created_at).total_seconds()),
         "input_tokens": int(row.input_tokens or 0), "output_tokens": int(row.output_tokens or 0),

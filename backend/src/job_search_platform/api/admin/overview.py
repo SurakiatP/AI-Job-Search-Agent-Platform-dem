@@ -74,5 +74,5 @@ async def get_prefs(actor=Depends(admin_actor), services: Services = Depends(get
 async def put_prefs(body: AdminPrefs, actor=Depends(admin_writer), services: Services = Depends(get_services)):
     def run():
         with services.sessions.begin() as db:
-            return admin_metrics.set_prefs(db, actor.user_id, body.widgets, body.thb_rate)
+            return admin_metrics.set_prefs(db, actor.user_id, body.widgets)
     return await asyncio.to_thread(run)

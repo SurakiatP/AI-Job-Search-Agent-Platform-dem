@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ApiError, type Account, type AccountAgent, type AdminAuditPage, type AdminAuditQuery, type AdminBenchmark, type AdminBenchmarkCreate, type AdminBucket,
-  type AdminMetric, type AdminModelCatalogItem, type AdminModelCreate, type AdminModelPrice, type AdminOverview, type AdminPrefs, type AdminRange,
+  type AdminMetric, type AdminModelCatalogItem, type AdminModelCreate, type AdminModelPrice, type AdminOverview, type AdminFxRate, type AdminPrefs, type AdminRange,
   type AdminRegisteredModel, type AdminRunDetail, type AdminRunPage, type AdminRunsQuery, type AdminSystem, type AdminTaskSetting, type AdminTaskUpdate,
   type AdminUsage, type AdminUsageGroup, type AdminUserDetail, type AdminUserPage, type AdminUsersQuery, type AdminWebhookDelivery, type ApiErrorBody,
   type OwnerSessionState,
@@ -184,6 +184,7 @@ export const admin = {
   overview: (range: AdminRange) => apiRequest<AdminOverview>(`/admin/overview${adminQuery({ range })}`),
   bucket: (range: AdminRange, metric: AdminMetric, start: string) => apiRequest<AdminBucket>(`/admin/overview/bucket${adminQuery({ range, metric, start })}`),
   overviewCsv: (range: AdminRange) => apiRequest<Blob>(`/admin/overview.csv${adminQuery({ range })}`),
+  fx: () => apiRequest<AdminFxRate>('/admin/fx'),
   getPrefs: () => apiRequest<AdminPrefs>('/admin/prefs'),
   savePrefs: (prefs: AdminPrefs) => apiRequest<AdminPrefs>('/admin/prefs', adminJson('PUT', prefs)),
   users: (query: AdminUsersQuery = {}) => apiRequest<AdminUserPage>(`/admin/users${adminQuery({ ...query })}`),

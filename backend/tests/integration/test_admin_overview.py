@@ -17,6 +17,7 @@ from job_search_platform.main import create_app
 from job_search_platform.integrations.mailer import MemoryMailer
 from job_search_platform.services import health, passwords
 from job_search_platform.services.accounts import Accounts
+from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.owner_sessions import OwnerSessions
 from job_search_platform.services.webhooks import Webhooks
 
@@ -99,10 +100,10 @@ def add_call(ctx, *, operation="evaluate_job", model="m/a", cost="0.01", source=
 def test_non_admin_gets_403_on_every_route(ctx):
     add_user(ctx, "plain@example.test")
     headers = login(ctx, "plain@example.test")
-    for path in ("/overview", "/overview.csv", "/prefs", "/usage?group_by=task", "/system", "/webhooks",
+    for path in ("/overview", "/overview.csv", "/prefs", "/fx", "/usage?group_by=task", "/system", "/webhooks",
                  f"/overview/bucket?metric=runs&start={NOW().isoformat()}"):
         assert ctx.client.get("/v1/admin" + path).status_code == 403, path
-    assert ctx.client.put("/v1/admin/prefs", headers=headers, json={"widgets": ["trend"], "thb_rate": 35}).status_code == 403
+    assert ctx.client.put("/v1/admin/prefs", headers=headers, json={"widgets": ["trend"]}).status_code == 403
     assert ctx.client.post(f"/v1/admin/webhooks/{uuid4()}/resend", headers=headers).status_code == 403
 
 
@@ -229,15 +230,15 @@ def test_csv_has_bucket_rows_and_no_personal_data(ctx, admin):
 
 
 def test_prefs_default_save_and_validation(ctx, admin):
-    assert ctx.client.get("/v1/admin/prefs").json() == {"widgets": ["trend", "attention", "weekday", "speed", "tasks"], "thb_rate": 35}
-    saved = ctx.client.put("/v1/admin/prefs", headers=admin.headers, json={"widgets": ["trend", "models", "trend"], "thb_rate": 36.5})
-    assert saved.status_code == 200 and saved.json() == {"widgets": ["trend", "models"], "thb_rate": 36.5}
+    assert ctx.client.get("/v1/admin/prefs").json() == {"widgets": ["trend", "attention", "weekday", "speed", "tasks"]}
+    saved = ctx.client.put("/v1/admin/prefs", headers=admin.headers, json={"widgets": ["trend", "models", "trend"]})
+    assert saved.status_code == 200 and saved.json() == {"widgets": ["trend", "models"]}
     assert ctx.client.get("/v1/admin/prefs").json() == saved.json()
-    for bad in ({"widgets": ["nope"], "thb_rate": 35}, {"widgets": ["trend"], "thb_rate": 0}, {"widgets": ["trend"], "thb_rate": -1}):
-        assert ctx.client.put("/v1/admin/prefs", headers=admin.headers, json=bad).status_code == 422
-    bad = ctx.client.put("/v1/admin/prefs", headers=admin.headers, json={"widgets": ["nope"], "thb_rate": 35}).json()
+    assert ctx.client.put("/v1/admin/prefs", headers=admin.headers, json={"widgets": ["nope"]}).status_code == 422
+    assert ctx.client.put("/v1/admin/prefs", headers=admin.headers, json={"widgets": ["trend"], "thb_rate": 35}).status_code == 422  # rate is no longer a pref
+    bad = ctx.client.put("/v1/admin/prefs", headers=admin.headers, json={"widgets": ["nope"]}).json()
     assert bad["code"] == "invalid_prefs"
-    assert ctx.client.put("/v1/admin/prefs", json={"widgets": ["trend"], "thb_rate": 35}).status_code == 403  # no CSRF
+    assert ctx.client.put("/v1/admin/prefs", json={"widgets": ["trend"]}).status_code == 403  # no CSRF
     with ctx.sessions() as db:
         assert db.query(AdminAuditLog).count() == 0  # prefs are not audited
 
@@ -267,3 +268,18 @@ def test_usage_groups_by_task_model_day_and_user(ctx, admin):
     assert "alice@example.test" not in str(users)
     assert ctx.client.get("/v1/admin/usage?group_by=nope").status_code == 422
     assert ctx.client.get("/v1/admin/usage").status_code == 422
+
+
+def test_fx_route_returns_the_rate_and_503_when_unavailable(ctx, admin, monkeypatch):
+    from job_search_platform.services import fx
+    value = {"rate": 35.12, "source": "Frankfurter (European Central Bank reference rates)", "source_url": "https://frankfurter.dev",
+             "as_of": "2026-11-03", "fetched_at": "2026-11-04T07:00:00+00:00", "stale": False}
+    monkeypatch.setattr(fx, "usd_thb", lambda: value)
+    body = ctx.client.get("/v1/admin/fx").json()
+    assert body["rate"] == 35.12 and body["as_of"] == "2026-11-03" and body["stale"] is False and "Frankfurter" in body["source"]
+
+    def down():
+        raise ServiceError("fx_unavailable", retryable=True)
+    monkeypatch.setattr(fx, "usd_thb", down)
+    response = ctx.client.get("/v1/admin/fx")
+    assert response.status_code == 503 and response.json()["code"] == "fx_unavailable"

@@ -8,8 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Snackbar } from '@/components/ui/snackbar';
 import { PageHeader } from '../../components/PageHeader';
 import { admin } from '../../lib/api';
-import type { AdminHealthComponents, AdminMetric, AdminOverview } from '../../lib/api-types';
+import type { AdminFxRate, AdminHealthComponents, AdminMetric, AdminOverview } from '../../lib/api-types';
 import { useLocale } from '../../app/providers';
+import { useResource } from '../projects/useResource';
 import { DEFAULT_RANGE, KpiCard, KpiTabs, RangeMenu, isRangeKey, rangeHasComparison, rangeRefreshMs, type RangeKey } from './ui';
 import { makeFmt } from './overview/format';
 import { BucketSheet, CustomizeSheet, FixSheet } from './overview/sheets';
@@ -38,13 +39,15 @@ export function OverviewPage() {
   const range: RangeKey = isRangeKey(raw) ? raw : DEFAULT_RANGE;
   const { data, failed, retry } = useOverview(range);
   const { prefs, setWidgets } = usePrefs();
+  const fx = useResource<AdminFxRate>('/admin/fx');
+  const rate = fx.data?.rate ?? null;
   const [metric, setMetric] = useState<AdminMetric>('runs');
   const [bucketAt, setBucketAt] = useState<number | null>(null);
   const [fix, setFix] = useState<keyof AdminHealthComponents | null>(null);
   const [customize, setCustomize] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [note, setNote] = useState<ReactNode>(null);
-  const fmt = useMemo(() => makeFmt(locale, prefs?.thb_rate ?? 35), [locale, prefs?.thb_rate]);
+  const fmt = useMemo(() => makeFmt(locale, rate), [locale, rate]);
   const shown = prefs?.widgets ?? [];
 
   const setRange = (r: RangeKey) => setParams(p => { const next = new URLSearchParams(p); next.set('range', r); return next; }, { replace: true });
@@ -115,6 +118,7 @@ export function OverviewPage() {
           })}
         </KpiTabs>
         {approx ? <p className="text-xs text-muted-foreground">{t('kpi.costNote')}</p> : null}
+        {fx.status === 'error' && !fx.data ? <p role="status" className="text-xs text-muted-foreground">{t('kpi.fxDown')}</p> : null}
       </div>
       {prefs && shown.length === 0 ? <div className="rounded-2xl border bg-card"><Zero title={t('allHidden')} hint={t('allHiddenHint')} /></div>
         : <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-6 max-[1180px]:grid-cols-1">{column('main')}{column('side')}</div>}
@@ -125,7 +129,7 @@ export function OverviewPage() {
   return <>
     <PageHeader icon={LayoutDashboard} title={t('title')} lede={lede} actions={actions} />
     {failed ? <Alert severity="error" action={<Button size="sm" variant="outline" onClick={retry}>{t('actions.retry')}</Button>}><strong className="font-semibold">{t('error.title')}</strong> {t('error.body')}</Alert>
-      : data && prefs ? render(data) : <Loading label={t('loading')} />}
+      : data && prefs && fx.status !== 'loading' ? render(data) : <Loading label={t('loading')} />}
     <FixSheet component={fix} onClose={() => setFix(null)} fmt={fmt} t={t} />
     <CustomizeSheet open={customize} onClose={() => setCustomize(false)} shown={shown} onToggle={(id, on) => void toggle(id, on)} t={t} />
     <Snackbar open={note != null} message={note} onClose={() => setNote(null)} />

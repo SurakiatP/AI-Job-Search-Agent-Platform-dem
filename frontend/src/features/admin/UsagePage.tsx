@@ -6,7 +6,7 @@ import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '../../components/PageHeader';
-import type { AdminPrefs, AdminUsage, AdminUsageGroup } from '../../lib/api-types';
+import type { AdminFxRate, AdminUsage, AdminUsageGroup } from '../../lib/api-types';
 import { useResource } from '../projects/useResource';
 import { DEFAULT_RANGE, isRangeKey, RangeMenu, Segmented, Tip } from './ui';
 import { count, money, type Currency } from './usage/format';
@@ -22,12 +22,10 @@ export function UsagePage() {
   const range = isRangeKey(params.get('range')) ? (params.get('range') as typeof DEFAULT_RANGE) : DEFAULT_RANGE;
   const [group, setGroup] = useState<AdminUsageGroup>('task');
   const [currency, setCurrency] = useState<Currency>('usd');
-  const [saved, setSaved] = useState<AdminPrefs>();
   const usage = useResource<AdminUsage>(`/admin/usage?range=${range}&group_by=${group}`);
-  const prefsRes = useResource<AdminPrefs>('/admin/prefs');
-  const prefs = saved ?? prefsRes.data;
-  const rate = prefs?.thb_rate ?? 0;
-  const cur: Currency = currency === 'thb' && prefs ? 'thb' : 'usd';
+  const fx = useResource<AdminFxRate>('/admin/fx');
+  const rate = fx.data?.rate ?? 0;
+  const cur: Currency = currency === 'thb' && fx.data ? 'thb' : 'usd';
   const d = usage.data;
   const totals = d?.totals;
 
@@ -44,8 +42,8 @@ export function UsagePage() {
       actions={<RangeMenu value={range} onChange={r => setParams({ range: r })} labelFor={r => t(`range.${r}`)} menuLabel={t('range.menu')} />} />
     <div className="mt-6 flex flex-wrap items-start gap-x-6 gap-y-3">
       <Segmented ariaLabel={t('groupBy.label')} value={group} onChange={setGroup} options={GROUPS.map(g => ({ value: g, label: t(`groupBy.${g}`) }))} />
-      <Segmented ariaLabel={t('currency.label')} value={cur} onChange={setCurrency} options={[{ value: 'usd', label: 'USD' }, ...(prefs ? [{ value: 'thb' as const, label: 'THB' }] : [])]} />
-      <RateControl prefs={prefs} loadFailed={prefsRes.status === 'error' && !prefs} onRetry={prefsRes.reload} onSaved={setSaved} />
+      <Segmented ariaLabel={t('currency.label')} value={cur} onChange={setCurrency} options={[{ value: 'usd', label: 'USD' }, ...(fx.data ? [{ value: 'thb' as const, label: 'THB' }] : [])]} />
+      <RateControl fx={fx.data} loadFailed={fx.status === 'error' && !fx.data} onRetry={fx.reload} lang={lang} />
     </div>
 
     {usage.status === 'error' && !d ? <Alert severity="error" className="mt-6" action={<Button variant="outline" size="sm" onClick={usage.reload}>{t('error.retry')}</Button>}>

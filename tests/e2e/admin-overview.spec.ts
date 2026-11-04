@@ -19,6 +19,13 @@ test('TC-ADM-OV-01: the four KPI cards show their values and change chips', asyn
   await expect(runs).toHaveAttribute('aria-selected', 'true');
 });
 
+test('TC-ADM-OV-01b: if the exchange rate cannot load, cost shows in USD with a note', async ({ page }) => {
+  await mockOverview(page, { fxFail: true });
+  await page.goto('/admin');
+  await expect(page.getByRole('tab', { name: /AI cost/ })).toContainText('$12.50');
+  await expect(page.getByText('Cost is shown in US dollars because the exchange rate could not be loaded.')).toBeVisible();
+});
+
 test('TC-ADM-OV-02: compare=false hides the change chips and the previous-period line', async ({ page }) => {
   await mockOverview(page, { overview: overviewBody({ compare: false, previous_series: [], kpis: {
     runs: { value: 1204, previous: null }, active_users: { value: 96, previous: null }, failure_rate: { value: 0.05, previous: null }, cost_usd: { value: 12.5, previous: null }, cost_has_manual: false } }) });
