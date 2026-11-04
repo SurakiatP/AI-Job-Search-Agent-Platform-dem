@@ -21,7 +21,7 @@ from sqlalchemy import delete, select, update
 from botocore.exceptions import ClientError
 from sqlalchemy.exc import IntegrityError
 
-from job_search_platform.db.models import Grant, Project, RateLimitEvent, Run, StoredFile, User, UserToken
+from job_search_platform.db.models import Grant, OwnerSession, Project, RateLimitEvent, Run, StoredFile, User, UserToken
 from job_search_platform.integrations.mailer import Mail
 from job_search_platform.integrations.object_store import _is_missing
 from job_search_platform.services import rate_limits
@@ -82,10 +82,24 @@ def _digest(token: str) -> bytes:
     return hashlib.sha256(token.encode("utf-8")).digest()
 
 
-def is_admin(user: User) -> bool:
-    """Operator access comes only from ADMIN_EMAILS (comma-separated); the address must be verified and enabled."""
+def admin_listed(user: User) -> bool:
+    """The users.is_admin flag, or the address in ADMIN_EMAILS (comma-separated, fallback for older deployments)."""
     allowed = {item.strip().lower() for item in os.environ.get("ADMIN_EMAILS", "").split(",") if item.strip()}
-    return user.email_verified_at is not None and user.disabled_at is None and user.email.lower() in allowed
+    return bool(user.is_admin) or user.email.lower() in allowed
+
+
+def is_admin(user: User) -> bool:
+    """Operator access: listed as admin, verified and enabled."""
+    return user.email_verified_at is not None and user.disabled_at is None and admin_listed(user)
+
+
+def suspend_user(db, user: User, now: datetime) -> None:
+    """Disables the account, ends its owner sessions and revokes the agent grants of its projects."""
+    user.disabled_at = user.disabled_at or now
+    OwnerSessions.revoke_all(db, user.id, now)
+    db.execute(update(Grant).where(Grant.revoked_at.is_(None),
+                                   Grant.project_id.in_(select(Project.id).where(Project.user_id == user.id)))
+               .values(revoked_at=now))
 
 
 def require_admin(sessions, user_id: UUID | None) -> None:
@@ -323,6 +337,28 @@ class Accounts:
                 Grant.project_id.in_(select(Project.id).where(Project.user_id == user.id)),
                 Grant.revoked_at.is_(None)).values(revoked_at=now))
 
+    def change_password(self, user_id: UUID, session_id: UUID | None, current: str, new: str) -> None:
+        """Signed-in change: needs the current password, keeps this session, ends the others, sends no mail."""
+        check_policy(new)
+        with self.sessions.begin() as db:
+            hit = rate_limits.hit(db, "password_change", str(user_id))
+        with self.sessions() as db:
+            user = db.get(User, user_id)
+            stored = user.password_hash if user is not None and user.disabled_at is None else None
+        if stored is None:
+            verify_dummy(current)
+            raise ServiceError("invalid_credentials")
+        if not verify_password(current, stored):
+            raise ServiceError("invalid_credentials")
+        new_hash = hash_password(new)
+        now = datetime.now(timezone.utc)
+        with self.sessions.begin() as db:
+            db.execute(delete(RateLimitEvent).where(RateLimitEvent.id == hit))
+            db.get(User, user_id).password_hash = new_hash
+            db.execute(update(OwnerSession).where(
+                OwnerSession.user_id == user_id, OwnerSession.id != session_id, OwnerSession.revoked_at.is_(None),
+            ).values(revoked_at=now))
+
     # -- account ---------------------------------------------------------------------------------
     def account(self, user_id: UUID) -> dict:
         with self.sessions() as db:
@@ -362,22 +398,30 @@ class Accounts:
         self._consume_code(user_id, "delete_account", code)
         now = datetime.now(timezone.utc)
         with self.sessions.begin() as db:
-            # Lock order: projects (by id), then the user row, then runs (by id) - projects before user, as
-            # every other path that takes both, so two transactions cannot wait on each other.
-            db.execute(select(Project.id).where(Project.user_id == user_id).order_by(Project.id).with_for_update())
-            user = db.get(User, user_id, with_for_update=True)
-            user.deletion_requested_at = now
-            user.disabled_at = user.disabled_at or now
-            OwnerSessions.revoke_all(db, user_id, now)
-            db.execute(update(Grant).where(
-                Grant.project_id.in_(select(Project.id).where(Project.user_id == user_id)),
-                Grant.revoked_at.is_(None)).values(revoked_at=now))
-            live = db.scalars(select(Run).where(
-                Run.project_id.in_(select(Project.id).where(Project.user_id == user_id)),
-                Run.status.in_(("queued", "running", "waiting_approval", "needs_input"))
-            ).order_by(Run.id).with_for_update()).all()
-            for run in live:
-                self.runs.cancel_locked(db, run, now)
+            self.mark_deleted(db, user_id, now)
+
+    def mark_deleted(self, db, user_id: UUID, now: datetime) -> None:
+        """Starts deletion inside the caller's transaction: flags the user, ends sessions and grants, cancels live runs.
+        The purge cycle erases the data later."""
+        # Lock order: projects (by id), then the user row, then runs (by id) - projects before user, as
+        # every other path that takes both, so two transactions cannot wait on each other.
+        db.execute(select(Project.id).where(Project.user_id == user_id).order_by(Project.id).with_for_update())
+        user = db.get(User, user_id, with_for_update=True)
+        user.deletion_requested_at = user.deletion_requested_at or now
+        suspend_user(db, user, now)
+        live = db.scalars(select(Run).where(
+            Run.project_id.in_(select(Project.id).where(Project.user_id == user_id)),
+            Run.status.in_(("queued", "running", "waiting_approval", "needs_input"))
+        ).order_by(Run.id).with_for_update()).all()
+        for run in live:
+            self.runs.cancel_locked(db, run, now)
+
+    def send_reset_link(self, db, user: User) -> tuple:
+        """Issues a reset token inside the caller's transaction; returns the mail to pass to _send after commit."""
+        if self.mailer is None:
+            raise ServiceError("mail_unavailable")
+        token = self._issue(db, user.id, "reset_password", RESET_TTL)
+        return ("reset", user.locale, user.email, f"{self.public_origin}/reset-password?token={token}")
 
     # -- purge -----------------------------------------------------------------------------------
     async def purge_due(self, store, *, now: datetime | None = None) -> int:

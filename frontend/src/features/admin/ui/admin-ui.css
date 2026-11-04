@@ -1,0 +1,56 @@
+/* Shared admin primitives: keyframes and transform transitions that Tailwind classes cannot express.
+   Colours come from the global tokens only. Reduced motion: the global rule in styles.css cuts durations to 1ms;
+   the sheet and tooltip below also swap movement for a fade. */
+:root {
+  --admin-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --admin-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Sheet: slides in 300ms on the drawer curve, leaves in 200ms ease-out. */
+.admin-sheet[data-state='open'] { animation: admin-sheet-in 300ms var(--admin-ease-drawer); }
+.admin-sheet[data-state='closed'] { animation: admin-sheet-out 200ms var(--admin-ease-out) forwards; }
+@keyframes admin-sheet-in { from { transform: translateX(calc(100% + 1rem)); } }
+@keyframes admin-sheet-out { to { transform: translateX(calc(100% + 1rem)); } }
+@media (max-width: 639.98px) {
+  @keyframes admin-sheet-in { from { transform: translateY(100%); } }
+  @keyframes admin-sheet-out { to { transform: translateY(100%); } }
+}
+@keyframes admin-fade-in { from { opacity: 0; } }
+@keyframes admin-fade-out { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .admin-sheet[data-state='open'] { animation: admin-fade-in 150ms ease; }
+  .admin-sheet[data-state='closed'] { animation: admin-fade-out 120ms ease forwards; }
+}
+
+/* Tooltip: first one waits (JS), neighbours open at once without the entrance. */
+.admin-tip { animation: admin-tip-in 125ms var(--admin-ease-out); }
+.admin-tip[data-instant='true'] { animation: none; }
+@keyframes admin-tip-in { from { opacity: 0; transform: translate(-50%, calc(-100% - 6px)) scale(0.97); } }
+
+/* Chart tooltip and count-up helpers. */
+.admin-ctip { transition: opacity 100ms ease; }
+
+/* Case grid: a cell pops when its result lands. */
+.admin-pop { animation: admin-pop 240ms var(--admin-ease-out); }
+@keyframes admin-pop { from { transform: scale(0.85); } }
+
+/* Stepper pane change. */
+.admin-pane-in { animation: admin-pane-in 260ms var(--admin-ease-out); }
+@keyframes admin-pane-in { from { opacity: 0; transform: translateX(12px); } }
+
+/* Weekday bars: grow from the baseline; the value shows for the peak, the hovered or the focused day. */
+.admin-wk-col { transform-origin: 50% 100%; transform: scaleY(0); transition: transform 450ms var(--admin-ease-out), background-color 150ms ease; }
+.admin-wk[data-drawn='true'] .admin-wk-col { transform: scaleY(1); }
+.admin-wk-val { opacity: 0; transition: opacity 150ms ease; }
+.admin-wk-day[data-peak='true'] .admin-wk-val,
+.admin-wk-day:hover .admin-wk-val,
+.admin-wk-day:focus-visible .admin-wk-val { opacity: 1; }
+.admin-wk:has(.admin-wk-day:hover:not([data-peak='true'])) .admin-wk-day[data-peak='true']:not(:hover) .admin-wk-val,
+.admin-wk:has(.admin-wk-day:focus-visible:not([data-peak='true'])) .admin-wk-day[data-peak='true']:not(:focus-visible) .admin-wk-val { opacity: 0; }
+.admin-wk-day:hover .admin-wk-col,
+.admin-wk-day:focus-visible .admin-wk-col { background: color-mix(in srgb, var(--primary) 35%, var(--muted)); }
+.admin-wk-day[data-peak='true'] .admin-wk-col { background: var(--primary); }
+.admin-wk-day[data-peak='true'] .admin-wk-lbl { color: var(--primary); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) {
+  .admin-wk-col { transform: none !important; }
+}

@@ -46,13 +46,14 @@ test('settings groups sections by who is affected and links account security to 
   await useUtilitiesFixture(page);
   await page.goto(`/app/settings?section=sharing&project=${projectId}`);
   const nav = page.getByRole('navigation', { name: 'Settings sections' });
-  for (const group of ['You', 'This project', 'Admin']) await expect(nav.getByRole('group', { name: group })).toBeVisible();
-  await expect(nav.getByRole('button', { name: 'AI gateway' })).toContainText('Whole app (admin)');
+  for (const group of ['You', 'This project']) await expect(nav.getByRole('group', { name: group })).toBeVisible();
+  await expect(nav.getByRole('group', { name: 'Admin' })).toHaveCount(0); // operator settings live on /admin/system now
+  await expect(nav.getByRole('button', { name: 'Project sharing' })).toContainText('This project');
   await expect(nav.getByRole('button', { name: 'Appearance' })).toContainText('This browser');
   await expect(nav.getByRole('link', { name: /Account security/ })).toHaveAttribute('href', '/app/account');
 });
 
-test('ordinary accounts do not see operator settings and never call the gateway endpoint', async ({ page }) => {
+test('user settings no longer offer operator settings and never call the gateway endpoint', async ({ page }) => {
   await useUtilitiesFixture(page);
   await page.route('**/v1/auth/session', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrf_token: 'synthetic-test-csrf', expires_at: '2030-01-01T00:00:00Z', user: { id: '99999999-0000-4000-8000-000000000001', email: 'synthetic@example.test', locale: 'en', email_verified: true, is_admin: false, created_at: '2026-10-01T00:00:00Z' } }) }));
   const gatewayCalls: string[] = [];

@@ -24,13 +24,28 @@ REASONING = {
     "interview_report": {"extra_body": {"reasoning": {"effort": "low"}}},
 }
 
+def _effort_override(effort):
+    """Hermes request override for one effort; "none" turns reasoning off ({"enabled": false}), others are an effort."""
+    return {"extra_body": {"reasoning": {"enabled": False} if effort == "none" else {"effort": effort}}}
+
+
 # .env can change the effort per operation (AI_REASONING_<OPERATION>); "default" removes the override.
 for _operation, _effort in json.loads(os.environ.get("PLATFORM_REASONING") or "{}").items():
     if _effort == "default":
         REASONING.pop(_operation, None)
     else:
-        # "none" turns reasoning off ({"enabled": false}); other values are an effort
-        REASONING[_operation] = {"extra_body": {"reasoning": {"enabled": False} if _effort == "none" else {"effort": _effort}}}
+        REASONING[_operation] = _effort_override(_effort)
+
+
+def _reasoning_for(operation, effort):
+    """The submit payload's effort (admin console setting) wins over PLATFORM_REASONING and the interview defaults;
+    "default" means no override; a missing or unknown value keeps the bridge's own choice."""
+    if effort == "default":
+        return None
+    if effort in ("none", "minimal", "low", "medium", "high"):
+        return _effort_override(effort)
+    return REASONING.get(operation)
+
 
 MAX_OUTPUT_TOKENS = 16000
 
@@ -168,8 +183,13 @@ def _usage(agent):
         n = getattr(agent, name, None)
         return n if isinstance(n, int) and not isinstance(n, bool) and 0 <= n <= 10_000_000 else None
     model = getattr(agent, "model", None)
+    # Hermes counts input WITHOUT cache hits and writes; the platform prices input as the whole prompt with the cached
+    # part inside it (pricing.cost_usd), so add them back here or cached tokens get subtracted twice.
+    parts = [count(name) for name in ("session_input_tokens", "session_cache_read_tokens", "session_cache_write_tokens")]
     return {"model": model[:120] if isinstance(model, str) and model else None,
-            "input_tokens": count("session_input_tokens"), "output_tokens": count("session_output_tokens")}
+            "input_tokens": None if parts[0] is None else sum(p or 0 for p in parts),
+            "output_tokens": count("session_output_tokens"),
+            "cached_tokens": parts[1], "api_calls": count("session_api_calls")}
 
 
 def _system_message(instructions: object, career_ops_context: str) -> str:
@@ -340,6 +360,7 @@ def main():
                     os.environ.get("PLATFORM_CAREER_OPS_SOURCE"),
                     skill,
                 )
+                reasoning = _reasoning_for(request.get("operation"), request.get("reasoning"))
                 agent = AIAgent(**provider, session_id=request["session_id"],
                     enabled_toolsets=["terminal", "file"], skip_memory=True,
                     skip_context_files=True, skip_background_review=True,
@@ -347,8 +368,8 @@ def main():
                     # Without an explicit cap the gateway's default cut long answers (a 2-page CV's extraction is
                     # ~4.6k tokens); a cut JSON then failed or was "repaired" into a shorter list.
                     max_tokens=MAX_OUTPUT_TOKENS,
-                    request_overrides=REASONING.get(request.get("operation")),
-                    reasoning_config=_wire_reasoning(REASONING.get(request.get("operation"))),
+                    request_overrides=reasoning,
+                    reasoning_config=_wire_reasoning(reasoning),
                     save_trajectories=False, verbose_logging=False,
                     event_callback=lambda name, data: emit({"event": "progress"}))
                 agent.tools = [t for t in agent.tools if t["function"]["name"] in ALLOWED]

@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ApiError, type Account, type AccountAgent, type ApiErrorBody, type OwnerSessionState } from './api-types';
+import {
+  ApiError, type Account, type AccountAgent, type AdminAuditPage, type AdminAuditQuery, type AdminBenchmark, type AdminBenchmarkCreate, type AdminBucket,
+  type AdminMetric, type AdminModelCatalogItem, type AdminModelCreate, type AdminModelPrice, type AdminOverview, type AdminPrefs, type AdminRange,
+  type AdminRegisteredModel, type AdminRunDetail, type AdminRunPage, type AdminRunsQuery, type AdminSystem, type AdminTaskSetting, type AdminTaskUpdate,
+  type AdminUsage, type AdminUsageGroup, type AdminUserDetail, type AdminUserPage, type AdminUsersQuery, type AdminWebhookDelivery, type ApiErrorBody,
+  type OwnerSessionState,
+} from './api-types';
 
 const API_BASE = '/v1';
 const CSRF_HEADER = 'X-CSRF-Token';
@@ -112,6 +118,7 @@ export const unsubscribeDigest = (token: string) => authRequest<void>('/digest/u
 export const resendVerification = () => authRequest<CheckEmail>('/auth/resend-verification');
 export const forgotPassword = (email: string) => authRequest<CheckEmail>('/auth/password/forgot', { email });
 export const resetPassword = (token: string, password: string) => authRequest<void>('/auth/password/reset', { token, password });
+export const changePassword = (current_password: string, new_password: string) => apiRequest<void>('/auth/password/change', { method: 'POST', body: JSON.stringify({ current_password, new_password }) });
 export const uploadAvatar = (file: File) => apiRequest<void>('/account/avatar', { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: file });
 export const removeAvatar = () => apiRequest<void>('/account/avatar', { method: 'DELETE' });
 export const chooseAvatarPreset = (preset: string) => apiRequest<void>('/account/avatar-preset', { method: 'PUT', body: JSON.stringify({ preset }) });
@@ -163,3 +170,45 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   if (response.headers.get('Content-Type')?.includes('application/json')) return await response.json() as T;
   return await response.blob() as T;
 }
+
+// Admin console. Every route answers 403 forbidden to non-admins; 403 admin_target_forbidden when the target is an admin account.
+function adminQuery(params: Record<string, string | null | undefined>): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (value) query.set(key, value);
+  const text = query.toString();
+  return text ? `?${text}` : '';
+}
+const adminJson = (method: string, body?: unknown): RequestInit => ({ method, body: body === undefined ? undefined : JSON.stringify(body) });
+
+export const admin = {
+  overview: (range: AdminRange) => apiRequest<AdminOverview>(`/admin/overview${adminQuery({ range })}`),
+  bucket: (range: AdminRange, metric: AdminMetric, start: string) => apiRequest<AdminBucket>(`/admin/overview/bucket${adminQuery({ range, metric, start })}`),
+  overviewCsv: (range: AdminRange) => apiRequest<Blob>(`/admin/overview.csv${adminQuery({ range })}`),
+  getPrefs: () => apiRequest<AdminPrefs>('/admin/prefs'),
+  savePrefs: (prefs: AdminPrefs) => apiRequest<AdminPrefs>('/admin/prefs', adminJson('PUT', prefs)),
+  users: (query: AdminUsersQuery = {}) => apiRequest<AdminUserPage>(`/admin/users${adminQuery({ ...query })}`),
+  user: (id: string) => apiRequest<AdminUserDetail>(`/admin/users/${id}`),
+  suspendUser: (id: string) => apiRequest<AdminUserDetail>(`/admin/users/${id}/suspend`, adminJson('POST')),
+  enableUser: (id: string) => apiRequest<AdminUserDetail>(`/admin/users/${id}/enable`, adminJson('POST')),
+  resetUserPassword: (id: string) => apiRequest<void>(`/admin/users/${id}/reset-password`, adminJson('POST')),
+  deleteUser: (id: string, confirmEmail: string) => apiRequest<void>(`/admin/users/${id}/delete`, adminJson('POST', { confirm_email: confirmEmail })),
+  runs: (query: AdminRunsQuery = {}) => apiRequest<AdminRunPage>(`/admin/runs${adminQuery({ ...query })}`),
+  run: (id: string) => apiRequest<AdminRunDetail>(`/admin/runs/${id}`),
+  cancelRun: (id: string) => apiRequest<AdminRunDetail>(`/admin/runs/${id}/cancel`, adminJson('POST')),
+  retryRun: (id: string) => apiRequest<AdminRunDetail>(`/admin/runs/${id}/retry`, adminJson('POST')),
+  usage: (range: AdminRange, groupBy: AdminUsageGroup) => apiRequest<AdminUsage>(`/admin/usage${adminQuery({ range, group_by: groupBy })}`),
+  modelCatalog: (q?: string) => apiRequest<AdminModelCatalogItem[]>(`/admin/models/catalog${adminQuery({ q })}`),
+  models: () => apiRequest<AdminRegisteredModel[]>('/admin/models'),
+  addModel: (body: AdminModelCreate) => apiRequest<AdminRegisteredModel>('/admin/models', adminJson('POST', body)),
+  setModelPrice: (body: AdminModelPrice) => apiRequest<AdminRegisteredModel>('/admin/models/price', adminJson('PUT', body)),
+  useOfficialPrice: (model: string) => apiRequest<AdminRegisteredModel>('/admin/models/use-official-price', adminJson('POST', { model })),
+  tasks: () => apiRequest<AdminTaskSetting[]>('/admin/tasks'),
+  setTask: (operation: string, body: AdminTaskUpdate) => apiRequest<AdminTaskSetting>(`/admin/tasks/${operation}`, adminJson('PUT', body)),
+  benchmarks: (operation?: string) => apiRequest<AdminBenchmark[]>(`/admin/benchmarks${adminQuery({ operation })}`),
+  benchmark: (id: string) => apiRequest<AdminBenchmark>(`/admin/benchmarks/${id}`),
+  startBenchmark: (body: AdminBenchmarkCreate) => apiRequest<AdminBenchmark>('/admin/benchmarks', adminJson('POST', body)),
+  system: () => apiRequest<AdminSystem>('/admin/system'),
+  webhooks: (status?: AdminWebhookDelivery['status']) => apiRequest<AdminWebhookDelivery[]>(`/admin/webhooks${adminQuery({ status })}`),
+  resendWebhook: (id: string) => apiRequest<AdminWebhookDelivery>(`/admin/webhooks/${id}/resend`, adminJson('POST')),
+  audit: (query: AdminAuditQuery = {}) => apiRequest<AdminAuditPage>(`/admin/audit${adminQuery({ ...query })}`),
+};

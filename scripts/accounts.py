@@ -47,7 +47,8 @@ def create_user(sessions: sessionmaker, args) -> None:
     with sessions.begin() as db:
         if db.scalar(select(User.id).where(User.email == email)) is not None:
             raise ServiceError("email_taken")
-        user = User(email=email, password_hash=hash_password(password), locale=args.locale, email_verified_at=now)
+        user = User(email=email, password_hash=hash_password(password), locale=args.locale, email_verified_at=now,
+                    is_admin=args.admin)
         db.add(user)
         db.flush()
         if args.claim_existing:
@@ -85,6 +86,7 @@ def main() -> int:
     create = sub.add_parser("create-user")
     create.add_argument("--email", required=True)
     create.add_argument("--claim-existing", action="store_true")
+    create.add_argument("--admin", action="store_true", help="admin console account (users.is_admin)")
     create.add_argument("--locale", choices=("th", "en"), default="th")
     create.set_defaults(run=create_user)
     disable = sub.add_parser("disable-user")

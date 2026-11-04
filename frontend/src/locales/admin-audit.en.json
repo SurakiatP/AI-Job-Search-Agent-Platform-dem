@@ -1,0 +1,29 @@
+{
+  "title": "Audit log",
+  "lede": "Every admin action: who did it, to what, and when.",
+  "retry": "Try again",
+  "deletedActor": "Deleted account",
+  "loading": "Loading…",
+  "filter": { "action": "Action", "allActions": "All actions", "since": "Since", "clear": "Clear filters" },
+  "log": { "title": "Admin actions", "description": "Newest first. Times are Bangkok time. Details hold ids, codes and numbers only." },
+  "col": { "when": "When", "who": "Who", "action": "Action", "target": "Target", "detail": "Detail" },
+  "actions": {
+    "user": { "suspend": "Suspended a user", "enable": "Enabled a user", "reset_password": "Reset a password", "delete": "Deleted a user" },
+    "run": { "cancel": "Cancelled a run", "retry": "Retried a run" },
+    "model": { "add": "Added a model", "price": "Changed a model price" },
+    "task": { "model": "Changed a task's model" },
+    "benchmark": { "start": "Started a benchmark" },
+    "webhook": { "resend": "Resent a webhook delivery" }
+  },
+  "targets": { "user": "User", "run": "Run", "model": "Model", "task": "Task", "benchmark": "Benchmark", "webhook": "Webhook" },
+  "empty": {
+    "none": "No admin actions yet.",
+    "noneHint": "Suspending a user, retrying a run or changing a model price will be recorded here.",
+    "filtered": "No entries match these filters.",
+    "filteredHint": "Try another action or an earlier date."
+  },
+  "loadMore": "Load more",
+  "loadingMore": "Loading…",
+  "moreError": "Could not load more. Try again.",
+  "loadError": { "title": "We could not load the audit log.", "hint": "The server did not answer. Check the connection, then try again." }
+}

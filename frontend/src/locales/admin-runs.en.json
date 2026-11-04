@@ -1,0 +1,186 @@
+{
+  "title": "AI runs",
+  "lede": "Every AI run with its status, model, duration and cost.",
+  "filters": {
+    "status": "Status",
+    "operation": "Task",
+    "model": "Model",
+    "range": "Time range",
+    "allOperations": "All tasks",
+    "allModels": "All models",
+    "clear": "Clear filters"
+  },
+  "status": {
+    "all": "All",
+    "queued": "Queued",
+    "running": "Running",
+    "waiting_approval": "Needs approval",
+    "needs_input": "Needs input",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled",
+    "interrupted": "Interrupted"
+  },
+  "range": {
+    "1m": "Last minute",
+    "5m": "Last 5 minutes",
+    "10m": "Last 10 minutes",
+    "15m": "Last 15 minutes",
+    "30m": "Last 30 minutes",
+    "1h": "Last hour",
+    "4h": "Last 4 hours",
+    "10h": "Last 10 hours",
+    "7d": "Last 7 days",
+    "30d": "Last 30 days",
+    "90d": "Last 90 days",
+    "all": "All time"
+  },
+  "cols": {
+    "task": "Task",
+    "status": "Status",
+    "model": "Model and effort",
+    "user": "User",
+    "started": "Started",
+    "duration": "Duration",
+    "tokens": "Tokens",
+    "cost": "Cost"
+  },
+  "tokens": {
+    "in": "in",
+    "out": "out",
+    "cached": "cached"
+  },
+  "cost": {
+    "manualNote": "Estimate from a price entered by hand",
+    "none": "No price"
+  },
+  "effort": "effort {{value}}",
+  "queuedNotStarted": "Not started",
+  "list": "AI runs",
+  "loading": "Loading runs",
+  "loadMore": "Load more",
+  "loadingMore": "Loading",
+  "loadMoreFailed": "Could not load more runs.",
+  "live": "Refreshes every 10 seconds while a run is queued or running.",
+  "empty": {
+    "title": "No runs yet",
+    "body": "Runs appear here when someone starts an AI task.",
+    "filteredTitle": "No runs match these filters",
+    "filteredBody": "Widen the time range or clear a filter."
+  },
+  "error": {
+    "title": "Could not load runs",
+    "body": "The runs list did not load. Nothing was changed.",
+    "retry": "Try again"
+  },
+  "sheet": {
+    "title": "Run details",
+    "close": "Close run details",
+    "summary": "Summary",
+    "runId": "Run ID",
+    "user": "User",
+    "created": "Created",
+    "started": "Started",
+    "finished": "Finished",
+    "duration": "Duration",
+    "model": "Model",
+    "tokens": "Tokens",
+    "cost": "Cost",
+    "retryOf": "Retry of",
+    "openOriginal": "Open run {{id}}",
+    "failure": "Why it failed",
+    "timeline": "Timeline",
+    "noEvents": "No events recorded.",
+    "calls": "Model calls",
+    "noCalls": "No model calls recorded for this run.",
+    "callCols": {
+      "model": "Model",
+      "tokens": "Tokens",
+      "latency": "Latency",
+      "cost": "Cost"
+    },
+    "apiCalls_one": "{{count}} API call",
+    "apiCalls_other": "{{count}} API calls",
+    "loadError": "Could not load this run.",
+    "retry": "Try again"
+  },
+  "priceSource": {
+    "manual": "Manual price",
+    "openrouter": "OpenRouter",
+    "litellm": "LiteLLM",
+    "none": "No price"
+  },
+  "actions": {
+    "cancel": "Cancel run",
+    "retry": "Retry run",
+    "back": "Go back",
+    "cancelTitle": "Cancel this run?",
+    "cancelBody": "The run stops and the person who started it sees it as cancelled. Work already done is not undone.",
+    "cancelConfirm": "Cancel run",
+    "cancelKeep": "Keep running",
+    "retryTitle": "Retry this run?",
+    "retryBody": "This starts a new run for the same person with the same inputs. You cannot see those inputs. The new run uses their quota and appears in their history.",
+    "retryConfirm": "Retry run",
+    "retryKeep": "Not now",
+    "working": "Working"
+  },
+  "err": {
+    "run_finished": "This run already finished, so it cannot be cancelled.",
+    "retry_not_allowed": "This run cannot be retried.",
+    "owner_unavailable": "The owner's account is suspended or being deleted, so this run cannot be retried.",
+    "email_unverified": "The owner has not verified their email, so this run cannot be retried.",
+    "not_found": "This run no longer exists.",
+    "forbidden": "Your account cannot do this.",
+    "quota_exceeded": "The owner has reached their run limit.",
+    "request": "That did not work. Try again."
+  },
+  "event": {
+    "run_queued": "Queued",
+    "run_started": "Started",
+    "run_progress": "Progress",
+    "run_completed": "Completed",
+    "run_failed": "Failed",
+    "run_cancel_requested": "Cancel requested",
+    "run_cancelled": "Cancelled",
+    "run_interrupted": "Interrupted",
+    "run_resumed": "Queued again",
+    "run_needs_input": "Waiting for the owner",
+    "run_waiting_approval": "Waiting for approval",
+    "approval_approved": "Approval granted",
+    "approval_rejected": "Approval rejected",
+    "application_recorded": "Application recorded",
+    "other": "Event"
+  },
+  "msg": {
+    "errors": {
+      "run_failed": "The run failed. No detail was recorded.",
+      "execution_failed": "The agent stopped before it finished.",
+      "worker_shutdown": "The server restarted while the run was working.",
+      "worker_interrupted": "The worker stopped answering, so the run was interrupted.",
+      "approval_expired": "The approval was not given in time.",
+      "approval_rejected": "The owner rejected the approval.",
+      "authorization_expired": "The permission for this run expired.",
+      "already_applied": "This application was already recorded.",
+      "validation_error": "The request was not valid.",
+      "internal_error": "An internal error stopped the run."
+    },
+    "events": {
+      "run_resumed": "Queued again after a restart."
+    },
+    "approvals": {
+      "requested": "Waiting for the owner to approve.",
+      "approved": "The owner approved."
+    },
+    "applications": {
+      "recorded": "Marked as applied."
+    }
+  },
+  "dur": {
+    "s": "s",
+    "m": "min",
+    "h": "h"
+  },
+  "operation": {
+    "document_ocr": "Read scanned document"
+  }
+}

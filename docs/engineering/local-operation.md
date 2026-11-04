@@ -99,6 +99,20 @@ rtk uv run --locked --project backend python scripts/accounts.py disable-user --
   The password is read twice with a hidden prompt, or as one line from stdin when stdin is not a terminal. `--claim-existing` hands every project that has no owner to this user, and moves those projects' queued or past runs from the legacy `owner` scope to `user:<id>`. Run it once, for the person who owned the data before accounts existed. Stop the app first: the command takes the maintenance lock, which conflicts with a running app's writes. Legacy runs that were still queued before the claim are failed by the queue the next time the app starts. It prints counts only, never the email. `disable-user` blocks login, revokes all sessions and grants, and prints `disabled`. Both exit 2 with `error: <code>` on a rejected input.
 - **Settings.** `APP_PUBLIC_ORIGIN` (default `http://127.0.0.1:8000`) builds the links in mail and decides the `Secure` cookie flag. `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` (`no-reply@localhost`) and `SMTP_STARTTLS` (`true`) configure outbound mail. `USER_DAILY_RUN_QUOTA` (30) caps runs per user per Asia/Bangkok day; going over returns 429 `quota_exceeded`.
 
+## Admin console
+
+Admin accounts see `/admin` (overview, users, AI runs, usage and cost, AI models, system, audit log) and nothing else: after login they land there, and they have no projects, CVs or sessions. Someone who also searches for jobs needs a second, ordinary account.
+
+```sh
+printf '%s\n' "$ADMIN_PASSWORD" | rtk uv run --locked --project backend python scripts/accounts.py create-user --email admin@example.com --admin
+```
+
+The password is read from stdin (10-128 characters) and never printed. The account is created verified, so no mail is sent. Admins cannot be created or promoted from the UI. `ADMIN_EMAILS` still works as a fallback list. On the deployed app the GitLab job `create-admin-users` does the same from the file variable `ADMIN_USERS`.
+
+- **Benchmark.** Applying a model to a task needs a passing test on the `evals/gold` holdout. A test calls the gateway about 20 times for one task, takes a few minutes and costs real tokens when the model is not free. It uses synthetic data only.
+- **Health.** The run supervisor stores one probe of Postgres, the object store, the gateway and the sandbox every 5 minutes and keeps 24 hours. The System page reads these rows.
+- **Gateway key.** Adding a model registers it in LiteLLM with `LITELLM_MASTER_KEY` (or the `litellm-master-key` file in `CORE02_PRIVATE_DIR`). Without it the model list and prices still load, but registering fails.
+
 ## LiteLLM gateway
 
 `scripts/local_infra.py start` also runs the LiteLLM gateway (`litellm`, its own `litellm-db` Postgres and a one-shot `litellm-seed`). It listens on `127.0.0.1:54000` only (override with `CORE02_LITELLM_PORT`); the UI is at `http://127.0.0.1:54000/ui` (user `owner`).

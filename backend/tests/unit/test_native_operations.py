@@ -29,7 +29,7 @@ def test_practice_runs_ask_for_low_reasoning_and_others_keep_the_model_default()
     low = {"extra_body": {"reasoning": {"effort": "low"}}}
     assert all(reasoning.get(op) == low for op in ("interview_generate", "interview_grade", "interview_report"))
     assert reasoning.get("evaluate_job") is None and reasoning.get("tailor_cv") is None
-    assert 'request_overrides=REASONING.get(request.get("operation"))' in source
+    assert 'reasoning = _reasoning_for(request.get("operation"), request.get("reasoning"))' in source and "request_overrides=reasoning," in source
 
 
 def test_hermes_default_effort_is_made_to_agree_with_the_env_override():

@@ -8,6 +8,7 @@ import re
 import sys
 from urllib.parse import urlsplit
 import stat
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
@@ -21,6 +22,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
@@ -28,6 +30,7 @@ from pydantic import BaseModel
 from job_search_platform import config
 from job_search_platform.api.dependencies import Services
 from job_search_platform.api.accounts import router as accounts_router
+from job_search_platform.api.admin import router as admin_router
 from job_search_platform.api.mcp_tasks import mcp_request_state_key
 from job_search_platform.api.oauth import router as oauth_router
 from job_search_platform.api.rest import _http_error, health_router, router as rest_router
@@ -35,7 +38,9 @@ from job_search_platform.api.resume import router as resume_router
 from job_search_platform.api.resume_themes import router as resume_themes_router
 from job_search_platform.api.practice import router as practice_router
 from job_search_platform.api.sse import router as sse_router
+from job_search_platform.db.models import TaskModelSetting
 from job_search_platform.db.session import make_engine
+from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.integrations.hermes_runtime import HermesRuntime
 from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.logging import RequestLogMiddleware, configure_logging
@@ -50,6 +55,7 @@ from job_search_platform.services.documents import Artifacts, Documents
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.maintenance import acquire_maintenance_lock, assert_restore_ready
 from job_search_platform.services.files import Files
+from job_search_platform.services import health
 from job_search_platform.services.grants import Grants
 from job_search_platform.services.oauth import OAuth
 from job_search_platform.services.owner_sessions import OwnerSessions
@@ -133,6 +139,27 @@ def moved_location(method: str, rest: str) -> str:
     return f"{API_PREFIX}/{rest}"
 
 
+TASK_CACHE_SECONDS = 5
+
+
+def gateway_factory(sessions) -> Callable[[], GatewaySettings]:
+    """GatewaySettings with the admin console's per-task (model, effort) rows; rows are cached 5 s per process.
+    A run resolves its provider once at start, so running runs keep their pair. The env stays the fallback."""
+    cache: dict = {"at": float("-inf"), "tasks": {}}
+
+    def tasks() -> dict:
+        if time.monotonic() - cache["at"] >= TASK_CACHE_SECONDS:
+            try:
+                with sessions() as db:
+                    cache["tasks"] = {r.operation: (r.model, r.effort) for r in db.scalars(select(TaskModelSetting))}
+            except Exception:
+                logging.getLogger(__name__).warning("task_model_settings_unavailable", exc_info=True)  # keep the last good map
+            cache["at"] = time.monotonic()
+        return cache["tasks"]
+
+    return lambda: GatewaySettings.from_env().with_tasks(tasks())
+
+
 def build_services() -> Services:
     """Assemble pinned local infrastructure without returning credential values."""
     user = _private_text("postgres-user")
@@ -174,13 +201,14 @@ def build_services() -> Services:
     secrets = _secret_store()
     settings = Settings(sessions)
     runs = RunService(sessions)
-    files = Files(sessions, store, runtime)
+    gateway = gateway_factory(sessions)
+    files = Files(sessions, store, runtime, gateway=gateway)
     documents = Documents(sessions, store)
     artifacts = Artifacts(sessions, store, lambda project_id, run_id: runtime.workspace_root / str(project_id) / str(run_id) / "staging")
     approvals = ApprovalService(sessions)
     queue = PostgresRunQueue(sessions)
     executor = RunExecutor(sessions, queue, runtime, artifacts, store,
-                           workspace_root=runtime.workspace_root)
+                           workspace_root=runtime.workspace_root, gateway=gateway)
     owner_sessions = _owner_sessions(sessions)
     share_origin = os.environ.get("SHARE_PUBLIC_ORIGIN", "").rstrip("/") or None
     mcp_resource = f"{share_origin}/mcp" if share_origin else None
@@ -197,7 +225,8 @@ def build_services() -> Services:
     supervisor = WorkerSupervisor(sessions, queue, executor, runtime, purge=lambda: accounts.purge_due(store),
                                   digests=saved_searches.housekeeping, deliveries=webhooks.deliver_due,
                                   prune_deliveries=webhooks.prune_async,
-                                  telegram_poll=telegram.poll if telegram.enabled else None)
+                                  telegram_poll=telegram.poll if telegram.enabled else None,
+                                  probe=lambda: health.record_probe(sessions, files.object_store, runtime))
     return Services(sessions=sessions, owner_sessions=owner_sessions, files=files,
                     documents=documents, runs=runs, grants=grants, settings=settings,
                     approvals=approvals, supervisor=supervisor, runtime=runtime,
@@ -309,7 +338,7 @@ def create_app(
                   servers=[{"url": API_PREFIX}], lifespan=lifespan,
                   telemetry={"auto_configure": False})
     # /v1/... answers at once; /v1/async/... starts background work and answers 202 with a run to poll.
-    for router in (rest_router, accounts_router, resume_router, resume_themes_router, practice_router, oauth_router, sse_router):
+    for router in (rest_router, accounts_router, resume_router, resume_themes_router, practice_router, oauth_router, sse_router, admin_router):
         app.include_router(router, prefix=API_PREFIX)
     app.include_router(health_router)
 

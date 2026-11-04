@@ -113,6 +113,31 @@ create-test-users:
     name: production
     action: access
 
+# Creates admin console accounts (verified, users.is_admin = true) inside the running app container.
+# ADMIN_USERS: GitLab file variable (Protected, scope production), one account per line: "<email> <password>".
+# Same shape as TEST_USERS. Passwords need at least 10 characters. Never printed.
+create-admin-users:
+  stage: deploy
+  image: docker:29.9.2-cli
+  services: []
+  tags:
+    - ai4thai-gpu1
+  resource_group: production
+  script:
+    - |
+      set -eu
+      test -s "$ADMIN_USERS"
+      while read -r email password; do
+        [ -n "$email" ] || continue
+        printf '%s\n' "$password" | docker exec -i jobsearch-web /app/backend/.venv/bin/python /app/scripts/accounts.py create-user --admin --email "$email" || echo "skipped $email (exists or rejected)"
+      done < "$ADMIN_USERS"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  environment:
+    name: production
+    action: access
+
 # Read-only diagnosis: prints container states and the last log lines of every container of this project
 # into the job log. Never prints .env or a full `docker inspect` (that would show environment values).
 # Set LOG_LINES when running the job to change the number of lines (default 80).

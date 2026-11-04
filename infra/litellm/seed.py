@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 BASE = os.environ.get("LITELLM_URL", "http://litellm:4000")
@@ -101,8 +102,12 @@ def seed_key():
     if existing:
         status = call("GET", "/v1/models", token=existing)[0]
         if status == 200:
-            # A task model added in .env must also be allowed for the app key.
-            call("POST", "/key/update", {"key": existing, "models": ["ai-analyze"] + task_models()})
+            # A task model added in .env must also be allowed for the app key. Keep the models the admin console
+            # registered since (ai_models._register adds them to this key), so a restart does not drop them.
+            status, info = call("GET", "/key/info?key=" + urllib.parse.quote(existing))
+            kept = (info.get("info") or {}).get("models") if status == 200 else None
+            if status == 200 and isinstance(kept, list):
+                call("POST", "/key/update", {"key": existing, "models": sorted({"ai-analyze", *task_models(), *(m for m in kept if isinstance(m, str))})})
             print("app_key_present", flush=True)
             return True
         if status not in (401, 403):  # transient failure: never touch a possibly working key

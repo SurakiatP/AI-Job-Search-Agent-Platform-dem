@@ -12,6 +12,8 @@ import { sendJson, useResource } from '../features/projects/useResource';
 import { Alert } from '../components/ui/alert';
 import { useLocale } from './providers';
 
+import { AdminGate, WorkspaceGate } from '../features/admin/AdminGate';
+import { AdminShell } from '../features/admin/AdminShell';
 import { useOwnerSession } from '../lib/api';
 import './routes.css';
 
@@ -45,6 +47,14 @@ const LoginPage = lazy(() => import('../features/auth/AuthPages').then(module =>
 const ResetPasswordPage = lazy(() => import('../features/auth/AuthPages').then(module => ({ default: module.ResetPasswordPage })));
 const SignupPage = lazy(() => import('../features/auth/AuthPages').then(module => ({ default: module.SignupPage })));
 const VerifyEmailPage = lazy(() => import('../features/auth/AuthPages').then(module => ({ default: module.VerifyEmailPage })));
+const AdminOverviewPage = lazy(() => import('../features/admin/OverviewPage').then(module => ({ default: module.OverviewPage })));
+const AdminUsersPage = lazy(() => import('../features/admin/UsersPage').then(module => ({ default: module.UsersPage })));
+const AdminRunsPage = lazy(() => import('../features/admin/RunsPage').then(module => ({ default: module.RunsPage })));
+const AdminUsagePage = lazy(() => import('../features/admin/UsagePage').then(module => ({ default: module.UsagePage })));
+const AdminModelsPage = lazy(() => import('../features/admin/ModelsPage').then(module => ({ default: module.ModelsPage })));
+const AdminSystemPage = lazy(() => import('../features/admin/SystemPage').then(module => ({ default: module.SystemPage })));
+const AdminAccountPage = lazy(() => import('../features/admin/AccountPage').then(module => ({ default: module.AccountPage })));
+const AdminAuditPage = lazy(() => import('../features/admin/AuditPage').then(module => ({ default: module.AuditPage })));
 
 type Project = { id: string; name: string };
 type Session = { id: string; title: string };
@@ -148,6 +158,10 @@ function OwnerGate() {
   return <Outlet />;
 }
 
+function AdminLayout() {
+  return <AdminShell><Suspense fallback={<PageCodeLoading />}><Outlet /></Suspense></AdminShell>;
+}
+
 function RouteLoading() {
   return <main id="main-content" tabIndex={-1} className="min-h-dvh bg-background p-6"><LoadingState /></main>;
 }
@@ -166,12 +180,14 @@ export function AppRoutes() {
     <Route path="/docs" element={<DocsPage />} /><Route path="/docs/:topic" element={<DocsTopicPage />} /><Route path="/features/:slug" element={<FeaturePage />} /><Route path="/how-it-works" element={<InfoPage slug="how-it-works" />} /><Route path="/data" element={<InfoPage slug="data" />} />
     <Route path="/login" element={<LoginPage />} /><Route path="/signup" element={<SignupPage />} /><Route path="/verify-email" element={<VerifyEmailPage />} /><Route path="/digest/unsubscribe" element={<DigestUnsubscribePage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} /><Route path="/reset-password" element={<ResetPasswordPage />} />
-    <Route element={<OwnerGate />}><Route path="/app" element={<AppStart />} /><Route path="/app/search" element={<AppSearchStart />} />
+    <Route element={<OwnerGate />}>
+    <Route element={<AdminGate />}><Route element={<AdminLayout />}><Route path="/admin" element={<AdminOverviewPage />} /><Route path="/admin/users" element={<AdminUsersPage />} /><Route path="/admin/runs" element={<AdminRunsPage />} /><Route path="/admin/usage" element={<AdminUsagePage />} /><Route path="/admin/models" element={<AdminModelsPage />} /><Route path="/admin/system" element={<AdminSystemPage />} /><Route path="/admin/audit" element={<AdminAuditPage />} /><Route path="/admin/account" element={<AdminAccountPage />} /></Route></Route>
+    <Route element={<WorkspaceGate />}><Route path="/app" element={<AppStart />} /><Route path="/app/search" element={<AppSearchStart />} />
     <Route path="/app/oauth/consent" element={<ConsentPage />} />
     <Route path="/app/account" element={<AppWorkspace />}><Route index element={<AccountPage />} /></Route>
     <Route path="/app/settings" element={<AppWorkspace />}><Route index element={<SettingsPage />} /></Route>
     <Route path="/app/projects" element={<AppWorkspace />}><Route index element={<ProjectsPage />} /><Route path="new" element={<NewProjectPage />} /></Route>
-    <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="overview" element={<OverviewPage />} /><Route path="trash" element={<TrashPage />} /><Route path="practice" element={<PracticeHubPage />} /><Route path="console" element={<ConsolePage />} /><Route path="search" element={<SearchPage />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions" element={<SessionsPage />} /><Route path="sessions/:sessionId" element={<SessionPage />} /><Route path="sessions/:sessionId/practice/:setId" element={<PracticeSetPage />} /><Route path="applications" element={<JobsPage />} /><Route path="jobs" element={<Navigate to="../applications" replace />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /><Route path="cvs/:cvId/builder" element={<BuilderPage kind="cv" />} /><Route path="documents/:documentId/builder" element={<BuilderPage kind="document" />} /></Route>
+    <Route path="/app/projects/:projectId" element={<AppWorkspace />}><Route index element={<ProjectHome />} /><Route path="overview" element={<OverviewPage />} /><Route path="trash" element={<TrashPage />} /><Route path="practice" element={<PracticeHubPage />} /><Route path="console" element={<ConsolePage />} /><Route path="search" element={<SearchPage />} /><Route path="profile" element={<ProfilePage />} /><Route path="sessions" element={<SessionsPage />} /><Route path="sessions/:sessionId" element={<SessionPage />} /><Route path="sessions/:sessionId/practice/:setId" element={<PracticeSetPage />} /><Route path="applications" element={<JobsPage />} /><Route path="jobs" element={<Navigate to="../applications" replace />} /><Route path="jobs/:jobId" element={<JobDetailPage />} /><Route path="documents" element={<DocumentsPage />} /><Route path="documents/:documentId" element={<DocumentDetailPage />} /><Route path="cvs/:cvId/builder" element={<BuilderPage kind="cv" />} /><Route path="documents/:documentId/builder" element={<BuilderPage kind="document" />} /></Route></Route>
     </Route><Route path="*" element={<NotFoundPage />} />
   </Routes></Suspense>;
 }

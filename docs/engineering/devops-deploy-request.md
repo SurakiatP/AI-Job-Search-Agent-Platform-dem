@@ -70,10 +70,10 @@ compose ตั้ง `create_host_path: false` จึงไม่สร้าง
 ## 5. สิ่งที่ทีมเราจะทำ
 
 1. ตั้งตัวแปร `ENV_FILE` ใน GitLab (ชนิด **File**, **Protected**, environment scope `production`, ปิด "Expand variable reference") ตามคู่มือข้อ 2
-2. ตั้งตัวแปร `TEST_USERS` (ชนิด File, Protected, scope `production`) สำหรับบัญชีทดสอบของลูกค้า
+2. ตั้งตัวแปร `TEST_USERS` (ชนิด File, Protected, scope `production`) สำหรับบัญชีทดสอบของลูกค้า และ `ADMIN_USERS` (ชนิด File รูปแบบเดียวกัน บรรทัดละ `<อีเมล> <รหัสผ่าน>`) สำหรับบัญชีผู้ดูแลระบบ
 3. merge `develop` เข้า `main` pipeline จะรันเทสต์ แล้ว deploy อัตโนมัติ (คัดลอก `ENV_FILE` เป็น `.env`, `docker compose config`, `build --pull`, `up -d --remove-orphans`, `ps`)
 4. ครั้งแรกใช้เวลาหลายนาที เพราะแอปเตรียมเครื่องมือของ agent ครั้งเดียว
-5. หลัง deploy ผ่าน กดรัน job `create-test-users` (manual) เพื่อสร้างบัญชีทดสอบ
+5. หลัง deploy ผ่าน กดรัน job `create-test-users` (manual) เพื่อสร้างบัญชีทดสอบ และ job `create-admin-users` (manual) เพื่อสร้างบัญชีผู้ดูแลระบบ
 6. ปิดการส่งอีเมลไว้ก่อนตามที่ลูกค้าแจ้ง ผู้ใช้จึงสมัครเองและรีเซ็ตรหัสผ่านทางอีเมลไม่ได้ เราสร้างบัญชีทดสอบให้
 
 ## 6. ผลการซ้อม deploy บนเครื่องพัฒนาของเรา

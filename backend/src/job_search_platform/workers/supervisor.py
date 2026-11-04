@@ -128,6 +128,7 @@ class WorkerSupervisor:
         prune_deliveries: Callable[[], Awaitable[int]] | None = None,
         telegram_poll: Callable[[], Awaitable[int]] | None = None,
         telegram_interval: float = 3.0,
+        probe: Callable[[], Awaitable[object]] | None = None,
     ) -> None:
         self.sessions = sessions
         self.queue = queue
@@ -141,6 +142,7 @@ class WorkerSupervisor:
         self._deliveries = deliveries
         self.deliveries_interval = deliveries_interval
         self._prune_deliveries = prune_deliveries
+        self._probe = probe  # health probe row, every purge_interval (300 s)
         self._delivery_task: asyncio.Task | None = None
         self._telegram_poll = telegram_poll
         self.telegram_interval = telegram_interval
@@ -193,6 +195,11 @@ class WorkerSupervisor:
                 await self._prune_deliveries()
             except Exception as exc:  # noqa: BLE001 - pruning must never stop dispatch
                 logger.warning("webhook_prune_failed", extra={"error": type(exc).__name__})
+        if self._probe is not None:
+            try:
+                await self._probe()
+            except Exception as exc:  # noqa: BLE001 - a probe failure must never stop dispatch
+                logger.warning("health_probe_failed", extra={"error": type(exc).__name__})
 
     async def _telegram_loop(self) -> None:
         while not self._closing.is_set():

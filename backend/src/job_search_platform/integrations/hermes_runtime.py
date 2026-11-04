@@ -37,6 +37,16 @@ def reasoning_effort(env, operation: str) -> str | None:
     return value if value in EFFORTS else None
 
 
+# What the native bridge really runs when nothing sets an effort (infra/hermes/native_bridge.py REASONING; a unit test keeps them equal).
+BRIDGE_DEFAULT_EFFORT = {"interview_generate": "low", "interview_grade": "low", "interview_report": "low"}
+
+
+def env_effort(env, operation: str) -> str:
+    """The effort an operation runs at with no stored admin setting: AI_REASONING_<OP>, else the bridge's own default,
+    else "default" (the model's own)."""
+    return reasoning_effort(env, operation) or BRIDGE_DEFAULT_EFFORT.get(operation, "default")
+
+
 def reasoning_overrides(env) -> dict[str, str]:
     """Thinking effort per native operation; see reasoning_effort."""
     return {op: v for op in NATIVE_OPERATIONS if (v := reasoning_effort(env, op))}
@@ -58,6 +68,7 @@ class ProviderConfig:
     model: str
     base_url: str
     api_key: str = field(repr=False)
+    effort: str | None = None  # none|minimal|low|medium|high|default; None leaves the bridge's own defaults
 
 def _usage(raw) -> dict:
     """Validate bridge usage; anything malformed becomes null fields."""
@@ -67,7 +78,8 @@ def _usage(raw) -> dict:
         return n if isinstance(n, int) and not isinstance(n, bool) and 0 <= n <= 10_000_000 else None
     model = raw.get("model")
     return {"model": model if isinstance(model, str) and 0 < len(model) <= 120 else None,
-            "input_tokens": count("input_tokens"), "output_tokens": count("output_tokens")}
+            "input_tokens": count("input_tokens"), "output_tokens": count("output_tokens"),
+            "cached_tokens": count("cached_tokens"), "api_calls": count("api_calls")}
 
 @dataclass(frozen=True)
 class NativeEvent:
@@ -304,6 +316,7 @@ class HermesRuntime:
         project.terminal_received = False
         response = await self._request(project, "submit", session_id=str(session_id),
             prompt=prompt, instructions=instructions, operation=operation,
+            reasoning=None if provider is None else provider.effort,
             provider=None if provider is None else {"provider": provider.provider,
                 "model": provider.model, "base_url": provider.base_url, "api_key": provider.api_key})
         if response.get("accepted") is not True:

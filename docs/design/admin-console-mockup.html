@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin console — mockup v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&family=Anuphan:wght@400..700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+:root{
+  --background:#EEF2F8;--foreground:#172033;--card:#FFFFFF;--primary:#0A50C2;--primary-fill:#0A50C2;
+  --muted:#E3E9F2;--muted-fg:#4A5568;--accent:#D6E4FB;--accent-fg:#0B2A5C;--destructive:#B3261E;--destructive-fill:#B3261E;
+  --success:#146C2E;--warning:#8C5000;--border:#D5DCE7;--border-strong:#BCC6D4;--sidebar:#E6ECF5;--input:#6B7689;
+  --hero:#101C3D;--hero-muted:#C9D6F5;--hero-line:rgb(255 255 255/.14);--h-ok:#6DD58C;--h-bad:#F2B8B5;--h-warn:#F0C36A;
+  --nav-hover:color-mix(in srgb,var(--primary) 4%,transparent);--nav-active:color-mix(in srgb,var(--primary) 8%,var(--sidebar));
+  --shadow-soft:0 1px 2px rgb(23 32 51/.05),0 6px 20px -10px rgb(23 32 51/.16);
+  --shadow-lift:0 2px 4px rgb(23 32 51/.06),0 14px 32px -14px rgb(23 32 51/.24);
+  --ease-out:cubic-bezier(.23,1,.32,1);--ease-drawer:cubic-bezier(.32,.72,0,1);
+  --font:'Google Sans Flex','Anuphan','Noto Sans Thai',sans-serif;
+}
+.dark{
+  --background:#121826;--foreground:#E3E8F2;--card:#1C2333;--primary:#A8C7FA;--primary-fill:#0B57D0;
+  --muted:#252E40;--muted-fg:#A3AEC2;--accent:#22355C;--accent-fg:#E3E8F2;--destructive:#F2B8B5;--destructive-fill:#C5362C;
+  --success:#6DD58C;--warning:#F0C36A;--border:#2F3A50;--border-strong:#44516A;--sidebar:#141B2A;--input:#7A879E;
+  --hero:#1B2D63;--hero-muted:#DCE5FA;
+  --nav-active:color-mix(in srgb,var(--primary) 16%,var(--sidebar));
+  --shadow-soft:0 1px 2px rgb(4 8 18/.3),0 8px 24px -12px rgb(4 8 18/.5);
+  --shadow-lift:0 2px 4px rgb(4 8 18/.35),0 16px 36px -14px rgb(4 8 18/.6);
+}
+*{box-sizing:border-box}
+html{color-scheme:light}.dark{color-scheme:dark}
+body{margin:0;font-family:var(--font);background:var(--sidebar);color:var(--foreground);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
+::selection{background:var(--accent);color:var(--accent-fg)}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:6px}
+button,input{font:inherit;color:inherit}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;background:var(--muted);padding:1px 6px;border-radius:4px}
+.num{font-variant-numeric:tabular-nums}
+svg.lucide{width:20px;height:20px;stroke-width:1.75;flex:none}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.rail{display:flex;flex-direction:column;gap:4px;padding:16px 12px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:8px;padding:4px 8px 16px;font-weight:600}
+.brand .mark{width:32px;height:32px;border-radius:10px;background:var(--primary-fill);color:#fff;display:grid;place-items:center}
+.admin-badge{margin-left:auto;font-size:12px;font-weight:500;line-height:1;padding:6px 10px;border-radius:999px;background:var(--accent);color:var(--accent-fg)}
+.group-label{font-size:12px;font-weight:500;color:var(--muted-fg);padding:12px 12px 4px}
+.nav{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 12px;border-radius:999px;font-size:14px;font-weight:500;cursor:pointer;border:0;background:none;width:100%;text-align:left;transition:background-color .15s ease}
+@media (hover:hover){.nav:hover{background:var(--nav-hover)}}
+.nav[aria-current=page]{background:var(--nav-active);color:var(--primary)}
+.nav .count{margin-left:auto;font-size:12px;min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:grid;place-items:center;background:color-mix(in srgb,var(--destructive) 14%,transparent);color:var(--destructive)}
+.rail-foot{margin-top:auto;display:flex;align-items:center;gap:12px;padding:16px 12px 8px;border-top:1px solid var(--border);font-size:14px}
+.avatar{width:32px;height:32px;border-radius:999px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-weight:600;font-size:13px}
+.frame{margin:8px 8px 8px 0;border:1px solid var(--border);border-radius:12px;background:var(--background);min-width:0}
+.page{padding:32px 40px 112px;display:grid;gap:32px;max-width:1360px}
+.page>*{min-width:0}
+.topbar{display:none}
+.view{display:none}.view.on{display:grid}
+
+/* ---------- primitives ---------- */
+.ph{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.ph-icon{color:var(--primary);margin-top:8px}.ph-icon svg{width:28px;height:28px}
+.ph h1{margin:0;font-size:30px;line-height:1.35;font-weight:600;letter-spacing:-.01em}
+.ph p{margin:4px 0 0;color:var(--muted-fg);max-width:44rem}
+.ph-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-soft)}
+.h2{margin:0;font-size:20px;font-weight:600;line-height:1.45}
+.h3{margin:0;font-size:16px;font-weight:600;line-height:1.5}
+.sub{color:var(--muted-fg);font-size:14px}
+.small{font-size:13px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:999px;font-size:14px;font-weight:500;border:1px solid var(--border-strong);background:var(--card);cursor:pointer;white-space:nowrap;transition:background-color .15s ease,transform .16s var(--ease-out),opacity .15s ease}
+.btn:active:not(:disabled){transform:scale(.97)}
+@media (hover:hover){.btn:hover:not(:disabled){background:var(--muted)}.btn.primary:hover:not(:disabled){background:color-mix(in srgb,var(--primary-fill) 86%,#172033)}.btn.danger:hover:not(:disabled){background:color-mix(in srgb,var(--destructive-fill) 86%,#172033)}}
+.btn.primary{background:var(--primary-fill);border-color:transparent;color:#fff}
+.btn.danger{background:var(--destructive-fill);border-color:transparent;color:#fff}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{height:36px;padding:0 14px}
+.btn.icon{width:40px;padding:0}
+.btn .spin{width:16px;height:16px;border-radius:999px;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.seg{display:inline-flex;padding:4px;gap:2px;background:var(--muted);border-radius:999px;flex-wrap:wrap}
+.seg button{border:1px solid transparent;background:none;border-radius:999px;height:32px;padding:0 14px;font-size:14px;font-weight:500;cursor:pointer;color:var(--muted-fg);transition:background-color .15s ease,color .15s ease}
+.seg button[aria-pressed=true]{background:var(--card);border-color:var(--border-strong);color:var(--foreground)}
+.badge{display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;background:color-mix(in srgb,var(--primary) 10%,transparent);color:var(--primary);white-space:nowrap;line-height:1.4}
+.badge.ok{background:color-mix(in srgb,var(--success) 12%,transparent);color:var(--success)}
+.badge.warn{background:color-mix(in srgb,var(--warning) 14%,transparent);color:var(--warning)}
+.badge.bad{background:color-mix(in srgb,var(--destructive) 12%,transparent);color:var(--destructive)}
+.badge.mute{background:var(--muted);color:var(--muted-fg)}
+.badge svg{width:14px;height:14px}
+.alert{display:flex;gap:12px;align-items:flex-start;border-radius:8px;padding:10px 16px;font-size:14px;line-height:1.6;flex-wrap:wrap}
+.alert>div{flex:1;min-width:200px}
+.alert.warn{background:color-mix(in srgb,var(--warning) 12%,transparent)}.alert.warn>svg{color:var(--warning)}
+.alert.info{background:color-mix(in srgb,var(--primary) 8%,transparent)}.alert.info>svg{color:var(--primary)}
+.input{height:44px;border:1px solid var(--input);border-radius:8px;background:var(--card);padding:0 12px;width:100%;font-size:16px}
+.field{display:grid;gap:6px;font-size:14px;font-weight:500}
+.rows>*+*{border-top:1px solid var(--border)}
+.lnk{color:var(--primary);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;background:none;border:0;padding:0;cursor:pointer;font-size:14px}
+.mock-tag{position:fixed;top:12px;right:12px;z-index:30}
+.tip{position:fixed;z-index:80;pointer-events:none;background:var(--card);color:var(--foreground);border:1px solid var(--border);box-shadow:var(--shadow-lift);border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.5;max-width:260px;opacity:0;transform:translate(-50%,calc(-100% - 6px)) scale(.97);transform-origin:50% 100%;transition:opacity .125s ease,transform .125s var(--ease-out)}
+.tip.on{opacity:1;transform:translate(-50%,calc(-100% - 10px)) scale(1)}
+.tip.instant{transition:none}
+
+/* ---------- hero status ---------- */
+.hero{background:var(--hero);color:#fff;border-radius:24px;padding:28px 32px;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.4fr);gap:32px;box-shadow:var(--shadow-soft)}
+.hero .verdict{display:grid;gap:12px;align-content:start}
+.hero .state{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--h-bad)}
+.hero h2{margin:0;font-size:28px;line-height:1.35;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+.hero p{margin:0;color:var(--hero-muted);font-size:15px;line-height:1.7}
+.hero .btn{background:#fff;color:#101C3D;border-color:transparent}
+@media (hover:hover){.hero .btn:hover{background:#E6ECF5}.hero .btn.ghost:hover{background:rgb(255 255 255/.08)}}
+.hero .btn.ghost{background:transparent;color:#fff;border-color:var(--hero-line)}
+.comp{display:grid;grid-template-columns:20px 120px minmax(0,1fr) 60px;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--hero-line)}
+.comp.first{border-top:0}
+.comp .nm{font-size:14px;font-weight:500;line-height:1.35}
+.comp .nm small{display:block;font-size:12px;font-weight:400;color:var(--hero-muted)}
+.comp .pct{font-size:13px;text-align:right;color:var(--hero-muted)}
+.comp-h{border-top:0;padding-top:0;font-size:12px;color:var(--hero-muted)}
+.comp-axis{border-top:0;padding:0}
+.ticks{display:grid;grid-template-columns:repeat(48,minmax(0,1fr));gap:2px;height:28px}
+.ticks i{display:block;border-radius:2px;background:var(--h-ok);opacity:.85;transform-origin:50% 100%;transition:transform .16s var(--ease-out),opacity .16s ease}
+.ticks i.w{background:var(--h-warn)}.ticks i.d{background:var(--h-bad)}
+@media (hover:hover){.ticks i:hover{transform:scaleY(1.18);opacity:1}}
+.ticks-axis{display:flex;justify-content:space-between;font-size:11px;color:var(--hero-muted)}
+.comp-ic{color:var(--h-ok)}.comp-ic.d{color:var(--h-bad)}
+
+/* ---------- attention ---------- */
+.att-item{display:grid;grid-template-rows:1fr;transition:grid-template-rows .32s var(--ease-out),opacity .2s ease}
+.att-item.gone{grid-template-rows:0fr;opacity:0}
+.att-item>div{overflow:hidden}
+.att-row{display:grid;grid-template-columns:24px minmax(0,1fr);gap:12px;padding:16px 24px}
+.att-row .t{font-weight:500;line-height:1.5}
+.att-row .why{font-size:14px;color:var(--muted-fg);margin-top:2px}
+.att-row .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.sev{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;margin-bottom:2px}
+.sev.bad{color:var(--destructive)}.sev.warn{color:var(--warning)}
+.ic-bad{color:var(--destructive)}.ic-warn{color:var(--warning)}
+.done-note{display:none;align-items:center;gap:8px;color:var(--success);font-size:14px;font-weight:500;margin-top:10px}
+.att-item.resolved .acts{display:none}.att-item.resolved .done-note{display:flex}
+.empty{padding:32px 24px;display:none;gap:8px;justify-items:center;text-align:center}
+.empty svg{width:32px;height:32px;color:var(--success)}
+
+/* ---------- activity ---------- */
+.day{font-size:12px;font-weight:500;color:var(--muted-fg);padding:12px 24px 4px}
+.act{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;padding:10px 24px;align-items:start}
+.act .ico{width:32px;height:32px;border-radius:999px;background:var(--muted);display:grid;place-items:center;color:var(--muted-fg)}
+.act .ico svg{width:16px;height:16px}
+
+/* ---------- usage (kpi tabs + chart) ---------- */
+.kpi-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--border)}
+.kpi{all:unset;box-sizing:border-box;cursor:pointer;padding:20px 24px 18px;display:grid;gap:2px;position:relative;border-left:1px solid var(--border);transition:background-color .15s ease}
+.kpi:first-child{border-left:0;border-top-left-radius:16px}.kpi:last-child{border-top-right-radius:16px}
+.kpi:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+@media (hover:hover){.kpi:hover{background:var(--nav-hover)}}
+.kpi::after{content:"";position:absolute;left:24px;right:24px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--primary);transform:scaleX(0);transition:transform .22s var(--ease-out)}
+.kpi[aria-selected=true]::after{transform:scaleX(1)}
+.kpi .lbl{font-size:14px;color:var(--muted-fg);display:flex;align-items:center;gap:6px}
+.kpi .lbl .info{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:999px;color:var(--muted-fg)}
+.kpi .lbl .info svg{width:14px;height:14px}
+.kpi .val{font-size:28px;font-weight:600;line-height:1.3;letter-spacing:-.01em;white-space:nowrap}
+.kpi[aria-selected=true] .val{color:var(--primary)}
+.kpi .ctx{font-size:12px;color:var(--muted-fg)}
+.chart-wrap{padding:20px 24px 24px;display:grid;gap:16px}
+.chart-head{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;justify-content:space-between}
+.chart-q{margin:0;font-size:18px;font-weight:600;line-height:1.45}
+.chart{position:relative;height:240px}
+.chart svg{width:100%;height:100%;overflow:visible;display:block}
+.bar{fill:color-mix(in srgb,var(--primary) 45%,var(--card));transform-box:fill-box;transform-origin:50% 100%;transition:transform .32s var(--ease-out),fill .15s ease;cursor:pointer}
+.bar.fail{fill:color-mix(in srgb,var(--destructive) 55%,var(--card))}
+.bar.on{fill:var(--primary)}.bar.fail.on{fill:var(--destructive)}
+.hit{fill:transparent;cursor:pointer;outline:none}
+.col-hl{fill:var(--nav-active);opacity:0;transition:opacity .12s ease}
+.grid-l{stroke:var(--border)}
+.axis{fill:var(--muted-fg);font-size:11px}
+.avg{stroke:var(--foreground);stroke-dasharray:4 4;opacity:.55;transition:transform .32s var(--ease-out)}
+.avg-l{fill:var(--foreground);font-size:11px;font-weight:500;transition:transform .32s var(--ease-out)}
+.chart-foot{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13px;color:var(--muted-fg)}
+.legend-sw{display:inline-block;width:10px;height:10px;border-radius:3px;background:color-mix(in srgb,var(--primary) 45%,var(--card));margin-right:6px;vertical-align:-1px}
+.split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;align-items:start}
+.card-head{display:flex;align-items:center;gap:8px;padding:20px 24px 8px;flex-wrap:wrap}
+
+.refresh{display:inline-flex;align-items:center;gap:10px;font-size:13px;color:var(--muted-fg)}
+.ring{width:20px;height:20px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:2.5}
+.ring .bg{stroke:var(--border)}.ring .fg{stroke:var(--primary);stroke-dasharray:50.27;stroke-linecap:round}
+
+/* ---------- sheet ---------- */
+.scrim{position:fixed;inset:0;background:rgb(16 28 61/.32);opacity:0;pointer-events:none;transition:opacity .18s ease;z-index:60}
+.scrim.on{opacity:1;pointer-events:auto;transition-duration:.24s}
+.sheet{position:fixed;top:8px;right:8px;bottom:8px;width:min(600px,calc(100vw - 16px));background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lift);z-index:70;display:grid;grid-template-rows:auto minmax(0,1fr) auto;transform:translateX(calc(100% + 16px));transition:transform .2s var(--ease-out),visibility 0s .2s;visibility:hidden}
+.sheet.on{transform:none;transition:transform .3s var(--ease-drawer);visibility:visible}
+.sheet-head{display:flex;align-items:flex-start;gap:12px;padding:20px 24px 16px;border-bottom:1px solid var(--border)}
+.sheet-body{overflow:auto;padding:20px 24px;display:grid;gap:20px;align-content:start}
+.sheet-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.kv{display:grid;grid-template-columns:132px minmax(0,1fr);gap:8px 12px;font-size:14px;margin:0}
+.kv dt{color:var(--muted-fg)}.kv dd{margin:0}
+.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:var(--muted);border-radius:8px;padding:10px 12px;white-space:pre-wrap;line-height:1.6}
+.hbar{display:grid;grid-template-columns:140px minmax(0,1fr) 56px;gap:12px;align-items:center;font-size:14px}
+.hbar .track{height:8px;border-radius:999px;background:var(--muted);overflow:hidden}
+.hbar .fill{display:block;height:100%;border-radius:999px;background:var(--primary);transform-origin:0 50%;transform:scaleX(0);transition:transform .5s var(--ease-out)}
+
+.steps{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:500;color:var(--muted-fg);flex-wrap:wrap}
+.step{display:inline-flex;align-items:center;gap:8px}
+.step .n{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:12px;border:1px solid var(--border-strong);background:var(--card);transition:background-color .2s ease,color .2s ease,border-color .2s ease}
+.step.cur{color:var(--foreground)}.step.cur .n{background:var(--primary-fill);border-color:transparent;color:#fff}
+.step.done .n{background:color-mix(in srgb,var(--success) 14%,transparent);border-color:transparent;color:var(--success)}
+.step .n svg{width:14px;height:14px}
+.steps .line{width:24px;height:1px;background:var(--border-strong)}
+.pane{display:none;gap:20px}
+.pane.on{display:grid;animation:paneIn .26s var(--ease-out)}
+@keyframes paneIn{from{opacity:0;transform:translateX(12px)}}
+
+/* ---------- models page ---------- */
+.flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-radius:16px;overflow:hidden;border:1px solid var(--border);background:var(--card)}
+.flow>div{padding:16px 20px;display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;align-items:start}
+.flow>div+div{border-left:1px solid var(--border)}
+.flow .fi{width:32px;height:32px;border-radius:10px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center}
+.flow .fi svg{width:18px;height:18px}
+.flow b{font-weight:600;font-size:15px;display:block;line-height:1.5}
+.flow span{font-size:13px;color:var(--muted-fg);line-height:1.6;display:block}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);position:relative;overflow-x:auto}
+.tab{all:unset;cursor:pointer;padding:12px 16px;font-size:15px;font-weight:500;color:var(--muted-fg);display:inline-flex;gap:8px;align-items:center;white-space:nowrap;border-radius:8px 8px 0 0}
+.tab:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.tab[aria-selected=true]{color:var(--primary)}
+@media (hover:hover){.tab:hover{background:var(--nav-hover)}}
+.tab .c{font-size:12px;padding:0 8px;border-radius:999px;background:var(--muted);color:var(--muted-fg);line-height:20px}
+.tab-ink{position:absolute;bottom:0;left:0;height:3px;border-radius:3px 3px 0 0;background:var(--primary);transition:transform .25s var(--ease-out),width .25s var(--ease-out)}
+.tabpanel{display:none}.tabpanel.on{display:grid;gap:16px}
+
+.task,.th{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) 150px 130px 96px;gap:16px;align-items:center;padding:16px 24px}
+.task{transition:background-color .15s ease}
+@media (hover:hover){.task:hover{background:var(--nav-hover)}}
+.th{padding:10px 24px;font-size:12px;font-weight:500;color:var(--muted-fg);background:var(--muted)}
+.th>:nth-child(4){text-align:right}
+.task .tn{font-weight:500;line-height:1.5}
+.task .td{font-size:13px;color:var(--muted-fg);line-height:1.5}
+.task>:last-child{text-align:right}
+.model{display:grid;gap:4px;min-width:0}
+.model .mn{font-size:14px;font-weight:500;overflow-wrap:anywhere;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.eff{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted-fg)}
+.dots{display:inline-flex;gap:3px}
+.dots i{width:6px;height:6px;border-radius:999px;background:var(--border-strong)}
+.dots i.f{background:var(--primary)}
+.score{display:grid;gap:6px}
+.score .v{font-size:15px;font-weight:600}
+.score .tr{height:6px;border-radius:999px;background:var(--muted);overflow:hidden}
+.score .tr i{display:block;height:100%;background:var(--success);border-radius:999px;transform-origin:0 50%}
+.score .tr i.mid{background:var(--warning)}
+.cost{font-size:14px;text-align:right}
+.cost small{display:block;font-size:12px;color:var(--muted-fg)}
+
+.opt{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border-radius:12px;border:1px solid var(--border);cursor:pointer;transition:border-color .15s ease,background-color .15s ease,transform .16s var(--ease-out)}
+.opt:active{transform:scale(.99)}
+@media (hover:hover){.opt:hover{border-color:var(--border-strong)}}
+.opt[aria-checked=true]{border-color:var(--primary);background:color-mix(in srgb,var(--accent) 50%,transparent)}
+.opt .radio{width:20px;height:20px;border-radius:999px;border:2px solid var(--input);display:grid;place-items:center}
+.opt[aria-checked=true] .radio{border-color:var(--primary)}
+.opt[aria-checked=true] .radio::after{content:"";width:10px;height:10px;border-radius:999px;background:var(--primary)}
+.opt .on{font-weight:500;font-size:14px;overflow-wrap:anywhere}
+.opt .meta{font-size:12px;color:var(--muted-fg);display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px}
+.opt .pr{font-size:12px;color:var(--muted-fg);text-align:right;line-height:1.5}
+.eff-pick{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.eff-pick button{border:1px solid var(--border);background:var(--card);border-radius:10px;padding:8px 4px;font-size:13px;font-weight:500;cursor:pointer;display:grid;gap:4px;justify-items:center;transition:border-color .15s ease,background-color .15s ease,transform .16s var(--ease-out)}
+.eff-pick button:active{transform:scale(.97)}
+.eff-pick button[aria-pressed=true]{border-color:var(--primary);background:color-mix(in srgb,var(--accent) 60%,transparent);color:var(--primary)}
+.eff-pick .dots i{width:5px;height:5px}
+.eff-note{font-size:13px;color:var(--muted-fg);min-height:21px}
+.cur-box{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:12px;background:var(--muted);font-size:14px;flex-wrap:wrap}
+
+.cases{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}
+.cases>i{aspect-ratio:1;border-radius:6px;background:var(--muted);display:grid;place-items:center;transition:background-color .2s ease}
+.cases>i.run{background:color-mix(in srgb,var(--primary) 18%,transparent)}
+.cases>i.ok{background:color-mix(in srgb,var(--success) 22%,transparent);color:var(--success)}
+.cases>i.bad{background:color-mix(in srgb,var(--destructive) 20%,transparent);color:var(--destructive)}
+.cases svg{width:14px;height:14px}
+.cases>i.pop{animation:pop .24s var(--ease-out)}
+@keyframes pop{from{transform:scale(.85)}}
+.progress{height:6px;border-radius:999px;background:var(--muted);overflow:hidden}
+.progress i{display:block;height:100%;background:var(--primary);transform-origin:0 50%;transform:scaleX(0);transition:transform .3s var(--ease-out)}
+
+.verdict-box{border-radius:16px;padding:16px 18px;display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px}
+.verdict-box.ok{background:color-mix(in srgb,var(--success) 10%,transparent)}.verdict-box.ok>svg{color:var(--success)}
+.verdict-box.bad{background:color-mix(in srgb,var(--destructive) 10%,transparent)}.verdict-box.bad>svg{color:var(--destructive)}
+.verdict-box svg{width:28px;height:28px}
+.verdict-box b{font-size:17px;font-weight:600;display:block;line-height:1.45}
+.metric{display:grid;gap:8px;padding:14px 0;border-top:1px solid var(--border)}
+.metric:first-child{border-top:0;padding-top:0}.metric:last-child{padding-bottom:0}
+.metric .mh{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-weight:500;flex-wrap:wrap}
+.metric .mh small{font-weight:400;color:var(--muted-fg);font-size:12px}
+.pair{display:grid;grid-template-columns:56px minmax(0,1fr) 120px;gap:10px;align-items:center;font-size:13px}
+.pair .track{height:10px;border-radius:999px;background:var(--muted);overflow:hidden}
+.pair .track i{display:block;height:100%;border-radius:999px;transform-origin:0 50%;transform:scaleX(0);transition:transform .6s var(--ease-out)}
+.pair.old .track i{background:var(--border-strong)}.pair.new .track i{background:var(--primary)}
+.pair .v{text-align:right}
+.delta{font-weight:600;font-size:13px}.delta.bad{color:var(--destructive)}.delta.ok{color:var(--success)}
+
+.reg{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(3,90px) minmax(0,1fr) 90px;gap:12px;align-items:center;padding:14px 24px;font-size:14px}
+.reg.h{font-size:12px;font-weight:500;color:var(--muted-fg);background:var(--muted);padding:10px 24px}
+.reg .r{text-align:right}
+.price-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.money{position:relative;display:block}.money .input{padding-left:28px}.money::before{content:"$";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted-fg);font-size:15px}
+.hist{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:16px;align-items:center;padding:14px 24px;font-size:14px}
+
+.switcher{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;display:flex;gap:8px;align-items:center;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow-lift);border-radius:999px;padding:6px}
+.switcher .seg{background:transparent}
+
+/* ======== overview v3 (dashboard widgets) ======== */
+.issue{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;border-radius:12px;background:color-mix(in srgb,var(--destructive) 9%,var(--card));border:1px solid color-mix(in srgb,var(--destructive) 22%,transparent);font-size:14px;flex-wrap:wrap}
+.issue>svg{color:var(--destructive)}
+.issue>div{flex:1;min-width:220px}
+.kpis4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.kc{all:unset;box-sizing:border-box;cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-soft);padding:18px 20px;display:grid;gap:6px;transition:border-color .15s ease,box-shadow .2s ease,transform .16s var(--ease-out)}
+.kc:active{transform:scale(.985)}
+@media (hover:hover){.kc:hover{border-color:var(--border-strong)}}
+.kc:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.kc[aria-selected=true]{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary),var(--shadow-soft)}
+.kc .top{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500}
+.kc .top svg{margin-left:auto;color:var(--primary)}
+.kc .mid{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.kc .big{font-size:28px;font-weight:600;letter-spacing:-.01em;line-height:1.25;white-space:nowrap}
+.kc .vs{font-size:12px;color:var(--muted-fg)}
+.chip{display:inline-flex;align-items:center;gap:2px;font-size:12px;font-weight:600;padding:2px 8px 2px 6px;border-radius:999px;line-height:1.5;white-space:nowrap}
+.chip svg{width:14px;height:14px;stroke-width:2.25}
+.chip.good{background:color-mix(in srgb,var(--success) 13%,transparent);color:var(--success)}
+.chip.bad{background:color-mix(in srgb,var(--destructive) 12%,transparent);color:var(--destructive)}
+.chip.flat{background:var(--muted);color:var(--muted-fg)}
+
+.dash{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:24px;align-items:start}
+.dcol{display:grid;gap:24px;align-content:start;min-width:0}
+.w{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-soft);min-width:0}
+.w.enter{animation:wIn .32s var(--ease-out)}
+@keyframes wIn{from{opacity:0;transform:translateY(8px) scale(.985)}}
+.w.leave{opacity:0;transform:scale(.985);transition:opacity .16s ease,transform .16s ease}
+.wh{display:flex;align-items:center;gap:8px;padding:18px 20px 4px}
+.wh h2{margin:0;font-size:17px;font-weight:600;line-height:1.45}
+.wh .more{margin-left:auto;width:32px;height:32px;padding:0;border-radius:999px;border:0;background:none;display:grid;place-items:center;color:var(--muted-fg);cursor:pointer}
+@media (hover:hover){.wh .more:hover{background:var(--muted)}}
+.wb{padding:8px 20px 20px}
+
+/* trend */
+.trend{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;align-items:center}
+.trend .tv{font-size:34px;font-weight:600;letter-spacing:-.015em;line-height:1.2;white-space:nowrap}
+.trend .tl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted-fg);margin-top:8px}
+.tc{position:relative;height:200px}
+.tc svg{width:100%;height:100%;overflow:visible;display:block}
+.tc .area{fill:url(#areaG);opacity:0;transition:opacity .5s ease .25s}
+.tc.drawn .area{opacity:1}
+.tc .ln{fill:none;stroke:var(--primary);stroke-width:2.25;stroke-linejoin:round;stroke-linecap:round}
+.tc .ln.prev{stroke:var(--muted-fg);stroke-width:1.5;stroke-dasharray:4 5;opacity:.6}
+.tc .gl{stroke:var(--border)}
+.tc .ax{fill:var(--muted-fg);font-size:11px}
+.tc .xh{stroke:var(--foreground);stroke-width:1;stroke-dasharray:3 3;opacity:0;transition:opacity .1s ease}
+.tc .dot{fill:var(--card);stroke:var(--primary);stroke-width:2.5;opacity:0;transition:opacity .1s ease}
+.tc .dot.p{stroke:var(--muted-fg);stroke-width:2}
+.tc.hover .xh{opacity:.35}.tc.hover .dot{opacity:1}
+.tc .cap{fill:transparent;cursor:crosshair;outline:none}
+.tc .cap:focus-visible{stroke:var(--primary);stroke-width:2}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted-fg)}
+.legend i{display:inline-block;width:16px;height:0;border-top:2.25px solid var(--primary);vertical-align:middle;margin-right:6px}
+.legend i.p{border-top:1.5px dashed var(--muted-fg)}
+.ctip{position:fixed;z-index:80;pointer-events:none;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow-lift);border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.6;opacity:0;transform:translate(-50%,calc(-100% - 14px));transition:opacity .1s ease;min-width:150px}
+.ctip.on{opacity:1}
+.ctip b{font-size:13px}
+.ctip .r{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.ctip .r span:first-child{display:inline-flex;align-items:center;gap:6px}
+.ctip .sw{width:8px;height:8px;border-radius:999px;background:var(--primary)}
+.ctip .sw.p{background:var(--muted-fg)}
+
+.brk{margin-top:16px;border:1px solid var(--border);border-radius:12px;padding:14px 16px 0;overflow:hidden}
+.brk-h{display:flex;align-items:center;font-size:14px;font-weight:600;margin-bottom:10px}
+.brk-row{display:flex;gap:2px}
+.seg-i{min-width:84px;display:grid;gap:2px;padding:0 10px 0 0;cursor:default}
+.seg-i .n{display:flex;align-items:center;gap:6px;font-size:18px;font-weight:600;line-height:1.3;white-space:nowrap}
+.seg-i .n svg{width:16px;height:16px}
+.seg-i .l{font-size:12px;color:var(--muted-fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg-i .b{height:5px;border-radius:3px 3px 0 0;margin-top:10px;transform-origin:0 50%;transform:scaleX(0);transition:transform .5s var(--ease-out)}
+.brk.drawn .seg-i .b{transform:scaleX(1)}
+.seg-i .bl{width:2px;align-self:stretch}
+
+/* weekday */
+.wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:end;height:170px;padding-top:24px}
+.wk button{all:unset;cursor:default;display:grid;grid-template-rows:1fr auto;gap:8px;height:100%;justify-items:center;position:relative}
+.wk .col{width:100%;max-width:36px;align-self:end;border-radius:10px;background:var(--muted);transform-origin:50% 100%;transform:scaleY(0);transition:transform .45s var(--ease-out),background-color .15s ease;position:relative}
+.wk.drawn .col{transform:scaleY(1)}
+.wk button:hover .col,.wk button:focus-visible .col{background:color-mix(in srgb,var(--primary) 35%,var(--muted))}
+.wk .pk .col{background:var(--primary)}
+.wk .d{font-size:12px;color:var(--muted-fg)}
+.wk .pk .d{color:var(--primary);font-weight:600}
+.wk .val{position:absolute;bottom:calc(var(--h) + 30px);font-size:12px;font-weight:600;opacity:0;transition:opacity .15s ease;white-space:nowrap}
+.wk .pk .val,.wk button:hover .val,.wk button:focus-visible .val{opacity:1}
+.wk button:hover~button.pk .val{opacity:0}
+
+/* gauge */
+.gauge{position:relative;display:grid;justify-items:center}
+.gauge svg{width:100%;max-width:280px;height:auto;overflow:visible}
+.gauge .tk{stroke:var(--border);stroke-width:4;stroke-linecap:round;transition:stroke .05s linear}
+.gauge .tk.on{stroke:var(--success)}
+.gauge .tk.tg{stroke:var(--foreground);stroke-width:2.5}
+.gauge .gv{position:absolute;bottom:34px;text-align:center}
+.gauge .gv b{display:block;font-size:34px;font-weight:600;line-height:1.1;letter-spacing:-.01em}
+.gauge .gv span{font-size:12px;color:var(--muted-fg)}
+
+/* attention compact */
+.ar{display:grid;grid-template-columns:20px minmax(0,1fr);gap:10px;padding:12px 20px}
+.ar .t{font-size:14px;font-weight:500;line-height:1.5}
+.ar .m{font-size:12px;color:var(--muted-fg);line-height:1.5}
+.ar .a{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.ar .btn{height:32px;padding:0 12px;font-size:13px}
+
+/* table */
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{font-size:12px;font-weight:500;color:var(--muted-fg);text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);letter-spacing:.01em}
+.tbl td{padding:12px;border-bottom:1px solid var(--border)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .r{text-align:right}
+.tbl tbody tr{transition:background-color .12s ease;cursor:pointer}
+@media (hover:hover){.tbl tbody tr:hover{background:var(--nav-hover)}}
+.tbl .share{display:grid;grid-template-columns:minmax(40px,1fr) 44px;gap:8px;align-items:center}
+.tbl .share .tr{height:6px;border-radius:999px;background:var(--muted);overflow:hidden}
+.tbl .share .tr i{display:block;height:100%;background:var(--primary);border-radius:999px;transform-origin:0 50%;transform:scaleX(0);transition:transform .5s var(--ease-out)}
+.tbl.drawn .share .tr i{transform:scaleX(var(--s))}
+.pos{color:var(--success)}.neg{color:var(--destructive)}
+
+/* popovers + toast */
+.pop{position:fixed;z-index:90;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lift);padding:6px;min-width:200px;opacity:0;transform:scale(.96);pointer-events:none;transition:opacity .14s ease,transform .14s var(--ease-out)}
+.pop.on{opacity:1;transform:scale(1);pointer-events:auto}
+.pop button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border-radius:8px;font-size:14px;cursor:pointer}
+.pop button:hover,.pop button:focus-visible{background:var(--muted)}
+.pop button[aria-checked=true]{color:var(--primary);font-weight:500}
+.pop button svg{width:16px;height:16px}
+.toast{position:fixed;left:50%;bottom:84px;z-index:95;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow-lift);border-radius:12px;padding:10px 16px;font-size:14px;display:flex;gap:10px;align-items:center;opacity:0;transform:translate(-50%,8px);transition:opacity .2s ease,transform .2s var(--ease-out);pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast svg{color:var(--success)}
+
+/* widget picker */
+.wp{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:14px;transition:border-color .15s ease,background-color .15s ease}
+.wp.on{border-color:color-mix(in srgb,var(--primary) 40%,var(--border));background:color-mix(in srgb,var(--accent) 35%,transparent)}
+.wp .pv{width:72px;height:56px;border-radius:10px;background:var(--muted);display:grid;place-items:center;color:var(--primary)}
+.wp .pv svg{width:26px;height:26px}
+.wp b{display:block;font-size:15px;font-weight:600;line-height:1.45}
+.wp span{font-size:13px;color:var(--muted-fg);line-height:1.5;display:block}
+
+@media (max-width:1180px){.dash{grid-template-columns:minmax(0,1fr)}.trend{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1023px){.kpis4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){
+  .kpis4{gap:12px}.kc{padding:14px}.kc .big{font-size:22px}.kc .top{font-size:13px}.kc .vs{font-size:11px}
+  .wh{padding:16px 16px 4px}.wb{padding:8px 16px 16px}.ar{padding:12px 16px}
+  .trend .tv{font-size:28px}.tc{height:170px}
+  .tbl .hide-sm{display:none}
+  .brk-row{flex-wrap:wrap;row-gap:12px}.seg-i{min-width:42%}.seg-i .n{font-size:15px}
+  .wp{grid-template-columns:56px minmax(0,1fr)}.wp .pv{width:56px;height:48px}.wp>button{grid-column:1/-1}
+  .issue>.btn{margin-left:28px}
+}
+@media (prefers-reduced-motion:reduce){.seg-i .b,.wk .col,.tbl .share .tr i,.w.leave,.pop,.toast{transition-property:opacity!important}.seg-i .b,.wk .col{transform:none!important}}
+@media (max-width:1180px){.split,.hero{grid-template-columns:minmax(0,1fr)}
+  .task,.th{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 130px 96px}.task .cost,.th>:nth-child(4){display:none}}
+@media (max-width:1023px){
+  .shell{grid-template-columns:1fr}.rail{display:none}.frame{margin:0;border:0;border-radius:0}
+  .topbar{display:flex;align-items:center;gap:8px;padding:8px 12px;position:sticky;top:0;background:var(--sidebar);z-index:20;border-bottom:1px solid var(--border)}
+  .page{padding:24px 16px 120px;gap:24px}
+  .kpi-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi:nth-child(3){border-left:0}.kpi:nth-child(n+3){border-top:1px solid var(--border)}.kpi:nth-child(2){border-top-right-radius:16px}.kpi:last-child{border-top-right-radius:0}
+  .flow{grid-template-columns:1fr}.flow>div+div{border-left:0;border-top:1px solid var(--border)}
+  .reg{grid-template-columns:minmax(0,1fr) repeat(3,70px)}.reg>:nth-child(n+5){display:none}
+}
+@media (max-width:640px){
+  .ph h1{font-size:26px}.ph-actions{margin-left:0;width:100%}
+  .hero{padding:22px 20px;border-radius:20px;gap:20px}.hero h2{font-size:22px}
+  .comp{grid-template-columns:20px minmax(0,1fr) 52px;row-gap:8px}.comp .ticks{grid-column:1/-1;grid-row:2}
+  .comp-h{display:none}.comp-axis{grid-template-columns:1fr}.comp-axis>span{display:none}
+  .kpi{padding:16px}.kpi .val{font-size:22px}.kpi::after{left:16px;right:16px}
+  .att-row,.act,.card-head,.chart-wrap{padding-left:16px;padding-right:16px}.day{padding-left:16px}
+  .th{display:none}
+  .task{grid-template-columns:minmax(0,1fr) auto;padding:14px 16px;gap:10px 12px}
+  .task .model,.task .score{grid-column:1/-1}.task>:last-child{grid-column:2;grid-row:1}
+  .eff-pick{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .price-grid{grid-template-columns:1fr}
+  .hist{grid-template-columns:minmax(0,1fr);gap:4px;padding:14px 16px}
+  .reg{padding-left:16px;padding-right:16px;grid-template-columns:minmax(0,1fr) repeat(3,52px);font-size:13px}
+  .hbar{grid-template-columns:100px minmax(0,1fr) 44px}
+  .pair{grid-template-columns:48px minmax(0,1fr) 104px}
+  .switcher{bottom:8px}
+  .sheet{top:auto;right:0;left:0;bottom:0;width:100%;max-height:92vh;border-radius:16px 16px 0 0;transform:translateY(100%)}
+  .sheet.on{transform:none}
+  .sheet-head,.sheet-body,.sheet-foot{padding-left:16px;padding-right:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:1ms!important;animation-iteration-count:1!important}
+  .sheet,.sheet.on,.bar,.avg,.avg-l,.pair .track i,.hbar .fill,.tab-ink,.kpi::after,.att-item,.ticks i,.btn,.progress i{transition-property:opacity,background-color,color,visibility!important}
+}
+</style>
+</head>
+<body>
+<span class="badge warn mock-tag"><i data-lucide="flask-conical"></i>ข้อมูลตัวอย่าง</span>
+<div class="tip" id="tip" role="tooltip"></div>
+<div class="shell">
+  <aside class="rail" aria-label="เมนู admin">
+    <div class="brand"><span class="mark"><i data-lucide="briefcase-business"></i></span>Job Search<span class="admin-badge">Admin</span></div>
+    <button class="nav" data-go="home"><i data-lucide="layout-dashboard"></i>ภาพรวม</button>
+    <div class="group-label">ผู้ใช้และงาน</div>
+    <button class="nav" data-soon><i data-lucide="users"></i>ผู้ใช้</button>
+    <button class="nav" data-soon><i data-lucide="activity"></i>งาน AI<span class="count num" data-attcount>4</span></button>
+    <div class="group-label">AI</div>
+    <button class="nav" data-soon><i data-lucide="receipt"></i>การใช้งานและค่าใช้จ่าย</button>
+    <button class="nav" data-go="models"><i data-lucide="sliders-horizontal"></i>โมเดล AI</button>
+    <div class="group-label">ระบบ</div>
+    <button class="nav" data-soon><i data-lucide="server"></i>ระบบ<span class="count num">1</span></button>
+    <button class="nav" data-soon><i data-lucide="scroll-text"></i>บันทึกการทำงาน</button>
+    <div class="rail-foot"><span class="avatar">OP</span><div style="min-width:0"><div style="font-weight:500">ops@nectec.example</div><div class="sub" style="font-size:12px">ผู้ดูแลระบบ</div></div></div>
+  </aside>
+  <div class="frame">
+    <div class="topbar"><button class="btn ghost sm" aria-label="เปิดเมนู"><i data-lucide="menu"></i>เมนู</button><strong style="font-size:15px">Job Search</strong><span class="admin-badge" style="margin-left:0">Admin</span></div>
+
+    <!-- ================= OVERVIEW ================= -->
+    <main class="view page" id="v-home">
+      <header class="ph">
+        <div><h1>ภาพรวม</h1><p class="num" id="updated">ข้อมูลอัปเดตทุก 30 วินาที · ล่าสุด 14:32</p></div>
+        <div class="ph-actions">
+          <button class="btn sm" id="rangeBtn" aria-haspopup="menu" aria-expanded="false"><i data-lucide="calendar"></i><span class="num" id="rangeLbl"></span><i data-lucide="chevron-down" style="width:16px;height:16px"></i></button>
+          <button class="btn sm" data-sheet="widgets"><i data-lucide="layout-grid"></i>ปรับแต่ง</button>
+          <button class="btn sm primary" id="exportBtn"><i data-lucide="download"></i>ส่งออก CSV</button>
+        </div>
+      </header>
+
+      <div class="issue" role="alert"><i data-lucide="server-crash"></i><div><strong>ตัวรันงาน AI หยุดทำงานตั้งแต่ 14:00</strong> <span class="sub">งาน AI ใหม่ 12 งานรอคิวอยู่ ส่วนอื่นของระบบยังปกติ</span></div><button class="btn sm" data-sheet="sandbox">ดูวิธีแก้</button></div>
+
+      <section class="kpis4" id="kpis" role="tablist" aria-label="เลือกตัวเลขที่จะดูในกราฟ"></section>
+
+      <div class="dash">
+        <div class="dcol" id="col-main"></div>
+        <div class="dcol" id="col-side"></div>
+      </div>
+    </main>
+
+    <!-- ================= MODELS ================= -->
+    <main class="view page" id="v-models">
+      <header class="ph"><span class="ph-icon"><i data-lucide="sliders-horizontal"></i></span><div><h1>โมเดล AI</h1><p>แต่ละงานของแอปเลือกโมเดลและระดับการคิดได้เอง เปลี่ยนแล้วมีผลทันที แต่ทุกครั้งต้องผ่านชุดทดสอบก่อน</p></div></header>
+
+      <section class="flow" aria-label="ขั้นตอนเปลี่ยนโมเดล">
+        <div><span class="fi"><i data-lucide="search"></i></span><div><b>1. เลือกโมเดลและ effort</b><span>ค้นจากรายชื่อของ OpenRouter ระบบลงทะเบียนใน LiteLLM ให้</span></div></div>
+        <div><span class="fi"><i data-lucide="flask-conical"></i></span><div><b>2. ทดสอบกับชุดทดสอบ</b><span>20 เคสของงานนั้น ราว 3 นาที เทียบกับโมเดลที่ใช้อยู่</span></div></div>
+        <div><span class="fi"><i data-lucide="circle-check"></i></span><div><b>3. ตัดสินใจ</b><span>ผ่านเกณฑ์ก็ใช้ได้ทันที ถ้าคะแนนลดเกิน 2 ต้องพิมพ์ยืนยัน</span></div></div>
+      </section>
+
+      <div style="display:grid;gap:16px">
+        <div class="tabs" role="tablist" aria-label="ส่วนของหน้าโมเดล" id="mtabs">
+          <button class="tab" role="tab" aria-selected="true" data-tab="t-tasks">งานและโมเดลที่ใช้ <span class="c num">7</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="t-reg">คลังโมเดลและราคา <span class="c num">2</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="t-hist">ประวัติการทดสอบ <span class="c num">3</span></button>
+          <span class="tab-ink" id="ink"></span>
+        </div>
+
+        <section class="tabpanel on" id="t-tasks" role="tabpanel">
+          <div class="card" style="overflow:hidden">
+            <div class="card-head" style="padding-bottom:16px"><div><h2 class="h2">งานไหนใช้โมเดลอะไร</h2><p class="sub" style="margin:2px 0 0">คะแนนมาจากการทดสอบครั้งล่าสุด ราคาเฉลี่ยจาก request จริงใน 7 วัน</p></div><button class="btn sm" style="margin-left:auto" data-sheet="change:all"><i data-lucide="copy-check"></i>ใช้โมเดลเดียวกับทุกงาน</button></div>
+            <div class="th"><span>งาน</span><span>โมเดลและ effort</span><span>คะแนนทดสอบ</span><span>ราคา/ครั้ง</span><span></span></div>
+            <div class="rows" id="tasks"></div>
+          </div>
+        </section>
+
+        <section class="tabpanel" id="t-reg" role="tabpanel">
+          <div class="alert info"><i data-lucide="badge-dollar-sign"></i><div>OpenRouter มีราคาทางการของ <strong>qwen/qwen3.7-flash</strong> แล้ว (input $0.06 · output $0.24) ตอนนี้ใช้ราคาที่กรอกเองอยู่</div><button class="btn sm">ใช้ราคาทางการ</button></div>
+          <div class="card" style="overflow:hidden">
+            <div class="card-head" style="padding-bottom:16px"><div style="flex:1;min-width:240px"><h2 class="h2">โมเดลที่ลงทะเบียนแล้ว</h2><p class="sub" style="margin:2px 0 0">ราคาต่อ 1 ล้าน token ใช้คิดค่าใช้จ่ายของทุก request ราคาจาก OpenRouter อัปเดตวันละครั้ง ราคาที่กรอกเองไม่ถูกเขียนทับ</p></div><button class="btn primary sm" data-sheet="add"><i data-lucide="plus"></i>เพิ่มโมเดลจาก OpenRouter</button></div>
+            <div class="reg h"><span>โมเดล</span><span class="r">input</span><span class="r">output</span><span class="r">cache</span><span>ที่มาของราคา</span><span class="r">ใช้อยู่กับ</span></div>
+            <div class="rows">
+              <div class="reg"><span style="font-weight:500;overflow-wrap:anywhere">openai/gpt-6-luna</span><span class="r num">$0.35</span><span class="r num">$1.40</span><span class="r num">$0.04</span><span><span class="badge">OpenRouter · 4 พ.ย.</span></span><span class="r num">4 งาน</span></div>
+              <div class="reg"><span style="font-weight:500;overflow-wrap:anywhere">qwen/qwen3.7-flash</span><span class="r num">$0.05</span><span class="r num">$0.20</span><span class="r num sub" data-tip="ไม่ได้กรอกราคา cache จึงใช้ราคา input">= input</span><span><span class="badge warn"><i data-lucide="pencil"></i>ราคากรอกเอง</span></span><span class="r num">3 งาน</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tabpanel" id="t-hist" role="tabpanel">
+          <div class="card" style="overflow:hidden">
+            <div class="card-head" style="padding-bottom:16px"><h2 class="h2">ผลทดสอบทุกครั้ง</h2></div>
+            <div class="rows">
+              <div class="hist"><span><span class="badge bad">ไม่ผ่านเกณฑ์</span></span><span>ประเมินงาน · gpt-6-luna / low · <strong class="num">93.1</strong> <span class="sub num">(เดิม 96.0)</span></span><span class="sub num">วันนี้ 14:21 · ops@nectec.example</span></div>
+              <div class="hist"><span><span class="badge ok">ผ่าน · ใช้แล้ว</span></span><span>ปรับ CV · gpt-6-luna / low · <strong class="num">96.0</strong> <span class="sub num">(เดิม 94.5)</span></span><span class="sub num">2 พ.ย. 69 · ops@nectec.example</span></div>
+              <div class="hist"><span><span class="badge mute">ผ่าน · ไม่ได้ใช้</span></span><span>ฝึกสัมภาษณ์ · claude-haiku-5-5 / default · <strong class="num">90.4</strong> <span class="sub num">(เดิม 89.7)</span></span><span class="sub num">1 พ.ย. 69 · ops@nectec.example</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-head"><div style="flex:1;min-width:0;display:grid;gap:8px"><h2 class="h2" id="sheetTitle"></h2><div id="sheetSub"></div></div><button class="btn ghost sm icon" id="sheetClose" aria-label="ปิด"><i data-lucide="x"></i></button></div>
+  <div class="sheet-body" id="sheetBody"></div>
+  <div class="sheet-foot" id="sheetFoot"></div>
+</aside>
+
+<nav class="switcher" aria-label="สลับหน้า mockup">
+  <div class="seg" role="group"><button data-go="home" aria-pressed="false">ภาพรวม</button><button data-go="models" aria-pressed="false">โมเดล AI</button></div>
+  <button class="btn ghost sm icon" id="theme" aria-label="สลับโหมดสว่างหรือมืด"><i data-lucide="moon"></i></button>
+</nav>
+
+<script>
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s, r=document) => r.querySelector(s), $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const icons = () => lucide.createIcons();
+const raf2 = f => requestAnimationFrame(()=>requestAnimationFrame(f));
+
+/* tooltip: short delay for the first, instant for neighbours */
+const tip=$('#tip'); let tipT, tipWarm=0;
+function showTip(el,text){ clearTimeout(tipT); const go=()=>{ const r=el.getBoundingClientRect(); tip.textContent=text; tip.style.left=(r.left+r.width/2)+'px'; tip.style.top=r.top+'px';
+  tip.classList.toggle('instant',Date.now()-tipWarm<400); tip.classList.add('on'); tipWarm=Date.now(); };
+  Date.now()-tipWarm<400 ? go() : (tipT=setTimeout(go,180)); }
+function hideTip(){ clearTimeout(tipT); if(tip.classList.contains('on')) tipWarm=Date.now(); tip.classList.remove('on'); }
+document.addEventListener('pointerover',e=>{ const el=e.target.closest('[data-tip]'); if(el) showTip(el,el.dataset.tip); });
+document.addEventListener('pointerout',e=>{ if(e.target.closest('[data-tip]')) hideTip(); });
+document.addEventListener('focusin',e=>{ const el=e.target.closest('[data-tip]'); if(el) showTip(el,el.dataset.tip); });
+document.addEventListener('focusout',hideTip);
+
+function countUp(el,to,fmt){ if(RM){ el.textContent=fmt(to); return; } const t0=performance.now(), d=700;
+  (function f(t){ const p=Math.min(1,(t-t0)/d), e=1-Math.pow(1-p,3); el.textContent=fmt(to*e); if(p<1) requestAnimationFrame(f); })(t0); }
+
+/* sheet */
+let lastFocus=null;
+function openSheet(kind){ const [k,arg]=kind.split(':'); lastFocus=document.activeElement; const S=SHEETS[k](arg);
+  $('#sheetTitle').textContent=S.title; $('#sheetSub').innerHTML=S.sub||''; $('#sheetBody').innerHTML=S.body; $('#sheetFoot').innerHTML=S.foot||''; $('#sheetFoot').style.display=S.foot?'flex':'none';
+  icons(); $('#scrim').classList.add('on'); $('#sheet').classList.add('on'); setTimeout(()=>$('#sheetClose').focus(),60); S.init&&S.init(); }
+function closeSheet(){ $('#scrim').classList.remove('on'); $('#sheet').classList.remove('on'); clearInterval(window.__run); lastFocus&&lastFocus.focus&&lastFocus.focus(); }
+$('#sheetClose').onclick=closeSheet; $('#scrim').onclick=closeSheet;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#sheet').classList.contains('on')) closeSheet(); });
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-sheet]'); if(b) openSheet(b.dataset.sheet); });
+
+const SHEETS={
+ sandbox:()=>({title:'ตัวรันงาน AI หยุดทำงาน',sub:'<span class="badge bad">กระทบผู้ใช้ตอนนี้</span>',
+  body:`<dl class="kv num"><dt>ส่วนของระบบ</dt><dd>sandbox image</dd><dt>หยุดตั้งแต่</dt><dd>14:00 (ตรวจล่าสุด 14:31:58)</dd><dt>งานที่รอคิว</dt><dd>12 งาน จาก 9 ผู้ใช้</dd></dl>
+  <div class="code">readiness: sandbox_image = down</div>
+  <div class="h3">วิธีแก้ที่มักได้ผล</div><ol style="margin:0;padding-left:20px;display:grid;gap:6px;font-size:15px"><li>ตรวจว่า Docker บนเครื่องที่รันแอปยังทำงานอยู่</li><li>รัน job <code>test-ai</code> ใน GitLab เพื่อดูว่าขั้นไหนล้ม</li><li>ถ้า image หาย ให้ deploy ใหม่จาก tag ล่าสุด</li></ol>
+  <div class="alert info"><i data-lucide="info"></i><div>งานที่รอคิวจะเริ่มเองเมื่อตัวรันงานกลับมา ผู้ใช้ไม่ต้องกดใหม่</div></div>`,
+  foot:'<button class="btn" onclick="closeSheet()">ปิด</button><button class="btn primary" data-soon>เปิดหน้าระบบ</button>'}),
+ runs:()=>({title:'งาน AI ที่ล้มเหลว',sub:'<span class="badge bad num">4 งานใน 24 ชั่วโมง</span>',
+  body:`<div class="sub">admin เห็นเฉพาะรหัสผู้ใช้และสถานะของงาน ไม่เห็น CV หรือเนื้อหาที่ผู้ใช้ส่ง</div>
+  <div class="rows" style="border:1px solid var(--border);border-radius:12px">${[['ประเมินงาน','u_8f3a…c21','14:05'],['ประเมินงาน','u_19bd…7aa','13:48'],['ปรับ CV','u_8f3a…c21','12:10'],['ประเมินงาน','u_c0e2…14f','09:31']].map(([t,u,at])=>`<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 14px;font-size:14px;align-items:center"><span style="font-weight:500">${t}</span><span class="sub num">${at}</span><span class="sub num">${u} · qwen3.7-flash / low</span><span class="badge bad">หมดเวลา 60 วิ</span></div>`).join('')}</div>
+  <div class="code">run_failed: model_timeout\nโมเดลไม่ตอบภายใน 60 วินาที ลองใหม่อัตโนมัติ 2 ครั้งแล้ว</div>
+  <div class="alert warn"><i data-lucide="lightbulb"></i><div>ทั้ง 4 งานใช้โมเดลเดียวกัน ถ้ายังเกิดซ้ำ ลองทดสอบโมเดลอื่นในหน้าโมเดล AI</div></div>`,
+  foot:'<button class="btn" onclick="closeSheet();go(\'models\')">ไปหน้าโมเดล AI</button><button class="btn primary">ลองใหม่ทั้ง 4 งาน</button>'}),
+ crawl:()=>({title:'ประวัติการดึงประกาศงาน',body:`<div class="rows" style="border:1px solid var(--border);border-radius:12px">${[['13:00','บางส่วน','warn','1,240 · ใหม่ 86','JobThai 503'],['12:00','ครบ','ok','1,318 · ใหม่ 102',''],['11:00','ครบ','ok','1,296 · ใหม่ 77','']].map(([t,s,c,n,e])=>`<div style="display:grid;grid-template-columns:56px 80px minmax(0,1fr);gap:12px;padding:12px 14px;font-size:14px;align-items:center"><span class="num">${t}</span><span><span class="badge ${c}">${s}</span></span><span class="num">${n}${e?` <span class="sub">· ${e}</span>`:''}</span></div>`).join('')}</div>`,foot:'<button class="btn primary">ดึงใหม่ตอนนี้</button>'}),
+ webhook:()=>({title:'webhook ที่ส่งไม่สำเร็จ',body:`<dl class="kv num"><dt>ปลายทาง</dt><dd>hooks.example.com/…</dd><dt>สถานะ</dt><dd>หยุดส่งแล้ว (ลองครบ 8 ครั้ง)</dd><dt>ตอบกลับล่าสุด</dt><dd>HTTP 500 · 12:40</dd></dl>`,foot:'<button class="btn primary">ส่งใหม่</button>'}),
+ day:i=>{ const d=dl(+i,range), m=METRICS[metric], v=series(range,metric)[+i];
+  const parts=[['ประเมินงาน',.38],['ร่างเอกสาร',.21],['ปรับ CV',.17],['ฝึกสัมภาษณ์',.14],['เตรียมใบสมัคร',.07],['อ่านเอกสาร',.03]];
+  return {title:`วันที่ ${d}/69`,sub:`<span class="badge num">${m.lbl.split(' ·')[0]} ${m.fmt(v)}</span>`,
+   body:`<div class="h3">แยกตามงาน</div><div style="display:grid;gap:10px">${parts.map(([n,p])=>`<div class="hbar"><span>${n}</span><span class="track"><span class="fill" data-p="${p/.38}"></span></span><span class="num" style="text-align:right">${Math.round(p*100)}%</span></div>`).join('')}</div><div class="sub">สัดส่วนของจำนวนครั้งที่เรียก AI ในวันนั้น</div>`,
+   foot:'<button class="btn primary" data-soon>เปิดในหน้างาน AI</button>',
+   init:()=>raf2(()=>$$('#sheetBody .fill').forEach((f,k)=>{ f.style.transitionDelay=(k*40)+'ms'; f.style.transform=`scaleX(${f.dataset.p})`; }))}; },
+ change:t=>changeSheet(t),
+ add:()=>({title:'เพิ่มโมเดลจาก OpenRouter',body:`<label class="field">ค้นหาชื่อโมเดล<input class="input" value="thai" autocomplete="off"></label>
+   <div class="rows" style="border:1px solid var(--border);border-radius:12px">${[['lunaris/luna-thai-7b','',true],['typhoon/typhoon-3-8b','in $0.10 · out $0.10',false]].map(([n,p,w])=>`<div style="display:flex;gap:12px;align-items:center;padding:12px 14px;font-size:14px;flex-wrap:wrap"><span style="flex:1;font-weight:500;min-width:160px">${n}</span>${w?'<span class="badge warn"><i data-lucide="triangle-alert"></i>ไม่มีราคา ต้องกรอกเอง</span>':`<span class="sub num">${p} / 1M</span>`}<button class="btn sm">เพิ่ม</button></div>`).join('')}</div>
+   <div class="sub">เพิ่มแล้วโมเดลจะอยู่ในคลัง ยังไม่ถูกใช้กับงานไหนจนกว่าจะผ่านการทดสอบและกดใช้</div>`}),
+};
+
+/* models: task list */
+const EFF=['none','minimal','low','medium','high','default'];
+const EFF_NOTE={none:'ไม่คิดก่อนตอบ เร็วและถูกที่สุด เหมาะกับงานอ่านหรือแยกข้อมูล',minimal:'คิดน้อยมาก เร็ว เหมาะกับงานที่มีรูปแบบชัด',low:'คิดสั้น ๆ สมดุลระหว่างความเร็ว คุณภาพ และราคา',medium:'คิดละเอียดขึ้น ช้าและแพงขึ้น',high:'คิดละเอียดที่สุด ช้าและแพงที่สุด ใช้เมื่อคุณภาพสำคัญกว่าเวลา',default:'ใช้ค่าเริ่มต้นของโมเดลนั้น'};
+const dots=e=>{ const n={none:0,minimal:1,low:2,medium:3,high:4,default:2}[e]; return `<span class="dots" aria-hidden="true">${[0,1,2,3].map(i=>`<i class="${i<n?'f':''}"></i>`).join('')}</span>`; };
+const TASKS=[
+ ['evaluate','ประเมินงาน','ให้คะแนนว่า CV เหมาะกับงานแค่ไหน','qwen/qwen3.7-flash','low',96.0,'≈ $0.00041',true],
+ ['draft','ร่างเอกสาร','ร่างจดหมายสมัครงานและเอกสารประกอบ','openai/gpt-6-luna','default',100.0,'$0.00037'],
+ ['extract','ดึงประสบการณ์จาก CV','อ่าน CV แล้วแยกเป็นข้อเท็จจริงทีละข้อ','openai/gpt-6-luna','default',99.2,'$0.00068'],
+ ['tailor','ปรับ CV','ปรับ CV ให้ตรงกับงานโดยอ้างจากข้อเท็จจริง','openai/gpt-6-luna','low',96.0,'$0.00033'],
+ ['apply','เตรียมใบสมัคร','ตอบคำถามในใบสมัครของแต่ละงาน','qwen/qwen3.7-flash','default',93.4,'≈ $0.00029',true],
+ ['practice','ฝึกสัมภาษณ์','สร้างคำถาม ตรวจคำตอบ และสรุปผล','openai/gpt-6-luna','default',89.7,'$0.00127'],
+ ['ocr','อ่านเอกสาร (OCR)','อ่านข้อความจาก PDF ที่เป็นภาพ','qwen/qwen3.7-flash','none',null,'≈ $0.00052',true],
+];
+$('#tasks').innerHTML=TASKS.map(([k,n,d,m,e,s,c,man])=>`<div class="task">
+  <div><div class="tn">${n}</div><div class="td">${d}</div></div>
+  <div class="model"><span class="mn">${m}${man?' <span class="badge warn" data-tip="โมเดลนี้ใช้ราคาที่ admin กรอกเอง ค่าใช้จ่ายจึงเป็นค่าประมาณ"><i data-lucide="pencil"></i>ราคากรอกเอง</span>':''}</span><span class="eff">${dots(e)} effort: ${e}</span></div>
+  <div class="score">${s==null?'<span class="sub">ยังไม่ได้ทดสอบ</span>':`<span class="v num">${s.toFixed(1)}</span><span class="tr"><i class="${s<92?'mid':''}" style="transform:scaleX(${s/100})"></i></span>`}</div>
+  <div class="cost num">${c}<small>ต่อครั้ง</small></div>
+  <div><button class="btn sm" data-sheet="change:${k}">เปลี่ยน</button></div></div>`).join('');
+
+/* change-model sheet: choose → test → decide */
+const OR=[
+ {id:'openai/gpt-6-luna',reg:true,pin:.35,pout:1.40,q:93.1,p50:12.8,p95:15.0,cost:.00073,err:'0 / 1'},
+ {id:'openai/gpt-6-luna-mini',reg:false,pin:.08,pout:.32,q:96.6,p50:6.1,p95:8.2,cost:.00019,err:'0 / 0'},
+ {id:'lunaris/luna-thai-7b',reg:false,pin:null,pout:null,q:95.1,p50:4.2,p95:6.0,cost:.00008,err:'1 / 0'},
+];
+function changeSheet(key){
+  const T=key==='all'?['all','ทุกงาน','','qwen/qwen3.7-flash','low',96.0]:TASKS.find(t=>t[0]===key);
+  const cur={id:T[3],eff:T[4],q:T[5]??90,p50:9.4,p95:13.0,cost:.00041};
+  let pick=null, eff=cur.eff==='default'?'low':cur.eff, priced=false;
+  const stepper=s=>`<div class="steps">${['เลือกโมเดล','ทดสอบ','ตัดสินใจ'].map((l,i)=>`${i?'<span class="line"></span>':''}<span class="step ${i<s?'done':i===s?'cur':''}" ${i===s?'aria-current="step"':''}><span class="n">${i<s?'<i data-lucide="check"></i>':i+1}</span>${l}</span>`).join('')}</div>`;
+  const setStep=s=>{ $('#sheetSub').innerHTML=stepper(s); $$('#sheetBody .pane').forEach((p,i)=>p.classList.toggle('on',i===s)); renderFoot(s); };
+  function renderFoot(s){ const f=$('#sheetFoot'); f.style.display='flex';
+    if(s===0){ const need=pick&&pick.pin==null&&!priced;
+      f.innerHTML=`<span class="sub" style="margin-right:auto">${!pick?'เลือกโมเดลก่อน':need?'กรอกราคาก่อนทดสอบ':`ทดสอบ 20 เคส ราว 3 นาที ~$${Math.max(.005,pick.cost*30).toFixed(3)}`}</span><button class="btn" onclick="closeSheet()">ยกเลิก</button><button class="btn primary" id="startTest" ${!pick||need?'disabled':''}><i data-lucide="flask-conical"></i>เริ่มทดสอบ</button>`;
+      $('#startTest').onclick=()=>{ setStep(1); runTest(); }; }
+    if(s===1){ f.innerHTML='<button class="btn" id="stopTest">หยุดการทดสอบ</button>'; $('#stopTest').onclick=()=>{ clearInterval(window.__run); setStep(0); }; }
+    if(s===2){ const bad=pick.q<cur.q-2;
+      f.innerHTML=bad?`<button class="btn" id="back0" style="margin-right:auto">ลองโมเดลอื่น</button><input class="input" id="confirmTxt" placeholder="พิมพ์: ใช้โมเดลนี้" style="width:180px;height:40px" aria-label="พิมพ์ ใช้โมเดลนี้ เพื่อยืนยัน"><button class="btn danger" id="apply" disabled>ใช้โมเดลนี้</button>`
+        :`<button class="btn" id="back0" style="margin-right:auto">ลองโมเดลอื่น</button><button class="btn primary" id="apply"><i data-lucide="check"></i>ใช้กับ${T[1]}</button>`;
+      $('#back0').onclick=()=>setStep(0);
+      if(bad) $('#confirmTxt').oninput=e=>$('#apply').disabled=e.target.value.trim()!=='ใช้โมเดลนี้';
+      $('#apply').onclick=()=>{ $('#sheetSub').innerHTML=stepper(3); $('#sheetBody').innerHTML=`<div class="verdict-box ok"><i data-lucide="circle-check-big"></i><div><b>เปลี่ยนแล้ว มีผลกับงานใหม่ทันที</b><span class="sub">${T[1]} ใช้ ${pick.id} / ${eff} บันทึกลงบันทึกการทำงานแล้ว งานที่กำลังรันอยู่ใช้โมเดลเดิมจนจบ</span></div></div>`; $('#sheetFoot').innerHTML='<button class="btn primary" onclick="closeSheet()">เสร็จ</button>'; icons(); }; }
+    icons(); }
+  function runTest(){ let n=0; const cells=$$('#cases>i'); cells.forEach(c=>{ c.className=''; c.innerHTML=''; });
+    const failAt=pick.q<cur.q-2?[6,13]:pick.err.startsWith('1')?[9]:[]; $('#pickName').textContent=`${pick.id} / ${eff}`;
+    $('#runNote').textContent='กำลังรันเคส 1 จาก 20'; $('#prog').style.transform='scaleX(0)'; cells[0].className='run';
+    window.__run=setInterval(()=>{ if(n<20){ const bad=failAt.includes(n); cells[n].className=(bad?'bad':'ok')+' pop'; cells[n].innerHTML=`<i data-lucide="${bad?'x':'check'}"></i>`; if(cells[n+1]) cells[n+1].className='run'; n++; icons();
+        $('#prog').style.transform=`scaleX(${n/20})`; $('#runNote').textContent=n<20?`กำลังรันเคส ${n+1} จาก 20 · ผ่าน ${n-failAt.filter(x=>x<n).length}`:'ครบ 20 เคส กำลังสรุปผล'; }
+      else { clearInterval(window.__run); setTimeout(()=>{ renderResult(); setStep(2); },400); } }, RM?60:220); }
+  function renderResult(){ const bad=pick.q<cur.q-2, dq=pick.q-cur.q;
+    const pair=(lbl,unit,o,nw,better,fmt,pct)=>{ const mx=Math.max(o,nw)*1.1, good=better==='hi'?nw>=o:nw<=o, d=nw-o;
+      return `<div class="metric"><div class="mh"><span>${lbl}</span><small>${unit}</small></div>
+      <div class="pair old"><span class="sub">ตอนนี้</span><span class="track"><i data-s="${o/mx}"></i></span><span class="v num">${fmt(o)}</span></div>
+      <div class="pair new"><span style="font-weight:500">ใหม่</span><span class="track"><i data-s="${nw/mx}"></i></span><span class="v num">${fmt(nw)} <span class="delta ${good?'ok':'bad'}">${d>0?'+':'−'}${pct?Math.abs(Math.round(d/o*100))+'%':Math.abs(d).toFixed(1)}</span></span></div></div>`; };
+    $('#result').innerHTML=`<div class="verdict-box ${bad?'bad':'ok'}"><i data-lucide="${bad?'circle-x':'circle-check-big'}"></i><div><b>${bad?`คะแนนลดลง ${Math.abs(dq).toFixed(1)} เกินเกณฑ์ที่ยอมรับ (ลดได้ไม่เกิน 2)`:`ผ่านเกณฑ์ คะแนน${dq>=0?'ดีขึ้น':'ลดลง'} ${Math.abs(dq).toFixed(1)}`}</b><span class="sub">${bad?'ยังใช้ได้ถ้าคุณพิมพ์ยืนยัน แต่ผู้ใช้อาจได้ผลที่แม่นยำน้อยลง':`${pick.p50<cur.p50?'เร็วขึ้น':'ช้าลง'}และ${pick.cost<cur.cost?'ถูกลง':'แพงขึ้น'} ใช้กับ${T[1]}ได้ทันที`}</span></div></div>
+      <div class="card" style="box-shadow:none;padding:16px 18px">${pair('คุณภาพ','คะแนน 0–100 · ยิ่งสูงยิ่งดี',cur.q,pick.q,'hi',v=>v.toFixed(1))}${pair('เวลาตอบ (p50)','วินาที · ยิ่งต่ำยิ่งดี',cur.p50,pick.p50,'lo',v=>v.toFixed(1)+' วิ')}${pair('ราคาต่อครั้ง','USD · ยิ่งต่ำยิ่งดี',cur.cost,pick.cost,'lo',v=>'$'+v.toFixed(5),true)}</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:14px;align-items:center"><span>error / คำตอบถูกตัด <strong class="num">${pick.err}</strong></span><span class="sub num">p95 ${pick.p95.toFixed(1)} วิ (เดิม ${cur.p95.toFixed(1)})</span><button class="lnk">ดูผลรายเคส</button></div>`;
+    icons(); raf2(()=>$$('#result .track i').forEach((t,k)=>{ t.style.transitionDelay=(k*60)+'ms'; t.style.transform=`scaleX(${t.dataset.s})`; })); }
+  return {title:`เปลี่ยนโมเดล: ${T[1]}`,
+   body:`<div class="pane on">
+     <div class="cur-box"><i data-lucide="circle-dot" style="color:var(--primary)"></i><div style="flex:1;min-width:0"><div class="sub small">ใช้อยู่ตอนนี้</div><strong style="overflow-wrap:anywhere">${cur.id}</strong> · ${cur.eff}</div><span class="num sub">คะแนน ${cur.q.toFixed(1)}</span></div>
+     <label class="field">ค้นหาโมเดลจาก OpenRouter<input class="input" value="luna" autocomplete="off"></label>
+     <div style="display:grid;gap:8px" role="radiogroup" aria-label="ผลค้นหาโมเดล" id="opts">${OR.map((o,i)=>`<div class="opt" role="radio" tabindex="${i?-1:0}" aria-checked="false" data-i="${i}"><span class="radio"></span>
+       <div style="min-width:0"><div class="on">${o.id}</div><div class="meta">${o.reg?'<span class="badge ok"><i data-lucide="check"></i>ลงทะเบียนแล้ว</span>':o.pin==null?'<span class="badge warn"><i data-lucide="triangle-alert"></i>ไม่มีราคา ต้องกรอกเอง</span>':'<span>จะลงทะเบียนใน LiteLLM ให้อัตโนมัติ</span>'}</div></div>
+       <div class="pr num">${o.pin==null?'—':`in $${o.pin.toFixed(2)}<br>out $${o.pout.toFixed(2)}`}<br><span style="font-size:11px">ต่อ 1M token</span></div></div>`).join('')}</div>
+     <div id="priceForm"></div>
+     <div class="field">ระดับการคิด (effort)<div class="eff-pick" role="group" aria-label="effort" id="effPick">${EFF.map(e=>`<button aria-pressed="${e===eff}" data-e="${e}">${dots(e)}${e}</button>`).join('')}</div><div class="eff-note" id="effNote" aria-live="polite">${EFF_NOTE[eff]}</div></div>
+   </div>
+   <div class="pane">
+     <div class="cur-box" style="background:transparent;padding:0"><div style="flex:1;min-width:0"><div class="sub small">กำลังทดสอบ</div><strong id="pickName" style="overflow-wrap:anywhere"></strong></div><span class="badge mute num">ชุดทดสอบ holdout v1 · 20 เคส</span></div>
+     <div class="progress"><i id="prog"></i></div>
+     <div class="cases" id="cases" aria-hidden="true">${'<i></i>'.repeat(20)}</div>
+     <div class="sub num" id="runNote" role="status"></div>
+     <div class="alert info"><i data-lucide="info"></i><div>ปิดหน้าต่างนี้ได้ การทดสอบยังทำต่อ และผลจะขึ้นในแท็บประวัติการทดสอบ</div></div>
+   </div>
+   <div class="pane"><div id="result" style="display:grid;gap:16px"></div></div>`,
+   init:()=>{ setStep(0);
+     const choose=el=>{ $$('#opts .opt').forEach(o=>{ o.setAttribute('aria-checked',o===el); o.tabIndex=o===el?0:-1; }); pick=OR[+el.dataset.i]; priced=false;
+       $('#priceForm').innerHTML=pick.pin==null?`<div style="display:grid;gap:12px;padding:16px;border-radius:12px;background:color-mix(in srgb,var(--warning) 8%,transparent)">
+         <div style="display:flex;gap:12px;font-size:14px;line-height:1.6"><i data-lucide="triangle-alert" style="color:var(--warning)"></i><div><strong>ไม่พบราคาของโมเดลนี้</strong> ทั้งใน OpenRouter และ LiteLLM ค่าใช้จ่ายจะคิดจากราคาที่คุณกรอก ตรวจกับหน้าราคาของผู้ให้บริการก่อน</div></div>
+         <div class="price-grid"><label class="field">input / 1M token<span class="money"><input class="input num" inputmode="decimal" data-pr></span></label><label class="field">output / 1M token<span class="money"><input class="input num" inputmode="decimal" data-pr></span></label><label class="field">cache / 1M token<span class="money"><input class="input num" inputmode="decimal" placeholder="ว่าง = ราคา input"></span></label></div>
+         <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="free" style="width:20px;height:20px;accent-color:var(--primary)">โมเดลนี้ฟรีจริง (ต้องติ๊กเมื่อกรอก 0)</label></div>`:'';
+       icons(); const check=()=>{ const v=$$('[data-pr]').map(i=>i.value.trim()), zero=v.some(x=>x!==''&&+x===0); priced=v.every(x=>x!==''&&!isNaN(+x))&&(!zero||$('#free').checked); renderFoot(0); };
+       $$('#priceForm input').forEach(i=>i.addEventListener('input',check)); renderFoot(0); };
+     $$('#opts .opt').forEach(o=>{ o.onclick=()=>choose(o); o.onkeydown=e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); choose(o); } if(['ArrowDown','ArrowUp'].includes(e.key)){ e.preventDefault(); const os=$$('#opts .opt'), n=os[(os.indexOf(o)+(e.key==='ArrowDown'?1:-1)+os.length)%os.length]; n.focus(); choose(n); } }; });
+     $$('#effPick button').forEach(b=>b.onclick=()=>{ eff=b.dataset.e; $$('#effPick button').forEach(x=>x.setAttribute('aria-pressed',x===b)); $('#effNote').textContent=EFF_NOTE[eff]; });
+   }};
+}
+
+/* tabs with sliding ink */
+function moveInk(){ const t=$('#mtabs .tab[aria-selected=true]'); if(!t||!t.offsetWidth) return; $('#ink').style.width=t.offsetWidth+'px'; $('#ink').style.transform=`translateX(${t.offsetLeft}px)`; }
+$$('#mtabs .tab').forEach(t=>t.onclick=()=>{ $$('#mtabs .tab').forEach(x=>x.setAttribute('aria-selected',x===t)); $$('.tabpanel').forEach(p=>p.classList.toggle('on',p.id===t.dataset.tab)); moveInk(); });
+addEventListener('resize',()=>{ moveInk(); if($('#v-home').classList.contains('on')) drawChart(); });
+
+/* ================= overview v3: widgets ================= */
+const fmtN=v=>Math.round(v).toLocaleString('th-TH');
+const TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const TODAY=new Date(2026,10,4);
+function dayAt(i,n,back=0){ const d=new Date(TODAY); d.setDate(d.getDate()-(n-1-i)-back); return d; }
+function dl(i,n){ const d=dayAt(i,n); return d.getDate()+' '+TH_MON[d.getMonth()]; }
+function gen(seed,n,lo,hi,int=true){ const out=[]; let s=seed; for(let i=0;i<n;i++){ s=(s*9301+49297)%233280; const r=s/233280, wk=(dayAt(i,n).getDay()%6===0)?.58:1, trend=1+.18*(i/n);
+  const v=(lo+r*(hi-lo))*wk*trend; out.push(int?Math.round(v):+v.toFixed(2)); } return out; }
+let range=30, metric='req', firstLoad=true, tipEl=null;
+
+const MET={
+ req:{lbl:'งาน AI',icon:'activity',unit:'ครั้ง',lo:640,hi:1250,seed:11,good:'flat',
+   total:(c)=>c.reduce((a,b)=>a+b,0),fmt:v=>fmtN(v),day:v=>fmtN(v)+' ครั้ง',q:'แอปเรียก AI วันละกี่ครั้ง',
+   brkTitle:'แยกตามงาน',brk:[['ประเมินงาน',.38,'search'],['ร่างเอกสาร',.21,'file-text'],['ปรับ CV',.17,'wand-sparkles'],['อื่น ๆ',.24,'ellipsis']]},
+ users:{lbl:'ผู้ใช้ที่ใช้งาน',icon:'users',unit:'คน',lo:38,hi:92,seed:23,good:'up',
+   total:()=>({7:96,30:128,90:171})[range],prevTotal:()=>({7:88,30:114,90:139})[range],fmt:v=>fmtN(v),day:v=>fmtN(v)+' คน',q:'แต่ละวันมีคนเข้ามาใช้กี่คน',
+   brkTitle:'ผู้ใช้ที่ใช้งาน',brk:[['กลับมาใช้ซ้ำ',.78,'repeat'],['สมัครใหม่',.22,'user-plus']]},
+ fail:{lbl:'อัตราล้มเหลว',icon:'circle-x',unit:'งาน',lo:0,hi:9,seed:37,good:'down',
+   total:(c)=>c.reduce((a,b)=>a+b,0)/MET.req.total(series('req').cur)*100,prevTotal:()=>({7:.62,30:.58,90:.66})[range],fmt:v=>v.toFixed(2)+'%',day:v=>fmtN(v)+' งาน',q:'งานล้มเหลววันละกี่งาน',
+   brkTitle:'สาเหตุที่ล้มเหลว',brk:[['หมดเวลา',.61,'timer-off'],['ตัวรันงานหยุด',.27,'server-crash'],['คำตอบผิดรูปแบบ',.12,'file-x']],danger:true},
+ cost:{lbl:'ค่าใช้จ่าย AI',icon:'receipt',unit:'บาท',lo:8,hi:19,seed:53,good:'flat',int:false,approx:true,
+   total:(c)=>c.reduce((a,b)=>a+b,0),fmt:v=>'≈ ฿'+v.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}),day:v=>'≈ ฿'+v.toFixed(2),q:'ค่าใช้จ่าย AI วันละเท่าไร',
+   brkTitle:'แยกตามโมเดล',brk:[['gpt-6-luna',.72,'cpu'],['qwen3.7-flash (ราคากรอกเอง)',.28,'pencil']]},
+};
+const SER={};
+function series(k){ const key=k+range; if(!SER[key]){ const m=MET[k]; const cur=gen(m.seed+range,range,m.lo,m.hi,m.int!==false), prev=gen(m.seed+range+5,range,m.lo*.86,m.hi*.9,m.int!==false);
+  if(k==='req') cur[range-1]=1284; if(k==='fail') cur[range-1]=4; SER[key]={cur,prev}; } return SER[key]; }
+function totals(k){ const m=MET[k], s=series(k); const cur=m.total(s.cur), prev=m.prevTotal?m.prevTotal():m.total(s.prev); return {cur,prev,d:(cur-prev)/prev}; }
+function chip(k,d){ const g=MET[k].good, up=d>=0, cls=g==='flat'?'flat':(g==='up')===up?'good':'bad';
+  return `<span class="chip ${cls}"><i data-lucide="${up?'arrow-up':'arrow-down'}"></i>${Math.abs(d*100).toFixed(1)}%</span>`; }
+function rangeText(){ const a=dayAt(0,range), b=TODAY; return `${a.getDate()} ${TH_MON[a.getMonth()]} – ${b.getDate()} ${TH_MON[b.getMonth()]} ${b.getFullYear()+543-2500} · ${range} วัน`; }
+
+/* animate a number from its current value */
+const shown={};
+function tween(el,key,to,fmt){ const from=shown[key]??0; shown[key]=to; if(RM||from===to){ el.textContent=fmt(to); return; }
+  const t0=performance.now(), d=650; (function f(t){ const p=Math.min(1,(t-t0)/d), e=1-Math.pow(1-p,3); el.textContent=fmt(from+(to-from)*e); if(p<1) requestAnimationFrame(f); })(t0); }
+
+/* ---------- KPI cards ---------- */
+function renderKpis(){
+  if(!$('#kpis').children.length){
+    $('#kpis').innerHTML=Object.entries(MET).map(([k,m])=>`<button class="kc" role="tab" data-k="${k}" aria-selected="${k===metric}"><span class="top">${m.lbl}<i data-lucide="${m.icon}"></i></span><span class="mid"><span class="big num" data-big="${k}"></span><span data-chip="${k}"></span></span><span class="vs num" data-vs="${k}"></span></button>`).join('');
+    $$('#kpis .kc').forEach(b=>b.onclick=()=>{ metric=b.dataset.k; $$('#kpis .kc').forEach(x=>x.setAttribute('aria-selected',x===b)); renderWidget('trend'); });
+    $('#kpis').addEventListener('keydown',e=>{ if(!['ArrowLeft','ArrowRight'].includes(e.key)) return; const ks=$$('#kpis .kc'), i=ks.indexOf(document.activeElement); const n=ks[(i+(e.key==='ArrowRight'?1:-1)+ks.length)%ks.length]; n.focus(); n.click(); });
+  }
+  Object.keys(MET).forEach(k=>{ const t=totals(k), m=MET[k];
+    tween($(`[data-big="${k}"]`),'k'+k,t.cur,m.fmt); $(`[data-chip="${k}"]`).innerHTML=chip(k,t.d);
+    $(`[data-vs="${k}"]`).textContent=`เทียบ ${range} วันก่อนหน้า: ${m.fmt(t.prev)}`; });
+}
+
+/* ---------- widgets ---------- */
+const WIDGETS={
+ trend:{name:'แนวโน้มรายวัน',desc:'กราฟของตัวเลขที่เลือกด้านบน เทียบกับช่วงก่อนหน้า',icon:'chart-spline',col:'main',on:true,
+   title:()=>MET[metric].q,
+   body:()=>{ const m=MET[metric], t=totals(metric);
+     return `<div class="trend"><div><div class="sub">${m.lbl} ${range} วัน</div><div class="tv num" data-tv>${m.fmt(t.cur)}</div><div class="tl">${chip(metric,t.d)}<span>จากช่วงก่อนหน้า</span></div></div>
+       <div><div class="tc" id="tc"><svg role="img" aria-label="${m.q}"></svg></div><div class="legend"><span><i ${m.danger?'style="border-color:var(--destructive)"':''}></i>${range} วันล่าสุด</span><span><i class="p"></i>${range} วันก่อนหน้า</span></div></div></div>
+       <div class="brk" id="brk"><div class="brk-h">${m.brkTitle}</div><div class="brk-row">${m.brk.map(([l,p,ic],i)=>{ const col=m.danger?`color-mix(in srgb,var(--destructive) ${100-i*28}%,var(--card))`:`color-mix(in srgb,var(--primary) ${100-i*24}%,var(--card))`;
+         const val=metric==='fail'?fmtN(series('fail').cur.reduce((a,b)=>a+b,0)*p)+' งาน':metric==='users'?fmtN(t.cur*p)+' คน':m.fmt(t.cur*p).replace(/\.\d+%$/,'%');
+         return `<div class="seg-i" style="flex:${Math.max(p,.12)}" data-tip="${l} · ${Math.round(p*100)}%"><span class="n num"><i data-lucide="${ic}" style="color:${col}"></i>${val}</span><span class="l">${l}</span><span class="b" style="background:${col};transition-delay:${i*70}ms"></span></div>`; }).join('')}</div></div>`; },
+   init:(el,anim)=>{ drawTrend(anim); if(anim&&!RM) raf2(()=>$('#brk',el).classList.add('drawn')); else $('#brk',el).classList.add('drawn'); }},
+ attention:{name:'ต้องจัดการ',desc:'เรื่องที่ admin ต้องดู เรียงจากที่กระทบผู้ใช้มากที่สุด',icon:'bell-ring',col:'side',on:true,
+   title:()=>`ต้องจัดการ <span class="badge bad num" data-attcount>${ATT.filter(a=>!a.done).length}</span>`,
+   body:()=>`<div class="rows" style="margin:0 -20px -20px">${ATT.filter(a=>!a.done).map(a=>`<div class="att-item" data-id="${a.id}"><div><div class="ar"><span class="${a.sev==='bad'?'ic-bad':'ic-warn'}" style="margin-top:2px"><i data-lucide="${a.ic}"></i></span><div><div class="t">${a.t}</div><div class="m">${a.why}</div><div class="a">${a.acts.map(([l,k],i)=>`<button class="btn ${i?'':'primary'}" data-act="${k}">${l}</button>`).join('')}</div><div class="done-note" role="status"><i data-lucide="circle-check"></i>สั่งแล้ว จะหายจากรายการเมื่อสำเร็จ</div></div></div></div></div>`).join('')}</div>
+     <div class="empty" ${ATT.some(a=>!a.done)?'':'style="display:grid"'}><i data-lucide="circle-check-big"></i><div class="h3">ไม่มีเรื่องที่ต้องจัดการ</div><div class="sub">ถ้ามีงานล้มเหลวหรือส่วนไหนของระบบหยุด จะขึ้นที่นี่</div></div>`},
+ weekday:{name:'วันที่คนใช้มากที่สุด',desc:'งาน AI เฉลี่ยแยกตามวันในสัปดาห์ ใช้เลือกวันปิดปรับปรุง',icon:'chart-column',col:'side',on:true,
+   title:()=>'วันที่คนใช้มากที่สุด',
+   body:()=>{ const days=['อา','จ','อ','พ','พฤ','ศ','ส'], v=[412,1096,1188,1342,1170,1018,463], mx=Math.max(...v), lo=v.indexOf(Math.min(...v));
+     return `<div class="wk" id="wk">${v.map((x,i)=>`<button tabindex="0" class="${x===mx?'pk':''}" aria-label="${days[i]} เฉลี่ย ${fmtN(x)} ครั้ง" style="--h:${x/mx*118}px"><span class="col" style="height:${x/mx*118}px;transition-delay:${i*45}ms"></span><span class="d">${days[i]}</span><span class="val num">${fmtN(x)}</span></button>`).join('')}</div>
+     <p class="sub" style="margin:12px 0 0;font-size:13px">คนใช้น้อยที่สุดวัน${['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'][lo]} เหมาะกับการปิดปรับปรุงระบบ</p>`; },
+   init:(el,anim)=>{ anim&&!RM?raf2(()=>$('#wk',el).classList.add('drawn')):$('#wk',el).classList.add('drawn'); }},
+ speed:{name:'งานที่เสร็จทันใจ',desc:'สัดส่วนงาน AI ที่เสร็จภายใน 30 วินาที เทียบกับเป้า',icon:'gauge',col:'side',on:true,
+   title:()=>'งานเสร็จภายใน 30 วินาที',
+   body:()=>`<div class="gauge"><svg viewBox="0 0 240 132" id="gsvg" aria-hidden="true"></svg><div class="gv"><b class="num" data-gv>0%</b><span>เป้า 90% · ยังขาด 4%</span></div></div>
+     <div style="display:flex;justify-content:center;margin-top:4px"><button class="btn sm" data-sheet="speed">ดูแยกตามงาน</button></div>`,
+   init:(el,anim)=>{ const N=40, val=86, target=90, on=Math.round(val/100*N), svg=$('#gsvg',el); let g='';
+     for(let i=0;i<N;i++){ const a=Math.PI*(1-i/(N-1)), tg=i===Math.round(target/100*(N-1)), r1=tg?78:86, r2=108, cx=120, cy=120;
+       g+=`<line class="tk ${tg?'tg':''}" data-i="${i}" x1="${cx+r1*Math.cos(a)}" y1="${cy-r1*Math.sin(a)}" x2="${cx+r2*Math.cos(a)}" y2="${cy-r2*Math.sin(a)}"/>`; }
+     svg.innerHTML=g; const ticks=$$('.tk:not(.tg)',svg).slice(0,on);
+     if(anim&&!RM){ ticks.forEach((t,i)=>setTimeout(()=>t.classList.add('on'),200+i*18)); } else ticks.forEach(t=>t.classList.add('on'));
+     tween($('[data-gv]',el),'gauge'+(anim?Math.random():''),val,v=>Math.round(v)+'%'); }},
+ tasks:{name:'งานที่ใช้ AI มากที่สุด',desc:'จำนวนครั้ง อัตราล้มเหลว เวลา และค่าใช้จ่ายของแต่ละงาน',icon:'table-2',col:'main',on:true,
+   title:()=>'งานที่ใช้ AI มากที่สุด',
+   body:()=>{ const tot=totals('req').cur, c=totals('cost').cur;
+     const rows=[['ประเมินงาน',.38,.31,9.6,.36],['ร่างเอกสาร',.21,.08,6.4,.17],['ปรับ CV',.17,.12,5.1,.13],['ฝึกสัมภาษณ์',.14,.02,7.9,.26],['เตรียมใบสมัคร',.07,.05,9.9,.05],['อ่านเอกสาร (OCR)',.03,.92,14.2,.03]];
+     return `<div style="overflow-x:auto;margin:0 -8px"><table class="tbl" id="tbl"><thead><tr><th>งาน</th><th>สัดส่วน</th><th class="r">ครั้ง</th><th class="r hide-sm">ล้มเหลว</th><th class="r hide-sm">เวลา p50</th><th class="r">ค่าใช้จ่าย</th></tr></thead><tbody>
+     ${rows.map(([n,p,f,t,cp])=>`<tr data-soon><td style="font-weight:500">${n}</td><td><span class="share"><span class="tr"><i style="--s:${p/.38}"></i></span><span class="num sub small">${Math.round(p*100)}%</span></span></td><td class="r num">${fmtN(tot*p)}</td><td class="r num hide-sm ${f>.5?'neg':''}">${f.toFixed(2)}%</td><td class="r num hide-sm">${t.toFixed(1)} วิ</td><td class="r num">≈ ฿${(c*cp).toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`; },
+   init:(el,anim)=>{ anim&&!RM?raf2(()=>$('#tbl',el).classList.add('drawn')):$('#tbl',el).classList.add('drawn'); }},
+ activity:{name:'admin ทำอะไรไปล่าสุด',desc:'การกระทำล่าสุดของ admin จากบันทึกการทำงาน',icon:'history',col:'side',on:false,
+   title:()=>'admin ทำอะไรไปล่าสุด',
+   body:()=>`<div style="margin:0 -20px -12px">${ACTS.map(([d,list])=>`<div class="day" style="padding-left:20px">${d}</div>`+list.map(([ic,t,m])=>`<div class="act" style="padding:8px 20px"><span class="ico"><i data-lucide="${ic}"></i></span><div><div style="font-size:14px;line-height:1.5">${t}</div><div class="sub small num">${m}</div></div></div>`).join('')).join('')}</div>`},
+ models:{name:'ค่าใช้จ่ายแยกตามโมเดล',desc:'โมเดลไหนกินงบมากที่สุดในช่วงที่เลือก',icon:'chart-bar',col:'main',on:false,
+   title:()=>'ค่าใช้จ่ายแยกตามโมเดล',
+   body:()=>{ const c=totals('cost').cur; return `<div style="display:grid;gap:12px">${[['openai/gpt-6-luna',.72,''],['qwen/qwen3.7-flash',.28,'warn']].map(([n,p,w],i)=>`<div class="hbar" style="grid-template-columns:minmax(0,200px) minmax(0,1fr) 100px"><span style="overflow-wrap:anywhere">${n}${w?' <span class="badge warn" style="margin-left:4px">ราคากรอกเอง</span>':''}</span><span class="track"><span class="fill" data-p="${p/.72}" style="transition-delay:${i*60}ms"></span></span><span class="num" style="text-align:right">≈ ฿${(c*p).toFixed(2)}</span></div>`).join('')}</div>`; },
+   init:(el)=>raf2(()=>$$('.fill',el).forEach(f=>f.style.transform=`scaleX(${f.dataset.p})`))},
+};
+const ATT=[
+ {id:'sandbox',sev:'bad',ic:'server-crash',t:'ตัวรันงาน AI หยุดทำงาน',why:'งานใหม่ 12 งานรอคิว ตั้งแต่ 14:00',acts:[['ดูวิธีแก้','sheet:sandbox']]},
+ {id:'runs',sev:'bad',ic:'circle-x',t:'งาน AI ล้มเหลว 4 งานใน 24 ชั่วโมง',why:'ทั้งหมดหมดเวลาที่ qwen3.7-flash',acts:[['ลองใหม่ทั้ง 4 งาน','fix'],['ดู','sheet:runs']]},
+ {id:'crawl',sev:'warn',ic:'cloud-alert',t:'ดึงประกาศงานจาก JobThai ไม่ได้',why:'ตอบ 503 รอบ 13:00 · จะลองใหม่ 15:00',acts:[['ดึงใหม่ตอนนี้','fix'],['ดู','sheet:crawl']]},
+ {id:'webhook',sev:'warn',ic:'webhook',t:'webhook ส่งไม่สำเร็จ 2 รายการ',why:'ปลายทางตอบ 500 · ลองครบ 8 ครั้งแล้ว',acts:[['ส่งใหม่','fix'],['ดู','sheet:webhook']]},
+];
+const ACTS=[['วันนี้',[['flask-conical','ทดสอบ gpt-6-luna กับงานประเมินงาน ไม่ผ่านเกณฑ์','ops@nectec.example · 14:21'],['user-x','ระงับบัญชี u_31d…09a','ops@nectec.example · 14:12']]],
+ ['2 พ.ย. 69',[['sliders-horizontal','เปลี่ยนโมเดลงานปรับ CV เป็น gpt-6-luna / low','ops@nectec.example · 10:30']]]];
+const ORDER=['trend','tasks','models','attention','weekday','speed','activity'];
+try{ const saved=JSON.parse(localStorage.getItem('adm-widgets')||'null'); if(saved) ORDER.forEach(k=>WIDGETS[k].on=saved.includes(k)); }catch(e){}
+
+function widgetHtml(k){ const w=WIDGETS[k];
+  return `<section class="w" data-w="${k}" aria-labelledby="wt-${k}"><div class="wh"><h2 id="wt-${k}">${w.title()}</h2><button class="more" data-more="${k}" aria-label="ตัวเลือกของ ${w.name}" aria-haspopup="menu"><i data-lucide="ellipsis"></i></button></div><div class="wb">${w.body()}</div></section>`; }
+function renderDash(newKey){
+  ['main','side'].forEach(c=>{ $('#col-'+c).innerHTML=ORDER.filter(k=>WIDGETS[k].on&&WIDGETS[k].col===c).map(widgetHtml).join(''); });
+  icons();
+  ORDER.filter(k=>WIDGETS[k].on).forEach(k=>{ const el=$(`[data-w="${k}"]`); WIDGETS[k].init&&WIDGETS[k].init(el, firstLoad||k===newKey); if(k===newKey&&!RM){ el.classList.add('enter'); el.scrollIntoView({block:'nearest',behavior:'smooth'}); } });
+  firstLoad=false;
+}
+function renderWidget(k){ const el=$(`[data-w="${k}"]`); if(!el) return; el.outerHTML=widgetHtml(k); icons(); WIDGETS[k].init&&WIDGETS[k].init($(`[data-w="${k}"]`),true); }
+function setWidget(k,on){ WIDGETS[k].on=on; localStorage.setItem('adm-widgets',JSON.stringify(ORDER.filter(x=>WIDGETS[x].on)));
+  if(!on){ const el=$(`[data-w="${k}"]`); if(el&&!RM){ el.classList.add('leave'); setTimeout(()=>renderDash(),170); } else renderDash(); toast(`ซ่อน “${WIDGETS[k].name}” แล้ว เพิ่มกลับได้จากปุ่มปรับแต่ง`,'eye-off'); }
+  else renderDash(k); }
+
+/* ---------- trend chart (area + previous period + crosshair) ---------- */
+function smooth(pts){ let d=`M${pts[0][0]},${pts[0][1]}`; for(let i=0;i<pts.length-1;i++){ const p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2;
+  const lo=Math.max(p1[1],p2[1]), hi=Math.min(p1[1],p2[1]), cl=v=>Math.max(hi,Math.min(lo,v)); const c1=[p1[0]+(p2[0]-p0[0])/6,cl(p1[1]+(p2[1]-p0[1])/6)], c2=[p2[0]-(p3[0]-p1[0])/6,cl(p2[1]-(p3[1]-p1[1])/6)]; d+=` C${c1[0]},${c1[1]} ${c2[0]},${c2[1]} ${p2[0]},${p2[1]}`; } return d; }
+function nice(raw){ const p=Math.pow(10,Math.floor(Math.log10(raw||1))), f=raw/p; return (f<=1?1:f<=2?2:f<=5?5:10)*p; }
+function drawTrend(anim){
+  const box=$('#tc'); if(!box) return; const svg=$('svg',box), m=MET[metric], {cur,prev}=series(metric);
+  const W=svg.clientWidth||600, H=170, L=36, T=8, n=cur.length, max=nice(Math.max(...cur,...prev)*1.08/3)*3;
+  const x=i=>L+(W-L)*i/(n-1), y=v=>T+(H-T)*(1-v/max);
+  const pc=cur.map((v,i)=>[x(i),y(v)]), pp=prev.map((v,i)=>[x(i),y(v)]);
+  let g=`<defs><linearGradient id="areaG" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${m.danger?'var(--destructive)':'var(--primary)'}" stop-opacity=".2"/><stop offset="1" stop-color="${m.danger?'var(--destructive)':'var(--primary)'}" stop-opacity="0"/></linearGradient></defs>`;
+  for(let k=0;k<=3;k++){ const v=max*k/3, yy=y(v); g+=`<line class="gl" x1="${L}" x2="${W}" y1="${yy}" y2="${yy}" ${k?'stroke-dasharray="3 4"':''}/><text class="ax num" x="${L-8}" y="${yy+4}" text-anchor="end">${metric==='cost'?Math.round(v):v>=1000?+(v/1000).toFixed(1)+'k':Math.round(v)}</text>`; }
+  const step=n<=7?1:n<=30?7:30; for(let i=0;i<n;i+=step) g+=`<text class="ax num" x="${x(i)}" y="${H+18}" text-anchor="middle">${dl(i,n)}</text>`;
+  const lc=smooth(pc); g+=`<path class="area" d="${lc} L${x(n-1)},${H} L${L},${H} Z"/><path class="ln prev" d="${smooth(pp)}"/><path class="ln" id="lnc" d="${lc}" ${m.danger?'style="stroke:var(--destructive)"':''}/>`;
+  g+=`<line class="xh" id="xh" x1="0" x2="0" y1="${T}" y2="${H}"/><circle class="dot p" id="dp" r="4"/><circle class="dot" id="dc" r="5"/>`;
+  g+=`<rect class="cap" id="cap" x="${L}" y="0" width="${W-L}" height="${H}" tabindex="0" role="slider" aria-label="เลื่อนดูรายวันด้วยปุ่มลูกศร กด Enter เพื่อดูรายละเอียด" aria-valuemin="1" aria-valuemax="${n}"/>`;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H+24}`); svg.innerHTML=g;
+  const ln=$('#lnc',svg);
+  if(anim&&!RM){ const len=ln.getTotalLength(); ln.style.strokeDasharray=len; ln.style.strokeDashoffset=len; box.classList.remove('drawn');
+    raf2(()=>{ ln.style.transition='stroke-dashoffset .8s cubic-bezier(.23,1,.32,1)'; ln.style.strokeDashoffset=0; box.classList.add('drawn'); }); } else box.classList.add('drawn');
+  const tv=$('[data-tv]'); if(tv) tween(tv,'tv'+metric,totals(metric).cur,m.fmt);
+  let idx=n-1; const cap=$('#cap',svg);
+  const show=(i)=>{ idx=Math.max(0,Math.min(n-1,i)); box.classList.add('hover');
+    $('#xh',svg).setAttribute('x1',x(idx)); $('#xh',svg).setAttribute('x2',x(idx));
+    $('#dc',svg).setAttribute('cx',x(idx)); $('#dc',svg).setAttribute('cy',y(cur[idx])); $('#dp',svg).setAttribute('cx',x(idx)); $('#dp',svg).setAttribute('cy',y(prev[idx]));
+    cap.setAttribute('aria-valuenow',idx+1); cap.setAttribute('aria-valuetext',`${dl(idx,n)} ${m.day(cur[idx])}`);
+    const r=svg.getBoundingClientRect(), sx=r.width/W; const pd=dayAt(idx,n,n);
+    ctip(r.left+x(idx)*sx, r.top+Math.min(y(cur[idx]),y(prev[idx]))*sx,
+      `<b>${dl(idx,n)} ${TODAY.getFullYear()+543-2500}</b><div class="r"><span><i class="sw"></i>${m.lbl}</span><strong class="num">${m.day(cur[idx])}</strong></div><div class="r"><span><i class="sw p"></i>${pd.getDate()} ${TH_MON[pd.getMonth()]}</span><span class="num">${m.day(prev[idx])}</span></div>`); };
+  const hide=()=>{ box.classList.remove('hover'); ctip(); };
+  const at=e=>{ const r=svg.getBoundingClientRect(); return Math.round(((e.clientX-r.left)/(r.width/W)-L)/(W-L)*(n-1)); };
+  cap.addEventListener('pointermove',e=>show(at(e))); cap.addEventListener('pointerleave',hide);
+  cap.addEventListener('click',e=>openSheet('day:'+at(e)));
+  cap.addEventListener('focus',()=>show(idx)); cap.addEventListener('blur',hide);
+  cap.addEventListener('keydown',e=>{ if(e.key==='ArrowLeft'){ e.preventDefault(); show(idx-1); } if(e.key==='ArrowRight'){ e.preventDefault(); show(idx+1); } if(e.key==='Enter'){ openSheet('day:'+idx); } });
+}
+function drawChart(){ drawTrend(false); }
+function ctip(x,y,html){ if(!tipEl){ tipEl=document.createElement('div'); tipEl.className='ctip'; tipEl.setAttribute('role','presentation'); document.body.appendChild(tipEl); }
+  if(html==null){ tipEl.classList.remove('on'); return; } tipEl.innerHTML=html; tipEl.style.left=Math.max(90,Math.min(innerWidth-90,x))+'px'; tipEl.style.top=y+'px'; tipEl.classList.add('on'); }
+
+/* ---------- popovers, toast ---------- */
+const pop=document.createElement('div'); pop.className='pop'; pop.setAttribute('role','menu'); document.body.appendChild(pop);
+let popFor=null;
+function openPop(anchor,items,align='right'){ if(popFor===anchor){ closePop(); return; } popFor=anchor; anchor.setAttribute('aria-expanded','true');
+  pop.innerHTML=items.map(([ic,l,fn,chk],i)=>`<button role="${chk==null?'menuitem':'menuitemradio'}" ${chk!=null?`aria-checked="${chk}"`:''} data-i="${i}">${ic?`<i data-lucide="${ic}"></i>`:''}${l}</button>`).join(''); icons();
+  const r=anchor.getBoundingClientRect(); pop.style.top=(r.bottom+6)+'px';
+  if(align==='right'){ pop.style.left='auto'; pop.style.right=(innerWidth-r.right)+'px'; pop.style.transformOrigin='top right'; } else { pop.style.right='auto'; pop.style.left=r.left+'px'; pop.style.transformOrigin='top left'; }
+  $$('button',pop).forEach(b=>b.onclick=()=>{ closePop(); items[+b.dataset.i][2](); });
+  pop.classList.add('on'); setTimeout(()=>$('button',pop).focus(),20); }
+function closePop(){ pop.classList.remove('on'); if(popFor){ popFor.setAttribute('aria-expanded','false'); const f=popFor; popFor=null; if(pop.contains(document.activeElement)) f.focus(); } }
+document.addEventListener('pointerdown',e=>{ if(popFor&&!pop.contains(e.target)&&!popFor.contains(e.target)) closePop(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&popFor) closePop(); if(popFor&&['ArrowDown','ArrowUp'].includes(e.key)){ e.preventDefault(); const bs=$$('button',pop), i=bs.indexOf(document.activeElement); bs[(i+(e.key==='ArrowDown'?1:-1)+bs.length)%bs.length].focus(); } });
+const toastEl=document.createElement('div'); toastEl.className='toast'; toastEl.setAttribute('role','status'); document.body.appendChild(toastEl); let toastT;
+function toast(msg,ic='circle-check'){ toastEl.innerHTML=`<i data-lucide="${ic}"></i>${msg}`; icons(); toastEl.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>toastEl.classList.remove('on'),2600); }
+
+/* ---------- wiring ---------- */
+function setRange(r){ range=r; $('#rangeLbl').textContent=rangeText(); renderKpis(); ['trend','tasks','models'].forEach(k=>WIDGETS[k].on&&renderWidget(k)); }
+$('#rangeBtn').onclick=e=>openPop(e.currentTarget,[[null,'7 วันล่าสุด',()=>setRange(7),range===7],[null,'30 วันล่าสุด',()=>setRange(30),range===30],[null,'90 วันล่าสุด',()=>setRange(90),range===90]]);
+$('#exportBtn').onclick=()=>{ const b=$('#exportBtn'); b.disabled=true; b.innerHTML='<span class="spin" aria-hidden="true"></span>กำลังเตรียมไฟล์';
+  setTimeout(()=>{ b.disabled=false; b.innerHTML='<i data-lucide="download"></i>ส่งออก CSV'; toast(`ดาวน์โหลด overview-${range}d.csv แล้ว (ไม่มีข้อมูลส่วนตัวของผู้ใช้)`); },800); };
+document.addEventListener('click',e=>{
+  const mb=e.target.closest('[data-more]'); if(mb){ const k=mb.dataset.more; openPop(mb,[['eye-off','ซ่อน widget นี้',()=>setWidget(k,false)],['layout-grid','ปรับแต่งภาพรวม',()=>openSheet('widgets')]]); return; }
+  const b=e.target.closest('[data-act]'); if(b&&b.closest('#v-home')){ const k=b.dataset.act; if(k.startsWith('sheet:')) return openSheet(k.slice(6));
+    const item=b.closest('.att-item'), a=ATT.find(x=>x.id===item.dataset.id); b.disabled=true; b.innerHTML='<span class="spin" aria-hidden="true"></span>กำลังสั่ง';
+    setTimeout(()=>{ item.classList.add('resolved'); setTimeout(()=>{ item.classList.add('gone'); a.done=true; const left=ATT.filter(x=>!x.done).length; $$('[data-attcount]').forEach(c=>c.textContent=left); if(!left) $('[data-w="attention"] .empty').style.display='grid'; },1400); },900); }
+});
+SHEETS.day=i=>{ const n=range, m=MET[metric], v=series(metric).cur[+i], parts=MET.req.brk;
+  return {title:`${dl(+i,n)} ${TODAY.getFullYear()+543-2500}`,sub:`<span class="badge num">${m.lbl} ${m.day(v)}</span>`,
+   body:`<div class="h3">งาน AI แยกตามประเภท</div><div style="display:grid;gap:10px">${[['ประเมินงาน',.38],['ร่างเอกสาร',.21],['ปรับ CV',.17],['ฝึกสัมภาษณ์',.14],['เตรียมใบสมัคร',.07],['อ่านเอกสาร',.03]].map(([l,p])=>`<div class="hbar"><span>${l}</span><span class="track"><span class="fill" data-p="${p/.38}"></span></span><span class="num" style="text-align:right">${Math.round(p*100)}%</span></div>`).join('')}</div>`,
+   foot:'<button class="btn primary" data-soon>เปิดในหน้างาน AI</button>',
+   init:()=>raf2(()=>$$('#sheetBody .fill').forEach((f,k)=>{ f.style.transitionDelay=(k*40)+'ms'; f.style.transform=`scaleX(${f.dataset.p})`; }))}; };
+SHEETS.speed=()=>({title:'งานเสร็จภายใน 30 วินาที',sub:'<span class="badge num">รวม 86% · เป้า 90%</span>',
+  body:`<div style="display:grid;gap:10px">${[['ร่างเอกสาร',97],['ปรับ CV',95],['ฝึกสัมภาษณ์',91],['ประเมินงาน',81],['เตรียมใบสมัคร',79],['อ่านเอกสาร (OCR)',54]].map(([l,p])=>`<div class="hbar"><span>${l}</span><span class="track"><span class="fill" data-p="${p/100}" style="${p<90?'background:var(--warning)':'background:var(--success)'}"></span></span><span class="num" style="text-align:right">${p}%</span></div>`).join('')}</div>
+   <div class="alert warn"><i data-lucide="lightbulb"></i><div>ประเมินงานกับเตรียมใบสมัครช้ากว่าเป้า ทั้งสองใช้ qwen3.7-flash ลองทดสอบโมเดลอื่นในหน้าโมเดล AI</div></div>`,
+  foot:'<button class="btn primary" onclick="closeSheet();go(\'models\')">ไปหน้าโมเดล AI</button>',
+  init:()=>raf2(()=>$$('#sheetBody .fill').forEach((f,k)=>{ f.style.transitionDelay=(k*40)+'ms'; f.style.transform=`scaleX(${f.dataset.p})`; }))});
+SHEETS.widgets=()=>({title:'ปรับแต่งภาพรวม',sub:'<span class="sub">เลือก widget ที่จะแสดง ระบบจำไว้สำหรับบัญชีของคุณ</span>',
+  body:`<div style="display:grid;gap:10px" id="wpl">${ORDER.map(k=>{ const w=WIDGETS[k]; return `<div class="wp ${w.on?'on':''}" data-wp="${k}"><span class="pv"><i data-lucide="${w.icon}"></i></span><div><b>${w.name}</b><span>${w.desc}</span></div><button class="btn sm ${w.on?'':'primary'}" data-tw="${k}" aria-pressed="${w.on}">${w.on?'<i data-lucide="check"></i>แสดงอยู่':'<i data-lucide="plus"></i>เพิ่ม'}</button></div>`; }).join('')}</div>`,
+  init:()=>$$('[data-tw]').forEach(b=>b.onclick=()=>{ const k=b.dataset.tw, on=!WIDGETS[k].on; setWidget(k,on);
+    b.closest('.wp').classList.toggle('on',on); b.setAttribute('aria-pressed',on); b.classList.toggle('primary',!on); b.innerHTML=on?'<i data-lucide="check"></i>แสดงอยู่':'<i data-lucide="plus"></i>เพิ่ม'; icons(); })});
+
+/* ---------- nav ---------- */
+let homeReady=false;
+function go(v){ $$('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));
+  $$('.switcher [data-go]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.go===v));
+  $$('.rail .nav').forEach(n=>n.dataset.go?n.setAttribute('aria-current',n.dataset.go===v?'page':'false'):0);
+  if(v==='home'){ if(!homeReady){ homeReady=true; $('#rangeLbl').textContent=rangeText(); renderKpis(); renderDash(); } else drawTrend(false); }
+  if(v==='models') requestAnimationFrame(moveInk);
+  history.replaceState(null,'','#'+v+(document.documentElement.classList.contains('dark')?'-dark':'')); icons(); }
+document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g) go(g.dataset.go); const s=e.target.closest('[data-soon]'); if(s){ e.preventDefault(); toast('หน้านี้ยังไม่อยู่ใน mockup','info'); } });
+$('#theme').onclick=()=>{ document.documentElement.classList.toggle('dark'); go((location.hash.slice(1)||'home').split('-')[0]); };
+const h=(location.hash.slice(1)||'home').split('-'); if(h.includes('dark')) document.documentElement.classList.add('dark');
+icons(); go(h[0]==='models'?'models':'home');
+</script>
+</body>
+</html>

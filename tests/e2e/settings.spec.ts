@@ -8,7 +8,6 @@ test.beforeEach(async ({ page }) => {
   await useSyntheticApplication(page);
   let provider: { provider: string; model: string; configured: boolean; revision: number; masked_secret: string } | null = null;
   let grant: { id: string; project_id: string; capabilities: string[]; expires_at: string; revoked_at: string | null } | null = null;
-  let toolEnabled = true;
   await page.route('**/v1/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -27,15 +26,6 @@ test.beforeEach(async ({ page }) => {
     }
     if (path === `/settings/provider/test` && request.method() === 'POST') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'succeeded', message_key: 'settings.connection_succeeded', checked_at: '2026-10-04T00:00:00Z', duration_ms: 20 }) });
-      return;
-    }
-    if (path === `/projects/${projectId}/settings/tools` && request.method() === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ connectors: [{ adapter: 'career_ops', enabled: toolEnabled, revision: 1, updated_at: '2026-10-04T00:00:00Z' }] }) });
-      return;
-    }
-    if (path === `/projects/${projectId}/settings/tools/career_ops` && request.method() === 'PUT') {
-      toolEnabled = (request.postDataJSON() as { enabled: boolean }).enabled;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ adapter: 'career_ops', enabled: toolEnabled, revision: 2, updated_at: '2026-10-04T00:00:00Z' }) });
       return;
     }
     if (path === `/projects/${projectId}/grants` && request.method() === 'GET') {
@@ -58,7 +48,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-async function openSettings(page: import('@playwright/test').Page, section: 'Tools' | 'Project sharing') {
+async function openSettings(page: import('@playwright/test').Page, section: 'Project sharing') {
   await page.goto('/app/settings');
   await toggleLanguage(page);
   await page.getByRole('button', { name: section, exact: true }).click();

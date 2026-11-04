@@ -46,6 +46,11 @@ class ResetPasswordRequest(_Body):
     password: str = Field(max_length=256)
 
 
+class ChangePasswordRequest(_Body):
+    current_password: str = Field(max_length=256)
+    new_password: str = Field(max_length=256)
+
+
 class CodeRequest(_Body):
     email: str = Field(max_length=254)
     code: str = Field(pattern=r"^\d{6}$")
@@ -236,6 +241,13 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, service
 @router.post("/auth/password/reset", status_code=204)
 async def reset_password(body: ResetPasswordRequest, services: Services = Depends(get_services)):
     await asyncio.to_thread(services.accounts.reset_password, body.token, body.password)
+    return Response(status_code=204)
+
+
+@router.post("/auth/password/change", status_code=204)
+async def change_password(body: ChangePasswordRequest, actor=Depends(write_actor), services: Services = Depends(get_services)):
+    await asyncio.to_thread(services.accounts.change_password, actor.user_id, actor.owner_session_id,
+                            body.current_password, body.new_password)
     return Response(status_code=204)
 
 

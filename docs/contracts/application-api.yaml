@@ -25,6 +25,7 @@ tags:
   - name: webhooks
   - name: oauth
   - name: system
+  - name: admin
 paths:
   /projects:
     get:
@@ -1528,6 +1529,14 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResetPasswordRequest'}}}}
       responses:
         '204': {description: Done}
+  /auth/password/change:
+    post:
+      tags: [auth]
+      description: Session and CSRF. Checks the current password, sets the new one, keeps this session and revokes the user's other sessions. Sends no mail; agent grants stay. 401 invalid_credentials, 422 weak_password, 429 rate_limited.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ChangePasswordRequest'}}}}
+      responses:
+        '204': {description: Done}
+        '429': {$ref: '#/components/responses/RateLimited'}
   /account:
     get:
       tags: [account]
@@ -1890,6 +1899,301 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {description: practice_set_busy (questions not ready), queue_full or gateway_unconfigured}
         '429': {description: quota_exceeded}
+  /admin/overview:
+    get:
+      tags: [admin]
+      description: >-
+        Admin only (403 forbidden for every other account). Aggregates only, no personal content. `compare` is false for
+        range `all`; then every `previous` is null and `previous_series` is empty. Day and weekday buckets use Asia/Bangkok.
+      parameters: [{$ref: '#/components/parameters/admin_range'}]
+      responses:
+        '200': {description: Overview, content: {application/json: {schema: {$ref: '#/components/schemas/AdminOverview'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+  /admin/overview/bucket:
+    get:
+      tags: [admin]
+      description: Admin only. Breakdown by task of one trend bucket; `start` is a bucket start taken from the overview series.
+      parameters:
+        - {$ref: '#/components/parameters/admin_range'}
+        - {name: metric, in: query, required: true, schema: {type: string, enum: [runs, active_users, failure_rate, cost_usd]}}
+        - {name: start, in: query, required: true, schema: {type: string, format: date-time}}
+      responses:
+        '200': {description: Bucket breakdown, content: {application/json: {schema: {$ref: '#/components/schemas/AdminBucket'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+  /admin/overview.csv:
+    get:
+      tags: [admin]
+      description: Admin only. The overview series and KPIs as CSV; aggregates only, no user identifiers.
+      parameters: [{$ref: '#/components/parameters/admin_range'}]
+      responses:
+        '200': {description: CSV, content: {text/csv: {schema: {type: string}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+  /admin/prefs:
+    get:
+      tags: [admin]
+      description: Admin only. Overview widgets and USD to THB rate saved on the calling admin account.
+      responses:
+        '200': {description: Prefs, content: {application/json: {schema: {$ref: '#/components/schemas/AdminPrefs'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+    put:
+      tags: [admin]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AdminPrefs'}}}
+      responses:
+        '200': {description: Saved prefs, content: {application/json: {schema: {$ref: '#/components/schemas/AdminPrefs'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '422': {description: Invalid widget id or rate, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/users:
+    get:
+      tags: [admin]
+      description: Admin only. Account metadata only (D5); newest first, cursor paged.
+      parameters:
+        - {name: q, in: query, schema: {type: string, maxLength: 200}, description: Substring of the email}
+        - {name: status, in: query, schema: {type: string, enum: [active, suspended, deleting]}}
+        - {$ref: '#/components/parameters/admin_range'}
+        - {$ref: '#/components/parameters/admin_cursor'}
+      responses:
+        '200': {description: Users, content: {application/json: {schema: {$ref: '#/components/schemas/AdminUserPage'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+  /admin/users/{user_id}:
+    parameters: [{$ref: '#/components/parameters/admin_user_id'}]
+    get:
+      tags: [admin]
+      description: Admin only. Metadata and counts of one account.
+      responses:
+        '200': {description: User, content: {application/json: {schema: {$ref: '#/components/schemas/AdminUserDetail'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /admin/users/{user_id}/suspend:
+    parameters: [{$ref: '#/components/parameters/admin_user_id'}]
+    post:
+      tags: [admin]
+      description: Admin only. Disables the account and ends its sessions. 403 admin_target_forbidden for an admin account. Audited.
+      responses:
+        '200': {description: Suspended, content: {application/json: {schema: {$ref: '#/components/schemas/AdminUserDetail'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /admin/users/{user_id}/enable:
+    parameters: [{$ref: '#/components/parameters/admin_user_id'}]
+    post:
+      tags: [admin]
+      description: Admin only. Re-enables a suspended account. 403 admin_target_forbidden for an admin account. Audited.
+      responses:
+        '200': {description: Enabled, content: {application/json: {schema: {$ref: '#/components/schemas/AdminUserDetail'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /admin/users/{user_id}/reset-password:
+    parameters: [{$ref: '#/components/parameters/admin_user_id'}]
+    post:
+      tags: [admin]
+      description: Admin only. Emails the account a password-reset link; the admin never sees or sets a password. 403 admin_target_forbidden for an admin account. Audited.
+      responses:
+        '204': {description: Reset link sent}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /admin/users/{user_id}/delete:
+    parameters: [{$ref: '#/components/parameters/admin_user_id'}]
+    post:
+      tags: [admin]
+      description: Admin only. Runs the existing account deletion flow. The body must carry the account email (422 confirmation_mismatch otherwise). 403 admin_target_forbidden for an admin account. Audited.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AdminUserDelete'}}}
+      responses:
+        '204': {description: Deleted}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: confirmation_mismatch, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/runs:
+    get:
+      tags: [admin]
+      description: Admin only. Run metadata only (status, operation, timings, model, tokens, cost); never input or result content. Newest first, cursor paged.
+      parameters:
+        - {name: status, in: query, schema: {type: string, enum: [queued, running, waiting_approval, needs_input, completed, failed, cancelled, interrupted]}}
+        - {name: operation, in: query, schema: {type: string, maxLength: 60}}
+        - {name: model, in: query, schema: {type: string, maxLength: 160}}
+        - {name: since, in: query, schema: {type: string, format: date-time}}
+        - {name: until, in: query, schema: {type: string, format: date-time}}
+        - {$ref: '#/components/parameters/admin_cursor'}
+      responses:
+        '200': {description: Runs, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRunPage'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+  /admin/runs/{run_id}:
+    parameters: [{$ref: '#/components/parameters/admin_run_id'}]
+    get:
+      tags: [admin]
+      description: Admin only. One run with its public events and per-call cost rows.
+      responses:
+        '200': {description: Run, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRunDetail'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /admin/runs/{run_id}/cancel:
+    parameters: [{$ref: '#/components/parameters/admin_run_id'}]
+    post:
+      tags: [admin]
+      description: Admin only. Cancels a queued, running or waiting run. Audited.
+      responses:
+        '200': {description: Cancelled, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRunDetail'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Run already finished, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/runs/{run_id}/retry:
+    parameters: [{$ref: '#/components/parameters/admin_run_id'}]
+    post:
+      tags: [admin]
+      description: Admin only. Re-queues a failed run through the existing retry path; the answer is the new run. Audited.
+      responses:
+        '200': {description: New run, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRunDetail'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: Run is not failed (retry_not_allowed) or its owner is suspended or being deleted (owner_unavailable), content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/usage:
+    get:
+      tags: [admin]
+      description: Admin only. Requests, tokens and cost grouped by task, model, day (Asia/Bangkok) or user (short id). Calls recorded before cost tracking count as requests with no cost.
+      parameters:
+        - {$ref: '#/components/parameters/admin_range'}
+        - {name: group_by, in: query, required: true, schema: {type: string, enum: [task, model, day, user]}}
+      responses:
+        '200': {description: Usage, content: {application/json: {schema: {$ref: '#/components/schemas/AdminUsage'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+  /admin/models/catalog:
+    get:
+      tags: [admin]
+      description: Admin only. Models listed live by OpenRouter (cached up to 10 minutes), optionally filtered by id substring. 503 when OpenRouter is unreachable.
+      parameters: [{name: q, in: query, schema: {type: string, maxLength: 200}}]
+      responses:
+        '200': {description: Catalog, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AdminModelCatalogItem'}}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+  /admin/models:
+    get:
+      tags: [admin]
+      description: Admin only. Registered models with prices per 1M tokens.
+      responses:
+        '200': {description: Registered models, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AdminRegisteredModel'}}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+    post:
+      tags: [admin]
+      description: Admin only. Registers `openrouter/<id>` in the gateway. Price source order OpenRouter, LiteLLM, manual; a manual price of 0 needs is_free. 422 price_invalid. Audited.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AdminModelCreate'}}}
+      responses:
+        '201': {description: Registered, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRegisteredModel'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '422': {description: price_invalid, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/models/price:
+    put:
+      tags: [admin]
+      description: Admin only. Sets a manual price (source becomes manual). Empty price_cache means the input price. 422 price_invalid. Audited.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AdminModelPrice'}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRegisteredModel'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422': {description: price_invalid, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/models/use-official-price:
+    post:
+      tags: [admin]
+      description: Admin only. Replaces a manual price with the official one when `official_price` is set. Audited.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AdminModelRef'}}}
+      responses:
+        '200': {description: Updated, content: {application/json: {schema: {$ref: '#/components/schemas/AdminRegisteredModel'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: No official price available, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/tasks:
+    get:
+      tags: [admin]
+      description: Admin only. Model and effort per task (native operations plus document_ocr); env defaults when nothing is stored.
+      responses:
+        '200': {description: Tasks, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AdminTaskSetting'}}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+  /admin/tasks/{operation}:
+    parameters: [{name: operation, in: path, required: true, schema: {type: string, maxLength: 60}}]
+    put:
+      tags: [admin]
+      description: >-
+        Admin only. Stores the model and effort used by new runs of the task. Needs a finished benchmark for the same
+        operation, model and effort (409 benchmark_required); a red benchmark also needs `confirm` equal to the typed phrase
+        "ใช้โมเดลนี้" (409 benchmark_required otherwise). Audited.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AdminTaskUpdate'}}}
+      responses:
+        '200': {description: Saved, content: {application/json: {schema: {$ref: '#/components/schemas/AdminTaskSetting'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {description: benchmark_required, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/benchmarks:
+    get:
+      tags: [admin]
+      description: Admin only. Benchmark history, newest first.
+      parameters: [{name: operation, in: query, schema: {type: string, maxLength: 60}}]
+      responses:
+        '200': {description: Benchmarks, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AdminBenchmark'}}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+    post:
+      tags: [admin]
+      description: Admin only. Starts a test on the synthetic gold set (20 cases of the task). Runs the current pair first when it has no finished test. 409 benchmark_busy while another runs. Audited.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AdminBenchmarkCreate'}}}
+      responses:
+        '202': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/AdminBenchmark'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '409': {description: benchmark_busy, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+        '422': {description: price_invalid, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}}
+  /admin/benchmarks/{benchmark_id}:
+    parameters: [{name: benchmark_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      tags: [admin]
+      description: Admin only. One benchmark with per-case state (poll while status is queued or running).
+      responses:
+        '200': {description: Benchmark, content: {application/json: {schema: {$ref: '#/components/schemas/AdminBenchmark'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /admin/system:
+    get:
+      tags: [admin]
+      description: Admin only. Health now, probes of the last 24 hours, job ingest history and webhook counts.
+      responses:
+        '200': {description: System, content: {application/json: {schema: {$ref: '#/components/schemas/AdminSystem'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+  /admin/webhooks:
+    get:
+      tags: [admin]
+      description: Admin only. Webhook deliveries of all users; endpoint host only, never the URL, secret or payload.
+      parameters: [{name: status, in: query, schema: {type: string, enum: [pending, delivered, dead]}}]
+      responses:
+        '200': {description: Deliveries, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AdminWebhookDelivery'}}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+  /admin/webhooks/{delivery_id}/resend:
+    parameters: [{name: delivery_id, in: path, required: true, schema: {type: string, format: uuid}}]
+    post:
+      tags: [admin]
+      description: Admin only. Queues a dead or pending delivery again. Audited.
+      responses:
+        '200': {description: Queued, content: {application/json: {schema: {$ref: '#/components/schemas/AdminWebhookDelivery'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /admin/audit:
+    get:
+      tags: [admin]
+      description: Admin only. Append-only log of admin actions, newest first, cursor paged.
+      parameters:
+        - {name: action, in: query, schema: {type: string, maxLength: 80}}
+        - {name: actor, in: query, schema: {type: string, maxLength: 200}, description: Substring of the admin email}
+        - {name: since, in: query, schema: {type: string, format: date-time}}
+        - {$ref: '#/components/parameters/admin_cursor'}
+      responses:
+        '200': {description: Audit rows, content: {application/json: {schema: {$ref: '#/components/schemas/AdminAuditPage'}}}}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
 components:
   securitySchemes:
     ownerSession:
@@ -1902,6 +2206,26 @@ components:
   parameters:
     project_id:
       name: project_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    admin_range:
+      name: range
+      in: query
+      required: false
+      schema: {type: string, enum: ['1m', '5m', '10m', '15m', '30m', '1h', '4h', '10h', 7d, 30d, 90d, all]}
+    admin_cursor:
+      name: cursor
+      in: query
+      required: false
+      schema: {type: string, maxLength: 200}
+    admin_user_id:
+      name: user_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    admin_run_id:
+      name: run_id
       in: path
       required: true
       schema: {type: string, format: uuid}
@@ -1921,6 +2245,11 @@ components:
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
     NotFound:
       description: Resource is absent or outside the authorized project scope
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
+    AdminForbidden:
+      description: >-
+        Not an admin (code forbidden), or the target is an admin account (code admin_target_forbidden).
+        Other admin codes, 409 benchmark_required, 409 benchmark_busy and 422 price_invalid, are listed on the operations.
       content: {application/json: {schema: {$ref: '#/components/schemas/ErrorView'}}}
   schemas:
     MatchRunRequest:
@@ -2852,6 +3181,13 @@ components:
       required: [email]
       properties:
         email: {type: string, maxLength: 254}
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [current_password, new_password]
+      properties:
+        current_password: {type: string, maxLength: 256}
+        new_password: {type: string, maxLength: 256}
     ResetPasswordRequest:
       type: object
       additionalProperties: false
@@ -2896,7 +3232,7 @@ components:
         email: {type: string}
         locale: {type: string, enum: [th, en]}
         email_verified: {type: boolean}
-        is_admin: {type: boolean, description: True only for verified accounts listed in ADMIN_EMAILS}
+        is_admin: {type: boolean, description: True for verified, enabled accounts with the admin flag or listed in ADMIN_EMAILS}
         avatar_preset: {type: string, nullable: true, enum: [compass, briefcase, spark, mountain]}
         has_avatar_image: {type: boolean}
         avatar_version: {type: string, nullable: true, description: Changes whenever the picture changes; use it to refresh caches}
@@ -2986,3 +3322,453 @@ components:
         expires_at: {type: string, format: date-time}
         revoked_at: {type: [string, 'null'], format: date-time}
         client_id_host: {type: [string, 'null']}
+    AdminKpi:
+      type: object
+      additionalProperties: false
+      required: [value, previous]
+      properties:
+        value: {type: number}
+        previous: {type: [number, 'null'], description: Same measure over the previous window of equal length; null when compare is false}
+    AdminKpis:
+      type: object
+      additionalProperties: false
+      required: [runs, active_users, failure_rate, cost_usd, cost_has_manual]
+      properties:
+        runs: {$ref: '#/components/schemas/AdminKpi'}
+        active_users: {$ref: '#/components/schemas/AdminKpi'}
+        failure_rate: {$ref: '#/components/schemas/AdminKpi', description: Failed runs divided by finished runs, 0 to 1}
+        cost_usd: {$ref: '#/components/schemas/AdminKpi'}
+        cost_has_manual: {type: boolean, description: True when any counted call used a manual price; the UI shows "≈"}
+    AdminSeriesPoint:
+      type: object
+      additionalProperties: false
+      required: [start, runs, failures, active_users, cost_usd]
+      properties:
+        start: {type: string, format: date-time}
+        runs: {type: integer}
+        failures: {type: integer}
+        active_users: {type: integer}
+        cost_usd: {type: number}
+    AdminAttention:
+      type: object
+      additionalProperties: false
+      required: [kind, severity, title_key, params, target]
+      properties:
+        kind: {type: string, enum: [failed_runs, health_down, ingest_partial, ingest_failed, dead_webhooks]}
+        severity: {type: string, enum: [bad, warn]}
+        title_key: {type: string, description: Locale key in the admin-overview namespace}
+        params: {type: object, additionalProperties: {type: [string, number]}, description: Interpolation values for title_key (counts, board, model)}
+        target: {type: string, description: 'Admin route that shows the item, for example /admin/runs?status=failed'}
+    AdminHealthComponents:
+      type: object
+      additionalProperties: false
+      required: [postgres, object_store, llm_gateway, sandbox]
+      properties:
+        postgres: {type: string, enum: [ok, down]}
+        object_store: {type: string, enum: [ok, down]}
+        llm_gateway: {type: string, enum: [ok, down]}
+        sandbox: {type: string, enum: [ok, down]}
+    AdminHealth:
+      type: object
+      additionalProperties: false
+      required: [components]
+      properties:
+        components: {$ref: '#/components/schemas/AdminHealthComponents'}
+    AdminSpeed:
+      type: object
+      additionalProperties: false
+      required: [within_30s_ratio, target]
+      properties:
+        within_30s_ratio: {type: [number, 'null'], description: Share of finished runs that took 30 s or less, 0 to 1; null without runs}
+        target: {type: number, description: Goal share, 0.9}
+    AdminTopTask:
+      type: object
+      additionalProperties: false
+      required: [operation, runs, failure_rate, p50_seconds, cost_usd]
+      properties:
+        operation: {type: string}
+        runs: {type: integer}
+        failure_rate: {type: number}
+        p50_seconds: {type: [number, 'null']}
+        cost_usd: {type: number}
+    AdminModelCost:
+      type: object
+      additionalProperties: false
+      required: [model, calls, cost_usd, has_manual]
+      properties:
+        model: {type: string}
+        calls: {type: integer}
+        cost_usd: {type: number}
+        has_manual: {type: boolean}
+    AdminAuditEntry:
+      type: object
+      additionalProperties: false
+      required: [id, created_at, actor_email, action, target_type, target_id, detail]
+      properties:
+        id: {type: string, format: uuid}
+        created_at: {type: string, format: date-time}
+        actor_email: {type: [string, 'null'], description: Null once the actor's account is purged}
+        action: {type: string, description: 'Dotted code, for example user.suspend, run.retry, model.price_set, task.model_set'}
+        target_type: {type: [string, 'null'], enum: [user, run, model, task, benchmark, webhook, null]}
+        target_id: {type: [string, 'null'], description: User short id, run id, model id, operation or delivery id}
+        detail: {type: object, additionalProperties: true, description: Small JSON of ids, models and numbers; never personal content}
+    AdminAuditPage:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/AdminAuditEntry'}}
+        next_cursor: {type: [string, 'null']}
+    AdminOverview:
+      type: object
+      additionalProperties: false
+      required: [range, bucket_seconds, generated_at, compare, kpis, series, previous_series, attention, health, weekday, speed, top_tasks, cost_by_model, activity]
+      properties:
+        range: {type: string, enum: ['1m', '5m', '10m', '15m', '30m', '1h', '4h', '10h', 7d, 30d, 90d, all]}
+        bucket_seconds: {type: integer, description: 'Width of one series bucket (range 1m to 15m: 5, 10 or 30 seconds; up to 1h: 1 or 2 minutes; 4h and 10h: 10 or 30 minutes; 7d to 90d: 1 day; all: 1 day to 1 week)'}
+        generated_at: {type: string, format: date-time}
+        compare: {type: boolean, description: False for range all}
+        kpis: {$ref: '#/components/schemas/AdminKpis'}
+        series: {type: array, items: {$ref: '#/components/schemas/AdminSeriesPoint'}}
+        previous_series: {type: array, items: {$ref: '#/components/schemas/AdminSeriesPoint'}, description: Previous window shifted onto the same buckets; empty when compare is false}
+        attention: {type: array, items: {$ref: '#/components/schemas/AdminAttention'}}
+        health: {$ref: '#/components/schemas/AdminHealth'}
+        weekday: {type: array, minItems: 7, maxItems: 7, items: {type: number}, description: 'Average runs per day, Monday first, last 90 days, Asia/Bangkok'}
+        speed: {$ref: '#/components/schemas/AdminSpeed'}
+        top_tasks: {type: array, items: {$ref: '#/components/schemas/AdminTopTask'}}
+        cost_by_model: {type: array, items: {$ref: '#/components/schemas/AdminModelCost'}}
+        activity: {type: array, maxItems: 20, items: {$ref: '#/components/schemas/AdminAuditEntry'}}
+    AdminBucketPart:
+      type: object
+      additionalProperties: false
+      required: [operation, value]
+      properties:
+        operation: {type: string}
+        value: {type: number}
+    AdminBucket:
+      type: object
+      additionalProperties: false
+      required: [range, metric, start, end, value, parts]
+      properties:
+        range: {type: string, enum: ['1m', '5m', '10m', '15m', '30m', '1h', '4h', '10h', 7d, 30d, 90d, all]}
+        metric: {type: string, enum: [runs, active_users, failure_rate, cost_usd]}
+        start: {type: string, format: date-time}
+        end: {type: string, format: date-time}
+        value: {type: number}
+        parts: {type: array, items: {$ref: '#/components/schemas/AdminBucketPart'}, description: The metric split by task}
+    AdminPrefs:
+      type: object
+      additionalProperties: false
+      required: [widgets, thb_rate]
+      properties:
+        widgets: {type: array, maxItems: 20, items: {type: string, pattern: '^[a-z_]{1,40}$'}, description: Ids of the visible overview widgets, in order}
+        thb_rate: {type: number, exclusiveMinimum: 0, maximum: 1000, description: Baht per US dollar used on the usage page}
+    AdminUserItem:
+      type: object
+      additionalProperties: false
+      required: [id, short_id, email, status, email_verified, is_admin, created_at, last_seen_at, runs_in_range]
+      properties:
+        id: {type: string, format: uuid}
+        short_id: {type: string, description: 'First characters of the id, for example u_8f3a'}
+        email: {type: string}
+        status: {type: string, enum: [active, suspended, deleting]}
+        email_verified: {type: boolean}
+        is_admin: {type: boolean, description: Admin accounts are listed read-only; every action on them answers 403 admin_target_forbidden}
+        created_at: {type: string, format: date-time}
+        last_seen_at: {type: [string, 'null'], format: date-time, description: Latest owner session activity}
+        runs_in_range: {type: integer, description: Runs in the requested range}
+    AdminUserPage:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/AdminUserItem'}}
+        next_cursor: {type: [string, 'null']}
+    AdminUserDetail:
+      type: object
+      additionalProperties: false
+      required: [user, project_count, cv_count, run_count]
+      properties:
+        user: {$ref: '#/components/schemas/AdminUserItem'}
+        project_count: {type: integer}
+        cv_count: {type: integer}
+        run_count: {type: integer}
+    AdminUserDelete:
+      type: object
+      additionalProperties: false
+      required: [confirm_email]
+      properties:
+        confirm_email: {type: string, maxLength: 320}
+    AdminRunEvent:
+      type: object
+      additionalProperties: false
+      required: [sequence, event_type, step, status, message_key, model, latency_ms, input_tokens, output_tokens, created_at]
+      properties:
+        sequence: {type: integer}
+        event_type: {type: string}
+        step: {type: [string, 'null']}
+        status: {type: [string, 'null']}
+        message_key: {type: [string, 'null'], description: Safe failure or progress key, never free text}
+        model: {type: [string, 'null']}
+        latency_ms: {type: [integer, 'null']}
+        input_tokens: {type: [integer, 'null']}
+        output_tokens: {type: [integer, 'null']}
+        created_at: {type: string, format: date-time}
+    AdminLlmCall:
+      type: object
+      additionalProperties: false
+      required: [operation, model, input_tokens, output_tokens, cached_tokens, api_calls, latency_ms, price_source, cost_usd, created_at]
+      properties:
+        operation: {type: string}
+        model: {type: string}
+        input_tokens: {type: integer}
+        output_tokens: {type: integer}
+        cached_tokens: {type: integer}
+        api_calls: {type: integer}
+        latency_ms: {type: integer}
+        price_source: {type: [string, 'null'], enum: [openrouter, litellm, manual, null]}
+        cost_usd: {type: [number, 'null'], description: Fixed at call time; null for calls recorded before cost tracking}
+        created_at: {type: string, format: date-time}
+    AdminRunItem:
+      type: object
+      additionalProperties: false
+      required: [id, user_id, user_short_id, operation, status, model, effort, created_at, started_at, finished_at, duration_seconds, input_tokens, output_tokens, cached_tokens, cost_usd, cost_is_manual, failure_key, retry_of_id]
+      properties:
+        id: {type: string, format: uuid}
+        user_id: {type: [string, 'null'], format: uuid}
+        user_short_id: {type: [string, 'null']}
+        operation: {type: string}
+        status: {type: string, enum: [queued, running, waiting_approval, needs_input, completed, failed, cancelled, interrupted]}
+        model: {type: [string, 'null'], description: Model of the last LLM call}
+        effort: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+        started_at: {type: [string, 'null'], format: date-time}
+        finished_at: {type: [string, 'null'], format: date-time}
+        duration_seconds: {type: [number, 'null']}
+        input_tokens: {type: integer}
+        output_tokens: {type: integer}
+        cached_tokens: {type: integer}
+        cost_usd: {type: [number, 'null']}
+        cost_is_manual: {type: boolean}
+        failure_key: {type: [string, 'null'], description: Safe failure code, never the failure text}
+        retry_of_id: {type: [string, 'null'], format: uuid}
+    AdminRunPage:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/AdminRunItem'}}
+        next_cursor: {type: [string, 'null']}
+    AdminRunDetail:
+      type: object
+      additionalProperties: false
+      required: [run, events, calls]
+      properties:
+        run: {$ref: '#/components/schemas/AdminRunItem'}
+        events: {type: array, items: {$ref: '#/components/schemas/AdminRunEvent'}}
+        calls: {type: array, items: {$ref: '#/components/schemas/AdminLlmCall'}}
+    AdminUsageRow:
+      type: object
+      additionalProperties: false
+      required: [key, requests, input_tokens, output_tokens, cached_tokens, cost_usd, cost_per_request_usd, has_manual, uncosted_requests]
+      properties:
+        key: {type: string, description: 'Operation, model id, day (YYYY-MM-DD, Asia/Bangkok) or user short id; "all" in totals'}
+        requests: {type: integer}
+        input_tokens: {type: integer}
+        output_tokens: {type: integer}
+        cached_tokens: {type: integer}
+        cost_usd: {type: [number, 'null']}
+        cost_per_request_usd: {type: [number, 'null']}
+        has_manual: {type: boolean, description: A manual price took part; the UI shows "≈"}
+        uncosted_requests: {type: integer, description: Requests recorded before cost tracking, shown as a dash}
+    AdminUsage:
+      type: object
+      additionalProperties: false
+      required: [range, group_by, generated_at, totals, rows]
+      properties:
+        range: {type: string, enum: ['1m', '5m', '10m', '15m', '30m', '1h', '4h', '10h', 7d, 30d, 90d, all]}
+        group_by: {type: string, enum: [task, model, day, user]}
+        generated_at: {type: string, format: date-time}
+        totals: {$ref: '#/components/schemas/AdminUsageRow'}
+        rows: {type: array, items: {$ref: '#/components/schemas/AdminUsageRow'}}
+    AdminModelCatalogItem:
+      type: object
+      additionalProperties: false
+      required: [id, name, price_in, price_out, price_cache, context_length, registered]
+      properties:
+        id: {type: string, description: OpenRouter id, for example qwen/qwen3.7-flash}
+        name: {type: string}
+        price_in: {type: [number, 'null'], description: USD per 1M input tokens}
+        price_out: {type: [number, 'null'], description: USD per 1M output tokens}
+        price_cache: {type: [number, 'null'], description: USD per 1M cached input tokens}
+        context_length: {type: [integer, 'null']}
+        registered: {type: boolean}
+    AdminOfficialPrice:
+      type: object
+      additionalProperties: false
+      required: [price_in, price_out, price_cache, source]
+      properties:
+        price_in: {type: number}
+        price_out: {type: number}
+        price_cache: {type: [number, 'null']}
+        source: {type: string, enum: [openrouter, litellm]}
+    AdminRegisteredModel:
+      type: object
+      additionalProperties: false
+      required: [model, price_in, price_out, price_cache, price_source, is_free, official_price, updated_at, used_by]
+      properties:
+        model: {type: string, description: OpenRouter id without the openrouter/ prefix}
+        price_in: {type: [number, 'null'], description: USD per 1M tokens}
+        price_out: {type: [number, 'null']}
+        price_cache: {type: [number, 'null'], description: Equals price_in when left empty}
+        price_source: {type: [string, 'null'], enum: [openrouter, litellm, manual, null]}
+        is_free: {type: boolean}
+        official_price: {anyOf: [{$ref: '#/components/schemas/AdminOfficialPrice'}, {type: 'null'}], description: Set when a manual model now has an official price}
+        updated_at: {type: string, format: date-time}
+        used_by: {type: array, items: {type: string}, description: Tasks that currently use the model}
+    AdminModelCreate:
+      type: object
+      additionalProperties: false
+      required: [model]
+      properties:
+        model: {type: string, minLength: 1, maxLength: 160}
+        price_in: {type: [number, 'null'], minimum: 0}
+        price_out: {type: [number, 'null'], minimum: 0}
+        price_cache: {type: [number, 'null'], minimum: 0}
+        is_free: {type: boolean, default: false}
+    AdminModelPrice:
+      type: object
+      additionalProperties: false
+      required: [model, price_in, price_out]
+      properties:
+        model: {type: string, minLength: 1, maxLength: 160}
+        price_in: {type: number, minimum: 0}
+        price_out: {type: number, minimum: 0}
+        price_cache: {type: [number, 'null'], minimum: 0}
+        is_free: {type: boolean, default: false}
+    AdminModelRef:
+      type: object
+      additionalProperties: false
+      required: [model]
+      properties:
+        model: {type: string, minLength: 1, maxLength: 160}
+    AdminTaskSetting:
+      type: object
+      additionalProperties: false
+      required: [operation, model, effort, source, benchmark_id, quality, cost_per_call_usd, cost_has_manual, updated_at, updated_by]
+      properties:
+        operation: {type: string}
+        model: {type: string}
+        effort: {type: string, enum: [none, minimal, low, medium, high, default]}
+        source: {type: string, enum: [stored, env], description: env means no stored setting; AI_MODEL_<TASK> or the default applies}
+        benchmark_id: {type: [string, 'null'], format: uuid}
+        quality: {type: [number, 'null'], description: Quality score 0 to 100 of the linked benchmark; null when never tested}
+        cost_per_call_usd: {type: [number, 'null']}
+        cost_has_manual: {type: boolean}
+        updated_at: {type: [string, 'null'], format: date-time}
+        updated_by: {type: [string, 'null'], description: Admin email}
+    AdminTaskUpdate:
+      type: object
+      additionalProperties: false
+      required: [model, effort]
+      properties:
+        model: {type: string, minLength: 1, maxLength: 160}
+        effort: {type: string, enum: [none, minimal, low, medium, high, default]}
+        benchmark_id: {type: [string, 'null'], format: uuid}
+        confirm: {type: [string, 'null'], maxLength: 80, description: 'Typed phrase "ใช้โมเดลนี้"; required when the benchmark verdict is red'}
+    AdminBenchmarkCreate:
+      type: object
+      additionalProperties: false
+      required: [operation, model, effort]
+      properties:
+        operation: {type: string, maxLength: 60}
+        model: {type: string, minLength: 1, maxLength: 160}
+        effort: {type: string, enum: [none, minimal, low, medium, high, default]}
+    AdminBenchmarkCase:
+      type: object
+      additionalProperties: false
+      required: [id, state]
+      properties:
+        id: {type: string, description: Synthetic gold case id}
+        state: {type: string, enum: [pending, running, ok, bad]}
+    AdminBenchmarkSummary:
+      type: object
+      additionalProperties: false
+      required: [quality, p50_seconds, p95_seconds, cost_per_call_usd, cost_has_manual, errors, truncations]
+      properties:
+        quality: {type: number, minimum: 0, maximum: 100}
+        p50_seconds: {type: number}
+        p95_seconds: {type: number}
+        cost_per_call_usd: {type: [number, 'null']}
+        cost_has_manual: {type: boolean}
+        errors: {type: integer}
+        truncations: {type: integer}
+    AdminBenchmark:
+      type: object
+      additionalProperties: false
+      required: [id, operation, model, effort, status, cases, summary, baseline, verdict, created_by, started_at, finished_at]
+      properties:
+        id: {type: string, format: uuid}
+        operation: {type: string}
+        model: {type: string}
+        effort: {type: string, enum: [none, minimal, low, medium, high, default]}
+        status: {type: string, enum: [queued, running, done, failed]}
+        cases: {type: array, items: {$ref: '#/components/schemas/AdminBenchmarkCase'}}
+        summary: {anyOf: [{$ref: '#/components/schemas/AdminBenchmarkSummary'}, {type: 'null'}]}
+        baseline: {anyOf: [{$ref: '#/components/schemas/AdminBenchmarkSummary'}, {type: 'null'}], description: Result of the setting in use when the test was made}
+        verdict: {type: string, enum: [green, red, na], description: red when quality fell more than 2 points or any error occurred; na while unfinished or without a baseline}
+        created_by: {type: string, description: Admin email}
+        started_at: {type: [string, 'null'], format: date-time}
+        finished_at: {type: [string, 'null'], format: date-time}
+    AdminProbe:
+      type: object
+      additionalProperties: false
+      required: [checked_at, components]
+      properties:
+        checked_at: {type: string, format: date-time}
+        components: {$ref: '#/components/schemas/AdminHealthComponents'}
+    AdminIngestRun:
+      type: object
+      additionalProperties: false
+      required: [board, at, status, jobs_total, jobs_new, error_code]
+      properties:
+        board: {type: string}
+        at: {type: string, format: date-time}
+        status: {type: string, enum: [complete, partial, failed]}
+        jobs_total: {type: integer}
+        jobs_new: {type: integer}
+        error_code: {type: [string, 'null'], description: 'Short code such as http_503, never response text'}
+    AdminWebhookCounts:
+      type: object
+      additionalProperties: false
+      required: [pending, delivered, dead]
+      properties:
+        pending: {type: integer}
+        delivered: {type: integer}
+        dead: {type: integer}
+    AdminSystem:
+      type: object
+      additionalProperties: false
+      required: [generated_at, health, probes, ingest, webhooks, gateway, tools]
+      properties:
+        generated_at: {type: string, format: date-time}
+        health: {$ref: '#/components/schemas/AdminHealth'}
+        probes: {type: array, items: {$ref: '#/components/schemas/AdminProbe'}, description: Periodic probes of the last 24 hours, oldest first}
+        ingest: {type: array, items: {$ref: '#/components/schemas/AdminIngestRun'}, description: Latest ingest runs per board, newest first}
+        webhooks: {$ref: '#/components/schemas/AdminWebhookCounts'}
+        gateway: {$ref: '#/components/schemas/GatewayStatusView'}
+        tools: {$ref: '#/components/schemas/ToolsView'}
+    AdminWebhookDelivery:
+      type: object
+      additionalProperties: false
+      required: [id, user_short_id, host, event_type, status, attempts, last_status_code, created_at, delivered_at]
+      properties:
+        id: {type: string, format: uuid}
+        user_short_id: {type: [string, 'null']}
+        host: {type: [string, 'null'], description: Host of the endpoint only}
+        event_type: {type: string}
+        status: {type: string, enum: [pending, delivered, dead]}
+        attempts: {type: integer}
+        last_status_code: {type: [integer, 'null']}
+        created_at: {type: string, format: date-time}
+        delivered_at: {type: [string, 'null'], format: date-time}

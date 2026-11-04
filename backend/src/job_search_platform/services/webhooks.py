@@ -25,6 +25,7 @@ import httpx
 from sqlalchemy import delete, func, select, update
 
 from job_search_platform.db.models import A2APushConfig, Grant, Project, Run, WebhookDelivery, WebhookEndpoint
+from job_search_platform.services import admin_audit
 from job_search_platform.services.a2a_state import context_id, task_state
 from job_search_platform.services.authorization import authorize
 from job_search_platform.services.contracts import (
@@ -374,8 +375,23 @@ class Webhooks:
                 raise ServiceError("not_found")
             if row.status != "dead":
                 raise ServiceError("delivery_not_dead")
-            row.status, row.attempts, row.next_attempt_at = "pending", 0, datetime.now(timezone.utc)
-            row.last_status_code = row.last_error = None
+            self._requeue(row)
+
+    @staticmethod
+    def _requeue(row: WebhookDelivery) -> None:
+        row.status, row.attempts, row.next_attempt_at = "pending", 0, datetime.now(timezone.utc)
+        row.last_status_code = row.last_error = None
+
+    def admin_resend(self, actor_user_id: UUID, delivery_id: UUID) -> None:
+        """Admin console: queue a dead or pending delivery of any project again, with its audit row in the same transaction."""
+        with self.sessions.begin() as db:
+            row = db.scalar(select(WebhookDelivery).where(WebhookDelivery.id == delivery_id).with_for_update())
+            if row is None:
+                raise ServiceError("not_found")
+            if row.status == "delivered":
+                raise ServiceError("delivery_not_dead")
+            self._requeue(row)
+            admin_audit.record(db, actor_user_id, "webhook.resend", "webhook", delivery_id, {"event_type": row.event_type})
 
     @staticmethod
     def _own_run(db, actor, run_id: UUID) -> Run:

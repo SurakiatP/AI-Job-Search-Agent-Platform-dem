@@ -31,17 +31,20 @@ from job_search_platform.services.evidence import claims  # noqa: E402
 from job_search_platform.workers.executor import RunExecutor  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).parent))
+import build_interview  # noqa: E402
 import build_ocr  # noqa: E402
 
 DATA = Path(__file__).parent / "data" / "gold.v1.json"
 HOLDOUT = Path(__file__).parent / "data" / "gold.holdout.v1.json"
 CURRENT_MODE = "low"
 SAVE_TEXT = False  # set by --save-text: keep the raw model reply in the results file
-MODES = {"app": None, "default": None, "low": {"effort": "low"}, "off": {"enabled": False}, "none": {"effort": "none"}, "minimal": {"effort": "minimal"}}
-TASKS = ["evaluate", "draft", "extract", "tailor", "apply", "practice", "ocr"]
+MODES = {"app": None, "default": None, "low": {"effort": "low"}, "off": {"enabled": False}, "none": {"effort": "none"}, "minimal": {"effort": "minimal"},
+         "medium": {"effort": "medium"}, "high": {"effort": "high"}}
+TASKS = ["evaluate", "draft", "extract", "tailor", "apply", "practice", "ocr", "grade", "report"]
 # --reasoning app: per-task effort from the app's own env (AI_REASONING_<OPERATION>, services' reasoning_effort()).
 APP_OPS = {"evaluate": "evaluate_job", "draft": "draft_documents", "extract": "extract_experience", "tailor": "tailor_cv",
-           "apply": "apply_prepare", "practice": "interview_generate", "ocr": "document_ocr"}
+           "apply": "apply_prepare", "practice": "interview_generate", "ocr": "document_ocr", "grade": "interview_grade",
+           "report": "interview_report"}
 APP_OCR_MAX_TOKENS, APP_OCR_TIMEOUT = 8192, 90  # services/ocr.py
 BASE = (os.environ.get("LITELLM_BASE_URL") or "http://127.0.0.1:54000").rstrip("/")
 PRIVATE = Path(os.environ.get("CORE02_PRIVATE_DIR") or Path.home() / ".cache/job-search-platform/core02-runtime-20261003")
@@ -75,7 +78,7 @@ def reasoning_body(mode, task):
         return MODES[mode]
     from job_search_platform.integrations.hermes_runtime import reasoning_effort
     effort = reasoning_effort(os.environ, APP_OPS[task])
-    if effort is None and task == "practice":
+    if effort is None and task in ("practice", "grade", "report"):
         effort = "low"  # infra/hermes/native_bridge.py default for interview operations
     return {"enabled": False} if effort == "none" else {"effort": effort} if effort and effort != "default" else None
 
@@ -118,6 +121,12 @@ def build_prompt(task, case, data):
     if task == "practice":
         return practice.prompt(level=case["level"], sections=case["sections"], job=job, cv_text=persona["cv"],
                                facts=persona["facts"], report=None, output_language=lang_name(persona))
+    if task == "grade":  # one written answer, the app's own grading prompt
+        return practice.grade_prompt(question=case["question"], answer=case["answer"], job=job, facts=persona["facts"],
+                                     output_language=lang_name(persona), card=False)
+    if task == "report":  # the app's own end-of-set report prompt over a synthetic finished set
+        set_row, questions, report = build_interview.report_set(case)
+        return practice.report_prompt(set_row=set_row, questions=questions, job=job, report=report, output_language=lang_name(persona))
     raise ValueError(task)
 
 
@@ -304,7 +313,8 @@ def score_practice(raw, case, persona, job, rewrite=None):
 
 
 SCORERS = {"extract": score_extract, "evaluate": score_evaluate, "draft": score_draft, "tailor": score_tailor,
-           "apply": score_apply, "practice": score_practice, "ocr": build_ocr.score_ocr}
+           "apply": score_apply, "practice": score_practice, "ocr": build_ocr.score_ocr,
+           "grade": build_interview.score_grade, "report": build_interview.score_report}
 
 
 # ---- LiteLLM client -------------------------------------------------------------------------------------------
@@ -511,7 +521,7 @@ def run(args):
     sha = lambda *files: hashlib.sha256(b"".join(f.read_bytes() for f in files)).hexdigest()[:12]
     git = subprocess.run(["git", "-C", str(src), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     header = {"date": time.strftime("%Y-%m-%d %H:%M"), "backend_src": str(src), "backend_commit": git, "mode": args.reasoning,
-              "scorer_version": sha(Path(__file__), Path(__file__).with_name("build_ocr.py")),
+              "scorer_version": sha(Path(__file__), Path(__file__).with_name("build_ocr.py"), Path(__file__).with_name("build_interview.py")),
               "dataset_sha256_12": sha(HOLDOUT if args.dataset == "holdout" else DATA)}
     out.write_text(json.dumps({"tag": args.tag, **header, "models": models, "prices_per_mtok": price, "max_tokens": args.max_tokens, "reasoning": args.reasoning,
                                "dataset": "gold.holdout.v1" if args.dataset == "holdout" else "gold.v1", "results": sink}, ensure_ascii=False, indent=1))

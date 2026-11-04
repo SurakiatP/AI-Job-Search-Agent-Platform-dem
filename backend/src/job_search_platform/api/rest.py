@@ -6,7 +6,6 @@ import contextlib
 import os
 import re
 import shutil
-import subprocess
 from pathlib import PurePath
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
@@ -15,10 +14,9 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, Header, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
-from urllib.request import Request as _UrlRequest
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import StringConstraints
-from sqlalchemy import String, cast, delete, exists, func, or_, select, text
+from sqlalchemy import String, cast, delete, exists, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from job_search_platform.api.dependencies import Services, get_services, owner_actor, run_actor, run_write_actor, write_actor
@@ -41,6 +39,7 @@ from job_search_platform.services.contracts import (
     QueuedView, WebhookCreate, WebhookCreatedView, WebhookDeliveryView, WebhookUpdate, WebhookView,
 )
 from job_search_platform.services import applications, experience, job_sources, smart_match
+from job_search_platform.services import health as health_checks
 from job_search_platform.services.errors import ServiceError
 from job_search_platform.services.files import PREVIEW_SUFFIX
 from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, match_skills
@@ -85,6 +84,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "invalid_token": 400, "invalid_code": 400, "invalid_image": 422, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
         "saved_search_limit": 409, "invalid_webhook_url": 422, "webhook_limit": 409, "delivery_not_dead": 409, "saved_search_name_taken": 409, "mail_unavailable": 503,
         "telegram_disabled": 404, "telegram_not_linked": 409, "telegram_unavailable": 503,
+        "admin_target_forbidden": 403, "invalid_prefs": 422, "benchmark_required": 409, "benchmark_busy": 409, "price_invalid": 422, "official_price_unavailable": 409, "model_invalid": 422, "account_deleting": 409, "owner_unavailable": 409, "run_finished": 409,
         "draft_conflict": 409, "theme_invalid": 422, "theme_in_use": 409, "theme_limit": 409, "resume_invalid": 422, "resume_incomplete": 422, "render_failed": 502,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}
@@ -1341,46 +1341,13 @@ async def health():
     return {"status": "ok"}
 
 
-READY_TIMEOUT_SECONDS = 2
-READY_MAX_BODY_BYTES = 4096
 READY_CACHE_SECONDS = 5
-
-
-def _gateway_alive() -> None:
-    gateway = GatewaySettings.from_env()
-    with gateway.opener.open(_UrlRequest(gateway.base_url + "/health/liveliness"), timeout=READY_TIMEOUT_SECONDS) as response:
-        if response.status != 200:
-            raise ValueError
-        response.read(READY_MAX_BODY_BYTES)  # bounded; urllib's timeout is per socket operation, not total
-
-
-def _image_present(image: str) -> None:
-    subprocess.run(["docker", "image", "inspect", image], check=True, capture_output=True, timeout=READY_TIMEOUT_SECONDS)
-
-
-async def _probe(check) -> str:
-    try:
-        await asyncio.wait_for(check(), READY_TIMEOUT_SECONDS)
-        return "ok"
-    except Exception:  # the reason is deliberately dropped: readiness leaks no addresses or errors
-        return "down"
+_gateway_alive, _image_present = health_checks.gateway_alive, health_checks.image_present  # tests patch these names
 
 
 async def _check_components(services: Services) -> tuple[int, dict]:
-    def postgres():
-        with services.sessions() as session:
-            session.execute(text("SET LOCAL statement_timeout = 2000"))
-            session.execute(text("SELECT 1"))
-
-    async def sandbox():
-        await asyncio.to_thread(_image_present, services.runtime.image)
-
-    names = ("postgres", "object_store", "llm_gateway", "sandbox_image")
-    results = await asyncio.gather(
-        _probe(lambda: asyncio.to_thread(postgres)), _probe(services.files.object_store.ping),
-        _probe(lambda: asyncio.to_thread(_gateway_alive)), _probe(sandbox))
-    ok = all(value == "ok" for value in results)
-    return (200 if ok else 503), {"status": "ok" if ok else "degraded", "components": dict(zip(names, results))}
+    return await health_checks.check_components(services.sessions, services.files.object_store, services.runtime,
+                                         gateway=lambda: _gateway_alive(), image=lambda image: _image_present(image))
 
 
 @health_router.get("/health/ready")
@@ -1415,6 +1382,10 @@ async def set_tool_settings(project_id: UUID, adapter: str, body: ToolConnectorU
 
 @router.get("/tools", response_model=ToolsView)
 async def list_tools(actor=Depends(owner_actor)):
+    return tools_view()
+
+
+def tools_view() -> dict:
     return {"tools": [
         *({"name": skill.id, "description": skill.description, "required_capability": skill.capability}
           for skill in SKILLS),

@@ -6,13 +6,13 @@ import json
 import os
 import re
 import stat
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from job_search_platform.config import secret_file_forbidden_bits
-from job_search_platform.integrations.hermes_runtime import ProviderConfig
+from job_search_platform.integrations.hermes_runtime import EFFORTS, ProviderConfig, reasoning_effort
 from job_search_platform.integrations.jev import JevClient
 from job_search_platform.services.contracts import GatewayStatusView
 from job_search_platform.services.errors import ServiceError
@@ -57,6 +57,8 @@ class GatewaySettings:
     analyze_model: str
     decision_model: str
     opener: object = field(default=_OPENER, repr=False, compare=False)
+    # {operation: (model, effort)} from the admin console; wins over AI_MODEL_<OP> / AI_REASONING_<OP>.
+    tasks: dict = field(default_factory=dict, repr=False, compare=False)
 
     @classmethod
     def from_env(cls, private_dir: Path | None = None) -> "GatewaySettings":
@@ -71,12 +73,23 @@ class GatewaySettings:
             raise ServiceError("gateway_unconfigured")
         return self.api_key
 
+    def with_tasks(self, tasks: dict) -> "GatewaySettings":
+        return replace(self, tasks=dict(tasks or {}))
+
     def provider_config(self, operation: str | None = None) -> ProviderConfig:
-        """AI_MODEL_<OPERATION> (a LiteLLM model name) overrides the default analyze model for that operation."""
-        model = os.environ.get("AI_MODEL_" + (operation or "").upper(), "").strip()
+        """Per-task override (model, effort) first, then AI_MODEL_<OPERATION> / AI_REASONING_<OPERATION>
+        (a LiteLLM model name), then the default analyze model."""
+        op = operation or ""
+        set_model, set_effort = self.tasks.get(op) or (None, None)
+        model = str(set_model or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9._:/-]{1,120}", model):
+            model = os.environ.get("AI_MODEL_" + op.upper(), "").strip()
         if not re.fullmatch(r"[A-Za-z0-9._:/-]{1,120}", model):
             model = self.analyze_model
-        return ProviderConfig("custom", model, self.base_url + "/v1", self._key())
+        effort = str(set_effort or "").strip().lower()
+        if effort not in EFFORTS:
+            effort = reasoning_effort(os.environ, op) if op else None
+        return ProviderConfig("custom", model, self.base_url + "/v1", self._key(), effort)
 
     def jev_client(self) -> JevClient:
         return JevClient(self._key(), url=self.base_url + "/jev/decisions", model=self.decision_model)

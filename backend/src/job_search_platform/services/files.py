@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from job_search_platform.db.models import CV, CVRevision, CVRevisionText, Document, DocumentRevision, Project, Run, RunArtifact, StoredFile
 from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.integrations.hermes_runtime import PARSE_ERRORS, RuntimeErrorCode
-from job_search_platform.services.ocr import with_vision_text
+from job_search_platform.services.ocr import call_recorder, with_vision_text
 from job_search_platform.integrations.object_store import ObjectMissing, ObjectTooLarge
 from job_search_platform.services import rate_limits
 from job_search_platform.services.authorization import authorize
@@ -86,7 +86,7 @@ class Files:
         if suffix and suffix != _MIME_EXTENSIONS[mime]:
             raise ServiceError("unsupported_media_type", fields={"filename": "extension_mismatch"})
 
-        parsed = await self._parse_in_sandbox(project_id, body, mime)
+        parsed = await self._parse_in_sandbox(project_id, body, mime, actor.user_id)
         digest = hashlib.sha256(body).hexdigest()
         if parsed.sha256 != digest or not parsed.text.strip():
             raise ServiceError("document_invalid")
@@ -293,11 +293,11 @@ class Files:
                 continue
         return published
 
-    async def _parse_in_sandbox(self, project_id: UUID, body: bytes, mime: str):
+    async def _parse_in_sandbox(self, project_id: UUID, body: bytes, mime: str, user_id: UUID | None = None):
         # A parse request gets a short-lived isolated runtime of its own. It does not
         # borrow the active worker's writable workspace or share its native tool RPC.
         if hasattr(self.parser, "start_project") and hasattr(self.parser, "workspace_root"):
-            return await self._parse_in_private_runtime(body, mime)
+            return await self._parse_in_private_runtime(body, mime, user_id)
         try:
             runtime_project = self.parser.projects.get(project_id)
             if runtime_project is None:
@@ -316,7 +316,7 @@ class Files:
                     self.parser.parse_input(project_id, f"inputs/{staged.name}"),
                     timeout=MAX_PARSE_SECONDS,
                 )
-                return await with_vision_text(parsed, workspace, self.gateway)
+                return await with_vision_text(parsed, workspace, self.gateway, record=call_recorder(self.sessions, user_id=user_id))
             finally:
                 staged.unlink(missing_ok=True)
         except RuntimeErrorCode as exc:
@@ -329,7 +329,7 @@ class Files:
         except Exception:
             raise ServiceError("document_invalid") from None
 
-    async def _parse_in_private_runtime(self, body: bytes, mime: str):
+    async def _parse_in_private_runtime(self, body: bytes, mime: str, user_id: UUID | None = None):
         runtime_id = uuid4()
         workspace_root = Path(self.parser.workspace_root)
         workspace_root.mkdir(parents=True, mode=0o700, exist_ok=True)
@@ -369,7 +369,7 @@ class Files:
                 self.parser.parse_input(runtime_id, f"inputs/{staged.name}"),
                 timeout=MAX_PARSE_SECONDS,
             )
-            return await with_vision_text(parsed, workspace, self.gateway)
+            return await with_vision_text(parsed, workspace, self.gateway, record=call_recorder(self.sessions, user_id=user_id))
         except RuntimeErrorCode as exc:
             code = str(exc)
             raise ServiceError(code if code in PARSE_ERRORS else "document_invalid") from None

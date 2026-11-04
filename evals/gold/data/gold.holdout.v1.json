@@ -9135,6 +9135,2590 @@
      "Phuphaa Software"
     ]
    }
+  ],
+  "grade": [
+   {
+    "id": "hpr0-g",
+    "persona": "h0",
+    "job": "k0",
+    "kind": "good",
+    "question": {
+     "section": "intro",
+     "prompt": "Tell me about yourself and why you are applying for the Data Engineer role.",
+     "why": "To hear how you describe your own path.",
+     "key_points": [
+      "current role",
+      "most relevant experience",
+      "why this job"
+     ]
+    },
+    "answer": "At Quartz Labs as a Data Engineer, my team had a firm deadline and several people depended on the result. My task was to deliver it reliably. I built Airflow pipelines that cut nightly load time by 5%. I also modelled BigQuery marts used by 10 analysts. The measurable result: scheduled dbt jobs processing 90 GB of data per day.",
+    "band": [
+     3.5,
+     5.0
+    ],
+    "min_scores": {
+     "relevance": 4
+    },
+    "max_scores": {}
+   },
+   {
+    "id": "hpr1-g",
+    "persona": "h1",
+    "job": "k1",
+    "kind": "weak",
+    "question": {
+     "section": "intro",
+     "prompt": "Tell me about yourself and why you are applying for the Backend Developer role.",
+     "why": "To hear how you describe your own path.",
+     "key_points": [
+      "current role",
+      "most relevant experience",
+      "why this job"
+     ]
+    },
+    "answer": "I think I am a hard worker. We did many tasks and it went okay in the end.",
+    "band": [
+     1.0,
+     3.0
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "evidence": 2
+    }
+   },
+   {
+    "id": "hpr2-g",
+    "persona": "h2",
+    "job": "k2",
+    "kind": "offtopic",
+    "question": {
+     "section": "intro",
+     "prompt": "Tell me about yourself and why you are applying for the Frontend Developer role.",
+     "why": "To hear how you describe your own path.",
+     "key_points": [
+      "current role",
+      "most relevant experience",
+      "why this job"
+     ]
+    },
+    "answer": "I have two cats and a small garden. On Sundays I bake bread and walk in the park.",
+    "band": [
+     1.0,
+     2.5
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "relevance": 2
+    }
+   },
+   {
+    "id": "hpr3-g",
+    "persona": "h3",
+    "job": "k3",
+    "kind": "good",
+    "question": {
+     "section": "behavioral",
+     "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+     "why": "เพื่อดูว่าคุณรับมือกับแรงกดดันอย่างไร",
+     "key_points": [
+      "สถานการณ์",
+      "หน้าที่ของคุณ",
+      "สิ่งที่คุณทำ",
+      "ผลลัพธ์ที่วัดได้"
+     ]
+    },
+    "answer": "ที่ Tidal Logistics ในตำแหน่ง Data Analyst ทีมต้องส่งมอบงานตามกำหนดและมีหลายคนรอใช้ผลงาน หน้าที่ของผมคือทำให้งานเสร็จอย่างเชื่อถือได้ ผมเขียนคิวรี Excel แทนงานรายงานมือ 6 ชั่วโมงต่อสัปดาห์ ผลลัพธ์ที่วัดได้คือ สร้างแดชบอร์ด Tableau ที่ผู้จัดการ 4 คนใช้ดูทุกสัปดาห์",
+    "band": [
+     3.5,
+     5.0
+    ],
+    "min_scores": {
+     "relevance": 4
+    },
+    "max_scores": {}
+   },
+   {
+    "id": "hpr4-g",
+    "persona": "h4",
+    "job": "k4",
+    "kind": "weak",
+    "question": {
+     "section": "behavioral",
+     "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+     "why": "เพื่อดูว่าคุณรับมือกับแรงกดดันอย่างไร",
+     "key_points": [
+      "สถานการณ์",
+      "หน้าที่ของคุณ",
+      "สิ่งที่คุณทำ",
+      "ผลลัพธ์ที่วัดได้"
+     ]
+    },
+    "answer": "ผมเป็นคนขยันนะ ทำหลายอย่าง สุดท้ายก็ผ่านไปด้วยดี",
+    "band": [
+     1.0,
+     3.0
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "evidence": 2
+    }
+   },
+   {
+    "id": "hpr5-g",
+    "persona": "h5",
+    "job": "k5",
+    "kind": "offtopic",
+    "question": {
+     "section": "behavioral",
+     "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+     "why": "To see how you act under pressure.",
+     "key_points": [
+      "the situation",
+      "your task",
+      "what you did",
+      "the measurable result"
+     ]
+    },
+    "answer": "I have two cats and a small garden. On Sundays I bake bread and walk in the park.",
+    "band": [
+     1.0,
+     2.5
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "relevance": 2
+    }
+   },
+   {
+    "id": "hpr6-g",
+    "persona": "h6",
+    "job": "k6",
+    "kind": "good",
+    "question": {
+     "section": "intro",
+     "prompt": "Tell me about yourself and why you are applying for the DevOps Engineer role.",
+     "why": "To hear how you describe your own path.",
+     "key_points": [
+      "current role",
+      "most relevant experience",
+      "why this job"
+     ]
+    },
+    "answer": "At Nova Telecom as a DevOps Engineer, my team had a firm deadline and several people depended on the result. My task was to deliver it reliably. I provisioned Prometheus environments with CI/CD for 7 teams. I also ran AWS clusters serving 30 services. The measurable result: automated Linux pipelines that shortened releases from 7 days to 3 hours.",
+    "band": [
+     3.5,
+     5.0
+    ],
+    "min_scores": {
+     "relevance": 4
+    },
+    "max_scores": {}
+   },
+   {
+    "id": "hpr7-g",
+    "persona": "h7",
+    "job": "k7",
+    "kind": "weak",
+    "question": {
+     "section": "intro",
+     "prompt": "Tell me about yourself and why you are applying for the QA Engineer role.",
+     "why": "To hear how you describe your own path.",
+     "key_points": [
+      "current role",
+      "most relevant experience",
+      "why this job"
+     ]
+    },
+    "answer": "I think I am a hard worker. We did many tasks and it went okay in the end.",
+    "band": [
+     1.0,
+     3.0
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "evidence": 2
+    }
+   },
+   {
+    "id": "hpr8-g",
+    "persona": "h8",
+    "job": "k8",
+    "kind": "offtopic",
+    "question": {
+     "section": "intro",
+     "prompt": "Tell me about yourself and why you are applying for the Marketing Analyst role.",
+     "why": "To hear how you describe your own path.",
+     "key_points": [
+      "current role",
+      "most relevant experience",
+      "why this job"
+     ]
+    },
+    "answer": "I have two cats and a small garden. On Sundays I bake bread and walk in the park.",
+    "band": [
+     1.0,
+     2.5
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "relevance": 2
+    }
+   },
+   {
+    "id": "hpr9-g",
+    "persona": "h9",
+    "job": "k9",
+    "kind": "good",
+    "question": {
+     "section": "behavioral",
+     "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+     "why": "เพื่อดูว่าคุณรับมือกับแรงกดดันอย่างไร",
+     "key_points": [
+      "สถานการณ์",
+      "หน้าที่ของคุณ",
+      "สิ่งที่คุณทำ",
+      "ผลลัพธ์ที่วัดได้"
+     ]
+    },
+    "answer": "ที่ Ridge Energy ในตำแหน่ง Accountant ทีมต้องส่งมอบงานตามกำหนดและมีหลายคนรอใช้ผลงาน หน้าที่ของผมคือทำให้งานเสร็จอย่างเชื่อถือได้ ผมกระทบยอดบัญชี 80 รายการใน Tax filing ไม่มีรายการค้าง ผลลัพธ์ที่วัดได้คือ จัดทำรายงาน Audit ที่ผู้สอบบัญชีภายนอกตรวจสอบ",
+    "band": [
+     3.5,
+     5.0
+    ],
+    "min_scores": {
+     "relevance": 4
+    },
+    "max_scores": {}
+   },
+   {
+    "id": "gpr0-g",
+    "persona": "g0",
+    "job": "m0",
+    "kind": "weak",
+    "question": {
+     "section": "behavioral",
+     "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+     "why": "To see how you act under pressure.",
+     "key_points": [
+      "the situation",
+      "your task",
+      "what you did",
+      "the measurable result"
+     ]
+    },
+    "answer": "I think I am a hard worker. We did many tasks and it went okay in the end.",
+    "band": [
+     1.0,
+     3.0
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "evidence": 2
+    }
+   },
+   {
+    "id": "gpr1-g",
+    "persona": "g1",
+    "job": "m1",
+    "kind": "offtopic",
+    "question": {
+     "section": "behavioral",
+     "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+     "why": "To see how you act under pressure.",
+     "key_points": [
+      "the situation",
+      "your task",
+      "what you did",
+      "the measurable result"
+     ]
+    },
+    "answer": "I have two cats and a small garden. On Sundays I bake bread and walk in the park.",
+    "band": [
+     1.0,
+     2.5
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "relevance": 2
+    }
+   },
+   {
+    "id": "gpr2-g",
+    "persona": "g2",
+    "job": "m2",
+    "kind": "good",
+    "question": {
+     "section": "intro",
+     "prompt": "Tell me about yourself and why you are applying for the Frontend Developer role.",
+     "why": "To hear how you describe your own path.",
+     "key_points": [
+      "current role",
+      "most relevant experience",
+      "why this job"
+     ]
+    },
+    "answer": "At Quill Bank as a Frontend Developer, my team had a firm deadline and several people depended on the result. My task was to deliver it reliably. I migrated 20 screens to GraphQL and removed 10 runtime errors. I also built Figma components used across 6 product pages. The measurable result: migrated 90 screens to GraphQL and removed 9 runtime errors.",
+    "band": [
+     3.5,
+     5.0
+    ],
+    "min_scores": {
+     "relevance": 4
+    },
+    "max_scores": {}
+   },
+   {
+    "id": "gpr3-g",
+    "persona": "g3",
+    "job": "m3",
+    "kind": "weak",
+    "question": {
+     "section": "intro",
+     "prompt": "ช่วยแนะนำตัวและบอกว่าทำไมจึงสมัครตำแหน่ง Data Analyst",
+     "why": "เพื่อฟังว่าคุณเล่าเส้นทางของตัวเองอย่างไร",
+     "key_points": [
+      "งานปัจจุบัน",
+      "ประสบการณ์ที่เกี่ยวข้องที่สุด",
+      "เหตุผลที่สนใจงานนี้"
+     ]
+    },
+    "answer": "ผมเป็นคนขยันนะ ทำหลายอย่าง สุดท้ายก็ผ่านไปด้วยดี",
+    "band": [
+     1.0,
+     3.0
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "evidence": 2
+    }
+   },
+   {
+    "id": "gpr4-g",
+    "persona": "g4",
+    "job": "m4",
+    "kind": "offtopic",
+    "question": {
+     "section": "intro",
+     "prompt": "ช่วยแนะนำตัวและบอกว่าทำไมจึงสมัครตำแหน่ง Product Manager",
+     "why": "เพื่อฟังว่าคุณเล่าเส้นทางของตัวเองอย่างไร",
+     "key_points": [
+      "งานปัจจุบัน",
+      "ประสบการณ์ที่เกี่ยวข้องที่สุด",
+      "เหตุผลที่สนใจงานนี้"
+     ]
+    },
+    "answer": "ที่บ้านเลี้ยงแมวสองตัวและมีสวนเล็ก ๆ วันอาทิตย์ชอบอบขนมปังแล้วไปเดินสวน",
+    "band": [
+     1.0,
+     2.5
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "relevance": 2
+    }
+   },
+   {
+    "id": "gpr5-g",
+    "persona": "g5",
+    "job": "m5",
+    "kind": "good",
+    "question": {
+     "section": "behavioral",
+     "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+     "why": "To see how you act under pressure.",
+     "key_points": [
+      "the situation",
+      "your task",
+      "what you did",
+      "the measurable result"
+     ]
+    },
+    "answer": "At Thyme Health as a UX Designer, my team had a firm deadline and several people depended on the result. My task was to deliver it reliably. I designed 9 flows in Usability testing for a mobile app with 90,000 users. I also designed 8 flows in Usability testing for a mobile app with 80,000 users. The measurable result: maintained a User research of 30 components.",
+    "band": [
+     3.5,
+     5.0
+    ],
+    "min_scores": {
+     "relevance": 4
+    },
+    "max_scores": {}
+   },
+   {
+    "id": "gpr6-g",
+    "persona": "g6",
+    "job": "m6",
+    "kind": "weak",
+    "question": {
+     "section": "behavioral",
+     "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+     "why": "To see how you act under pressure.",
+     "key_points": [
+      "the situation",
+      "your task",
+      "what you did",
+      "the measurable result"
+     ]
+    },
+    "answer": "I think I am a hard worker. We did many tasks and it went okay in the end.",
+    "band": [
+     1.0,
+     3.0
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "evidence": 2
+    }
+   },
+   {
+    "id": "gpr7-g",
+    "persona": "g7",
+    "job": "m7",
+    "kind": "offtopic",
+    "question": {
+     "section": "behavioral",
+     "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+     "why": "To see how you act under pressure.",
+     "key_points": [
+      "the situation",
+      "your task",
+      "what you did",
+      "the measurable result"
+     ]
+    },
+    "answer": "I have two cats and a small garden. On Sundays I bake bread and walk in the park.",
+    "band": [
+     1.0,
+     2.5
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "relevance": 2
+    }
+   },
+   {
+    "id": "gpr8-g",
+    "persona": "g8",
+    "job": "m8",
+    "kind": "good",
+    "question": {
+     "section": "intro",
+     "prompt": "Tell me about yourself and why you are applying for the Marketing Analyst role.",
+     "why": "To hear how you describe your own path.",
+     "key_points": [
+      "current role",
+      "most relevant experience",
+      "why this job"
+     ]
+    },
+    "answer": "At Wren Studio as a Marketing Analyst, my team had a firm deadline and several people depended on the result. My task was to deliver it reliably. I reported funnel metrics from Excel to 3 stakeholders. I also pulled campaign data with A/B testing for 40 weekly reports. The measurable result: improved organic traffic by 8% through SQL fixes.",
+    "band": [
+     3.5,
+     5.0
+    ],
+    "min_scores": {
+     "relevance": 4
+    },
+    "max_scores": {}
+   },
+   {
+    "id": "gpr9-g",
+    "persona": "g9",
+    "job": "m9",
+    "kind": "weak",
+    "question": {
+     "section": "intro",
+     "prompt": "ช่วยแนะนำตัวและบอกว่าทำไมจึงสมัครตำแหน่ง Accountant",
+     "why": "เพื่อฟังว่าคุณเล่าเส้นทางของตัวเองอย่างไร",
+     "key_points": [
+      "งานปัจจุบัน",
+      "ประสบการณ์ที่เกี่ยวข้องที่สุด",
+      "เหตุผลที่สนใจงานนี้"
+     ]
+    },
+    "answer": "ผมเป็นคนขยันนะ ทำหลายอย่าง สุดท้ายก็ผ่านไปด้วยดี",
+    "band": [
+     1.0,
+     3.0
+    ],
+    "min_scores": {},
+    "max_scores": {
+     "evidence": 2
+    }
+   }
+  ],
+  "report": [
+   {
+    "id": "hpr0-r",
+    "persona": "h0",
+    "job": "k0",
+    "profile": "strong",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the Data Engineer role.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Airflow",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with BigQuery",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with dbt",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Python",
+     "SQL"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "ready",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": []
+   },
+   {
+    "id": "hpr1-r",
+    "persona": "h1",
+    "job": "k1",
+    "profile": "mixed",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the Backend Developer role.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with PostgreSQL",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Docker",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Kubernetes",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Java",
+     "Spring Boot"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "Java",
+     "Spring Boot"
+    ]
+   },
+   {
+    "id": "hpr2-r",
+    "persona": "h2",
+    "job": "k2",
+    "profile": "weak",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the Frontend Developer role.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with CSS",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Jest",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Figma",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "React",
+     "TypeScript"
+    ],
+    "expect": {
+     "intro": [
+      "not_yet",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "almost",
+      "not_yet"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "React",
+     "TypeScript"
+    ]
+   },
+   {
+    "id": "hpr3-r",
+    "persona": "h3",
+    "job": "k3",
+    "profile": "strong",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "ช่วยแนะนำตัวและบอกว่าทำไมจึงสมัครตำแหน่ง Data Analyst",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Excel",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Tableau",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Python",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "SQL",
+     "Power BI"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "ready",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": []
+   },
+   {
+    "id": "hpr4-r",
+    "persona": "h4",
+    "job": "k4",
+    "profile": "mixed",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "ช่วยแนะนำตัวและบอกว่าทำไมจึงสมัครตำแหน่ง Product Manager",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ User research",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ SQL",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Stakeholder management",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Roadmapping",
+     "Jira"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "almost",
+      "not_yet"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "Roadmapping",
+     "Jira"
+    ]
+   },
+   {
+    "id": "hpr5-r",
+    "persona": "h5",
+    "job": "k5",
+    "profile": "weak",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the UX Designer role.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Prototyping",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Design systems",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Usability testing",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Figma",
+     "User research"
+    ],
+    "expect": {
+     "intro": [
+      "not_yet",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "almost",
+      "not_yet"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "Figma",
+     "User research"
+    ]
+   },
+   {
+    "id": "hpr6-r",
+    "persona": "h6",
+    "job": "k6",
+    "profile": "strong",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the DevOps Engineer role.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with AWS",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with CI/CD",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Prometheus",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Kubernetes",
+     "Terraform"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "ready",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": []
+   },
+   {
+    "id": "hpr7-r",
+    "persona": "h7",
+    "job": "k7",
+    "profile": "mixed",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the QA Engineer role.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Test automation",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Jira",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Postman",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Selenium",
+     "Cypress"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "Selenium",
+     "Cypress"
+    ]
+   },
+   {
+    "id": "hpr8-r",
+    "persona": "h8",
+    "job": "k8",
+    "profile": "weak",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the Marketing Analyst role.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Tableau",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with SEO",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Excel",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Google Analytics",
+     "SQL"
+    ],
+    "expect": {
+     "intro": [
+      "not_yet",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "almost",
+      "not_yet"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "Google Analytics",
+     "SQL"
+    ]
+   },
+   {
+    "id": "hpr9-r",
+    "persona": "h9",
+    "job": "k9",
+    "profile": "strong",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "ช่วยแนะนำตัวและบอกว่าทำไมจึงสมัครตำแหน่ง Accountant",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ IFRS",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Tax filing",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Audit",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "SAP",
+     "Excel"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "ready",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": []
+   },
+   {
+    "id": "gpr0-r",
+    "persona": "g0",
+    "job": "m0",
+    "profile": "mixed",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the Data Engineer role.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with dbt",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Kafka",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Python",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Airflow",
+     "BigQuery"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "almost",
+      "not_yet"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "Airflow",
+     "BigQuery"
+    ]
+   },
+   {
+    "id": "gpr1-r",
+    "persona": "g1",
+    "job": "m1",
+    "profile": "weak",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the Backend Developer role.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Kubernetes",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Redis",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Java",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "PostgreSQL",
+     "Docker"
+    ],
+    "expect": {
+     "intro": [
+      "not_yet",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "almost",
+      "not_yet"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "PostgreSQL",
+     "Docker"
+    ]
+   },
+   {
+    "id": "gpr2-r",
+    "persona": "g2",
+    "job": "m2",
+    "profile": "strong",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the Frontend Developer role.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Figma",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with GraphQL",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with React",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "CSS",
+     "Jest"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "ready",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": []
+   },
+   {
+    "id": "gpr3-r",
+    "persona": "g3",
+    "job": "m3",
+    "profile": "mixed",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "ช่วยแนะนำตัวและบอกว่าทำไมจึงสมัครตำแหน่ง Data Analyst",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Python",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ A/B testing",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ SQL",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Excel",
+     "Tableau"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "Excel",
+     "Tableau"
+    ]
+   },
+   {
+    "id": "gpr4-r",
+    "persona": "g4",
+    "job": "m4",
+    "profile": "weak",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "ช่วยแนะนำตัวและบอกว่าทำไมจึงสมัครตำแหน่ง Product Manager",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Stakeholder management",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ OKR",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Roadmapping",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "User research",
+     "SQL"
+    ],
+    "expect": {
+     "intro": [
+      "not_yet",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "almost",
+      "not_yet"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "User research",
+     "SQL"
+    ]
+   },
+   {
+    "id": "gpr5-r",
+    "persona": "g5",
+    "job": "m5",
+    "profile": "strong",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the UX Designer role.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Usability testing",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Accessibility",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Figma",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Prototyping",
+     "Design systems"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "ready",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": []
+   },
+   {
+    "id": "gpr6-r",
+    "persona": "g6",
+    "job": "m6",
+    "profile": "mixed",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the DevOps Engineer role.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Prometheus",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Linux",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Kubernetes",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "AWS",
+     "CI/CD"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "almost",
+      "not_yet"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "AWS",
+     "CI/CD"
+    ]
+   },
+   {
+    "id": "gpr7-r",
+    "persona": "g7",
+    "job": "m7",
+    "profile": "weak",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the QA Engineer role.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Postman",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with SQL",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Selenium",
+      "ready": false,
+      "card_rating": "learning",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Test automation",
+     "Jira"
+    ],
+    "expect": {
+     "intro": [
+      "not_yet",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "almost",
+      "not_yet"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "Test automation",
+     "Jira"
+    ]
+   },
+   {
+    "id": "gpr8-r",
+    "persona": "g8",
+    "job": "m8",
+    "profile": "strong",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "Tell me about yourself and why you are applying for the Marketing Analyst role.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "Tell me about a time you delivered a result under a tight deadline.",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Excel",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with A/B testing",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "Explain your experience with Google Analytics",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "Tableau",
+     "SEO"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "ready",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": []
+   },
+   {
+    "id": "gpr9-r",
+    "persona": "g9",
+    "job": "m9",
+    "profile": "mixed",
+    "level": "mid",
+    "sections": [
+     {
+      "id": "intro"
+     },
+     {
+      "id": "behavioral"
+     },
+     {
+      "id": "technical"
+     }
+    ],
+    "questions": [
+     {
+      "section": "intro",
+      "prompt": "ช่วยแนะนำตัวและบอกว่าทำไมจึงสมัครตำแหน่ง Accountant",
+      "ready": true,
+      "card_rating": null,
+      "scores": {
+       "structure": 4,
+       "relevance": 5,
+       "evidence": 4,
+       "clarity": 4,
+       "company_fit": 4
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "behavioral",
+      "prompt": "เล่าประสบการณ์ที่คุณส่งมอบงานให้สำเร็จภายใต้เวลาที่จำกัด",
+      "ready": false,
+      "card_rating": null,
+      "scores": {
+       "structure": 2,
+       "relevance": 3,
+       "evidence": 1,
+       "clarity": 3,
+       "company_fit": 2
+      }
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Audit",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ Power BI",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     },
+     {
+      "section": "technical",
+      "prompt": "อธิบายประสบการณ์ของคุณกับ SAP",
+      "ready": false,
+      "card_rating": "know",
+      "scores": null
+     }
+    ],
+    "gaps": [
+     "IFRS",
+     "Tax filing"
+    ],
+    "expect": {
+     "intro": [
+      "ready",
+      "almost"
+     ],
+     "behavioral": [
+      "not_yet",
+      "almost"
+     ],
+     "technical": [
+      "ready",
+      "almost"
+     ]
+    },
+    "weak_terms": [
+     "evidence",
+     "structure",
+     "หลักฐาน",
+     "โครงเรื่อง",
+     "IFRS",
+     "Tax filing"
+    ]
+   }
   ]
  }
 }

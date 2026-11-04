@@ -31,7 +31,8 @@ from job_search_platform.services.skill_coverage import METHOD as SKILL_METHOD, 
 from job_search_platform.integrations import metrics, tracing
 from job_search_platform.integrations.gateway import GatewaySettings
 from job_search_platform.integrations.hermes_runtime import ParsedInput
-from job_search_platform.services.ocr import with_vision_text
+from job_search_platform.services.ocr import call_recorder, with_vision_text
+from job_search_platform.services.pricing import record_call
 from job_search_platform.services import applications, experience, job_sources, resume, smart_match, tailoring
 from job_search_platform.services.evidence import EvidencedEdit, apply_gated, bank_vocabulary, claims, fact_claims, require_evidence, summary_claims
 from job_search_platform.services.errors import ServiceError
@@ -469,7 +470,8 @@ class RunExecutor:
     async def _parse_input(self, run: Run, cv_path: str, sandbox: RunSandbox):
         """Sandbox parse; scanned or broken-text PDFs continue through the vision fallback (services/ocr.py)."""
         parsed = await self.runtime.parse_input(run.project_id, cv_path)
-        return await with_vision_text(parsed, sandbox.workspace, self.gateway)
+        return await with_vision_text(parsed, sandbox.workspace, self.gateway,
+                                      record=call_recorder(self.sessions, run_id=run.id))
 
     async def _parse_cv_text(self, run: Run, lease_owner: str, sandbox: RunSandbox) -> str:
         """Parse the run's CV inside the sandbox (no LLM); the native project is stopped again before returning."""
@@ -1253,7 +1255,18 @@ class RunExecutor:
                 "input_tokens": usage.get("input_tokens"), "output_tokens": usage.get("output_tokens")}
         tracing.llm_round(run_id=run.id, model=data["model"], latency_ms=data["latency_ms"],
                           input_tokens=data["input_tokens"], output_tokens=data["output_tokens"])
-        self._public_event(run.id, "run_progress", data)
+        with self.sessions.begin() as db:
+            if data["model"]:  # one llm_calls row per native submit round, priced now
+                try:
+                    with db.begin_nested():
+                        record_call(db, run_id=run.id, operation=run.operation, model=data["model"], input_tokens=data["input_tokens"],
+                                    output_tokens=data["output_tokens"], cached_tokens=usage.get("cached_tokens"),
+                                    api_calls=usage.get("api_calls"), latency_ms=data["latency_ms"])
+                except Exception:
+                    logging.getLogger(__name__).warning("llm_call_not_recorded run=%s", run.id, exc_info=True)
+            locked = db.scalar(select(Run).where(Run.id == run.id).with_for_update())
+            if locked is not None and locked.status == "running":
+                append_event(db, locked, "run_progress", data)
 
     def _raise_gate_failure(self, run_id: uuid.UUID, lease_owner: str) -> None:
         state = self.queue.heartbeat(run_id, lease_owner)
