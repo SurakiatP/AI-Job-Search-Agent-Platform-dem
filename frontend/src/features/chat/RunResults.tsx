@@ -83,7 +83,7 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
   const inTrashText = locale === 'th' ? 'อยู่ในถังขยะ' : 'In trash';
   const openTrash = locale === 'th' ? 'เปิดถังขยะ' : 'Open trash';
   const openDocument = t('result.openDoc');
-  return <section aria-labelledby={headingId} className="grid gap-4 rounded-3xl bg-card p-5 shadow-[var(--shadow-soft)] sm:p-6">
+  return <section aria-labelledby={headingId} className="grid gap-4 rounded-3xl border bg-card p-5 shadow-[var(--shadow-soft)] sm:p-6">
     <h2 id={headingId} className="text-lg font-semibold">{t('result.title')}</h2>
     {run.status !== 'completed' && <p role="status" className="text-sm text-muted-foreground">{locale === 'th' ? 'ผลลัพธ์ที่บันทึกไว้ · งานยังไม่เสร็จสมบูรณ์' : 'Preserved results · run is not complete'}</p>}
     {evaluation && <div className="grid gap-4">

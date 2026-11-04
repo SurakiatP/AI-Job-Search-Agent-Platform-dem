@@ -15,8 +15,7 @@ export function TabsList({ className, children, ...props }: ComponentProps<typeo
     const place = () => {
       const on = el.querySelector<HTMLElement>('[data-state=active]');
       if (!on || !bar.current) return;
-      bar.current.style.width = `${on.offsetWidth}px`;
-      bar.current.style.transform = `translate(${on.offsetLeft}px, ${on.offsetTop + on.offsetHeight - 2}px)`;
+      bar.current.style.transform = `translate(${on.offsetLeft}px, ${on.offsetTop + on.offsetHeight - 2}px) scaleX(${on.offsetWidth})`;
     };
     place();
     const watch = new MutationObserver(place); watch.observe(el, { attributes: true, subtree: true, attributeFilter: ['data-state'] });

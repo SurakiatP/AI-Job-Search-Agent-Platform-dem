@@ -57,7 +57,7 @@ function fileKind(filename?: string, mime?: string) {
   if (ext === 'pdf' || mime === 'application/pdf') return 'PDF';
   if (ext === 'docx' || mime?.includes('wordprocessingml')) return 'Word';
   if (ext === 'txt' || mime === 'text/plain') return 'TXT';
-  return ext ? ext.toUpperCase() : 'CV';
+  return ext && ext !== filename?.toLowerCase() ? ext.toUpperCase() : null;
 }
 
 const PAGE_SIZE = 20;
@@ -187,7 +187,7 @@ function SaveJob({ job, c, projectId, saves, tSearch, card = false }: { job: Job
   const existing = saves.find(job);
   const saving = saves.busy === job.slug;
   if (existing) return card
-    ? <span className="inline-flex min-h-11 lg:min-h-10 items-center gap-1 rounded-md bg-muted px-3 text-sm text-muted-foreground"><BookmarkCheck className="size-4 text-primary" aria-hidden="true" />{c.saved}</span>
+    ? <span className="inline-grid size-11 place-items-center lg:size-10"><BookmarkCheck className="size-4 text-primary" aria-hidden="true" /><span className="sr-only">{c.saved}</span></span>
     : <Button asChild variant="outline" className="h-auto whitespace-normal text-left"><Link to={`/app/projects/${projectId}/jobs/${existing.id}`}><BookmarkCheck className="size-4 text-primary" aria-hidden="true" />{c.saved}</Link></Button>;
   const checkingId = `save-job-status-${job.slug}${card ? '-card' : ''}`;
   return <>
@@ -544,7 +544,7 @@ export function SearchPage() {
         : null;
       const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
       const meta = [placeOf(job), modeLabel, job.age_days != null ? c.age(job.age_days) : null, salary].filter(Boolean) as string[];
-      return <li key={job.slug} className={`relative grid min-w-0 gap-3 rounded-2xl border bg-card p-5 pe-12 shadow-[var(--shadow-soft)] transition-shadow hover:shadow-[var(--shadow-lift)] motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 [&:has([data-job-slug]:focus-visible)]:ring-2 [&:has([data-job-slug]:focus-visible)]:ring-ring ${isSel ? 'ring-2 ring-primary' : ''} ${smartActive ? 'sm:pe-24' : ''}`}>
+      return <li key={job.slug} className={`relative grid min-w-0 gap-3 rounded-2xl border bg-card p-5 pe-12 shadow-[var(--shadow-soft)] transition-[box-shadow,transform] duration-200 hover:shadow-[var(--shadow-lift)] motion-safe:hover:-translate-y-0.5 [&:has([data-job-slug]:focus-visible)]:ring-2 [&:has([data-job-slug]:focus-visible)]:ring-ring ${isSel ? 'ring-2 ring-primary' : ''} ${smartActive ? 'sm:pe-28' : ''}`}>
         <button type="button" aria-pressed={isSel} aria-current={isSel ? 'true' : undefined} onClick={() => {
           if (!wide) selectionScroll.current = window.scrollY;
           setSelectedSlug(wide || !isSel ? job.slug : null);
@@ -605,7 +605,7 @@ export function SearchPage() {
       <div className="grid min-w-0 gap-2 sm:w-72">
         <Label htmlFor="match-cv">{c.cvLabel}</Label>
         <Select id="match-cv" value={cv?.id ?? ''} onChange={e => setCvPick(e.target.value)}>
-          {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision} · {fileKind(item.latest_revision?.original_filename, item.latest_revision?.mime_type)}</option>)}
+          {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}{(k => k ? ` · ${k}` : '')(fileKind(item.latest_revision?.original_filename, item.latest_revision?.mime_type))}</option>)}
         </Select>
       </div>
       {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="outline" />}

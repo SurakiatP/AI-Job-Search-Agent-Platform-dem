@@ -109,7 +109,7 @@ export function Flashcards({ cards, c, onRate, onCheck }: { cards: PracticeQuest
       {pile(c.know, known, 'know')}
     </div>
     <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-center">
-      <span className="h-1.5 w-full overflow-hidden rounded-full bg-accent sm:order-2 sm:w-40" aria-hidden="true"><span className="block h-full rounded-full bg-primary transition-[width] duration-(--dur-slow) ease-out" style={{ width: `${(100 * index) / deck.length}%` }} /></span>
+      <span className="h-1.5 w-full overflow-hidden rounded-full bg-accent sm:order-2 sm:w-40" aria-hidden="true"><span className="block h-full rounded-full bg-primary transition-transform duration-(--dur-base) ease-out" style={{ transform: `translateX(-${100 - (100 * index) / deck.length}%)` }} /></span>
       <div className="grid grid-cols-2 gap-2 sm:contents">
         <Button type="button" variant="outline" size="lg" className="border-warning/40 bg-warning/10 text-warning hover:bg-warning/15 sm:order-1" onClick={() => rate('learning')}>{c.learning}<kbd className="ms-1 hidden rounded border border-current/30 px-2 text-xs sm:inline">1</kbd></Button>
         <Button type="button" variant="outline" size="lg" className="border-success/40 bg-success/10 text-success hover:bg-success/15 sm:order-3" onClick={() => rate('know')}>{c.know}<kbd className="ms-1 hidden rounded border border-current/30 px-2 text-xs sm:inline">2</kbd></Button>

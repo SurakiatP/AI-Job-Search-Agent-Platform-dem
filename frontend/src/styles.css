@@ -12,10 +12,10 @@
 :root {
   --radius: 0.5rem; /* MUI shape.borderRadius is 4px; owner asked for a little rounder (2026-11-03) */
   --shadow-xs: 0 1px 2px rgb(27 37 80 / 0.04);
-  /* Soft layered card shadow in the teal ink, never black (2026-11-04 visual refresh). */
+  /* Soft layered card shadow in the navy ink, never black (2026-11-04 visual refresh). */
   --shadow-soft: 0 1px 2px rgb(23 32 51 / 0.05), 0 6px 20px -10px rgb(23 32 51 / 0.16);
   --shadow-lift: 0 2px 4px rgb(23 32 51 / 0.06), 0 14px 32px -14px rgb(23 32 51 / 0.24);
-  /* The one bold surface per page: the deep teal "next step" card. */
+  /* The one bold surface per page: the deep indigo "next step" card. */
   --hero: #101C3D;
   --hero-foreground: #FFFFFF;
   --hero-muted: #C9D6F5;
@@ -80,7 +80,7 @@
   --shadow-lift: 0 2px 4px rgb(4 8 18 / 0.35), 0 16px 36px -14px rgb(4 8 18 / 0.6);
   --hero: #1B2D63;
   --hero-foreground: #FFFFFF;
-  --hero-muted: #C9D6F5;
+  --hero-muted: #DCE5FA;
   --hero-accent: #A8C7FA;
   --overlay: color-mix(in srgb, var(--background) 72%, transparent);
   --background: #121826;
@@ -208,8 +208,9 @@ html:lang(th) :where(h1, h2, h3, h4, .workspace-panel, [class*='overflow-wrap:an
 /* Card and dialog titles: one 20px step (type scale 12/14/16/20/30/36). */
 h2.text-lg { font-size: 20px; line-height: 1.45; }
 
-@keyframes page-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.page-enter { animation: page-enter var(--dur-base) var(--ease-out) both; }
+/* Route change: a short fade only, no movement (seen tens of times a day). */
+@keyframes page-enter { from { opacity: 0; } }
+.page-enter { animation: page-enter 120ms var(--ease-out); }
 /* Overlay surfaces (transitions.dev #05/#06/#07, durations clamped to DESIGN.md 150–240ms). */
 @keyframes surface-in { from { opacity: 0; scale: var(--surface-scale, 0.96); } }
 @keyframes surface-out { to { opacity: 0; scale: var(--surface-scale, 0.96); } }
@@ -222,7 +223,7 @@ h2.text-lg { font-size: 20px; line-height: 1.45; }
 .dialog-surface[data-state='open'] { animation: surface-in var(--dur-slow) var(--ease-out); }
 .dialog-surface[data-state='closed'] { animation: surface-out var(--dur-fast) var(--ease-out); }
 .menu-surface { transform-origin: var(--radix-dropdown-menu-content-transform-origin); }
-.menu-surface[data-state='open'] { --surface-scale: 0.97; animation: surface-in var(--dur-slow) var(--ease-out); }
+.menu-surface[data-state='open'] { --surface-scale: 0.97; animation: surface-in var(--dur-base) var(--ease-out); }
 .menu-surface[data-state='closed'] { --surface-scale: 0.99; animation: surface-out var(--dur-fast) var(--ease-out); }
 .mobile-drawer[data-state='open'] { animation: drawer-in var(--dur-slow) var(--ease-out); }
 .mobile-drawer[data-state='closed'] { animation: drawer-out var(--dur-fast) var(--ease-out); }
@@ -232,8 +233,12 @@ h2.text-lg { font-size: 20px; line-height: 1.45; }
 .scrolling-name { display: block; overflow: hidden; white-space: nowrap; }
 .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); } /* taste-skill-ignore */
 .scrolling-name-text { display: inline-block; transition: transform var(--dur-base) var(--ease-out); }
-.group:hover .scrolling-name[data-overflow='true'], .group:focus-within .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, transparent, #000 28px); } /* taste-skill-ignore */
-.group:hover .scrolling-name-text, .group:focus-within .scrolling-name-text { transform: translateX(var(--name-shift)); transition: transform var(--name-duration, 2s) linear 0.4s; }
+.group:focus-within .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, transparent, #000 28px); } /* taste-skill-ignore */
+.group:focus-within .scrolling-name-text { transform: translateX(var(--name-shift)); transition: transform var(--name-duration, 2s) linear 0.4s; }
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .scrolling-name[data-overflow='true'] { mask-image: linear-gradient(to right, transparent, #000 28px); } /* taste-skill-ignore */
+  .group:hover .scrolling-name-text { transform: translateX(var(--name-shift)); transition: transform var(--name-duration, 2s) linear 0.4s; }
+}
 /* Journey stage tile (sidebar): plain outline icon, tinted by the step's hue when active. */
 .stage-tile { display: inline-flex; width: 20px; height: 20px; flex-shrink: 0; align-items: center; justify-content: center; color: var(--muted-foreground); background: transparent; transition: color var(--dur-fast) var(--ease-out); }
 .stage-tile[data-active='true'] { color: var(--stage); }
@@ -383,10 +388,14 @@ input, textarea { caret-color: var(--primary); }
 .scroll-visible::-webkit-scrollbar-track { background: var(--muted); border-radius: 999px; }
 
 /* MUI elevations (shadows[2], [4], [8], [24]) and the contained-button behaviour: 2 at rest, 4 on hover, 8 pressed, 0 disabled. */
-:root { --shadow-2: 0 3px 1px -2px rgb(0 0 0 / 0.2), 0 2px 2px 0 rgb(0 0 0 / 0.14), 0 1px 5px 0 rgb(0 0 0 / 0.12);
-  --shadow-4: 0 2px 4px -1px rgb(0 0 0 / 0.2), 0 4px 5px 0 rgb(0 0 0 / 0.14), 0 1px 10px 0 rgb(0 0 0 / 0.12);
-  --shadow-8: 0 5px 5px -3px rgb(0 0 0 / 0.2), 0 8px 10px 1px rgb(0 0 0 / 0.14), 0 3px 14px 2px rgb(0 0 0 / 0.12);
-  --shadow-24: 0 11px 15px -7px rgb(0 0 0 / 0.2), 0 24px 38px 3px rgb(0 0 0 / 0.14), 0 9px 46px 8px rgb(0 0 0 / 0.12); }
+:root { --shadow-2: 0 3px 1px -2px rgb(23 32 51 / 0.2), 0 2px 2px 0 rgb(23 32 51 / 0.14), 0 1px 5px 0 rgb(23 32 51 / 0.12);
+  --shadow-4: 0 2px 4px -1px rgb(23 32 51 / 0.2), 0 4px 5px 0 rgb(23 32 51 / 0.14), 0 1px 10px 0 rgb(23 32 51 / 0.12);
+  --shadow-8: 0 5px 5px -3px rgb(23 32 51 / 0.2), 0 8px 10px 1px rgb(23 32 51 / 0.14), 0 3px 14px 2px rgb(23 32 51 / 0.12);
+  --shadow-24: 0 11px 15px -7px rgb(23 32 51 / 0.2), 0 24px 38px 3px rgb(23 32 51 / 0.14), 0 9px 46px 8px rgb(23 32 51 / 0.12); }
+:root[data-theme='dark'] { --shadow-2: 0 3px 1px -2px rgb(4 8 18 / 0.2), 0 2px 2px 0 rgb(4 8 18 / 0.14), 0 1px 5px 0 rgb(4 8 18 / 0.12);
+  --shadow-4: 0 2px 4px -1px rgb(4 8 18 / 0.2), 0 4px 5px 0 rgb(4 8 18 / 0.14), 0 1px 10px 0 rgb(4 8 18 / 0.12);
+  --shadow-8: 0 5px 5px -3px rgb(4 8 18 / 0.2), 0 8px 10px 1px rgb(4 8 18 / 0.14), 0 3px 14px 2px rgb(4 8 18 / 0.12);
+  --shadow-24: 0 11px 15px -7px rgb(4 8 18 / 0.2), 0 24px 38px 3px rgb(4 8 18 / 0.14), 0 9px 46px 8px rgb(4 8 18 / 0.12); }
 :is(button, a).bg-primary-fill:not(:disabled), :is(button, a).bg-destructive-fill:not(:disabled) { box-shadow: var(--shadow-2); transition: box-shadow var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard); }
 :is(button, a).bg-primary-fill:not(:disabled):hover, :is(button, a).bg-destructive-fill:not(:disabled):hover { box-shadow: var(--shadow-4); }
 :is(button, a).bg-primary-fill:not(:disabled):active, :is(button, a).bg-destructive-fill:not(:disabled):active { box-shadow: var(--shadow-8); }
@@ -396,7 +405,7 @@ input, textarea { caret-color: var(--primary); }
 @keyframes ripple-in { 0% { transform: scale(0); opacity: 0.3; } 60% { opacity: 0.3; } 100% { transform: scale(1); opacity: 0; } }
 
 /* MUI Tabs indicator glides between tabs (transform and width only). */
-.tab-indicator { transition: transform 300ms var(--ease-standard), width 300ms var(--ease-standard); }
+.tab-indicator { width: 1px; transform-origin: 0 0; transition: transform 250ms var(--ease-standard); }
 @media (prefers-reduced-motion: reduce) { .tab-indicator { transition: none; } }
 
 /* MUI caption: 12px at 1.66; Thai overrides above. */
@@ -455,17 +464,16 @@ input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: n
   --ambient: radial-gradient(90% 55% at 50% 115%, rgb(49 134 255 / 0.20), transparent 70%),
              radial-gradient(45% 35% at 92% 100%, rgb(139 111 214 / 0.14), transparent 70%);
 }
-@property --gem-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 
 /* Soft blue light rising from the bottom of the work area, like the Gemini home screen. */
-.ambient-surface { background-image: var(--ambient); background-attachment: fixed; background-repeat: no-repeat; }
+.ambient-surface { background-image: var(--ambient); background-repeat: no-repeat; }
 
 /* Hero: deep indigo with three slow drifting colour clouds. Text stays on the solid part (AA checked on --hero). */
 .aurora { position: relative; isolation: isolate; overflow: hidden; }
-.aurora::before, .aurora::after { content: ''; position: absolute; z-index: -1; border-radius: 9999px; filter: blur(48px); opacity: 0.55; pointer-events: none; }
+.aurora::before, .aurora::after { content: ''; position: absolute; z-index: -1; border-radius: 9999px; filter: blur(48px); opacity: 0.55; pointer-events: none; will-change: transform; }
 .aurora::before { width: 46%; height: 140%; right: -8%; top: -50%; background: radial-gradient(circle, var(--gem-blue), transparent 65%); }
 .aurora::after { width: 40%; height: 120%; right: 18%; bottom: -70%; background: radial-gradient(circle, var(--gem-violet), transparent 65%); }
-.aurora > .aurora-glow { position: absolute; z-index: -1; width: 28%; height: 90%; right: -4%; bottom: -40%; border-radius: 9999px; filter: blur(48px); opacity: 0.45; background: radial-gradient(circle, var(--gem-rose), transparent 65%); pointer-events: none; }
+.aurora > .aurora-glow { position: absolute; z-index: -1; width: 28%; height: 90%; right: -4%; bottom: -40%; border-radius: 9999px; filter: blur(48px); opacity: 0.45; will-change: transform; background: radial-gradient(circle, var(--gem-rose), transparent 65%); pointer-events: none; }
 @media (prefers-reduced-motion: no-preference) {
   .aurora::before { animation: aurora-a 18s ease-in-out infinite alternate; }
   .aurora::after { animation: aurora-b 22s ease-in-out infinite alternate; }
@@ -478,15 +486,11 @@ input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: n
 .gem-border { border: 1px solid transparent; background: linear-gradient(var(--gem-fill, var(--card)), var(--gem-fill, var(--card))) padding-box, var(--gem-line) border-box; }
 
 /* Turning four-colour ring while the AI is working. */
-.gem-ring { background: conic-gradient(from var(--gem-angle), var(--gem-blue), var(--gem-violet), var(--gem-rose), var(--gem-amber), var(--gem-green), var(--gem-blue));
+.gem-ring { background: conic-gradient( var(--gem-blue), var(--gem-violet), var(--gem-rose), var(--gem-amber), var(--gem-green), var(--gem-blue));
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); }
-@media (prefers-reduced-motion: no-preference) { .gem-ring { animation: gem-turn 1.4s linear infinite; } }
-@keyframes gem-turn { to { --gem-angle: 360deg; } }
+@media (prefers-reduced-motion: no-preference) { .gem-ring { animation: gem-turn 1.1s linear infinite; } }
+@keyframes gem-turn { to { transform: rotate(360deg); } }
 
-/* Clickable cards: lift plus a faint gradient edge on hover. */
-.lift-card { transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out); }
-.lift-card:hover { box-shadow: var(--shadow-lift); border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); }
-@media (prefers-reduced-motion: no-preference) { .lift-card:hover { transform: translateY(-2px); } }
-
-::selection { background: color-mix(in srgb, var(--primary) 22%, transparent); }
 @media (max-width: 639px) { .aurora::before, .aurora::after, .aurora > .aurora-glow { opacity: 0.3; } }
+/* Manual "related topics" lists: a link that is the whole list item gets a 24px+ target (WCAG 2.5.8). */
+.manual-body li > a:only-child { display: inline-flex; align-items: center; min-height: 28px; }

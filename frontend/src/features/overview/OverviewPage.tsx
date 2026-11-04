@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { CountUp } from '@/components/CountUp';
+import { APPLIED_ONWARD } from '@/lib/applicationStages';
+import type { ApplicationStage } from '@/lib/api-types';
 import { GemSparkle } from '@/components/AiMark';
 import { ArrowRight, LayoutDashboard, ListChecks, Clock3, Upload, Search, Loader2 } from 'lucide-react';
 import { Link, useParams } from 'react-router';
@@ -19,7 +21,6 @@ import { latestEvaluations } from './latestEvaluations';
 import { PageHeader } from '@/components/PageHeader';
 import { CompanyMark } from '@/components/CompanyMark';
 
-const APPLIED_OR_LATER = ['applied', 'responded', 'interview', 'offer', 'hired'];
 
 const heroBtn = 'bg-hero-foreground text-hero hover:bg-hero-foreground/90 active:bg-hero-foreground/80 focus-visible:ring-hero-foreground focus-visible:ring-offset-hero';
 
@@ -116,13 +117,13 @@ export function OverviewPage() {
   const stats = jobs.data && runs.data && sessions.data && !firstRun ? [
     { key: 'saved', n: jobList.length },
     { key: 'evaluated', n: evaluations.size },
-    { key: 'applied', n: jobList.filter(job => APPLIED_OR_LATER.includes(job.application_status ?? '')).length },
-    { key: 'interviews', n: jobList.filter(job => job.application_status === 'interview').length },
+    { key: 'applied', n: jobList.filter(job => APPLIED_ONWARD.has(job.application_status as ApplicationStage)).length },
+    { key: 'interviews', n: jobList.filter(job => ['interview', 'offer', 'hired'].includes(job.application_status ?? '')).length },
   ] as const : null;
-  const statRow = stats && <dl aria-label={c.stats.label} className="grid grid-cols-2 divide-x divide-y rounded-2xl border bg-card shadow-[var(--shadow-soft)] sm:grid-cols-4 sm:divide-y-0">
-    {stats.map(stat => <div key={stat.key} className="grid min-w-0 content-start gap-1 p-5 sm:p-6">
-      <dd className="order-1 text-4xl font-semibold tabular-nums tracking-tight"><CountUp value={stat.n} /></dd>
+  const statRow = stats && <dl aria-label={c.stats.label} className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border shadow-[var(--shadow-soft)] sm:grid-cols-4">
+    {stats.map(stat => <div key={stat.key} className="grid min-w-0 content-start gap-1 bg-card p-5 sm:p-6">
       <dt className="order-2 break-words text-sm text-muted-foreground">{c.stats[stat.key]}</dt>
+      <dd className="order-1 text-4xl font-semibold tabular-nums tracking-tight"><CountUp value={stat.n} /></dd>
     </div>)}
   </dl>;
 

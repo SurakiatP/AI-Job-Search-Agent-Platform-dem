@@ -2,56 +2,56 @@
 name: AI Job Search Agent Platform
 description: Bilingual job-search workspaces with clear project and revision context.
 colors:
-  background: "#F3F4EF"
-  foreground: "#0F3B38"
+  background: "#EEF2F8"
+  foreground: "#172033"
   card: "#FFFFFF"
-  primary: "#287A74"
+  primary: "#0A50C2"
   primary-foreground: "#FFFFFF"
-  secondary: "#E9EAE2"
-  secondary-foreground: "#0F3B38"
-  muted: "#E9EAE2"
-  muted-foreground: "#585E70"
-  accent: "#E8F7F2"
-  accent-foreground: "#0F3B38"
-  destructive: "#AF263E"
-  success: "#166445"
-  warning: "#805319"
-  border: "#DCDDD3"
-  border-strong: "#C9CBC0"
-  input: "#858993"
-  ring: "#287A74"
-  sidebar: "#EAEBE3"
-  surface-tint: "#EDEEE6"
-  stage-cv: "#287A74"
-  stage-search: "#287A74"
-  stage-evaluate: "#287A74"
-  stage-docs: "#287A74"
-  stage-track: "#287A74"
-  dark-background: "#151F1E"
-  dark-foreground: "#D9E4E1"
-  dark-card: "#212F2E"
-  dark-primary: "#86C9BF"
-  dark-primary-foreground: "#10231F"
-  dark-secondary: "#253533"
-  dark-secondary-foreground: "#D9E4E1"
-  dark-muted: "#253533"
-  dark-muted-foreground: "#9CB0AC"
-  dark-accent: "#233B38"
-  dark-accent-foreground: "#D9E4E1"
-  dark-destructive: "#FF9AAA"
-  dark-success: "#79D5AA"
-  dark-warning: "#EBC27D"
-  dark-border: "#364A48"
-  dark-border-strong: "#4A6563"
-  dark-input: "#6E8582"
-  dark-ring: "#86C9BF"
-  dark-sidebar: "#111A19"
-  dark-surface-tint: "#192524"
-  dark-stage-cv: "#86C9BF"
-  dark-stage-search: "#86C9BF"
-  dark-stage-evaluate: "#86C9BF"
-  dark-stage-docs: "#86C9BF"
-  dark-stage-track: "#86C9BF"
+  secondary: "#E3E9F2"
+  secondary-foreground: "#172033"
+  muted: "#E3E9F2"
+  muted-foreground: "#4A5568"
+  accent: "#D6E4FB"
+  accent-foreground: "#0B2A5C"
+  destructive: "#B3261E"
+  success: "#146C2E"
+  warning: "#8C5000"
+  border: "#D5DCE7"
+  border-strong: "#BCC6D4"
+  input: "#6B7689"
+  ring: "#0A50C2"
+  sidebar: "#E6ECF5"
+  surface-tint: "#E9EEF6"
+  stage-cv: "#0A50C2"
+  stage-search: "#0A50C2"
+  stage-evaluate: "#0A50C2"
+  stage-docs: "#0A50C2"
+  stage-track: "#0A50C2"
+  dark-background: "#121826"
+  dark-foreground: "#E3E8F2"
+  dark-card: "#1C2333"
+  dark-primary: "#A8C7FA"
+  dark-primary-foreground: "#062E6F"
+  dark-secondary: "#252E40"
+  dark-secondary-foreground: "#E3E8F2"
+  dark-muted: "#252E40"
+  dark-muted-foreground: "#A3AEC2"
+  dark-accent: "#22355C"
+  dark-accent-foreground: "#E3E8F2"
+  dark-destructive: "#F2B8B5"
+  dark-success: "#6DD58C"
+  dark-warning: "#F0C36A"
+  dark-border: "#2F3A50"
+  dark-border-strong: "#44516A"
+  dark-input: "#7A879E"
+  dark-ring: "#A8C7FA"
+  dark-sidebar: "#141B2A"
+  dark-surface-tint: "#171E2D"
+  dark-stage-cv: "#A8C7FA"
+  dark-stage-search: "#A8C7FA"
+  dark-stage-evaluate: "#A8C7FA"
+  dark-stage-docs: "#A8C7FA"
+  dark-stage-track: "#A8C7FA"
 typography:
   display:
     fontFamily: "Noto Serif Thai, Georgia, serif"
@@ -121,7 +121,7 @@ Inspired by visual character only; no code or assets from AGPL-licensed Dossier.
 The system is evidenced in `frontend/src/styles.css`, shared UI primitives, and the application shell and workspace pages. This record describes visual implementation; product behavior and API contracts remain in their engineering specifications.
 
 **Key Characteristics:**
-- Warm neutral canvas, white hairline surfaces, restrained teal emphasis. No black or near-black anywhere; ink is deep teal (`#0F3B38`).
+- Cool blue-grey canvas, white cards with soft navy shadows, Gemini blue emphasis. No black or near-black anywhere; ink is navy (`#172033`).
 - Serif page titles, sans-serif reading with generous Thai body leading.
 - Inset work panel, segmented controls, status dots, divided rows.
 
@@ -142,7 +142,7 @@ Teal (`primary`, `#287A74`) marks primary actions, links, and focus. `accent` ma
 
 ### Neutral
 
-`background` is the warm page; `card` is the work surface (white); `sidebar` is both the navigation colour and the frame around the page panel. `foreground` (deep teal) carries reading text, `muted-foreground` secondary information, `border` panel and row separation, and `border-strong` the hairline of outline buttons and active segments. `input` is the stronger stroke inputs need for a 3:1 boundary.
+`background` is the cool blue-grey page; `card` is the work surface (white); `sidebar` is both the navigation colour and the frame around the page panel. `foreground` (navy) carries reading text, `muted-foreground` secondary information, `border` panel and row separation, and `border-strong` the hairline of outline buttons and active segments. `input` is the stronger stroke inputs need for a 3:1 boundary.
 
 ### One surface, no frames
 
@@ -214,19 +214,19 @@ cd frontend/src && grep -rnE "(^|[ \"'])(sm:|md:|lg:|xl:)?(-?m[tbxylrse]?|p[tbxy
 
 ## Elevation & Depth
 
-Theme change (owner decision 2026-11-04, second round): the palette follows Gemini, a little darker. Light: page `#EEF2F8`, card white, ink `#172033` (navy, never black), primary `#0A50C2` (7.1:1 on white), accent `#D6E4FB`, sidebar `#E6ECF5`. Dark: page `#121826`, card `#1C2333`, primary `#A8C7FA`, filled controls `#0B57D0` with white. The hero card is deep indigo `--hero` (`#101C3D` light, `#1B2D63` dark) with a slow three-colour aurora behind it (blue, violet, rose; still under reduced motion). Gemini hues (`--gem-*`) appear only in the AI sparkle (`GemSparkle`, `AiMark`, `AiLabel`), the turning ring while AI works (`AiSpinner`, `.gem-ring`), the gradient edge of AI panels (`.gem-border`) and the soft blue light at the bottom of the work area (`.ambient-surface`). Text never sits on a gradient and gradient text is not used. Latin type is Google Sans Flex (OFL, self-hosted via `@fontsource-variable/google-sans-flex`); Thai stays Noto Sans Thai. Buttons and segmented controls are pills; inputs 12px radius. Stat numbers count up once from 0 (600 ms, skipped under reduced motion) and show only after their data has loaded.
+Theme change (owner decision 2026-11-04, second round): the palette follows Gemini, a little darker. Light: page `#EEF2F8`, card white, ink `#172033` (navy, never black), primary `#0A50C2` (7.1:1 on white), accent `#D6E4FB`, sidebar `#E6ECF5`. Dark: page `#121826`, card `#1C2333`, primary `#A8C7FA`, filled controls `#0B57D0` with white. The hero card is deep indigo `--hero` (`#101C3D` light, `#1B2D63` dark) with a slow three-colour aurora behind it (blue, violet, rose; still under reduced motion). Gemini hues (`--gem-*`) appear only in the AI sparkle (`GemSparkle`, `AiMark`, `AiLabel`), the turning ring while AI works (`AiSpinner`, `.gem-ring`), the gradient edge of AI panels (`.gem-border`) and the soft blue light at the bottom of the work area (`.ambient-surface`). Text never sits on a gradient and gradient text is not used. Latin type is Google Sans Flex (OFL, self-hosted via `@fontsource-variable/google-sans-flex`); Thai stays Noto Sans Thai. Buttons and segmented controls are pills; inputs 12px radius. Stat numbers count up once from 0 (400 ms, skipped under reduced motion) and show only after their data has loaded.
 
-Visual refresh (owner decision 2026-11-04, branch `feat/ui-visual-refresh`): cards and panels carry a soft layered shadow in the teal ink (`--shadow-soft`; `--shadow-lift` on hover and on the hero card), never black. Each workspace page may have one bold surface, the deep-teal `--hero` card (`bg-hero`, white text, `text-hero-muted` secondary, all AA-checked: 12.3:1, 8.5:1), used for the next step on Today. Clickable cards lift 2px on hover under `motion-safe`. Stat numbers are real counts only (no deltas, no trend arrows, no icon tiles). Overlays keep their existing shadows. Motion is brief state feedback (150-240ms) with the shared easing curve; reduced-motion preferences collapse transitions and animations.
+Visual refresh (owner decision 2026-11-04, branch `feat/ui-visual-refresh`): cards and panels carry a soft layered shadow in the navy ink (`--shadow-soft`; `--shadow-lift` on hover and on the hero card), never black; the MUI elevations used by filled buttons and dialogs use the same ink. Each workspace page may have one bold surface, the deep-indigo `--hero` card (`bg-hero`, white text, `text-hero-muted` secondary; on plain `--hero` 16.7:1 and 11.5:1 light, and dark `--hero-muted` `#DCE5FA` stays above 4.5:1 where it crosses the blue aurora), used for the next step on Today. Clickable cards lift 2px on hover under `motion-safe`. Stat numbers are real counts only (no deltas, no trend arrows, no icon tiles). Overlays keep their existing shadows. Motion is brief state feedback (150-240ms) with the shared easing curve; reduced-motion preferences collapse transitions and animations.
 
 ## Shapes
 
-The base radius is 8px: controls 8px, `xl` 12px, cards and panels `2xl` 16px, the hero card `3xl` 24px. Badges, status chips, meta chips and the small fit score are pills (`rounded-full`). `CompanyMark` is a 12px-radius initial tile with a fixed hue per company (six hues, `oklch` tint with dark text of the same hue; dark theme inverts); it is decorative and always sits beside the written company name. Tab lists stay segmented tracks with 8px radius.
+The base radius is 8px: controls 8px, `xl` 12px, cards and panels `2xl` 16px, the hero card `3xl` 24px. Badges, status chips, meta chips and the small fit score are pills (`rounded-full`). `CompanyMark` is a 12px-radius initial tile with a fixed hue per company (six hues, `oklch` tint with dark text of the same hue; dark theme inverts); it is decorative and always sits beside the written company name. Segmented controls and buttons are pills; underline tabs keep their 2px bar.
 
 ## Components
 
 ### Landing (Persuade surface)
 
-The public page persuades; the app operates. Section order: skip link, hero, three steps (numbered text columns; the tour carries the sample panels, so the steps do not repeat them), static tagline, tour, data and control, FAQ, closing, footer. Every public page (landing, feature, info, manual) uses one `PublicHeader`: Features menu, How it works, Data & connections, Manual, then Log in and Get started (Open app when signed in). Feature, info and manual lists are one bordered card with divided rows and a serif teal numeral, never grids of cards or icon tiles. The page has one primary action (create account, or open app when signed in), repeated unchanged in the hero and the closing card; the only other hero action is a text link. The tagline is a static two-tone statement between hairlines (muted first line, foreground second), with no scroll animation. The tour is a vertical index (Up and Down keys) beside one panel, never a pill strip and never a card inside a card. Objections are answered in a FAQ ledger of native `details` rows. The one authored motion is the hero demo card, played once on `--ease-out`; reduced motion shows its end state. No icon tiles, no pills outside the list above, no shadows on page cards, no gradient text. Proof comes only from true product facts and real UI states: no statistics, testimonials, logos, user counts, prices, awards or odds. Footer links go only to pages that exist.
+The public page persuades; the app operates. Section order: skip link, hero, three steps (numbered text columns; the tour carries the sample panels, so the steps do not repeat them), static tagline, tour, data and control, FAQ, closing, footer. Every public page (landing, feature, info, manual) uses one `PublicHeader`: Features menu, How it works, Data & connections, Manual, then Log in and Get started (Open app when signed in). Feature, info and manual lists are one bordered card with divided rows and a serif primary-blue numeral, never grids of cards or icon tiles. The page has one primary action (create account, or open app when signed in), repeated unchanged in the hero and the closing card; the only other hero action is a text link. The tagline is a static two-tone statement between hairlines (muted first line, foreground second), with no scroll animation. The tour is a vertical index (Up and Down keys) beside one panel, never a pill strip and never a card inside a card. Objections are answered in a FAQ ledger of native `details` rows. The one authored motion is the hero demo card, played once on `--ease-out`; reduced motion shows its end state. No icon tiles, no pills outside the list above, no shadows on page cards, no gradient text. Proof comes only from true product facts and real UI states: no statistics, testimonials, logos, user counts, prices, awards or odds. Footer links go only to pages that exist.
 
 ### Buttons
 
