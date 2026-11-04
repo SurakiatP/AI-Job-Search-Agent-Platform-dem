@@ -15,6 +15,11 @@ import { nextStep, type NextStep } from './nextStep';
 import { useOverviewCopy } from './copy';
 import { latestEvaluations } from './latestEvaluations';
 import { PageHeader } from '@/components/PageHeader';
+import { CompanyMark } from '@/components/CompanyMark';
+
+const APPLIED_OR_LATER = ['applied', 'responded', 'interview', 'offer', 'hired'];
+
+const heroBtn = 'bg-hero-foreground text-hero hover:bg-hero-foreground/90 active:bg-hero-foreground/80 focus-visible:ring-hero-foreground focus-visible:ring-offset-hero';
 
 function ResourcePanel({ resource, children }: { resource: { status: string; reload: () => void; data?: unknown }; children: ReactNode }) {
   const { t } = useTranslation();
@@ -23,11 +28,11 @@ function ResourcePanel({ resource, children }: { resource: { status: string; rel
   return <>{children}</>;
 }
 
-function Section({ id, title, viewAll, className, children }: { id: string; title: string; viewAll?: { to: string; label: string }; className?: string; children: ReactNode }) {
+function Section({ id, title, viewAll, className, bare, children }: { bare?: boolean; id: string; title: string; viewAll?: { to: string; label: string }; className?: string; children: ReactNode }) {
   const { t } = useTranslation();
   return <section aria-labelledby={id} className={`grid min-w-0 gap-3 ${className ?? ''}`}>
-    <div className="flex flex-wrap items-center justify-between gap-3"><h2 id={id} className="text-xl">{title}</h2>{viewAll && <Link className="inline-flex min-h-11 items-center text-sm hover:underline lg:min-h-10" to={viewAll.to}>{t('workspace.viewAll')}<span className="sr-only"> {viewAll.label}</span></Link>}</div>
-    <div className="workspace-panel">{children}</div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 id={id} className="text-2xl font-semibold tracking-tight">{title}</h2>{viewAll && <Link className="inline-flex min-h-11 items-center text-sm hover:underline lg:min-h-10" to={viewAll.to}>{t('workspace.viewAll')}<span className="sr-only"> {viewAll.label}</span></Link>}</div>
+    <div className={bare ? undefined : 'workspace-panel'}>{children}</div>
   </section>;
 }
 
@@ -96,41 +101,57 @@ export function OverviewPage() {
   // Exactly one primary control per state; the "reading" state has none and says so.
   function heroAction(s: NextStep, label: string) {
     const a = s.action;
-    if (a.type === 'none') return <p role="status" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Loader2 size={17} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />{label}</p>;
-    if (a.type === 'pickFile') return <Button asChild><Link to={`${base}/profile`}><Upload size={17} aria-hidden="true" />{label}</Link></Button>;
-    if (a.type === 'link') return <Button asChild><Link to={`${base}/${a.to}`}>{a.to === 'search' && <Search size={17} aria-hidden="true" />}{label}</Link></Button>;
-    if (a.type === 'evaluate') return <EvaluateButton projectId={projectId} job={{ savedId: a.jobId }}>{label}</EvaluateButton>;
-    if (a.type === 'draft') return <Button asChild><Link to={`${base}/sessions/${a.sessionId}`}>{label}</Link></Button>;
-    if (a.type === 'setStage') return <Button type="button" busy={stageBusy} onClick={() => void markApplied()}>{label}</Button>;
+    if (a.type === 'none') return <p role="status" className="inline-flex items-center gap-2 text-sm text-hero-muted"><Loader2 size={17} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />{label}</p>;
+    if (a.type === 'pickFile') return <Button asChild className={heroBtn}><Link to={`${base}/profile`}><Upload size={17} aria-hidden="true" />{label}</Link></Button>;
+    if (a.type === 'link') return <Button asChild className={heroBtn}><Link to={`${base}/${a.to}`}>{a.to === 'search' && <Search size={17} aria-hidden="true" />}{label}</Link></Button>;
+    if (a.type === 'evaluate') return <EvaluateButton projectId={projectId} job={{ savedId: a.jobId }} className={heroBtn}>{label}</EvaluateButton>;
+    if (a.type === 'draft') return <Button asChild className={heroBtn}><Link to={`${base}/sessions/${a.sessionId}`}>{label}</Link></Button>;
+    if (a.type === 'setStage') return <Button type="button" className={heroBtn} busy={stageBusy} onClick={() => void markApplied()}>{label}</Button>;
     const run = attention.find(item => item.id === a.runId);
-    return <Button asChild><Link to={run ? runHref(run) : `${base}/console?tab=runs`}>{label}</Link></Button>;
+    return <Button asChild className={heroBtn}><Link to={run ? runHref(run) : `${base}/console?tab=runs`}>{label}</Link></Button>;
   }
+
+  const stats = jobs.data && !firstRun ? [
+    { key: 'saved', n: jobList.length },
+    { key: 'evaluated', n: evaluations.size },
+    { key: 'applied', n: jobList.filter(job => APPLIED_OR_LATER.includes(job.application_status ?? '')).length },
+    { key: 'interviews', n: jobList.filter(job => job.application_status === 'interview').length },
+  ] as const : null;
+  const statRow = stats && <dl aria-label={c.stats.label} className="grid grid-cols-2 divide-x divide-y rounded-2xl border bg-card shadow-[var(--shadow-soft)] sm:grid-cols-4 sm:divide-y-0">
+    {stats.map(stat => <div key={stat.key} className="grid min-w-0 content-start gap-1 p-5 sm:p-6">
+      <dd className="order-1 text-4xl font-semibold tabular-nums tracking-tight">{stat.n}</dd>
+      <dt className="order-2 break-words text-sm text-muted-foreground">{c.stats[stat.key]}</dt>
+    </div>)}
+  </dl>;
 
   const hero = step && (() => {
     const copy = c.hero[step.key];
     const jobName = focus ? [focus.title, focus.company].filter(Boolean).join(' · ') : '';
-    return <section aria-labelledby="next-step-heading" className="workspace-panel grid gap-4 border-l-4 border-l-primary p-5 sm:p-6">
+    return <section aria-labelledby="next-step-heading" className="grid gap-5 rounded-3xl bg-hero p-6 text-hero-foreground shadow-[var(--shadow-lift)] sm:p-8">
       <div className="grid gap-2">
-        <p className="text-sm font-medium text-primary">{c.nextStep}</p>
-        <h2 id="next-step-heading" className="text-2xl">{copy.title}</h2>
-        <p className="max-w-2xl break-words text-muted-foreground">{copy.body(jobName, scoringCv?.name)}</p>
+        <p className="text-sm font-medium text-hero-accent">{c.nextStep}</p>
+        <h2 id="next-step-heading" className="break-words text-3xl font-semibold tracking-tight">{copy.title}</h2>
+        <p className="max-w-2xl break-words text-hero-muted">{copy.body(jobName, scoringCv?.name)}</p>
       </div>
       <div className="grid justify-items-start gap-2">
         {heroAction(step, copy.title)}
-        {stageFailed && <p role="alert" className="text-sm text-destructive">{c.failed}</p>}
+        {stageFailed && <p role="alert" className="text-sm text-hero-foreground underline decoration-destructive decoration-2 underline-offset-4">{c.failed}</p>}
       </div>
     </section>;
   })();
 
-  const jobsSection = <Section id="jobs-heading" title={c.recentJobs} viewAll={{ to: `${base}/applications`, label: t('workspace.applications') }}>
+  const jobsSection = <Section id="jobs-heading" bare={jobList.length > 0} title={c.recentJobs} viewAll={{ to: `${base}/applications`, label: t('workspace.applications') }}>
     <ResourcePanel resource={jobs}>{jobList.length === 0
       ? <EmptyLine title={c.noJobs} body={c.noJobsFirst} />
-      : <ul className="divide-y">{recentJobs.slice(0, 4).map(job => {
+      : <ul className="grid gap-4 sm:grid-cols-2">{recentJobs.slice(0, 4).map(job => {
         const evaluation = evaluations.get(job.id);
         const sid = evaluation?.session_id;
-        return <li key={job.id}><Link className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5" to={sid ? `${base}/sessions/${sid}` : `${base}/jobs/${job.id}`}>
-          <div className="min-w-0"><span className="break-words font-semibold">{job.title}</span>{job.company && <p className="mt-1 break-words text-sm text-muted-foreground">{job.company}</p>}</div>
-          <span className="flex items-center gap-3"><StatusBadge status={job.application_status ?? 'saved'} locale={locale} /><FitScore result={evaluation?.evaluation_result} locale={locale} /><ArrowRight size={17} aria-hidden="true" /></span>
+        return <li key={job.id} className="min-w-0"><Link className="group grid h-full min-w-0 content-between gap-4 rounded-2xl border bg-card p-5 shadow-[var(--shadow-soft)] transition-[box-shadow,transform] duration-200 hover:shadow-[var(--shadow-lift)] motion-safe:hover:-translate-y-0.5" to={sid ? `${base}/sessions/${sid}` : `${base}/jobs/${job.id}`}>
+          <div className="flex min-w-0 items-start gap-3">
+            <CompanyMark name={job.company} size={48} />
+            <div className="min-w-0"><span className="line-clamp-2 break-words font-semibold">{job.title}</span>{job.company && <p className="mt-1 break-words text-sm text-muted-foreground">{job.company}</p>}</div>
+          </div>
+          <span className="flex flex-wrap items-center gap-2"><StatusBadge status={job.application_status ?? 'saved'} locale={locale} /><FitScore result={evaluation?.evaluation_result} locale={locale} /><ArrowRight size={17} className="ms-auto" aria-hidden="true" /></span>
         </Link></li>;
       })}</ul>}</ResourcePanel>
   </Section>;
@@ -140,6 +161,8 @@ export function OverviewPage() {
     <PageHeader icon={LayoutDashboard} title={project.data?.name ?? t('nav.overview')} lede={firstRun ? c.subtitleFirst : t('workspace.overviewSubtitle')} />
 
     {hero}
+
+    {statRow}
 
     {(hasAttention || approvals.status === 'error') && <section aria-labelledby="attention-heading" className="grid gap-3 rounded-xl border border-warning/40 bg-card p-5 sm:p-6">
       <div className="flex items-center gap-3"><ListChecks size={21} className="text-warning" aria-hidden="true" /><h2 id="attention-heading" className="text-lg font-semibold">{t('workspace.attention')}</h2>{hasAttention && <Badge variant="warning">{attention.length + unmatchedApprovals.length}</Badge>}</div>

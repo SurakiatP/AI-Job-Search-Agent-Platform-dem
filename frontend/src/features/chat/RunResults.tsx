@@ -83,21 +83,23 @@ export function RunResults({ projectId, locale, run, documents, trashedDocuments
   const inTrashText = locale === 'th' ? 'อยู่ในถังขยะ' : 'In trash';
   const openTrash = locale === 'th' ? 'เปิดถังขยะ' : 'Open trash';
   const openDocument = t('result.openDoc');
-  return <section aria-labelledby={headingId} className="grid gap-4 rounded-xl border bg-card p-5 sm:p-6">
+  return <section aria-labelledby={headingId} className="grid gap-4 rounded-3xl bg-card p-5 shadow-[var(--shadow-soft)] sm:p-6">
     <h2 id={headingId} className="text-lg font-semibold">{t('result.title')}</h2>
     {run.status !== 'completed' && <p role="status" className="text-sm text-muted-foreground">{locale === 'th' ? 'ผลลัพธ์ที่บันทึกไว้ · งานยังไม่เสร็จสมบูรณ์' : 'Preserved results · run is not complete'}</p>}
     {evaluation && <div className="grid gap-4">
-      <div className="grid gap-6 md:grid-cols-2 md:gap-8">
-        <div className="grid min-w-0 content-start gap-2">
-          <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><AiMark size="sm" />{t('result.aiFit')}</p>
+      {(() => {
+        const score = <div className="grid min-w-0 content-start gap-2">
+          <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">{!evaluation.report && <AiMark size="sm" />}{t('result.aiFit')}</p>
           <div className="flex flex-wrap items-center gap-3"><FitScore result={evaluation} size="lg" locale={locale} /></div>
           <FitScoreWhy result={evaluation} locale={locale} />
-          <p className="text-sm text-muted-foreground">{t('result.notPrediction')}</p>
-        </div>
-        {evaluation.skill_coverage && <SkillsFound coverage={evaluation.skill_coverage} />}
-      </div>
-      {evaluation.report && <div className="border-t pt-5"><EvaluationReportView report={evaluation.report} /></div>}
-      <details open={!evaluation.report} className="group rounded-lg border">
+          <p className="max-w-prose text-sm text-muted-foreground">{t('result.notPrediction')}</p>
+        </div>;
+        const skills = evaluation.skill_coverage && <div className="rounded-2xl border bg-card p-5"><SkillsFound coverage={evaluation.skill_coverage} /></div>;
+        return evaluation.report
+          ? <EvaluationReportView report={evaluation.report} score={score} extra={skills} />
+          : <div className="grid gap-6 md:grid-cols-2 md:gap-8">{score}{evaluation.skill_coverage && <SkillsFound coverage={evaluation.skill_coverage} />}</div>;
+      })()}
+      <details open={!evaluation.report} className="group rounded-2xl border">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
           <span className="flex flex-wrap items-center gap-2">{evaluation.report ? t('report.full') : report}{!evaluation.report && <AiLabel />}</span><ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
         </summary>

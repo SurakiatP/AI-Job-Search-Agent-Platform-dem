@@ -11,7 +11,14 @@
 :root {
   --radius: 0.5rem; /* MUI shape.borderRadius is 4px; owner asked for a little rounder (2026-11-03) */
   --shadow-xs: 0 1px 2px rgb(27 37 80 / 0.04);
-  --shadow-soft: 0 2px 1px -1px rgb(0 0 0 / 0.2), 0 1px 1px 0 rgb(0 0 0 / 0.14), 0 1px 3px 0 rgb(0 0 0 / 0.12); /* MUI elevation 1 (shadows[1]) */
+  /* Soft layered card shadow in the teal ink, never black (2026-11-04 visual refresh). */
+  --shadow-soft: 0 1px 2px rgb(15 59 56 / 0.05), 0 6px 20px -10px rgb(15 59 56 / 0.16);
+  --shadow-lift: 0 2px 4px rgb(15 59 56 / 0.06), 0 14px 32px -14px rgb(15 59 56 / 0.24);
+  /* The one bold surface per page: the deep teal "next step" card. */
+  --hero: #0F3B38;
+  --hero-foreground: #FFFFFF;
+  --hero-muted: #BFDCD7;
+  --hero-accent: #8FD3C8;
   --overlay: color-mix(in srgb, var(--foreground) 40%, transparent);
   --background: #F3F4EF;
   --foreground: #0F3B38;
@@ -68,6 +75,12 @@
   color-scheme: light;  color-scheme: light;
 }
 :root[data-theme='dark'] {
+  --shadow-soft: 0 1px 2px rgb(5 14 13 / 0.3), 0 8px 24px -12px rgb(5 14 13 / 0.5);
+  --shadow-lift: 0 2px 4px rgb(5 14 13 / 0.35), 0 16px 36px -14px rgb(5 14 13 / 0.6);
+  --hero: #1F5A54;
+  --hero-foreground: #FFFFFF;
+  --hero-muted: #CFE6E2;
+  --hero-accent: #A6E0D6;
   --overlay: color-mix(in srgb, var(--background) 72%, transparent);
   --background: #151F1E;
   --foreground: #D9E4E1;
@@ -140,6 +153,10 @@
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
   --color-surface-tint: var(--surface-tint);
+  --color-hero: var(--hero);
+  --color-hero-foreground: var(--hero-foreground);
+  --color-hero-muted: var(--hero-muted);
+  --color-hero-accent: var(--hero-accent);
   --color-ai: var(--ai);
   --color-ai-contrast: var(--ai-contrast);
   --color-ai-foreground: var(--ai-foreground);
@@ -152,7 +169,8 @@
   --radius-md: var(--radius);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 16px);
 }
 
 @layer base {
@@ -290,7 +308,9 @@ main[data-stage='brand'] { --stage: var(--primary); }
 .workspace-page-header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .workspace-page-header > :first-child { min-width: 0; }
 .workspace-page-header > button, .workspace-page-header > a { flex-shrink: 0; }
-.workspace-panel { box-shadow: var(--shadow-soft); min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--card); color: var(--card-foreground); overflow-wrap: anywhere; }
+.company-mark { background: oklch(0.93 0.045 var(--mark-h)); color: oklch(0.36 0.09 var(--mark-h)); }
+[data-theme='dark'] .company-mark { background: oklch(0.34 0.06 var(--mark-h)); color: oklch(0.92 0.05 var(--mark-h)); }
+.workspace-panel { box-shadow: var(--shadow-soft); min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-2xl); background: var(--card); color: var(--card-foreground); overflow-wrap: anywhere; }
 ::selection { background: color-mix(in srgb, var(--primary) 22%, transparent); color: var(--foreground); }
 input, textarea { caret-color: var(--primary); }
 * { scrollbar-color: color-mix(in srgb, var(--muted-foreground) 45%, var(--background)) var(--background); scrollbar-width: thin; }

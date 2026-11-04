@@ -209,7 +209,7 @@ function JobDetail({ place: placeText, job, c, projectId, scored, tSearch, cv, s
     <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
       <CompanyMark name={job.company} size={48} />
       <div className="min-w-0">
-      <h2 className="break-words text-xl leading-snug">{job.title}</h2>
+      <h2 className="break-words text-2xl font-semibold leading-snug tracking-tight">{job.title}</h2>
       <p className="mt-1 flex items-start gap-1 break-words text-sm text-muted-foreground"><Building2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{job.company ?? c.untitled}</span></p>
       {placeText && <p className="flex items-start gap-1 break-words text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{placeText}{modeLabel ? ` · ${modeLabel}` : ''}</span></p>}
       </div>
@@ -544,19 +544,21 @@ export function SearchPage() {
         : null;
       const modeLabel = job.work_mode ? (c as unknown as Record<string, string>)[job.work_mode] ?? job.work_mode : null;
       const meta = [placeOf(job), modeLabel, job.age_days != null ? c.age(job.age_days) : null, salary].filter(Boolean) as string[];
-      return <li key={job.slug} className={`relative grid min-w-0 gap-2 rounded-xl border bg-card p-4 pe-12 transition-colors hover:bg-accent/60 [&:has([data-job-slug]:focus-visible)]:ring-2 [&:has([data-job-slug]:focus-visible)]:ring-ring ${isSel ? 'border-primary bg-accent shadow-[inset_3px_0_0_var(--primary)]' : ''}`}>
+      return <li key={job.slug} className={`relative grid min-w-0 gap-3 rounded-2xl border bg-card p-5 pe-12 shadow-[var(--shadow-soft)] transition-shadow hover:shadow-[var(--shadow-lift)] motion-safe:transition-transform motion-safe:hover:-translate-y-0.5 [&:has([data-job-slug]:focus-visible)]:ring-2 [&:has([data-job-slug]:focus-visible)]:ring-ring ${isSel ? 'ring-2 ring-primary' : ''} ${smartActive ? 'sm:pe-24' : ''}`}>
         <button type="button" aria-pressed={isSel} aria-current={isSel ? 'true' : undefined} onClick={() => {
           if (!wide) selectionScroll.current = window.scrollY;
           setSelectedSlug(wide || !isSel ? job.slug : null);
         }} data-job-slug={job.slug}
-          className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 text-left focus-visible:outline-none after:absolute after:inset-0 after:rounded-xl after:content-['']">
-          <CompanyMark name={job.company} size={40} />
-          <span className="grid min-w-0 gap-2">
-          <span id={`job-title-${job.slug}`} className="line-clamp-2 break-words text-base font-semibold leading-snug">{job.title}</span>
+          className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 text-left focus-visible:outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']">
+          <CompanyMark name={job.company} size={48} />
+          <span className="grid min-w-0 content-start gap-3">
+          <span className="grid min-w-0 gap-1">
+          <span id={`job-title-${job.slug}`} className="line-clamp-2 break-words text-lg font-semibold leading-snug">{job.title}</span>
           <span className="break-words text-sm text-muted-foreground">{job.company ?? c.untitled}</span>
-          {meta.length > 0 && <span className="flex items-start gap-1 break-words text-sm text-muted-foreground"><MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{meta.join(' · ')}</span></span>}
+          </span>
+          {meta.length > 0 && <span className="flex flex-wrap gap-2">{meta.map(m => <span key={m} className="inline-flex min-h-7 max-w-full items-center break-words rounded-full bg-muted px-3 text-xs text-muted-foreground sm:text-sm">{m}</span>)}</span>}
           {job.skills.length > 0 && <span className="flex flex-wrap gap-1">{job.skills.slice(0, 3).map(s => <Badge key={s} variant="muted" className="break-words font-normal">{s}</Badge>)}</span>}
-          {(smartActive || ai?.uncertain || job.stale) && <span className="flex flex-wrap gap-2">
+          {(smartActive || ai?.uncertain || job.stale) && <span className="flex flex-wrap items-center gap-2">
             {smartActive && ai && <BandBadge ai={ai} c={c} aiLabel={tSearch('controls.aiFit')} />}
             {smartActive && <MatchBadge match={job.match} c={c} />}
             {ai?.uncertain && <Badge variant="outline">{c.unsure}</Badge>}
@@ -565,8 +567,8 @@ export function SearchPage() {
           </span>}
           </span>
         </button>
-        {!sample && <div className="absolute bottom-2 end-2 z-10 flex flex-wrap justify-end"><SaveJob job={job} c={c} projectId={projectId} saves={saves} tSearch={tSearch} card /></div>}
-        {smartActive && <ItemMenu label={c.menuLabel} className="absolute right-2 top-2 z-10" actions={[
+        {!sample && <div className="absolute end-2 top-2 z-10 flex flex-wrap justify-end"><SaveJob job={job} c={c} projectId={projectId} saves={saves} tSearch={tSearch} card /></div>}
+        {smartActive && <ItemMenu label={c.menuLabel} className="absolute end-14 top-2 z-10 max-sm:end-2 max-sm:top-14" actions={[
           { label: c.hideJob, icon: <EyeOff className="size-4" aria-hidden="true" />, onSelect: () => void hide(job, 'job') },
           ...(job.company ? [{ label: c.hideCompany, icon: <Building2 className="size-4" aria-hidden="true" />, onSelect: () => void hide(job, 'company') }] : []),
         ]} />}
@@ -576,7 +578,7 @@ export function SearchPage() {
 
   const loadingList = <div className="grid gap-3">
     <span className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />{c.loading}</span>
-    {[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
+    {[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)}
   </div>;
 
   const failed = (!sample && status === 'error') || (smartActive && cvs.status === 'error');
@@ -705,7 +707,7 @@ export function SearchPage() {
             if (previous) document.querySelector<HTMLButtonElement>(`[data-job-slug="${CSS.escape(previous)}"]`)?.focus({ preventScroll: true });
           });
         }}><ArrowLeft className="size-4" aria-hidden="true" />{tSearch('controls.backToResults')}</Button>
-        <div className="min-w-0 rounded-xl border bg-card p-5">{detail(selected)}</div>
+        <div className="min-w-0 rounded-2xl border bg-card p-5 shadow-[var(--shadow-soft)]">{detail(selected)}</div>
       </section> : <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
         <div className="grid min-w-0 gap-3 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-1">
           {list}
@@ -717,7 +719,7 @@ export function SearchPage() {
             </Button>
           </div>}
         </div>
-        {wide && selected && <Card className="sticky top-4 min-w-0 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"><CardContent className="p-6">{detail(selected)}</CardContent></Card>}
+        {wide && selected && <Card className="sticky top-4 min-w-0 rounded-3xl lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"><CardContent className="p-6">{detail(selected)}</CardContent></Card>}
       </div>}
       {smartActive && hiddenCount > 0 && <div><Button type="button" variant="link" className="h-auto p-0" onClick={() => setHiddenOpen(true)}>{c.hiddenLink(hiddenCount)}</Button></div>}
     </div>}

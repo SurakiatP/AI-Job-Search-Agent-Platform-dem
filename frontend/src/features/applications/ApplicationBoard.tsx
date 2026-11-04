@@ -139,11 +139,12 @@ export function ApplicationBoard({ projectId, cards, onChanged, flowData = {} }:
   const item = (card: ApplicationCardView) => <div key={card.job_revision_id} draggable data-card={card.job_revision_id}
     onDragStart={event => { event.dataTransfer.setData('text/plain', card.job_revision_id); event.dataTransfer.effectAllowed = 'move'; setDragId(card.job_revision_id); }}
     onDragEnd={() => { setDragId(null); setOverStage(null); }}
-    className={cn('min-w-0 cursor-grab rounded-lg border border-border bg-card p-3 transition-[opacity,border-color] active:cursor-grabbing hover:border-[color:var(--border-strong)]', dragId === card.job_revision_id && 'opacity-40')}>
-    <div className="flex min-w-0 items-start gap-1">
-      <GripVertical className="mt-0.5 size-4 shrink-0 text-muted-foreground/60 max-md:hidden" aria-hidden="true" />
+    className={cn('min-w-0 cursor-grab rounded-2xl border border-border bg-card p-3 shadow-[var(--shadow-soft)] transition-[opacity,box-shadow,transform] duration-200 active:cursor-grabbing hover:shadow-[var(--shadow-lift)] motion-safe:hover:-translate-y-0.5', dragId === card.job_revision_id && 'opacity-40')}>
+    <div className="flex min-w-0 items-start gap-2">
+      <GripVertical className="mt-2.5 size-4 shrink-0 text-muted-foreground/60 max-md:hidden" aria-hidden="true" />
+      <CompanyMark name={card.company} size={40} />
       <div className="min-w-0 flex-1">
-        <Link className="block break-words font-medium leading-snug text-foreground hover:text-primary hover:underline" to={`/app/projects/${projectId}/jobs/${card.job_revision_id}`}>{card.title}</Link>
+        <Link className="block break-words font-semibold leading-snug text-foreground hover:text-primary hover:underline" to={`/app/projects/${projectId}/jobs/${card.job_revision_id}`}>{card.title}</Link>
         {card.company && <p className="mt-0.5 break-words text-sm text-muted-foreground">{card.company}</p>}
       </div>
       <ItemMenu className="size-11 shrink-0 lg:size-10" label={`${t('moveTo')}: ${card.title}`} actions={STAGES.filter(stage => stage !== card.stage).map(stage => ({
@@ -196,7 +197,7 @@ export function ApplicationBoard({ projectId, cards, onChanged, flowData = {} }:
     {shown.length === 0 ? <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6">
       <p className="font-medium">{t('noMatches')}</p><p className="text-sm text-muted-foreground">{t('noMatchesNext')}</p>
       {filtering && <Button type="button" variant="outline" size="sm" onClick={() => { setQuery(''); setStageFilter(''); setClosedFilter(false); }}>{t('clearFilters')}</Button>}
-    </div> : view === 'list' ? <section aria-label={t('listLabel')} className="min-w-0 overflow-hidden rounded-xl border border-border bg-card">
+    </div> : view === 'list' ? <section aria-label={t('listLabel')} className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)]">
       <div className={`hidden gap-x-5 border-b px-4 py-3 text-xs font-medium text-muted-foreground md:grid ${rowColumns}`}>
         <span aria-hidden="true" /><span>{t('opportunity')}</span><span>{t('fitScoreCol')}</span><span>{t('stage')}</span><span>{t('nextStep')}</span><span className="sr-only">{t('open')}</span>
       </div>
@@ -208,16 +209,16 @@ export function ApplicationBoard({ projectId, cards, onChanged, flowData = {} }:
       <div className="grid min-w-0 gap-4 md:grid-flow-col md:auto-cols-[minmax(15rem,1fr)] md:overflow-x-auto md:pb-3 scroll-visible">
         {ACTIVE_STAGES.map(stage => {
           const inStage = shown.filter(card => card.stage === stage);
-          return <section key={stage} aria-labelledby={`stage-${stage}`} {...zone(stage)} className={cn('grid min-w-0 content-start gap-2 rounded-xl bg-muted p-2', zoneClass(stage))}>
-            <h2 id={`stage-${stage}`} className="flex h-8 items-center gap-2 px-2 text-sm font-semibold"><span className="stage-dot" data-app-stage={stage} aria-hidden="true" />{stageLabel[stage][locale]}<span className="ms-auto font-normal tabular-nums text-muted-foreground">{inStage.length}</span></h2>
-            {inStage.length ? inStage.map(item) : <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">{dragId ? t('dropHere') : t('noApplications')}</p>}
+          return <section key={stage} aria-labelledby={`stage-${stage}`} {...zone(stage)} className={cn('grid min-w-0 content-start gap-2 rounded-2xl bg-muted p-2', zoneClass(stage))}>
+            <h2 id={`stage-${stage}`} className="flex h-8 items-center gap-2 px-2 text-sm font-semibold"><span className="stage-dot" data-app-stage={stage} aria-hidden="true" />{stageLabel[stage][locale]}<span className="ms-auto rounded-full bg-card px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground">{inStage.length}</span></h2>
+            {inStage.length ? inStage.map(item) : <p className="rounded-xl border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">{dragId ? t('dropHere') : t('noApplications')}</p>}
           </section>;
         })}
       </div>
-      <section aria-labelledby="closed-stage-heading" className="min-w-0 rounded-xl bg-muted p-2">
+      <section aria-labelledby="closed-stage-heading" className="min-w-0 rounded-2xl bg-muted p-3">
         <h2 id="closed-stage-heading"><button type="button" aria-expanded={closedOpen} onClick={() => setClosedOpen(value => !value)} className="flex min-h-11 w-full items-center lg:min-h-10 justify-between gap-2 text-start text-sm font-semibold">{t('closedStages')} ({closed.length})<ChevronDown className={cn('size-5 text-muted-foreground transition-transform', closedOpen && 'rotate-180')} aria-hidden="true" /></button></h2>
         {(closedOpen || dragId) && <div className="mt-3 grid gap-3">
-          {dragId && <div className="grid gap-2 sm:grid-cols-2">{CLOSED_STAGES.map(stage => <div key={stage} {...zone(stage)} className={cn('rounded-lg border border-dashed px-3 py-4 text-center text-sm font-medium', zoneClass(stage))}>{t('dropTo', { stage: stageLabel[stage][locale] })}</div>)}</div>}
+          {dragId && <div className="grid gap-2 sm:grid-cols-2">{CLOSED_STAGES.map(stage => <div key={stage} {...zone(stage)} className={cn('rounded-xl border border-dashed px-3 py-4 text-center text-sm font-medium', zoneClass(stage))}>{t('dropTo', { stage: stageLabel[stage][locale] })}</div>)}</div>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{closed.map(item)}</div>
         </div>}
       </section>

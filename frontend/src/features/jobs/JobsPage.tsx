@@ -87,7 +87,7 @@ export function JobsPage() {
         </form>
       </CardContent>
     </Card>}
-    {!jobs.length && <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed p-6"><p className="font-medium">{appT('empty')}</p><p className="text-sm text-muted-foreground">{appT('emptyNext')}</p><Link className="text-sm text-primary hover:underline" to={`${base}/search`}>{appT('findJobs')}</Link></div>}
+    {!jobs.length && <div className="flex flex-col items-start gap-2 rounded-2xl border border-dashed p-6"><p className="font-medium">{appT('empty')}</p><p className="text-sm text-muted-foreground">{appT('emptyNext')}</p><Link className="text-sm text-primary hover:underline" to={`${base}/search`}>{appT('findJobs')}</Link></div>}
     {jobs.length > 0 && <ApplicationBoard projectId={projectId} cards={jobs} onChanged={result.reload} flowData={{ cvs: cvs.data, runs: runs.data, sessions: sessions.data }} />}
   </section>;
 }

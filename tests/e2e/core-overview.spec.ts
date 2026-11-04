@@ -89,8 +89,8 @@ test('first-run overview leads with one next-step card and no count strip', asyn
   await page.goto(`/app/projects/${projectId}/overview`);
   const hero = page.getByRole('region', { name: 'Upload your CV' });
   await expect(hero.getByRole('link')).toHaveCount(1);
-  await expect(hero.getByRole('link', { name: 'Upload your CV' })).toHaveClass(/bg-primary/);
-  await expect(page.getByRole('main').locator('a.bg-primary-fill, button.bg-primary-fill')).toHaveCount(1);
+  await expect(hero.getByRole('link', { name: 'Upload your CV' })).toHaveClass(/bg-hero-foreground/);
+  await expect(page.getByRole('main').locator('a.bg-hero-foreground, button.bg-hero-foreground')).toHaveCount(1);
   await expect(page.getByRole('main').getByText(/^Saved\s*\d/)).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Journey' })).toHaveCount(0);
 });

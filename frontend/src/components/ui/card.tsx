@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
 export function Card({ className, ...props }: ComponentProps<'div'>) {
-  return <div className={cn('rounded-xl border bg-card text-card-foreground shadow-[var(--shadow-soft)]', '[&>[data-slot=header]+[data-slot=content]]:pt-0', className)} {...props} />;
+  return <div className={cn('rounded-2xl border bg-card text-card-foreground shadow-[var(--shadow-soft)]', '[&>[data-slot=header]+[data-slot=content]]:pt-0', className)} {...props} />;
 }
 export function CardHeader({ className, ...props }: ComponentProps<'div'>) {
   return <div className={cn('flex flex-col gap-1 p-5 sm:p-6', className)} data-slot="header" {...props} />;

@@ -34,11 +34,11 @@ function Requirements({ rows }: { rows: NonNullable<EvaluationReport['requiremen
         </button>)}
       </div>
     </div>
-    <ul className="grid divide-y rounded-lg bg-muted">
+    <ul className="grid divide-y overflow-hidden rounded-2xl bg-muted">
       {shown.map((row, i) => {
         const Icon = TONE[row.match].icon;
         return <li key={`${row.requirement}-${i}`} className="grid gap-2 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:gap-4">
-          <span className={`inline-flex h-7 items-center gap-2 justify-self-start rounded-full px-2 text-xs font-semibold ${TONE[row.match].chip}`}>
+          <span className={`inline-flex min-h-7 items-center gap-1 self-start justify-self-start rounded-full px-3 text-xs font-semibold ${TONE[row.match].chip}`}>
             <Icon className="size-3.5" aria-hidden="true" />{t(`report.match.${row.match}`)}
           </span>
           <div className="grid min-w-0 gap-0.5">
@@ -54,10 +54,10 @@ function Requirements({ rows }: { rows: NonNullable<EvaluationReport['requiremen
   </section>;
 }
 
-function Points({ title, items, icon }: { title: string; items?: string[]; icon: ReactNode }) {
+function Points({ title, items, icon, tone }: { title: string; items?: string[]; icon: ReactNode; tone: string }) {
   const id = useId();
   if (!items?.length) return null;
-  return <section aria-labelledby={id} className="grid content-start gap-2">
+  return <section aria-labelledby={id} className={`grid content-start gap-3 rounded-2xl p-5 ${tone}`}>
     <h3 id={id} className="flex items-center gap-2 text-base font-semibold">{icon}{title}</h3>
     <ul className="grid gap-2 text-sm leading-relaxed">
       {items.map(item => <li key={item} className="flex gap-2"><span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" /><span className="min-w-0 break-words">{item}</span></li>)}
@@ -88,19 +88,23 @@ export function ReportListCard({ kind, items, title, hint }: { kind: 'interview'
   </section>;
 }
 
-export function EvaluationReportView({ report }: { report: EvaluationReport }) {
+export function EvaluationReportView({ report, score, extra }: { report: EvaluationReport; score?: ReactNode; extra?: ReactNode }) {
   const { t } = useTranslation('sessionWorkspace');
   const icon = 'size-4 shrink-0';
   return <div className="grid gap-6" data-testid="ai-report">
-    <div className="grid gap-3 rounded-lg bg-ai-soft p-4 sm:p-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-x-8">
+    <div className={`grid gap-4 rounded-3xl bg-ai-soft p-5 sm:p-6 lg:gap-x-8 lg:p-8 ${score ? 'lg:grid-cols-[auto_minmax(0,1fr)]' : 'lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]'}`}>
       <AiLabel className="lg:col-span-2" />
-      <p className="text-lg font-semibold leading-snug [text-wrap:balance]">{report.verdict}</p>
-      <p className="max-w-[75ch] text-muted-foreground">{report.summary}</p>
+      {score}
+      <div className="grid min-w-0 content-start gap-3">
+        <p className="break-words text-xl font-semibold leading-snug [text-wrap:balance] lg:text-2xl">{report.verdict}</p>
+        <p className="max-w-[75ch] break-words text-muted-foreground">{report.summary}</p>
+      </div>
     </div>
+    {extra}
     {!!report.requirements?.length && <Requirements rows={report.requirements} />}
-    <div className="grid gap-6 md:grid-cols-2 md:gap-8">
-      <Points title={t('report.strengths')} items={report.strengths} icon={<Check className={`${icon} text-success`} aria-hidden="true" />} />
-      <Points title={t('report.risks')} items={report.risks} icon={<TriangleAlert className={`${icon} text-warning`} aria-hidden="true" />} />
+    <div className="grid gap-4 md:grid-cols-2 md:gap-6">
+      <Points title={t('report.strengths')} items={report.strengths} tone="bg-success/8" icon={<Check className={`${icon} text-success`} aria-hidden="true" />} />
+      <Points title={t('report.risks')} items={report.risks} tone="bg-warning/8" icon={<TriangleAlert className={`${icon} text-warning`} aria-hidden="true" />} />
     </div>
   </div>;
 }

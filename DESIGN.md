@@ -214,11 +214,11 @@ cd frontend/src && grep -rnE "(^|[ \"'])(sm:|md:|lg:|xl:)?(-?m[tbxylrse]?|p[tbxy
 
 ## Elevation & Depth
 
-Surfaces are flat: white on the warm page with a 1px hairline and almost no shadow (`shadow-sm` is a 1px navy hairline). Shadows remain only on overlays (menus, dialogs, drawer) and on the document "paper" previews, all in navy, never black. Motion is brief state feedback (150-240ms) with the shared easing curve; reduced-motion preferences collapse transitions and animations.
+Visual refresh (owner decision 2026-11-04, branch `feat/ui-visual-refresh`): cards and panels carry a soft layered shadow in the teal ink (`--shadow-soft`; `--shadow-lift` on hover and on the hero card), never black. Each workspace page may have one bold surface, the deep-teal `--hero` card (`bg-hero`, white text, `text-hero-muted` secondary, all AA-checked: 12.3:1, 8.5:1), used for the next step on Today. Clickable cards lift 2px on hover under `motion-safe`. Stat numbers are real counts only (no deltas, no trend arrows, no icon tiles). Overlays keep their existing shadows. Motion is brief state feedback (150-240ms) with the shared easing curve; reduced-motion preferences collapse transitions and animations.
 
 ## Shapes
 
-The base radius is 8px, giving sm 4, md 6, lg 8, xl 12 and 2xl 12. Controls are 8px, cards, panels and dialogs 12px, badges 6px. Pills (`rounded-full`) remain only for avatars, dots, counts and AI prompt-suggestion chips. Tab lists are segmented tracks with 8px radius, never pills.
+The base radius is 8px: controls 8px, `xl` 12px, cards and panels `2xl` 16px, the hero card `3xl` 24px. Badges, status chips, meta chips and the small fit score are pills (`rounded-full`). `CompanyMark` is a 12px-radius initial tile with a fixed hue per company (six hues, `oklch` tint with dark text of the same hue; dark theme inverts); it is decorative and always sits beside the written company name. Tab lists stay segmented tracks with 8px radius.
 
 ## Components
 

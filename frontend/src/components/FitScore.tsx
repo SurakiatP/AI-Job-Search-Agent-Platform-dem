@@ -9,6 +9,7 @@ const BAND_TEXT = {
   weak: { th: 'เหมาะน้อย', en: 'Weak fit' }, poor: { th: 'ไม่ค่อยเหมาะ', en: 'Poor fit' },
 } as const;
 const BAND_COLOR = { strong: 'text-success', good: 'text-success', partial: 'text-warning', weak: 'text-destructive', poor: 'text-destructive' } as const;
+const BAND_FILL = { strong: 'bg-success/12', good: 'bg-success/12', partial: 'bg-warning/12', weak: 'bg-destructive/10', poor: 'bg-destructive/10' } as const;
 
 export const fitBandText = (band: keyof typeof BAND_TEXT, locale: Locale) => BAND_TEXT[band][locale];
 
@@ -25,9 +26,10 @@ export function FitScore({ result, size = 'sm', locale }: { result: FitInput; si
   const value = kind === 'percent' ? `${result!.score_percent}%` : kind === 'legacy' ? `${result!.score!.toFixed(1)}/5` : '—';
   const old = locale === 'th' ? 'มาตราเก่า' : 'old scale';
   const label = kind === 'none' ? (locale === 'th' ? 'ยังไม่มีคะแนน' : 'No score') : `${value}${band ? `, ${fitBandText(band, locale)}` : ''}${kind === 'legacy' ? `, ${old}` : ''}`;
-  return <div className={cn('inline-flex shrink-0 flex-wrap items-center gap-x-2 rounded-lg border border-[color:var(--border-strong)] bg-card px-3 py-1 tabular-nums', band ? BAND_COLOR[band] : 'text-muted-foreground')} role="img" aria-label={`${prefix}: ${label}`}>
-    <span aria-hidden="true" className={cn('font-semibold leading-tight', size === 'lg' ? 'text-3xl' : 'text-base')}>{value}</span>
-    {band && <span aria-hidden="true" className="text-sm font-medium">{fitBandText(band, locale)}</span>}
+  const lg = size === 'lg';
+  return <div className={cn('inline-flex shrink-0 flex-wrap items-center tabular-nums', lg ? 'gap-x-3 gap-y-1 rounded-2xl px-5 py-3' : 'min-h-8 gap-x-2 rounded-full px-3', band ? [BAND_COLOR[band], BAND_FILL[band]] : 'bg-muted text-muted-foreground')} role="img" aria-label={`${prefix}: ${label}`}>
+    <span aria-hidden="true" className={cn('font-semibold leading-none tracking-tight', lg ? 'text-5xl' : 'text-base')}>{value}</span>
+    {band && <span aria-hidden="true" className={cn('font-medium', lg ? 'text-lg' : 'text-sm')}>{fitBandText(band, locale)}</span>}
     {kind === 'legacy' && <span aria-hidden="true" className="text-xs text-muted-foreground">{old}</span>}
   </div>;
 }

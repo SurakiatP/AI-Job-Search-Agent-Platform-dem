@@ -31,6 +31,7 @@ import { TailorCard } from './TailorCard';
 import { ApplyCard } from './ApplyCard';
 import { BusyNote } from '@/components/BusyNote';
 import { Alert } from '@/components/ui/alert';
+import { CompanyMark } from '@/components/CompanyMark';
 import { Select } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -197,14 +198,14 @@ export function SessionPage() {
   const headline = paired ? current.job_title ?? current.title : current.title;
   // Job + company + CV identify the session; several sessions can share a job but never the same CV/job pair.
   const cvLine = paired && current.cv_name ? `CV: ${current.cv_name}${current.cv_revision != null ? ` · v${current.cv_revision}` : ''}` : null;
-  const subline = [paired ? current.job_company : null, headline !== current.title ? current.title : null, cvLine].filter(Boolean).join(' · ');
+  const subline = [paired ? current.job_company : null, headline !== current.title && !current.title.includes(headline ?? '') ? current.title : null, cvLine].filter(Boolean).join(' · ');
   const tabClass = 'min-h-12 shrink-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none';
   // Documents and answers both use this language; it shows in whichever of the two tabs is open (one id at a time).
   const languagePicker = <div className="grid gap-1"><div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-medium"><label htmlFor={outputLanguageId}>{t('outputLanguage')}</label><Select id={outputLanguageId} aria-describedby={`${outputLanguageId}-hint`} className="w-40 max-w-full" value={outputLanguage} onChange={event => setOutputLanguage(event.target.value === 'en' ? 'en' : 'th')} disabled={busy}><option value="th">{t('thai')}</option><option value="en">{t('english')}</option></Select></div>
     <p id={`${outputLanguageId}-hint`} className="text-xs text-muted-foreground">{t('outputLanguageHint')}</p></div>;
   return <section className="flex min-w-0 flex-col gap-6 lg:gap-8">
     <div className="grid gap-1">
-    <header className="min-w-0"><h1 className="break-words text-2xl font-semibold">{headline}</h1>{subline && <p className="mt-1 break-words text-muted-foreground">{subline}</p>}</header>
+    <header className="flex min-w-0 items-start gap-4">{paired && current.job_company && <span className="max-sm:hidden"><CompanyMark name={current.job_company} size={48} /></span>}<div className="min-w-0"><h1 className="break-words text-3xl font-semibold tracking-tight">{headline}</h1>{subline && <p className="mt-1 break-words text-muted-foreground">{subline}</p>}</div></header>
     </div>
     {paired ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-6">
       <p className="text-sm font-semibold sm:col-span-2 lg:col-span-1">{t('pair.label')}</p>
