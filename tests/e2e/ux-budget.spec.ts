@@ -104,9 +104,10 @@ for (const locale of ['th', 'en']) {
     await page.goto(`${base}/overview`);
     await page.locator('aside').first().waitFor();
     const sidebar = await count(page, 'aside');
+    // 10 -> 11: the notification bell is the 11th control (in-app notifications).
     // 9 nav/menu controls + the visible language toggle the owner asked to keep (2026-11-04).
-    rows.push({ screen: 'Sidebar', width: 1440, locale, current: sidebar, target: '<= 10' });
-    expect.soft(sidebar, 'sidebar controls').toBeLessThanOrEqual(10);
+    rows.push({ screen: 'Sidebar', width: 1440, locale, current: sidebar, target: '<= 11' });
+    expect.soft(sidebar, 'sidebar controls').toBeLessThanOrEqual(11);
   });
 
   test(`primary action inside first viewport, 390 ${locale}`, async ({ page }) => {

@@ -1545,6 +1545,22 @@ paths:
       description: Every grant on the caller's projects.
       responses:
         '200': {description: Connected agents, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/AgentView'}}}}}
+  /notifications:
+    get:
+      tags: [account]
+      description: Owner-only. The owner's in-app notifications, newest first, with the unread count. limit 1-50, default 30.
+      parameters: [{name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 50, default: 30}}]
+      responses:
+        '200': {description: Notifications, content: {application/json: {schema: {$ref: '#/components/schemas/NotificationList'}}}}
+  /notifications/read:
+    post:
+      tags: [account]
+      description: Owner-only, owner CSRF auth. Marks the given ids (up to 200) or all notifications read; send exactly one of ids and all=true (else 400 invalid_request). Ids that are not the caller's are ignored.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MarkReadRequest'}}}
+      responses:
+        '200': {description: Unread count after the change, content: {application/json: {schema: {$ref: '#/components/schemas/UnreadCount'}}}}
   /account/telegram:
     get:
       tags: [account]
@@ -2907,6 +2923,39 @@ components:
         csrf_token: {type: string}
         expires_at: {type: string, format: date-time}
         user: {$ref: '#/components/schemas/AccountView'}
+    NotificationView:
+      type: object
+      additionalProperties: false
+      required: [id, project_id, kind, data, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        project_id: {type: string, format: uuid}
+        kind: {type: string, enum: [run_completed, run_failed, run_needs_input, run_waiting_approval, digest_ready]}
+        run_id: {type: [string, 'null'], format: uuid}
+        data:
+          type: object
+          description: 'Facts for the sentence and link only: operation, session_id, job_revision_id, job_title, job_company, cv_id, practice_set_id, saved_search_id, saved_search_name, count.'
+        created_at: {type: string, format: date-time}
+        read_at: {type: [string, 'null'], format: date-time}
+    NotificationList:
+      type: object
+      additionalProperties: false
+      required: [items, unread_count]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/NotificationView'}}
+        unread_count: {type: integer}
+    UnreadCount:
+      type: object
+      additionalProperties: false
+      required: [unread_count]
+      properties:
+        unread_count: {type: integer}
+    MarkReadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        ids: {type: [array, 'null'], items: {type: string, format: uuid}, maxItems: 200}
+        all: {type: boolean, default: false}
     TelegramStatusView:
       type: object
       additionalProperties: false

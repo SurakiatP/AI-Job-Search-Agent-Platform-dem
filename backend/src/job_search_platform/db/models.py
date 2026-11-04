@@ -797,6 +797,23 @@ class ResumeTheme(Base):
     __table_args__ = (UniqueConstraint("owner_id", "name", name="uq_resume_themes_owner_name"),)
 
 
+class Notification(Base):
+    """In-app notification of one user: a finished/failed/waiting run or a saved-search digest. `data` holds only link and sentence facts."""
+    __tablename__ = "notifications"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("runs.id", ondelete="CASCADE"))
+    data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        Index("ix_notifications_user_created", "user_id", text("created_at DESC")),
+        Index("uq_notifications_run_kind", "run_id", "kind", unique=True, postgresql_where=text("run_id IS NOT NULL")),
+    )
+
+
 PRACTICE_SECTIONS = ("intro", "behavioral", "situational", "technical", "cv_deep_dive", "gaps", "company", "logistics")
 
 
