@@ -48,7 +48,7 @@ export function ProjectSidebar({ projects = [], projectId, sessionId, onNavigate
   const inside = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const base = `/app/projects/${projectId}`;
   return <div className="flex min-w-0 flex-1 flex-col gap-4 p-3">
-    <div className="flex min-w-0 items-center justify-between gap-2 px-1 pt-1"><div className="flex min-w-0 items-center gap-2"><HomeLink compact onClick={onNavigate} /><span className="font-heading text-lg font-medium tracking-normal">Job Search</span></div><div className="flex shrink-0 items-center gap-1"><LanguageToggle />{toggle}</div></div>
+    <div className="flex min-w-0 items-center justify-between gap-2 px-1 pt-1"><div className="flex min-w-0 items-center gap-2"><HomeLink compact onClick={onNavigate} /><span className="flex min-w-0 flex-col items-start gap-0.5"><span className="font-heading text-lg font-medium leading-none tracking-normal">Job Search</span><span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs font-medium leading-none text-accent-foreground">{t('workspace.userBadge')}</span></span></div><div className="flex shrink-0 items-center gap-1"><LanguageToggle />{toggle}</div></div>
     {projectId && <ProjectSwitcher projects={projects} projectId={projectId} sessionId={sessionId} onReload={onReload} onNavigate={onNavigate} />}
     <nav aria-label={t('navigation')}><ul className="grid min-w-0 gap-0.5">{projectId
       ? navEntries.map(([section, icon, key, stage]) => <li className="min-w-0" key={section}><NavItem to={`${base}/${section}`} icon={icon} stage={stage} active={inside(`${base}/${section}`) || (section === 'applications' && inside(`${base}/jobs`))} onNavigate={onNavigate}>{t(key)}</NavItem></li>)

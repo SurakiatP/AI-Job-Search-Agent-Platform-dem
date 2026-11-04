@@ -315,3 +315,14 @@ test('legacy DOC files are rejected before upload with a localized error', async
   await expect(page.getByRole('alert')).toHaveText('Choose a PDF, DOCX or TXT file.');
   expect(uploadRequests).toBe(0);
 });
+
+test('the user sidebar names the account type under the logo and the logo goes home', async ({ page }) => {
+  await useSyntheticApplication(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`/app/projects/${projectId}`);
+  const sidebar = page.locator('aside').first();
+  await expect(sidebar.getByText('ผู้ใช้', { exact: true })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'หน้าแรก' })).toHaveAttribute('href', '/');
+  await toggleLanguage(page);
+  await expect(sidebar.getByText('User', { exact: true })).toBeVisible();
+});
