@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger, Boolean, CheckConstraint, DateTime, Float, ForeignKey, ForeignKeyConstraint,
-    Index, Integer, JSON, LargeBinary, String, Text, UniqueConstraint,
+    Index, Integer, JSON, LargeBinary, Numeric, String, Text, UniqueConstraint,
     Uuid, func, text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -30,6 +31,8 @@ class User(Base):
     avatar_image: Mapped[bytes | None] = mapped_column(LargeBinary)
     avatar_mime: Mapped[str | None] = mapped_column(String(20))
     avatar_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    admin_prefs: Mapped[dict | None] = mapped_column(JSONB)  # which Overview widgets this admin shows
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     __table_args__ = (
         CheckConstraint("email = lower(email) AND email LIKE '%_@_%'", name="ck_users_email"),
@@ -872,3 +875,92 @@ class InterviewAttempt(Base):
         CheckConstraint("char_length(answer) BETWEEN 1 AND 4000", name="ck_interview_attempts_answer"),
         Index("ix_interview_attempts_question", "question_id", "created_at"),
     )
+
+
+class AdminAuditLog(Base):
+    """Append-only record of every admin action. `detail` never holds personal content. A trigger rejects UPDATE and DELETE."""
+    __tablename__ = "admin_audit_log"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_id: Mapped[str | None] = mapped_column(String(64))
+    detail: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (Index("ix_admin_audit_created", text("created_at DESC"), text("id DESC")),)
+
+
+class LlmCall(Base):
+    """One model call with the price used at that moment, so later price changes never rewrite history."""
+    __tablename__ = "llm_calls"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("runs.id", ondelete="SET NULL"))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    operation: Mapped[str] = mapped_column(String(32), nullable=False)
+    model: Mapped[str] = mapped_column(String(200), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    cached_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    api_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    price_in: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))  # USD per 1M tokens
+    price_out: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    price_cache: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    price_source: Mapped[str | None] = mapped_column(String(16))
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(14, 8))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (
+        CheckConstraint("price_source IS NULL OR price_source IN ('openrouter','litellm','manual')", name="ck_llm_calls_price_source"),
+        Index("ix_llm_calls_created_at", "created_at"),
+        Index("ix_llm_calls_run_id", "run_id"),
+    )
+
+
+class ModelPrice(Base):
+    __tablename__ = "model_prices"
+    model: Mapped[str] = mapped_column(String(200), primary_key=True)
+    price_in: Mapped[Decimal] = mapped_column(Numeric(14, 6), nullable=False)
+    price_out: Mapped[Decimal] = mapped_column(Numeric(14, 6), nullable=False)
+    price_cache: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    is_free: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    official_available: Mapped[dict | None] = mapped_column(JSONB)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    __table_args__ = (CheckConstraint("source IN ('openrouter','litellm','manual')", name="ck_model_prices_source"),)
+
+
+class BenchmarkRun(Base):
+    __tablename__ = "benchmark_runs"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    operation: Mapped[str] = mapped_column(String(32), nullable=False)
+    model: Mapped[str] = mapped_column(String(200), nullable=False)
+    effort: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued", server_default="queued")
+    cases: Mapped[list | None] = mapped_column(JSONB)
+    summary: Mapped[dict | None] = mapped_column(JSONB)
+    verdict: Mapped[str | None] = mapped_column(String(8))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        CheckConstraint("status IN ('queued','running','done','failed')", name="ck_benchmark_runs_status"),
+        CheckConstraint("verdict IS NULL OR verdict IN ('green','red','na')", name="ck_benchmark_runs_verdict"),
+        Index("ix_benchmark_runs_operation", "operation", "started_at"),
+    )
+
+
+class TaskModelSetting(Base):
+    """Model and reasoning effort the executor uses for one task; env AI_MODEL_<TASK> is the fallback."""
+    __tablename__ = "task_model_settings"
+    operation: Mapped[str] = mapped_column(String(32), primary_key=True)
+    model: Mapped[str] = mapped_column(String(200), nullable=False)
+    effort: Mapped[str] = mapped_column(String(16), nullable=False)
+    benchmark_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("benchmark_runs.id", ondelete="SET NULL"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+
+
+class HealthProbe(Base):
+    __tablename__ = "health_probes"
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    components: Mapped[dict] = mapped_column(JSONB, nullable=False)

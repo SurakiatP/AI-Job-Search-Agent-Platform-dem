@@ -16,6 +16,22 @@ import applicationsEn from '../locales/applications-workspace.en.json';
 import applicationsTh from '../locales/applications-workspace.th.json';
 import utilitiesEn from '../locales/utilities-workspace.en.json';
 import utilitiesTh from '../locales/utilities-workspace.th.json';
+import adminShellEn from '../locales/admin-shell.en.json';
+import adminShellTh from '../locales/admin-shell.th.json';
+import adminOverviewEn from '../locales/admin-overview.en.json';
+import adminOverviewTh from '../locales/admin-overview.th.json';
+import adminUsersEn from '../locales/admin-users.en.json';
+import adminUsersTh from '../locales/admin-users.th.json';
+import adminRunsEn from '../locales/admin-runs.en.json';
+import adminRunsTh from '../locales/admin-runs.th.json';
+import adminUsageEn from '../locales/admin-usage.en.json';
+import adminUsageTh from '../locales/admin-usage.th.json';
+import adminModelsEn from '../locales/admin-models.en.json';
+import adminModelsTh from '../locales/admin-models.th.json';
+import adminSystemEn from '../locales/admin-system.en.json';
+import adminSystemTh from '../locales/admin-system.th.json';
+import adminAuditEn from '../locales/admin-audit.en.json';
+import adminAuditTh from '../locales/admin-audit.th.json';
 import { DraftProvider } from './drafts';
 import { readPreference, savePreference, ThemeProvider } from './theme';
 
@@ -28,7 +44,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     const instance = i18next.createInstance();
     void instance.init({
       lng: locale, fallbackLng: 'th', fallbackNS: 'common', initAsync: false,
-      resources: { th: { common: th, settings: settingsTh, searchWorkspace: searchTh, sessionWorkspace: sessionTh, materialsWorkspace: materialsTh, applicationsWorkspace: applicationsTh, utilitiesWorkspace: utilitiesTh }, en: { common: en, settings: settingsEn, searchWorkspace: searchEn, sessionWorkspace: sessionEn, materialsWorkspace: materialsEn, applicationsWorkspace: applicationsEn, utilitiesWorkspace: utilitiesEn } },
+      resources: { th: { common: th, settings: settingsTh, searchWorkspace: searchTh, sessionWorkspace: sessionTh, materialsWorkspace: materialsTh, applicationsWorkspace: applicationsTh, utilitiesWorkspace: utilitiesTh, 'admin-shell': adminShellTh, 'admin-overview': adminOverviewTh, 'admin-users': adminUsersTh, 'admin-runs': adminRunsTh, 'admin-usage': adminUsageTh, 'admin-models': adminModelsTh, 'admin-system': adminSystemTh, 'admin-audit': adminAuditTh }, en: { common: en, settings: settingsEn, searchWorkspace: searchEn, sessionWorkspace: sessionEn, materialsWorkspace: materialsEn, applicationsWorkspace: applicationsEn, utilitiesWorkspace: utilitiesEn, 'admin-shell': adminShellEn, 'admin-overview': adminOverviewEn, 'admin-users': adminUsersEn, 'admin-runs': adminRunsEn, 'admin-usage': adminUsageEn, 'admin-models': adminModelsEn, 'admin-system': adminSystemEn, 'admin-audit': adminAuditEn } },
       defaultNS: 'common', interpolation: { escapeValue: false },
     });
     return instance;

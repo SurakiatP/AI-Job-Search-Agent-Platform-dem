@@ -83,9 +83,12 @@ def _digest(token: str) -> bytes:
 
 
 def is_admin(user: User) -> bool:
-    """Operator access comes only from ADMIN_EMAILS (comma-separated); the address must be verified and enabled."""
+    """Operator access: the users.is_admin flag, or the address in ADMIN_EMAILS (comma-separated, fallback for older
+    deployments). Either way the account must be verified and enabled."""
+    if user.email_verified_at is None or user.disabled_at is not None:
+        return False
     allowed = {item.strip().lower() for item in os.environ.get("ADMIN_EMAILS", "").split(",") if item.strip()}
-    return user.email_verified_at is not None and user.disabled_at is None and user.email.lower() in allowed
+    return bool(user.is_admin) or user.email.lower() in allowed
 
 
 def require_admin(sessions, user_id: UUID | None) -> None:

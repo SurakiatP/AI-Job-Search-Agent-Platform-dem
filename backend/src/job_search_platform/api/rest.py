@@ -85,6 +85,7 @@ def _http_error(error: ServiceError) -> JSONResponse:
         "invalid_token": 400, "invalid_code": 400, "invalid_image": 422, "weak_password": 422, "confirmation_mismatch": 422, "invalid_email": 422,
         "saved_search_limit": 409, "invalid_webhook_url": 422, "webhook_limit": 409, "delivery_not_dead": 409, "saved_search_name_taken": 409, "mail_unavailable": 503,
         "telegram_disabled": 404, "telegram_not_linked": 409, "telegram_unavailable": 503,
+        "admin_target_forbidden": 403, "benchmark_required": 409, "benchmark_busy": 409, "price_invalid": 422,
         "draft_conflict": 409, "theme_invalid": 422, "theme_in_use": 409, "theme_limit": 409, "resume_invalid": 422, "resume_incomplete": 422, "render_failed": 502,
     }.get(code, 400)
     fields = {key: value for key, value in (error.fields or {}).items() if key in SAFE_FIELDS and isinstance(value, str)}

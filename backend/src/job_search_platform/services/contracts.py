@@ -864,3 +864,378 @@ class ErrorView(DTO):
     retryable: bool
     fields: dict[str, str] | None = None
     correlation_id: UUID
+
+
+# ---- Admin console (/v1/admin/*). Metadata only (spec D5): no CV, job, chat, document, input or result content. ----
+# Models used as both request and response carry no defaults, so OpenAPI keeps one schema for each.
+AdminRange = Literal["1m", "5m", "10m", "15m", "30m", "1h", "4h", "10h", "7d", "30d", "90d", "all"]
+AdminMetric = Literal["runs", "active_users", "failure_rate", "cost_usd"]
+AdminEffort = Literal["none", "minimal", "low", "medium", "high", "default"]
+AdminHealthState = Literal["ok", "down"]
+AdminPriceSource = Literal["openrouter", "litellm", "manual"]
+_ModelId = Annotated[str, StringConstraints(min_length=1, max_length=160)]
+_Price = Annotated[float, Field(ge=0)]
+
+
+class AdminKpi(DTO):
+    value: float
+    previous: float | None
+
+
+class AdminKpis(DTO):
+    runs: AdminKpi
+    active_users: AdminKpi
+    failure_rate: AdminKpi
+    cost_usd: AdminKpi
+    cost_has_manual: bool
+
+
+class AdminSeriesPoint(DTO):
+    start: datetime
+    runs: int
+    failures: int
+    active_users: int
+    cost_usd: float
+
+
+class AdminAttention(DTO):
+    kind: Literal["failed_runs", "health_down", "ingest_partial", "ingest_failed", "dead_webhooks"]
+    severity: Literal["bad", "warn"]
+    title_key: str
+    params: dict[str, str | int | float]
+    target: str
+
+
+class AdminHealthComponents(DTO):
+    postgres: AdminHealthState
+    object_store: AdminHealthState
+    llm_gateway: AdminHealthState
+    sandbox: AdminHealthState
+
+
+class AdminHealth(DTO):
+    components: AdminHealthComponents
+
+
+class AdminSpeed(DTO):
+    within_30s_ratio: float | None
+    target: float
+
+
+class AdminTopTask(DTO):
+    operation: str
+    runs: int
+    failure_rate: float
+    p50_seconds: float | None
+    cost_usd: float
+
+
+class AdminModelCost(DTO):
+    model: str
+    calls: int
+    cost_usd: float
+    has_manual: bool
+
+
+class AdminAuditEntry(DTO):
+    id: UUID
+    created_at: datetime
+    actor_email: str
+    action: str
+    target_type: Literal["user", "run", "model", "task", "benchmark", "webhook"] | None
+    target_id: str | None
+    detail: dict[str, Any]
+
+
+class AdminAuditPage(DTO):
+    items: list[AdminAuditEntry]
+    next_cursor: str | None
+
+
+class AdminOverview(DTO):
+    range: AdminRange
+    bucket_seconds: int
+    generated_at: datetime
+    compare: bool
+    kpis: AdminKpis
+    series: list[AdminSeriesPoint]
+    previous_series: list[AdminSeriesPoint]
+    attention: list[AdminAttention]
+    health: AdminHealth
+    weekday: Annotated[list[float], Field(min_length=7, max_length=7)]
+    speed: AdminSpeed
+    top_tasks: list[AdminTopTask]
+    cost_by_model: list[AdminModelCost]
+    activity: Annotated[list[AdminAuditEntry], Field(max_length=20)]
+
+
+class AdminBucketPart(DTO):
+    operation: str
+    value: float
+
+
+class AdminBucket(DTO):
+    range: AdminRange
+    metric: AdminMetric
+    start: datetime
+    end: datetime
+    value: float
+    parts: list[AdminBucketPart]
+
+
+class AdminPrefs(DTO):
+    widgets: Annotated[list[Annotated[str, StringConstraints(pattern=r"^[a-z_]{1,40}$")]], Field(max_length=20)]
+    thb_rate: Annotated[float, Field(gt=0, le=1000)]
+
+
+class AdminUserItem(DTO):
+    id: UUID
+    short_id: str
+    email: str
+    status: Literal["active", "suspended", "deleting"]
+    email_verified: bool
+    is_admin: bool
+    created_at: datetime
+    last_seen_at: datetime | None
+    runs_in_range: int
+
+
+class AdminUserPage(DTO):
+    items: list[AdminUserItem]
+    next_cursor: str | None
+
+
+class AdminUserDetail(DTO):
+    user: AdminUserItem
+    project_count: int
+    cv_count: int
+    run_count: int
+
+
+class AdminUserDelete(DTO):
+    confirm_email: Annotated[str, StringConstraints(max_length=320)]
+
+
+class AdminRunEvent(DTO):
+    sequence: int
+    event_type: str
+    step: str | None
+    status: str | None
+    message_key: str | None
+    model: str | None
+    latency_ms: int | None
+    input_tokens: int | None
+    output_tokens: int | None
+    created_at: datetime
+
+
+class AdminLlmCall(DTO):
+    operation: str
+    model: str
+    input_tokens: int
+    output_tokens: int
+    cached_tokens: int
+    api_calls: int
+    latency_ms: int
+    price_source: AdminPriceSource | None
+    cost_usd: float | None
+    created_at: datetime
+
+
+class AdminRunItem(DTO):
+    id: UUID
+    user_id: UUID | None
+    user_short_id: str | None
+    operation: str
+    status: RunStatus
+    model: str | None
+    effort: str | None
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    duration_seconds: float | None
+    input_tokens: int
+    output_tokens: int
+    cached_tokens: int
+    cost_usd: float | None
+    cost_is_manual: bool
+    failure_key: str | None
+    retry_of_id: UUID | None
+
+
+class AdminRunPage(DTO):
+    items: list[AdminRunItem]
+    next_cursor: str | None
+
+
+class AdminRunDetail(DTO):
+    run: AdminRunItem
+    events: list[AdminRunEvent]
+    calls: list[AdminLlmCall]
+
+
+class AdminUsageRow(DTO):
+    key: str
+    requests: int
+    input_tokens: int
+    output_tokens: int
+    cached_tokens: int
+    cost_usd: float | None
+    cost_per_request_usd: float | None
+    has_manual: bool
+    uncosted_requests: int
+
+
+class AdminUsage(DTO):
+    range: AdminRange
+    group_by: Literal["task", "model", "day", "user"]
+    generated_at: datetime
+    totals: AdminUsageRow
+    rows: list[AdminUsageRow]
+
+
+class AdminModelCatalogItem(DTO):
+    id: str
+    name: str
+    price_in: float | None
+    price_out: float | None
+    price_cache: float | None
+    context_length: int | None
+    registered: bool
+
+
+class AdminOfficialPrice(DTO):
+    price_in: float
+    price_out: float
+    price_cache: float | None
+    source: Literal["openrouter", "litellm"]
+
+
+class AdminRegisteredModel(DTO):
+    model: str
+    price_in: float | None
+    price_out: float | None
+    price_cache: float | None
+    price_source: AdminPriceSource | None
+    is_free: bool
+    official_price: AdminOfficialPrice | None
+    updated_at: datetime
+    used_by: list[str]
+
+
+class AdminModelCreate(DTO):
+    model: _ModelId
+    price_in: _Price | None = None
+    price_out: _Price | None = None
+    price_cache: _Price | None = None
+    is_free: bool = False
+
+
+class AdminModelPrice(DTO):
+    model: _ModelId
+    price_in: _Price
+    price_out: _Price
+    price_cache: _Price | None = None
+    is_free: bool = False
+
+
+class AdminModelRef(DTO):
+    model: _ModelId
+
+
+class AdminTaskSetting(DTO):
+    operation: str
+    model: str
+    effort: AdminEffort
+    source: Literal["stored", "env"]
+    benchmark_id: UUID | None
+    quality: float | None
+    cost_per_call_usd: float | None
+    cost_has_manual: bool
+    updated_at: datetime | None
+    updated_by: str | None
+
+
+class AdminTaskUpdate(DTO):
+    model: _ModelId
+    effort: AdminEffort
+    benchmark_id: UUID | None = None
+    confirm: Annotated[str, StringConstraints(max_length=80)] | None = None
+
+
+class AdminBenchmarkCreate(DTO):
+    operation: Annotated[str, StringConstraints(max_length=60)]
+    model: _ModelId
+    effort: AdminEffort
+
+
+class AdminBenchmarkCase(DTO):
+    id: str
+    state: Literal["pending", "running", "ok", "bad"]
+
+
+class AdminBenchmarkSummary(DTO):
+    quality: Annotated[float, Field(ge=0, le=100)]
+    p50_seconds: float
+    p95_seconds: float
+    cost_per_call_usd: float | None
+    cost_has_manual: bool
+    errors: int
+    truncations: int
+
+
+class AdminBenchmark(DTO):
+    id: UUID
+    operation: str
+    model: str
+    effort: AdminEffort
+    status: Literal["queued", "running", "done", "failed"]
+    cases: list[AdminBenchmarkCase]
+    summary: AdminBenchmarkSummary | None
+    baseline: AdminBenchmarkSummary | None
+    verdict: Literal["green", "red", "na"]
+    created_by: str
+    started_at: datetime | None
+    finished_at: datetime | None
+
+
+class AdminProbe(DTO):
+    checked_at: datetime
+    components: AdminHealthComponents
+
+
+class AdminIngestRun(DTO):
+    board: str
+    at: datetime
+    status: Literal["complete", "partial", "failed"]
+    jobs_total: int
+    jobs_new: int
+    error_code: str | None
+
+
+class AdminWebhookCounts(DTO):
+    pending: int
+    delivered: int
+    dead: int
+
+
+class AdminSystem(DTO):
+    generated_at: datetime
+    health: AdminHealth
+    probes: list[AdminProbe]
+    ingest: list[AdminIngestRun]
+    webhooks: AdminWebhookCounts
+    gateway: GatewayStatusView
+    tools: ToolsView
+
+
+class AdminWebhookDelivery(DTO):
+    id: UUID
+    user_short_id: str | None
+    host: str | None
+    event_type: str
+    status: Literal["pending", "delivered", "dead"]
+    attempts: int
+    last_status_code: int | None
+    created_at: datetime
+    delivered_at: datetime | None

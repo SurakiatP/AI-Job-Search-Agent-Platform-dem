@@ -1,0 +1,20 @@
+{
+  "brand": "Job Search",
+  "badge": "Admin",
+  "role": "Administrator",
+  "nav": {
+    "label": "Admin navigation",
+    "overview": "Overview",
+    "users": "Users",
+    "runs": "AI runs",
+    "usage": "Usage and cost",
+    "models": "AI models",
+    "system": "System",
+    "audit": "Audit log"
+  },
+  "group": { "people": "Users and runs", "ai": "AI", "system": "System" },
+  "menu": "Menu",
+  "menuTitle": "Admin menu",
+  "close": "Close menu",
+  "comingSoon": "This page is not built yet."
+}
