@@ -92,10 +92,10 @@ export function EvaluationReportView({ report }: { report: EvaluationReport }) {
   const { t } = useTranslation('sessionWorkspace');
   const icon = 'size-4 shrink-0';
   return <div className="grid gap-6" data-testid="ai-report">
-    <div className="grid max-w-[70ch] gap-1 rounded-lg bg-ai-soft p-4 sm:p-5">
-      <AiLabel className="mb-2" />
+    <div className="grid gap-3 rounded-lg bg-ai-soft p-4 sm:p-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-x-8">
+      <AiLabel className="lg:col-span-2" />
       <p className="text-lg font-semibold leading-snug [text-wrap:balance]">{report.verdict}</p>
-      <p className="text-muted-foreground">{report.summary}</p>
+      <p className="max-w-[75ch] text-muted-foreground">{report.summary}</p>
     </div>
     {!!report.requirements?.length && <Requirements rows={report.requirements} />}
     <div className="grid gap-6 md:grid-cols-2 md:gap-8">

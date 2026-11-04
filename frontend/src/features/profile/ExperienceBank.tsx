@@ -40,27 +40,27 @@ function FactForm({ c, initial, submitLabel, onSubmit, onCancel }: { c: Copy; in
   const [draft, setDraft] = useState(initial);
   const [busy, setBusy] = useState(false);
   const set = (key: keyof Draft) => (event: { target: { value: string } }) => setDraft(d => ({ ...d, [key]: event.target.value }));
-  const text = (key: keyof Draft, label: string, max: number, type = 'text') => <label className="mui-field text-sm"><Input type={type} placeholder=" " value={draft[key] as string} maxLength={max} onChange={set(key)} /><span className="mui-label">{label} <span className="text-xs">{c.optional}</span></span></label>;
-  const area = (key: keyof Draft, label: string, max: number) => <label className="mui-field text-sm sm:col-span-2"><Textarea rows={3} placeholder=" " value={draft[key] as string} maxLength={max} onChange={set(key)} /><span className="mui-label">{label} <span className="text-xs">{c.optional}</span></span></label>;
+  const text = (key: keyof Draft, label: string, max: number, type = 'text') => <label className="grid content-start gap-2 text-sm font-medium"><span>{label}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Input type={type} value={draft[key] as string} maxLength={max} onChange={set(key)} /></label>;
+  const area = (key: keyof Draft, label: string, max: number) => <label className="grid content-start gap-2 text-sm font-medium sm:col-span-2"><span>{label}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Textarea rows={3} value={draft[key] as string} maxLength={max} onChange={set(key)} /></label>;
   return <form className="grid gap-3 sm:grid-cols-2" onSubmit={async event => { event.preventDefault(); if (!draft.text.trim() || busy) return; setBusy(true); try { await onSubmit(draft); setDraft(initial); } catch { /* the parent shows the error; keep the draft */ } finally { setBusy(false); } }}>
-    <label className="grid gap-2 text-sm font-medium sm:col-span-2">{c.fact}<Input value={draft.text} maxLength={1000} onChange={set('text')} /></label>
-    <label className="grid gap-2 text-sm font-medium"><span>{c.kind}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Select value={draft.kind} onChange={set('kind')}>{KINDS.map(k => <option key={k} value={k}>{c.kinds[k]}</option>)}</Select></label>
-    {draft.kind === 'skill' && <label className="grid gap-2 text-sm font-medium"><span>{c.skillGroup}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Select value={draft.skill_group} onChange={set('skill_group')}><option value="">{c.notSet}</option>{SKILL_GROUPS.map(g => <option key={g} value={g}>{c.skillGroups[g]}</option>)}</Select></label>}
+    <label className="grid content-start gap-2 text-sm font-medium sm:col-span-2">{c.fact}<Input value={draft.text} maxLength={1000} onChange={set('text')} /></label>
+    <label className="grid content-start gap-2 text-sm font-medium"><span>{c.kind}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Select value={draft.kind} onChange={set('kind')}>{KINDS.map(k => <option key={k} value={k}>{c.kinds[k]}</option>)}</Select></label>
+    {draft.kind === 'skill' && <label className="grid content-start gap-2 text-sm font-medium"><span>{c.skillGroup}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Select value={draft.skill_group} onChange={set('skill_group')}><option value="">{c.notSet}</option>{SKILL_GROUPS.map(g => <option key={g} value={g}>{c.skillGroups[g]}</option>)}</Select></label>}
     {text('role', draft.kind === 'education' ? c.degree : c.role, 200)}
     {text('organization', draft.kind === 'education' ? c.institution : c.org, 200)}
     {text('period', c.period, 60)}
     <details className="rounded-lg border bg-muted/30 p-3 sm:col-span-2" open={hasExtra(initial)}>
       <summary className="cursor-pointer text-sm font-medium">{c.more}</summary>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <label className="grid gap-2 text-sm font-medium"><span>{c.employment}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Select value={draft.employment_type} onChange={set('employment_type')}><option value="">{c.notSet}</option>{EMPLOYMENT.map(t => <option key={t} value={t}>{c.types[t]}</option>)}</Select></label>
+        <label className="grid content-start gap-2 text-sm font-medium"><span>{c.employment}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Select value={draft.employment_type} onChange={set('employment_type')}><option value="">{c.notSet}</option>{EMPLOYMENT.map(t => <option key={t} value={t}>{c.types[t]}</option>)}</Select></label>
         {text('location', c.location, 200)}
         {text('industry', c.industry, 200)}
         {text('start_date', c.start, 7, 'month')}
-        <label className="grid gap-2 text-sm font-medium"><span>{c.end}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Input type="month" value={draft.is_current ? '' : draft.end_date} disabled={draft.is_current} onChange={set('end_date')} /></label>
-        <label className="flex min-h-11 lg:min-h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-5 shrink-0 accent-primary" checked={draft.is_current} onChange={event => setDraft(d => ({ ...d, is_current: event.target.checked, end_date: event.target.checked ? '' : d.end_date }))} />{c.current}</label>
+        <label className="grid content-start gap-2 text-sm font-medium"><span>{c.end}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Input type="month" value={draft.is_current ? '' : draft.end_date} disabled={draft.is_current} onChange={set('end_date')} /></label>
+        <label className="flex min-h-11 lg:min-h-10 items-center gap-2 self-end text-sm"><input type="checkbox" className="size-5 shrink-0 accent-primary" checked={draft.is_current} onChange={event => setDraft(d => ({ ...d, is_current: event.target.checked, end_date: event.target.checked ? '' : d.end_date }))} />{c.current}</label>
         {area('responsibilities', c.duties, 2000)}
         {area('achievements', c.wins, 2000)}
-        <label className="grid gap-2 text-sm font-medium sm:col-span-2"><span>{c.skills}<span className="font-normal text-muted-foreground">{c.optional}</span></span><Input value={draft.skills_used} maxLength={500} onChange={set('skills_used')} /></label>
+        <label className="grid content-start gap-2 text-sm font-medium sm:col-span-2"><span>{c.skills}<span className="font-normal text-muted-foreground"> {c.optional}</span></span><Input value={draft.skills_used} maxLength={500} onChange={set('skills_used')} /></label>
       </div>
     </details>
     <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">{onCancel && <Button type="button" variant="outline" onClick={onCancel}>{c.cancel}</Button>}<Button type="submit" busy={busy} disabled={busy || !draft.text.trim()}>{submitLabel}</Button></div>

@@ -52,6 +52,14 @@ export type Match = { score_percent: number; matched: string[]; missing: string[
 type Facets = { total: number; categories: Facet[]; cities: Facet[]; seniority?: Facet[]; employment_type?: Facet[]; company_type?: Facet[]; skills?: Facet[]; thai_postings?: number; new_7d?: number };
 type Page = { items: JobSearchItem[]; total: number; limit?: number; pool?: number; offset: number; ai?: AiState; hidden_count?: number };
 
+function fileKind(filename?: string, mime?: string) {
+  const ext = filename?.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf' || mime === 'application/pdf') return 'PDF';
+  if (ext === 'docx' || mime?.includes('wordprocessingml')) return 'Word';
+  if (ext === 'txt' || mime === 'text/plain') return 'TXT';
+  return ext ? ext.toUpperCase() : 'CV';
+}
+
 const PAGE_SIZE = 20;
 const POOL_SIZE = 100;
 // Best match first, then newest; postings with too few recognisable skills (match null) go last.
@@ -595,7 +603,7 @@ export function SearchPage() {
       <div className="grid min-w-0 gap-2 sm:w-72">
         <Label htmlFor="match-cv">{c.cvLabel}</Label>
         <Select id="match-cv" value={cv?.id ?? ''} onChange={e => setCvPick(e.target.value)}>
-          {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}</option>)}
+          {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision} · {fileKind(item.latest_revision?.original_filename, item.latest_revision?.mime_type)}</option>)}
         </Select>
       </div>
       {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="outline" />}
