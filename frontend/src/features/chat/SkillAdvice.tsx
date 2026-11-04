@@ -13,17 +13,17 @@ const mentions = (text: string, skill: string) => /^[\x00-\x7f]+$/.test(skill)
 
 const copy = {
   th: {
-    title: 'คำแนะนำจากเอเจนต์', intro: 'เทียบทักษะที่ประกาศต้องการกับ CV และคลังประสบการณ์ของคุณ ไม่เดา และไม่เพิ่มสิ่งที่คุณไม่มี',
-    canAdd: 'เพิ่มลง CV ได้', canAddHint: 'มีหลักฐานในคลังประสบการณ์ของคุณแล้ว เอเจนต์ใส่ให้ได้ที่แท็บ "เตรียมเอกสาร"',
-    cannot: 'เพิ่มไม่ได้ เพราะไม่มีใน CV และประสบการณ์ของคุณ', cannotHint: 'ระบบจะไม่ใส่ทักษะที่คุณไม่มี ถ้าคุณมีทักษะเหล่านี้จริง ให้ไปเพิ่มในคลังประสบการณ์ แล้วเอเจนต์จะใส่ใน CV ให้',
-    bank: 'ไปที่คลังประสบการณ์', none: 'ทักษะที่ประกาศต้องการ มีใน CV ของคุณครบแล้ว', noBank: 'ยังไม่มีคลังประสบการณ์ให้เทียบ ทักษะที่ขาดทั้งหมดจึงยังเพิ่มไม่ได้จนกว่าจะมีหลักฐานจาก CV หรือที่คุณเพิ่มเอง',
+    title: 'คำแนะนำจากเอเจนต์', intro: 'เทียบทักษะที่ประกาศต้องการกับ CV และข้อเท็จจริงของคุณ ไม่เดา และไม่เพิ่มสิ่งที่คุณไม่มี',
+    canAdd: 'เพิ่มลง CV ได้', canAddHint: 'มีหลักฐานในข้อเท็จจริงของคุณแล้ว เอเจนต์ใส่ให้ได้ที่แท็บ "เตรียมเอกสาร"',
+    cannot: 'เพิ่มไม่ได้ เพราะไม่มีใน CV และประสบการณ์ของคุณ', cannotHint: 'ระบบจะไม่ใส่ทักษะที่คุณไม่มี ถ้าคุณมีทักษะเหล่านี้จริง ให้ไปเพิ่มในข้อเท็จจริงของฉัน แล้วเอเจนต์จะใส่ใน CV ให้',
+    bank: 'ไปที่ข้อเท็จจริงของฉัน', none: 'ทักษะที่ประกาศต้องการ มีใน CV ของคุณครบแล้ว', noBank: 'ยังไม่มีข้อเท็จจริงให้เทียบ ทักษะที่ขาดทั้งหมดจึงยังเพิ่มไม่ได้จนกว่าจะมีหลักฐานจาก CV หรือที่คุณเพิ่มเอง',
     evidence: (n: number) => `มีหลักฐาน ${n} รายการ`,
   },
   en: {
-    title: 'Agent advice', intro: 'The skills this posting asks for, compared with your CV and experience bank. No guessing, and nothing you do not have gets added.',
-    canAdd: 'Can be added to your CV', canAddHint: 'Your experience bank already backs these. The agent can add them from the "Prepare documents" tab.',
-    cannot: 'Cannot be added: not in your CV or experience', cannotHint: 'The system will not add a skill you do not have. If you do have these skills, add them to your experience bank and the agent can put them in your CV.',
-    bank: 'Open experience bank', none: 'Your CV already covers every skill the posting asks for.', noBank: 'There is no experience bank to compare against yet, so none of the missing skills can be added until your CV or your own entries back them.',
+    title: 'Agent advice', intro: 'The skills this posting asks for, compared with your CV and facts. No guessing, and nothing you do not have gets added.',
+    canAdd: 'Can be added to your CV', canAddHint: 'Your facts already backs these. The agent can add them from the "Prepare documents" tab.',
+    cannot: 'Cannot be added: not in your CV or experience', cannotHint: 'The system will not add a skill you do not have. If you do have these skills, add them to your facts and the agent can put them in your CV.',
+    bank: 'Open My facts', none: 'Your CV already covers every skill the posting asks for.', noBank: 'There is no facts to compare against yet, so none of the missing skills can be added until your CV or your own entries back them.',
     evidence: (n: number) => `${n} ${n === 1 ? 'entry backs it' : 'entries back it'}`,
   },
 };

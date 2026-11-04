@@ -12,17 +12,17 @@ const th: Pages = {
     steps: [
       { title: 'อัปโหลดไฟล์ CV', body: 'รองรับ PDF, DOCX หรือวางเป็นข้อความ ไฟล์อยู่ในโปรเจกต์ของคุณเท่านั้น' },
       { title: 'แอปอ่านทักษะและประสบการณ์', body: 'ดูข้อความและทักษะที่อ่านได้จาก CV ได้ทันที เพื่อเช็กว่าอ่านถูกต้อง' },
-      { title: 'สกัดประสบการณ์ด้วย AI', body: 'กด "สกัดประสบการณ์จาก CV ด้วย AI" เพื่อสร้างคลังประสบการณ์ แล้วตรวจและแก้ไขข้อมูลเองได้' },
+      { title: 'ดึงประสบการณ์ด้วย AI', body: 'กด "ดึงประสบการณ์จาก CV ด้วย AI" เพื่อสร้างข้อเท็จจริงของฉัน แล้วตรวจและแก้ไขข้อมูลเองได้' },
       { title: 'CV แต่ละฉบับเก็บเป็นเวอร์ชัน', body: 'เมื่อมีการแก้ จะได้เวอร์ชันใหม่ ส่วนเวอร์ชันเดิมและ CV ต้นฉบับของคุณไม่ถูกแก้ไข' },
     ],
-    good: ['การสกัดประสบการณ์ใช้ AI จึงต้องตั้งค่าผู้ให้บริการ AI ก่อน', 'ระบบอาจส่งข้อมูล CV เท่าที่จำเป็นไปยังบริการ AI ภายนอก'],
-    note: 'เวลาเอเจนต์ปรับ CV ให้คุณ จะใช้ข้อเท็จจริงจากคลังประสบการณ์เท่านั้น',
+    good: ['การดึงประสบการณ์ใช้ AI จึงต้องตั้งค่าผู้ให้บริการ AI ก่อน', 'ระบบอาจส่งข้อมูล CV เท่าที่จำเป็นไปยังบริการ AI ภายนอก'],
+    note: 'เวลาเอเจนต์ปรับ CV ให้คุณ จะใช้ข้อเท็จจริงของฉันเท่านั้น',
   },
   'build-cv': {
     title: 'ไม่มี CV? สร้างในแอปได้เลย',
     lead: 'กรอกแบบฟอร์ม เลือกเทมเพลต แล้วดู PDF จริงระหว่างแก้ไข ไม่ต้องมีไฟล์มาก่อน',
     steps: [
-      { title: 'เริ่มจากฟอร์ม', body: 'ตั้งชื่อ CV แล้วเริ่มจากข้อมูลในคลังประสบการณ์ถ้ามี หรือเริ่มจากหน้าว่าง' },
+      { title: 'เริ่มจากฟอร์ม', body: 'ตั้งชื่อ CV แล้วเริ่มจากข้อมูลในข้อเท็จจริงของฉันถ้ามี หรือเริ่มจากหน้าว่าง' },
       { title: 'เลือกเทมเพลตและสีเน้น', body: 'มีเทมเพลต 6 แบบและสีเน้น 6 สี เทมเพลตสองคอลัมน์จะมีคำเตือนเรื่องระบบคัดกรองใบสมัคร (ATS)' },
       { title: 'จัดหัวข้อตามที่ต้องการ', body: 'เปิดหรือซ่อนหัวข้อ เรียงลำดับใหม่ได้ เทมเพลต Lotus, Teak และ Saffron ใส่รูปถ่ายได้' },
       { title: 'ดูตัวอย่าง PDF แล้วบันทึกเป็นเวอร์ชัน', body: 'ร่างบันทึกอัตโนมัติ เมื่อพอใจให้บันทึกเป็นเวอร์ชันใหม่ ใช้ประเมินงานได้ทันที' },
@@ -59,12 +59,12 @@ const th: Pages = {
     lead: 'สร้างชุดคำถามจากการประเมินงาน ซ้อมตอบ ทบทวนด้วยแฟลชการ์ด และขอความเห็นจาก AI',
     steps: [
       { title: 'สร้างชุดซ้อมจากการประเมิน', body: 'เปิดการประเมินงาน เลือกระดับ ส่วนที่จะซ้อม และจำนวนคำถาม รวมไม่เกิน 30 ข้อ' },
-      { title: 'คำถามตั้งจากข้อมูลของคุณ', body: 'AI เขียนคำถามจาก CV คลังประสบการณ์ และประกาศงานนั้น เช่น เล่าประสบการณ์ (STAR) สถานการณ์สมมติ และจุดที่ CV ยังขาด' },
+      { title: 'คำถามตั้งจากข้อมูลของคุณ', body: 'AI เขียนคำถามจาก CV ข้อเท็จจริงของฉัน และประกาศงานนั้น เช่น เล่าประสบการณ์ (STAR) สถานการณ์สมมติ และจุดที่ CV ยังขาด' },
       { title: 'ซ้อมตอบและขอความเห็น', body: 'พิมพ์คำตอบ แล้วให้ AI ให้คะแนน 1 ถึง 5 ตามโครงเรื่อง ความตรงกับงาน หลักฐาน ความชัดเจน และความเข้ากับบริษัท' },
       { title: 'ทบทวนความรู้ด้วยแฟลชการ์ด', body: 'พลิกการ์ด ตอบก่อนพลิกแล้วให้ตรวจ หรือทำเครื่องหมายว่าจำได้แล้ว/ยังไม่แม่น แล้วกลับมาทบทวนเฉพาะใบที่ยังไม่แม่น' },
       { title: 'สรุปผลและแผนเตรียมตัว', body: 'AI สรุปจุดแข็ง ทักษะที่ควรเพิ่ม และแผน จากคำตอบในชุดนั้น' },
     ],
-    good: ['คำตอบตัวอย่างใช้เฉพาะข้อเท็จจริงในคลังประสบการณ์ของคุณ ถ้ายังไม่พอ แอปจะบอกว่าไม่มีคำตอบตัวอย่าง', 'สร้างชุดซ้อมหนึ่งชุดใช้ 1 ครั้งจากโควตาซ้อม 60 ครั้งต่อวัน และแต่ละเซสชันเก็บได้สูงสุด 20 ชุด'],
+    good: ['คำตอบตัวอย่างใช้เฉพาะข้อเท็จจริงของคุณ ถ้ายังไม่พอ แอปจะบอกว่าไม่มีคำตอบตัวอย่าง', 'สร้างชุดซ้อมหนึ่งชุดใช้ 1 ครั้งจากโควตาซ้อม 60 ครั้งต่อวัน และแต่ละเซสชันเก็บได้สูงสุด 20 ชุด'],
     note: 'ความเห็นและสรุปเป็นค่าประมาณจาก AI ใช้ฝึกตัว ไม่ได้ทำนายโอกาสได้งาน และต้องตั้งค่าผู้ให้บริการ AI ก่อน',
   },
   draft: {
@@ -73,11 +73,11 @@ const th: Pages = {
     steps: [
       { title: 'เลือกสิ่งที่จะให้ร่าง', body: 'ร่างจดหมายสมัครงาน ข้อความสมัครงาน หรือปรับ CV ให้เข้ากับงาน เลือกภาษาของเอกสารได้' },
       { title: 'เลือกโหมดการปรับ CV', body: 'อัตโนมัติ: เอเจนต์ปรับและบันทึกเป็นเวอร์ชันใหม่ให้เลย  เลือกเอง: คุณบอกว่าอยากปรับอะไรมากแค่ไหน แล้วเลือกข้อเสนอก่อนบันทึก' },
-      { title: 'ตัวตรวจหลักฐานกันข้อมูลเกินจริง', body: 'ข้อเสนอที่อ้างสิ่งที่ไม่มีในคลังประสบการณ์ของคุณจะถูกปิดและเลือกไม่ได้' },
+      { title: 'ตัวตรวจหลักฐานกันข้อมูลเกินจริง', body: 'ข้อเสนอที่อ้างสิ่งที่ไม่มีในข้อเท็จจริงของคุณจะถูกปิดและเลือกไม่ได้' },
       { title: 'ตรวจก่อนใช้ทุกครั้ง', body: 'เอกสารแต่ละฉบับเก็บเป็นเวอร์ชัน คุณเปิดอ่านและเลือกใช้เอง' },
     ],
     good: ['ถ้างานต้องการทักษะที่คุณไม่มี แอปจะไม่เพิ่มให้ แต่จะบอกให้เพิ่มทักษะนั้นเมื่อคุณมีจริง', 'แอปไม่ส่งใบสมัครแทนคุณ'],
-    note: 'ไม่มีการเดาหรือแต่งข้อมูลเพิ่ม ทุกข้อความใน CV ที่ปรับต้องอ้างกลับไปที่ข้อเท็จจริงในคลังประสบการณ์ได้',
+    note: 'ไม่มีการเดาหรือแต่งข้อมูลเพิ่ม ทุกข้อความใน CV ที่ปรับต้องอ้างกลับไปที่ข้อเท็จจริงของฉันได้',
   },
   track: {
     title: 'ติดตามทุกใบสมัครไว้ที่เดียว',
@@ -124,17 +124,17 @@ const en: Pages = {
     steps: [
       { title: 'Upload your CV file', body: 'PDF, DOCX or pasted text. The file stays in your project only.' },
       { title: 'The app reads skills and experience', body: 'See the text and skills it read from your CV straight away, to check it was read correctly.' },
-      { title: 'Extract experience with AI', body: 'Press "Extract experience from CV with AI" to build your experience bank, then check and edit it yourself.' },
+      { title: 'Pull experience with AI', body: 'Press "Pull experience from CV with AI" to build your facts, then check and edit it yourself.' },
       { title: 'Each CV is kept as a version', body: 'Edits create a new version. Earlier versions and your original CV are never changed.' },
     ],
-    good: ['Extraction uses AI, so an AI provider must be set up first.', 'The CV data needed may be sent to an external AI service.'],
-    note: 'When the agent tailors your CV, it uses facts from your experience bank only.',
+    good: ['Pulling experience uses AI, so an AI provider must be set up first.', 'The CV data needed may be sent to an external AI service.'],
+    note: 'When the agent tailors your CV, it uses facts from your facts only.',
   },
   'build-cv': {
     title: 'No CV yet? Build one in the app',
     lead: 'Fill in a form, pick a template and see the real PDF while you edit. No file needed to start.',
     steps: [
-      { title: 'Start from a form', body: 'Name the CV and start from your experience bank if you have one, or from a blank page.' },
+      { title: 'Start from a form', body: 'Name the CV and start from your facts if you have one, or from a blank page.' },
       { title: 'Pick a template and accent', body: 'Six templates and six accent colours. Two-column templates carry a warning about applicant tracking systems (ATS).' },
       { title: 'Arrange the sections', body: 'Show, hide and reorder sections. The Lotus, Teak and Saffron templates can include a photo.' },
       { title: 'Preview the PDF, then save a version', body: 'The draft saves as you type. When you are happy, save it as a new version and use it to evaluate jobs.' },
@@ -171,12 +171,12 @@ const en: Pages = {
     lead: 'Create a question set from a job evaluation, practise answering, review with flashcards and get AI feedback.',
     steps: [
       { title: 'Create a set from an evaluation', body: 'Open a job evaluation, choose a level, the sections to practise and how many questions, up to 30 in all.' },
-      { title: 'Questions come from your own material', body: 'AI writes questions from your CV, experience bank and that posting: past experience (STAR), situational questions and the gaps in your CV.' },
+      { title: 'Questions come from your own material', body: 'AI writes questions from your CV, facts and that posting: past experience (STAR), situational questions and the gaps in your CV.' },
       { title: 'Answer and get feedback', body: 'Type an answer and ask AI to score it from 1 to 5 on structure, relevance, evidence, clarity and company fit.' },
       { title: 'Review knowledge with flashcards', body: 'Flip a card, answer before flipping and have it checked, or mark cards known or still learning and revisit only those.' },
       { title: 'A summary and a plan', body: 'AI sums up strengths, skills to build and a preparation plan from the answers in that set.' },
     ],
-    good: ['Example answers use only facts from your experience bank. When there is not enough, the app says there is no example.', 'A set uses 1 of 60 practice runs a day, and a session keeps up to 20 sets.'],
+    good: ['Example answers use only facts from your facts. When there is not enough, the app says there is no example.', 'A set uses 1 of 60 practice runs a day, and a session keeps up to 20 sets.'],
     note: 'Feedback and summaries are AI estimates for practice. They never predict your chances, and an AI provider must be set up first.',
   },
   draft: {
@@ -185,11 +185,11 @@ const en: Pages = {
     steps: [
       { title: 'Choose what to draft', body: 'A cover letter, an application message, or a CV tailored to the job. You choose the document language.' },
       { title: 'Choose a CV mode', body: 'Automatic: the agent tailors and saves a new version straight away. Manual: you say what to change and how much, then pick proposals before saving.' },
-      { title: 'An evidence check blocks overclaiming', body: 'A proposal that cites something not in your experience bank is blocked and cannot be picked.' },
+      { title: 'An evidence check blocks overclaiming', body: 'A proposal that cites something not in your facts is blocked and cannot be picked.' },
       { title: 'Review before any use', body: 'Each document is kept as a version. You open it and decide whether to use it.' },
     ],
     good: ['If a job needs a skill you do not have, the app will not add it. It tells you to add that skill once you really have it.', 'The app never submits an application for you.'],
-    note: 'Nothing is guessed or invented. Every line in a tailored CV must trace back to a fact in your experience bank.',
+    note: 'Nothing is guessed or invented. Every line in a tailored CV must trace back to a fact in your facts.',
   },
   track: {
     title: 'Track every application in one place',

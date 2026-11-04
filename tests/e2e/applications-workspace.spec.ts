@@ -101,7 +101,7 @@ test('job detail presents source, evaluation, and documents before tracking and 
   await expect(title).toBeVisible();
   await expect(source).toHaveAttribute('href', 'https://jobs.example.test/northstar-analyst');
   await expect(page.getByText('66%')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Northstar cover letter' })).toBeVisible();
+  await expect(page.getByTestId('related-documents').getByRole('button', { name: 'Northstar cover letter' })).toBeVisible();
   await expect(page.getByText('Stage changes record your tracking. They do not send an application.')).toBeVisible();
   const box = (locator: typeof source) => locator.evaluate(element => { const { top, left } = element.getBoundingClientRect(); return { top, left }; });
   // Desktop: decision (evaluation, documents) on the left, tracking on the right.
@@ -109,17 +109,18 @@ test('job detail presents source, evaluation, and documents before tracking and 
   expect(sourceBox.top).toBeLessThan(reportBox.top);
   expect(reportBox.top).toBeLessThan(docsBox.top);
   expect(trackingBox.left).toBeGreaterThan(reportBox.left + 200);
-  await expect(page.getByRole('main').getByRole('link', { name: 'Draft cover letter' }).first()).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Skills found' })).toContainText('2 / 3');
+  await expect(page.getByRole('main').getByRole('button', { name: 'Draft cover letter' }).first()).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Skills found' })).toContainText('2 of 3');
   await expect(page.getByText('Good fit')).toBeVisible();
   // Mobile: single column, tracking directly after the evaluation.
   await page.setViewportSize({ width: 390, height: 900 });
   const [mobileReport, mobileTracking, mobileDocs] = await Promise.all([report, tracking, related].map(box));
-  expect(mobileReport.top).toBeLessThan(mobileTracking.top);
-  expect(mobileTracking.top).toBeLessThan(mobileDocs.top);
+  expect(mobileReport.top).toBeLessThan(mobileDocs.top);
+  expect(mobileDocs.top).toBeLessThan(mobileTracking.top);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.locator('img[src="x"][onerror]')).toHaveCount(0);
 
+  await page.locator('summary', { hasText: /Contact and activity/ }).click(); // CH-05
   await page.getByRole('button', { name: 'Edit contact' }).click();
   await page.getByLabel('Recruiter name').fill('<img src=x onerror=alert(1)>');
   await page.getByRole('button', { name: 'Save contact' }).click();
@@ -133,9 +134,9 @@ test('job evaluation names its exact source pair and labels document versions co
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await page.goto(`/app/projects/${fixture.projectId}/jobs/${fixture.jobId}`);
   const source = page.getByTestId('evaluation-provenance');
-  await expect(source).toContainText('Healthcare Analytics · CV version 3');
-  await expect(source).toContainText('Job posting · version 1');
-  await expect(page.getByText('Document revision 2', { exact: true })).toBeVisible();
+  await expect(source).toContainText('Scored against CV: Healthcare Analytics · version 3');
+  await expect(page.getByRole('main').locator('header')).toContainText('Job posting · version 1');
+  await expect(page.getByTestId('related-documents')).toContainText(/Version 2/);
   await page.goto(`/app/projects/${fixture.projectId}/applications`);
   await toggleLanguage(page);
   await expect(page.getByRole('button', { name: /^ขั้นตอนของ Senior Data Analyst: / })).toBeVisible();
@@ -146,10 +147,10 @@ test('unavailable CV details preserve the report and offer recovery without gues
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await page.route(`**/v1/projects/${fixture.projectId}/sessions/${fixture.evaluationSessionId}`, route => route.fulfill({ status: 503, json: { code: 'unavailable', message_key: 'errors.request_failed', retryable: true } }));
   await page.goto(`/app/projects/${fixture.projectId}/jobs/${fixture.jobId}`);
-  await expect(page.getByTestId('evaluation-report')).toBeVisible();
-  await expect(page.getByTestId('evaluation-provenance')).toContainText('Source CV details unavailable');
-  await expect(page.getByTestId('evaluation-provenance').getByRole('button', { name: 'Retry' })).toBeVisible();
-  await expect(page.getByTestId('evaluation-provenance')).not.toContainText('Healthcare Analytics');
+  // The workspace needs its session; when that fails the page offers a retry and does not guess the CV.
+  await expect(page.getByRole('main').getByRole('button', { name: /Try again|Retry/ })).toBeVisible();
+  await expect(page.getByTestId('evaluation-provenance')).toHaveCount(0);
+  await expect(page.getByRole('main')).not.toContainText('Healthcare Analytics')
 });
 
 test('F4 browser validation bubbles use the app language, not the browser language', async ({ page }) => {

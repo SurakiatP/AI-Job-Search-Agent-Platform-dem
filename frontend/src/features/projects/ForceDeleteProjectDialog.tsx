@@ -11,7 +11,7 @@ const copy = {
   th: {
     title: (name: string) => `ลบโปรเจกต์ “${name}” พร้อมข้อมูลทั้งหมด?`,
     lead: 'การลบนี้ย้อนกลับไม่ได้ และจะลบสิ่งเหล่านี้ทิ้งทั้งหมด:',
-    items: ['CV ทุกฉบับและทุกเวอร์ชัน รวมถึงรูปและไฟล์ที่อัปโหลด', 'งานที่บันทึก ผลประเมิน และใบสมัครพร้อมประวัติ', 'เอกสารที่สร้างไว้ ชุดข้อสัมภาษณ์ และข้อเท็จจริงในคลังประสบการณ์', 'ประวัติการทำงานของเอเจนต์ คำขออนุมัติ การเชื่อมต่อ และโทเคนของโปรเจกต์นี้'],
+    items: ['CV ทุกฉบับและทุกเวอร์ชัน รวมถึงรูปและไฟล์ที่อัปโหลด', 'งานที่บันทึก ผลประเมิน และใบสมัครพร้อมประวัติ', 'เอกสารที่สร้างไว้ ชุดข้อสัมภาษณ์ และข้อเท็จจริงของฉัน', 'ประวัติการทำงานของเอเจนต์ คำขออนุมัติ การเชื่อมต่อ และโทเคนของโปรเจกต์นี้'],
     notRecoverable: 'ไม่มีถังขยะและกู้คืนไม่ได้ โปรเจกต์อื่นของคุณจะไม่ถูกแตะ',
     type: (name: string) => `พิมพ์ชื่อโปรเจกต์ “${name}” เพื่อยืนยัน`,
     confirm: 'ลบทั้งหมดถาวร', cancel: 'ยกเลิก', working: 'กำลังลบ…',
@@ -21,7 +21,7 @@ const copy = {
   en: {
     title: (name: string) => `Delete project “${name}” and everything in it?`,
     lead: 'This cannot be undone. All of this is erased:',
-    items: ['Every CV and version, including photos and uploaded files', 'Saved jobs, evaluations and applications with their history', 'Generated documents, interview sets and experience bank facts', "Agent run history, approval requests, connections and tokens for this project"],
+    items: ['Every CV and version, including photos and uploaded files', 'Saved jobs, evaluations and applications with their history', 'Generated documents, interview sets and facts', "Agent run history, approval requests, connections and tokens for this project"],
     notRecoverable: 'There is no trash and no way back. Your other projects are not touched.',
     type: (name: string) => `Type the project name “${name}” to confirm`,
     confirm: 'Delete everything permanently', cancel: 'Cancel', working: 'Deleting…',

@@ -12,13 +12,13 @@ const th: Record<InfoSlug, InfoPage> = {
       { heading: 'สิ่งที่ต้องมีก่อน', items: [
         { title: 'บัญชีที่ยืนยันอีเมลแล้ว', body: 'สร้างบัญชี ใส่รหัส 6 หลักที่ส่งไปทางอีเมล แล้วเข้าสู่ระบบ' },
         { title: 'โปรเจกต์และ CV หนึ่งฉบับ', body: 'โปรเจกต์คือพื้นที่ทำงานหนึ่งการค้นหา มี CV ผลประเมินและใบสมัครของตัวเอง' },
-        { title: 'ผู้ให้บริการ AI', body: 'ฟีเจอร์ที่ใช้ AI (สกัดประสบการณ์ ประเมิน ร่างเอกสาร Smart match) ต้องตั้งค่าผู้ให้บริการ AI ก่อน การค้นหางานปกติไม่ต้องใช้' },
+        { title: 'ผู้ให้บริการ AI', body: 'ฟีเจอร์ที่ใช้ AI (ดึงประสบการณ์ ประเมิน ร่างเอกสาร Smart match) ต้องตั้งค่าผู้ให้บริการ AI ก่อน การค้นหางานปกติไม่ต้องใช้' },
       ] },
       { heading: 'ลำดับการทำงาน', items: [
-        { title: '1. เพิ่ม CV', body: 'อัปโหลด CV แล้วกดสกัด CV เพื่อเก็บประสบการณ์เป็นคลังข้อเท็จจริงของคุณ' },
+        { title: '1. เพิ่ม CV', body: 'อัปโหลด CV แล้วกดดึงประสบการณ์จาก CV เพื่อเก็บประสบการณ์เป็นคลังข้อเท็จจริงของคุณ' },
         { title: '2. ค้นหางาน', body: 'ค้นประกาศงานจริงในไทย ดูอายุประกาศ และให้ Smart match จัดอันดับตาม CV เมื่อคุณกดเริ่ม' },
         { title: '3. ประเมิน', body: 'เทียบ CV กับประกาศหนึ่งฉบับ ได้ความเหมาะสมโดย AI พร้อมเหตุผล และทักษะที่พบที่นับจากคำสำคัญ' },
-        { title: '4. ร่างเอกสาร', body: 'ปรับ CV และร่างจดหมาย โดยอ้างเฉพาะข้อเท็จจริงในคลังประสบการณ์ของคุณ' },
+        { title: '4. ร่างเอกสาร', body: 'ปรับ CV และร่างจดหมาย โดยอ้างเฉพาะข้อเท็จจริงของคุณ' },
         { title: '5. ตรวจและติดตาม', body: 'คุณตรวจเอกสาร สมัครเองกับนายจ้าง แล้วลากการ์ดบนบอร์ดเพื่อบันทึกความคืบหน้า' },
       ] },
     ],
@@ -53,13 +53,13 @@ const en: Record<InfoSlug, InfoPage> = {
       { heading: 'What you need first', items: [
         { title: 'A verified account', body: 'Sign up, enter the 6-digit code sent to your email, then log in.' },
         { title: 'A project and one CV', body: 'A project is one job search with its own CV, evaluations and applications.' },
-        { title: 'An AI provider', body: 'Features that use AI (extract experience, evaluate, draft documents, Smart match) need an AI provider set up first. Plain job search does not.' },
+        { title: 'An AI provider', body: 'Features that use AI (pull experience, evaluate, draft documents, Smart match) need an AI provider set up first. Plain job search does not.' },
       ] },
       { heading: 'The flow', items: [
-        { title: '1. Add your CV', body: 'Upload a CV, then press Extract CV to add your experience to a bank of facts about you.' },
+        { title: '1. Add your CV', body: 'Upload a CV, then press Pull experience from CV to add your experience to a bank of facts about you.' },
         { title: '2. Search jobs', body: 'Search real jobs in Thailand, see posting age, and let Smart match rank them against your CV when you press start.' },
         { title: '3. Evaluate', body: 'Compare your CV with one posting: an AI fit with reasons, and skills found counted from keywords.' },
-        { title: '4. Draft documents', body: 'Tailor your CV and draft letters, citing only facts in your experience bank.' },
+        { title: '4. Draft documents', body: 'Tailor your CV and draft letters, citing only facts in your facts.' },
         { title: '5. Review and track', body: 'You review the documents, apply with the employer yourself, then drag cards on the board to record progress.' },
       ] },
     ],

@@ -143,5 +143,21 @@
   "appliedNote": "Records stage only. We do not submit anything.",
   "addContact": "Add recruiter contact",
   "editContact": "Edit contact",
-  "fitScoreCol": "Fit score"
+  "fitScoreCol": "Fit score",
+  "progress": {
+    "label": "Progress on this job",
+    "evaluate": "Evaluate",
+    "documents": "Prepare documents",
+    "apply": "Apply",
+    "interview": "Interview",
+    "done": "done",
+    "current": "current step"
+  },
+  "closePanel": "Close document panel",
+  "documentPanelHint": "Read the drafted document. Check it before you use it.",
+  "loadingDocument": "Loading the document",
+  "noPreview": "No preview yet. Open the full page to read or export it.",
+  "downloadDocument": "Download file",
+  "openFullPage": "Open full page",
+  "trackingDetails": "Contact and activity ({{count}})"
 }

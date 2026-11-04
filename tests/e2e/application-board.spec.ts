@@ -90,6 +90,8 @@ test('job page edits stage and contact, offers mailto, logs correspondence and n
 
   await page.goto(`/app/projects/${projectId}/jobs/${jobId}`);
   await page.getByLabel('Stage').selectOption('interview');
+  // CH-05: contact and activity sit behind one summary on the job page.
+  await page.locator('summary', { hasText: /Contact and activity/ }).click();
   await expect(page.getByRole('list', { name: 'Activity' }).getByRole('listitem').first()).toContainText('Saved → Interview');
 
   await expect(page.getByRole('link', { name: 'Write email' })).toHaveCount(0);

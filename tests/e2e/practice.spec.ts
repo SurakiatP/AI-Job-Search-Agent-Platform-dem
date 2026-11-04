@@ -87,7 +87,7 @@ test('AC-IVP-07 answer a written question, keep attempts and mark it ready', asy
   await expect(sheet).toContainText('1 of 4 ready');
   await page.getByRole('button', { name: 'Next question' }).click();
   await expect(page.getByRole('heading', { level: 2, name: 'Tell me about a failed project' })).toBeVisible();
-  await expect(page.getByText('No facts in your experience bank are enough for an example answer yet.')).toBeVisible();
+  await expect(page.getByText('No facts in your facts are enough for an example answer yet.')).toBeVisible();
   expect(state.attempts.map(a => a.answer)).toEqual(['First try', 'Second try with a result']);
   expect(state.patches).toContainEqual({ ready: true });
 });

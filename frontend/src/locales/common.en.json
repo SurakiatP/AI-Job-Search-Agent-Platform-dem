@@ -97,7 +97,7 @@
     "pasteCvRequired": "Paste CV text or choose a file.",
     "docPreviewUnavailable": "A text preview is unavailable. Download the authorized file to review this revision.",
     "uploadTooLarge": "Choose a file no larger than 20 MiB.",
-    "uploadInvalidType": "Choose a text PDF, DOCX or text file.",
+    "uploadInvalidType": "Choose a PDF, DOCX or TXT file.",
     "docTypeCv": "CV",
     "docTypeCoverLetter": "Cover letter",
     "docTypeApplicationMessage": "Application message",
@@ -127,14 +127,14 @@
     "sessionTitle": "Conversation title"
   },
   "errors": {
-    "scanned_pdf_unsupported": "This PDF contains scanned images. OCR is not supported yet. Upload a text-based PDF, DOCX or text file instead.",
+    "scanned_pdf_unsupported": "This PDF is a scanned image, and we cannot read text from images yet. Use a PDF with selectable text, a DOCX, or save it as a .txt file and upload that.",
     "document_encrypted": "This document is password-protected. Remove the password and upload it again.",
     "document_invalid": "We could not read this document. Export a new PDF, DOCX or text file and try again.",
     "empty_input": "This document has no readable text. Add CV text or upload a document containing text.",
-    "document_limits": "This document is too large or complex to read. Try a smaller or simpler file.",
-    "ocr_unavailable": "Reading the document with AI vision failed. Try again in a moment.",
-    "document_too_many_pages": "This document has more than 10 pages. Upload a CV of 10 pages or fewer.",
-    "document_parse_timeout": "Reading the document took too long. Try a smaller document or upload it again.",
+    "document_limits": "This file is too large or complex. Try a smaller file, or paste your CV text into a .txt file and upload that.",
+    "ocr_unavailable": "We cannot read this file right now. Try again in a moment, or save your CV as a .txt file and upload that.",
+    "document_too_many_pages": "This file has more than 10 pages. We read up to 10. Cut it to 10 pages, or save it as a .txt file and upload that.",
+    "document_parse_timeout": "Reading this file took too long. Upload it again, or save your CV as a .txt file and upload that.",
     "email_unverified": "Confirm your email first. Check your inbox or resend the email from the banner.",
     "quota_exceeded": "You reached today's run limit. It resets at {{time}}.",
     "unauthorized": "Your session ended. Log in again.",
@@ -190,6 +190,16 @@
     "sessionExpiredTitle": "Your session ended",
     "sessionExpiredBody": "We could not confirm your session. Log in again to continue.",
     "logout": "Log out"
+  },
+  "firstRun": {
+      "projectName": "My job search",
+      "failTitle": "We could not set up your first project",
+      "failBody": "Nothing was lost. Try again, or",
+      "manual": "create a project yourself.",
+      "retry": "Try again",
+      "verifyCode": "6-digit code",
+      "verifyAction": "Confirm",
+      "verified": "Email confirmed. You can run AI now."
   },
   "account": {
     "title": "Account",

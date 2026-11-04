@@ -137,7 +137,8 @@
     "relatedNone": "No documents yet. Prepare documents in the next tab and they appear here.",
     "partialDoc": "Partial document",
     "openDoc": "Open document",
-    "version": "Version {{n}}"
+    "version": "Version {{n}}",
+    "scoredAgainst": "Scored against CV: {{name}} · version {{revision}}"
   },
   "empty": {
     "title": "Evaluate this job against your CV",

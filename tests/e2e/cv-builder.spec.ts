@@ -84,9 +84,9 @@ test('TC-CVB-07 pages that need a CV offer Build a CV', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   await builderApi(page);
-  // Today offers one next step; with no CV it leads to the CV page, which offers Build a CV.
+  // Today's start card takes the CV file in place; the CV page also offers Build a CV.
   await page.goto(`/app/projects/${projectId}/overview`);
-  await expect(page.getByRole('main').getByRole('link', { name: 'Upload your CV', exact: true })).toHaveAttribute('href', `/app/projects/${projectId}/profile`);
+  await expect(page.getByRole('main').getByRole('button', { name: 'Choose file', exact: true })).toBeVisible();
   await page.goto(`/app/projects/${projectId}/profile`);
   await expect(page.getByRole('button', { name: 'Build a CV' }).first()).toBeVisible();
   await page.goto(`/app/projects/${projectId}/search?mode=match`);

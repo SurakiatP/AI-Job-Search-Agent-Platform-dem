@@ -10,11 +10,11 @@ import type { Lang, ResumeData } from './sections';
 
 const copy = {
   th: { open: 'ดึงจากประสบการณ์ของฉัน', title: 'เลือกข้อมูลจากประสบการณ์ของคุณ', body: 'ติ๊กเฉพาะรายการที่อยากใส่ใน CV ฉบับนี้ หลังใส่แล้วแก้ไขหรือลบได้ในแบบฟอร์มเหมือนเดิม',
-    empty: 'ยังไม่มีข้อมูลในคลังประสบการณ์ เพิ่มได้ที่หน้า CV และประสบการณ์', loadFailed: 'โหลดคลังประสบการณ์ไม่สำเร็จ', retry: 'ลองอีกครั้ง', all: 'เลือกทั้งหมด', none: 'ไม่เลือกเลย',
+    empty: 'ยังไม่มีข้อมูลในข้อเท็จจริงของฉัน เพิ่มได้ที่หน้า CV และประสบการณ์', loadFailed: 'โหลดข้อเท็จจริงของฉันไม่สำเร็จ', retry: 'ลองอีกครั้ง', all: 'เลือกทั้งหมด', none: 'ไม่เลือกเลย',
     add: (n: number) => `ใส่ลงใน CV (${n})`, cancel: 'ยกเลิก', failed: 'ดึงข้อมูลไม่สำเร็จ ลองอีกครั้ง', noRole: 'ไม่ระบุตำแหน่ง', loading: 'กำลังโหลด…',
     kinds: { experience: 'ประสบการณ์ทำงาน', education: 'การศึกษา', skill: 'ทักษะ', certification: 'ใบรับรอง', project: 'โครงการ', other: 'อื่น ๆ', language: 'ภาษา', award: 'รางวัลและเกียรติบัตร', publication: 'ผลงานตีพิมพ์', volunteer: 'งานอาสาสมัคร', interest: 'ความสนใจ' } as Record<string, string> },
   en: { open: 'Pick from my experience', title: 'Choose from your experience', body: 'Tick only what belongs in this CV. Once added you can edit or remove it in the form as usual.',
-    empty: 'Your experience bank is empty. Add items on the CV and experience page.', loadFailed: 'Could not load your experience', retry: 'Try again', all: 'Select all', none: 'Select none',
+    empty: 'Your facts is empty. Add items on the CV and experience page.', loadFailed: 'Could not load your experience', retry: 'Try again', all: 'Select all', none: 'Select none',
     add: (n: number) => `Add to CV (${n})`, cancel: 'Cancel', failed: 'Could not add them. Try again.', noRole: 'No title', loading: 'Loading…',
     kinds: { experience: 'Work experience', education: 'Education', skill: 'Skills', certification: 'Certifications', project: 'Projects', other: 'Other', language: 'Languages', award: 'Awards', publication: 'Publications', volunteer: 'Volunteering', interest: 'Interests' } as Record<string, string> },
 };

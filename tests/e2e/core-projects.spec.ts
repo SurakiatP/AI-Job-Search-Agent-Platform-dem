@@ -61,6 +61,7 @@ test('switcher keeps delete-current-session recovery available through route cha
   await page.route(`**/v1/projects/${projectId}/sessions/${sessionId}/restore`, route => {
     restores++; hidden = false; return route.fulfill({ json: { id: sessionId } });
   });
+  await page.route(`**/v1/projects/${projectId}/jobs`, route => route.request().method() === 'GET' ? route.fulfill({ json: [] }) : route.fallback()); // no saved job: stays on the standalone session page
   await page.goto(`/app/projects/${projectId}/sessions/${sessionId}`);
   await page.getByRole('button', { name: /Switch project/ }).click();
   await page.getByRole('button', { name: 'Options for First synthetic session', exact: true }).click();
