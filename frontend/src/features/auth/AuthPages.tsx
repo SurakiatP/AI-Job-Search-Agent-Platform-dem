@@ -115,7 +115,7 @@ export function LoginPage() {
   const session = useOwnerSession();
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'));
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => params.get('email') ?? '');
   const [password, setPassword] = useState('');
   const { busy, error, fieldError, setError, submit } = useSubmit(() => login(email.trim(), password));
   if (session.status === 'ready') return <Navigate to={next} replace />;
@@ -157,7 +157,12 @@ export function SignupPage() {
   const [code, setCode] = useState('');
   const navigate = useNavigate();
   const { busy, error, fieldError, setError, submit } = useSubmit(async () => { const r = await signup(email.trim(), password, locale); setMailOff(r.mail_enabled === false); setSent(true); });
-  const verify = useSubmit(async () => { await verifyEmailCode(email.trim(), code); navigate('/login?notice=verified', { replace: true }); });
+  // The password stays in this component's state only; once the code works we use it once to sign in.
+  const verify = useSubmit(async () => {
+    await verifyEmailCode(email.trim(), code);
+    try { await login(email.trim(), password); navigate('/app', { replace: true }); }
+    catch { navigate(`/login?notice=verified&email=${encodeURIComponent(email.trim())}`, { replace: true }); }
+  });
   const otp = locale === 'th'
     ? { label: 'รหัส 6 หลักจากอีเมล', hint: 'กรอกรหัสที่เราส่งให้ หรือกดลิงก์ในอีเมลก็ได้ รหัสหมดอายุใน 10 นาที', action: 'ยืนยันอีเมล' }
     : { label: '6-digit code from the email', hint: 'Enter the code we sent, or use the link in the email. The code expires in 10 minutes.', action: 'Verify email' };

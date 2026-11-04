@@ -15,8 +15,8 @@ test('first-run overview offers one primary action and stable evaluation navigat
   // Evaluations left the nav (plan 2.1): My jobs lists every evaluated job.
   await expect(page.getByRole('navigation').getByRole('link', { name: 'Evaluations', exact: true })).toHaveCount(0);
   await expect(page.getByRole('navigation').getByRole('link', { name: 'My jobs', exact: true })).toHaveAttribute('href', `/app/projects/${projectId}/applications`);
-  await expect(page.getByRole('heading', { name: 'Upload your CV', exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByRole('link', { name: 'Upload your CV', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start in 3 steps', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('button', { name: 'Choose file', exact: true })).toBeVisible();
   await page.goto(`/app/projects/${projectId}/sessions`); // still routable for deep links
   await expect(page.getByRole('heading', { name: 'Evaluations', exact: true })).toBeVisible();
   await expect(page.getByRole('main').getByRole('link', { name: /First synthetic session/ })).toBeVisible();
@@ -84,13 +84,12 @@ for (const width of [390, 768, 1440]) for (const locale of ['th', 'en']) for (co
   });
 }
 
-test('first-run overview leads with one next-step card and no count strip', async ({ page }) => {
+test('first-run overview leads with the three-step start card and no count strip', async ({ page }) => {
   await useSyntheticApplication(page);
   await page.goto(`/app/projects/${projectId}/overview`);
-  const hero = page.getByRole('region', { name: 'Upload your CV' });
-  await expect(hero.getByRole('link')).toHaveCount(1);
-  await expect(hero.getByRole('link', { name: 'Upload your CV' })).toHaveClass(/bg-hero-foreground/);
-  await expect(page.getByRole('main').locator('a.bg-hero-foreground, button.bg-hero-foreground')).toHaveCount(1);
+  const start = page.getByRole('region', { name: 'Start in 3 steps' });
+  await expect(start.getByRole('listitem')).toHaveCount(3);
+  await expect(start.getByRole('button')).toHaveCount(1);
   await expect(page.getByRole('main').getByText(/^Saved\s*\d/)).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Journey' })).toHaveCount(0);
 });

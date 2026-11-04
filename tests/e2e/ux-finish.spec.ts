@@ -46,10 +46,10 @@ test('answer output language is visible and used without visiting document prepa
 test('mobile Overview leads with the CV step inside the first viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/app/projects/${projectId}/overview`);
-  // First-run fixture has no CV: the next-step card asks for one before any other section.
-  const hero = page.getByRole('region', { name: 'Upload your CV' });
-  await expect(page.getByRole('main').getByRole('region').first()).toHaveAccessibleName('Upload your CV');
-  const box = await hero.getByRole('link', { name: 'Upload your CV' }).boundingBox();
+  // First-run fixture has no CV: the start card asks for one before any other section.
+  const start = page.getByRole('region', { name: 'Start in 3 steps' });
+  await expect(page.getByRole('main').getByRole('region').first()).toHaveAccessibleName('Start in 3 steps');
+  const box = await start.getByRole('button', { name: 'Choose file' }).boundingBox();
   expect(box).not.toBeNull();
   expect(box!.y + box!.height).toBeLessThanOrEqual(844 - 64); // clear of the bottom tab bar
 });

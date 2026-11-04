@@ -14,7 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { BusyNote } from '@/components/BusyNote';
 import { ErrorState } from '../projects/PageStates';
 import { Spinner } from '@/components/ui/spinner';
-import { SmartMatchStart } from './SmartMatchStart';
+import { HowMatchingWorks, SmartMatchStart } from './SmartMatchStart';
+import { PasteJobDialog } from '@/components/PasteJobDialog';
 import { AgentSteps, BandBadge, MatchBadge, MatchSummary, type T } from './MatchEvidence';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { ItemMenu } from '@/components/ItemMenu';
@@ -89,7 +90,7 @@ const copy = {
     sampleBanner: 'ข้อมูลตัวอย่าง', sampleBody: 'ข้อมูลทั้งหมดในมุมมองนี้เป็นข้อมูลสมมติ ไม่ใช่ประกาศงานจริง',
     description: 'รายละเอียดงาน', untitled: 'ไม่ระบุบริษัท',
     modeSearch: 'ล่าสุด', modeMatch: 'เหมาะกับ CV ฉัน', modeLabel: 'โหมดการค้นหา',
-    cvLabel: 'CV ที่ใช้จับคู่', noCv: 'ยังไม่มี CV ในโปรเจกต์นี้', noCvBody: 'เพิ่ม CV ก่อน เพื่อให้ระบบเทียบทักษะกับประกาศงานได้', addCv: 'ไปที่หน้า CV',
+    cvLabel: 'CV ที่ใช้จับคู่', noCv: 'ยังไม่มี CV ในโปรเจกต์นี้', noCvBody: 'เพิ่ม CV ก่อน เพื่อให้ระบบเทียบทักษะกับประกาศงานได้', addCv: 'ใส่ CV ก่อน', pasteJob: 'วางประกาศงาน', version: 'ฉบับ',
     analyzeError: 'วิเคราะห์ CV ไม่สำเร็จ ลองอีกครั้ง',
     poolNote: (n: string) => `จัดอันดับจาก ${n} ตำแหน่งล่าสุดที่ตรงกับตัวกรอง`,
     matchBadge: (p: number, m: number, n: number) => `ตรงกับ CV ${p}% · ${m}/${n} ทักษะ`, noSkills: 'ข้อมูลทักษะไม่พอ',
@@ -121,7 +122,7 @@ const copy = {
     sampleBanner: 'Sample', sampleBody: 'Everything in this view is fictional sample data, not real postings.',
     description: 'Job description', untitled: 'Company not listed',
     modeSearch: 'Newest', modeMatch: 'Best fit for my CV', modeLabel: 'Search mode',
-    cvLabel: 'CV to match against', noCv: 'This project has no CV yet', noCvBody: 'Add a CV first so skills can be compared with each posting.', addCv: 'Go to the CV page',
+    cvLabel: 'CV to match against', noCv: 'This project has no CV yet', noCvBody: 'Add a CV first so skills can be compared with each posting.', addCv: 'Add a CV first', pasteJob: 'Paste a posting', version: 'Version',
     analyzeError: 'Could not analyze the CV. Try again.',
     poolNote: (n: string) => `Ranked from the ${n} latest jobs matching your filters`,
     matchBadge: (p: number, m: number, n: number) => `${p}% CV match · ${m}/${n} skills`, noSkills: 'Not enough skill data',
@@ -303,6 +304,7 @@ export function SearchPage() {
   const needsCv = smartActive && cvs.status === 'ready' && usable.length === 0;
   // Smart match calls the AI, so each CV revision must be started by the user; changing the CV asks again.
   const [armedFor, setArmedFor] = useState('');
+  const [pasteOpen, setPasteOpen] = useState(false);
   const awaiting = smartActive && usable.length > 0 && armedFor !== revisionId;
   const [profiling, setProfiling] = useState(false);
   const [profileFailed, setProfileFailed] = useState(false);
@@ -631,6 +633,8 @@ export function SearchPage() {
         labels={{ categories: c.categories, posted: c.posted, anyPosted: c.anyPosted, days: c.days }} />
     </div>}
       <SavedSearchesPanel projectId={projectId} params={params} onApply={changes => { setQInput(changes.q ?? ''); setMany(changes); }} />
+      <Button type="button" variant="link" className="h-auto min-h-11 lg:min-h-10" onClick={() => setPasteOpen(true)}>{c.pasteJob}</Button>
+      {pasteOpen && <PasteJobDialog projectId={projectId} onClose={() => setPasteOpen(false)} />}
       </div>
     {activeFilterChips.length > 0 && <div role="group" className="flex flex-wrap items-center gap-2" aria-label={tSearch('controls.activeFilters')}>
       {activeFilterChips.map(chip => <Button key={`${chip.key}:${chip.label}`} type="button" variant="secondary" size="sm" className="h-auto max-w-full whitespace-normal text-left" aria-label={tSearch('controls.removeFilter', { label: chip.label })} onClick={() => removeFilter(chip.key)}>
@@ -650,6 +654,7 @@ export function SearchPage() {
       </div>
       {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="outline" />}
       <p className="flex min-h-11 min-w-0 items-center gap-2 text-sm text-muted-foreground"><Info className="size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">{tSearch('controls.cvChangeNote')}</span></p>
+      {!awaiting && <HowMatchingWorks locale={locale} />}
     </div>}
 
     {sample && <Card className="border-transparent bg-accent text-accent-foreground">
@@ -670,7 +675,8 @@ export function SearchPage() {
       <p className="font-medium">{c.noCv}</p>
       <p className="text-sm text-muted-foreground">{c.noCvBody}</p>
       <div className="flex flex-wrap gap-2"><Button asChild><Link to={`/app/projects/${projectId}/profile`}>{c.addCv}</Link></Button><BuildCvButton projectId={projectId} /></div>
-    </div> : awaiting ? <SmartMatchStart locale={locale} cvName={cv ? `${cv.name} · v${cv.latest_revision?.revision}` : ''} disabled={gate.blocked} title={gate.title} onStart={() => setArmedFor(revisionId)} /> : <div className="grid gap-3">
+      <HowMatchingWorks locale={locale} />
+    </div> : awaiting ? <SmartMatchStart locale={locale} cvName={cv ? [cv.name, `${c.version} ${cv.latest_revision?.revision}`, fileKind(cv.latest_revision?.original_filename, cv.latest_revision?.mime_type)].filter(Boolean).join(' · ') : ''} disabled={gate.blocked} title={gate.title} onStart={() => setArmedFor(revisionId)} /> : <div className="grid gap-3">
       {sample && smart && <p className="text-sm text-muted-foreground">{c.sampleMatch}</p>}
       <p role="status" aria-live="polite" className={sample || !waiting ? 'text-sm text-muted-foreground' : 'sr-only'}>{sample || !waiting ? <>{c.found(number.format(shownTotal))}{smartActive ? ` · ${c.poolNote(number.format(poolCount || items.length))}` : ''}</> : c.loading}</p>
       {smartActive && ai?.status === 'unavailable' && <Alert severity="warning"><p>{c.unavailable}</p><p className="text-xs text-muted-foreground">{tSearch('methods.keywordOnly')}</p></Alert>}

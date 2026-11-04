@@ -53,7 +53,7 @@ test('answer pack has copy buttons, parked reason, and submit is disabled until 
   await expect(page.getByRole('button', { name: 'Copy', exact: true })).toHaveCount(1);
   await expect(page.getByText('Why this job?')).toBeVisible();
   await expect(page.getByText('q1', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('No fact in your experience bank supports an answer.')).toBeVisible();
+  await expect(page.getByText('No fact in your facts supports an answer.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Record as applied' })).toBeDisabled();
   await page.getByLabel('Question').fill('Why this job?');
   await page.getByRole('button', { name: 'Prepare application' }).click();

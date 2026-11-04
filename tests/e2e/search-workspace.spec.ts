@@ -288,7 +288,12 @@ test('Smart match without a usable CV explains the prerequisite', async ({ page 
   await installSearchFixture(page);
   await page.goto(`/app/projects/${projectId}/search?mode=match`);
   await expect(page.getByText('This project has no CV yet')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Go to the CV page' })).toHaveAttribute('href', `/app/projects/${projectId}/profile`);
+  await expect(page.getByRole('link', { name: 'Add a CV first' })).toHaveAttribute('href', `/app/projects/${projectId}/profile`);
+  // The matching note is readable before any CV exists.
+  const how = page.getByText('How matching works');
+  await how.click();
+  await expect(page.getByText('role fit 50%, skills 30%')).toBeVisible();
+  await expect(page.getByText('A missing required skill lowers the score')).toBeVisible();
 });
 
 test('Smart match keeps its CV profiling state visible while processing', async ({ page }) => {
@@ -420,6 +425,9 @@ test('Smart match never calls the AI until the user presses Start, and asks agai
   await page.goto(`/app/projects/${projectId}/search?mode=match`);
   await expect(page.getByRole('heading', { name: 'Let the agent rank jobs for you' })).toBeVisible();
   await expect(page.getByText('It uses AI every time it runs, so it waits for you to start it.')).toBeVisible();
+  await expect(page.getByText('Matching with CV: CV A · Version 1 · TXT')).toBeVisible();
+  await page.getByText('How matching works').click();
+  await expect(page.getByText('The AI reads your CV and compares it with each posting.')).toBeVisible();
   await page.waitForTimeout(800);
   expect(calls).toEqual({ match: 0, rank: 0, profile: 0 });
   await page.getByRole('button', { name: /^Start Smart match/ }).click();

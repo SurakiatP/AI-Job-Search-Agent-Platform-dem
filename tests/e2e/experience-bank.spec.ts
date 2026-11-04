@@ -28,13 +28,13 @@ async function bank(page: import('@playwright/test').Page, state: { items: Item[
 
 const fact = (id: string, text: string): Item => ({ id, kind: 'experience', text, role: 'Data Engineer', organization: 'SCB', period: '2022–2024', source: 'cv', source_cv_id: cv.id, source_cv_name: 'Data CV', created_at: '2026-10-10T00:00:00Z' });
 
-test('experience bank groups facts, adds and removes, and shows extraction results', async ({ page }) => {
+test('facts groups facts, adds and removes, and shows extraction results', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   await bank(page, { items: [fact('a', 'Built Airflow pipelines'), fact('b', 'Ran BigQuery')], provider_configured: true,
     extraction: { run_id: 'r1', status: 'completed', cv_id: cv.id, summary: { added: 2, duplicates: 1, rejected: 1 } } });
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
-  const section = page.getByRole('region', { name: 'Experience bank' });
+  const section = page.getByRole('region', { name: 'My facts' });
   await expect(section.getByRole('heading', { name: 'Data Engineer · SCB' })).toBeVisible();
   await expect(section.getByText('From CV: Data CV').first()).toBeVisible();
   await expect(section.getByRole('status')).toContainText('Added 2, duplicates 1, dropped 1');
@@ -44,23 +44,23 @@ test('experience bank groups facts, adds and removes, and shows extraction resul
   await expect(section.getByText('Python')).toBeVisible();
   await section.getByRole('button', { name: 'Remove: Ran BigQuery' }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(section.getByText('Ran BigQuery')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Experience bank' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'My facts' })).toBeFocused();
 });
 
-test('experience bank empty states and Thai at 320px', async ({ page }) => {
+test('facts empty states and Thai at 320px', async ({ page }) => {
   await useSyntheticApplication(page);
   await bank(page, { items: [], extraction: null, provider_configured: false });
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
-  const section = page.getByRole('region', { name: 'คลังประสบการณ์' });
+  const section = page.getByRole('region', { name: 'ข้อเท็จจริงของฉัน' });
   await expect(section.getByText('ยังไม่ได้ตั้งค่า AI gateway')).toBeVisible();
   await expect(section.getByRole('link', { name: 'ไปที่การตั้งค่า' })).toHaveAttribute('href', '/app/settings?section=gateway');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-for (const [locale, t] of [['en', { notYet: 'Not extracted', extract: 'Extract CV', again: 'Extract again', done: 'Extracted 3 facts', upload: 'Upload new version', versions: 'Version history (2)' }],
-  ['th', { notYet: 'ยังไม่สกัด', extract: 'สกัด CV', again: 'สกัดอีกครั้ง', done: 'สกัดแล้ว 3 ข้อเท็จจริง', upload: 'อัปโหลดเวอร์ชันใหม่', versions: 'ประวัติฉบับ (2)' }]] as const) {
-  test(`uploading a CV version does not extract; the Extract CV button does, once, and marks it (${locale})`, async ({ page }) => {
+for (const [locale, t] of [['en', { notYet: 'Not pulled yet', extract: 'Pull experience from CV', again: 'Pull again', done: 'Pulled 3 facts', upload: 'Upload new version', versions: 'Version history (2)' }],
+  ['th', { notYet: 'ยังไม่ได้ดึง', extract: 'ดึงประสบการณ์จาก CV', again: 'ดึงอีกครั้ง', done: 'ดึงแล้ว 3 ข้อเท็จจริง', upload: 'อัปโหลดเวอร์ชันใหม่', versions: 'ประวัติฉบับ (2)' }]] as const) {
+  test(`uploading a CV version does not pull experience; the Pull experience from CV button does, once, and marks it (${locale})`, async ({ page }) => {
     await page.addInitScript(l => localStorage.setItem('ui.locale', l), locale);
     await useSyntheticApplication(page);
     const rev = (id: string, n: number, done: boolean) => ({ ...revision(id, n), extracted_at: done ? '2026-10-11T00:00:00Z' : null, extracted_count: done ? 3 : 0 });
@@ -117,12 +117,12 @@ test('each CV card can start an extraction for that CV', async ({ page }) => {
     return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ id: 'r-other', status: 'queued' }) });
   });
   await page.goto(`/app/projects/${projectId}/profile`);
-  await expect(page.getByRole('button', { name: 'Extract CV: Older CV' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pull experience from CV: Older CV' })).toBeVisible();
   const request = page.waitForRequest(r => r.method() === 'POST' && r.url().endsWith(`/cvs/${other.id}/experience-extractions`));
-  await page.getByRole('button', { name: 'Extract CV: Older CV' }).click();
+  await page.getByRole('button', { name: 'Pull experience from CV: Older CV' }).click();
   await request;
-  await page.getByRole('tab', { name: 'Experience bank' }).click();
-  await expect(page.getByRole('region', { name: 'Experience bank' }).getByRole('status')).toContainText('The agent is queued to extract experience from your CV');
+  await page.getByRole('tab', { name: 'My facts' }).click();
+  await expect(page.getByRole('region', { name: 'My facts' }).getByRole('status')).toContainText('The agent is queued to pull experience from your CV');
   await page.setViewportSize({ width: 320, height: 800 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
@@ -136,13 +136,13 @@ test('a failed bank load offers a retry', async ({ page }) => {
     ? route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'internal_error' } }) })
     : route.fallback());
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
-  const section = page.getByRole('region', { name: 'Experience bank' });
-  await expect(section.getByRole('alert')).toContainText('Could not load the experience bank');
+  const section = page.getByRole('region', { name: 'My facts' });
+  await expect(section.getByRole('alert')).toContainText('Could not load My facts');
   await section.getByRole('button', { name: 'Retry' }).click();
   await expect(section.getByText('Ran BigQuery')).toBeVisible();
 });
 
-test('experience bank files facts under categories, shows years and sends the new fields', async ({ page }) => {
+test('facts files facts under categories, shows years and sends the new fields', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   const state = { items: [{ ...fact('a', 'Built Airflow pipelines'), start_date: '2022-03', end_date: '2024-01', is_current: false, employment_type: 'full_time', location: 'Bangkok' },
@@ -150,7 +150,7 @@ test('experience bank files facts under categories, shows years and sends the ne
     extraction: null, provider_configured: true, years_of_experience: 1.9 };
   await bank(page, state);
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
-  const section = page.getByRole('region', { name: 'Experience bank' });
+  const section = page.getByRole('region', { name: 'My facts' });
   await expect(section.getByText('1.9 years of work experience in total')).toBeVisible();
   for (const name of ['Work experience', 'Education', 'Skill']) await expect(section.getByRole('heading', { name })).toBeVisible();
   await expect(section.getByText('Mar 2022 – Jan 2024 · Full time · Bangkok')).toBeVisible();
@@ -168,7 +168,7 @@ test('skill group select appears only for skills and is sent in the request', as
   await useSyntheticApplication(page);
   await bank(page, { items: [], extraction: null, provider_configured: true });
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
-  const section = page.getByRole('region', { name: 'Experience bank' });
+  const section = page.getByRole('region', { name: 'My facts' });
   await expect(section.getByLabel('Skill group')).toHaveCount(0);
   await section.getByLabel('Fact').fill('Airflow');
   await section.getByLabel('Type').selectOption('skill');
@@ -195,7 +195,7 @@ test('skills are grouped under sub-headings with counts and ungrouped last', asy
   await bank(page, { items: [skill('a', 'Python', 'technical'), skill('b', 'SQL', 'technical'), skill('c', 'Airflow', 'tools'), skill('d', 'Leadership', 'soft'),
     skill('e', 'Thai', 'language'), skill('f', 'Banking', 'domain'), skill('g', 'Misc', null)] as Item[], extraction: null, provider_configured: true });
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
-  const section = page.getByRole('region', { name: 'Experience bank' });
+  const section = page.getByRole('region', { name: 'My facts' });
   const names = ['Technical skills', 'Tools & technology', 'Soft skills', 'Languages', 'Domain knowledge', 'Ungrouped'];
   await expect(section.getByRole('heading', { level: 4 })).toHaveText(names.map((n, i) => new RegExp(`^${n.replace('&', '\\&')}\\s*${[2, 1, 1, 1, 1, 1][i]} ${i === 0 ? 'facts' : 'fact'}$`)));
   await expect(section.getByRole('heading', { name: /^Technical skills/ }).locator('xpath=following-sibling::ul[1]').getByRole('listitem')).toHaveCount(2);
@@ -206,7 +206,7 @@ test('education uses degree and institution labels in the form and list', async 
   await useSyntheticApplication(page);
   await bank(page, { items: [{ ...fact('a', 'BSc Computer Science'), kind: 'education', role: 'Computer Science', organization: 'Chulalongkorn University' }] as Item[], extraction: null, provider_configured: true });
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
-  const section = page.getByRole('region', { name: 'Experience bank' });
+  const section = page.getByRole('region', { name: 'My facts' });
   await expect(section.getByLabel('Role', { exact: false })).toBeVisible();
   await expect(section.getByLabel('Degree / major')).toHaveCount(0);
   await section.getByLabel('Type').selectOption('education');
@@ -218,13 +218,13 @@ test('education uses degree and institution labels in the form and list', async 
   await expect(section.getByText('Institution: Chulalongkorn University')).toBeVisible();
 });
 
-test('experience bank lists, offers and groups the five builder-only kinds', async ({ page }) => {
+test('facts lists, offers and groups the five builder-only kinds', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'en'));
   await useSyntheticApplication(page);
   const extra: [string, string, string][] = [['language', 'English — fluent', 'Languages'], ['award', 'Best Paper: NLP', 'Awards'], ['publication', 'Graph Search Survey', 'Publications'], ['volunteer', 'Code club mentor', 'Volunteering'], ['interest', 'Chess', 'Interests']];
   await bank(page, { items: extra.map(([kind, text], i) => ({ ...fact(`k${i}`, text), kind, role: null, organization: null, period: null })), provider_configured: true, extraction: null });
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
-  const section = page.getByRole('region', { name: 'Experience bank' });
+  const section = page.getByRole('region', { name: 'My facts' });
   for (const [, text, heading] of extra) {
     await expect(section.getByText(text)).toBeVisible();
     await expect(section.getByRole('heading', { name: new RegExp(`^${heading}`) })).toBeVisible();

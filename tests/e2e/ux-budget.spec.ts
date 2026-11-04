@@ -49,7 +49,8 @@ const base = `/app/projects/${projectId}`;
 const ROW = 'main ul[aria-label] > li';
 const screens: Array<{ name: string; route: string; target: number; perRow?: number; setup?: (p: Page) => Promise<unknown> }> = [
   { name: 'Today', route: `${base}/overview`, target: 6 },
-  { name: 'Find jobs', route: `${base}/search?q=data`, target: 10, setup: stubSearch },
+  { name: 'Find jobs', route: `${base}/search?q=data`, target: 11, // 10 -> 11 (CH-04): one "Paste a posting" link beside the search tools
+     setup: stubSearch },
   { name: 'My jobs', route: `${base}/applications`, target: 11, perRow: 2, setup: useApplicationsWorkspaceFixture },
   { name: 'Job detail', route: `${base}/jobs/${jobId}`, target: 8, setup: useApplicationsWorkspaceFixture },
   { name: 'Session', route: `${base}/sessions/${sessionId}`, target: 8 },

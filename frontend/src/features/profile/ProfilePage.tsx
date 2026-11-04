@@ -17,25 +17,20 @@ import { ConfirmDeleteDialog } from '../../components/ConfirmDeleteDialog';
 import { cn } from '@/lib/utils';
 import { ErrorState, LoadingState } from '../projects/PageStates';
 import { apiRequest } from '../../lib/api';
-import { ApiError, type CVRevisionInfo, type CVView, type ExperienceView } from '../../lib/api-types';
+import { type CVRevisionInfo, type CVView, type ExperienceView } from '../../lib/api-types';
 import { ExperienceBank } from './ExperienceBank';
+import { CvReadingSteps } from './CvReadingSteps';
 import { sendJson, useResource } from '../projects/useResource';
 import { BuildCvButton } from '../builder/BuildCvButton';
 import { PageHeader } from '@/components/PageHeader';
 import { dateLocale } from '../../lib/locale';
+import { ACCEPT, uploadCvFile } from './cvUpload';
 
 const copy = {
   th: { editBuilder: 'แก้ไขในตัวสร้าง', cvs: 'CV ของคุณ', add: 'เพิ่ม CV', primary: 'หลัก', version: 'เวอร์ชัน', versions: 'เวอร์ชันทั้งหมด', upload: 'อัปโหลดเวอร์ชันใหม่', makePrimary: 'ตั้งเป็น CV หลัก', rename: 'เปลี่ยนชื่อ', delete: 'ลบ', inUse: 'มีเซสชันใช้ CV นี้อยู่ ลบแล้วเซสชันเหล่านั้นยังเปิดดูได้', delTitle: (n: string) => `ย้าย CV “${n}” ไปถังขยะ?`, delBody: 'CV นี้จะหายจากรายการและเลือกจับคู่ไม่ได้ จนกว่าจะกู้คืนจากถังขยะ การประเมินที่เคยใช้ CV นี้ยังเปิดดูผลและเอกสารได้ตามเดิม', delConfirm: 'ย้ายไปถังขยะ', moved: (n: string) => `ย้าย “${n}” ไปถังขยะแล้ว`, undo: 'เลิกทำ', undoFailed: 'เลิกทำไม่สำเร็จ กู้คืนได้จากถังขยะ', openTrash: 'เปิดถังขยะ', dismiss: 'ปิด', cancel: 'ยกเลิก', save: 'บันทึก', name: 'ชื่อ CV', renameTitle: 'เปลี่ยนชื่อ CV', failed: 'ดำเนินการไม่สำเร็จ ลองอีกครั้ง' },
   en: { editBuilder: 'Edit in builder', cvs: 'Your CVs', add: 'Add CV', primary: 'Primary', version: 'Version', versions: 'versions', upload: 'Upload new version', makePrimary: 'Make primary', rename: 'Rename', delete: 'Delete', inUse: 'Sessions use this CV; they stay viewable after deletion.', delTitle: (n: string) => `Move CV “${n}” to the trash?`, delBody: 'This CV leaves the list and cannot be paired until you restore it from the trash. Evaluations that used it keep their results and documents.', delConfirm: 'Move to trash', moved: (n: string) => `“${n}” moved to the trash.`, undo: 'Undo', undoFailed: 'Undo did not work. Restore it from the trash.', openTrash: 'Open trash', dismiss: 'Dismiss', cancel: 'Cancel', save: 'Save', name: 'CV name', renameTitle: 'Rename CV', failed: 'That did not work. Try again.' },
 };
 const formatSize = (bytes: number) => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-const uploadMessages: Record<string, string> = {
-  scanned_pdf_unsupported: 'errors.scanned_pdf_unsupported', document_encrypted: 'errors.document_encrypted', document_invalid: 'errors.document_invalid', empty_input: 'errors.empty_input',
-  document_expansion_limit: 'errors.document_limits', document_too_many_pages: 'errors.document_too_many_pages', extracted_text_limit: 'errors.document_limits', input_size_invalid: 'pages.uploadTooLarge', upload_too_large: 'pages.uploadTooLarge',
-  unsupported_input: 'pages.uploadInvalidType', unsupported_media_type: 'pages.uploadInvalidType', document_parse_timeout: 'errors.document_parse_timeout', ocr_unavailable: 'errors.ocr_unavailable', network_error: 'errors.network_error',
-};
-const ACCEPT = '.pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain';
-
 // Inline rename: Enter or leaving the field saves, Escape cancels.
 function InlineName({ cv, c, projectId, onClose, onDone }: { cv: CVView; c: typeof copy.en; projectId: string; onClose: () => void; onDone: () => void }) {
   const [value, setValue] = useState(cv.name);
@@ -103,6 +98,8 @@ export function ProfilePage() {
   const showTab = (next: string) => setParams(next === 'experience' ? { tab: 'experience' } : {}, { replace: true });
   const cvs = useResource<CVView[]>(`/projects/${projectId}/cvs`);
   const primaryRevisions = useResource<CVRevisionInfo[]>(`/projects/${projectId}/cv`);
+  const lastUpload = useRef<[File, string, string | undefined] | null>(null);
+  const retryable = useRef(false);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -139,16 +136,12 @@ export function ProfilePage() {
 
   async function upload(file: File | undefined, path: string, name?: string) {
     if (!file) return;
-    if (file.size > 20 * 1024 * 1024) { setUploadError('pages.uploadTooLarge'); return; }
-    const extension = file.name.split('.').pop()?.toLowerCase();
-    if (!extension || !['pdf', 'docx', 'txt'].includes(extension)) { setUploadError('pages.uploadInvalidType'); return; }
     setBusy(true); setUploadError(null);
-    try {
-      const body = new FormData(); body.set('file', file); if (name) body.set('name', name);
-      await apiRequest(`/projects/${projectId}${path}`, { method: 'POST', body });
-      cvs.reload(); primaryRevisions.reload();
-    } catch (error) { setUploadError(error instanceof ApiError ? uploadMessages[error.code] ?? 'pages.loadError' : 'pages.loadError'); }
-    finally { setBusy(false); }
+    lastUpload.current = [file, path, name];
+    const failure = await uploadCvFile(projectId, file, path, name);
+    retryable.current = failure === 'errors.ocr_unavailable' || failure === 'errors.document_parse_timeout' || failure === 'errors.network_error';
+    if (failure) setUploadError(failure); else { cvs.reload(); primaryRevisions.reload(); }
+    setBusy(false);
   }
   async function makePrimary(cv: CVView) {
     setUploadError(null);
@@ -185,8 +178,8 @@ export function ProfilePage() {
       <input ref={versionInput} hidden tabIndex={-1} aria-label={c.upload} type="file" accept={ACCEPT} onChange={event => { void upload(event.target.files?.[0], `/cvs/${versionTarget.current}/revisions`); event.target.value = ''; }} />
     </div>
     </div>
-    {busy && <p role="status" className="text-sm text-muted-foreground">{w('uploading')}</p>}
-    {uploadError && <Alert severity="error" role="alert">{t(uploadError)}</Alert>}
+    {busy && <CvReadingSteps locale={locale} />}
+    {uploadError && <Alert severity="error" role="alert" action={retryable.current && lastUpload.current ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { const [file, path, name] = lastUpload.current!; void upload(file, path, name); }}>{w('tryAgain')}</Button> : undefined}>{t(uploadError)}</Alert>}
     {extractError && <Alert severity="error" role="alert">{c.failed}</Alert>}
     {removed && <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-4 py-2 text-sm">
       <Trash2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />

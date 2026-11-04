@@ -78,7 +78,7 @@ for (const locale of ['th', 'en'] as const) {
     await step(page, T(locale, '2. เลือกโหมด “เลือกเอง” เพื่อเลือกข้อเสนอเอง', '2. Choose “Interactive” to pick the changes yourself'), mode, async t => { await t.check(); }, 2600);
     await step(page, T(locale, '3. กด “ปรับ CV” แล้วรอเอเจนต์ทำงาน', '3. Click “Tailor CV” and let the agent work'), page.getByRole('button', { name: /^(ปรับ CV|Tailor CV)$/ }), 'click', 2500);
     await page.getByRole('button', { name: /^(ใช้ข้อเสนอที่เลือก|Apply selected)$/ }).waitFor();
-    await caption(page, T(locale, '4. เอเจนต์เสนอข้อความใหม่ พร้อมหลักฐานจากคลังประสบการณ์ของคุณ', '4. The agent proposes new lines, each backed by your experience bank'));
+    await caption(page, T(locale, '4. เอเจนต์เสนอข้อความใหม่ พร้อมหลักฐานจากข้อเท็จจริงของคุณ', '4. The agent proposes new lines, each backed by your facts'));
     await page.getByRole('checkbox', { name: /(เลือกข้อเสนอ|Select proposal) 1/ }).evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'smooth' })); await pause(page, 3500);
     await step(page, T(locale, '5. ติ๊กเลือกข้อเสนอที่ต้องการ', '5. Tick the proposals you want'), page.getByRole('checkbox', { name: /(เลือกข้อเสนอ|Select proposal) 1/ }), async t => { await t.check(); }, 2800);
     await step(page, T(locale, '6. กด “ใช้ข้อเสนอที่เลือก” ระบบจะบันทึกเป็น CV เวอร์ชันใหม่', '6. Click “Apply selected” to save a new CV version'), page.getByRole('button', { name: /^(ใช้ข้อเสนอที่เลือก|Apply selected)$/ }), 'none', 4000);

@@ -7,15 +7,24 @@ const copy = {
     title: 'ให้เอเจนต์จัดอันดับงานให้คุณ', body: 'เอเจนต์จะอ่าน CV ที่เลือก แล้วเรียงงานที่เหมาะกับคุณที่สุดขึ้นก่อน พร้อมเหตุผลสั้น ๆ ของแต่ละงาน',
     steps: ['อ่านทักษะจาก CV', 'เทียบกับงานที่ตรงตัวกรอง', 'ให้คะแนนเต็ม 5 และบอกสิ่งที่ขาด'],
     cost: 'ใช้ AI ทุกครั้งที่เริ่ม ระบบจึงรอให้คุณกดเอง ปรับตัวกรองก่อนได้ แล้วค่อยกดเริ่ม', start: 'เริ่ม Smart match', startWith: (cv: string) => `เริ่ม Smart match ด้วย ${cv}`, noGate: 'ยืนยันอีเมลก่อนจึงจะใช้ได้',
-    using: 'ใช้ CV',
+    using: 'จับคู่กับ CV',
+    how: 'จับคู่อย่างไร', howLines: ['AI อ่าน CV แล้วเทียบกับประกาศงานทีละงาน', 'คะแนนมาจาก ความตรงกับตำแหน่ง 50% ทักษะ 30% (ทักษะที่ประกาศบอกว่าต้องมีนับสองเท่า) และระดับประสบการณ์ 20%', 'ถ้าขาดทักษะที่ต้องมี คะแนนจะลดลง ผลนี้เป็นการประมาณ ไม่ใช่คำตัดสิน'],
   },
   en: {
     title: 'Let the agent rank jobs for you', body: 'The agent reads the CV you chose and puts the jobs that fit you best first, with a short reason for each.',
     steps: ['Reads the skills in your CV', 'Compares jobs that match your filters', 'Scores each out of 5, shows gaps'],
     cost: 'It uses AI every time it runs, so it waits for you to start it. Set your filters first, then start.', start: 'Start Smart match', startWith: (cv: string) => `Start Smart match with ${cv}`, noGate: 'Confirm your email to use this',
-    using: 'Using CV',
+    using: 'Matching with CV',
+    how: 'How matching works', howLines: ['The AI reads your CV and compares it with each posting.', 'The score is role fit 50%, skills 30% (skills the posting says are required count double) and seniority 20%.', 'A missing required skill lowers the score. The result is an estimate, not a verdict.'],
   },
 };
+
+// Plain-words note on how the score is built (weights live in services/smart_match.py: combine()).
+export function HowMatchingWorks({ locale }: { locale: 'th' | 'en' }) {
+  const c = copy[locale];
+  return <details className="text-sm text-muted-foreground"><summary className="inline-flex min-h-11 cursor-pointer items-center font-medium text-foreground lg:min-h-10">{c.how}</summary>
+    <ul className="mt-1 grid max-w-2xl list-disc gap-1 ps-5">{c.howLines.map(line => <li key={line}>{line}</li>)}</ul></details>;
+}
 
 // Smart match uses AI on every run, so it never starts by itself: the user presses Start.
 export function SmartMatchStart({ locale, cvName, disabled, title, onStart }: { locale: 'th' | 'en'; cvName: string; disabled: boolean; title?: string; onStart: () => void }) {
@@ -36,5 +45,6 @@ export function SmartMatchStart({ locale, cvName, disabled, title, onStart }: { 
       <p className="truncate text-center text-xs text-muted-foreground" title={cvName}>{c.using}: <span className="text-foreground">{cvName}</span></p>
     </div>
     <p className="text-xs text-muted-foreground lg:col-span-2">{c.cost}</p>
+    <div className="lg:col-span-2"><HowMatchingWorks locale={locale} /></div>
   </section>;
 }

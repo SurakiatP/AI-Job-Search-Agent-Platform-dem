@@ -16,6 +16,7 @@ import { ErrorState } from '../projects/PageStates';
 import { sendJson, useResource } from '../projects/useResource';
 import { EvaluateButton } from '../sessions/EvaluateButton';
 import { nextStep, type NextStep } from './nextStep';
+import { StartCard } from './StartCard';
 import { useOverviewCopy } from './copy';
 import { latestEvaluations } from './latestEvaluations';
 import { PageHeader } from '@/components/PageHeader';
@@ -87,6 +88,8 @@ export function OverviewPage() {
     job: focus ? { id: focus.id, stage: focus.application_status ?? undefined, session: focusSession ? { id: focusSession.id, scored: evaluations.has(focus.id), drafted } : undefined } : undefined,
   }) : null;
   const firstRun = !!step && evaluations.size === 0 && (step.key === 'uploadCv' || step.key === 'readingCv' || step.key === 'findJob');
+  // No fit score yet: the three-step start card replaces the single next-step card.
+  const startCard = firstRun || (!!step && evaluations.size === 0 && step.key === 'getFitScore');
   useEffect(() => {
     const refresh = () => { if (document.visibilityState !== 'hidden') { refreshRuns(); refreshApprovals(); } };
     window.addEventListener('focus', refresh);
@@ -127,7 +130,10 @@ export function OverviewPage() {
     </div>)}
   </dl>;
 
-  const hero = step && (() => {
+  const reloadStart = () => { cvs.reload(); jobs.reload(); runs.reload(); };
+  const start = startCard && <StartCard projectId={projectId} cvName={scoringCv?.name ?? cv?.name} hasCv={!!cv?.latest_revision} reading={step?.key === 'readingCv'}
+    job={focus ? { id: focus.id, name: [focus.title, focus.company].filter(Boolean).join(' · ') } : undefined} onChanged={reloadStart} />;
+  const hero = step && !startCard && (() => {
     const copy = c.hero[step.key];
     const jobName = focus ? [focus.title, focus.company].filter(Boolean).join(' · ') : '';
     return <section aria-labelledby="next-step-heading" className="aurora grid gap-5 rounded-3xl bg-hero p-6 text-hero-foreground shadow-[var(--shadow-lift)] sm:p-8">
@@ -162,7 +168,9 @@ export function OverviewPage() {
 
   if (project.status === 'error' && !project.data) return <ErrorState onRetry={project.reload} />;
   return <div className="grid min-w-0 gap-6 lg:gap-8">
-    <PageHeader icon={LayoutDashboard} title={project.data?.name ?? t('nav.overview')} lede={firstRun ? c.subtitleFirst : t('workspace.overviewSubtitle')} />
+    <PageHeader icon={LayoutDashboard} title={project.data?.name ?? t('nav.overview')} lede={startCard ? c.subtitleFirst : t('workspace.overviewSubtitle')} />
+
+    {start}
 
     {hero}
 

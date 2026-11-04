@@ -11,7 +11,7 @@ import { builderApi } from '../fixtures/builder';
 const marks: Record<string, (page: Page) => Locator[]> = {
   signup: p => [p.locator('form button[type=submit]').first()],
   projects: p => [p.getByRole('link', { name: /โปรเจกต์ใหม่|สร้างโปรเจกต์|New project|Create project/i }).first()],
-  profile: p => [p.getByRole('button', { name: /^เพิ่ม CV$|^Add CV$|อัปโหลด CV|Upload/i }).first(), p.getByRole('tab', { name: /คลังประสบการณ์|Experience/i })],
+  profile: p => [p.getByRole('button', { name: /^เพิ่ม CV$|^Add CV$|อัปโหลด CV|Upload/i }).first(), p.getByRole('tab', { name: /ข้อเท็จจริงของฉัน|My facts/i })],
   search: p => [p.getByText(/^Smart match$/).first(), p.getByPlaceholder(/Frontend/).first()],
   session: p => [p.getByRole('button', { name: /ประเมินงานนี้|Evaluate this job/i }).first()],
   'practice-tab': p => [p.getByRole('button', { name: /ชุดซ้อมใหม่|สร้างชุดซ้อม|New practice set/i }).first()],

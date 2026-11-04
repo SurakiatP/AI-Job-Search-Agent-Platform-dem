@@ -306,6 +306,6 @@ test('legacy DOC files are rejected before upload with a localized error', async
     if (request.url().endsWith(`/v1/projects/${projectId}/cvs`) && request.method() === 'POST') uploadRequests++;
   });
   await page.getByLabel('Add CV', { exact: true }).setInputFiles({ name: 'legacy-cv.doc', mimeType: 'application/msword', buffer: Buffer.from('Synthetic legacy CV') });
-  await expect(page.getByRole('alert')).toHaveText('Choose a text PDF, DOCX or text file.');
+  await expect(page.getByRole('alert')).toHaveText('Choose a PDF, DOCX or TXT file.');
   expect(uploadRequests).toBe(0);
 });

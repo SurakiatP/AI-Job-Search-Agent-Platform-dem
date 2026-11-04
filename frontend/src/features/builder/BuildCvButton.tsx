@@ -11,9 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../com
 
 const copy = {
   th: { button: 'สร้าง CV ในระบบ', title: 'สร้าง CV ในระบบ', body: 'กรอกข้อมูลในแบบฟอร์ม เลือกเทมเพลต แล้วดูตัวอย่าง PDF จริงได้ระหว่างแก้ไข', name: 'ชื่อ CV', defaultName: 'CV ของฉัน',
-    fromBank: 'เริ่มจากข้อมูลในคลังประสบการณ์ (ถ้ามี)', create: 'เริ่มสร้าง', cancel: 'ยกเลิก', failed: 'สร้างไม่สำเร็จ ลองอีกครั้ง' },
+    fromBank: 'เริ่มจากข้อมูลในข้อเท็จจริงของฉัน (ถ้ามี)', create: 'เริ่มสร้าง', cancel: 'ยกเลิก', failed: 'สร้างไม่สำเร็จ ลองอีกครั้ง' },
   en: { button: 'Build a CV', title: 'Build a CV in the app', body: 'Fill in a form, pick a template and see the real PDF while you edit.', name: 'CV name', defaultName: 'My CV',
-    fromBank: 'Start from my experience bank (if any)', create: 'Start', cancel: 'Cancel', failed: 'Could not create it. Try again.' },
+    fromBank: 'Start from my facts (if any)', create: 'Start', cancel: 'Cancel', failed: 'Could not create it. Try again.' },
 };
 
 /** Creates a builder CV and opens the builder; offered wherever a CV is required. */

@@ -11,16 +11,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { apiRequest } from '../../lib/api';
 import { useGatewayHelp } from '../../lib/accountGate';
 import { ApiError, type CVView, type JobRevisionView, type SessionView } from '../../lib/api-types';
-import { useResource } from '../projects/useResource';
+import { sendJson, useResource } from '../projects/useResource';
+import { dateLocale } from '../../lib/locale';
 import { BuildCvButton } from '../builder/BuildCvButton';
 
 export type InlineJobDraft = { title: string; company?: string | null; description: string; source_url?: string | null };
 export type SessionJob = { savedId?: string; inline?: InlineJobDraft };
 
 const copy = {
-  th: { title: 'เริ่มเซสชันใหม่', desc: 'จับคู่ CV หนึ่งฉบับกับประกาศงานหนึ่งรายการ ระบบจะเริ่มประเมินความเหมาะสมให้ทันที', cv: 'CV', job: 'ประกาศงาน', saved: 'ใบสมัคร', paste: 'วางประกาศงานใหม่', pick: 'เลือกงาน', jtitle: 'ตำแหน่งงาน', company: 'บริษัท (ไม่บังคับ)', url: 'ลิงก์ต้นทาง (ไม่บังคับ)', jdesc: 'รายละเอียดงาน', start: 'เริ่มเซสชัน', starting: 'กำลังสร้าง…', cancel: 'ยกเลิก', noCv: 'ยังไม่มี CV', noCvBody: 'เพิ่ม CV ก่อนจึงจะเริ่มเซสชันได้', addCv: 'ไปหน้า CV', exists: 'มีเซสชันสำหรับ CV เวอร์ชันนี้กับงานนี้อยู่แล้ว', open: 'เปิดเซสชันที่มีอยู่', provider: 'ยังไม่ได้ตั้งค่า AI gateway ใส่ OPENROUTER_API_KEY แล้วดูที่ ตั้งค่า > เกตเวย์ AI', settings: 'ไปที่การตั้งค่า', failed: 'สร้างเซสชันไม่สำเร็จ ลองอีกครั้ง', notFound: 'ไม่พบ CV หรืองานที่เลือก ลองโหลดหน้าใหม่', loadFailed: 'โหลดข้อมูลไม่สำเร็จ', loading: 'กำลังโหลด…' },
-  en: { title: 'New session', desc: 'Pair one CV with one job posting. The fit evaluation starts right away.', cv: 'CV', job: 'Job posting', saved: 'Application', paste: 'Paste a new job', pick: 'Choose a job', jtitle: 'Job title', company: 'Company (optional)', url: 'Source link (optional)', jdesc: 'Job description', start: 'Start session', starting: 'Creating…', cancel: 'Cancel', noCv: 'No CV yet', noCvBody: 'Add a CV before starting a session.', addCv: 'Go to CV page', exists: 'A session for this CV version and job already exists.', open: 'Open existing session', provider: 'The AI gateway is not configured. Set OPENROUTER_API_KEY, then see Settings > AI gateway.', settings: 'Open settings', failed: 'Could not create the session. Try again.', notFound: 'The CV or job was not found. Reload the page and try again.', loadFailed: 'Could not load data', loading: 'Loading…' },
+  th: { title: 'เริ่มเซสชันใหม่', desc: 'จับคู่ CV หนึ่งฉบับกับประกาศงานหนึ่งรายการ ระบบจะเริ่มประเมินความเหมาะสมให้ทันที', cv: 'CV', job: 'ประกาศงาน', saved: 'ใบสมัคร', paste: 'วางประกาศงานใหม่', pick: 'เลือกงาน', jtitle: 'ตำแหน่งงาน', company: 'บริษัท (ไม่บังคับ)', url: 'ลิงก์ต้นทาง (ไม่บังคับ)', jdesc: 'รายละเอียดงาน', start: 'เริ่มเซสชัน', starting: 'กำลังสร้าง…', cancel: 'ยกเลิก', noCv: 'ยังไม่มี CV', noCvBody: 'เพิ่ม CV ก่อนจึงจะเริ่มเซสชันได้', addCv: 'ไปหน้า CV', exists: 'มีเซสชันสำหรับ CV เวอร์ชันนี้กับงานนี้อยู่แล้ว', open: 'เปิดเซสชันที่มีอยู่', provider: 'ยังไม่ได้ตั้งค่า AI gateway ใส่ OPENROUTER_API_KEY แล้วดูที่ ตั้งค่า > เกตเวย์ AI', settings: 'ไปที่การตั้งค่า', failed: 'สร้างเซสชันไม่สำเร็จ ลองอีกครั้ง', notFound: 'ไม่พบ CV หรืองานที่เลือก ลองโหลดหน้าใหม่', loadFailed: 'โหลดข้อมูลไม่สำเร็จ', loading: 'กำลังโหลด…', askPrimary: 'ใช้ CV ไหนเป็นหลัก', makePrimary: 'ใช้ฉบับนี้เป็นหลักครั้งต่อไป', makePrimaryHelp: 'ครั้งหน้ากดประเมินแล้วระบบใช้ CV นี้เลย ไม่ถามอีก เปลี่ยนได้ที่หน้า CV', ver: 'ฉบับ' },
+  en: { title: 'New session', desc: 'Pair one CV with one job posting. The fit evaluation starts right away.', cv: 'CV', job: 'Job posting', saved: 'Application', paste: 'Paste a new job', pick: 'Choose a job', jtitle: 'Job title', company: 'Company (optional)', url: 'Source link (optional)', jdesc: 'Job description', start: 'Start session', starting: 'Creating…', cancel: 'Cancel', noCv: 'No CV yet', noCvBody: 'Add a CV before starting a session.', addCv: 'Go to CV page', exists: 'A session for this CV version and job already exists.', open: 'Open existing session', provider: 'The AI gateway is not configured. Set OPENROUTER_API_KEY, then see Settings > AI gateway.', settings: 'Open settings', failed: 'Could not create the session. Try again.', notFound: 'The CV or job was not found. Reload the page and try again.', loadFailed: 'Could not load data', loading: 'Loading…', askPrimary: 'Which CV should be your main one?', makePrimary: 'Use this one as my main CV from now on', makePrimaryHelp: 'Next time you press Evaluate, this CV is used right away with no question. You can change it on the CV page.', ver: 'version' },
 };
+
+const cvKind = (cv: CVView) => { const m = (cv.latest_revision?.mime_type ?? '').toLowerCase(), n = (cv.latest_revision?.original_filename ?? '').toLowerCase(); return m.includes('word') || n.endsWith('.docx') ? 'Word' : m.startsWith('text/') || n.endsWith('.txt') ? 'TXT' : 'PDF'; };
+const cvOption = (cv: CVView, ver: string, date: Intl.DateTimeFormat) => [cv.name, `${ver} ${cv.latest_revision?.revision}`, cvKind(cv), cv.latest_revision ? date.format(new Date(cv.latest_revision.created_at)) : ''].filter(Boolean).join(' · ');
 
 // The label sits inside the control and floats up when it is focused or filled (the control gets an empty placeholder to detect that).
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="mui-field text-sm">{children}<span className="mui-label">{label}</span></label>; }
@@ -41,10 +45,13 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
   const [savedPick, setSavedPick] = useState(job?.savedId ?? '');
   const [form, setForm] = useState({ title: job?.inline?.title ?? '', company: job?.inline?.company ?? '', source_url: job?.inline?.source_url ?? '', description: job?.inline?.description ?? '' });
   const [busy, setBusy] = useState(false);
+  const [asMain, setAsMain] = useState(true);
   const [error, setError] = useState<'' | 'failed' | 'notFound' | 'provider'>('');
   const [existing, setExisting] = useState('');
   const ready = cvs.status === 'ready' && jobs.status === 'ready';
   const cv = usable.find(item => item.id === cvPick) ?? usable.find(item => cvName && item.name === cvName) ?? usable.find(item => item.is_primary) ?? usable[0];
+  const needsPrimary = usable.length > 1 && !usable.some(item => item.is_primary);
+  const dateFmt = new Intl.DateTimeFormat(dateLocale(locale), { dateStyle: 'medium' });
   const effectiveMode = mode || (saved.length ? 'saved' : 'new');
   const savedId = saved.some(item => item.id === savedPick) ? savedPick : saved[0]?.id ?? '';
   const valid = Boolean(cv) && (effectiveMode === 'saved' ? Boolean(savedId) : form.title.trim() && form.description.trim());
@@ -52,6 +59,8 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
     if (!cv?.latest_revision || busy || !valid) return;
     setBusy(true); setError(''); setExisting('');
     const jobPart = effectiveMode === 'saved' ? { job_revision_id: savedId } : { job: { title: form.title.trim(), description: form.description.trim(), ...(form.company.trim() ? { company: form.company.trim() } : {}), ...(form.source_url.trim() ? { source_url: form.source_url.trim() } : {}) } };
+    // Ask-once (CH-11): remember the pick as the main CV so the next Evaluate skips this dialog. A failure here must not block the evaluation.
+    if (needsPrimary && asMain) await sendJson(`/projects/${projectId}/cvs/${cv.id}`, 'PATCH', { is_primary: true }).catch(() => undefined);
     try {
       const session = await apiRequest<SessionView>(`/projects/${projectId}/sessions`, { method: 'POST', body: JSON.stringify({ cv_revision_id: cv.latest_revision.id, ...jobPart }) });
       window.dispatchEvent(new Event('sessions:changed'));
@@ -71,8 +80,10 @@ export function NewSessionDialog({ projectId, job, cvName, onClose }: { projectI
         : !ready ? <p role="status" className="text-sm text-muted-foreground">{c.loading}</p>
         : !usable.length ? <div className="grid gap-3 rounded-lg border border-dashed p-4"><p className="font-medium">{c.noCv}</p><p className="text-sm text-muted-foreground">{c.noCvBody}</p><div className="flex flex-wrap gap-2"><Button asChild onClick={onClose}><Link to={`${base}/profile`}>{c.addCv}</Link></Button><BuildCvButton projectId={projectId} /></div></div>
         : <form className="grid gap-4" onSubmit={event => { event.preventDefault(); void submit(); }}>
+          {needsPrimary && <p className="text-sm font-medium">{c.askPrimary}</p>}
           <Field label={c.cv}><Select value={cv?.id ?? ''} onChange={event => setCvPick(event.target.value)} disabled={busy}>
-            {usable.map(item => <option key={item.id} value={item.id}>{item.name} · v{item.latest_revision?.revision}</option>)}</Select></Field>
+            {usable.map(item => <option key={item.id} value={item.id}>{cvOption(item, c.ver, dateFmt)}</option>)}</Select></Field>
+          {needsPrimary && <label className="flex min-h-11 items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-primary" checked={asMain} onChange={event => setAsMain(event.target.checked)} /><span><span className="font-medium">{c.makePrimary}</span><span className="block text-muted-foreground">{c.makePrimaryHelp}</span></span></label>}
           {cv?.latest_revision && <CvPreviewButton projectId={projectId} fileId={cv.latest_revision.file_id} name={cv.name} revision={cv.latest_revision.revision} filename={cv.latest_revision.original_filename} mimeType={cv.latest_revision.mime_type} variant="ghost" className="justify-self-start" />}
           <fieldset className="grid gap-3" disabled={busy}>
             <legend className="mb-2 text-sm font-medium">{c.job}</legend>

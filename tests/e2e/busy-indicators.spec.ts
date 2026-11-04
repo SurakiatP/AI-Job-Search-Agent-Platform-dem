@@ -24,7 +24,7 @@ test('queued CV experience extraction shows the working row with its elapsed wai
   await page.route(`**/v1/projects/${projectId}/cvs`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([cv]) }));
   await page.route(`**/v1/projects/${projectId}/experience**`, route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], provider_configured: true, extraction: { run_id: 'r1', status: 'queued', cv_id: cv.id, summary: null } }) }));
   await page.goto(`/app/projects/${projectId}/profile?tab=experience`);
-  await expect(page.getByText('เอเจนต์รอคิวสกัดประสบการณ์จาก CV').first()).toBeVisible();
+  await expect(page.getByText('เอเจนต์รอคิวดึงประสบการณ์จาก CV').first()).toBeVisible();
   await expect(page.locator('.busy-bar').first()).toBeVisible();
   await expect(page.getByText(/รอมา \d+ วินาที/)).toBeVisible({ timeout: 8000 });
 });

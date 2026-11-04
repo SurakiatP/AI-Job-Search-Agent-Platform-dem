@@ -26,15 +26,15 @@ test('advice splits missing skills into what the bank backs and what the user do
   await expect(add.getByText('Docker')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Agent advice' })).toBeVisible();
   await expect(cannot.getByRole('link')).toHaveCount(0); // no course or learning suggestions
-  await expect(cannot).toContainText('add them to your experience bank');
+  await expect(cannot).toContainText('add them to your facts');
 });
 
-test('with an empty experience bank nothing can be added (Thai)', async ({ page }) => {
+test('with an empty facts nothing can be added (Thai)', async ({ page }) => {
   await open(page, 'th', ['Docker'], []);
   await expect(page.getByTestId('advice-can-add')).toHaveCount(0);
   await expect(page.getByTestId('advice-cannot-add').getByText('Docker', { exact: true })).toBeVisible();
   await expect(page.getByText('เพิ่มไม่ได้ เพราะไม่มีใน CV และประสบการณ์ของคุณ')).toBeVisible();
-  await expect(page.getByText(/ยังไม่มีคลังประสบการณ์ให้เทียบ/)).toBeVisible();
+  await expect(page.getByText(/ยังไม่มีข้อเท็จจริงให้เทียบ/)).toBeVisible();
 });
 
 test('manual tailoring sends the user request; autopilot sends none', async ({ page }) => {
