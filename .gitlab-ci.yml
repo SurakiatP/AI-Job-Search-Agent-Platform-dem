@@ -324,6 +324,26 @@ test-ai:
               raise RuntimeError(f"{type(e).__name__} code={getattr(e, 'code', None)} missing={fn!r}")
           finally:
               shutil.rmtree(ws, ignore_errors=True)
+      def chromium_probe():
+          import shutil, uuid
+          image = json.loads(cfg.read_text())["image"]
+          ws = pathlib.Path.home() / ".cache/job-search-platform/test-ai" / ("probe-" + uuid.uuid4().hex[:8])
+          (ws / "staging").mkdir(parents=True, mode=0o700)
+          sh = ("id; ls -ld /workspace /workspace/staging; echo '<pre>hi</pre>' > /workspace/staging/doc.html; "
+                "chromium --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --no-crashpad "
+                "--crash-dumps-dir=/workspace/staging/cp --no-pdf-header-footer --user-data-dir=/workspace/staging/cp "
+                "--print-to-pdf=/workspace/staging/doc.pdf file:///workspace/staging/doc.html 2>&1 | tail -15; ls -l /workspace/staging")
+          try:
+              r = subprocess.run(["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
+                  "--cap-drop=ALL", "--security-opt=no-new-privileges", "--pids-limit=256", "--read-only", "--shm-size=128m",
+                  "-e", "HOME=/workspace/staging", "-v", f"{ws}:/workspace:rw", "--entrypoint", "sh", image, "-c", sh],
+                  capture_output=True, text=True, timeout=90)
+              out = (r.stdout + r.stderr)[-1500:]
+              if not (ws / "staging/doc.pdf").is_file():
+                  raise RuntimeError("no pdf made; container said: " + out)
+              return "pdf made. " + out
+          finally:
+              shutil.rmtree(ws, ignore_errors=True)
       base, key = os.environ["LITELLM_BASE_URL"], os.environ["LITELLM_API_KEY"]
       def call(path, body=None):
           req = urllib.request.Request(base + path, data=body and json.dumps(body).encode(),
@@ -335,12 +355,13 @@ test-ai:
           assert model in ids, f"{model} not in {ids}"
           return ids
       def chat():
+          model = os.environ.get("AI_ANALYZE_MODEL") or (os.environ.get("AI_ANALYZE_UPSTREAM_MODEL") or "openrouter/openai/gpt-6-luna").removeprefix("openrouter/")
           r = call("/v1/chat/completions", {"model": model,
               "messages": [{"role": "user", "content": "Reply with the single word: pong"}], "max_tokens": 200})
           return repr(r["choices"][0]["message"]["content"])[:80]
       for n, f in (("1 docker socket", socket), ("2 agent image", runtime), ("3 agent start + path", agent_start),
                    ("4 litellm models", models), ("5 model call", chat),
-                   ("6 agent python", agent_python), ("7 agent runtime start", agent_runtime), ("8 agent parse file", agent_parse)):
+                   ("6 agent python", agent_python), ("7 agent runtime start", agent_runtime), ("8 agent parse file", agent_parse), ("9 chromium in agent container", chromium_probe)):
           step(n, f)
       sys.exit(1 if failed else 0)
       PY
