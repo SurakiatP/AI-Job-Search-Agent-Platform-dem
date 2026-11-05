@@ -66,10 +66,12 @@ def main():
         build.mkdir(mode=0o700, exist_ok=True)
         archive = build / "career-ops.tar"
         subprocess.run(["git", "-C", manifest["career-ops"]["source"], "archive", "--format=tar", "-o", str(archive), INPUTS["career-ops"][1]], check=True, timeout=60)
+        shutil.rmtree(build / "career-ops", ignore_errors=True)  # a rebuild starts from a clean tree
         with tarfile.open(archive) as source_archive:
             source_archive.extractall(build / "career-ops", filter="data")
         docx_archive = build / "career-ops-docx.tar"
         subprocess.run(["git", "-C", manifest["career-ops-docx"]["source"], "archive", "--format=tar", "-o", str(docx_archive), INPUTS["career-ops-docx"][1]], check=True, timeout=60)
+        shutil.rmtree(build / "career-ops-docx", ignore_errors=True)
         with tarfile.open(docx_archive) as source_archive:
             source_archive.extractall(build / "career-ops-docx", filter="data")
         for name in ("Dockerfile", "package.json", "package-lock.json", "parser-requirements.txt", "parse_document.py", "export_pdf.mjs", "typst_render.py"):

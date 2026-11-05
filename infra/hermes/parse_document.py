@@ -74,12 +74,12 @@ def html_to_pdf(body: str, out: Path) -> None:
     page = STAGING / "doc.html"
     page.write_text(f'<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="{CSP}">'
                     f"<style>{CSS}</style>{body}", encoding="utf-8")
-    profile = STAGING / "chrome-profile"
+    profile = Path("/tmp/chrome-profile")  # not under /workspace: on some hosts (btrfs bind mounts) chromium cannot create its socket directory there
     try:
-        # HOME and the crash/profile dirs must be writable: the image runs as nobody with a read-only home, and crashpad aborts otherwise.
+        # HOME and the profile dir must be writable: the image runs with a read-only root, /tmp is the container tmpfs.
         _run(["chromium", "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--no-crashpad",
               f"--crash-dumps-dir={profile}", "--no-pdf-header-footer", f"--user-data-dir={profile}",
-              f"--print-to-pdf={out}", page.as_uri()], 40, {"PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": str(STAGING)})
+              f"--print-to-pdf={out}", page.as_uri()], 40, {"PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": "/tmp"})
     finally:
         shutil.rmtree(profile, ignore_errors=True)
         page.unlink(missing_ok=True)

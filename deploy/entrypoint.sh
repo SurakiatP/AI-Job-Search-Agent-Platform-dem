@@ -14,10 +14,18 @@ put minio-secret-key "$MINIO_ROOT_PASSWORD"
 put meili-master-key "$MEILI_MASTER_KEY"
 [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || put telegram-bot-token "$TELEGRAM_BOT_TOKEN"
 
-# One-time (kept in DATA_PATH): fetch the pinned agent sources and build the tool image through the host Docker.
-if [ ! -f "$HOME/.cache/job-search-platform/hermes-runtime.json" ]; then
+# Kept in DATA_PATH: fetch the pinned agent sources and build the tool image through the host Docker.
+# The image is rebuilt when a file baked into it changes (the stamp holds the hash of those files at the last build).
+CACHE_DIR="$HOME/.cache/job-search-platform"
+IMAGE_STAMP="$CACHE_DIR/hermes-image.sha256"
+IMAGE_HASH=$(cd /app/infra/hermes && cat Dockerfile package.json package-lock.json parser-requirements.txt parse_document.py export_pdf.mjs typst_render.py | sha256sum | cut -d' ' -f1)
+if [ ! -f "$CACHE_DIR/hermes-runtime.json" ]; then
   echo "preparing agent runtime (first start, takes several minutes)"
   /app/backend/.venv/bin/python /app/infra/hermes/setup.py --acquire --build
+  echo "$IMAGE_HASH" > "$IMAGE_STAMP"
+elif [ "$(cat "$IMAGE_STAMP" 2>/dev/null)" != "$IMAGE_HASH" ]; then
+  echo "agent tool image is out of date, rebuilding (takes a few minutes)"
+  if /app/backend/.venv/bin/python /app/infra/hermes/setup.py --acquire --build; then echo "$IMAGE_HASH" > "$IMAGE_STAMP"; else echo "agent image rebuild failed, keeping the old image"; fi
 fi
 # The agent's own Python lives in DATA_PATH too; if it stops running (profile_cv fails with FileNotFoundError),
 # rebuild just that environment (the tool image is kept). A failure here must not keep the web app down.
