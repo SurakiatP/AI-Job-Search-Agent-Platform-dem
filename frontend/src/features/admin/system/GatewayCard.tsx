@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { Alert } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import type { AdminGatewayStatus } from '@/lib/api-types';
 import { SectionCard } from '../../settings/Field';
 
@@ -9,8 +8,7 @@ export function GatewayCard({ data }: { data: AdminGatewayStatus }) {
   const { t } = useTranslation('admin-system');
   const status = !data.configured ? 'notConfigured' : data.reachable ? 'reachable' : 'unreachable';
   const rows: [string, string][] = [[t('gateway.analyzeModel'), data.analyze_model], [t('gateway.decisionModel'), data.decision_model]];
-  return <SectionCard title={t('gateway.title')} description={t('gateway.description')}
-    footer={data.base_url ? <Button asChild variant="outline"><a href={`${data.base_url.replace(/\/+$/, '')}/ui`} target="_blank" rel="noopener noreferrer">{t('gateway.manage')}</a></Button> : undefined}>
+  return <SectionCard title={t('gateway.title')} description={t('gateway.description')}>
     <Alert severity="info">{t(`gateway.status.${status}`)}</Alert>
     {!data.configured && <p className="text-sm text-muted-foreground">{t('gateway.hint')}</p>}
     <dl className="grid gap-3 text-sm sm:grid-cols-2">

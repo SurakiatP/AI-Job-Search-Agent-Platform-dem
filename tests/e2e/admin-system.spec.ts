@@ -164,7 +164,7 @@ test('TC-ADM-SY-06: resending a delivery that is no longer failed explains why',
   await expect(page.getByRole('button', { name: /^Resend job.saved/ })).toBeEnabled();
 });
 
-test('TC-ADM-SY-07: the AI gateway and Tools sections work on the System page', async ({ page }) => {
+test('TC-ADM-SY-07: the AI gateway and Tools sections work on the System page, with no LiteLLM link', async ({ page }) => {
   await mockSystem(page);
   const providerCalls: string[] = [];
   page.on('request', r => { const p = new URL(r.url()).pathname; if (/^\/api\/v1\/(providers|settings\/provider)/.test(p)) providerCalls.push(p); });
@@ -172,10 +172,8 @@ test('TC-ADM-SY-07: the AI gateway and Tools sections work on the System page', 
   await expect(page.getByText('The AI gateway is configured and reachable.')).toBeVisible();
   await expect(page.getByText('typesafe/jev-1.13')).toBeVisible();
   await expect(page.getByText('ai-extra')).toBeVisible();
-  const link = page.getByRole('link', { name: 'Manage models in LiteLLM' });
-  await expect(link).toHaveAttribute('href', 'http://127.0.0.1:54000/ui');
-  await expect(link).toHaveAttribute('target', '_blank');
-  await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(page.getByRole('link', { name: 'Manage models in LiteLLM' })).toHaveCount(0);
+  await expect(page.locator('a[href$="/ui"]')).toHaveCount(0);
   await expect(page.getByLabel('API key')).toHaveCount(0);
   const tools = card(page, 'Tools');
   await expect(tools).toContainText('evaluate_job');
@@ -183,7 +181,7 @@ test('TC-ADM-SY-07: the AI gateway and Tools sections work on the System page', 
   expect(providerCalls).toEqual([]);
 });
 
-test('TC-ADM-SY-08: an unconfigured gateway shows the key hint (Thai) and no LiteLLM link', async ({ page }) => {
+test('TC-ADM-SY-08: an unconfigured gateway shows the key hint (Thai)', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ui.locale', 'th'));
   await mockSystem(page, { gateway: { configured: false, reachable: false, base_url: null, analyze_model: 'openai/gpt-6-luna', decision_model: 'ai-decide', models: [] } });
   await page.goto('/admin/system');

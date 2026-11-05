@@ -126,7 +126,6 @@
     "decisionModel": "Decision model",
     "models": "Available models",
     "noModels": "No models are available.",
-    "manage": "Manage models in LiteLLM",
     "hint": "Set OPENROUTER_API_KEY in .env and restart the infrastructure.",
     "status": {
       "notConfigured": "The AI gateway is not configured.",

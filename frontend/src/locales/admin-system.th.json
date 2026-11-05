@@ -124,7 +124,6 @@
     "decisionModel": "โมเดลตัดสินใจ",
     "models": "โมเดลที่ใช้ได้",
     "noModels": "ยังไม่มีโมเดลที่ใช้ได้",
-    "manage": "จัดการโมเดลใน LiteLLM",
     "hint": "ตั้งค่า OPENROUTER_API_KEY ใน .env แล้วรีสตาร์ทโครงสร้างพื้นฐาน",
     "status": {
       "notConfigured": "ยังไม่ได้ตั้งค่า AI gateway",
