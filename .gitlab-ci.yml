@@ -327,23 +327,30 @@ test-ai:
       def chromium_probe():
           import shutil, uuid
           image = json.loads(cfg.read_text())["image"]
-          ws = pathlib.Path.home() / ".cache/job-search-platform/test-ai" / ("probe-" + uuid.uuid4().hex[:8])
-          (ws / "staging").mkdir(parents=True, mode=0o700)
-          sh = ("id; ls -ld /workspace /workspace/staging; echo '<pre>hi</pre>' > /workspace/staging/doc.html; "
-                "chromium --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --no-crashpad "
-                "--crash-dumps-dir=/workspace/staging/cp --no-pdf-header-footer --user-data-dir=/workspace/staging/cp "
-                "--print-to-pdf=/workspace/staging/doc.pdf file:///workspace/staging/doc.html 2>&1 | tail -15; ls -l /workspace/staging")
-          try:
-              r = subprocess.run(["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
-                  "--cap-drop=ALL", "--security-opt=no-new-privileges", "--pids-limit=256", "--read-only", "--shm-size=128m",
-                  "-e", "HOME=/workspace/staging", "-v", f"{ws}:/workspace:rw", "--entrypoint", "sh", image, "-c", sh],
-                  capture_output=True, text=True, timeout=90)
-              out = (r.stdout + r.stderr)[-1500:]
-              if not (ws / "staging/doc.pdf").is_file():
-                  raise RuntimeError("no pdf made; container said: " + out)
-              return "pdf made. " + out
-          finally:
-              shutil.rmtree(ws, ignore_errors=True)
+          flags = "--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --no-crashpad --no-pdf-header-footer"
+          variants = {"profile in workspace": ("/workspace/staging/cp", []), "profile in tmpfs": ("/tmp/cp", ["--tmpfs", "/tmp:rw,size=64m"])}
+          made = []
+          for name, (profile, extra) in variants.items():
+              ws = pathlib.Path.home() / ".cache/job-search-platform/test-ai" / ("probe-" + uuid.uuid4().hex[:8])
+              (ws / "staging").mkdir(parents=True, mode=0o700)
+              sh = ("id; echo '<pre>hi</pre>' > /workspace/staging/doc.html; "
+                    f"chromium {flags} --crash-dumps-dir={profile} --user-data-dir={profile} "
+                    "--print-to-pdf=/workspace/staging/doc.pdf file:///workspace/staging/doc.html 2>&1 | tail -8; ls -l /workspace/staging; df -T /workspace | tail -1")
+              try:
+                  r = subprocess.run(["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
+                      "--cap-drop=ALL", "--security-opt=no-new-privileges", "--pids-limit=256", "--read-only", "--shm-size=128m",
+                      "-e", "HOME=/workspace/staging", "-v", f"{ws}:/workspace:rw", *extra, "--entrypoint", "sh", image, "-c", sh],
+                      capture_output=True, text=True, timeout=90)
+                  ok = (ws / "staging/doc.pdf").is_file()
+                  print(f"  [{name}] pdf={'yes' if ok else 'NO'}")
+                  for line in (r.stdout + r.stderr).splitlines()[-14:]:
+                      print("    " + line[:400])
+                  if ok: made.append(name)
+              finally:
+                  shutil.rmtree(ws, ignore_errors=True)
+          if not made:
+              raise RuntimeError("chromium made no pdf in either variant, details above")
+          return "pdf made with: " + ", ".join(made)
       base, key = os.environ["LITELLM_BASE_URL"], os.environ["LITELLM_API_KEY"]
       def call(path, body=None):
           req = urllib.request.Request(base + path, data=body and json.dumps(body).encode(),
